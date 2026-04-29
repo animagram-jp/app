@@ -1,3 +1,3 @@
 pub mod dice;
-pub mod coc7th;
+pub mod static;
 pub mod app;

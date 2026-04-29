@@ -1,6 +1,6 @@
 use wasm_bindgen::prelude::*;
 use crate::dice;
-use crate::coc7th::Roll;
+use crate::static::Roll;
 
 const OP_SET_ATTR: u32 = 0b01;
 const OP_SET_TEXT: u32 = 0b10;

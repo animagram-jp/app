@@ -1,4 +1,4 @@
 Cargo.lock
-**/target/**
+**/target
+CLAUDE.md
 src/dice.rs
-src/coc7th.rs
