@@ -1,0 +1,4 @@
+Cargo.lock
+**/target/**
+src/dice.rs
+src/coc7th.rs
