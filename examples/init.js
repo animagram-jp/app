@@ -45,7 +45,7 @@ function execute({ op, id, attr = '', value = '' }) {
   const el = document.getElementById(id);
   if (!el) return;
   switch (op) {
-    case 0b01: // setAttribute
+    case 0b01: // setAttribute / removeAttribute
       if (value === '') el.removeAttribute(attr);
       else el.setAttribute(attr, value);
       break;
@@ -57,8 +57,31 @@ function execute({ op, id, attr = '', value = '' }) {
 
 function bind() {
   document.addEventListener('click', dispatch);
-  document.addEventListener('pointerdown', dispatch);
-  document.getElementById('{placeholder for submitable element}')?.addEventListener('submit', dispatch);
+  document.getElementById('chat-form')?.addEventListener('submit', dispatch);
+
+  // textarea に / を入力したら即セレクタを開く
+  document.getElementById('chat-input')?.addEventListener('input', (e) => {
+    if (e.target.value === '/') {
+      e.target.value = '';
+      worker.postMessage({
+        type: 'event',
+        payload: { event_type: 0b11, target_id: 'chat-form', fields: { text: '/' } },
+      });
+    }
+  });
+
+  // Esc でセレクタを閉じる
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      worker.postMessage({
+        type: 'event',
+        payload: { event_type: 0b01, target_id: 'selector-overlay' },
+      });
+    }
+  });
 }
 
 worker.postMessage({ type: 'init' });
+worker.addEventListener('message', (e) => {
+  if (e.data.type === 'ready') bind();
+}, { once: true });

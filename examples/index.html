@@ -12,6 +12,31 @@
 
 <body>
   <main>
-    <textarea></textarea>
+    <div id="chat-log"></div>
+
+    <div id="selector" hidden>
+      <div id="selector-overlay"></div>
+      <div id="selector-menu">
+        <button id="roll-skill">技能判定</button>
+        <button id="roll-char">能力値判定</button>
+        <button id="roll-sanity">正気度判定</button>
+        <button id="roll-madness-rt">狂気の発作 (リアルタイム)</button>
+        <button id="roll-madness-sum">狂気の発作 (サマリー)</button>
+        <button id="roll-combine">組み合わせ判定</button>
+        <button id="roll-pushed">プッシュロール</button>
+        <button id="roll-autofire">自動火器の連射判定</button>
+        <button id="roll-cast-minor">呪文失敗 (小)</button>
+        <button id="roll-cast-major">呪文失敗 (大)</button>
+        <button id="roll-phobia">恐怖症表</button>
+        <button id="roll-mania">マニア表</button>
+      </div>
+    </div>
+
+    <form id="chat-form">
+      <textarea id="chat-input" name="text" rows="2" placeholder="/ でコマンド選択"></textarea>
+      <button type="submit">送信</button>
+    </form>
   </main>
 </body>
+
+</html>
