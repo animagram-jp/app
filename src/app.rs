@@ -1,3 +1,5 @@
+// This file includes untranslated text (ja).
+
 use wasm_bindgen::prelude::*;
 use crate::dice;
 use crate::static::Roll;
