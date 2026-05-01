@@ -1,7 +1,7 @@
 use wasm_bindgen::prelude::*;
 use crate::{Lang, dice::{self, ResultLevel}};
 use crate::table::Roll;
-use crate::character::{Instance, schema};
+use crate::character::{Instance, Model, schema};
 
 const OP_SET_ATTR: u32 = 0b001;
 const OP_SET_TEXT: u32 = 0b010;
@@ -11,7 +11,6 @@ const EVENT_CLICK:    u32 = 0b001;
 const EVENT_SUBMIT:   u32 = 0b010;
 const EVENT_INPUT:    u32 = 0b011;
 const EVENT_KEYDOWN:  u32 = 0b100;
-const EVENT_CHANGE:   u32 = 0b101;
 const EVENT_FOCUS:    u32 = 0b110;
 
 const SELECTOR_ITEMS: &[&str] = &[
@@ -22,11 +21,63 @@ const SELECTOR_ITEMS: &[&str] = &[
     "roll-madness-sum",
     "roll-combine",
     "roll-pushed",
+    "roll-dev-check",
     "roll-autofire",
     "roll-cast-minor",
     "roll-cast-major",
     "roll-phobia",
     "roll-mania",
+];
+
+const SKILL_ID_MAP: &[(&str, Model)] = &[
+    ("accounting",            Model::Accounting),
+    ("anthropology",          Model::Anthropology),
+    ("archaeology",           Model::Archaeology),
+    ("appraise",              Model::Appraise),
+    ("art-craft",             Model::ArtCraft),
+    ("charm",                 Model::Charm),
+    ("climb",                 Model::Climb),
+    ("computer-use",          Model::ComputerUse),
+    ("credit-rating",         Model::CreditRating),
+    ("cthulhu-mythos",        Model::CthulhuMythos),
+    ("disguise",              Model::Disguise),
+    ("drive-auto",            Model::DriveAuto),
+    ("elec-repair",           Model::ElecRepair),
+    ("electronics",           Model::Electronics),
+    ("fast-talk",             Model::FastTalk),
+    ("fighting-brawl",        Model::FightingBrawl),
+    ("fighting-other",        Model::FightingOther),
+    ("firearms-handgun",      Model::FirearmsHandgun),
+    ("firearms-rifle-shotgun",Model::FirearmsRifleShotgun),
+    ("firearms-other",        Model::FirearmsOther),
+    ("first-aid",             Model::FirstAid),
+    ("history",               Model::History),
+    ("intimidate",            Model::Intimidate),
+    ("jump",                  Model::Jump),
+    ("language-other",        Model::LanguageOther),
+    ("language-own",          Model::LanguageOwn),
+    ("law",                   Model::Law),
+    ("library-use",           Model::LibraryUse),
+    ("listen",                Model::Listen),
+    ("locksmith",             Model::Locksmith),
+    ("mech-repair",           Model::MechRepair),
+    ("medicine",              Model::Medicine),
+    ("natural-world",         Model::NaturalWorld),
+    ("navigate",              Model::Navigate),
+    ("occult",                Model::Occult),
+    ("persuade",              Model::Persuade),
+    ("pilot",                 Model::Pilot),
+    ("psychoanalysis",        Model::Psychoanalysis),
+    ("psychology",            Model::Psychology),
+    ("ride",                  Model::Ride),
+    ("science",               Model::Science),
+    ("sleight-of-hand",       Model::SleightOfHand),
+    ("spot-hidden",           Model::SpotHidden),
+    ("stealth",               Model::Stealth),
+    ("survival",              Model::Survival),
+    ("swim",                  Model::Swim),
+    ("throw",                 Model::Throw),
+    ("track",                 Model::Track),
 ];
 
 const CHAR_SELECTOR_ITEMS: &[&str] = &[
@@ -60,12 +111,17 @@ fn js_get_field(obj: &JsValue, key: &str) -> JsValue {
         .unwrap_or(JsValue::NULL)
 }
 
+#[derive(Clone, Copy, PartialEq)]
+enum SkillSelectorMode { Roll, Push, DevCheck }
+
 #[wasm_bindgen]
 pub struct App {
     selector_open: bool,
     selector_idx: usize,
     char_selector_open: bool,
     char_selector_idx: usize,
+    skill_selector_mode: Option<SkillSelectorMode>,
+    skill_selector_idx: usize,
     roll_log: Vec<RollLog>,
     character: Instance,
 }
@@ -78,6 +134,8 @@ impl App {
             selector_idx: 0,
             char_selector_open: false,
             char_selector_idx: 0,
+            skill_selector_mode: None,
+            skill_selector_idx: 0,
             roll_log: Vec::new(),
             character: Instance::new(),
         }
@@ -115,13 +173,19 @@ impl App {
                 let key = target_id.strip_prefix("charroll-").unwrap_or("");
                 self.handle_char_selector(key)
             }
+            EVENT_CLICK if target_id == "skill-selector-overlay" => {
+                self.close_skill_selector()
+            }
+            EVENT_CLICK if target_id.starts_with("skillroll-") => {
+                let key = target_id.strip_prefix("skillroll-").unwrap_or("");
+                self.handle_skill_selector(key)
+            }
             EVENT_CLICK if target_id == "char-roll" => {
                 self.handle_char_roll()
             }
-            EVENT_CHANGE if target_id.starts_with("char-") => {
-                let value_str = js_get_str(&payload, "value");
-                let value: u16 = value_str.trim().parse().unwrap_or(0);
-                self.handle_char_change(&target_id, value)
+            EVENT_SUBMIT if target_id == "char-edit-form" => {
+                let fields = js_get_field(&payload, "fields");
+                self.handle_char_edit_save(&fields)
             }
             EVENT_FOCUS if target_id.starts_with("roll-") => {
                 if let Some(idx) = SELECTOR_ITEMS.iter().position(|&s| s == target_id) {
@@ -132,6 +196,14 @@ impl App {
             EVENT_FOCUS if target_id.starts_with("charroll-") => {
                 if let Some(idx) = CHAR_SELECTOR_ITEMS.iter().position(|&s| s == target_id) {
                     self.char_selector_idx = idx;
+                }
+                vec![]
+            }
+            EVENT_FOCUS if target_id.starts_with("skillroll-") => {
+                let mode = self.skill_selector_mode.unwrap_or(SkillSelectorMode::Roll);
+                let items = self.skill_selector_candidates(mode);
+                if let Some(idx) = items.iter().position(|s| s == &target_id) {
+                    self.skill_selector_idx = idx;
                 }
                 vec![]
             }
@@ -156,6 +228,29 @@ impl App {
     }
 
     fn handle_keydown(&mut self, key: &str) -> Vec<DomCmd> {
+        if self.skill_selector_mode.is_some() {
+            let mode = self.skill_selector_mode.unwrap_or(SkillSelectorMode::Roll);
+            let items = self.skill_selector_candidates(mode);
+            let len = items.len();
+            if len == 0 { return self.close_skill_selector(); }
+            return match key {
+                "ArrowDown" => {
+                    self.skill_selector_idx = (self.skill_selector_idx + 1) % len;
+                    vec![focus(&items[self.skill_selector_idx])]
+                }
+                "ArrowUp" => {
+                    self.skill_selector_idx = (self.skill_selector_idx + len - 1) % len;
+                    vec![focus(&items[self.skill_selector_idx])]
+                }
+                "Enter" => {
+                    let id = items[self.skill_selector_idx].clone();
+                    let k = id.strip_prefix("skillroll-").unwrap_or("").to_string();
+                    self.handle_skill_selector(&k)
+                }
+                "Escape" => self.close_skill_selector(),
+                _ => vec![],
+            };
+        }
         if self.char_selector_open {
             let len = CHAR_SELECTOR_ITEMS.len();
             return match key {
@@ -217,7 +312,11 @@ impl App {
 
     fn handle_roll_select(&mut self, key: &str) -> Vec<DomCmd> {
         let roll = match key {
-            "skill"       => Roll::SkillRoll,
+            "skill"       => {
+                self.selector_open = false;
+                self.selector_idx = 0;
+                return self.open_skill_selector(SkillSelectorMode::Roll, "技能判定");
+            }
             "char"        => {
                 self.selector_open = false;
                 self.selector_idx = 0;
@@ -235,7 +334,16 @@ impl App {
             "madness-rt"  => Roll::BoutOfMadnessRealTime,
             "madness-sum" => Roll::BoutOfMadnessSummary,
             "combine"     => Roll::CombinedSkillRoll,
-            "pushed"      => Roll::PushedRoll,
+            "pushed"      => {
+                self.selector_open = false;
+                self.selector_idx = 0;
+                return self.open_skill_selector(SkillSelectorMode::Push, "プッシュロール");
+            }
+            "dev-check"   => {
+                self.selector_open = false;
+                self.selector_idx = 0;
+                return self.open_skill_selector(SkillSelectorMode::DevCheck, "上達チェック");
+            }
             "autofire"    => Roll::AutoFireRoll,
             "cast-minor"  => Roll::FailedCastingMinor,
             "cast-major"  => Roll::FailedCastingMajor,
@@ -250,35 +358,8 @@ impl App {
         if schema::characteristic::roll_all(&mut self.character).is_err() {
             return vec![];
         }
-        let ch = &self.character;
-        let mut cmds = vec![];
-        let fields = [
-            ("char-str", schema::strength::get(ch)),
-            ("char-con", schema::constitution::get(ch)),
-            ("char-siz", schema::size::get(ch)),
-            ("char-dex", schema::dexterity::get(ch)),
-            ("char-app", schema::appearance::get(ch)),
-            ("char-int", schema::intelligence::get(ch)),
-            ("char-pow", schema::power::get(ch)),
-            ("char-edu", schema::education::get(ch)),
-            ("char-luk", schema::luck::get(ch)),
-        ];
-        for (id, result) in fields {
-            if let Ok(v) = result {
-                cmds.push(set_attr(id, "value", &v.to_string()));
-            }
-        }
-        for (id, result) in [
-            ("char-hp",    schema::hit_points::get(ch)),
-            ("char-mp",    schema::magic_points::get(ch)),
-            ("char-san",   schema::sanity::get(ch)),
-            ("char-dodge", schema::dodge::get(ch)),
-        ] {
-            if let Ok(v) = result {
-                cmds.push(set_text(id, &v.to_string()));
-            }
-        }
-        cmds
+        // モーダルinputとメインviewを両方更新
+        self.stat_view_cmds()
     }
 
     fn close_char_selector(&mut self) -> Vec<DomCmd> {
@@ -326,38 +407,275 @@ impl App {
         cmds
     }
 
-    fn handle_char_change(&mut self, target_id: &str, value: u16) -> Vec<DomCmd> {
-        let ch = &mut self.character;
-        match target_id {
-            "char-str" => { let _ = schema::strength::set(ch, value); }
-            "char-con" => { let _ = schema::constitution::set(ch, value); }
-            "char-siz" => { let _ = schema::size::set(ch, value); }
-            "char-dex" => { let _ = schema::dexterity::set(ch, value); }
-            "char-app" => { let _ = schema::appearance::set(ch, value); }
-            "char-int" => { let _ = schema::intelligence::set(ch, value); }
-            "char-pow" => { let _ = schema::power::set(ch, value); }
-            "char-edu" => { let _ = schema::education::set(ch, value); }
-            "char-luk" => { let _ = schema::luck::set(ch, value); }
-            _ => {}
+    fn close_skill_selector(&mut self) -> Vec<DomCmd> {
+        self.skill_selector_mode = None;
+        self.skill_selector_idx = 0;
+        vec![
+            set_attr("skill-selector", "hidden", "true"),
+            set_attr("skill-selector", "inert", "true"),
+            focus("chat-input"),
+        ]
+    }
+
+    fn open_skill_selector(&mut self, mode: SkillSelectorMode, title: &str) -> Vec<DomCmd> {
+        let candidates = self.skill_selector_candidates(mode);
+        if candidates.is_empty() {
+            let msg = match mode {
+                SkillSelectorMode::Roll     => "技能が未登録です",
+                SkillSelectorMode::Push     => "プッシュ可能なロールがありません",
+                SkillSelectorMode::DevCheck => "上達チェック対象の技能がありません",
+            };
+            let log_cmd = self.push_log(RollLog::Message(msg.to_string()));
+            let mut cmds = self.close_selector();
+            cmds.push(log_cmd);
+            return cmds;
         }
-        // 導出値を再計算して返す
+
+        self.skill_selector_mode = Some(mode);
+        self.skill_selector_idx = 0;
+
+        let mut cmds = vec![
+            set_attr("selector", "hidden", "true"),
+            set_attr("selector", "inert", "true"),
+            set_text("skill-selector-title", title),
+            set_attr("skill-selector", "hidden", ""),
+            set_attr("skill-selector", "inert", ""),
+        ];
+
+        // 全ボタンをいったん非表示にしてから候補のみ表示
+        for &(name, _) in SKILL_ID_MAP {
+            let id = format!("skillroll-{}", name);
+            if candidates.iter().any(|c| c == &id) {
+                cmds.push(set_attr(&id, "hidden", ""));
+                cmds.push(set_attr(&id, "inert", ""));
+            } else {
+                cmds.push(set_attr(&id, "hidden", "true"));
+                cmds.push(set_attr(&id, "inert", "true"));
+            }
+        }
+
+        if !candidates.is_empty() {
+            cmds.push(focus(&candidates[0]));
+        }
+        cmds
+    }
+
+    fn skill_selector_candidates(&self, mode: SkillSelectorMode) -> Vec<String> {
+        match mode {
+            SkillSelectorMode::Roll => {
+                SKILL_ID_MAP.iter()
+                    .filter(|&&(_, field)| schema::skill::get(&self.character, field).is_ok())
+                    .map(|&(name, _)| format!("skillroll-{}", name))
+                    .collect()
+            }
+            SkillSelectorMode::Push => {
+                // 直近のSkillログのうち、Failure以下でpushed:falseのもの
+                self.roll_log.iter().rev()
+                    .find_map(|entry| {
+                        if let RollLog::Skill { field, level, pushed: false, .. } = entry {
+                            let is_failure = match level {
+                                Some(ResultLevel::Failure) | Some(ResultLevel::Fumble) | None => true,
+                                _ => false,
+                            };
+                            if is_failure {
+                                return SKILL_ID_MAP.iter()
+                                    .find(|&&(_, f)| f == *field)
+                                    .map(|&(name, _)| vec![format!("skillroll-{}", name)]);
+                            }
+                        }
+                        None
+                    })
+                    .unwrap_or_default()
+            }
+            SkillSelectorMode::DevCheck => {
+                // bonus <= 0 (常に0) かつ Regular以上の成功がある技能
+                let mut eligible: Vec<Model> = Vec::new();
+                for entry in &self.roll_log {
+                    if let RollLog::Skill { field, level, pushed: false, .. } = entry {
+                        let is_success = matches!(level,
+                            Some(ResultLevel::Regular) |
+                            Some(ResultLevel::Hard) |
+                            Some(ResultLevel::Extreme) |
+                            Some(ResultLevel::Critical)
+                        );
+                        if is_success && !eligible.contains(field) {
+                            eligible.push(*field);
+                        }
+                    }
+                }
+                SKILL_ID_MAP.iter()
+                    .filter(|&&(_, field)| eligible.contains(&field))
+                    .map(|&(name, _)| format!("skillroll-{}", name))
+                    .collect()
+            }
+        }
+    }
+
+    fn handle_skill_selector(&mut self, name: &str) -> Vec<DomCmd> {
+        let mode = match self.skill_selector_mode {
+            Some(m) => m,
+            None => return self.close_skill_selector(),
+        };
+        let field = match SKILL_ID_MAP.iter().find(|&&(n, _)| n == name) {
+            Some(&(_, f)) => f,
+            None => return self.close_skill_selector(),
+        };
+
+        match mode {
+            SkillSelectorMode::Roll => self.do_skill_roll(field, false),
+            SkillSelectorMode::Push => {
+                // 直近の同技能ログをpushed: trueにマーク
+                for entry in self.roll_log.iter_mut().rev() {
+                    if let RollLog::Skill { field: f, pushed, .. } = entry {
+                        if *f == field && !*pushed {
+                            *pushed = true;
+                            break;
+                        }
+                    }
+                }
+                self.do_skill_roll(field, true)
+            }
+            SkillSelectorMode::DevCheck => self.do_dev_check(field),
+        }
+    }
+
+    fn do_skill_roll(&mut self, field: Model, pushed: bool) -> Vec<DomCmd> {
+        let difficulty = match schema::skill::get(&self.character, field) {
+            Ok(v) => v,
+            Err(_) => return self.close_skill_selector(),
+        };
+        let label = crate::character::display::label(field, crate::Lang::Ja);
+        let result = dice::skill_roll(0, Some(difficulty as u32), dice::DifficultySpec::None).unwrap();
+        let entry = RollLog::Skill { field, label, difficulty, total: result.total, level: result.level, pushed };
+        let log_cmd = self.push_log(entry);
+        let mut cmds = self.close_skill_selector();
+        cmds.push(log_cmd);
+        cmds
+    }
+
+    fn do_dev_check(&mut self, field: Model) -> Vec<DomCmd> {
+        let current = match schema::skill::get(&self.character, field) {
+            Ok(v) => v,
+            Err(_) => return self.close_skill_selector(),
+        };
+        let label = crate::character::display::label(field, crate::Lang::Ja);
+        let roll = crate::n_d_n(1, 100);
+        if roll > current as u32 {
+            // 成功: 1d10上昇
+            let gain = crate::n_d_n(1, 10) as u16;
+            let new_val = current.saturating_add(gain);
+            let _ = schema::skill::set(&mut self.character, field, new_val);
+            let name = SKILL_ID_MAP.iter().find(|&&(_, f)| f == field).map(|&(n, _)| n).unwrap_or("");
+            let msg = format!("[上達チェック: {}] 出目: {} > {} → 成功! +{} → {}", label, roll, current, gain, new_val);
+            let log_cmd = self.push_log(RollLog::Message(msg));
+            let skill_val_id = format!("skill-val-{}", name);
+            let mut cmds = self.close_skill_selector();
+            cmds.push(log_cmd);
+            cmds.push(set_text(&skill_val_id, &new_val.to_string()));
+            cmds
+        } else {
+            let msg = format!("[上達チェック: {}] 出目: {} ≤ {} → 失敗", label, roll, current);
+            let log_cmd = self.push_log(RollLog::Message(msg));
+            let mut cmds = self.close_skill_selector();
+            cmds.push(log_cmd);
+            cmds
+        }
+    }
+
+    fn handle_char_edit_save(&mut self, fields: &JsValue) -> Vec<DomCmd> {
+        // 能力値
+        let stat_map: &[(&str, fn(&mut Instance, u16) -> _)] = &[
+            ("stat-str", |ch, v| schema::strength::set(ch, v)),
+            ("stat-con", |ch, v| schema::constitution::set(ch, v)),
+            ("stat-siz", |ch, v| schema::size::set(ch, v)),
+            ("stat-dex", |ch, v| schema::dexterity::set(ch, v)),
+            ("stat-app", |ch, v| schema::appearance::set(ch, v)),
+            ("stat-int", |ch, v| schema::intelligence::set(ch, v)),
+            ("stat-pow", |ch, v| schema::power::set(ch, v)),
+            ("stat-edu", |ch, v| schema::education::set(ch, v)),
+            ("stat-luk", |ch, v| schema::luck::set(ch, v)),
+        ];
+        for &(name, setter) in stat_map {
+            let s = js_get_str(fields, name);
+            if !s.is_empty() {
+                let v: u16 = s.trim().parse().unwrap_or(0);
+                let _ = setter(&mut self.character, v);
+            }
+        }
+        // スキル
+        for &(name, field) in SKILL_ID_MAP {
+            let s = js_get_str(fields, name);
+            if !s.is_empty() {
+                let v: u16 = s.trim().parse().unwrap_or(0);
+                let _ = schema::skill::set(&mut self.character, field, v);
+            }
+        }
+        self.stat_view_cmds()
+    }
+
+    // 能力値・導出値・スキルのメインビューを全更新するDomCmdを生成
+    fn stat_view_cmds(&self) -> Vec<DomCmd> {
+        let ch = &self.character;
         let mut cmds = vec![];
-        if let Ok(v) = schema::hit_points::derive(ch) {
-            let _ = schema::hit_points::set(ch);
-            cmds.push(set_text("char-hp", &v.to_string()));
+
+        let stat_pairs: &[(&str, &str, fn(&Instance) -> _)] = &[
+            ("char-view-str",  "char-val-str",  |ch| schema::strength::get(ch)),
+            ("char-view-con",  "char-val-con",  |ch| schema::constitution::get(ch)),
+            ("char-view-siz",  "char-val-siz",  |ch| schema::size::get(ch)),
+            ("char-view-dex",  "char-val-dex",  |ch| schema::dexterity::get(ch)),
+            ("char-view-app",  "char-val-app",  |ch| schema::appearance::get(ch)),
+            ("char-view-int",  "char-val-int",  |ch| schema::intelligence::get(ch)),
+            ("char-view-pow",  "char-val-pow",  |ch| schema::power::get(ch)),
+            ("char-view-edu",  "char-val-edu",  |ch| schema::education::get(ch)),
+            ("char-view-luk",  "char-val-luk",  |ch| schema::luck::get(ch)),
+        ];
+        for &(view_id, val_id, getter) in stat_pairs {
+            if let Ok(v) = getter(ch) {
+                cmds.push(set_attr(view_id, "hidden", ""));
+                cmds.push(set_text(val_id, &v.to_string()));
+            }
         }
-        if let Ok(v) = schema::magic_points::derive(ch) {
-            let _ = schema::magic_points::set(ch);
-            cmds.push(set_text("char-mp", &v.to_string()));
+
+        // モーダルのinputにも反映（ダイスロール後に値が見える）
+        let modal_pairs: &[(&str, fn(&Instance) -> _)] = &[
+            ("edit-str", |ch| schema::strength::get(ch)),
+            ("edit-con", |ch| schema::constitution::get(ch)),
+            ("edit-siz", |ch| schema::size::get(ch)),
+            ("edit-dex", |ch| schema::dexterity::get(ch)),
+            ("edit-app", |ch| schema::appearance::get(ch)),
+            ("edit-int", |ch| schema::intelligence::get(ch)),
+            ("edit-pow", |ch| schema::power::get(ch)),
+            ("edit-edu", |ch| schema::education::get(ch)),
+            ("edit-luk", |ch| schema::luck::get(ch)),
+        ];
+        for &(id, getter) in modal_pairs {
+            if let Ok(v) = getter(ch) {
+                cmds.push(set_attr(id, "value", &v.to_string()));
+            }
         }
-        if let Ok(v) = schema::sanity::derive(ch) {
-            let _ = schema::sanity::set(ch);
-            cmds.push(set_text("char-san", &v.to_string()));
+
+        // 導出値
+        let derived: &[(&str, &str, fn(&Instance) -> _)] = &[
+            ("char-view-hp",    "char-hp",    |ch| schema::hit_points::get(ch)),
+            ("char-view-mp",    "char-mp",    |ch| schema::magic_points::get(ch)),
+            ("char-view-san",   "char-san",   |ch| schema::sanity::get(ch)),
+            ("char-view-dodge", "char-dodge", |ch| schema::dodge::get(ch)),
+        ];
+        for &(view_id, val_id, getter) in derived {
+            if let Ok(v) = getter(ch) {
+                cmds.push(set_attr(view_id, "hidden", ""));
+                cmds.push(set_text(val_id, &v.to_string()));
+            }
         }
-        if let Ok(v) = schema::dodge::derive(ch) {
-            let _ = schema::dodge::set(ch);
-            cmds.push(set_text("char-dodge", &v.to_string()));
+
+        // スキル（保存済みのみ表示）
+        for &(name, field) in SKILL_ID_MAP {
+            if let Ok(v) = schema::skill::get(ch, field) {
+                cmds.push(set_attr(&format!("skill-view-{}", name), "hidden", ""));
+                cmds.push(set_text(&format!("skill-val-{}", name), &v.to_string()));
+            }
         }
+
         cmds
     }
 
@@ -420,6 +738,7 @@ fn make_roll_log(roll: Roll) -> RollLog {
 // ============================================================
 
 enum RollLog {
+    Skill          { field: Model, label: &'static str, difficulty: u16, total: u32, level: Option<ResultLevel>, pushed: bool },
     Characteristic { label: &'static str, difficulty: u16, total: u32, level: Option<ResultLevel> },
     Table          { kind: &'static str, roll: u32, label: &'static str },
     Simple         { kind: &'static str },
@@ -429,6 +748,14 @@ enum RollLog {
 impl std::fmt::Display for RollLog {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::Skill { label, difficulty, total, level, pushed, .. } => {
+                let kind = if *pushed { "プッシュロール" } else { "技能判定" };
+                let result = match level {
+                    Some(l) => l.label(Lang::Ja),
+                    None    => "出目のみ",
+                };
+                write!(f, "[{}: {}={}] 出目: {}  結果: {}", kind, label, difficulty, total, result)
+            }
             Self::Characteristic { label, difficulty, total, level } => {
                 let result = match level {
                     Some(l) => l.label(Lang::Ja),

@@ -30,6 +30,8 @@ pub enum Roll {
     FailedCastingMinor,
     /// Failed Casting (Major) — 呪文失敗表（大）
     FailedCastingMajor,
+    /// Development Check - 上達チェック
+    DevelopmentCheck,
 }
 
 impl Roll {
@@ -61,6 +63,9 @@ impl Roll {
             (Self::FailedCastingMinor,    Lang::En) => "Failed Casting (Minor)",
             (Self::FailedCastingMajor,    Lang::Ja) => "呪文失敗 (大)",
             (Self::FailedCastingMajor,    Lang::En) => "Failed Casting (Major)",
+            (Self::DevelopmentCheck,      Lang::En) => "Development Check",
+            (Self::DevelopmentCheck,      Lang::Ja) => "上達チェック",
+
         }
     }
 

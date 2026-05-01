@@ -45,8 +45,27 @@ function bind() {
     dispatch({ event_type: 0b011, target_id: 'chat-input', value: e.target.value });
   });
 
-  document.getElementById('char-stats')?.addEventListener('change', (e) => {
-    dispatch({ event_type: 0b101, target_id: e.target.id, value: e.target.value });
+  document.getElementById('char-edit-open')?.addEventListener('click', () => {
+    document.getElementById('char-edit')?.showModal();
+  });
+
+  document.getElementById('char-edit-cancel')?.addEventListener('click', () => {
+    document.getElementById('char-edit')?.close();
+  });
+
+  document.getElementById('char-edit-cancel2')?.addEventListener('click', () => {
+    document.getElementById('char-edit')?.close();
+  });
+
+  document.getElementById('char-edit-form')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const dialog = document.getElementById('char-edit');
+    const inputs = dialog.querySelectorAll('input[name]');
+    const fields = Object.fromEntries(
+      [...inputs].filter(i => i.value !== '').map(i => [i.name, i.value])
+    );
+    dispatch({ event_type: 0b010, target_id: 'char-edit-form', fields });
+    dialog?.close();
   });
 
   document.addEventListener('keydown', (e) => {
@@ -62,7 +81,7 @@ function bind() {
 
   document.addEventListener('focusin', (e) => {
     const id = e.target.id;
-    if (id.startsWith('roll-') || id.startsWith('charroll-')) {
+    if (id.startsWith('roll-') || id.startsWith('charroll-') || id.startsWith('skillroll-')) {
       dispatch({ event_type: 0b110, target_id: id });
     }
   });
