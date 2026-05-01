@@ -12,7 +12,45 @@
 
 <body>
   <main>
+    <div id="character">
+      <div id="char-header">
+        <button id="char-roll">ダイスロール</button>
+      </div>
+      <div id="char-stats">
+        <label>STR <input id="char-str" type="number" min="0" max="9999" placeholder="—"></label>
+        <label>CON <input id="char-con" type="number" min="0" max="9999" placeholder="—"></label>
+        <label>SIZ <input id="char-siz" type="number" min="0" max="9999" placeholder="—"></label>
+        <label>DEX <input id="char-dex" type="number" min="0" max="9999" placeholder="—"></label>
+        <label>APP <input id="char-app" type="number" min="0" max="9999" placeholder="—"></label>
+        <label>INT <input id="char-int" type="number" min="0" max="9999" placeholder="—"></label>
+        <label>POW <input id="char-pow" type="number" min="0" max="9999" placeholder="—"></label>
+        <label>EDU <input id="char-edu" type="number" min="0" max="9999" placeholder="—"></label>
+        <label>幸運 <input id="char-luk" type="number" min="0" max="9999" placeholder="—"></label>
+      </div>
+      <div id="char-derived">
+        <span>HP <span id="char-hp">—</span></span>
+        <span>MP <span id="char-mp">—</span></span>
+        <span>SAN <span id="char-san">—</span></span>
+        <span>回避 <span id="char-dodge">—</span></span>
+      </div>
+    </div>
+
     <div id="chat-log"></div>
+
+    <div id="char-selector" hidden>
+      <div id="char-selector-overlay"></div>
+      <div id="char-selector-menu">
+        <button id="charroll-str">STR 筋力</button>
+        <button id="charroll-con">CON 体質</button>
+        <button id="charroll-siz">SIZ 体格</button>
+        <button id="charroll-dex">DEX 敏捷</button>
+        <button id="charroll-app">APP 外見</button>
+        <button id="charroll-int">INT 知性</button>
+        <button id="charroll-pow">POW 意志</button>
+        <button id="charroll-edu">EDU 教育</button>
+        <button id="charroll-luk">幸運</button>
+      </div>
+    </div>
 
     <div id="selector" hidden>
       <div id="selector-overlay"></div>

@@ -1,8 +1,9 @@
 // This file includes untranslated text (ja).
 
-use rand::rng;
+use rand::{rng, RngExt};
+use crate::n_d_n;
 
-use crate::static::{
+use crate::table::{
     Roll,
     FAILED_CASTING_MINOR, FAILED_CASTING_MAJOR,
     MADNESS_REALTIME, MADNESS_SUMMARY,
@@ -13,24 +14,6 @@ use crate::static::{
 // Roll
 // ============================================================
 
-fn n_d_n(counts: &u8, sides: &u8) {
-    in n for counts +rng().random_range(1..=sides)
-}
-
-fn roll_once(sides: u32) -> u32 {
-    rng().random_range(1..=sides)
-}
-
-fn roll_tens_d10() -> u32 {
-    let d = rng().random_range(1..=10u32);
-    if d == 10 { 0 } else { d * 10 }
-}
-
-fn roll_ones_d10() -> u32 {
-    let d = roll_once(10);
-    if d == 10 { 0 } else { d }
-}
-
 // ============================================================
 // Bonus/Penalty dice
 // ============================================================
@@ -39,21 +22,26 @@ fn roll_ones_d10() -> u32 {
 /// bonus > 0 → min選択（ボーナス）、bonus < 0 → max選択（ペナルティ）、0 → 通常
 /// 戻り値: (採用値, 全候補リスト)
 fn roll_with_bonus(bonus: i32) -> (u32, Vec<u32>) {
+    let mut rng = rng();
+    let roll_tens = |r: &mut _| {
+        let d: u32 = RngExt::random_range(r, 1..=10u32);
+        if d == 10 { 0 } else { d * 10 }
+    };
+    let ones: u32 = {
+        let d: u32 = rng.random_range(1..=10u32);
+        if d == 10 { 0 } else { d }
+    };
     let count = (bonus.unsigned_abs() + 1) as usize;
-    let tens_list: Vec<u32> = (0..count).map(|_| roll_tens_d10()).collect();
-    let ones = roll_ones_d10();
-
+    let tens_list: Vec<u32> = (0..count).map(|_| roll_tens(&mut rng)).collect();
     let dice_list: Vec<u32> = tens_list
         .iter()
         .map(|&t| { let v = t + ones; if v == 0 { 100 } else { v } })
         .collect();
-
     let total = if bonus >= 0 {
         *dice_list.iter().min().unwrap()
     } else {
         *dice_list.iter().max().unwrap()
     };
-
     (total, dice_list)
 }
 
@@ -351,7 +339,7 @@ pub fn skill_roll(
 
 /// 1回の 1d100 を 2技能値に対してそれぞれ独立に判定する
 pub fn combine_roll(difficulty_1: u32, difficulty_2: u32) -> CombineRollResult {
-    let total = roll_once(100);
+    let total = n_d_n(1, 100);
     let level_1 = ResultLevel::from_values(total, difficulty_1, false);
     let level_2 = ResultLevel::from_values(total, difficulty_2, false);
     let outcome = if level_1.is_success() && level_2.is_success() {
@@ -577,48 +565,48 @@ fn bullet_result(
 
 /// 狂気の発作（リアルタイム） — 1d10 + 継続ラウンド 1d10
 pub fn roll_madness_realtime() -> MadnessResult {
-    let n = roll_once(10) as usize;
+    let n = n_d_n(1, 10) as usize;
     MadnessResult {
         roll_type: Roll::BoutOfMadnessRealTime,
         roll: n as u32,
         label: MADNESS_REALTIME[n - 1].label,
-        duration_roll: roll_once(10),
+        duration_roll: n_d_n(1, 10),
         duration_unit: DurationUnit::Rounds,
     }
 }
 
 /// 狂気の発作（サマリー） — 1d10 + 継続時間 1d10
 pub fn roll_madness_summary() -> MadnessResult {
-    let n = roll_once(10) as usize;
+    let n = n_d_n(1, 10) as usize;
     MadnessResult {
         roll_type: Roll::BoutOfMadnessSummary,
         roll: n as u32,
         label: MADNESS_SUMMARY[n - 1].label,
-        duration_roll: roll_once(10),
+        duration_roll: n_d_n(1, 10),
         duration_unit: DurationUnit::Hours,
     }
 }
 
 /// キャスティング・ロール失敗（小） — 1d8
 pub fn roll_failed_casting_minor() -> TableResult {
-    let n = roll_once(8) as usize;
+    let n = n_d_n(1, 8) as usize;
     TableResult { roll_type: Roll::FailedCastingMinor, roll: n as u32, label: FAILED_CASTING_MINOR[n - 1].label }
 }
 
 /// キャスティング・ロール失敗（大） — 1d8
 pub fn roll_failed_casting_major() -> TableResult {
-    let n = roll_once(8) as usize;
+    let n = n_d_n(1, 8) as usize;
     TableResult { roll_type: Roll::FailedCastingMajor, roll: n as u32, label: FAILED_CASTING_MAJOR[n - 1].label }
 }
 
 /// 恐怖症表 — 1d100
 pub fn roll_phobia() -> TableResult {
-    let n = roll_once(100) as usize;
+    let n = n_d_n(1, 100) as usize;
     TableResult { roll_type: Roll::PhobiaTable, roll: n as u32, label: PHOBIAS[n - 1].label }
 }
 
 /// マニア表 — 1d100
 pub fn roll_mania() -> TableResult {
-    let n = roll_once(100) as usize;
+    let n = n_d_n(1, 100) as usize;
     TableResult { roll_type: Roll::ManiaTable, roll: n as u32, label: MANIAS[n - 1].label }
 }

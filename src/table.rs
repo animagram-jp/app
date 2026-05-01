@@ -33,7 +33,7 @@ pub enum Roll {
 impl Roll {
     pub fn label(self) -> &'static str {
         match self {
-            Self::DiceRoll               => "ダイスロール (nDn)"
+            Self::DiceRoll               => "ダイスロール (nDn)",
             Self::SkillRoll              => "技能判定",
             Self::CharacteristicRoll     => "能力値判定",
             Self::SanityRoll             => "正気度判定",

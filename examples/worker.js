@@ -8,14 +8,12 @@ self.addEventListener('message', async (e) => {
     await init();
 
     app = await App.init();
-    const cmds = app.event({});
     self.postMessage({ type: 'ready' });
-    if (cmds?.length) self.postMessage({ type: 'execute', payload: cmds });
     return;
   }
 
   if (!app) return;
 
-  const cmds = app[type](payload);
-  if (cmds?.length) self.postMessage({ type: 'execute', payload: cmds });
+  const cmds = Array.from(app[type](payload) ?? []);
+  if (cmds.length) self.postMessage({ type: 'execute', payload: cmds });
 });

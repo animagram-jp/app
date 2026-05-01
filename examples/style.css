@@ -25,6 +25,53 @@ main {
   gap: 0.5rem;
 }
 
+/* キャラクター */
+#character {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+#char-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+
+#char-stats label {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+#char-stats input {
+  width: 4rem;
+  border: 1px solid var(--color-neutral-solid-gray-300);
+  border-radius: 4px;
+  padding: 0.2rem 0.3rem;
+  font-size: 0.85rem;
+  text-align: right;
+}
+
+#char-derived {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.85rem;
+}
+
+#char-derived span {
+  display: flex;
+  gap: 0.25rem;
+}
+
+#char-derived span span {
+  font-weight: 600;
+  min-width: 2rem;
+  text-align: right;
+}
+
 /* チャットログ */
 #chat-log {
   flex: 1;
@@ -51,6 +98,50 @@ main {
   font-family: inherit;
   font-size: inherit;
   resize: none;
+}
+
+/* 能力値選択セレクタ */
+#char-selector {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+}
+
+#char-selector-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+#char-selector-menu {
+  position: absolute;
+  bottom: 4rem;
+  left: 0.5rem;
+  background: #fff;
+  border: 1px solid var(--color-neutral-solid-gray-300);
+  border-radius: 6px;
+  padding: 0.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  z-index: 11;
+}
+
+#char-selector-menu button {
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 0.4rem 0.75rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  white-space: nowrap;
+}
+
+#char-selector-menu button:hover,
+#char-selector-menu button:focus {
+  background: var(--color-neutral-solid-gray-100, #f0f0f0);
+  outline: none;
 }
 
 /* セレクタ overlay */
