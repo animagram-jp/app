@@ -1,7 +1,5 @@
-// This file includes untranslated text (ja).
-
 use rand::{rng, RngExt};
-use crate::n_d_n;
+use crate::{n_d_n, Lang};
 
 use crate::table::{
     Roll,
@@ -83,19 +81,28 @@ impl ResultLevel {
 
     pub fn is_success(self) -> bool { self >= Self::Regular }
     pub fn is_failure(self) -> bool { self <= Self::Failure }
+
+    pub fn label(self, lang: Lang) -> &'static str {
+        match (self, lang) {
+            (Self::Critical, Lang::Ja) => "クリティカル",
+            (Self::Critical, Lang::En) => "Critical",
+            (Self::Extreme,  Lang::Ja) => "イクストリーム成功",
+            (Self::Extreme,  Lang::En) => "Extreme Success",
+            (Self::Hard,     Lang::Ja) => "ハード成功",
+            (Self::Hard,     Lang::En) => "Hard Success",
+            (Self::Regular,  Lang::Ja) => "レギュラー成功",
+            (Self::Regular,  Lang::En) => "Regular Success",
+            (Self::Failure,  Lang::Ja) => "失敗",
+            (Self::Failure,  Lang::En) => "Failure",
+            (Self::Fumble,   Lang::Ja) => "ファンブル",
+            (Self::Fumble,   Lang::En) => "Fumble",
+        }
+    }
 }
 
 impl std::fmt::Display for ResultLevel {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let s = match self {
-            Self::Critical => "クリティカル",
-            Self::Extreme  => "イクストリーム成功",
-            Self::Hard     => "ハード成功",
-            Self::Regular  => "レギュラー成功",
-            Self::Failure  => "失敗",
-            Self::Fumble   => "ファンブル",
-        };
-        f.write_str(s)
+        f.write_str(self.label(Lang::Ja))
     }
 }
 

@@ -59,6 +59,13 @@ function bind() {
   document.addEventListener('click', (e) => {
     dispatch({ event_type: 0b001, target_id: e.target.id });
   });
+
+  document.addEventListener('focusin', (e) => {
+    const id = e.target.id;
+    if (id.startsWith('roll-') || id.startsWith('charroll-')) {
+      dispatch({ event_type: 0b110, target_id: id });
+    }
+  });
 }
 
 worker.postMessage({ type: 'init' });

@@ -1,5 +1,7 @@
+use crate::Lang;
+
 /// CoC7th で発生しうる判定種別の網羅列挙
-/// variant名 = 公式英語名ベース、label = UIに表示する日本語ラベル
+/// variant名 = 公式英語名ベース、label = UIに表示するラベル
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Roll {
     /// Dice Roll - ダイスロール (nDn)
@@ -31,21 +33,34 @@ pub enum Roll {
 }
 
 impl Roll {
-    pub fn label(self) -> &'static str {
-        match self {
-            Self::DiceRoll               => "ダイスロール (nDn)",
-            Self::SkillRoll              => "技能判定",
-            Self::CharacteristicRoll     => "能力値判定",
-            Self::SanityRoll             => "正気度判定",
-            Self::BoutOfMadnessRealTime  => "狂気の発作 (リアルタイム)",
-            Self::BoutOfMadnessSummary   => "狂気の発作 (サマリー)",
-            Self::PushedRoll             => "プッシュロール",
-            Self::CombinedSkillRoll      => "組み合わせ判定",
-            Self::PhobiaTable            => "恐怖症表",
-            Self::ManiaTable             => "マニア表",
-            Self::AutoFireRoll           => "自動火器の連射判定",
-            Self::FailedCastingMinor     => "呪文失敗 (小)",
-            Self::FailedCastingMajor     => "呪文失敗 (大)",
+    pub fn label(self, lang: Lang) -> &'static str {
+        match (self, lang) {
+            (Self::DiceRoll,              Lang::Ja) => "ダイスロール (nDn)",
+            (Self::DiceRoll,              Lang::En) => "Dice Roll (nDn)",
+            (Self::SkillRoll,             Lang::Ja) => "技能判定",
+            (Self::SkillRoll,             Lang::En) => "Skill Roll",
+            (Self::CharacteristicRoll,    Lang::Ja) => "能力値判定",
+            (Self::CharacteristicRoll,    Lang::En) => "Characteristic Roll",
+            (Self::SanityRoll,            Lang::Ja) => "正気度判定",
+            (Self::SanityRoll,            Lang::En) => "Sanity Roll",
+            (Self::BoutOfMadnessRealTime, Lang::Ja) => "狂気の発作 (リアルタイム)",
+            (Self::BoutOfMadnessRealTime, Lang::En) => "Bout of Madness (Real Time)",
+            (Self::BoutOfMadnessSummary,  Lang::Ja) => "狂気の発作 (サマリー)",
+            (Self::BoutOfMadnessSummary,  Lang::En) => "Bout of Madness (Summary)",
+            (Self::PushedRoll,            Lang::Ja) => "プッシュロール",
+            (Self::PushedRoll,            Lang::En) => "Pushed Roll",
+            (Self::CombinedSkillRoll,     Lang::Ja) => "組み合わせ判定",
+            (Self::CombinedSkillRoll,     Lang::En) => "Combined Skill Roll",
+            (Self::PhobiaTable,           Lang::Ja) => "恐怖症表",
+            (Self::PhobiaTable,           Lang::En) => "Phobia Table",
+            (Self::ManiaTable,            Lang::Ja) => "マニア表",
+            (Self::ManiaTable,            Lang::En) => "Mania Table",
+            (Self::AutoFireRoll,          Lang::Ja) => "自動火器の連射判定",
+            (Self::AutoFireRoll,          Lang::En) => "Automatic Fire Roll",
+            (Self::FailedCastingMinor,    Lang::Ja) => "呪文失敗 (小)",
+            (Self::FailedCastingMinor,    Lang::En) => "Failed Casting (Minor)",
+            (Self::FailedCastingMajor,    Lang::Ja) => "呪文失敗 (大)",
+            (Self::FailedCastingMajor,    Lang::En) => "Failed Casting (Major)",
         }
     }
 

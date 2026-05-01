@@ -123,12 +123,7 @@ pub enum OccupationKind {
 // display: instance/model/schemaと独立した表示ロジック
 pub mod display {
     use super::{Model, OccupationKind};
-
-    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    pub enum Lang {
-        En,
-        Ja,
-    }
+    pub use crate::Lang;
 
     pub fn label(field: Model, lang: Lang) -> &'static str {
         match (field, lang) {

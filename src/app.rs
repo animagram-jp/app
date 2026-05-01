@@ -1,5 +1,5 @@
 use wasm_bindgen::prelude::*;
-use crate::dice;
+use crate::{Lang, dice::{self, ResultLevel}};
 use crate::table::Roll;
 use crate::character::{Instance, schema};
 
@@ -12,6 +12,7 @@ const EVENT_SUBMIT:   u32 = 0b010;
 const EVENT_INPUT:    u32 = 0b011;
 const EVENT_KEYDOWN:  u32 = 0b100;
 const EVENT_CHANGE:   u32 = 0b101;
+const EVENT_FOCUS:    u32 = 0b110;
 
 const SELECTOR_ITEMS: &[&str] = &[
     "roll-skill",
@@ -65,7 +66,7 @@ pub struct App {
     selector_idx: usize,
     char_selector_open: bool,
     char_selector_idx: usize,
-    chat_log: String,
+    roll_log: Vec<RollLog>,
     character: Instance,
 }
 
@@ -77,7 +78,7 @@ impl App {
             selector_idx: 0,
             char_selector_open: false,
             char_selector_idx: 0,
-            chat_log: String::new(),
+            roll_log: Vec::new(),
             character: Instance::new(),
         }
     }
@@ -122,6 +123,18 @@ impl App {
                 let value: u16 = value_str.trim().parse().unwrap_or(0);
                 self.handle_char_change(&target_id, value)
             }
+            EVENT_FOCUS if target_id.starts_with("roll-") => {
+                if let Some(idx) = SELECTOR_ITEMS.iter().position(|&s| s == target_id) {
+                    self.selector_idx = idx;
+                }
+                vec![]
+            }
+            EVENT_FOCUS if target_id.starts_with("charroll-") => {
+                if let Some(idx) = CHAR_SELECTOR_ITEMS.iter().position(|&s| s == target_id) {
+                    self.char_selector_idx = idx;
+                }
+                vec![]
+            }
             _ => vec![],
         };
 
@@ -135,6 +148,7 @@ impl App {
             return vec![
                 set_attr("chat-input", "value", ""),
                 set_attr("selector", "hidden", ""),
+                set_attr("selector", "inert", ""),  // removeAttribute → フォーカス可
                 focus(SELECTOR_ITEMS[0]),
             ];
         }
@@ -185,29 +199,35 @@ impl App {
         }
     }
 
+    fn render_log(&self) -> String {
+        self.roll_log.iter().map(|e| format!("{}\n", e)).collect()
+    }
+
+    fn push_log(&mut self, entry: RollLog) -> DomCmd {
+        self.roll_log.push(entry);
+        set_text("chat-log", &self.render_log())
+    }
+
     fn handle_submit(&mut self, text: &str) -> Vec<DomCmd> {
         let trimmed = text.trim();
         if trimmed.is_empty() { return vec![]; }
-        self.chat_log.push_str(trimmed);
-        self.chat_log.push('\n');
-        vec![
-            set_text("chat-log", &self.chat_log),
-            set_attr("chat-input", "value", ""),
-        ]
+        let cmd = self.push_log(RollLog::Message(trimmed.to_string()));
+        vec![cmd, set_attr("chat-input", "value", "")]
     }
 
     fn handle_roll_select(&mut self, key: &str) -> Vec<DomCmd> {
         let roll = match key {
             "skill"       => Roll::SkillRoll,
             "char"        => {
-                // 能力値選択サブメニューを開く
                 self.selector_open = false;
                 self.selector_idx = 0;
                 self.char_selector_open = true;
                 self.char_selector_idx = 0;
                 return vec![
                     set_attr("selector", "hidden", "true"),
+                    set_attr("selector", "inert", "true"),
                     set_attr("char-selector", "hidden", ""),
+                    set_attr("char-selector", "inert", ""),
                     focus(CHAR_SELECTOR_ITEMS[0]),
                 ];
             }
@@ -266,40 +286,43 @@ impl App {
         self.char_selector_idx = 0;
         vec![
             set_attr("char-selector", "hidden", "true"),
+            set_attr("char-selector", "inert", "true"),
             focus("chat-input"),
         ]
     }
 
     fn handle_char_selector(&mut self, key: &str) -> Vec<DomCmd> {
-        use crate::character::schema;
-        let ch = &self.character;
         let (label, value) = match key {
-            "str" => ("STR", schema::strength::get(ch)),
-            "con" => ("CON", schema::constitution::get(ch)),
-            "siz" => ("SIZ", schema::size::get(ch)),
-            "dex" => ("DEX", schema::dexterity::get(ch)),
-            "app" => ("APP", schema::appearance::get(ch)),
-            "int" => ("INT", schema::intelligence::get(ch)),
-            "pow" => ("POW", schema::power::get(ch)),
-            "edu" => ("EDU", schema::education::get(ch)),
-            "luk" => ("幸運", schema::luck::get(ch)),
+            "str" => ("STR",  schema::strength::get(&self.character)),
+            "con" => ("CON",  schema::constitution::get(&self.character)),
+            "siz" => ("SIZ",  schema::size::get(&self.character)),
+            "dex" => ("DEX",  schema::dexterity::get(&self.character)),
+            "app" => ("APP",  schema::appearance::get(&self.character)),
+            "int" => ("INT",  schema::intelligence::get(&self.character)),
+            "pow" => ("POW",  schema::power::get(&self.character)),
+            "edu" => ("EDU",  schema::education::get(&self.character)),
+            "luk" => ("幸運", schema::luck::get(&self.character)),
             _ => return self.close_char_selector(),
         };
         let difficulty = match value {
             Ok(v) => v,
             Err(_) => {
+                let log_cmd = self.push_log(RollLog::Message(format!("[能力値判定: {}] 未入力", label)));
                 let mut cmds = self.close_char_selector();
-                cmds.push(set_text("chat-log", &format!("{}{}【未入力】\n", self.chat_log, label)));
+                cmds.push(log_cmd);
                 return cmds;
             }
         };
-        let result = dice::skill_roll(0, Some(difficulty as u32), dice::DifficultySpec::None)
-            .unwrap();
-        let line = format!("【能力値判定: {}={} 】{}\n", label, difficulty, result);
-        self.chat_log.push_str(&line);
-        let log = self.chat_log.clone();
+        let result = dice::skill_roll(0, Some(difficulty as u32), dice::DifficultySpec::None).unwrap();
+        let entry = RollLog::Characteristic {
+            label,
+            difficulty,
+            total: result.total,
+            level: result.level,
+        };
+        let log_cmd = self.push_log(entry);
         let mut cmds = self.close_char_selector();
-        cmds.push(set_text("chat-log", &log));
+        cmds.push(log_cmd);
         cmds
     }
 
@@ -343,6 +366,7 @@ impl App {
         self.selector_idx = 0;
         vec![
             set_attr("selector", "hidden", "true"),
+            set_attr("selector", "inert", "true"),
             focus("chat-input"),
         ]
     }
@@ -350,43 +374,76 @@ impl App {
     fn close_selector_into(&mut self, roll: Roll) -> Vec<DomCmd> {
         self.selector_open = false;
         self.selector_idx = 0;
-        let result = execute_roll(roll);
-        self.chat_log.push_str(&result);
+        let entry = make_roll_log(roll);
+        let log_cmd = self.push_log(entry);
         vec![
             set_attr("selector", "hidden", "true"),
-            set_text("chat-log", &self.chat_log),
+            set_attr("selector", "inert", "true"),
+            log_cmd,
             focus("chat-input"),
         ]
     }
 }
 
-fn execute_roll(roll: Roll) -> String {
+fn make_roll_log(roll: Roll) -> RollLog {
     match roll {
         Roll::BoutOfMadnessRealTime => {
             let r = dice::roll_madness_realtime();
-            format!("【{}】{}\n", r.roll_type.label(), r)
+            RollLog::Table { kind: r.roll_type.label(Lang::Ja), roll: r.roll, label: r.label }
         }
         Roll::BoutOfMadnessSummary => {
             let r = dice::roll_madness_summary();
-            format!("【{}】{}\n", r.roll_type.label(), r)
+            RollLog::Table { kind: r.roll_type.label(Lang::Ja), roll: r.roll, label: r.label }
         }
         Roll::FailedCastingMinor => {
             let r = dice::roll_failed_casting_minor();
-            format!("【{}】{}\n", r.roll_type.label(), r)
+            RollLog::Table { kind: r.roll_type.label(Lang::Ja), roll: r.roll, label: r.label }
         }
         Roll::FailedCastingMajor => {
             let r = dice::roll_failed_casting_major();
-            format!("【{}】{}\n", r.roll_type.label(), r)
+            RollLog::Table { kind: r.roll_type.label(Lang::Ja), roll: r.roll, label: r.label }
         }
         Roll::PhobiaTable => {
             let r = dice::roll_phobia();
-            format!("【{}】{}\n", r.roll_type.label(), r)
+            RollLog::Table { kind: r.roll_type.label(Lang::Ja), roll: r.roll, label: r.label }
         }
         Roll::ManiaTable => {
             let r = dice::roll_mania();
-            format!("【{}】{}\n", r.roll_type.label(), r)
+            RollLog::Table { kind: r.roll_type.label(Lang::Ja), roll: r.roll, label: r.label }
         }
-        _ => format!("【{}】(パラメータ入力UI未実装)\n", roll.label()),
+        r => RollLog::Simple { kind: r.label(Lang::Ja) },
+    }
+}
+
+// ============================================================
+// ロール履歴
+// ============================================================
+
+enum RollLog {
+    Characteristic { label: &'static str, difficulty: u16, total: u32, level: Option<ResultLevel> },
+    Table          { kind: &'static str, roll: u32, label: &'static str },
+    Simple         { kind: &'static str },
+    Message        (String),
+}
+
+impl std::fmt::Display for RollLog {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Characteristic { label, difficulty, total, level } => {
+                let result = match level {
+                    Some(l) => l.label(Lang::Ja),
+                    None    => "出目のみ",
+                };
+                write!(f, "[能力値判定: {}={}] 出目: {}  結果: {}", label, difficulty, total, result)
+            }
+            Self::Table { kind, roll, label } => {
+                write!(f, "[{}] {} → {}", kind, roll, label)
+            }
+            Self::Simple { kind } => {
+                write!(f, "[{}] (パラメータ入力UI未実装)", kind)
+            }
+            Self::Message(s) => f.write_str(s),
+        }
     }
 }
 
