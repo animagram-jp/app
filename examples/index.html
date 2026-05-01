@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>dice-engine (CoC 7th)</title>
   <link rel="stylesheet" href="dads-base.css">
+  <link rel="stylesheet" href="button.css">
   <link rel="stylesheet" href="style.css">
   <script type="module" src="init.js"></script>
 </head>
@@ -14,24 +15,74 @@
   <main>
     <div id="character">
       <div id="char-header">
-        <button id="char-roll">ダイスロール</button>
+        <button id="char-edit-open" class="dads-button" data-type="outline" data-size="sm">編集</button>
       </div>
       <div id="char-stats">
-        <label>STR <input id="char-str" type="number" min="0" max="9999" placeholder="—"></label>
-        <label>CON <input id="char-con" type="number" min="0" max="9999" placeholder="—"></label>
-        <label>SIZ <input id="char-siz" type="number" min="0" max="9999" placeholder="—"></label>
-        <label>DEX <input id="char-dex" type="number" min="0" max="9999" placeholder="—"></label>
-        <label>APP <input id="char-app" type="number" min="0" max="9999" placeholder="—"></label>
-        <label>INT <input id="char-int" type="number" min="0" max="9999" placeholder="—"></label>
-        <label>POW <input id="char-pow" type="number" min="0" max="9999" placeholder="—"></label>
-        <label>EDU <input id="char-edu" type="number" min="0" max="9999" placeholder="—"></label>
-        <label>幸運 <input id="char-luk" type="number" min="0" max="9999" placeholder="—"></label>
+        <span id="char-view-str"  hidden><span>STR</span> <span id="char-val-str"></span></span>
+        <span id="char-view-con"  hidden><span>CON</span> <span id="char-val-con"></span></span>
+        <span id="char-view-siz"  hidden><span>SIZ</span> <span id="char-val-siz"></span></span>
+        <span id="char-view-dex"  hidden><span>DEX</span> <span id="char-val-dex"></span></span>
+        <span id="char-view-app"  hidden><span>APP</span> <span id="char-val-app"></span></span>
+        <span id="char-view-int"  hidden><span>INT</span> <span id="char-val-int"></span></span>
+        <span id="char-view-pow"  hidden><span>POW</span> <span id="char-val-pow"></span></span>
+        <span id="char-view-edu"  hidden><span>EDU</span> <span id="char-val-edu"></span></span>
+        <span id="char-view-luk"  hidden><span>幸運</span><span id="char-val-luk"></span></span>
       </div>
       <div id="char-derived">
-        <span>HP <span id="char-hp">—</span></span>
-        <span>MP <span id="char-mp">—</span></span>
-        <span>SAN <span id="char-san">—</span></span>
-        <span>回避 <span id="char-dodge">—</span></span>
+        <span id="char-view-hp"    hidden><span>HP</span>   <span id="char-hp">—</span></span>
+        <span id="char-view-mp"    hidden><span>MP</span>   <span id="char-mp">—</span></span>
+        <span id="char-view-san"   hidden><span>SAN</span>  <span id="char-san">—</span></span>
+        <span id="char-view-dodge" hidden><span>回避</span> <span id="char-dodge">—</span></span>
+      </div>
+      <div id="char-skills">
+        <span id="skill-view-accounting"          hidden><span>経理</span>          <span id="skill-val-accounting"></span></span>
+        <span id="skill-view-anthropology"         hidden><span>人類学</span>        <span id="skill-val-anthropology"></span></span>
+        <span id="skill-view-archaeology"          hidden><span>考古学</span>        <span id="skill-val-archaeology"></span></span>
+        <span id="skill-view-appraise"             hidden><span>鑑定</span>          <span id="skill-val-appraise"></span></span>
+        <span id="skill-view-art-craft"            hidden><span>芸術/製作</span>     <span id="skill-val-art-craft"></span></span>
+        <span id="skill-view-charm"                hidden><span>魅惑</span>          <span id="skill-val-charm"></span></span>
+        <span id="skill-view-climb"                hidden><span>登攀</span>          <span id="skill-val-climb"></span></span>
+        <span id="skill-view-computer-use"         hidden><span>コンピューター</span><span id="skill-val-computer-use"></span></span>
+        <span id="skill-view-credit-rating"        hidden><span>信用</span>          <span id="skill-val-credit-rating"></span></span>
+        <span id="skill-view-cthulhu-mythos"       hidden><span>クトゥルフ神話</span><span id="skill-val-cthulhu-mythos"></span></span>
+        <span id="skill-view-disguise"             hidden><span>変装</span>          <span id="skill-val-disguise"></span></span>
+        <span id="skill-view-drive-auto"           hidden><span>運転(自動車)</span>  <span id="skill-val-drive-auto"></span></span>
+        <span id="skill-view-elec-repair"          hidden><span>電気修理</span>      <span id="skill-val-elec-repair"></span></span>
+        <span id="skill-view-electronics"          hidden><span>電子工学</span>      <span id="skill-val-electronics"></span></span>
+        <span id="skill-view-fast-talk"            hidden><span>言いくるめ</span>    <span id="skill-val-fast-talk"></span></span>
+        <span id="skill-view-fighting-brawl"       hidden><span>格闘</span>          <span id="skill-val-fighting-brawl"></span></span>
+        <span id="skill-view-fighting-other"       hidden><span>近接(その他)</span>  <span id="skill-val-fighting-other"></span></span>
+        <span id="skill-view-firearms-handgun"     hidden><span>拳銃</span>          <span id="skill-val-firearms-handgun"></span></span>
+        <span id="skill-view-firearms-rifle-shotgun" hidden><span>ライフル/SG</span><span id="skill-val-firearms-rifle-shotgun"></span></span>
+        <span id="skill-view-firearms-other"       hidden><span>射撃(その他)</span>  <span id="skill-val-firearms-other"></span></span>
+        <span id="skill-view-first-aid"            hidden><span>応急手当</span>      <span id="skill-val-first-aid"></span></span>
+        <span id="skill-view-history"              hidden><span>歴史</span>          <span id="skill-val-history"></span></span>
+        <span id="skill-view-intimidate"           hidden><span>威圧</span>          <span id="skill-val-intimidate"></span></span>
+        <span id="skill-view-jump"                 hidden><span>跳躍</span>          <span id="skill-val-jump"></span></span>
+        <span id="skill-view-language-other"       hidden><span>ほかの言語</span>    <span id="skill-val-language-other"></span></span>
+        <span id="skill-view-language-own"         hidden><span>母国語</span>        <span id="skill-val-language-own"></span></span>
+        <span id="skill-view-law"                  hidden><span>法律</span>          <span id="skill-val-law"></span></span>
+        <span id="skill-view-library-use"          hidden><span>図書館</span>        <span id="skill-val-library-use"></span></span>
+        <span id="skill-view-listen"               hidden><span>聞き耳</span>        <span id="skill-val-listen"></span></span>
+        <span id="skill-view-locksmith"            hidden><span>鍵開け</span>        <span id="skill-val-locksmith"></span></span>
+        <span id="skill-view-mech-repair"          hidden><span>機械修理</span>      <span id="skill-val-mech-repair"></span></span>
+        <span id="skill-view-medicine"             hidden><span>医学</span>          <span id="skill-val-medicine"></span></span>
+        <span id="skill-view-natural-world"        hidden><span>自然</span>          <span id="skill-val-natural-world"></span></span>
+        <span id="skill-view-navigate"             hidden><span>ナビゲート</span>    <span id="skill-val-navigate"></span></span>
+        <span id="skill-view-occult"               hidden><span>オカルト</span>      <span id="skill-val-occult"></span></span>
+        <span id="skill-view-persuade"             hidden><span>説得</span>          <span id="skill-val-persuade"></span></span>
+        <span id="skill-view-pilot"                hidden><span>操縦</span>          <span id="skill-val-pilot"></span></span>
+        <span id="skill-view-psychoanalysis"       hidden><span>精神分析</span>      <span id="skill-val-psychoanalysis"></span></span>
+        <span id="skill-view-psychology"           hidden><span>心理学</span>        <span id="skill-val-psychology"></span></span>
+        <span id="skill-view-ride"                 hidden><span>乗馬</span>          <span id="skill-val-ride"></span></span>
+        <span id="skill-view-science"              hidden><span>科学</span>          <span id="skill-val-science"></span></span>
+        <span id="skill-view-sleight-of-hand"      hidden><span>手さばき</span>      <span id="skill-val-sleight-of-hand"></span></span>
+        <span id="skill-view-spot-hidden"          hidden><span>目星</span>          <span id="skill-val-spot-hidden"></span></span>
+        <span id="skill-view-stealth"              hidden><span>隠密</span>          <span id="skill-val-stealth"></span></span>
+        <span id="skill-view-survival"             hidden><span>サバイバル</span>    <span id="skill-val-survival"></span></span>
+        <span id="skill-view-swim"                 hidden><span>水泳</span>          <span id="skill-val-swim"></span></span>
+        <span id="skill-view-throw"                hidden><span>投擲</span>          <span id="skill-val-throw"></span></span>
+        <span id="skill-view-track"                hidden><span>追跡</span>          <span id="skill-val-track"></span></span>
       </div>
     </div>
 
@@ -52,6 +103,61 @@
       </div>
     </div>
 
+    <div id="skill-selector" hidden inert>
+      <div id="skill-selector-overlay"></div>
+      <div id="skill-selector-menu">
+        <span id="skill-selector-title"></span>
+        <button id="skillroll-accounting"            hidden inert>経理</button>
+        <button id="skillroll-anthropology"          hidden inert>人類学</button>
+        <button id="skillroll-archaeology"           hidden inert>考古学</button>
+        <button id="skillroll-appraise"              hidden inert>鑑定</button>
+        <button id="skillroll-art-craft"             hidden inert>芸術/製作</button>
+        <button id="skillroll-charm"                 hidden inert>魅惑</button>
+        <button id="skillroll-climb"                 hidden inert>登攀</button>
+        <button id="skillroll-computer-use"          hidden inert>コンピューター</button>
+        <button id="skillroll-credit-rating"         hidden inert>信用</button>
+        <button id="skillroll-cthulhu-mythos"        hidden inert>クトゥルフ神話</button>
+        <button id="skillroll-disguise"              hidden inert>変装</button>
+        <button id="skillroll-drive-auto"            hidden inert>運転(自動車)</button>
+        <button id="skillroll-elec-repair"           hidden inert>電気修理</button>
+        <button id="skillroll-electronics"           hidden inert>電子工学</button>
+        <button id="skillroll-fast-talk"             hidden inert>言いくるめ</button>
+        <button id="skillroll-fighting-brawl"        hidden inert>格闘</button>
+        <button id="skillroll-fighting-other"        hidden inert>近接(その他)</button>
+        <button id="skillroll-firearms-handgun"      hidden inert>拳銃</button>
+        <button id="skillroll-firearms-rifle-shotgun" hidden inert>ライフル/SG</button>
+        <button id="skillroll-firearms-other"        hidden inert>射撃(その他)</button>
+        <button id="skillroll-first-aid"             hidden inert>応急手当</button>
+        <button id="skillroll-history"               hidden inert>歴史</button>
+        <button id="skillroll-intimidate"            hidden inert>威圧</button>
+        <button id="skillroll-jump"                  hidden inert>跳躍</button>
+        <button id="skillroll-language-other"        hidden inert>ほかの言語</button>
+        <button id="skillroll-language-own"          hidden inert>母国語</button>
+        <button id="skillroll-law"                   hidden inert>法律</button>
+        <button id="skillroll-library-use"           hidden inert>図書館</button>
+        <button id="skillroll-listen"                hidden inert>聞き耳</button>
+        <button id="skillroll-locksmith"             hidden inert>鍵開け</button>
+        <button id="skillroll-mech-repair"           hidden inert>機械修理</button>
+        <button id="skillroll-medicine"              hidden inert>医学</button>
+        <button id="skillroll-natural-world"         hidden inert>自然</button>
+        <button id="skillroll-navigate"              hidden inert>ナビゲート</button>
+        <button id="skillroll-occult"                hidden inert>オカルト</button>
+        <button id="skillroll-persuade"              hidden inert>説得</button>
+        <button id="skillroll-pilot"                 hidden inert>操縦</button>
+        <button id="skillroll-psychoanalysis"        hidden inert>精神分析</button>
+        <button id="skillroll-psychology"            hidden inert>心理学</button>
+        <button id="skillroll-ride"                  hidden inert>乗馬</button>
+        <button id="skillroll-science"               hidden inert>科学</button>
+        <button id="skillroll-sleight-of-hand"       hidden inert>手さばき</button>
+        <button id="skillroll-spot-hidden"           hidden inert>目星</button>
+        <button id="skillroll-stealth"               hidden inert>隠密</button>
+        <button id="skillroll-survival"              hidden inert>サバイバル</button>
+        <button id="skillroll-swim"                  hidden inert>水泳</button>
+        <button id="skillroll-throw"                 hidden inert>投擲</button>
+        <button id="skillroll-track"                 hidden inert>追跡</button>
+      </div>
+    </div>
+
     <div id="selector" hidden inert>
       <div id="selector-overlay"></div>
       <div id="selector-menu">
@@ -62,6 +168,7 @@
         <button id="roll-madness-sum">狂気の発作 (サマリー)</button>
         <button id="roll-combine">組み合わせ判定</button>
         <button id="roll-pushed">プッシュロール</button>
+        <button id="roll-dev-check">上達チェック</button>
         <button id="roll-autofire">自動火器の連射判定</button>
         <button id="roll-cast-minor">呪文失敗 (小)</button>
         <button id="roll-cast-major">呪文失敗 (大)</button>
@@ -72,9 +179,84 @@
 
     <form id="chat-form">
       <textarea id="chat-input" name="text" rows="2" placeholder="/ でコマンド選択"></textarea>
-      <button type="submit">送信</button>
+      <button type="submit" class="dads-button" data-type="solid-fill" data-size="sm">送信</button>
     </form>
   </main>
+
+  <dialog id="char-edit">
+    <header>
+      <span>キャラクター編集</span>
+      <button id="char-edit-cancel" type="button">×</button>
+    </header>
+    <fieldset>
+      <fieldset id="edit-stats">
+        <legend>能力値 <button id="char-roll" type="button" class="dads-button" data-type="outline" data-size="xs">ダイスロール</button></legend>
+        <field><label>STR</label>  <input id="edit-str" type="number" min="0" max="9999" name="stat-str"></field>
+        <field><label>CON</label>  <input id="edit-con" type="number" min="0" max="9999" name="stat-con"></field>
+        <field><label>SIZ</label>  <input id="edit-siz" type="number" min="0" max="9999" name="stat-siz"></field>
+        <field><label>DEX</label>  <input id="edit-dex" type="number" min="0" max="9999" name="stat-dex"></field>
+        <field><label>APP</label>  <input id="edit-app" type="number" min="0" max="9999" name="stat-app"></field>
+        <field><label>INT</label>  <input id="edit-int" type="number" min="0" max="9999" name="stat-int"></field>
+        <field><label>POW</label>  <input id="edit-pow" type="number" min="0" max="9999" name="stat-pow"></field>
+        <field><label>EDU</label>  <input id="edit-edu" type="number" min="0" max="9999" name="stat-edu"></field>
+        <field><label>幸運</label> <input id="edit-luk" type="number" min="0" max="9999" name="stat-luk"></field>
+      </fieldset>
+      <field><label>経理</label>          <input id="edit-accounting"            type="number" min="0" max="9999" name="accounting"></field>
+      <field><label>人類学</label>        <input id="edit-anthropology"           type="number" min="0" max="9999" name="anthropology"></field>
+      <field><label>考古学</label>        <input id="edit-archaeology"            type="number" min="0" max="9999" name="archaeology"></field>
+      <field><label>鑑定</label>          <input id="edit-appraise"               type="number" min="0" max="9999" name="appraise"></field>
+      <field><label>芸術/製作</label>     <input id="edit-art-craft"              type="number" min="0" max="9999" name="art-craft"></field>
+      <field><label>魅惑</label>          <input id="edit-charm"                  type="number" min="0" max="9999" name="charm"></field>
+      <field><label>登攀</label>          <input id="edit-climb"                  type="number" min="0" max="9999" name="climb"></field>
+      <field><label>コンピューター</label><input id="edit-computer-use"           type="number" min="0" max="9999" name="computer-use"></field>
+      <field><label>信用</label>          <input id="edit-credit-rating"          type="number" min="0" max="9999" name="credit-rating"></field>
+      <field><label>クトゥルフ神話</label><input id="edit-cthulhu-mythos"         type="number" min="0" max="9999" name="cthulhu-mythos"></field>
+      <field><label>変装</label>          <input id="edit-disguise"               type="number" min="0" max="9999" name="disguise"></field>
+      <field><label>運転(自動車)</label>  <input id="edit-drive-auto"             type="number" min="0" max="9999" name="drive-auto"></field>
+      <field><label>電気修理</label>      <input id="edit-elec-repair"            type="number" min="0" max="9999" name="elec-repair"></field>
+      <field><label>電子工学</label>      <input id="edit-electronics"            type="number" min="0" max="9999" name="electronics"></field>
+      <field><label>言いくるめ</label>    <input id="edit-fast-talk"              type="number" min="0" max="9999" name="fast-talk"></field>
+      <field><label>格闘</label>          <input id="edit-fighting-brawl"         type="number" min="0" max="9999" name="fighting-brawl"></field>
+      <field><label>近接(その他)</label>  <input id="edit-fighting-other"         type="number" min="0" max="9999" name="fighting-other"></field>
+      <field><label>拳銃</label>          <input id="edit-firearms-handgun"       type="number" min="0" max="9999" name="firearms-handgun"></field>
+      <field><label>ライフル/SG</label>   <input id="edit-firearms-rifle-shotgun" type="number" min="0" max="9999" name="firearms-rifle-shotgun"></field>
+      <field><label>射撃(その他)</label>  <input id="edit-firearms-other"         type="number" min="0" max="9999" name="firearms-other"></field>
+      <field><label>応急手当</label>      <input id="edit-first-aid"              type="number" min="0" max="9999" name="first-aid"></field>
+      <field><label>歴史</label>          <input id="edit-history"                type="number" min="0" max="9999" name="history"></field>
+      <field><label>威圧</label>          <input id="edit-intimidate"             type="number" min="0" max="9999" name="intimidate"></field>
+      <field><label>跳躍</label>          <input id="edit-jump"                   type="number" min="0" max="9999" name="jump"></field>
+      <field><label>ほかの言語</label>    <input id="edit-language-other"         type="number" min="0" max="9999" name="language-other"></field>
+      <field><label>母国語</label>        <input id="edit-language-own"           type="number" min="0" max="9999" name="language-own"></field>
+      <field><label>法律</label>          <input id="edit-law"                    type="number" min="0" max="9999" name="law"></field>
+      <field><label>図書館</label>        <input id="edit-library-use"            type="number" min="0" max="9999" name="library-use"></field>
+      <field><label>聞き耳</label>        <input id="edit-listen"                 type="number" min="0" max="9999" name="listen"></field>
+      <field><label>鍵開け</label>        <input id="edit-locksmith"              type="number" min="0" max="9999" name="locksmith"></field>
+      <field><label>機械修理</label>      <input id="edit-mech-repair"            type="number" min="0" max="9999" name="mech-repair"></field>
+      <field><label>医学</label>          <input id="edit-medicine"               type="number" min="0" max="9999" name="medicine"></field>
+      <field><label>自然</label>          <input id="edit-natural-world"          type="number" min="0" max="9999" name="natural-world"></field>
+      <field><label>ナビゲート</label>    <input id="edit-navigate"               type="number" min="0" max="9999" name="navigate"></field>
+      <field><label>オカルト</label>      <input id="edit-occult"                 type="number" min="0" max="9999" name="occult"></field>
+      <field><label>説得</label>          <input id="edit-persuade"               type="number" min="0" max="9999" name="persuade"></field>
+      <field><label>操縦</label>          <input id="edit-pilot"                  type="number" min="0" max="9999" name="pilot"></field>
+      <field><label>精神分析</label>      <input id="edit-psychoanalysis"         type="number" min="0" max="9999" name="psychoanalysis"></field>
+      <field><label>心理学</label>        <input id="edit-psychology"             type="number" min="0" max="9999" name="psychology"></field>
+      <field><label>乗馬</label>          <input id="edit-ride"                   type="number" min="0" max="9999" name="ride"></field>
+      <field><label>科学</label>          <input id="edit-science"                type="number" min="0" max="9999" name="science"></field>
+      <field><label>手さばき</label>      <input id="edit-sleight-of-hand"        type="number" min="0" max="9999" name="sleight-of-hand"></field>
+      <field><label>目星</label>          <input id="edit-spot-hidden"            type="number" min="0" max="9999" name="spot-hidden"></field>
+      <field><label>隠密</label>          <input id="edit-stealth"                type="number" min="0" max="9999" name="stealth"></field>
+      <field><label>サバイバル</label>    <input id="edit-survival"               type="number" min="0" max="9999" name="survival"></field>
+      <field><label>水泳</label>          <input id="edit-swim"                   type="number" min="0" max="9999" name="swim"></field>
+      <field><label>投擲</label>          <input id="edit-throw"                  type="number" min="0" max="9999" name="throw"></field>
+      <field><label>追跡</label>          <input id="edit-track"                  type="number" min="0" max="9999" name="track"></field>
+    </fieldset>
+    <footer>
+      <button id="char-edit-cancel2" type="button" class="dads-button" data-type="outline" data-size="sm">キャンセル</button>
+      <button id="char-edit-save" type="submit" form="char-edit-form" class="dads-button" data-type="solid-fill" data-size="sm">保存</button>
+    </footer>
+  </dialog>
+  <form id="char-edit-form" method="dialog"></form>
+
 </body>
 
 </html>
