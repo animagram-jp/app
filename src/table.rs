@@ -6,43 +6,70 @@ use crate::Lang;
 // セレクタは、ボタンクリック(タッチ, enter)でそれぞれのUiブロックを表示する。但し、上記のUI仕様は変わらない。
 // セレクタ外(esc)をクリック(タッチ)された場合は、表示しているものをhiddenにクリアして、app(wasm)が所持しているstateの表示状態値も更新する。次に"/"を呼ばれた際に、focusなど、判定結果スタックでないstateは保持しない。
 // 現実装は消している気がするが、escした際にテキストボックス内の"/"は消去しないこととする。
-// テキスト出力は Roll::Result::label()-> "[{判定ロールのラベル} {判定目標のラベル}(=数値* 必要なら)] {出目のja/enラベル)}:{出目の数値(重複の無い最終結果のみ)} {判定}: {判定結果のラベル}"で統一。Result(純粋に集計可能な値)はappのState::Stack(Roll種)にスタックする。
+// テキスト出力は Roll::Result::display()-> "[{判定ロールのラベル} {判定目標のラベル}(=数値* 必要なら)] {出目のja/enラベル)}:{出目の数値(重複の無い最終結果のみ)} {判定}: {判定結果のラベル}"で統一。Result(純粋に集計可能な値)はappのState::Stack(Roll種)にスタックする。
+// また、UI実装上の割り切りとして、入力欄の単位などの後置は排除する。単位は" ()""などでラベルに含めてinput外に前置することで、複雑性を抑える。
+// 同様に、インタラクティブUIの1->2->3で1つ前に戻る手段は用意しない。単純なのでescクリアで十分。
+// 必ずすべてのシーンで、appが「初期focus対象」を想定してそこにautofocusを設定しておく。
+// tabやshift+tabで操作可能なdomだけを適切にfocusできるようにする。
+// App::Rollがこれらのロール実行モジュールを担当する。よって、今table.rsにあるこれはapp.rsに移す。
+//
+// 登場するUIアイテム:
+// アイテムはdomだけ最大出現数htmlにhidden付きでハードコードする。但し、textなどcontentは徹底してrsでの生成、DomCmdによる機械的表示に一貫させる。
+// 現在、一般的慣習に従いhtml側のelement idは、一意な文字列をハードコードしているが、これをアンダーバーで区切った形に一斉見直しを行う。
+// 目標は、asm側は、flatな一意mappingではなく、ランタイムでhtmlを捜索することも無く、itemのlabel(en)の静的な組み立てfnによって決め打ちでDomCmdを作成出来ること。
+// - select[Roll] label(Roll::DiceRoll, ja/en)=("dice roll (nDn +n)"/"ダイスロール(nDn +n)")
+//  - 開いた時点で一番目の選択肢にfocusを当てる。
+//  - 上下キー/tab/shift+tabでフォーカスが移動, enter(click, tap)で次へ
+//  - enum Rollのvariant数だけindex.htmlに用意して置く。idは"selector-roll-dice",...など? input-select-roll-dice,...かも。
+// - select[Skill] label(Character::Skill, ja/en) 仕様はselector[Roll]と同様
+//  - 最大数がRollより多い。htmlに用意しておく。
+//  - idは"selector-skill-1",...など? 自由入力の専門分野の都合、htmlに意味合いをハードコード出来ないので、1,2,...,50と最大数見積りで連番をidにする。
+// - select[characteristic]
+// - text[field] label(Roll::Field,Language::Japanese/English)=("ダイス数"/"dices", "ダイス面数"/"dice sides",...)
+//  - インタラクティブ要素の無い表示アイテム(但し、必ずwasmがcmdで充填する)
+//  - tabでfocusさせない。コピペの範囲選択はできること。
+// - button[up] button[down] label(ja/en)=("↑") label(ja/en)=("↓")
+// - select[number] labelはケースバイケースなのでhtmlハードコードはしない。text[field]で別途表現。
+// - input[number] 同上
+// - button[next] label(ja/en)=("次へ"/"next")
+// - button[submit] label(ja/en)=("決定"/"submit")
+//
+// - textarea[watch] textareaであればなんでもよい。App::new(..., watch: dom)で使う。
+// - div[display] blockオブジェクトであり、inlineをn個書き出せればなんでもよい。App::Roll::Display(DisplayDom: dom, Roll::Result)で用いる
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Roll { 
     // Dice Roll - ダイスロール (nDn + n) 
     //
     // 選択後に表示されるべきインタラクティブUIは、出現順に
-    // 1. ダイス数選択(inlineで左から +-ボタン(上下キーも同等に), 初期値1のnumber[1~100]入力欄(focusが当たったら直接入力とする。入力時のkeyboard enterで決定を発火), 「次へ」ボタン(enterも同等に))
-    // 2. 1の次へボタンによって ダイス面選択(左から +-ボタン(上下キー), 初期値2のセレクタ[2,3,4,5,6,8,12,16,20,50,100], 「次へ」ボタン(enter))
-    // 3. 2の次へボタンによって 補正(左から +-ボタン(上下キー), 初期値2のセレクタ[2,3,4,5,6,8,12,16,20,50,100], 「次へ」ボタン(enter))
-    // ダイス数は1～100までで十分。ダイス面は2,3,4,5,6,8,12,16,20,100で十分。定数は+-1~100で十分
-    // 1->2->3で1つ前に戻る手段は用意しない。単純なのでescクリアで十分。
-    // 結果のState::Stack(DiceRoll)保持は不要。
-    // また、UI実装上の割り切りとして、入力欄の単位などの後置は排除する。単位は" ()""などでラベルに含めてinput外に前置することで、複雑性を抑える。
-    //
-    // 登場するUIアイテム
-    // アイテムはdomだけ最大出現数htmlにhidden付きでハードコードする。但し、textなどcontentは徹底してrsでの生成、DomCmdによる機械的表示に一貫させる。
-    // 現在、一般的慣習に従いhtml側のelement idは、一意な文字列をハードコードしているが、これをアンダーバーで区切った形に一斉見直しを行う。
-    // 目標は、asm側は、flatな一意mappingではなく、ランタイムでhtmlを捜索することも無く、itemのlabel(en)の静的な組み立てfnによって決め打ちでDomCmdを作成出来ること。
-    // - selector[Roll] label(Roll::DiceRoll, ja/en)=("dice roll (nDn +n)"/"ダイスロール(nDn +n)") 
-    // - selector[Skill] label(Character::Skill, ja/en)
-    // - selector
-    // - text[field] label(Roll::Field,Language::Japanese/English)=("ダイス数"/"dices", "ダイス面数"/"dice sides",...)
-    // - button[up] button[down] label(ja/en)=("↑") label(ja/en)=("↓")
-    // - button[next] label(ja/en)=("次へ"/"next")
+    // 1. text[field](Roll::Field::DiceCount), +-ボタン(上下キーも同等に), 初期値1のnumber[1~100]入力欄(focusが当たったら直接入力とする。入力時のkeyboard enterで決定を発火), 「次へ」ボタン(enterも同等に))
+    // 2. text[field](Roll::Field::DiceSide), button[up] button[down], input[number(2(初期値),3,4,5,6,8,12,16,20,50,100)], button[next])
+    // 3. text[field](Roll::Field::「補正」の英単語), input[number(0(初期値), -100~100), button[submit])
+    // 4. submitが発火したら、
+    // 結果のState::Stack(roll: Roll)保持は不要。
     DiceRoll,
-    /// Skill Roll — 技能値に対する基本判定
+    // Skill Roll — 技能値に対する基本判定
     //
-    // 1. State::Character::Instance()に存在する技能をセレクタとして表示(上下キー,tab, shift+tabで移動, enter(click, tap)で次へ
-    // 2. 左から、補正という言語依存ラベル、+-ボタン(上下キー), 決定
+    // 1. State::Character::Instance()に存在する技能を優先ソートしてセレクタとして表示。 text[field](skills: Instance::Fields(attribute: Schema::Attribute::Skill), button[up] button[down], button[next]
+    //  - 列指向で表示。1列にまとまる数で無い場合も多いので、画面幅に応じてflexに表示する
+    // 2. text[field](Roll::Field::「補正」の英単語), input[number(0(初期値), -100~100), button[submit]をinline表示
+    // 3. submitしたらApp::Roll::display()をしつつ結果をApp::Roll::stack(State::Stack(roll: SkillRoll))する。
     SkillRoll,
-    /// Characteristic Roll — 能力値及び幸運判定
+    // Characteristic Roll — 能力値判定 (幸運含む)
+    //
+    // 1. select[characteristic] を表示。nextボタンは無し
+    // 2. text[field](Roll::Field::「補正」の英単語), input[number(0(初期値), -100~100), button[submit]をinline表示
+    // - str~luck。Sanityは含まない (それは狂気判定)
     CharacteristicRoll,
     /// Sanity Roll — 正気度喪失判定
     SanityRoll,
-    /// Bout of Madness (Real Time) — 狂気の発作 (リアルタイム)
+    // Bout of Madness (Real Time) — 狂気の発作 (リアルタイム)
+    // intを判定対象としてロール。regularまでの成功で「発狂」が判定結果。failure以下の場合は、「発狂しない」では微妙なので達成度を出して表す。
+    // 期間 (ラウンド) (1d10)も同時に実行してBoundOfMadnessResultに含む
+    // regular以上(狂気の発作は)
     BoutOfMadnessRealTime,
-    /// Bout of Madness (Summary) — 狂気の発作 (サマリー)
+    // Bout of Madness (Summary) — 狂気の発作 (サマリー)
+    //
     BoutOfMadnessSummary,
     /// Pushed Roll — 失敗後の再挑戦ロール
     PushedRoll,
@@ -69,7 +96,7 @@ impl Roll {
             (Self::DiceRoll,              Lang::En) => "Dice Roll (nDn +-n)",
             (Self::SkillRoll,             Lang::Ja) => "技能判定",
             (Self::SkillRoll,             Lang::En) => "Skill Roll",
-            (Self::CharacteristicRoll,    Lang::Ja) => "能力値判定",
+            (Self::CharacteristicRoll,    Lang::Ja) => "能力値判定 (幸運含む)",
             (Self::CharacteristicRoll,    Lang::En) => "Characteristic Roll",
             (Self::SanityRoll,            Lang::Ja) => "正気度判定",
             (Self::SanityRoll,            Lang::En) => "Sanity Roll",
