@@ -14,6 +14,7 @@ const EVENT_KEYDOWN:  u32 = 0b100;
 const EVENT_FOCUS:    u32 = 0b110;
 
 const SELECTOR_ITEMS: &[&str] = &[
+    "roll-dice",
     "roll-skill",
     "roll-char",
     "roll-sanity",
@@ -28,6 +29,19 @@ const SELECTOR_ITEMS: &[&str] = &[
     "roll-phobia",
     "roll-mania",
 ];
+
+const DICE_SIDES: &[u32] = &[2, 3, 4, 5, 6, 8, 10, 12, 20, 100];
+
+#[derive(Clone, Copy, PartialEq)]
+enum DicePhase { Count, Sides, Modifier }
+
+#[derive(Clone)]
+struct DiceInput {
+    phase: DicePhase,
+    count: u32,
+    sides_idx: usize,
+    modifier: i32,
+}
 
 const SKILL_ID_MAP: &[(&str, Model)] = &[
     ("accounting",            Model::Accounting),
@@ -122,6 +136,7 @@ pub struct App {
     char_selector_idx: usize,
     skill_selector_mode: Option<SkillSelectorMode>,
     skill_selector_idx: usize,
+    dice_input: Option<DiceInput>,
     roll_log: Vec<RollLog>,
     character: Instance,
 }
@@ -136,6 +151,7 @@ impl App {
             char_selector_idx: 0,
             skill_selector_mode: None,
             skill_selector_idx: 0,
+            dice_input: None,
             roll_log: Vec::new(),
             character: Instance::new(),
         }
@@ -168,6 +184,9 @@ impl App {
             }
             EVENT_CLICK if target_id == "char-selector-overlay" => {
                 self.close_char_selector()
+            }
+            EVENT_CLICK if target_id == "dice-input-overlay" => {
+                self.close_dice_input()
             }
             EVENT_CLICK if target_id.starts_with("charroll-") => {
                 let key = target_id.strip_prefix("charroll-").unwrap_or("");
@@ -228,6 +247,9 @@ impl App {
     }
 
     fn handle_keydown(&mut self, key: &str) -> Vec<DomCmd> {
+        if let Some(ref di) = self.dice_input.clone() {
+            return self.handle_dice_keydown(key, di.clone());
+        }
         if self.skill_selector_mode.is_some() {
             let mode = self.skill_selector_mode.unwrap_or(SkillSelectorMode::Roll);
             let items = self.skill_selector_candidates(mode);
@@ -312,6 +334,11 @@ impl App {
 
     fn handle_roll_select(&mut self, key: &str) -> Vec<DomCmd> {
         let roll = match key {
+            "dice" => {
+                self.selector_open = false;
+                self.selector_idx = 0;
+                return self.open_dice_input();
+            }
             "skill"       => {
                 self.selector_open = false;
                 self.selector_idx = 0;
@@ -355,7 +382,7 @@ impl App {
     }
 
     fn handle_char_roll(&mut self) -> Vec<DomCmd> {
-        if schema::characteristic::roll_all(&mut self.character).is_err() {
+        if schema::roll_characteristics(&mut self.character).is_err() {
             return vec![];
         }
         // モーダルinputとメインviewを両方更新
@@ -373,18 +400,19 @@ impl App {
     }
 
     fn handle_char_selector(&mut self, key: &str) -> Vec<DomCmd> {
-        let (label, value) = match key {
-            "str" => ("STR",  schema::strength::get(&self.character)),
-            "con" => ("CON",  schema::constitution::get(&self.character)),
-            "siz" => ("SIZ",  schema::size::get(&self.character)),
-            "dex" => ("DEX",  schema::dexterity::get(&self.character)),
-            "app" => ("APP",  schema::appearance::get(&self.character)),
-            "int" => ("INT",  schema::intelligence::get(&self.character)),
-            "pow" => ("POW",  schema::power::get(&self.character)),
-            "edu" => ("EDU",  schema::education::get(&self.character)),
-            "luk" => ("幸運", schema::luck::get(&self.character)),
+        let (label, field) = match key {
+            "str" => ("STR",  Model::Strength),
+            "con" => ("CON",  Model::Constitution),
+            "siz" => ("SIZ",  Model::Size),
+            "dex" => ("DEX",  Model::Dexterity),
+            "app" => ("APP",  Model::Appearance),
+            "int" => ("INT",  Model::Intelligence),
+            "pow" => ("POW",  Model::Power),
+            "edu" => ("EDU",  Model::Education),
+            "luk" => ("幸運", Model::Luck),
             _ => return self.close_char_selector(),
         };
+        let value = schema::get(&self.character, field);
         let difficulty = match value {
             Ok(v) => v,
             Err(_) => {
@@ -544,7 +572,7 @@ impl App {
             Ok(v) => v,
             Err(_) => return self.close_skill_selector(),
         };
-        let label = crate::character::display::label(field, crate::Lang::Ja);
+        let label = schema::label(field, crate::Lang::Ja);
         let result = dice::skill_roll(0, Some(difficulty as u32), dice::DifficultySpec::None).unwrap();
         let entry = RollLog::Skill { field, label, difficulty, total: result.total, level: result.level, pushed };
         let log_cmd = self.push_log(entry);
@@ -558,7 +586,7 @@ impl App {
             Ok(v) => v,
             Err(_) => return self.close_skill_selector(),
         };
-        let label = crate::character::display::label(field, crate::Lang::Ja);
+        let label = schema::label(field, crate::Lang::Ja);
         let roll = crate::n_d_n(1, 100);
         if roll > current as u32 {
             // 成功: 1d10上昇
@@ -584,22 +612,22 @@ impl App {
 
     fn handle_char_edit_save(&mut self, fields: &JsValue) -> Vec<DomCmd> {
         // 能力値
-        let stat_map: &[(&str, fn(&mut Instance, u16) -> _)] = &[
-            ("stat-str", |ch, v| schema::strength::set(ch, v)),
-            ("stat-con", |ch, v| schema::constitution::set(ch, v)),
-            ("stat-siz", |ch, v| schema::size::set(ch, v)),
-            ("stat-dex", |ch, v| schema::dexterity::set(ch, v)),
-            ("stat-app", |ch, v| schema::appearance::set(ch, v)),
-            ("stat-int", |ch, v| schema::intelligence::set(ch, v)),
-            ("stat-pow", |ch, v| schema::power::set(ch, v)),
-            ("stat-edu", |ch, v| schema::education::set(ch, v)),
-            ("stat-luk", |ch, v| schema::luck::set(ch, v)),
+        let stat_map: &[(&str, Model)] = &[
+            ("stat-str", Model::Strength),
+            ("stat-con", Model::Constitution),
+            ("stat-siz", Model::Size),
+            ("stat-dex", Model::Dexterity),
+            ("stat-app", Model::Appearance),
+            ("stat-int", Model::Intelligence),
+            ("stat-pow", Model::Power),
+            ("stat-edu", Model::Education),
+            ("stat-luk", Model::Luck),
         ];
-        for &(name, setter) in stat_map {
+        for &(name, field) in stat_map {
             let s = js_get_str(fields, name);
             if !s.is_empty() {
                 let v: u16 = s.trim().parse().unwrap_or(0);
-                let _ = setter(&mut self.character, v);
+                let _ = schema::set(&mut self.character, field, v);
             }
         }
         // スキル
@@ -618,51 +646,51 @@ impl App {
         let ch = &self.character;
         let mut cmds = vec![];
 
-        let stat_pairs: &[(&str, &str, fn(&Instance) -> _)] = &[
-            ("char-view-str",  "char-val-str",  |ch| schema::strength::get(ch)),
-            ("char-view-con",  "char-val-con",  |ch| schema::constitution::get(ch)),
-            ("char-view-siz",  "char-val-siz",  |ch| schema::size::get(ch)),
-            ("char-view-dex",  "char-val-dex",  |ch| schema::dexterity::get(ch)),
-            ("char-view-app",  "char-val-app",  |ch| schema::appearance::get(ch)),
-            ("char-view-int",  "char-val-int",  |ch| schema::intelligence::get(ch)),
-            ("char-view-pow",  "char-val-pow",  |ch| schema::power::get(ch)),
-            ("char-view-edu",  "char-val-edu",  |ch| schema::education::get(ch)),
-            ("char-view-luk",  "char-val-luk",  |ch| schema::luck::get(ch)),
+        let stat_pairs: &[(&str, &str, Model)] = &[
+            ("char-view-str",  "char-val-str",  Model::Strength),
+            ("char-view-con",  "char-val-con",  Model::Constitution),
+            ("char-view-siz",  "char-val-siz",  Model::Size),
+            ("char-view-dex",  "char-val-dex",  Model::Dexterity),
+            ("char-view-app",  "char-val-app",  Model::Appearance),
+            ("char-view-int",  "char-val-int",  Model::Intelligence),
+            ("char-view-pow",  "char-val-pow",  Model::Power),
+            ("char-view-edu",  "char-val-edu",  Model::Education),
+            ("char-view-luk",  "char-val-luk",  Model::Luck),
         ];
-        for &(view_id, val_id, getter) in stat_pairs {
-            if let Ok(v) = getter(ch) {
+        for &(view_id, val_id, field) in stat_pairs {
+            if let Ok(v) = schema::get(ch, field) {
                 cmds.push(set_attr(view_id, "hidden", ""));
                 cmds.push(set_text(val_id, &v.to_string()));
             }
         }
 
         // モーダルのinputにも反映（ダイスロール後に値が見える）
-        let modal_pairs: &[(&str, fn(&Instance) -> _)] = &[
-            ("edit-str", |ch| schema::strength::get(ch)),
-            ("edit-con", |ch| schema::constitution::get(ch)),
-            ("edit-siz", |ch| schema::size::get(ch)),
-            ("edit-dex", |ch| schema::dexterity::get(ch)),
-            ("edit-app", |ch| schema::appearance::get(ch)),
-            ("edit-int", |ch| schema::intelligence::get(ch)),
-            ("edit-pow", |ch| schema::power::get(ch)),
-            ("edit-edu", |ch| schema::education::get(ch)),
-            ("edit-luk", |ch| schema::luck::get(ch)),
+        let modal_pairs: &[(&str, Model)] = &[
+            ("edit-str", Model::Strength),
+            ("edit-con", Model::Constitution),
+            ("edit-siz", Model::Size),
+            ("edit-dex", Model::Dexterity),
+            ("edit-app", Model::Appearance),
+            ("edit-int", Model::Intelligence),
+            ("edit-pow", Model::Power),
+            ("edit-edu", Model::Education),
+            ("edit-luk", Model::Luck),
         ];
-        for &(id, getter) in modal_pairs {
-            if let Ok(v) = getter(ch) {
+        for &(id, field) in modal_pairs {
+            if let Ok(v) = schema::get(ch, field) {
                 cmds.push(set_attr(id, "value", &v.to_string()));
             }
         }
 
         // 導出値
-        let derived: &[(&str, &str, fn(&Instance) -> _)] = &[
-            ("char-view-hp",    "char-hp",    |ch| schema::hit_points::get(ch)),
-            ("char-view-mp",    "char-mp",    |ch| schema::magic_points::get(ch)),
-            ("char-view-san",   "char-san",   |ch| schema::sanity::get(ch)),
-            ("char-view-dodge", "char-dodge", |ch| schema::dodge::get(ch)),
+        let derived: &[(&str, &str, Model)] = &[
+            ("char-view-hp",    "char-hp",    Model::HitPoints),
+            ("char-view-mp",    "char-mp",    Model::MagicPoints),
+            ("char-view-san",   "char-san",   Model::Sanity),
+            ("char-view-dodge", "char-dodge", Model::Dodge),
         ];
-        for &(view_id, val_id, getter) in derived {
-            if let Ok(v) = getter(ch) {
+        for &(view_id, val_id, field) in derived {
+            if let Ok(v) = schema::get(ch, field) {
                 cmds.push(set_attr(view_id, "hidden", ""));
                 cmds.push(set_text(val_id, &v.to_string()));
             }
@@ -676,6 +704,136 @@ impl App {
             }
         }
 
+        cmds
+    }
+
+    fn open_dice_input(&mut self) -> Vec<DomCmd> {
+        self.dice_input = Some(DiceInput { phase: DicePhase::Count, count: 1, sides_idx: 4, modifier: 0 });
+        let mut cmds = vec![
+            set_attr("selector", "hidden", "true"),
+            set_attr("selector", "inert", "true"),
+        ];
+        cmds.extend(self.render_dice_input());
+        cmds
+    }
+
+    fn close_dice_input(&mut self) -> Vec<DomCmd> {
+        self.dice_input = None;
+        vec![
+            set_attr("dice-input", "hidden", "true"),
+            set_attr("dice-input", "inert", "true"),
+            focus("chat-input"),
+        ]
+    }
+
+    fn render_dice_input(&self) -> Vec<DomCmd> {
+        let di = match &self.dice_input {
+            Some(d) => d,
+            None => return vec![],
+        };
+        let sides = DICE_SIDES[di.sides_idx];
+        let modifier_str = if di.modifier == 0 {
+            "0".to_string()
+        } else if di.modifier > 0 {
+            format!("+{}", di.modifier)
+        } else {
+            di.modifier.to_string()
+        };
+        let hint = match di.phase {
+            DicePhase::Count    => format!("{}個 → Enter で次へ", di.count),
+            DicePhase::Sides    => format!("{}個 × {}面 → Enter で次へ", di.count, sides),
+            DicePhase::Modifier => {
+                let mod_part = if di.modifier != 0 { format!(" {}", modifier_str) } else { String::new() };
+                format!("{}個 × {}面{} → Enter でロール", di.count, sides, mod_part)
+            }
+        };
+        let (show_count, show_sides, show_mod) = match di.phase {
+            DicePhase::Count    => ("", "true", "true"),
+            DicePhase::Sides    => ("true", "", "true"),
+            DicePhase::Modifier => ("true", "true", ""),
+        };
+        vec![
+            set_attr("dice-input", "hidden", ""),
+            set_attr("dice-input", "inert", ""),
+            set_attr("dice-count-row",    "hidden", show_count),
+            set_attr("dice-sides-row",    "hidden", show_sides),
+            set_attr("dice-modifier-row", "hidden", show_mod),
+            set_text("dice-count-val",    &di.count.to_string()),
+            set_text("dice-sides-val",    &format!("{}面", sides)),
+            set_text("dice-modifier-val", &modifier_str),
+            set_text("dice-hint",         &hint),
+            focus("dice-input-focus"),
+        ]
+    }
+
+    fn handle_dice_keydown(&mut self, key: &str, di: DiceInput) -> Vec<DomCmd> {
+        match key {
+            "Escape" => return self.close_dice_input(),
+            "Enter" => {
+                match di.phase {
+                    DicePhase::Count => {
+                        if let Some(d) = self.dice_input.as_mut() { d.phase = DicePhase::Sides; }
+                        return self.render_dice_input();
+                    }
+                    DicePhase::Sides => {
+                        if let Some(d) = self.dice_input.as_mut() { d.phase = DicePhase::Modifier; }
+                        return self.render_dice_input();
+                    }
+                    DicePhase::Modifier => {
+                        return self.execute_dice_roll();
+                    }
+                }
+            }
+            "ArrowUp" | "ArrowDown" => {
+                let up = key == "ArrowUp";
+                match di.phase {
+                    DicePhase::Count => {
+                        if let Some(d) = self.dice_input.as_mut() {
+                            if up { d.count = d.count.saturating_add(1).min(99); }
+                            else  { d.count = d.count.saturating_sub(1).max(1); }
+                        }
+                    }
+                    DicePhase::Sides => {
+                        let len = DICE_SIDES.len();
+                        if let Some(d) = self.dice_input.as_mut() {
+                            if up { d.sides_idx = (d.sides_idx + 1) % len; }
+                            else  { d.sides_idx = (d.sides_idx + len - 1) % len; }
+                        }
+                    }
+                    DicePhase::Modifier => {
+                        if let Some(d) = self.dice_input.as_mut() {
+                            if up { d.modifier = d.modifier.saturating_add(1); }
+                            else  { d.modifier = d.modifier.saturating_sub(1); }
+                        }
+                    }
+                }
+                return self.render_dice_input();
+            }
+            _ => {}
+        }
+        vec![]
+    }
+
+    fn execute_dice_roll(&mut self) -> Vec<DomCmd> {
+        let di = match self.dice_input.take() {
+            Some(d) => d,
+            None => return vec![],
+        };
+        let sides = DICE_SIDES[di.sides_idx];
+        let raw: u32 = crate::n_d_n(di.count, sides);
+        let total = (raw as i32 + di.modifier).max(0) as u32;
+        let modifier_str = if di.modifier > 0 {
+            format!("+{}", di.modifier)
+        } else if di.modifier < 0 {
+            di.modifier.to_string()
+        } else {
+            String::new()
+        };
+        let expr = format!("{}d{}{}", di.count, sides, modifier_str);
+        let msg = format!("[ダイスロール: {}] 出目: {} → 合計: {}", expr, raw, total);
+        let log_cmd = self.push_log(RollLog::Message(msg));
+        let mut cmds = self.close_dice_input();
+        cmds.push(log_cmd);
         cmds
     }
 
