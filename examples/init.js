@@ -68,8 +68,15 @@ function bind() {
     }
   });
 
+  document.getElementById('char-edit-open')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    dispatch({ event_type: 0b001, target_id: 'char-edit-open' });
+  });
+
   document.addEventListener('click', (e) => {
-    dispatch({ event_type: 0b001, target_id: e.target.id });
+    const el = e.target.closest('[id]');
+    if (!el || el.id === 'char-edit-open') return;
+    dispatch({ event_type: 0b001, target_id: el.id });
   });
 
   document.addEventListener('focusin', (e) => {
