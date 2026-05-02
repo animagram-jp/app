@@ -28,6 +28,9 @@ function execute({ op, id, attr = '', value = '' }) {
     case 0b100: // focus
       el.focus();
       break;
+    case 0b1000: // showModal
+      el.showModal();
+      break;
   }
 }
 
@@ -46,7 +49,7 @@ function bind() {
   });
 
   document.getElementById('char-edit-open')?.addEventListener('click', () => {
-    document.getElementById('char-edit')?.showModal();
+    dispatch({ event_type: 0b111, target_id: 'char-edit-open' });
   });
 
   document.getElementById('char-edit-cancel')?.addEventListener('click', () => {

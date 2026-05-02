@@ -7,11 +7,14 @@ const OP_SET_ATTR: u32 = 0b001;
 const OP_SET_TEXT: u32 = 0b010;
 const OP_FOCUS:    u32 = 0b100;
 
-const EVENT_CLICK:    u32 = 0b001;
-const EVENT_SUBMIT:   u32 = 0b010;
-const EVENT_INPUT:    u32 = 0b011;
-const EVENT_KEYDOWN:  u32 = 0b100;
-const EVENT_FOCUS:    u32 = 0b110;
+const EVENT_CLICK:      u32 = 0b001;
+const EVENT_SUBMIT:     u32 = 0b010;
+const EVENT_INPUT:      u32 = 0b011;
+const EVENT_KEYDOWN:    u32 = 0b100;
+const EVENT_FOCUS:      u32 = 0b110;
+const EVENT_OPEN_EDIT:  u32 = 0b111;
+
+const OP_SHOW_MODAL: u32 = 0b1000;
 
 const SELECTOR_ITEMS: &[&str] = &[
     "roll-dice",
@@ -163,6 +166,9 @@ impl App {
         let key        = js_get_str(&payload, "key");
 
         let cmds: Vec<DomCmd> = match event_type {
+            EVENT_OPEN_EDIT => {
+                self.handle_char_edit_open()
+            }
             EVENT_SUBMIT if target_id == "chat-form" => {
                 let fields = js_get_field(&payload, "fields");
                 let text = js_get_str(&fields, "text");
@@ -187,6 +193,10 @@ impl App {
             }
             EVENT_CLICK if target_id == "dice-input-overlay" => {
                 self.close_dice_input()
+            }
+            EVENT_CLICK if target_id.starts_with("charroll-edit-") => {
+                let key = target_id.strip_prefix("charroll-edit-").unwrap_or("");
+                self.handle_char_edit_roll(key)
             }
             EVENT_CLICK if target_id.starts_with("charroll-") => {
                 let key = target_id.strip_prefix("charroll-").unwrap_or("");
@@ -385,8 +395,28 @@ impl App {
         if schema::roll_characteristics(&mut self.character).is_err() {
             return vec![];
         }
-        // モーダルinputとメインviewを両方更新
         self.stat_view_cmds()
+    }
+
+    fn handle_char_edit_roll(&mut self, key: &str) -> Vec<DomCmd> {
+        let (input_id, field) = match key {
+            "str" => ("edit-str", Model::Strength),
+            "con" => ("edit-con", Model::Constitution),
+            "siz" => ("edit-siz", Model::Size),
+            "dex" => ("edit-dex", Model::Dexterity),
+            "app" => ("edit-app", Model::Appearance),
+            "int" => ("edit-int", Model::Intelligence),
+            "pow" => ("edit-pow", Model::Power),
+            "edu" => ("edit-edu", Model::Education),
+            "luk" => ("edit-luk", Model::Luck),
+            _ => return vec![],
+        };
+        let v = schema::roll_characteristic(field);
+        let _ = schema::set(&mut self.character, field, v);
+        let _ = schema::update(&mut self.character);
+        let mut cmds = vec![set_attr(input_id, "value", &v.to_string())];
+        cmds.extend(self.stat_view_cmds());
+        cmds
     }
 
     fn close_char_selector(&mut self) -> Vec<DomCmd> {
@@ -610,6 +640,40 @@ impl App {
         }
     }
 
+    fn handle_char_edit_open(&self) -> Vec<DomCmd> {
+        let ch = &self.character;
+        let mut cmds = vec![show_modal("char-edit")];
+        // 能力値inputを現在値で初期化
+        let stat_map: &[(&str, Model)] = &[
+            ("edit-str", Model::Strength),
+            ("edit-con", Model::Constitution),
+            ("edit-siz", Model::Size),
+            ("edit-dex", Model::Dexterity),
+            ("edit-app", Model::Appearance),
+            ("edit-int", Model::Intelligence),
+            ("edit-pow", Model::Power),
+            ("edit-edu", Model::Education),
+            ("edit-luk", Model::Luck),
+        ];
+        for &(id, field) in stat_map {
+            if let Ok(v) = schema::get(ch, field) {
+                cmds.push(set_attr(id, "value", &v.to_string()));
+            }
+        }
+        // スキル: 既存値を職業P欄に、興味P欄は0に
+        for &(name, field) in SKILL_ID_MAP {
+            let occ_id = format!("skill-occ-{}", name);
+            let int_id = format!("skill-int-{}", name);
+            if let Ok(v) = schema::skill::get(ch, field) {
+                cmds.push(set_attr(&occ_id, "value", &v.to_string()));
+            } else {
+                cmds.push(set_attr(&occ_id, "value", ""));
+            }
+            cmds.push(set_attr(&int_id, "value", ""));
+        }
+        cmds
+    }
+
     fn handle_char_edit_save(&mut self, fields: &JsValue) -> Vec<DomCmd> {
         // 能力値
         let stat_map: &[(&str, Model)] = &[
@@ -630,14 +694,17 @@ impl App {
                 let _ = schema::set(&mut self.character, field, v);
             }
         }
-        // スキル
+        // スキル: base + 職業P + 興味P を合計して保存
         for &(name, field) in SKILL_ID_MAP {
-            let s = js_get_str(fields, name);
-            if !s.is_empty() {
-                let v: u16 = s.trim().parse().unwrap_or(0);
-                let _ = schema::skill::set(&mut self.character, field, v);
+            let occ: u16 = js_get_str(fields, &format!("occ-{}", name)).trim().parse().unwrap_or(0);
+            let int: u16 = js_get_str(fields, &format!("int-{}", name)).trim().parse().unwrap_or(0);
+            if occ > 0 || int > 0 {
+                let base = schema::skill::base_value(field);
+                let total = base.saturating_add(occ).saturating_add(int);
+                let _ = schema::skill::set(&mut self.character, field, total);
             }
         }
+        let _ = schema::update(&mut self.character);
         self.stat_view_cmds()
     }
 
@@ -955,4 +1022,8 @@ fn set_attr(id: &str, attr: &str, value: &str) -> DomCmd {
 
 fn focus(id: &str) -> DomCmd {
     DomCmd { op: OP_FOCUS, id: id.to_string(), attr: None, value: String::new() }
+}
+
+fn show_modal(id: &str) -> DomCmd {
+    DomCmd { op: OP_SHOW_MODAL, id: id.to_string(), attr: None, value: String::new() }
 }
