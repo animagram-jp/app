@@ -1,7 +1,7 @@
 name: Build and deploy to GitHub Pages
 
 on:
-  release:
+  push:
     branches: ["main"]
   workflow_dispatch:
 
