@@ -14,6 +14,7 @@ const EVENT_KEYDOWN:  u32 = 0b100;
 const EVENT_FOCUS:    u32 = 0b110;
 
 const SELECTOR_ITEMS: &[&str] = &[
+    "roll-dice",
     "roll-skill",
     "roll-char",
     "roll-sanity",
@@ -28,6 +29,19 @@ const SELECTOR_ITEMS: &[&str] = &[
     "roll-phobia",
     "roll-mania",
 ];
+
+const DICE_SIDES: &[u32] = &[2, 3, 4, 5, 6, 8, 10, 12, 20, 100];
+
+#[derive(Clone, Copy, PartialEq)]
+enum DicePhase { Count, Sides, Modifier }
+
+#[derive(Clone)]
+struct DiceInput {
+    phase: DicePhase,
+    count: u32,
+    sides_idx: usize,
+    modifier: i32,
+}
 
 const SKILL_ID_MAP: &[(&str, Model)] = &[
     ("accounting",            Model::Accounting),
@@ -122,6 +136,7 @@ pub struct App {
     char_selector_idx: usize,
     skill_selector_mode: Option<SkillSelectorMode>,
     skill_selector_idx: usize,
+    dice_input: Option<DiceInput>,
     roll_log: Vec<RollLog>,
     character: Instance,
 }
@@ -136,6 +151,7 @@ impl App {
             char_selector_idx: 0,
             skill_selector_mode: None,
             skill_selector_idx: 0,
+            dice_input: None,
             roll_log: Vec::new(),
             character: Instance::new(),
         }
@@ -168,6 +184,9 @@ impl App {
             }
             EVENT_CLICK if target_id == "char-selector-overlay" => {
                 self.close_char_selector()
+            }
+            EVENT_CLICK if target_id == "dice-input-overlay" => {
+                self.close_dice_input()
             }
             EVENT_CLICK if target_id.starts_with("charroll-") => {
                 let key = target_id.strip_prefix("charroll-").unwrap_or("");
@@ -228,6 +247,9 @@ impl App {
     }
 
     fn handle_keydown(&mut self, key: &str) -> Vec<DomCmd> {
+        if let Some(ref di) = self.dice_input.clone() {
+            return self.handle_dice_keydown(key, di.clone());
+        }
         if self.skill_selector_mode.is_some() {
             let mode = self.skill_selector_mode.unwrap_or(SkillSelectorMode::Roll);
             let items = self.skill_selector_candidates(mode);
@@ -312,6 +334,11 @@ impl App {
 
     fn handle_roll_select(&mut self, key: &str) -> Vec<DomCmd> {
         let roll = match key {
+            "dice" => {
+                self.selector_open = false;
+                self.selector_idx = 0;
+                return self.open_dice_input();
+            }
             "skill"       => {
                 self.selector_open = false;
                 self.selector_idx = 0;
@@ -677,6 +704,136 @@ impl App {
             }
         }
 
+        cmds
+    }
+
+    fn open_dice_input(&mut self) -> Vec<DomCmd> {
+        self.dice_input = Some(DiceInput { phase: DicePhase::Count, count: 1, sides_idx: 4, modifier: 0 });
+        let mut cmds = vec![
+            set_attr("selector", "hidden", "true"),
+            set_attr("selector", "inert", "true"),
+        ];
+        cmds.extend(self.render_dice_input());
+        cmds
+    }
+
+    fn close_dice_input(&mut self) -> Vec<DomCmd> {
+        self.dice_input = None;
+        vec![
+            set_attr("dice-input", "hidden", "true"),
+            set_attr("dice-input", "inert", "true"),
+            focus("chat-input"),
+        ]
+    }
+
+    fn render_dice_input(&self) -> Vec<DomCmd> {
+        let di = match &self.dice_input {
+            Some(d) => d,
+            None => return vec![],
+        };
+        let sides = DICE_SIDES[di.sides_idx];
+        let modifier_str = if di.modifier == 0 {
+            "0".to_string()
+        } else if di.modifier > 0 {
+            format!("+{}", di.modifier)
+        } else {
+            di.modifier.to_string()
+        };
+        let hint = match di.phase {
+            DicePhase::Count    => format!("{}個 → Enter で次へ", di.count),
+            DicePhase::Sides    => format!("{}個 × {}面 → Enter で次へ", di.count, sides),
+            DicePhase::Modifier => {
+                let mod_part = if di.modifier != 0 { format!(" {}", modifier_str) } else { String::new() };
+                format!("{}個 × {}面{} → Enter でロール", di.count, sides, mod_part)
+            }
+        };
+        let (show_count, show_sides, show_mod) = match di.phase {
+            DicePhase::Count    => ("", "true", "true"),
+            DicePhase::Sides    => ("true", "", "true"),
+            DicePhase::Modifier => ("true", "true", ""),
+        };
+        vec![
+            set_attr("dice-input", "hidden", ""),
+            set_attr("dice-input", "inert", ""),
+            set_attr("dice-count-row",    "hidden", show_count),
+            set_attr("dice-sides-row",    "hidden", show_sides),
+            set_attr("dice-modifier-row", "hidden", show_mod),
+            set_text("dice-count-val",    &di.count.to_string()),
+            set_text("dice-sides-val",    &format!("{}面", sides)),
+            set_text("dice-modifier-val", &modifier_str),
+            set_text("dice-hint",         &hint),
+            focus("dice-input-focus"),
+        ]
+    }
+
+    fn handle_dice_keydown(&mut self, key: &str, di: DiceInput) -> Vec<DomCmd> {
+        match key {
+            "Escape" => return self.close_dice_input(),
+            "Enter" => {
+                match di.phase {
+                    DicePhase::Count => {
+                        if let Some(d) = self.dice_input.as_mut() { d.phase = DicePhase::Sides; }
+                        return self.render_dice_input();
+                    }
+                    DicePhase::Sides => {
+                        if let Some(d) = self.dice_input.as_mut() { d.phase = DicePhase::Modifier; }
+                        return self.render_dice_input();
+                    }
+                    DicePhase::Modifier => {
+                        return self.execute_dice_roll();
+                    }
+                }
+            }
+            "ArrowUp" | "ArrowDown" => {
+                let up = key == "ArrowUp";
+                match di.phase {
+                    DicePhase::Count => {
+                        if let Some(d) = self.dice_input.as_mut() {
+                            if up { d.count = d.count.saturating_add(1).min(99); }
+                            else  { d.count = d.count.saturating_sub(1).max(1); }
+                        }
+                    }
+                    DicePhase::Sides => {
+                        let len = DICE_SIDES.len();
+                        if let Some(d) = self.dice_input.as_mut() {
+                            if up { d.sides_idx = (d.sides_idx + 1) % len; }
+                            else  { d.sides_idx = (d.sides_idx + len - 1) % len; }
+                        }
+                    }
+                    DicePhase::Modifier => {
+                        if let Some(d) = self.dice_input.as_mut() {
+                            if up { d.modifier = d.modifier.saturating_add(1); }
+                            else  { d.modifier = d.modifier.saturating_sub(1); }
+                        }
+                    }
+                }
+                return self.render_dice_input();
+            }
+            _ => {}
+        }
+        vec![]
+    }
+
+    fn execute_dice_roll(&mut self) -> Vec<DomCmd> {
+        let di = match self.dice_input.take() {
+            Some(d) => d,
+            None => return vec![],
+        };
+        let sides = DICE_SIDES[di.sides_idx];
+        let raw: u32 = crate::n_d_n(di.count, sides);
+        let total = (raw as i32 + di.modifier).max(0) as u32;
+        let modifier_str = if di.modifier > 0 {
+            format!("+{}", di.modifier)
+        } else if di.modifier < 0 {
+            di.modifier.to_string()
+        } else {
+            String::new()
+        };
+        let expr = format!("{}d{}{}", di.count, sides, modifier_str);
+        let msg = format!("[ダイスロール: {}] 出目: {} → 合計: {}", expr, raw, total);
+        let log_cmd = self.push_log(RollLog::Message(msg));
+        let mut cmds = self.close_dice_input();
+        cmds.push(log_cmd);
         cmds
     }
 

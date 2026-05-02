@@ -112,7 +112,8 @@ main {
 
 #selector,
 #char-selector,
-#skill-selector {
+#skill-selector,
+#dice-input {
   position: fixed;
   inset: 0;
   z-index: 10;
@@ -120,7 +121,8 @@ main {
 
 #selector-overlay,
 #char-selector-overlay,
-#skill-selector-overlay {
+#skill-selector-overlay,
+#dice-input-overlay {
   position: absolute;
   inset: 0;
   background: rgba(0, 0, 0, 0.25);
@@ -190,6 +192,56 @@ main {
   outline-offset: 0.125rem;
   border-radius: 4px;
   box-shadow: 0 0 0 0.125rem var(--color-primitive-yellow-300);
+}
+
+/* ───── ダイス入力パネル ───── */
+
+#dice-input-menu {
+  position: absolute;
+  bottom: 4rem;
+  left: 0.5rem;
+  background: var(--color-neutral-white);
+  border: 1px solid var(--color-neutral-solid-gray-200);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  z-index: 11;
+  box-shadow: var(--elevation-2);
+  min-width: 14rem;
+}
+
+.dice-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.3rem 0.25rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  color: var(--color-neutral-solid-gray-800);
+}
+
+.dice-row-label {
+  font-size: 0.8rem;
+  color: var(--color-neutral-solid-gray-500);
+}
+
+.dice-row span:last-child {
+  font-size: 1.1rem;
+  font-weight: 600;
+  min-width: 3rem;
+  text-align: right;
+}
+
+#dice-hint {
+  margin-top: 0.25rem;
+  padding-top: 0.25rem;
+  border-top: 1px solid var(--color-neutral-solid-gray-100);
+  font-size: 0.8rem;
+  color: var(--color-neutral-solid-gray-500);
+  text-align: right;
 }
 
 /* ───── キャラクター編集モーダル ───── */
@@ -342,7 +394,8 @@ main {
 
   #selector-menu,
   #char-selector-menu,
-  #skill-selector-menu {
+  #skill-selector-menu,
+  #dice-input-menu {
     bottom: 4.5rem;
     left: 1rem;
   }

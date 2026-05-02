@@ -158,9 +158,30 @@
       </div>
     </div>
 
+    <div id="dice-input" hidden inert>
+      <div id="dice-input-overlay"></div>
+      <div id="dice-input-menu">
+        <button id="dice-input-focus" tabindex="0" style="position:absolute;opacity:0;pointer-events:none;width:0;height:0"></button>
+        <div id="dice-count-row" class="dice-row" hidden>
+          <span class="dice-row-label">↑↓ で個数を選ぶ</span>
+          <span id="dice-count-val">1</span>
+        </div>
+        <div id="dice-sides-row" class="dice-row" hidden>
+          <span class="dice-row-label">↑↓ で面数を選ぶ</span>
+          <span id="dice-sides-val">6面</span>
+        </div>
+        <div id="dice-modifier-row" class="dice-row" hidden>
+          <span class="dice-row-label">↑↓ で修正値を選ぶ</span>
+          <span id="dice-modifier-val">0</span>
+        </div>
+        <div id="dice-hint"></div>
+      </div>
+    </div>
+
     <div id="selector" hidden inert>
       <div id="selector-overlay"></div>
       <div id="selector-menu">
+        <button id="roll-dice">ダイスロール</button>
         <button id="roll-skill">技能判定</button>
         <button id="roll-char">能力値判定</button>
         <button id="roll-sanity">正気度判定</button>
