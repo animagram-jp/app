@@ -3,18 +3,17 @@ use crate::{Lang, dice::{self, ResultLevel}};
 use crate::table::Roll;
 use crate::character::{Instance, Model, schema};
 
-const OP_SET_ATTR: u32 = 0b001;
-const OP_SET_TEXT: u32 = 0b010;
-const OP_FOCUS:    u32 = 0b100;
+const OP_SET_ATTR:    u32 = 0b0001;
+const OP_SET_TEXT:    u32 = 0b0010;
+const OP_FOCUS:       u32 = 0b0100;
+const OP_SHOW_MODAL:  u32 = 0b1000;
+const OP_CLOSE_MODAL: u32 = 0b1001;
 
-const EVENT_CLICK:      u32 = 0b001;
-const EVENT_SUBMIT:     u32 = 0b010;
-const EVENT_INPUT:      u32 = 0b011;
-const EVENT_KEYDOWN:    u32 = 0b100;
-const EVENT_FOCUS:      u32 = 0b110;
-const EVENT_OPEN_EDIT:  u32 = 0b111;
-
-const OP_SHOW_MODAL: u32 = 0b1000;
+const EVENT_CLICK:    u32 = 0b001;
+const EVENT_SUBMIT:   u32 = 0b010;
+const EVENT_INPUT:    u32 = 0b011;
+const EVENT_KEYDOWN:  u32 = 0b100;
+const EVENT_FOCUS:    u32 = 0b110;
 
 const SELECTOR_ITEMS: &[&str] = &[
     "roll-dice",
@@ -166,9 +165,6 @@ impl App {
         let key        = js_get_str(&payload, "key");
 
         let cmds: Vec<DomCmd> = match event_type {
-            EVENT_OPEN_EDIT => {
-                self.handle_char_edit_open()
-            }
             EVENT_SUBMIT if target_id == "chat-form" => {
                 let fields = js_get_field(&payload, "fields");
                 let text = js_get_str(&fields, "text");
@@ -194,6 +190,21 @@ impl App {
             EVENT_CLICK if target_id == "dice-input-overlay" => {
                 self.close_dice_input()
             }
+            EVENT_CLICK if target_id == "dice-next" => {
+                if let Some(ref di) = self.dice_input.clone() {
+                    self.handle_dice_keydown("Enter", di.clone())
+                } else { vec![] }
+            }
+            EVENT_CLICK if target_id == "dice-up" => {
+                if let Some(ref di) = self.dice_input.clone() {
+                    self.handle_dice_keydown("ArrowUp", di.clone())
+                } else { vec![] }
+            }
+            EVENT_CLICK if target_id == "dice-down" => {
+                if let Some(ref di) = self.dice_input.clone() {
+                    self.handle_dice_keydown("ArrowDown", di.clone())
+                } else { vec![] }
+            }
             EVENT_CLICK if target_id.starts_with("charroll-edit-") => {
                 let key = target_id.strip_prefix("charroll-edit-").unwrap_or("");
                 self.handle_char_edit_roll(key)
@@ -208,6 +219,13 @@ impl App {
             EVENT_CLICK if target_id.starts_with("skillroll-") => {
                 let key = target_id.strip_prefix("skillroll-").unwrap_or("");
                 self.handle_skill_selector(key)
+            }
+            EVENT_CLICK if target_id == "char-edit-open" => {
+                self.handle_char_edit_open()
+            }
+            EVENT_CLICK if target_id == "char-edit-cancel"
+                        || target_id == "char-edit-cancel2" => {
+                vec![close_modal("char-edit")]
             }
             EVENT_CLICK if target_id == "char-roll" => {
                 self.handle_char_roll()
@@ -705,7 +723,9 @@ impl App {
             }
         }
         let _ = schema::update(&mut self.character);
-        self.stat_view_cmds()
+        let mut cmds = vec![close_modal("char-edit")];
+        cmds.extend(self.stat_view_cmds());
+        cmds
     }
 
     // 能力値・導出値・スキルのメインビューを全更新するDomCmdを生成
@@ -806,12 +826,16 @@ impl App {
         } else {
             di.modifier.to_string()
         };
+        let next_label = match di.phase {
+            DicePhase::Modifier => "ロール",
+            _                   => "次へ",
+        };
         let hint = match di.phase {
-            DicePhase::Count    => format!("{}個 → Enter で次へ", di.count),
-            DicePhase::Sides    => format!("{}個 × {}面 → Enter で次へ", di.count, sides),
+            DicePhase::Count    => format!("個数: {}", di.count),
+            DicePhase::Sides    => format!("{}個 × {}面", di.count, sides),
             DicePhase::Modifier => {
                 let mod_part = if di.modifier != 0 { format!(" {}", modifier_str) } else { String::new() };
-                format!("{}個 × {}面{} → Enter でロール", di.count, sides, mod_part)
+                format!("{}個 × {}面{}", di.count, sides, mod_part)
             }
         };
         let (show_count, show_sides, show_mod) = match di.phase {
@@ -829,6 +853,7 @@ impl App {
             set_text("dice-sides-val",    &format!("{}面", sides)),
             set_text("dice-modifier-val", &modifier_str),
             set_text("dice-hint",         &hint),
+            set_text("dice-next",         next_label),
             focus("dice-input-focus"),
         ]
     }
@@ -1026,4 +1051,8 @@ fn focus(id: &str) -> DomCmd {
 
 fn show_modal(id: &str) -> DomCmd {
     DomCmd { op: OP_SHOW_MODAL, id: id.to_string(), attr: None, value: String::new() }
+}
+
+fn close_modal(id: &str) -> DomCmd {
+    DomCmd { op: OP_CLOSE_MODAL, id: id.to_string(), attr: None, value: String::new() }
 }

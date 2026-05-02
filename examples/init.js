@@ -31,6 +31,9 @@ function execute({ op, id, attr = '', value = '' }) {
     case 0b1000: // showModal
       el.showModal();
       break;
+    case 0b1001: // closeModal
+      el.close();
+      break;
   }
 }
 
@@ -48,18 +51,6 @@ function bind() {
     dispatch({ event_type: 0b011, target_id: 'chat-input', value: e.target.value });
   });
 
-  document.getElementById('char-edit-open')?.addEventListener('click', () => {
-    dispatch({ event_type: 0b111, target_id: 'char-edit-open' });
-  });
-
-  document.getElementById('char-edit-cancel')?.addEventListener('click', () => {
-    document.getElementById('char-edit')?.close();
-  });
-
-  document.getElementById('char-edit-cancel2')?.addEventListener('click', () => {
-    document.getElementById('char-edit')?.close();
-  });
-
   document.getElementById('char-edit-form')?.addEventListener('submit', (e) => {
     e.preventDefault();
     const dialog = document.getElementById('char-edit');
@@ -68,7 +59,6 @@ function bind() {
       [...inputs].filter(i => i.value !== '').map(i => [i.name, i.value])
     );
     dispatch({ event_type: 0b010, target_id: 'char-edit-form', fields });
-    dialog?.close();
   });
 
   document.addEventListener('keydown', (e) => {

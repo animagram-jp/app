@@ -163,16 +163,21 @@
       <div id="dice-input-menu">
         <button id="dice-input-focus" tabindex="0" style="position:absolute;opacity:0;pointer-events:none;width:0;height:0"></button>
         <div id="dice-count-row" class="dice-row" hidden>
-          <span class="dice-row-label">↑↓ で個数を選ぶ</span>
+          <span class="dice-row-label">個数</span>
           <span id="dice-count-val">1</span>
         </div>
         <div id="dice-sides-row" class="dice-row" hidden>
-          <span class="dice-row-label">↑↓ で面数を選ぶ</span>
+          <span class="dice-row-label">面数</span>
           <span id="dice-sides-val">6面</span>
         </div>
         <div id="dice-modifier-row" class="dice-row" hidden>
-          <span class="dice-row-label">↑↓ で修正値を選ぶ</span>
+          <span class="dice-row-label">修正値</span>
           <span id="dice-modifier-val">0</span>
+        </div>
+        <div id="dice-controls">
+          <button id="dice-down"  type="button">－</button>
+          <button id="dice-up"    type="button">＋</button>
+          <button id="dice-next"  type="button">次へ</button>
         </div>
         <div id="dice-hint"></div>
       </div>
