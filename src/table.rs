@@ -1,12 +1,40 @@
 use crate::Lang;
 
-/// CoC7th で発生しうる判定種別の網羅列挙
-/// variant名 = 公式英語名ベース、label = UIに表示するラベル
+// Roll - ロール
+//
+// テキストボックス上に"/"(今後、拡張機能化する際に、config値化すると思われるので、今の時点からハードコードは避けて定数化しておく。ただし、jsでも定数としてならハードコードしてよい。wasmが"/"という値を知る必要は無いが、wasmも予約値として定数を認識すること。(jsは予約定数のkey入力としてeventを引き渡す))が打たれるのをwatchして、以下のRoll用のセレクタをフォーカスdomの上辺を基準に表示物の底面を決定(但し、mobileで高さが足りなくなる場合は見切れないことを優先して上辺からの座標をプラスにする)して、優先度の高いz値でして表示する。
+// セレクタは、ボタンクリック(タッチ, enter)でそれぞれのUiブロックを表示する。但し、上記のUI仕様は変わらない。
+// セレクタ外(esc)をクリック(タッチ)された場合は、表示しているものをhiddenにクリアして、app(wasm)が所持しているstateの表示状態値も更新する。次に"/"を呼ばれた際に、focusなど、判定結果スタックでないstateは保持しない。
+// 現実装は消している気がするが、escした際にテキストボックス内の"/"は消去しないこととする。
+// テキスト出力は Roll::Result::label()-> "[{判定ロールのラベル} {判定目標のラベル}(=数値* 必要なら)] {出目のja/enラベル)}:{出目の数値(重複の無い最終結果のみ)} {判定}: {判定結果のラベル}"で統一。Result(純粋に集計可能な値)はappのState::Stack(Roll種)にスタックする。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Roll {
-    /// Dice Roll - ダイスロール (nDn)
+pub enum Roll { 
+    // Dice Roll - ダイスロール (nDn + n) 
+    //
+    // 選択後に表示されるべきインタラクティブUIは、出現順に
+    // 1. ダイス数選択(inlineで左から +-ボタン(上下キーも同等に), 初期値1のnumber[1~100]入力欄(focusが当たったら直接入力とする。入力時のkeyboard enterで決定を発火), 「次へ」ボタン(enterも同等に))
+    // 2. 1の次へボタンによって ダイス面選択(左から +-ボタン(上下キー), 初期値2のセレクタ[2,3,4,5,6,8,12,16,20,50,100], 「次へ」ボタン(enter))
+    // 3. 2の次へボタンによって 補正(左から +-ボタン(上下キー), 初期値2のセレクタ[2,3,4,5,6,8,12,16,20,50,100], 「次へ」ボタン(enter))
+    // ダイス数は1～100までで十分。ダイス面は2,3,4,5,6,8,12,16,20,100で十分。定数は+-1~100で十分
+    // 1->2->3で1つ前に戻る手段は用意しない。単純なのでescクリアで十分。
+    // 結果のState::Stack(DiceRoll)保持は不要。
+    // また、UI実装上の割り切りとして、入力欄の単位などの後置は排除する。単位は" ()""などでラベルに含めてinput外に前置することで、複雑性を抑える。
+    //
+    // 登場するUIアイテム
+    // アイテムはdomだけ最大出現数htmlにhidden付きでハードコードする。但し、textなどcontentは徹底してrsでの生成、DomCmdによる機械的表示に一貫させる。
+    // 現在、一般的慣習に従いhtml側のelement idは、一意な文字列をハードコードしているが、これをアンダーバーで区切った形に一斉見直しを行う。
+    // 目標は、asm側は、flatな一意mappingではなく、ランタイムでhtmlを捜索することも無く、itemのlabel(en)の静的な組み立てfnによって決め打ちでDomCmdを作成出来ること。
+    // - selector[Roll] label(Roll::DiceRoll, ja/en)=("dice roll (nDn +n)"/"ダイスロール(nDn +n)") 
+    // - selector[Skill] label(Character::Skill, ja/en)
+    // - selector
+    // - text[field] label(Roll::Field,Language::Japanese/English)=("ダイス数"/"dices", "ダイス面数"/"dice sides",...)
+    // - button[up] button[down] label(ja/en)=("↑") label(ja/en)=("↓")
+    // - button[next] label(ja/en)=("次へ"/"next")
     DiceRoll,
     /// Skill Roll — 技能値に対する基本判定
+    //
+    // 1. State::Character::Instance()に存在する技能をセレクタとして表示(上下キー,tab, shift+tabで移動, enter(click, tap)で次へ
+    // 2. 左から、補正という言語依存ラベル、+-ボタン(上下キー), 決定
     SkillRoll,
     /// Characteristic Roll — 能力値及び幸運判定
     CharacteristicRoll,
@@ -37,8 +65,8 @@ pub enum Roll {
 impl Roll {
     pub fn label(self, lang: Lang) -> &'static str {
         match (self, lang) {
-            (Self::DiceRoll,              Lang::Ja) => "ダイスロール (nDn)",
-            (Self::DiceRoll,              Lang::En) => "Dice Roll (nDn)",
+            (Self::DiceRoll,              Lang::Ja) => "ダイスロール (nDn +-n)",
+            (Self::DiceRoll,              Lang::En) => "Dice Roll (nDn +-n)",
             (Self::SkillRoll,             Lang::Ja) => "技能判定",
             (Self::SkillRoll,             Lang::En) => "Skill Roll",
             (Self::CharacteristicRoll,    Lang::Ja) => "能力値判定",
