@@ -10,7 +10,6 @@ impl Instance {
     }
 }
 
-// model: 全フィールドをflatに列挙する識別子。VariableListのidentityとして直接使う。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Model {
     // --- 基本情報 ---
@@ -111,19 +110,233 @@ impl Model {
     }
 }
 
-// 職業識別子
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OccupationKind {
     Athlete, Doctor, Engineer, Entertainer, Activist, Professor, Police, Detective, Artist,
     Antiquarian, Author, MilitaryOfficer, Librarian, Journalist, PrivateInvestigator,
     Clergy, Parapsychologist, Dilettante, Missionary, TribeMember, Farmer,
-    Pilot, Hacker, Criminal, Soldier, Lawyer, Drifter, Musician
+    Pilot, Hacker, Criminal, Soldier, Lawyer, Drifter, Musician,
 }
 
-// display: instance/model/schemaと独立した表示ロジック
-pub mod display {
-    use super::{Model, OccupationKind};
-    pub use crate::Lang;
+pub mod schema {
+    use super::{Instance, Model, OccupationKind};
+    use crate::list::ListError;
+    use crate::Lang;
+
+    // --- public get/set（app.rsなどclient向け） ---
+
+    pub fn get(instance: &Instance, field: Model) -> Result<u16, ListError> {
+        get_u16(instance, field)
+    }
+
+    pub fn set(instance: &mut Instance, field: Model, v: u16) -> Result<(), ListError> {
+        set_u16(instance, field, v)
+    }
+
+    pub fn get_text(instance: &Instance, field: Model) -> Result<String, ListError> {
+        get_str(instance, field)
+    }
+
+    pub fn set_text(instance: &mut Instance, field: Model, v: &str) -> Result<(), ListError> {
+        set_str(instance, field, v)
+    }
+
+    // --- 低レベル get/set ---
+
+    fn id(field: Model) -> usize {
+        field.index()
+    }
+
+    fn get_u16(instance: &Instance, field: Model) -> Result<u16, ListError> {
+        let bytes = instance.data.get(&id(field))?;
+        Ok(u16::from_le_bytes([bytes[0], bytes[1]]))
+    }
+
+    fn set_u16(instance: &mut Instance, field: Model, value: u16) -> Result<(), ListError> {
+        instance.data.upsert(&id(field), &value.to_le_bytes())?;
+        Ok(())
+    }
+
+    fn get_str(instance: &Instance, field: Model) -> Result<String, ListError> {
+        let bytes = instance.data.get(&id(field))?;
+        Ok(String::from_utf8_lossy(bytes).into_owned())
+    }
+
+    fn set_str(instance: &mut Instance, field: Model, value: &str) -> Result<(), ListError> {
+        instance.data.upsert(&id(field), value.as_bytes())?;
+        Ok(())
+    }
+
+    // --- Attribute グルーピング ---
+
+    pub enum Attribute {
+        Characteristic,
+        Derived,
+        Skill,
+        Backstory,
+    }
+
+    pub fn attribute(attr: Attribute) -> &'static [Model] {
+        match attr {
+            Attribute::Characteristic => &[
+                Model::Strength, Model::Constitution, Model::Size, Model::Dexterity,
+                Model::Appearance, Model::Intelligence, Model::Power, Model::Education,
+                Model::Luck,
+            ],
+            Attribute::Derived => &[
+                Model::Sanity, Model::HitPoints, Model::MagicPoints,
+                Model::Dodge, Model::LanguageOwn,
+            ],
+            Attribute::Skill => &[
+                Model::Accounting, Model::Anthropology, Model::Archaeology, Model::Appraise,
+                Model::ArtCraft, Model::Charm, Model::Climb, Model::ComputerUse,
+                Model::CreditRating, Model::CthulhuMythos, Model::Disguise, Model::Dodge,
+                Model::DriveAuto, Model::ElecRepair, Model::Electronics, Model::FastTalk,
+                Model::FightingBrawl, Model::FightingOther, Model::FirearmsHandgun,
+                Model::FirearmsRifleShotgun, Model::FirearmsOther, Model::FirstAid,
+                Model::History, Model::Intimidate, Model::Jump, Model::LanguageOther,
+                Model::LanguageOwn, Model::Law, Model::LibraryUse, Model::Listen,
+                Model::Locksmith, Model::MechRepair, Model::Medicine, Model::NaturalWorld,
+                Model::Navigate, Model::Occult, Model::Persuade, Model::Pilot,
+                Model::Psychoanalysis, Model::Psychology, Model::Ride, Model::Science,
+                Model::SleightOfHand, Model::SpotHidden, Model::Stealth, Model::Survival,
+                Model::Swim, Model::Throw, Model::Track,
+            ],
+            Attribute::Backstory => &[
+                Model::KeyConnection, Model::PersonalDescription, Model::IdeologyAndBeliefs,
+                Model::SignificantPeople, Model::MeaningfulLocation, Model::TreasuredPossessions,
+                Model::Trait, Model::PhobiasAndManias, Model::ArcaneTomesAndSpells,
+            ],
+        }
+    }
+
+    // --- 導出値の計算・書き込み ---
+
+    pub fn create(field: Model, instance: &mut Instance) -> Result<(), ListError> {
+        match field {
+            Model::HitPoints => {
+                let v = (get_u16(instance, Model::Constitution)? + get_u16(instance, Model::Size)?) / 10;
+                set_u16(instance, Model::HitPoints, v)
+            }
+            Model::MagicPoints => {
+                let v = get_u16(instance, Model::Power)? / 5;
+                set_u16(instance, Model::MagicPoints, v)
+            }
+            Model::Sanity => {
+                let v = get_u16(instance, Model::Power)?;
+                set_u16(instance, Model::Sanity, v)
+            }
+            Model::Dodge => {
+                let v = get_u16(instance, Model::Dexterity)? / 2;
+                set_u16(instance, Model::Dodge, v)
+            }
+            Model::LanguageOwn => {
+                let v = get_u16(instance, Model::Education)?;
+                set_u16(instance, Model::LanguageOwn, v)
+            }
+            _ => Ok(()),
+        }
+    }
+
+    // Derivedフィールドを一括再計算する
+    pub fn update(instance: &mut Instance) -> Result<(), ListError> {
+        for &field in attribute(Attribute::Derived) {
+            create(field, instance)?;
+        }
+        Ok(())
+    }
+
+    // 全能力値をロールしてinstanceに書き込み、導出値も更新する
+    pub fn roll_characteristics(instance: &mut Instance) -> Result<(), ListError> {
+        for &field in attribute(Attribute::Characteristic) {
+            let v = roll_characteristic(field);
+            set_u16(instance, field, v)?;
+        }
+        update(instance)
+    }
+
+    // SIZ / INT / EDU は (2d6+6)×5、それ以外は 3d6×5
+    pub fn roll_characteristic(field: Model) -> u16 {
+        match field {
+            Model::Size | Model::Intelligence | Model::Education =>
+                (crate::n_d_n(2, 6) + 6) as u16 * 5,
+            _ =>
+                crate::n_d_n(3, 6) as u16 * 5,
+        }
+    }
+
+    // --- スキル ---
+
+    pub mod skill {
+        use super::super::Model;
+        use super::*;
+
+        // 固定初期値（u16）。0はderived or 任意入力を示す。
+        pub fn base_value(field: Model) -> u16 {
+            match field {
+                Model::Accounting           => 5,
+                Model::Anthropology         => 1,
+                Model::Archaeology          => 1,
+                Model::Appraise             => 5,
+                Model::ArtCraft             => 5,
+                Model::Charm                => 15,
+                Model::Climb                => 20,
+                Model::ComputerUse          => 5,
+                Model::CreditRating         => 0,
+                Model::CthulhuMythos        => 0,
+                Model::Disguise             => 5,
+                Model::Dodge                => 0, // derived: DEX / 2
+                Model::DriveAuto            => 20,
+                Model::ElecRepair           => 10,
+                Model::Electronics          => 1,
+                Model::FastTalk             => 5,
+                Model::FightingBrawl        => 25,
+                Model::FightingOther        => 0,
+                Model::FirearmsHandgun      => 20,
+                Model::FirearmsRifleShotgun => 25,
+                Model::FirearmsOther        => 0,
+                Model::FirstAid             => 30,
+                Model::History              => 5,
+                Model::Intimidate           => 15,
+                Model::Jump                 => 20,
+                Model::LanguageOther        => 1,
+                Model::LanguageOwn          => 0, // derived: EDU
+                Model::Law                  => 5,
+                Model::LibraryUse           => 20,
+                Model::Listen               => 20,
+                Model::Locksmith            => 1,
+                Model::MechRepair           => 10,
+                Model::Medicine             => 1,
+                Model::NaturalWorld         => 10,
+                Model::Navigate             => 10,
+                Model::Occult               => 5,
+                Model::Persuade             => 10,
+                Model::Pilot                => 1,
+                Model::Psychoanalysis       => 1,
+                Model::Psychology           => 10,
+                Model::Ride                 => 5,
+                Model::Science              => 1,
+                Model::SleightOfHand        => 10,
+                Model::SpotHidden           => 25,
+                Model::Stealth              => 20,
+                Model::Survival             => 10,
+                Model::Swim                 => 20,
+                Model::Throw                => 20,
+                Model::Track                => 10,
+                _ => panic!("{:?} is not a skill field", field),
+            }
+        }
+
+        pub fn get(instance: &Instance, field: Model) -> Result<u16, ListError> {
+            get_u16(instance, field)
+        }
+
+        pub fn set(instance: &mut Instance, field: Model, v: u16) -> Result<(), ListError> {
+            set_u16(instance, field, v)
+        }
+    }
+
+    // --- ラベル ---
 
     pub fn label(field: Model, lang: Lang) -> &'static str {
         match (field, lang) {
@@ -297,354 +510,6 @@ pub mod display {
             (OccupationKind::Doctor,  Lang::Ja) => "医師",
             (OccupationKind::Doctor,  Lang::En) => "Doctor",
             _ => todo!("occupation label not yet defined"),
-        }
-    }
-}
-
-// schema: Modelのグルーピングと導出ロジックを担う
-// Instance = VariableList<u8>。数値はu16 little-endian 2バイト、文字列はUTF-8バイト列。
-// get -> Result<T, ListError>: NotExistはフィールド未セットを意味する。
-pub mod schema {
-    use super::{Instance, Model};
-    use crate::list::ListError;
-
-    fn id(field: Model) -> usize {
-        field.index()
-    }
-
-    // u16: little-endian 2バイトでget/set
-    fn get_u16(instance: &Instance, field: Model) -> Result<u16, ListError> {
-        let bytes = instance.data.get(&id(field))?;
-        Ok(u16::from_le_bytes([bytes[0], bytes[1]]))
-    }
-
-    fn set_u16(instance: &mut Instance, field: Model, value: u16) -> Result<(), ListError> {
-        let bytes = value.to_le_bytes();
-        instance.data.upsert(&id(field), &bytes)?;
-        Ok(())
-    }
-
-    // 文字列: UTF-8バイト列でget/set
-    fn get_str(instance: &Instance, field: Model) -> Result<String, ListError> {
-        let bytes = instance.data.get(&id(field))?;
-        Ok(String::from_utf8_lossy(bytes).into_owned())
-    }
-
-    fn set_str(instance: &mut Instance, field: Model, value: &str) -> Result<(), ListError> {
-        instance.data.upsert(&id(field), value.as_bytes())?;
-        Ok(())
-    }
-
-    // --- 能力値 ---
-
-    pub mod strength {
-        use super::*;
-        pub fn get(instance: &Instance) -> Result<u16, ListError> { get_u16(instance, Model::Strength) }
-        pub fn set(instance: &mut Instance, v: u16) -> Result<(), ListError> { set_u16(instance, Model::Strength, v) }
-    }
-
-    pub mod constitution {
-        use super::*;
-        pub fn get(instance: &Instance) -> Result<u16, ListError> { get_u16(instance, Model::Constitution) }
-        pub fn set(instance: &mut Instance, v: u16) -> Result<(), ListError> { set_u16(instance, Model::Constitution, v) }
-    }
-
-    pub mod size {
-        use super::*;
-        pub fn get(instance: &Instance) -> Result<u16, ListError> { get_u16(instance, Model::Size) }
-        pub fn set(instance: &mut Instance, v: u16) -> Result<(), ListError> { set_u16(instance, Model::Size, v) }
-    }
-
-    pub mod dexterity {
-        use super::*;
-        pub fn get(instance: &Instance) -> Result<u16, ListError> { get_u16(instance, Model::Dexterity) }
-        pub fn set(instance: &mut Instance, v: u16) -> Result<(), ListError> { set_u16(instance, Model::Dexterity, v) }
-    }
-
-    pub mod appearance {
-        use super::*;
-        pub fn get(instance: &Instance) -> Result<u16, ListError> { get_u16(instance, Model::Appearance) }
-        pub fn set(instance: &mut Instance, v: u16) -> Result<(), ListError> { set_u16(instance, Model::Appearance, v) }
-    }
-
-    pub mod intelligence {
-        use super::*;
-        pub fn get(instance: &Instance) -> Result<u16, ListError> { get_u16(instance, Model::Intelligence) }
-        pub fn set(instance: &mut Instance, v: u16) -> Result<(), ListError> { set_u16(instance, Model::Intelligence, v) }
-    }
-
-    pub mod power {
-        use super::*;
-        pub fn get(instance: &Instance) -> Result<u16, ListError> { get_u16(instance, Model::Power) }
-        pub fn set(instance: &mut Instance, v: u16) -> Result<(), ListError> { set_u16(instance, Model::Power, v) }
-    }
-
-    pub mod education {
-        use super::*;
-        pub fn get(instance: &Instance) -> Result<u16, ListError> { get_u16(instance, Model::Education) }
-        pub fn set(instance: &mut Instance, v: u16) -> Result<(), ListError> { set_u16(instance, Model::Education, v) }
-    }
-
-    pub mod luck {
-        use super::*;
-        pub fn get(instance: &Instance) -> Result<u16, ListError> { get_u16(instance, Model::Luck) }
-        pub fn set(instance: &mut Instance, v: u16) -> Result<(), ListError> { set_u16(instance, Model::Luck, v) }
-    }
-
-    // --- 導出ステータス ---
-
-    pub mod hit_points {
-        use super::*;
-        pub fn get(instance: &Instance) -> Result<u16, ListError> { get_u16(instance, Model::HitPoints) }
-        pub fn derive(instance: &Instance) -> Result<u16, ListError> {
-            Ok((constitution::get(instance)? + size::get(instance)?) / 10)
-        }
-        pub fn set(instance: &mut Instance) -> Result<(), ListError> {
-            let v = derive(instance)?;
-            set_u16(instance, Model::HitPoints, v)
-        }
-    }
-
-    pub mod magic_points {
-        use super::*;
-        pub fn get(instance: &Instance) -> Result<u16, ListError> { get_u16(instance, Model::MagicPoints) }
-        pub fn derive(instance: &Instance) -> Result<u16, ListError> {
-            Ok(power::get(instance)? / 5)
-        }
-        pub fn set(instance: &mut Instance) -> Result<(), ListError> {
-            let v = derive(instance)?;
-            set_u16(instance, Model::MagicPoints, v)
-        }
-    }
-
-    pub mod sanity {
-        use super::*;
-        pub fn get(instance: &Instance) -> Result<u16, ListError> { get_u16(instance, Model::Sanity) }
-        // SAN初期値 = POW。能力値は×5済みなのでそのまま使う。
-        pub fn derive(instance: &Instance) -> Result<u16, ListError> {
-            power::get(instance)
-        }
-        pub fn set(instance: &mut Instance) -> Result<(), ListError> {
-            let v = derive(instance)?;
-            set_u16(instance, Model::Sanity, v)
-        }
-    }
-
-    pub mod dodge {
-        use super::*;
-        pub fn get(instance: &Instance) -> Result<u16, ListError> { get_u16(instance, Model::Dodge) }
-        pub fn derive(instance: &Instance) -> Result<u16, ListError> {
-            Ok(dexterity::get(instance)? / 2)
-        }
-        pub fn set(instance: &mut Instance) -> Result<(), ListError> {
-            let v = derive(instance)?;
-            set_u16(instance, Model::Dodge, v)
-        }
-    }
-
-    pub mod language_own {
-        use super::*;
-        pub fn get(instance: &Instance) -> Result<u16, ListError> { get_u16(instance, Model::LanguageOwn) }
-        pub fn derive(instance: &Instance) -> Result<u16, ListError> {
-            education::get(instance)
-        }
-        pub fn set(instance: &mut Instance) -> Result<(), ListError> {
-            let v = derive(instance)?;
-            set_u16(instance, Model::LanguageOwn, v)
-        }
-    }
-
-    // --- バックストーリー ---
-
-    pub mod personal_description {
-        use super::*;
-        pub fn get(instance: &Instance) -> Result<String, ListError> { get_str(instance, Model::PersonalDescription) }
-        pub fn set(instance: &mut Instance, v: &str) -> Result<(), ListError> { set_str(instance, Model::PersonalDescription, v) }
-    }
-
-    pub mod ideology_and_beliefs {
-        use super::*;
-        pub fn get(instance: &Instance) -> Result<String, ListError> { get_str(instance, Model::IdeologyAndBeliefs) }
-        pub fn set(instance: &mut Instance, v: &str) -> Result<(), ListError> { set_str(instance, Model::IdeologyAndBeliefs, v) }
-    }
-
-    pub mod significant_people {
-        use super::*;
-        pub fn get(instance: &Instance) -> Result<String, ListError> { get_str(instance, Model::SignificantPeople) }
-        pub fn set(instance: &mut Instance, v: &str) -> Result<(), ListError> { set_str(instance, Model::SignificantPeople, v) }
-    }
-
-    pub mod meaningful_location {
-        use super::*;
-        pub fn get(instance: &Instance) -> Result<String, ListError> { get_str(instance, Model::MeaningfulLocation) }
-        pub fn set(instance: &mut Instance, v: &str) -> Result<(), ListError> { set_str(instance, Model::MeaningfulLocation, v) }
-    }
-
-    pub mod treasured_possessions {
-        use super::*;
-        pub fn get(instance: &Instance) -> Result<String, ListError> { get_str(instance, Model::TreasuredPossessions) }
-        pub fn set(instance: &mut Instance, v: &str) -> Result<(), ListError> { set_str(instance, Model::TreasuredPossessions, v) }
-    }
-
-    pub mod key_connection {
-        use super::*;
-        pub fn get(instance: &Instance) -> Result<String, ListError> { get_str(instance, Model::KeyConnection) }
-        pub fn set(instance: &mut Instance, v: &str) -> Result<(), ListError> { set_str(instance, Model::KeyConnection, v) }
-    }
-
-    pub mod trait_field {
-        use super::*;
-        pub fn get(instance: &Instance) -> Result<String, ListError> { get_str(instance, Model::Trait) }
-        pub fn set(instance: &mut Instance, v: &str) -> Result<(), ListError> { set_str(instance, Model::Trait, v) }
-    }
-
-    pub mod phobias_and_manias {
-        use super::*;
-        pub fn get(instance: &Instance) -> Result<String, ListError> { get_str(instance, Model::PhobiasAndManias) }
-        pub fn set(instance: &mut Instance, v: &str) -> Result<(), ListError> { set_str(instance, Model::PhobiasAndManias, v) }
-    }
-
-    pub mod arcane_tomes_and_spells {
-        use super::*;
-        pub fn get(instance: &Instance) -> Result<String, ListError> { get_str(instance, Model::ArcaneTomesAndSpells) }
-        pub fn set(instance: &mut Instance, v: &str) -> Result<(), ListError> { set_str(instance, Model::ArcaneTomesAndSpells, v) }
-    }
-
-    // --- スキルグルーピング ---
-
-    pub mod skill {
-        use super::super::Model;
-        use super::*;
-
-        pub fn all() -> &'static [Model] {
-            &[
-                Model::Accounting, Model::Anthropology, Model::Archaeology, Model::Appraise,
-                Model::ArtCraft, Model::Charm, Model::Climb, Model::ComputerUse,
-                Model::CreditRating, Model::CthulhuMythos, Model::Disguise, Model::Dodge,
-                Model::DriveAuto, Model::ElecRepair, Model::Electronics, Model::FastTalk,
-                Model::FightingBrawl, Model::FightingOther, Model::FirearmsHandgun,
-                Model::FirearmsRifleShotgun, Model::FirearmsOther, Model::FirstAid,
-                Model::History, Model::Intimidate, Model::Jump, Model::LanguageOther,
-                Model::LanguageOwn, Model::Law, Model::LibraryUse, Model::Listen,
-                Model::Locksmith, Model::MechRepair, Model::Medicine, Model::NaturalWorld,
-                Model::Navigate, Model::Occult, Model::Persuade, Model::Pilot,
-                Model::Psychoanalysis, Model::Psychology, Model::Ride, Model::Science,
-                Model::SleightOfHand, Model::SpotHidden, Model::Stealth, Model::Survival,
-                Model::Swim, Model::Throw, Model::Track,
-            ]
-        }
-
-        // 固定初期値（u16）。0はderived or 任意入力を示す。
-        pub fn base_value(field: Model) -> u16 {
-            match field {
-                Model::Accounting           => 5,
-                Model::Anthropology         => 1,
-                Model::Archaeology          => 1,
-                Model::Appraise             => 5,
-                Model::ArtCraft             => 5,
-                Model::Charm                => 15,
-                Model::Climb                => 20,
-                Model::ComputerUse          => 5,
-                Model::CreditRating         => 0,
-                Model::CthulhuMythos        => 0,
-                Model::Disguise             => 5,
-                Model::Dodge                => 0, // derived: DEX / 2
-                Model::DriveAuto            => 20,
-                Model::ElecRepair           => 10,
-                Model::Electronics          => 1,
-                Model::FastTalk             => 5,
-                Model::FightingBrawl        => 25,
-                Model::FightingOther        => 0,
-                Model::FirearmsHandgun      => 20,
-                Model::FirearmsRifleShotgun => 25,
-                Model::FirearmsOther        => 0,
-                Model::FirstAid             => 30,
-                Model::History              => 5,
-                Model::Intimidate           => 15,
-                Model::Jump                 => 20,
-                Model::LanguageOther        => 1,
-                Model::LanguageOwn          => 0, // derived: EDU
-                Model::Law                  => 5,
-                Model::LibraryUse           => 20,
-                Model::Listen               => 20,
-                Model::Locksmith            => 1,
-                Model::MechRepair           => 10,
-                Model::Medicine             => 1,
-                Model::NaturalWorld         => 10,
-                Model::Navigate             => 10,
-                Model::Occult               => 5,
-                Model::Persuade             => 10,
-                Model::Pilot                => 1,
-                Model::Psychoanalysis       => 1,
-                Model::Psychology           => 10,
-                Model::Ride                 => 5,
-                Model::Science              => 1,
-                Model::SleightOfHand        => 10,
-                Model::SpotHidden           => 25,
-                Model::Stealth              => 20,
-                Model::Survival             => 10,
-                Model::Swim                 => 20,
-                Model::Throw                => 20,
-                Model::Track                => 10,
-                _ => panic!("{:?} is not a skill field", field),
-            }
-        }
-
-        pub fn get(instance: &Instance, field: Model) -> Result<u16, ListError> {
-            get_u16(instance, field)
-        }
-
-        pub fn set(instance: &mut Instance, field: Model, v: u16) -> Result<(), ListError> {
-            set_u16(instance, field, v)
-        }
-    }
-
-    pub mod characteristic {
-        use super::super::Model;
-        use super::*;
-
-        pub fn all() -> &'static [Model] {
-            &[
-                Model::Strength, Model::Constitution, Model::Size, Model::Dexterity,
-                Model::Appearance, Model::Intelligence, Model::Power, Model::Education,
-                Model::Luck,
-            ]
-        }
-
-        // SIZ / INT / EDU は (2d6+6)×5、それ以外は 3d6×5
-        pub fn roll(field: Model) -> u16 {
-            match field {
-                Model::Size | Model::Intelligence | Model::Education =>
-                    (crate::n_d_n(2, 6) + 6) as u16 * 5,
-                _ =>
-                    crate::n_d_n(3, 6) as u16 * 5,
-            }
-        }
-
-        // 全能力値をロールしてinstanceに書き込み、導出値も更新する
-        pub fn roll_all(instance: &mut Instance) -> Result<(), ListError> {
-            for &field in all() {
-                let v = roll(field);
-                set_u16(instance, field, v)?;
-            }
-            hit_points::set(instance)?;
-            magic_points::set(instance)?;
-            sanity::set(instance)?;
-            dodge::set(instance)?;
-            language_own::set(instance)?;
-            Ok(())
-        }
-    }
-
-    pub mod backstory {
-        use super::super::Model;
-
-        pub fn all() -> &'static [Model] {
-            &[
-                Model::KeyConnection, Model::PersonalDescription, Model::IdeologyAndBeliefs,
-                Model::SignificantPeople, Model::MeaningfulLocation, Model::TreasuredPossessions,
-                Model::Trait, Model::PhobiasAndManias, Model::ArcaneTomesAndSpells,
-            ]
         }
     }
 }

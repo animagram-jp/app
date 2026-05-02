@@ -355,7 +355,7 @@ impl App {
     }
 
     fn handle_char_roll(&mut self) -> Vec<DomCmd> {
-        if schema::characteristic::roll_all(&mut self.character).is_err() {
+        if schema::roll_characteristics(&mut self.character).is_err() {
             return vec![];
         }
         // モーダルinputとメインviewを両方更新
@@ -373,18 +373,19 @@ impl App {
     }
 
     fn handle_char_selector(&mut self, key: &str) -> Vec<DomCmd> {
-        let (label, value) = match key {
-            "str" => ("STR",  schema::strength::get(&self.character)),
-            "con" => ("CON",  schema::constitution::get(&self.character)),
-            "siz" => ("SIZ",  schema::size::get(&self.character)),
-            "dex" => ("DEX",  schema::dexterity::get(&self.character)),
-            "app" => ("APP",  schema::appearance::get(&self.character)),
-            "int" => ("INT",  schema::intelligence::get(&self.character)),
-            "pow" => ("POW",  schema::power::get(&self.character)),
-            "edu" => ("EDU",  schema::education::get(&self.character)),
-            "luk" => ("幸運", schema::luck::get(&self.character)),
+        let (label, field) = match key {
+            "str" => ("STR",  Model::Strength),
+            "con" => ("CON",  Model::Constitution),
+            "siz" => ("SIZ",  Model::Size),
+            "dex" => ("DEX",  Model::Dexterity),
+            "app" => ("APP",  Model::Appearance),
+            "int" => ("INT",  Model::Intelligence),
+            "pow" => ("POW",  Model::Power),
+            "edu" => ("EDU",  Model::Education),
+            "luk" => ("幸運", Model::Luck),
             _ => return self.close_char_selector(),
         };
+        let value = schema::get(&self.character, field);
         let difficulty = match value {
             Ok(v) => v,
             Err(_) => {
@@ -544,7 +545,7 @@ impl App {
             Ok(v) => v,
             Err(_) => return self.close_skill_selector(),
         };
-        let label = crate::character::display::label(field, crate::Lang::Ja);
+        let label = schema::label(field, crate::Lang::Ja);
         let result = dice::skill_roll(0, Some(difficulty as u32), dice::DifficultySpec::None).unwrap();
         let entry = RollLog::Skill { field, label, difficulty, total: result.total, level: result.level, pushed };
         let log_cmd = self.push_log(entry);
@@ -558,7 +559,7 @@ impl App {
             Ok(v) => v,
             Err(_) => return self.close_skill_selector(),
         };
-        let label = crate::character::display::label(field, crate::Lang::Ja);
+        let label = schema::label(field, crate::Lang::Ja);
         let roll = crate::n_d_n(1, 100);
         if roll > current as u32 {
             // 成功: 1d10上昇
@@ -584,22 +585,22 @@ impl App {
 
     fn handle_char_edit_save(&mut self, fields: &JsValue) -> Vec<DomCmd> {
         // 能力値
-        let stat_map: &[(&str, fn(&mut Instance, u16) -> _)] = &[
-            ("stat-str", |ch, v| schema::strength::set(ch, v)),
-            ("stat-con", |ch, v| schema::constitution::set(ch, v)),
-            ("stat-siz", |ch, v| schema::size::set(ch, v)),
-            ("stat-dex", |ch, v| schema::dexterity::set(ch, v)),
-            ("stat-app", |ch, v| schema::appearance::set(ch, v)),
-            ("stat-int", |ch, v| schema::intelligence::set(ch, v)),
-            ("stat-pow", |ch, v| schema::power::set(ch, v)),
-            ("stat-edu", |ch, v| schema::education::set(ch, v)),
-            ("stat-luk", |ch, v| schema::luck::set(ch, v)),
+        let stat_map: &[(&str, Model)] = &[
+            ("stat-str", Model::Strength),
+            ("stat-con", Model::Constitution),
+            ("stat-siz", Model::Size),
+            ("stat-dex", Model::Dexterity),
+            ("stat-app", Model::Appearance),
+            ("stat-int", Model::Intelligence),
+            ("stat-pow", Model::Power),
+            ("stat-edu", Model::Education),
+            ("stat-luk", Model::Luck),
         ];
-        for &(name, setter) in stat_map {
+        for &(name, field) in stat_map {
             let s = js_get_str(fields, name);
             if !s.is_empty() {
                 let v: u16 = s.trim().parse().unwrap_or(0);
-                let _ = setter(&mut self.character, v);
+                let _ = schema::set(&mut self.character, field, v);
             }
         }
         // スキル
@@ -618,51 +619,51 @@ impl App {
         let ch = &self.character;
         let mut cmds = vec![];
 
-        let stat_pairs: &[(&str, &str, fn(&Instance) -> _)] = &[
-            ("char-view-str",  "char-val-str",  |ch| schema::strength::get(ch)),
-            ("char-view-con",  "char-val-con",  |ch| schema::constitution::get(ch)),
-            ("char-view-siz",  "char-val-siz",  |ch| schema::size::get(ch)),
-            ("char-view-dex",  "char-val-dex",  |ch| schema::dexterity::get(ch)),
-            ("char-view-app",  "char-val-app",  |ch| schema::appearance::get(ch)),
-            ("char-view-int",  "char-val-int",  |ch| schema::intelligence::get(ch)),
-            ("char-view-pow",  "char-val-pow",  |ch| schema::power::get(ch)),
-            ("char-view-edu",  "char-val-edu",  |ch| schema::education::get(ch)),
-            ("char-view-luk",  "char-val-luk",  |ch| schema::luck::get(ch)),
+        let stat_pairs: &[(&str, &str, Model)] = &[
+            ("char-view-str",  "char-val-str",  Model::Strength),
+            ("char-view-con",  "char-val-con",  Model::Constitution),
+            ("char-view-siz",  "char-val-siz",  Model::Size),
+            ("char-view-dex",  "char-val-dex",  Model::Dexterity),
+            ("char-view-app",  "char-val-app",  Model::Appearance),
+            ("char-view-int",  "char-val-int",  Model::Intelligence),
+            ("char-view-pow",  "char-val-pow",  Model::Power),
+            ("char-view-edu",  "char-val-edu",  Model::Education),
+            ("char-view-luk",  "char-val-luk",  Model::Luck),
         ];
-        for &(view_id, val_id, getter) in stat_pairs {
-            if let Ok(v) = getter(ch) {
+        for &(view_id, val_id, field) in stat_pairs {
+            if let Ok(v) = schema::get(ch, field) {
                 cmds.push(set_attr(view_id, "hidden", ""));
                 cmds.push(set_text(val_id, &v.to_string()));
             }
         }
 
         // モーダルのinputにも反映（ダイスロール後に値が見える）
-        let modal_pairs: &[(&str, fn(&Instance) -> _)] = &[
-            ("edit-str", |ch| schema::strength::get(ch)),
-            ("edit-con", |ch| schema::constitution::get(ch)),
-            ("edit-siz", |ch| schema::size::get(ch)),
-            ("edit-dex", |ch| schema::dexterity::get(ch)),
-            ("edit-app", |ch| schema::appearance::get(ch)),
-            ("edit-int", |ch| schema::intelligence::get(ch)),
-            ("edit-pow", |ch| schema::power::get(ch)),
-            ("edit-edu", |ch| schema::education::get(ch)),
-            ("edit-luk", |ch| schema::luck::get(ch)),
+        let modal_pairs: &[(&str, Model)] = &[
+            ("edit-str", Model::Strength),
+            ("edit-con", Model::Constitution),
+            ("edit-siz", Model::Size),
+            ("edit-dex", Model::Dexterity),
+            ("edit-app", Model::Appearance),
+            ("edit-int", Model::Intelligence),
+            ("edit-pow", Model::Power),
+            ("edit-edu", Model::Education),
+            ("edit-luk", Model::Luck),
         ];
-        for &(id, getter) in modal_pairs {
-            if let Ok(v) = getter(ch) {
+        for &(id, field) in modal_pairs {
+            if let Ok(v) = schema::get(ch, field) {
                 cmds.push(set_attr(id, "value", &v.to_string()));
             }
         }
 
         // 導出値
-        let derived: &[(&str, &str, fn(&Instance) -> _)] = &[
-            ("char-view-hp",    "char-hp",    |ch| schema::hit_points::get(ch)),
-            ("char-view-mp",    "char-mp",    |ch| schema::magic_points::get(ch)),
-            ("char-view-san",   "char-san",   |ch| schema::sanity::get(ch)),
-            ("char-view-dodge", "char-dodge", |ch| schema::dodge::get(ch)),
+        let derived: &[(&str, &str, Model)] = &[
+            ("char-view-hp",    "char-hp",    Model::HitPoints),
+            ("char-view-mp",    "char-mp",    Model::MagicPoints),
+            ("char-view-san",   "char-san",   Model::Sanity),
+            ("char-view-dodge", "char-dodge", Model::Dodge),
         ];
-        for &(view_id, val_id, getter) in derived {
-            if let Ok(v) = getter(ch) {
+        for &(view_id, val_id, field) in derived {
+            if let Ok(v) = schema::get(ch, field) {
                 cmds.push(set_attr(view_id, "hidden", ""));
                 cmds.push(set_text(val_id, &v.to_string()));
             }
