@@ -30,7 +30,13 @@
       - テキストエリアの上辺を基準に表示物位置を決定する。mobileで高さが足りない場合は見切れないことを優先して上辺からの座標を正の値にする。
       - セレクタ外(esc)クリック(タッチ): 表示中の重なりUI非表示化、App::State::DisplayとInputを初期化する。テキストエリアの"/"は消去しない。
       - Roll::Resultはデータとして [ロール種アイテム, 判定対象アイテム, 小計値(単一orリスト), 判定結果アイテム]で構成する。
-      - 出力テキストとして、 Roll::Result::display()-> "[{ロール種ラベル} {判定対象ラベル} = {目標値}(= からここまで、必要なロール種のみ。リストの場合は{}で囲う。)] {「出目」ラベル}:{出目の数値(重複の無い最終結果のみ)} {判定}: {判定結果のラベル}"で統一。Result(純粋に集計可能な値)はappのState::Stack(Roll種)にスタックする。
+      - 出力テキストとして、 Roll::Result::display()-> "[{ロール種ラベル} {判定対象ラベル} = {目標値}(= からここまで、必要なロール種のみ。リストの場合は{}で囲う。)] {「出目」ラベル}:{出目の数値(重複の無い最終結果のみ)} {判定}: {判定結果のラベル}"で統一。
+      - 後で集計するロール種のRoll::Resultのみ、App::State::Stackにスタックする。
+      - 実装上の割り切りとして、入力欄の単位などの後置は排除する。単位は" ()""などでラベルに含めてinput外に前置することで、複雑性を抑える。
+      - 同様に、インタラクティブUIの1->2->3で1つ前に戻る手段は用意しない。単純なのでescクリアで十分。
+      - 必ずすべてのシーンで、appが「初期focus対象」を想定してそこにautofocusを設定しておく。
+      - tabやshift+tabで操作可能なdomだけを適切にfocusできるようにする。
+      - App::Rollがこれらのロール実行モジュールを担当する。よって、今table.rsにあるこれはapp.rsに移す。
     - ダイスロール (nDn + n)
 
 ### Script
@@ -38,4 +44,95 @@
 以下、実装にあたっての具体的な手法規則
 
 1. ディスプレイに表示するのは、ルールブック準拠の言葉(label)であることを徹底する。プレイヤーの知らない実装都合の略称を作らない・使わない・表示しない。ラベルは、1つの変数の属性値(UTF-8)であり、言語(ja,en)別・略称等の引数を取って一意に決まる。
+2. UI実装上の割り切りとして、入力欄の単位などの後置は排除する。単位は" ()""などでラベルに含めてinput外に前置することで、複雑性を抑える。
+
+### Module
+
+システムのモジュール構成
+
+#### Diagram
+
+```
+┌──────┐
+│ user │
+└──┬───┘
+   ▼
+┌────────────────────────┐
+│ terminal (browser)     │
+│┌──────────────────────┐│
+││ canvas (html+css+js) ││
+│└──────────────────────┘│
+│┌──────────────────────┐│
+││ app (Rust as Wasm)   ││
+│└──────────────────────┘│
+│┌──────────────────────┐│
+││ opfs (local disk)    ││
+│└──────────────────────┘│
+│┌──────────────────────┐│
+││ pwa (service worker) ││
+│└──────────────────────┘│
+└────────────────────────┘
+        ▲         ▲
+ ┌──────┴─────┐   │
+ │ dns proxy  │   │
+ └──────┬─────┘   │
+        ▼         ▼
+┌────────────────────────┐
+│ fixture (cloudflare)   │
+│┌─────────────────┐     │
+││ WebRTC (STUN)   │     │
+│└─────────────────┘     │
+│┌─────────────────┐     │
+││ websocket       │     │
+│└─────────────────┘     │
+│┌─────────────────┐     │
+││ fs (local disk) │     │
+│└─────────────────┘     │
+└────────────────────────┘
+```
+
+#### Detail
+
+##### Canvas
+
+- 静的アセット
+  - html:
+    - ファイル名はindex.html。/へのアクセス時に自動転送してくれるサービスが大半なので採用。特殊要件以外では単ファイル完結。
+    - hidden: 常時表示するelement以外、hidden属性を書き込んでおく。
+    - text:   セッション中絶対に変化の無いテキストは書き込んでおくが、現代社会はja/en切り替えがページタイトルレベルで必要なので、該当はほぼ無い。また、それ以外はtextを書き込まない。
+    - 動的に増えるelement: 最大数を決めて、1,2,...をidの末尾に付けてhtmlに書き込んでおく。
+      - hidden: 初回時一斉にremoveAttribute("hidden")が起こるので、最初からcss .hiddenを付けるべきかも
+  - css:
+    - ファイル名はstyle.css。スタイリング用のアセットなので。外部参照ファイルは、挙動を依存しない範囲で適宜追加してよい。
+    - hidden: .hidden {display: none !important;} を定義しておく。html hiddenが支配的なので、この時点で.hidden適用は不要。
+    - セレクタはtagだけで指定する。どうしても表現できない場合のみidまたはclassを使用する。
+  - js:
+    - ファイルは htmlにmoduleとして呼ばれるinit.js, workerメモリを確保するためのworker.js, wasm-packで自動生成されるapp.js, pwa用のsw.jsで全部。
+    - app.js: workerに適宜eventをpostMessageで渡す。
+    - [cmd: u8, element_id: str, value: str|u64|i64]
+    - App(wasm)が必要とする指示種は、以下の通り。
+      - 01: Element.getElementId(element_id).textContent = value;
+      - 02: Element.getElementId(element_id).value = value;
+      - 03: Element.getElementId(element_id).setAttribute(value);
+      - 04: Element.getElementId(element_id).removeAttribute(value); 
+      - 05: window.applyClass(element_id, value); # valueはclass name # toastなど非同期処理のみ
+
+- App初期化時: 初期画面で必要なDOMにremoveAttribute("hidden")指示を出す。
+- 以降
+  - セッションライフタイム中に以降絶対に不要: addAttribute("hidden")
+  - 表示(非表示)したい: classList.add("hidden") (remove("hidden"))を操作する。
+
+1. html
+
+```yaml
+html:
+  head:
+  body:
+    main:
+    drawer: # <dialog id="drawer"> 通常のDOMと同じopen属性付与で操作
+    modal: # <dialog id="modal"> jsのdialog.showModal()を呼ぶ必要有り。
+    form:  # <form id="form" method="dialog"></form> のみの1行要素
+    toast: # <output id="output" role="status"><article id="output_article1"></article><article id ="output_article2"></article></output>
+```
+
 2. 
