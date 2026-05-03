@@ -109,17 +109,16 @@
 - js:
   - htmlにmoduleとして呼ばれるinit.js, workerメモリを確保するためのworker.js, wasm-packで自動生成されるapp.js, pwa用のsw.js。
   - init.js: workerに適宜eventをpostMessageで渡す。また、excute()でAppからの指示を実行する。
-  - excute(operation: u8, element_id: str, value: str|u64|i64){switch(operation){case,...}}
+  - excute(operation: u8, element_id: str, attribute: str, value: str|u64|i64|boolean){}
   - appが必要とする指示種は、以下の通り。
-    - 01: Element.getElementId(element_id).textContent = value;
-    - 02: Element.getElementId(element_id).value = value;
-    - 03: Element.getElementId(element_id).setAttribute(value);
-    - 04: Element.getElementId(element_id).removeAttribute(value); 
-    - 05: Element.getElementId(element_id).classList.add(value);
-    - 06: Element.getElementId(element_id).classList.remove(value);
-    - 07: window.applyClass(element_id, value); # valueはclass name["show", "hide"] # rAFやsetTimeoutなど
-    - 08: Element.getElementId(element_id).openModal(); # 08,09はmodal専用
-    - 09: Element.getElementId(element_id).close();
+    - Element.getElementId(element_id).textContent = value;
+    - Element.getElementId(element_id).value = value;
+    - Element.getElementId(element_id).toggleAttribute(attribute, value);
+    - Element.getElementId(element_id).classList.add(value);
+    - Element.getElementId(element_id).classList.remove(value);
+    - Element.getElementId(element_id).openModal(); # 08,09はmodal専用
+    - Element.getElementId(element_id).close();
+    - applyClass(element_id, value); # valueはclass name["show", "hide"] # rAFやsetTimeoutなど
 
 ##### Terminal app
 
@@ -167,6 +166,9 @@ html:
 ```
 
 ```css
+.hidden {
+  display: none !important;
+}
 output {
   position: fixed;
   bottom: 1.5rem;
@@ -226,85 +228,93 @@ worker.addEventListener("message", (e) => {
   if (type === "execute") { payload.forEach(execute); return; }
 })
 worker.addEventListener("error", (e) => {
-  console.warn("worker error", e.message);
-})
-function dispatch(payload) {
-  worker.postMessage({ type: "event", payload });
+  execute(4, "output_article1", "warning");
+  execute(1, "output_article1_span", "!");
+  execute(1, "output_article1_p", e.message);
+  execute(8, "output_article1", "show");
+  // worker.terminate(); worker = new Worker("worker.js");  // 再起動する場合
+});
+const execute = (operation, element_id, attribute = '', value) => {
+  switch(operation) {
+    const element = document.getElementById(element_id);
+    if (!element) return;
+    case 1: element.textContent = value; break
+    case 2: element.value = value; break
+    case 3: element.toggleAttribute(attribute, value); break
+    case 4: element.classList.add(value); break
+    case 5: element.classList.remove(value); break
+    case 6: element.openModal(); break
+    case 7: element.close(); break
+    case 8: applyClass(element, value); break
+  }
 }
-function execute({ operation, element_id, attr = '', value = '' }) {
-  const element = document.getElementById(element_id);
-  if (!element) return;
-  switch (operation) {
-    case 1:
-      element.//(attr, value);
-      break;
-    case 2:
-      element.//textContent = value;
-      break;
-    case 3:
-      element.//;
-      break;
-    case 4:
-      element.showModal();
-      break;
-    case 5:
-      element.close();
-      break;
+function applyClass = (element, value) => {
+  switch(value) {
+    case "show": 
+      element.classList.remove("hide");
+      requestAnimationFrame(() =>requestAnimationFrame(() => element.classList.add("show"))); break
+    case "hide":
+      element.classList.replace("show", "hide");
   }
 }
 function bind() {
   document.getElementById("form")?.addEventListener("submit", (e) => {
     e.preventDefault();
-    dispatch({
-      event_type: //,
-      target_id: "form",
-      fields: Object.fromEntries(new FormData(e.target)),
-    });
-  });
+    worker.postMessage({ 
+      type: "event",
+      event_type: "submit", 
+      target_id: "form", 
+      value: Object.fromEntries(new FormData(e.target)),
+    })
+  })
   document.getElementById("input")?.addEventListener("input", (e) => {
-    dispatch({ event_type: //, target_id: 'chat_input', value: e.target.value });
-  });
-  document.getElementById('char_edit_form')?.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const dialog = document.getElementById('char_edit');
-    const inputs = dialog.querySelectorAll('input[name]');
-    const fields = Object.fromEntries(
-      [...inputs].filter(i => i.value !== '').map(i => [i.name, i.value])
-    );
-    dispatch({ event_type: 0b010, target_id: 'char_edit_form', fields });
-  });
-
-  document.addEventListener('keydown', (e) => {
-    if (['ArrowUp', 'ArrowDown', 'Enter', 'Escape'].includes(e.key)) {
+    worker.postMessage({ 
+      type: "event",
+      event_type: "input", 
+      target_id: e.target.id, 
+      value: e.target.value,
+    })
+  })
+  document.addEventListener("keydown", (e) => {
+    if (["ArrowUp", "ArrowDown", "Enter", "Escape"].includes(e.key)) {
       e.preventDefault();
-      dispatch({ event_type: 0b100, target_id: e.target.id, key: e.key });
-    }
-  });
-
+      worker.postMessage({ 
+        type: "event",
+        event_type: "keydown", 
+        target_id: e.target.id, 
+        value: e.key,
+    })}
+  })
   document.getElementById('char_edit_open')?.addEventListener('click', (e) => {
     e.stopPropagation();
-    dispatch({ event_type: 0b001, target_id: 'char_edit_open' });
+    dispatch({ event_type: e.type, target_id: 'char_edit_open' });
   });
-
-  document.addEventListener('click', (e) => {
-    const el = e.target.closest('[id]');
-    if (!el || el.id === 'char_edit_open') return;
-    dispatch({ event_type: 0b001, target_id: el.id });
+  document.addEventListener("click", (e) => {
+    const element = e.target.closest('[id]');
+    if (!element || ["button_open_modal"].includes(element.id)) return;
+    worker.postMessage({ 
+        type: "event",
+        event_type: "click", 
+        target_id: element.id, 
+    })
   });
-
-  document.addEventListener('focusin', (e) => {
+  document.addEventListener("focusin", (e) => {
     const id = e.target.id;
     if (id.startsWith('roll_') || id.startsWith('char_roll_') || id.startsWith('skill_roll_')) {
-      dispatch({ event_type: 0b110, target_id: id });
+      worker.postMessage({ 
+          type: "event",
+          event_type: "focusin", 
+          target_id: element.id, 
+      })
     }
   });
 }
-
-worker.postMessage({ type: 'init' });
-worker.addEventListener('message', (e) => {
-  if (e.data.type === 'ready') bind();
+worker.postMessage({ type: "init" });
+worker.addEventListener("message", (e) => {
+  if (e.data.type === "ready") bind();
 }, { once: true });
 
+## worker.js
 ```
 
 2. 
