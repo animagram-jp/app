@@ -36,7 +36,6 @@ use crate::Lang;
 //
 // - textarea[watch] textareaであればなんでもよい。App::new(..., watch: dom)で使う。
 // - div[display] blockオブジェクトであり、inlineをn個書き出せればなんでもよい。App::Roll::Display(DisplayDom: dom, Roll::Result)で用いる
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Roll { 
     // Dice Roll - ダイスロール (nDn + n) 
@@ -69,11 +68,16 @@ pub enum Roll {
     // regular以上(狂気の発作は)
     BoutOfMadnessRealTime,
     // Bout of Madness (Summary) — 狂気の発作 (サマリー)
-    //
+    // RealTimeとの違いは、label文字列と、期間の単位が「時間(hour)」なことだけ
     BoutOfMadnessSummary,
-    /// Pushed Roll — 失敗後の再挑戦ロール
+    // Pushed Roll — 失敗後の再挑戦ロール
+    // 保持しているskill stack stateの中で、failure以下のものだけ候補化する。この時、新しい順にソートする
+    // 既にpush stackに紐づけがあるロールは候補から外すのが正確だが、複雑性が一気に増すので一旦省略。
     PushedRoll,
-    /// Combined Skill Roll — 2技能を1ロールで同時判定
+    // Combined Skill Roll — 2技能を1ロールで同時判定
+    // 1. select[Skill]
+    // 2. select[Skill] って感じでrulebook通り2つ技能を選択したら実行で良いんだが、プレイヤーを観察していると、skill+characteristicの混合も需要あるので、一応メモ。
+    // 3. 出力は、[技能1 技能2] 実値1 実値2 出目 判定1(普通のSkill Rollと同様) 判定2。「部分的成功」みたいな組み合わせロール特有の用語は、rulebookに実は無いので、それは扱わない
     CombinedSkillRoll,
     /// Phobia Table — 恐怖症表
     PhobiaTable,
@@ -85,7 +89,10 @@ pub enum Roll {
     FailedCastingMinor,
     /// Failed Casting (Major) — 呪文失敗表（大）
     FailedCastingMajor,
-    /// Development Check - 上達チェック
+    // Development Check - 上達チェック
+    // ボーナスダイスの無いregular以上のstackのあるskillを候補にする。
+    // ロールした結果、技能値を超過しているか、96~100の範囲であれば、上達する。1d10を追加で処理して、判定としては 上達 n という出力になる
+    // 通常の「失敗」「成功」という概念と違うので、Roll Result enumの別variantとして扱う。上達しない場合は「上達なし」ってlableにしよう
     DevelopmentCheck,
 }
 
