@@ -95,32 +95,39 @@
 
 ##### Canvas
 
-- 静的アセット
-  - html:
-    - ファイル名はindex.html。/へのアクセス時に自動転送してくれるサービスが大半なので採用。特殊要件以外では単ファイル完結。
-    - hidden: 常時表示するelement以外、hidden属性を書き込んでおく。
-    - text:   セッション中絶対に変化の無いテキストは書き込んでおくが、現代社会はja/en切り替えがページタイトルレベルで必要なので、該当はほぼ無い。また、それ以外はtextを書き込まない。
-    - 動的に増えるelement: 最大数を決めて、1,2,...をidの末尾に付けてhtmlに書き込んでおく。
-      - hidden: 初回時一斉にremoveAttribute("hidden")が起こるので、最初からcss .hiddenを付けるべきかも
-  - css:
-    - ファイル名はstyle.css。スタイリング用のアセットなので。外部参照ファイルは、挙動を依存しない範囲で適宜追加してよい。
-    - hidden: .hidden {display: none !important;} を定義しておく。html hiddenが支配的なので、この時点で.hidden適用は不要。
-    - セレクタはtagだけで指定する。どうしても表現できない場合のみidまたはclassを使用する。
-  - js:
-    - ファイルは htmlにmoduleとして呼ばれるinit.js, workerメモリを確保するためのworker.js, wasm-packで自動生成されるapp.js, pwa用のsw.jsで全部。
-    - app.js: workerに適宜eventをpostMessageで渡す。
-    - [cmd: u8, element_id: str, value: str|u64|i64]
-    - App(wasm)が必要とする指示種は、以下の通り。
-      - 01: Element.getElementId(element_id).textContent = value;
-      - 02: Element.getElementId(element_id).value = value;
-      - 03: Element.getElementId(element_id).setAttribute(value);
-      - 04: Element.getElementId(element_id).removeAttribute(value); 
-      - 05: window.applyClass(element_id, value); # valueはclass name # toastなど非同期処理のみ
+- html:
+  - ファイル名はindex.html。/へのアクセス時に自動転送してくれるサービスが大半なので採用。特殊要件以外では単ファイル完結。
+  - hidden/.hidden: FOUC防止のため、bodyにhiddenを書く。常時表示するelement以外、hiddenクラスを指定しておく。
+  - text:   セッション中絶対に変化の無いテキストは書き込んでおくが、現代社会はja/en切り替えがページタイトルレベルで必要なので、該当はほぼ無い。また、それ以外はtextを書き込まない。
+  - 動的に増えるelement: 最大数を決めて、1,2,...をidの末尾に付けてhtmlに書き込んでおく。
+    - hidden: 初回時一斉にremoveAttribute("hidden")が起こるので、最初からcss .hiddenを付けるべきかも
+  - 各elementはheader/div(またはsemantic tag)/footerで構成する。divはこの意味以外で使用禁止。
+- css:
+  - ファイル名はstyle.css。スタイリング用のアセットなので。外部参照ファイルは、挙動を依存しない範囲で適宜追加してよい。
+  - hidden: .hidden {display: none !important;} を定義しておく。html hiddenが支配的なので、この時点で.hidden適用は不要。
+  - セレクタはtagと列挙,idのみで指定する。classで指定しない。
+- js:
+  - htmlにmoduleとして呼ばれるinit.js, workerメモリを確保するためのworker.js, wasm-packで自動生成されるapp.js, pwa用のsw.js。
+  - init.js: workerに適宜eventをpostMessageで渡す。また、excute()でAppからの指示を実行する。
+  - excute(operation: u8, element_id: str, value: str|u64|i64){switch(operation){case,...}}
+  - appが必要とする指示種は、以下の通り。
+    - 01: Element.getElementId(element_id).textContent = value;
+    - 02: Element.getElementId(element_id).value = value;
+    - 03: Element.getElementId(element_id).setAttribute(value);
+    - 04: Element.getElementId(element_id).removeAttribute(value); 
+    - 05: Element.getElementId(element_id).classList.add(value);
+    - 06: Element.getElementId(element_id).classList.remove(value);
+    - 07: window.applyClass(element_id, value); # valueはclass name["show", "hide"] # rAFやsetTimeoutなど
+    - 08: Element.getElementId(element_id).openModal(); # 08,09はmodal専用
+    - 09: Element.getElementId(element_id).close();
 
-- App初期化時: 初期画面で必要なDOMにremoveAttribute("hidden")指示を出す。
+##### Terminal app
+
+- ファイル名: app.wasm
+- app初期化時: 初期画面で必要なDOMにremoveAttribute("hidden")指示を出す。
 - 以降
   - セッションライフタイム中に以降絶対に不要: addAttribute("hidden")
-  - 表示(非表示)したい: classList.add("hidden") (remove("hidden"))を操作する。
+  - 表示(非表示)したい: classList.add/remove("hidden")
 
 1. html
 
@@ -129,10 +136,175 @@ html:
   head:
   body:
     main:
-    drawer: # <dialog id="drawer"> 通常のDOMと同じopen属性付与で操作
-    modal: # <dialog id="modal"> jsのdialog.showModal()を呼ぶ必要有り。
+    drawer: # <dialog id="drawer"> set/removeAttribute("open")
+    modal: # <dialog id="modal"> showModal()
     form:  # <form id="form" method="dialog"></form> のみの1行要素
-    toast: # <output id="output" role="status"><article id="output_article1"></article><article id ="output_article2"></article></output>
+    toast: # <output>
+```
+
+```html
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="style.css">
+    <script type="module" src="init.js"></script>
+  </head>
+  <body hidden>
+    <main>
+      <header></header>
+      <div></div>
+      <footer></footer>
+    </main>
+    <dialog id="modal"></dialog>
+    <output id="output" role="status" aria-live="polite" aria-atomic="false">
+      <article id="output_article1"><span id="output_article1_span"></span><p id="output_article1_p"></p></article>
+      <article id="output_article2"><span id="output_article2_span"></span><p id="output_article2_p"></p></article>
+    </output>
+    <form id="form" method="dialog"></form>
+  </body>
+</html>
+```
+
+```css
+output {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  display: flex;
+  flex-direction: column-reverse; /* 新着が下、上方向にqueue */
+  gap: .5rem;
+  border: none; /* outputのブラウザデフォルトを上書き */
+}
+output article {
+  display: flex;
+  align-items: baseline;
+  gap: .5rem;
+  padding: .625rem .875rem;
+  border-radius: .375rem;
+  min-width: 14rem;
+  max-width: 22rem;
+  background: #1c1c1c;
+  color: #f5f5f5;
+  font-size: .875rem;
+  line-height: 1.45;
+  cursor: pointer;
+  user-select: none;
+  opacity: 0; /* enter前: 右にずれて透明 */
+  translate: 1.5rem 0;
+  transition: opacity .2s ease, translate .2s ease;
+  pointer-events: none;
+}
+output article.show {
+  opacity: 1;
+  translate: 0 0;
+  pointer-events: auto;
+}
+output article.hide {
+  opacity: 0;
+  translate: 1.5rem 0;
+  transition-duration: .15s;
+  pointer-events: none;
+}
+output article span { /* icon */
+  font-weight: 700;
+  font-size: .8125rem;
+  flex-shrink: 0;
+  padding: 0 .125rem;
+  opacity: .7;
+}
+article.info    { background: var(--color-neutral-solid-gray-500); }
+article.success { background: var(--color-semantic-success-1); }
+article.warning { background: var(--color-semantic-warning-yellow-2); }
+```
+
+```js
+// init.js
+const worker = new Worker("./worker.js", { type: "module" })
+worker.addEventListener("message", (e) => {
+  const { type, payload } = e.data;
+  if (type === "execute") { payload.forEach(execute); return; }
+})
+worker.addEventListener("error", (e) => {
+  console.warn("worker error", e.message);
+})
+function dispatch(payload) {
+  worker.postMessage({ type: "event", payload });
+}
+function execute({ operation, element_id, attr = '', value = '' }) {
+  const element = document.getElementById(element_id);
+  if (!element) return;
+  switch (operation) {
+    case 1:
+      element.//(attr, value);
+      break;
+    case 2:
+      element.//textContent = value;
+      break;
+    case 3:
+      element.//;
+      break;
+    case 4:
+      element.showModal();
+      break;
+    case 5:
+      element.close();
+      break;
+  }
+}
+function bind() {
+  document.getElementById("form")?.addEventListener("submit", (e) => {
+    e.preventDefault();
+    dispatch({
+      event_type: //,
+      target_id: "form",
+      fields: Object.fromEntries(new FormData(e.target)),
+    });
+  });
+  document.getElementById("input")?.addEventListener("input", (e) => {
+    dispatch({ event_type: //, target_id: 'chat_input', value: e.target.value });
+  });
+  document.getElementById('char_edit_form')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const dialog = document.getElementById('char_edit');
+    const inputs = dialog.querySelectorAll('input[name]');
+    const fields = Object.fromEntries(
+      [...inputs].filter(i => i.value !== '').map(i => [i.name, i.value])
+    );
+    dispatch({ event_type: 0b010, target_id: 'char_edit_form', fields });
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (['ArrowUp', 'ArrowDown', 'Enter', 'Escape'].includes(e.key)) {
+      e.preventDefault();
+      dispatch({ event_type: 0b100, target_id: e.target.id, key: e.key });
+    }
+  });
+
+  document.getElementById('char_edit_open')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    dispatch({ event_type: 0b001, target_id: 'char_edit_open' });
+  });
+
+  document.addEventListener('click', (e) => {
+    const el = e.target.closest('[id]');
+    if (!el || el.id === 'char_edit_open') return;
+    dispatch({ event_type: 0b001, target_id: el.id });
+  });
+
+  document.addEventListener('focusin', (e) => {
+    const id = e.target.id;
+    if (id.startsWith('roll_') || id.startsWith('char_roll_') || id.startsWith('skill_roll_')) {
+      dispatch({ event_type: 0b110, target_id: id });
+    }
+  });
+}
+
+worker.postMessage({ type: 'init' });
+worker.addEventListener('message', (e) => {
+  if (e.data.type === 'ready') bind();
+}, { once: true });
+
 ```
 
 2. 
