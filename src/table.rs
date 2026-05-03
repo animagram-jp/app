@@ -2,7 +2,7 @@ use crate::Lang;
 
 // Roll - ロール
 //
-// テキストボックス上に"/"(今後、拡張機能化する際に、config値化すると思われるので、今の時点からハードコードは避けて定数化しておく。ただし、jsでも定数としてならハードコードしてよい。wasmが"/"という値を知る必要は無いが、wasmも予約値として定数を認識すること。(jsは予約定数のkey入力としてeventを引き渡す))が打たれるのをwatchして、以下のRoll用のセレクタをフォーカスdomの上辺を基準に表示物の底面を決定(但し、mobileで高さが足りなくなる場合は見切れないことを優先して上辺からの座標をプラスにする)して、優先度の高いz値でして表示する。
+// テキストボックス上に"/"(今後、拡張機能化する際に、config値化すると思われるので、今の時点からハードコードは避けて定数化しておく。ただし、jsでも定数としてならハードコードしてよい。wasmが"/"という値を知る必要は無いが、wasmも予約値として定数を認識すること。(jsは予約定数のkey入力としてeventを引き渡す))が打たれるのをwatchして、以下のRoll用のセレクタをフォーカスdomの上辺を基準に表示物の底面を決定(但し、mobileで高さが足りなくなる場合は見切れないことを優先して上辺からの座標をプラスにする)して、優先度の高いz値で表示する。
 // セレクタは、ボタンクリック(タッチ, enter)でそれぞれのUiブロックを表示する。但し、上記のUI仕様は変わらない。
 // セレクタ外(esc)をクリック(タッチ)された場合は、表示しているものをhiddenにクリアして、app(wasm)が所持しているstateの表示状態値も更新する。次に"/"を呼ばれた際に、focusなど、判定結果スタックでないstateは保持しない。
 // 現実装は消している気がするが、escした際にテキストボックス内の"/"は消去しないこととする。
@@ -130,6 +130,25 @@ impl Roll {
         }
     }
 
+    pub fn dom_id(self) -> &'static str {
+        match self {
+            Self::DiceRoll               => "dice_roll",
+            Self::SkillRoll              => "skill_roll",
+            Self::CharacteristicRoll     => "characteristic_roll",
+            Self::SanityRoll             => "sanity_roll",
+            Self::BoutOfMadnessRealTime  => "bout_of_madness_real_time",
+            Self::BoutOfMadnessSummary   => "bout_of_madness_summary",
+            Self::PushedRoll             => "pushed_roll",
+            Self::CombinedSkillRoll      => "combined_skill_roll",
+            Self::PhobiaTable            => "phobia_table",
+            Self::ManiaTable             => "mania_table",
+            Self::AutoFireRoll           => "auto_fire_roll",
+            Self::FailedCastingMinor     => "failed_casting_minor",
+            Self::FailedCastingMajor     => "failed_casting_major",
+            Self::DevelopmentCheck       => "development_check",
+        }
+    }
+
     /// UIセレクタ用に全種別を順序付きで返す
     pub fn all() -> &'static [Roll] {
         &[
@@ -146,6 +165,7 @@ impl Roll {
             Self::AutoFireRoll,
             Self::FailedCastingMinor,
             Self::FailedCastingMajor,
+            Self::DevelopmentCheck,
         ]
     }
 }

@@ -1,3 +1,5 @@
+// This file includes untranslated text (ja).
+
 # rpg-engine
 
 Softwears for RPG, the joy of understanding how things work.

@@ -38,27 +38,27 @@ function execute({ op, id, attr = '', value = '' }) {
 }
 
 function bind() {
-  document.getElementById('chat-form')?.addEventListener('submit', (e) => {
+  document.getElementById('chat_form')?.addEventListener('submit', (e) => {
     e.preventDefault();
     dispatch({
       event_type: 0b010,
-      target_id: 'chat-form',
+      target_id: 'chat_form',
       fields: Object.fromEntries(new FormData(e.target)),
     });
   });
 
-  document.getElementById('chat-input')?.addEventListener('input', (e) => {
-    dispatch({ event_type: 0b011, target_id: 'chat-input', value: e.target.value });
+  document.getElementById('chat_input')?.addEventListener('input', (e) => {
+    dispatch({ event_type: 0b011, target_id: 'chat_input', value: e.target.value });
   });
 
-  document.getElementById('char-edit-form')?.addEventListener('submit', (e) => {
+  document.getElementById('char_edit_form')?.addEventListener('submit', (e) => {
     e.preventDefault();
-    const dialog = document.getElementById('char-edit');
+    const dialog = document.getElementById('char_edit');
     const inputs = dialog.querySelectorAll('input[name]');
     const fields = Object.fromEntries(
       [...inputs].filter(i => i.value !== '').map(i => [i.name, i.value])
     );
-    dispatch({ event_type: 0b010, target_id: 'char-edit-form', fields });
+    dispatch({ event_type: 0b010, target_id: 'char_edit_form', fields });
   });
 
   document.addEventListener('keydown', (e) => {
@@ -68,20 +68,20 @@ function bind() {
     }
   });
 
-  document.getElementById('char-edit-open')?.addEventListener('click', (e) => {
+  document.getElementById('char_edit_open')?.addEventListener('click', (e) => {
     e.stopPropagation();
-    dispatch({ event_type: 0b001, target_id: 'char-edit-open' });
+    dispatch({ event_type: 0b001, target_id: 'char_edit_open' });
   });
 
   document.addEventListener('click', (e) => {
     const el = e.target.closest('[id]');
-    if (!el || el.id === 'char-edit-open') return;
+    if (!el || el.id === 'char_edit_open') return;
     dispatch({ event_type: 0b001, target_id: el.id });
   });
 
   document.addEventListener('focusin', (e) => {
     const id = e.target.id;
-    if (id.startsWith('roll-') || id.startsWith('charroll-') || id.startsWith('skillroll-')) {
+    if (id.startsWith('roll_') || id.startsWith('char_roll_') || id.startsWith('skill_roll_')) {
       dispatch({ event_type: 0b110, target_id: id });
     }
   });
