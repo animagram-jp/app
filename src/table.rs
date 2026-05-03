@@ -44,7 +44,6 @@ pub enum Roll {
     // 1. text[field](Roll::Field::DiceCount), +-ボタン(上下キーも同等に), 初期値1のnumber[1~100]入力欄(focusが当たったら直接入力とする。入力時のkeyboard enterで決定を発火), 「次へ」ボタン(enterも同等に))
     // 2. text[field](Roll::Field::DiceSide), button[up] button[down], input[number(2(初期値),3,4,5,6,8,12,16,20,50,100)], button[next])
     // 3. text[field](Roll::Field::「補正」の英単語), input[number(0(初期値), -100~100), button[submit])
-    // 4. submitが発火したら、
     // 結果のState::Stack(roll: Roll)保持は不要。
     DiceRoll,
     // Skill Roll — 技能値に対する基本判定
