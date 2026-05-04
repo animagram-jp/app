@@ -3,6 +3,7 @@ pub mod table;
 pub mod app;
 pub mod character;
 pub mod list;
+pub mod js_client;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Lang { En, Ja }

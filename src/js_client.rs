@@ -1,23 +1,40 @@
 use wasm_bindgen::JsValue;
 use js_sys::Reflect;
-use serde_wasm_bindgen::to_value;
 use serde::Serialize;
 
 // ============================================================
 // send (dom operation)
 // ============================================================
 
-const OPERATION_SET_TEXT:     u8 = 1;
-const OPERATION_SET_VALUE:    u8 = 2;
-const OPERATION_SET_ATTR:     u8 = 3;
-const OPERATION_ADD_CLASS:    u8 = 4;
-const OPERATION_REMOVE_CLASS: u8 = 5;
-const OPERATION_FOCUS:        u8 = 6;
-const OPERATION_OPEN_MODAL:   u8 = 7;
-const OPERATION_CLOSE_MODAL:  u8 = 8;
-const OPERATION_JS_CLASS:     u8 = 9;
+pub enum Operation {
+    SetText,
+    SetValue,
+    SetAttr,
+    AddClass,
+    RemoveClass,
+    Focus,
+    OpenModal,
+    CloseModal,
+    JsClass,
+}
 
-#[derive(serde::Serialize)]
+impl Operation {
+    pub fn as_u8(&self) -> u8 {
+        match self {
+            Self::SetText     => 1,
+            Self::SetValue    => 2,
+            Self::SetAttr     => 3,
+            Self::AddClass    => 4,
+            Self::RemoveClass => 5,
+            Self::Focus       => 6,
+            Self::OpenModal   => 7,
+            Self::CloseModal  => 8,
+            Self::JsClass     => 9,
+        }
+    }
+}
+
+#[derive(Serialize)]
 pub struct DomCmd {
     operation: u8,
     id:        String,
@@ -25,6 +42,17 @@ pub struct DomCmd {
     attribute: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     value:     Option<String>,
+}
+
+impl DomCmd {
+    pub fn new(operation: Operation, id: &str, attribute: Option<&str>, value: Option<&str>) -> Self {
+        Self {
+            operation: operation.as_u8(),
+            id:        id.to_string(),
+            attribute: attribute.map(str::to_string),
+            value:     value.map(str::to_string),
+        }
+    }
 }
 
 // ============================================================
@@ -80,32 +108,34 @@ pub enum KeyName {
     Escape,
     Tab,
     Backspace,
+    Other,
 }
 
 impl KeyName {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            Self::ArrowUp    => "ArrowUp",
-            Self::ArrowDown  => "ArrowDown",
-            Self::ArrowLeft  => "ArrowLeft",
-            Self::ArrowRight => "ArrowRight",
-            Self::Enter      => "Enter",
-            Self::Escape     => "Escape",
-            Self::Tab        => "Tab",
-            Self::Backspace  => "Backspace",
+    pub fn decode(s: &str) -> Self {
+        match s {
+            "ArrowUp"    => Self::ArrowUp,
+            "ArrowDown"  => Self::ArrowDown,
+            "ArrowLeft"  => Self::ArrowLeft,
+            "ArrowRight" => Self::ArrowRight,
+            "Enter"      => Self::Enter,
+            "Escape"     => Self::Escape,
+            "Tab"        => Self::Tab,
+            "Backspace"  => Self::Backspace,
+            _            => Self::Other,
         }
     }
 }
 
 /// js由来の文字列をstrとして取得
-pub fn js_get_str(obj: &JsValue, key: &str) -> Option<String> {
-    js_sys::Reflect::get(obj, &JsValue::from_str(key))
+pub fn get_js_str(obj: &JsValue, key: &str) -> Option<String> {
+    Reflect::get(obj, &JsValue::from_str(key))
         .ok()
         .and_then(|v| v.as_string())
 }
 
 /// js由来の整数をu32として取得
-pub fn js_get_u32(obj: &JsValue, key: &str) -> u32 {
+pub fn get_js_u32(obj: &JsValue, key: &str) -> u32 {
     Reflect::get(obj, &JsValue::from_str(key))
         .ok()
         .and_then(|v| v.as_f64())
@@ -120,7 +150,7 @@ pub fn js_get_u32(obj: &JsValue, key: &str) -> u32 {
 }
 
 /// js由来の小数をf64として取得
-pub fn js_get_f64(obj: &JsValue, key: &str) -> Option<f64> {
+pub fn get_js_f64(obj: &JsValue, key: &str) -> Option<f64> {
     Reflect::get(obj, &JsValue::from_str(key))
         .ok()
         .and_then(|v| v.as_f64())
@@ -134,6 +164,6 @@ pub fn js_get_f64(obj: &JsValue, key: &str) -> Option<f64> {
 }
 
 /// js由来のデータを構造体のまま取得
-pub fn js_get_field(obj: &JsValue, key: &str) -> Option<JsValue> {
+pub fn get_js_field(obj: &JsValue, key: &str) -> Option<JsValue> {
     Reflect::get(obj, &JsValue::from_str(key)).ok()
 }

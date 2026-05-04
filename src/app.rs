@@ -2,6 +2,15 @@ use wasm_bindgen::prelude::*;
 use crate::{Lang, dice::{self, ResultLevel}};
 use crate::table::Roll;
 use crate::character::{Instance, Model, schema};
+use crate::js_client::{
+    DomCmd,
+    EventType,
+    KeyName,
+    get_js_str,
+    get_js_u32,
+    get_js_f64,
+    get_js_field,
+};
 
 // ============================================================
 // JS → Rust 変換境界
@@ -154,22 +163,22 @@ impl App {
     }
 
     pub fn event(&mut self, payload: JsValue) -> JsValue {
-        let ev_type   = js_get_u32(&payload, "event_type");
-        let target_id = js_get_str(&payload, "target_id");
-        let key_str   = js_get_str(&payload, "key");
+        let ev_type   = get_js_u32(&payload, "event_type");
+        let target_id = get_js_str(&payload, "target_id");
+        let key_str   = get_js_str(&payload, "key");
 
         let cmds: Vec<DomCmd> = match ev_type {
             EVENT_SUBMIT if target_id == "chat_form" => {
-                let fields = js_get_field(&payload, "fields");
-                let text = js_get_str(&fields, "text");
+                let fields = get_js_field(&payload, "fields");
+                let text = get_js_str(&fields, "text");
                 self.on_chat_submit(&text)
             }
             EVENT_SUBMIT if target_id == "char_edit_form" => {
-                let fields = js_get_field(&payload, "fields");
+                let fields = get_js_field(&payload, "fields");
                 self.on_char_edit_save(&fields)
             }
             EVENT_INPUT if target_id == "chat_input" => {
-                let value = js_get_str(&payload, "value");
+                let value = get_js_str(&payload, "value");
                 self.on_chat_input(&value)
             }
             EVENT_KEYDOWN => {
@@ -658,15 +667,15 @@ impl App {
 
     fn on_char_edit_save(&mut self, fields: &JsValue) -> Vec<DomCmd> {
         for &field in schema::attribute(schema::Attribute::Characteristic) {
-            let s = js_get_str(fields, &format!("stat_{}", field.dom_id()));
+            let s = get_js_str(fields, &format!("stat_{}", field.dom_id()));
             if !s.is_empty() {
                 let v: u16 = s.trim().parse().unwrap_or(0);
                 let _ = schema::set(&mut self.character, field, v);
             }
         }
         for &field in schema::attribute(schema::Attribute::Skill) {
-            let occ: u16 = js_get_str(fields, &format!("occ_{}", field.dom_id())).trim().parse().unwrap_or(0);
-            let int: u16 = js_get_str(fields, &format!("int_{}", field.dom_id())).trim().parse().unwrap_or(0);
+            let occ: u16 = get_js_str(fields, &format!("occ_{}", field.dom_id())).trim().parse().unwrap_or(0);
+            let int: u16 = get_js_str(fields, &format!("int_{}", field.dom_id())).trim().parse().unwrap_or(0);
             if occ > 0 || int > 0 {
                 let base  = schema::skill::base_value(field);
                 let total = base.saturating_add(occ).saturating_add(int);
