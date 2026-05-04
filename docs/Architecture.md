@@ -118,7 +118,7 @@
     - Element.getElementId(element_id).classList.remove(value);
     - Element.getElementId(element_id).openModal(); # 08,09はmodal専用
     - Element.getElementId(element_id).close();
-    - applyClass(element_id, value); # valueはclass name["show", "hide"] # rAFやsetTimeoutなど
+    - applyClass(element_id, value); # rAFやsetTimeoutなど、非同期処理のみ
 
 ##### Terminal app
 
@@ -143,6 +143,28 @@ html:
 
 ```js
 ## worker.js
+```
+
+```rust
+struct PointerState {
+    is_down: bool,
+    start_x: f64,
+    start_y: f64,
+    current_x: f64,
+    current_y: f64,
+    start_time: f64, // Date.now()で取る
+}
+```
+
+```
+長押し判定  → start_time からの経過時間 + 座標のブレが小さい
+スワイプ判定 → pointerup時の差分が閾値以上 + 経過時間が短い
+ドラッグ判定 → pointermove中に差分が閾値以上
+
+pointerdown → is_down = true, 座標・時刻記録, タイマー起動
+pointermove → 座標がブレてたら長押しキャンセル (指がズレた)
+pointerup   → 経過時間で click か 長押し か判定
+pointercancel → 全部リセット (電話着信とかで割り込まれた時)
 ```
 
 2. 

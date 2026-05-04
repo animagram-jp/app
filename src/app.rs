@@ -2,72 +2,10 @@ use wasm_bindgen::prelude::*;
 use crate::{Lang, dice::{self, ResultLevel}};
 use crate::table::Roll;
 use crate::character::{Instance, Model, schema};
-use serde_wasm_bindgen::to_value;
-
-// ============================================================
-// DOM operation
-// ============================================================
-
-const OPERATION_SET_TEXT:     u8 = 1;
-const OPERATION_SET_VALUE:    u8 = 2;
-const OPERATION_SET_ATTR:     u8 = 3;
-const OPERATION_ADD_CLASS:    u8 = 4;
-const OPERATION_REMOVE_CLASS: u8 = 5;
-const OPERATION_FOCUS:        u8 = 6;
-const OPERATION_OPEN_MODAL:   u8 = 7;
-const OPERATION_CLOSE_MODAL:  u8 = 8;
-const OPERATION_EXCUTE_JS:    u8 = 9;
-
-#[derive(serde::Serialize)]
-struct DomCmd {
-    operation: u8,
-    id:        String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    attribute: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    value:     Option<String>,
-}
-
-// 全引数を露出してstructを組み立てるだけのfn
-fn dom_cmd(op: u8, id: &str, attribute: Option<&str>, value: Option<&str>) -> DomCmd {
-    DomCmd {
-        operation: op,
-        id:        id.to_string(),
-        attribute: attribute.map(str::to_string),
-        value:     value.map(str::to_string),
-    }
-}
-
-// Vecへの追加
-fn push_cmd(cmds: &mut Vec<DomCmd>, op: u8, id: &str, attribute: Option<&str>, value: Option<&str>) {
-    cmds.push(dom_cmd(op, id, attribute, value));
-}
 
 // ============================================================
 // JS → Rust 変換境界
 // ============================================================
-
-/// JSから届く event_type 数値
-const EV_CLICK:   u32 = 0b001;
-const EV_SUBMIT:  u32 = 0b010;
-const EV_INPUT:   u32 = 0b011;
-const EV_KEYDOWN: u32 = 0b100;
-const EV_FOCUS:   u32 = 0b110;
-
-#[derive(Debug)]
-enum Key { Up, Down, Enter, Escape, Other }
-
-impl Key {
-    fn parse(s: &str) -> Self {
-        match s {
-            "ArrowUp"   => Self::Up,
-            "ArrowDown" => Self::Down,
-            "Enter"     => Self::Enter,
-            "Escape"    => Self::Escape,
-            _           => Self::Other,
-        }
-    }
-}
 
 /// JSの target_id 文字列から変換される、アプリが扱う全クリック対象
 #[derive(Debug)]
@@ -162,41 +100,13 @@ enum State {
 const DICE_SIDES: &[u32] = &[2, 3, 4, 5, 6, 8, 10, 12, 20, 100];
 
 // ============================================================
-// 定数テーブル
-// ============================================================
-
-
-// ============================================================
-// JS helpers
-// ============================================================
-
-fn js_get_str(obj: &JsValue, key: &str) -> String {
-    js_sys::Reflect::get(obj, &JsValue::from_str(key))
-        .ok()
-        .and_then(|v| v.as_string())
-        .unwrap_or_default()
-}
-
-fn js_get_u32(obj: &JsValue, key: &str) -> u32 {
-    js_sys::Reflect::get(obj, &JsValue::from_str(key))
-        .ok()
-        .and_then(|v| v.as_f64())
-        .unwrap_or(0.0) as u32
-}
-
-fn js_get_field(obj: &JsValue, key: &str) -> JsValue {
-    js_sys::Reflect::get(obj, &JsValue::from_str(key))
-        .unwrap_or(JsValue::NULL)
-}
-
-// ============================================================
 // App
 // ============================================================
 
 #[wasm_bindgen]
 pub struct App {
     state:     State,
-    cmds:      Vec<DomCmd>,
+    dom_cmds:      Vec<DomCmd>,
     roll_log:  Vec<RollLog>,
     character: Instance,
 }
@@ -206,18 +116,24 @@ impl App {
     pub fn init() -> App {
         App {
             state:     State::Idle,
+            dom_cmds:  Vec::new(),
             roll_log:  Vec::new(),
             character: Instance::new(),
         }
     }
-    
-    fn push(&mut self, op: u8, id: &str, attribute: Option<&str>, value: Option<&str>) {
-        self.cmds.push(dom_cmd(op, id, attribute, value));
+
+    fn push(&mut self, operation: u8, id: &str, attribute: Option<&str>, value: Option<&str>) {
+        self.dom_cmds.push(DomCmd {
+            operation: op,
+            id:        id.to_string(),
+            attribute: attribute.map(str::to_string),
+            value:     value.map(str::to_string),
+        });
     }
 
     fn flush(&mut self) -> JsValue {
         let out = serde_wasm_bindgen::to_value(&self.cmds).unwrap_or(JsValue::NULL);
-        self.cmds.clear();
+        self.dom_cmds.clear();
         out
     }
 
@@ -227,26 +143,26 @@ impl App {
         let key_str   = js_get_str(&payload, "key");
 
         let cmds: Vec<DomCmd> = match ev_type {
-            EV_SUBMIT if target_id == "chat_form" => {
+            EVENT_SUBMIT if target_id == "chat_form" => {
                 let fields = js_get_field(&payload, "fields");
                 let text = js_get_str(&fields, "text");
                 self.on_chat_submit(&text)
             }
-            EV_SUBMIT if target_id == "char_edit_form" => {
+            EVENT_SUBMIT if target_id == "char_edit_form" => {
                 let fields = js_get_field(&payload, "fields");
                 self.on_char_edit_save(&fields)
             }
-            EV_INPUT if target_id == "chat_input" => {
+            EVENT_INPUT if target_id == "chat_input" => {
                 let value = js_get_str(&payload, "value");
                 self.on_chat_input(&value)
             }
-            EV_KEYDOWN => {
+            EVENT_KEYDOWN => {
                 self.on_keydown(Key::parse(&key_str))
             }
-            EV_CLICK => {
+            EVENT_CLICK => {
                 self.on_click(ClickTarget::parse(&target_id))
             }
-            EV_FOCUS => {
+            EVENT_FOCUS => {
                 self.on_focus(&target_id);
                 vec![]
             }
