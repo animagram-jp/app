@@ -100,48 +100,49 @@
     // click — ClickTarget に変換済み
     // ----------------------------------------------------------
 
-    fn on_click(&mut self, target: ClickTarget) -> Vec<DomCmd> {
-        match target {
-            ClickTarget::SelectorOverlay       => self.close_selector(),
-            ClickTarget::CharSelectorOverlay   => self.close_char_selector(),
-            ClickTarget::SkillSelectorOverlay  => self.close_skill_selector(),
-            ClickTarget::DiceInputOverlay      => self.close_dice_input(),
-            ClickTarget::DiceUp                => self.dice_increment(true),
-            ClickTarget::DiceDown              => self.dice_increment(false),
-            ClickTarget::DiceNext              => self.dice_advance(),
-            ClickTarget::RollItem(roll)        => self.on_roll_select(roll),
-            ClickTarget::CharRollItem(field)   => self.do_char_roll(field),
-            ClickTarget::SkillRollItem(field)  => {
+    fn on_click(&mut self, dom: Dom) -> Vec<DomCmd> {
+        match dom {
+            Dom::SelectorOverlay       => self.close_selector(),
+            Dom::CharSelectorOverlay   => self.close_char_selector(),
+            Dom::SkillSelectorOverlay  => self.close_skill_selector(),
+            Dom::DiceInputOverlay      => self.close_dice_input(),
+            Dom::DiceUp                => self.dice_increment(true),
+            Dom::DiceDown              => self.dice_increment(false),
+            Dom::DiceNext              => self.dice_advance(),
+            Dom::RollItem(roll)        => self.on_roll_select(roll),
+            Dom::CharRollItem(field)   => self.do_char_roll(field),
+            Dom::SkillRollItem(field)  => {
                 let mode = if let State::SkillSelector { mode, .. } = self.state { mode }
                            else { return self.close_skill_selector(); };
                 self.do_skill_action(mode, field)
             }
-            ClickTarget::CharEditOpen          => self.open_char_edit(),
-            ClickTarget::CharEditCancel        => vec![DomCmd::new(Operation::CloseModal, "char_edit", None, None)],
-            ClickTarget::CharRoll              => self.on_char_roll_all(),
-            ClickTarget::CharEditRoll(field)   => self.on_char_edit_roll(field),
-            ClickTarget::Unknown               => vec![],
+            Dom::CharEditOpen          => self.open_char_edit(),
+            Dom::CharEditCancel        => vec![DomCmd::new(Operation::CloseModal, "char_edit", None, None)],
+            Dom::CharRoll              => self.on_char_roll_all(),
+            Dom::CharEditRoll(field)   => self.on_char_edit_roll(field),
+            _                          => vec![],
         }
     }
 
-    fn on_focus(&mut self, target_id: &str) {
-        if let State::Selector { ref mut idx } = self.state {
-            let all = Roll::all();
-            if let Some(i) = all.iter().position(|r| format!("roll_{}", r.dom_id()) == target_id) {
-                *idx = i;
+    fn on_focus(&mut self, dom: Dom) {
+        match (&mut self.state, dom) {
+            (State::Selector { idx }, Dom::RollItem(roll)) => {
+                let all = Roll::all();
+                if let Some(i) = all.iter().position(|r| *r == roll) { *idx = i; }
             }
-        } else if let State::CharSelector { ref mut idx } = self.state {
-            let chars = schema::attribute(schema::Attribute::Characteristic);
-            if let Some(i) = chars.iter().position(|m| format!("char_roll_{}", m.dom_id()) == target_id) {
-                *idx = i;
+            (State::CharSelector { idx }, Dom::CharRollItem(field)) => {
+                let chars = schema::attribute(schema::Attribute::Characteristic);
+                if let Some(i) = chars.iter().position(|m| *m == field) { *idx = i; }
             }
-        } else if let State::SkillSelector { mode, .. } = self.state {
-            let candidates = self.skill_candidates(mode);
-            if let Some(i) = candidates.iter().position(|s| s == target_id) {
-                if let State::SkillSelector { ref mut idx, .. } = self.state {
-                    *idx = i;
+            (State::SkillSelector { mode, idx }, Dom::SkillRollItem(field)) => {
+                let mode = *mode;
+                let candidates = self.skill_candidates(mode);
+                let id = format!("skill_roll_{}", field.dom_id());
+                if let Some(i) = candidates.iter().position(|s| s == &id) {
+                    if let State::SkillSelector { ref mut idx, .. } = self.state { *idx = i; }
                 }
             }
+            _ => {}
         }
     }
 

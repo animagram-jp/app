@@ -4,51 +4,54 @@ use crate::{Lang, dice::{self, ResultLevel}};
 use crate::table::Roll;
 use crate::character::{Instance, Model, schema};
 use crate::js_client::{
-    DomCmd, Operation,
+    Operation, DomCmd,
+    get_js_str, get_js_field, get_js_f64,
     EventType, KeyName,
-    get_js_str, get_js_field,
+    Gesture, PointerState, detect_gesture,
+    Dom,
 };
 
 // ============================================================
-// UI State
+// canvas state
 // ============================================================
 
-#[derive(Clone, Copy, PartialEq)]
-pub enum SkillSelectorMode { Roll, Push, DevCheck }
-
-#[derive(Clone, Copy, PartialEq)]
-enum DicePhase { Count, Sides, Modifier }
-
-enum State {
-    Idle,
-    Selector      { idx: usize },
-    CharSelector  { idx: usize },
-    SkillSelector { mode: SkillSelectorMode, idx: usize },
-    DiceInput     { phase: DicePhase, count: u32, sides_idx: usize, modifier: i32 },
+#[derive(Clone, Copy, PartialEq, Default)]
+enum Overlay {
+    #[default]
+    None,
+    Select { step: u8, index: usize }, // 上下方向のボタンリストとfocusで構成するセレクターUI
+    Input  { step: u8, value: u32 },   // 左端からlabel, up, down, value, nextのワンライナーUI)
 }
 
-const DICE_SIDES: &[u32] = &[2, 3, 4, 5, 6, 8, 10, 12, 20, 100];
+#[derive(Default)]
+struct CanvasState {
+    overlay: Overlay,
+    modal: bool,      // true = open, false = close
+    drawer: bool,     // true = open, false = close
+}
 
 // ============================================================
-// App
+// app
 // ============================================================
 
 #[wasm_bindgen]
 pub struct App {
-    state:     State,
-    dom_cmds:  Vec<DomCmd>,
-    roll_log:  Vec<RollLog>,
-    character: Instance,
+    pointer_state: PointerState,
+    canvas_state:  CanvasState,
+    dom_cmds:      Vec<DomCmd>,
+    log_stack:     Vec<Log>,
+    character:     Instance,
 }
 
 #[wasm_bindgen]
 impl App {
     pub fn init() -> App {
         App {
-            state:     State::Idle,
-            dom_cmds:  Vec::new(),
-            roll_log:  Vec::new(),
-            character: Instance::new(),
+            pointer_state: PointerState::default(),
+            canvas_state:  CanvasState::default(),
+            dom_cmds:      Vec::new(),
+            log_stack:     Vec::new(),
+            character:     Instance::new(),
         }
     }
 
@@ -59,37 +62,47 @@ impl App {
     }
 
     pub fn event(&mut self, payload: JsValue) {
-        let event_type   = EventType::decode(&get_js_str(&payload, "event_type").unwrap_or_default());
-        let target_id = get_js_str(&payload, "target_id").unwrap_or_default();
-        let key_str   = get_js_str(&payload, "key").unwrap_or_default();
+        let event_type = EventType::decode(&get_js_str(&payload, "event_type").unwrap_or_default());
+        let dom        = Dom::decode(&get_js_str(&payload, "target_id").unwrap_or_default());
+        let key        = KeyName::decode(&get_js_str(&payload, "key").unwrap_or_default());
+        let x          = get_js_f64(&payload, "x").unwrap_or(0.0);
+        let y          = get_js_f64(&payload, "y").unwrap_or(0.0);
+        let time       = get_js_f64(&payload, "time").unwrap_or(0.0);
+
+        self.pointer_state = self.pointer_state.update(&event_type, x, y, time);
+        let gesture = detect_gesture(&self.pointer_state, time);
 
         let dom_cmds: Vec<DomCmd> = match event_type {
-            EventType::Submit if target_id == "chat_form" => {
+            EventType::Submit if matches!(dom, Dom::ChatForm) => {
                 let fields = get_js_field(&payload, "value").unwrap_or(JsValue::NULL);
                 let text = get_js_str(&fields, "text").unwrap_or_default();
                 self.on_chat_submit(&text)
             }
-            EventType::Submit if target_id == "char_edit_form" => {
+            EventType::Submit if matches!(dom, Dom::CharEditForm) => {
                 let fields = get_js_field(&payload, "value").unwrap_or(JsValue::NULL);
                 self.on_char_edit_save(&fields)
             }
-            EventType::Input if target_id == "chat_input" => {
+            EventType::Input if matches!(dom, Dom::ChatInput) => {
                 let value = get_js_str(&payload, "value").unwrap_or_default();
                 self.on_chat_input(&value)
             }
-            EventType::KeyDown => {
-                self.on_keydown(KeyName::decode(&key_str))
-            }
-            EventType::Click => {
-                self.on_click(ClickTarget::parse(&target_id))
-            }
-            EventType::FocusIn => {
-                self.on_focus(&target_id);
-                vec![]
-            }
+            EventType::KeyDown => self.on_keydown(key),
+            EventType::Click   => self.on_click(dom),
+            EventType::FocusIn => { self.on_focus(dom); vec![] }
+            EventType::PointerDown
+            | EventType::PointerMove
+            | EventType::PointerUp
+            | EventType::PointerCancel => self.on_gesture(gesture),
             _ => vec![],
         };
 
-        self.dom_cmds.extend(cmds);
+        self.dom_cmds.extend(dom_cmds);
+    }
+
+    fn on_gesture(&mut self, gesture: Option<Gesture>) -> Vec<DomCmd> {
+        match gesture {
+            Some(g) => self.canvas_state.update(g),
+            None    => vec![],
+        }
     }
 }

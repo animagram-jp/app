@@ -1,6 +1,8 @@
 use wasm_bindgen::JsValue;
 use js_sys::Reflect;
 use serde::Serialize;
+use crate::table::Roll;
+use crate::character::{Model, schema};
 
 // ============================================================
 // send (dom operation)
@@ -183,12 +185,12 @@ pub enum Gesture {
     Drag,
 }
 
-// pointerdown → is_down = true, 座標・時刻記録, タイマー起動
-// pointermove → 座標がブレてたら長押しキャンセル (指がズレた)
-// pointerup   → 経過時間で click か 長押し か判定
-// pointercancel → 全部リセット (割り込まれた時)
-#[derive(Default)]
-struct PointerState {
+// pointerdown:   is_down = true, 座標・時刻記録, タイマー起動
+// pointermove:   座標がブレてたら長押しキャンセル (指がズレた)
+// pointerup:     経過時間で click か 長押し か判定
+// pointercancel: 全部リセット (割り込まれた時)
+#[derive(Default, Clone, Copy)]
+pub struct PointerState {
     is_down:    bool,   // default: false
     start_x:    f64,    // default: 0.0
     start_y:    f64,    // default: 0.0
@@ -197,32 +199,54 @@ struct PointerState {
     start_time: f64,    // default: 0.0
 }
 
-// long press: start_time からの経過時間 + 座標のブレが小さい
-// swipe:      pointerup時の差分が閾値以上 + 経過時間が短い
-// drag:       pointermove中に差分が閾値以上
-fn detect_gesture(state: &PointerState) -> Option<Gesture> {
+impl PointerState {
+    // payloadから必要な値を全て引数で受け取り、新しい状態を返す
+    pub fn update(self, event_type: &EventType, x: f64, y: f64, time: f64) -> Self {
+        match event_type {
+            EventType::PointerDown => Self {
+                is_down:    true,
+                start_x:    x,
+                start_y:    y,
+                current_x:  x,
+                current_y:  y,
+                start_time: time,
+            },
+            EventType::PointerMove => Self {
+                current_x: x,
+                current_y: y,
+                ..self
+            },
+            EventType::PointerUp | EventType::PointerCancel => Self::default(),
+            _ => self,
+        }
+    }
+}
+
+pub fn detect_gesture(state: &PointerState, current_time: f64) -> Option<Gesture> {
+    if !state.is_down { return None; }
+
     let dx = state.current_x - state.start_x;
     let dy = state.current_y - state.start_y;
-    let dt = now() - state.start_time;
+    let dt = current_time - state.start_time;
     let distance = (dx * dx + dy * dy).sqrt();
 
-    // 長押し: 時間長い + 座標ブレ小さい
+    // long press: 時間長い + 座標ブレ小さい
     if dt > 500.0 && distance < 10.0 {
-        return Some(GestureKind::LongPress);
+        return Some(Gesture::LongPress);
     }
 
-    // スワイプ: 時間短い + 距離大きい
+    // swipe: 時間短い + 距離大きい
     if dt < 300.0 && distance > 50.0 {
         return Some(if dx.abs() > dy.abs() {
-            if dx > 0.0 { GestureKind::SwipeRight } else { GestureKind::SwipeLeft }
+            if dx > 0.0 { Gesture::SwipeRight } else { Gesture::SwipeLeft }
         } else {
-            if dy > 0.0 { GestureKind::SwipeDown } else { GestureKind::SwipeUp }
+            if dy > 0.0 { Gesture::SwipeDown } else { Gesture::SwipeUp }
         });
     }
 
-    // ドラッグ: 距離大きい (時間問わず)
+    // drag: 距離大きい
     if distance > 10.0 {
-        return Some(GestureKind::Drag);
+        return Some(Gesture::Drag);
     }
 
     None
@@ -233,6 +257,9 @@ fn detect_gesture(state: &PointerState) -> Option<Gesture> {
 // ============================================================
 
 pub enum Dom {
+    ChatForm,
+    CharEditForm,
+    ChatInput,
     SelectorOverlay,
     RollItem(Roll),
     CharSelectorOverlay,
@@ -251,8 +278,11 @@ pub enum Dom {
 }
 
 impl Dom {
-    fn decode(id: &str) -> Self {
+    pub fn decode(id: &str) -> Self {
         match id {
+            "chat_form"              => Self::ChatForm,
+            "char_edit_form"         => Self::CharEditForm,
+            "chat_input"             => Self::ChatInput,
             "selector_overlay"       => Self::SelectorOverlay,
             "char_selector_overlay"  => Self::CharSelectorOverlay,
             "skill_selector_overlay" => Self::SkillSelectorOverlay,
@@ -267,28 +297,28 @@ impl Dom {
                 let key = id.strip_prefix("roll_").unwrap_or("");
                 match Roll::all().iter().find(|r| r.dom_id() == key) {
                     Some(&roll) => Self::RollItem(roll),
-                    None        => Self::Unknown,
+                    None        => Self::Other,
                 }
             }
             _ if id.starts_with("char_edit_roll_") => {
                 let key = id.strip_prefix("char_edit_roll_").unwrap_or("");
                 match schema::attribute(schema::Attribute::Characteristic).iter().find(|m| m.dom_id() == key) {
                     Some(&field) => Self::CharEditRoll(field),
-                    None         => Self::Unknown,
+                    None         => Self::Other,
                 }
             }
             _ if id.starts_with("char_roll_") => {
                 let key = id.strip_prefix("char_roll_").unwrap_or("");
                 match schema::attribute(schema::Attribute::Characteristic).iter().find(|m| m.dom_id() == key) {
                     Some(&field) => Self::CharRollItem(field),
-                    None         => Self::Unknown,
+                    None         => Self::Other,
                 }
             }
             _ if id.starts_with("skill_roll_") => {
                 let key = id.strip_prefix("skill_roll_").unwrap_or("");
                 match schema::attribute(schema::Attribute::Skill).iter().find(|m| m.dom_id() == key) {
                     Some(&field) => Self::SkillRollItem(field),
-                    None         => Self::Unknown,
+                    None         => Self::Other,
                 }
             }
             _ => Self::Other,
