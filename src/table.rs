@@ -19,18 +19,19 @@ pub enum Roll {
 }
 
 pub struct DiceRoll {
+    character:   character::Instance,
+    roll_select:   Roll,
     select: Vec<DiceRollSelect>,
-    input:  Vec<DiceRollInput>,
-    Result: DiceRollResult,
+    target_select: (character::Schema::Characteristic,character::Schema::Skill),
+    input_counts: u16,
+    input_sides: [2, 3, 4, 5, 6, 8, 10, 12, 20, 100];
+    input_modifier: i16,
+    result: RollResult,
 }
 
-pub DiceRollSelect {
-    character: character::Instance,
-}
-
-pub struct DiceRollResult {
-    total: i16,
-    judge: RollJudge,
+pub struct RollResult {
+    roll_total: Vec<i16>,
+    roll_judge: Option(Vev<RollJudge>),
 }
 
 pub enum RollJudge {
@@ -98,11 +99,40 @@ impl Roll {
     }
 }
 
-/// ランダム表の1エントリ
-#[derive(Debug, Clone, Copy)]
-pub struct TableEntry {
-    pub id: u32,
-    pub label: &'static str,
+pub enum BoutOfMadnessRealTime {
+
+}
+
+impl MadnessRealTime {
+    pub label(self, lang: Lang) -> & static str{
+        match (self, lang) {
+
+        }
+    }
+}
+
+pub enum MadnessSummary {
+
+}
+
+impl MadnessSummary {
+    pub label(self, lang: Lang) -> & static str{
+        match (self, lang) {
+
+        }
+    }
+}
+
+pub enum MadnessSummary {
+
+}
+
+impl MadnessSummary {
+    pub label(self, lang: Lang) -> & static str{
+        match (self, lang) {
+
+        }
+    }
 }
 
 /// ルールブック 日本語訳版 153頁
