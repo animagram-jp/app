@@ -9,10 +9,6 @@ use crate::table::{
 };
 
 // ============================================================
-// Roll
-// ============================================================
-
-// ============================================================
 // Bonus/Penalty dice
 // ============================================================
 
@@ -146,14 +142,6 @@ impl std::fmt::Display for SkillRollResult {
     }
 }
 
-/// 組み合わせ判定の結果
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum CombineOutcome {
-    FullSuccess,
-    PartialSuccess,
-    Failure,
-}
-
 #[derive(Debug)]
 pub struct CombineRollResult {
     pub total: u32,
@@ -161,12 +149,11 @@ pub struct CombineRollResult {
     pub level_2: ResultLevel,
     pub difficulty_1: u32,
     pub difficulty_2: u32,
-    pub outcome: CombineOutcome,
 }
 
 impl std::fmt::Display for CombineRollResult {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "1D100 total={} skill1={} skill2={} level1={:?} level2={:?} outcome={:?}",
+        write!(f, "1D100 total={} skill1={} skill2={} level1={:?} level2={:?}",
             self.total, self.difficulty_1, self.difficulty_2,
             self.level_1, self.level_2, self.outcome)
     }

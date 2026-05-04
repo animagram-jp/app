@@ -1,92 +1,13 @@
 use wasm_bindgen::prelude::*;
+use wasm_bindgen::JsValue;
 use crate::{Lang, dice::{self, ResultLevel}};
 use crate::table::Roll;
 use crate::character::{Instance, Model, schema};
 use crate::js_client::{
-    DomCmd,
-    EventType,
-    KeyName,
-    get_js_str,
-    get_js_u32,
-    get_js_f64,
-    get_js_field,
+    DomCmd, Operation,
+    EventType, KeyName,
+    get_js_str, get_js_field,
 };
-
-// ============================================================
-// JS → Rust 変換境界
-// ============================================================
-
-/// JSの target_id 文字列から変換される、アプリが扱う全クリック対象
-#[derive(Debug)]
-enum ClickTarget {
-    // ロール種セレクタ
-    SelectorOverlay,
-    RollItem(Roll),
-    // 能力値判定セレクタ
-    CharSelectorOverlay,
-    CharRollItem(Model),
-    // 技能セレクタ
-    SkillSelectorOverlay,
-    SkillRollItem(Model),
-    // ダイス入力
-    DiceInputOverlay,
-    DiceUp,
-    DiceDown,
-    DiceNext,
-    // キャラクター編集
-    CharEditOpen,
-    CharEditCancel,
-    CharRoll,
-    CharEditRoll(Model),
-    // 不明
-    Unknown,
-}
-
-impl ClickTarget {
-    fn parse(id: &str) -> Self {
-        match id {
-            "selector_overlay"       => Self::SelectorOverlay,
-            "char_selector_overlay"  => Self::CharSelectorOverlay,
-            "skill_selector_overlay" => Self::SkillSelectorOverlay,
-            "dice_input_overlay"     => Self::DiceInputOverlay,
-            "dice_up"                => Self::DiceUp,
-            "dice_down"              => Self::DiceDown,
-            "dice_next"              => Self::DiceNext,
-            "char_edit_open"         => Self::CharEditOpen,
-            "char_edit_cancel"       => Self::CharEditCancel,
-            "char_roll"              => Self::CharRoll,
-            _ if id.starts_with("roll_") => {
-                let key = id.strip_prefix("roll_").unwrap_or("");
-                match Roll::all().iter().find(|r| r.dom_id() == key) {
-                    Some(&roll) => Self::RollItem(roll),
-                    None        => Self::Unknown,
-                }
-            }
-            _ if id.starts_with("char_edit_roll_") => {
-                let key = id.strip_prefix("char_edit_roll_").unwrap_or("");
-                match schema::attribute(schema::Attribute::Characteristic).iter().find(|m| m.dom_id() == key) {
-                    Some(&field) => Self::CharEditRoll(field),
-                    None         => Self::Unknown,
-                }
-            }
-            _ if id.starts_with("char_roll_") => {
-                let key = id.strip_prefix("char_roll_").unwrap_or("");
-                match schema::attribute(schema::Attribute::Characteristic).iter().find(|m| m.dom_id() == key) {
-                    Some(&field) => Self::CharRollItem(field),
-                    None         => Self::Unknown,
-                }
-            }
-            _ if id.starts_with("skill_roll_") => {
-                let key = id.strip_prefix("skill_roll_").unwrap_or("");
-                match schema::attribute(schema::Attribute::Skill).iter().find(|m| m.dom_id() == key) {
-                    Some(&field) => Self::SkillRollItem(field),
-                    None         => Self::Unknown,
-                }
-            }
-            _ => Self::Unknown,
-        }
-    }
-}
 
 // ============================================================
 // UI State
@@ -106,22 +27,6 @@ enum State {
     DiceInput     { phase: DicePhase, count: u32, sides_idx: usize, modifier: i32 },
 }
 
-// 長押し判定  → start_time からの経過時間 + 座標のブレが小さい
-// スワイプ判定 → pointerup時の差分が閾値以上 + 経過時間が短い
-// ドラッグ判定 → pointermove中に差分が閾値以上
-// pointerdown → is_down = true, 座標・時刻記録, タイマー起動
-// pointermove → 座標がブレてたら長押しキャンセル (指がズレた)
-// pointerup   → 経過時間で click か 長押し か判定
-// pointercancel → 全部リセット (電話着信とかで割り込まれた時)
-struct PointerState {
-    is_down: bool,
-    start_x: f64,
-    start_y: f64,
-    current_x: f64,
-    current_y: f64,
-    start_time: f64,
-}
-
 const DICE_SIDES: &[u32] = &[2, 3, 4, 5, 6, 8, 10, 12, 20, 100];
 
 // ============================================================
@@ -131,7 +36,7 @@ const DICE_SIDES: &[u32] = &[2, 3, 4, 5, 6, 8, 10, 12, 20, 100];
 #[wasm_bindgen]
 pub struct App {
     state:     State,
-    dom_cmds:      Vec<DomCmd>,
+    dom_cmds:  Vec<DomCmd>,
     roll_log:  Vec<RollLog>,
     character: Instance,
 }
@@ -147,54 +52,45 @@ impl App {
         }
     }
 
-    fn push(&mut self, operation: u8, id: &str, attribute: Option<&str>, value: Option<&str>) {
-        self.dom_cmds.push(DomCmd {
-            operation: op,
-            id:        id.to_string(),
-            attribute: attribute.map(str::to_string),
-            value:     value.map(str::to_string),
-        });
-    }
-
-    fn flush(&mut self) -> JsValue {
-        let out = serde_wasm_bindgen::to_value(&self.cmds).unwrap_or(JsValue::NULL);
+    pub fn flush(&mut self) -> JsValue {
+        let out = serde_wasm_bindgen::to_value(&self.dom_cmds).unwrap_or(JsValue::NULL);
         self.dom_cmds.clear();
         out
     }
 
-    pub fn event(&mut self, payload: JsValue) -> JsValue {
-        let ev_type   = get_js_u32(&payload, "event_type");
-        let target_id = get_js_str(&payload, "target_id");
-        let key_str   = get_js_str(&payload, "key");
+    pub fn event(&mut self, payload: JsValue) {
+        let ev_type   = EventType::decode(&get_js_str(&payload, "event_type").unwrap_or_default());
+        let target_id = get_js_str(&payload, "target_id").unwrap_or_default();
+        let key_str   = get_js_str(&payload, "key").unwrap_or_default();
 
         let cmds: Vec<DomCmd> = match ev_type {
-            EVENT_SUBMIT if target_id == "chat_form" => {
-                let fields = get_js_field(&payload, "fields");
-                let text = get_js_str(&fields, "text");
+            EventType::Submit if target_id == "chat_form" => {
+                let fields = get_js_field(&payload, "value").unwrap_or(JsValue::NULL);
+                let text = get_js_str(&fields, "text").unwrap_or_default();
                 self.on_chat_submit(&text)
             }
-            EVENT_SUBMIT if target_id == "char_edit_form" => {
-                let fields = get_js_field(&payload, "fields");
+            EventType::Submit if target_id == "char_edit_form" => {
+                let fields = get_js_field(&payload, "value").unwrap_or(JsValue::NULL);
                 self.on_char_edit_save(&fields)
             }
-            EVENT_INPUT if target_id == "chat_input" => {
-                let value = get_js_str(&payload, "value");
+            EventType::Input if target_id == "chat_input" => {
+                let value = get_js_str(&payload, "value").unwrap_or_default();
                 self.on_chat_input(&value)
             }
-            EVENT_KEYDOWN => {
-                self.on_keydown(Key::parse(&key_str))
+            EventType::KeyDown => {
+                self.on_keydown(KeyName::decode(&key_str))
             }
-            EVENT_CLICK => {
+            EventType::Click => {
                 self.on_click(ClickTarget::parse(&target_id))
             }
-            EVENT_FOCUS => {
+            EventType::FocusIn => {
                 self.on_focus(&target_id);
                 vec![]
             }
             _ => vec![],
         };
 
-        serde_wasm_bindgen::to_value(&cmds).unwrap_or(JsValue::NULL)
+        self.dom_cmds.extend(cmds);
     }
 
     // ----------------------------------------------------------
@@ -204,8 +100,8 @@ impl App {
     fn on_chat_submit(&mut self, text: &str) -> Vec<DomCmd> {
         let trimmed = text.trim();
         if trimmed.is_empty() { return vec![]; }
-        let cmd = self.push_log(RollLog::Message(trimmed.to_string()));
-        vec![cmd, set_attr("chat_input", "value", "")]
+        let cmd = self.log(RollLog::Message(trimmed.to_string()));
+        vec![cmd, DomCmd::new(Operation::SetValue, "chat_input", None, Some(""))]
     }
 
     fn on_chat_input(&mut self, value: &str) -> Vec<DomCmd> {
@@ -213,10 +109,10 @@ impl App {
         self.state = State::Selector { idx: 0 };
         let first_id = format!("roll_{}", Roll::all()[0].dom_id());
         vec![
-            set_attr("chat_input", "value", ""),
-            set_attr("selector", "hidden", ""),
-            set_attr("selector", "inert", ""),
-            focus(&first_id),
+            DomCmd::new(Operation::SetValue, "chat_input", None, Some("")),
+            DomCmd::new(Operation::SetAttr,  "selector", Some("hidden"), Some("")),
+            DomCmd::new(Operation::SetAttr,  "selector", Some("inert"),  Some("")),
+            DomCmd::new(Operation::Focus,    &first_id,  None, None),
         ]
     }
 
@@ -224,7 +120,7 @@ impl App {
     // keydown — state別に分岐
     // ----------------------------------------------------------
 
-    fn on_keydown(&mut self, key: Key) -> Vec<DomCmd> {
+    fn on_keydown(&mut self, key: KeyName) -> Vec<DomCmd> {
         match &self.state {
             State::DiceInput { .. }     => self.dice_keydown(key),
             State::SkillSelector { .. } => self.skill_selector_keydown(key),
@@ -234,63 +130,63 @@ impl App {
         }
     }
 
-    fn selector_keydown(&mut self, key: Key) -> Vec<DomCmd> {
+    fn selector_keydown(&mut self, key: KeyName) -> Vec<DomCmd> {
         let State::Selector { idx } = self.state else { return vec![]; };
         let all = Roll::all();
         let len = all.len();
         match key {
-            Key::Down  => { self.state = State::Selector { idx: (idx + 1) % len };
-                            vec![focus(&format!("roll_{}", all[idx_of(&self.state)].dom_id()))] }
-            Key::Up    => { self.state = State::Selector { idx: (idx + len - 1) % len };
-                            vec![focus(&format!("roll_{}", all[idx_of(&self.state)].dom_id()))] }
-            Key::Enter => self.on_roll_select(all[idx]),
-            Key::Escape => self.close_selector(),
-            Key::Other  => vec![],
+            KeyName::ArrowDown  => { self.state = State::Selector { idx: (idx + 1) % len };
+                                     vec![DomCmd::new(Operation::Focus, &format!("roll_{}", all[idx_of(&self.state)].dom_id()), None, None)] }
+            KeyName::ArrowUp    => { self.state = State::Selector { idx: (idx + len - 1) % len };
+                                     vec![DomCmd::new(Operation::Focus, &format!("roll_{}", all[idx_of(&self.state)].dom_id()), None, None)] }
+            KeyName::Enter  => self.on_roll_select(all[idx]),
+            KeyName::Escape => self.close_selector(),
+            _               => vec![],
         }
     }
 
-    fn char_selector_keydown(&mut self, key: Key) -> Vec<DomCmd> {
+    fn char_selector_keydown(&mut self, key: KeyName) -> Vec<DomCmd> {
         let State::CharSelector { idx } = self.state else { return vec![]; };
         let chars = schema::attribute(schema::Attribute::Characteristic);
         let len = chars.len();
         match key {
-            Key::Down  => { self.state = State::CharSelector { idx: (idx + 1) % len };
-                            vec![focus(&format!("char_roll_{}", chars[idx_of(&self.state)].dom_id()))] }
-            Key::Up    => { self.state = State::CharSelector { idx: (idx + len - 1) % len };
-                            vec![focus(&format!("char_roll_{}", chars[idx_of(&self.state)].dom_id()))] }
-            Key::Enter => self.do_char_roll(chars[idx]),
-            Key::Escape => self.close_char_selector(),
-            Key::Other  => vec![],
+            KeyName::ArrowDown  => { self.state = State::CharSelector { idx: (idx + 1) % len };
+                                     vec![DomCmd::new(Operation::Focus, &format!("char_roll_{}", chars[idx_of(&self.state)].dom_id()), None, None)] }
+            KeyName::ArrowUp    => { self.state = State::CharSelector { idx: (idx + len - 1) % len };
+                                     vec![DomCmd::new(Operation::Focus, &format!("char_roll_{}", chars[idx_of(&self.state)].dom_id()), None, None)] }
+            KeyName::Enter  => self.do_char_roll(chars[idx]),
+            KeyName::Escape => self.close_char_selector(),
+            _               => vec![],
         }
     }
 
-    fn skill_selector_keydown(&mut self, key: Key) -> Vec<DomCmd> {
+    fn skill_selector_keydown(&mut self, key: KeyName) -> Vec<DomCmd> {
         let State::SkillSelector { mode, idx } = self.state else { return vec![]; };
         let candidates = self.skill_candidates(mode);
         let len = candidates.len();
         if len == 0 { return self.close_skill_selector(); }
         match key {
-            Key::Down  => { self.state = State::SkillSelector { mode, idx: (idx + 1) % len };
-                            vec![focus(&candidates[idx_of(&self.state)])] }
-            Key::Up    => { self.state = State::SkillSelector { mode, idx: (idx + len - 1) % len };
-                            vec![focus(&candidates[idx_of(&self.state)])] }
-            Key::Enter => { let id = candidates[idx].clone();
-                            let key = id.strip_prefix("skill_roll_").unwrap_or("");
-                            let field = schema::attribute(schema::Attribute::Skill).iter().find(|m| m.dom_id() == key).copied();
-                            if let Some(f) = field { self.do_skill_action(mode, f) }
-                            else { self.close_skill_selector() } }
-            Key::Escape => self.close_skill_selector(),
-            Key::Other  => vec![],
+            KeyName::ArrowDown  => { self.state = State::SkillSelector { mode, idx: (idx + 1) % len };
+                                     vec![DomCmd::new(Operation::Focus, &candidates[idx_of(&self.state)], None, None)] }
+            KeyName::ArrowUp    => { self.state = State::SkillSelector { mode, idx: (idx + len - 1) % len };
+                                     vec![DomCmd::new(Operation::Focus, &candidates[idx_of(&self.state)], None, None)] }
+            KeyName::Enter => { let id = candidates[idx].clone();
+                                let k = id.strip_prefix("skill_roll_").unwrap_or("");
+                                let field = schema::attribute(schema::Attribute::Skill).iter().find(|m| m.dom_id() == k).copied();
+                                if let Some(f) = field { self.do_skill_action(mode, f) }
+                                else { self.close_skill_selector() } }
+            KeyName::Escape => self.close_skill_selector(),
+            _               => vec![],
         }
     }
 
-    fn dice_keydown(&mut self, key: Key) -> Vec<DomCmd> {
+    fn dice_keydown(&mut self, key: KeyName) -> Vec<DomCmd> {
         match key {
-            Key::Escape => self.close_dice_input(),
-            Key::Enter  => self.dice_advance(),
-            Key::Up     => self.dice_increment(true),
-            Key::Down   => self.dice_increment(false),
-            Key::Other  => vec![],
+            KeyName::Escape     => self.close_dice_input(),
+            KeyName::Enter      => self.dice_advance(),
+            KeyName::ArrowUp    => self.dice_increment(true),
+            KeyName::ArrowDown  => self.dice_increment(false),
+            _                   => vec![],
         }
     }
 
@@ -315,7 +211,7 @@ impl App {
                 self.do_skill_action(mode, field)
             }
             ClickTarget::CharEditOpen          => self.open_char_edit(),
-            ClickTarget::CharEditCancel        => vec![close_modal("char_edit")],
+            ClickTarget::CharEditCancel        => vec![DomCmd::new(Operation::CloseModal, "char_edit", None, None)],
             ClickTarget::CharRoll              => self.on_char_roll_all(),
             ClickTarget::CharEditRoll(field)   => self.on_char_edit_roll(field),
             ClickTarget::Unknown               => vec![],
@@ -352,8 +248,8 @@ impl App {
             Roll::DiceRoll => {
                 self.state = State::DiceInput { phase: DicePhase::Count, count: 1, sides_idx: 4, modifier: 0 };
                 let mut cmds = vec![
-                    set_attr("selector", "hidden", "true"),
-                    set_attr("selector", "inert", "true"),
+                    DomCmd::new(Operation::SetAttr, "selector", Some("hidden"), Some("true")),
+                    DomCmd::new(Operation::SetAttr, "selector", Some("inert"),  Some("true")),
                 ];
                 cmds.extend(self.render_dice_input());
                 cmds
@@ -365,24 +261,23 @@ impl App {
                 let first_id = format!("char_roll_{}", schema::attribute(schema::Attribute::Characteristic)[0].dom_id());
                 self.state = State::CharSelector { idx: 0 };
                 vec![
-                    set_attr("selector", "hidden", "true"),
-                    set_attr("selector", "inert", "true"),
-                    set_attr("char_selector", "hidden", ""),
-                    set_attr("char_selector", "inert", ""),
-                    focus(&first_id),
+                    DomCmd::new(Operation::SetAttr, "selector",      Some("hidden"), Some("true")),
+                    DomCmd::new(Operation::SetAttr, "selector",      Some("inert"),  Some("true")),
+                    DomCmd::new(Operation::SetAttr, "char_selector", Some("hidden"), Some("")),
+                    DomCmd::new(Operation::SetAttr, "char_selector", Some("inert"),  Some("")),
+                    DomCmd::new(Operation::Focus,   &first_id,       None,           None),
                 ]
             }
-            Roll::PushedRoll      => self.open_skill_selector(SkillSelectorMode::Push, "プッシュロール"),
+            Roll::PushedRoll       => self.open_skill_selector(SkillSelectorMode::Push, "プッシュロール"),
             Roll::DevelopmentCheck => self.open_skill_selector(SkillSelectorMode::DevCheck, "上達チェック"),
             roll => {
                 self.state = State::Idle;
-                let entry = make_roll_log(roll);
-                let log_cmd = self.push_log(entry);
+                let log_cmd = self.log(make_roll_log(roll));
                 vec![
-                    set_attr("selector", "hidden", "true"),
-                    set_attr("selector", "inert", "true"),
+                    DomCmd::new(Operation::SetAttr, "selector", Some("hidden"), Some("true")),
+                    DomCmd::new(Operation::SetAttr, "selector", Some("inert"),  Some("true")),
                     log_cmd,
-                    focus("chat_input"),
+                    DomCmd::new(Operation::Focus, "chat_input", None, None),
                 ]
             }
         }
@@ -397,7 +292,7 @@ impl App {
         let difficulty = match schema::get(&self.character, field) {
             Ok(v)  => v,
             Err(_) => {
-                let log_cmd = self.push_log(RollLog::Message(format!("[能力値判定: {}] 未入力", label)));
+                let log_cmd = self.log(RollLog::Message(format!("[能力値判定: {}] 未入力", label)));
                 let mut cmds = self.close_char_selector();
                 cmds.push(log_cmd);
                 return cmds;
@@ -405,7 +300,7 @@ impl App {
         };
         let result = dice::skill_roll(0, Some(difficulty as u32), dice::DifficultySpec::None).unwrap();
         let entry = RollLog::Characteristic { label, difficulty, total: result.total, level: result.level };
-        let log_cmd = self.push_log(entry);
+        let log_cmd = self.log(entry);
         let mut cmds = self.close_char_selector();
         cmds.push(log_cmd);
         cmds
@@ -423,26 +318,26 @@ impl App {
                 SkillSelectorMode::Push     => "プッシュ可能なロールがありません",
                 SkillSelectorMode::DevCheck => "上達チェック対象の技能がありません",
             };
-            let log_cmd = self.push_log(RollLog::Message(msg.to_string()));
+            let log_cmd = self.log(RollLog::Message(msg.to_string()));
             let mut cmds = self.close_selector();
             cmds.push(log_cmd);
             return cmds;
         }
         self.state = State::SkillSelector { mode, idx: 0 };
         let mut cmds = vec![
-            set_attr("selector", "hidden", "true"),
-            set_attr("selector", "inert", "true"),
-            set_text("skill_selector_title", title),
-            set_attr("skill_selector", "hidden", ""),
-            set_attr("skill_selector", "inert", ""),
+            DomCmd::new(Operation::SetAttr,  "selector",            Some("hidden"), Some("true")),
+            DomCmd::new(Operation::SetAttr,  "selector",            Some("inert"),  Some("true")),
+            DomCmd::new(Operation::SetText,  "skill_selector_title", None,          Some(title)),
+            DomCmd::new(Operation::SetAttr,  "skill_selector",      Some("hidden"), Some("")),
+            DomCmd::new(Operation::SetAttr,  "skill_selector",      Some("inert"),  Some("")),
         ];
         for &field in schema::attribute(schema::Attribute::Skill) {
             let id = format!("skill_roll_{}", field.dom_id());
             let visible = candidates.iter().any(|c| c == &id);
-            cmds.push(set_attr(&id, "hidden", if visible { "" } else { "true" }));
-            cmds.push(set_attr(&id, "inert",  if visible { "" } else { "true" }));
+            cmds.push(DomCmd::new(Operation::SetAttr, &id, Some("hidden"), Some(if visible { "" } else { "true" })));
+            cmds.push(DomCmd::new(Operation::SetAttr, &id, Some("inert"),  Some(if visible { "" } else { "true" })));
         }
-        if !candidates.is_empty() { cmds.push(focus(&candidates[0])); }
+        if !candidates.is_empty() { cmds.push(DomCmd::new(Operation::Focus, &candidates[0], None, None)); }
         cmds
     }
 
@@ -469,7 +364,7 @@ impl App {
         let label = schema::label(field, Lang::Ja);
         let result = dice::skill_roll(0, Some(difficulty as u32), dice::DifficultySpec::None).unwrap();
         let entry = RollLog::Skill { field, label, difficulty, total: result.total, level: result.level, pushed };
-        let log_cmd = self.push_log(entry);
+        let log_cmd = self.log(entry);
         let mut cmds = self.close_skill_selector();
         cmds.push(log_cmd);
         cmds
@@ -488,11 +383,11 @@ impl App {
             let new_val = current.saturating_add(gain);
             let _ = schema::skill::set(&mut self.character, field, new_val);
             let msg = format!("[上達チェック: {}] 出目: {} > {} → 成功! +{} → {}", label, roll, current, gain, new_val);
-            cmds.push(self.push_log(RollLog::Message(msg)));
-            cmds.push(set_text(&format!("skill_val_{}", field.dom_id()), &new_val.to_string()));
+            cmds.push(self.log(RollLog::Message(msg)));
+            cmds.push(DomCmd::new(Operation::SetText, &format!("skill_val_{}", field.dom_id()), None, Some(&new_val.to_string())));
         } else {
             let msg = format!("[上達チェック: {}] 出目: {} ≤ {} → 失敗", label, roll, current);
-            cmds.push(self.push_log(RollLog::Message(msg)));
+            cmds.push(self.log(RollLog::Message(msg)));
         }
         cmds
     }
@@ -592,17 +487,17 @@ impl App {
             DicePhase::Modifier => ("true", "true", ""),
         };
         vec![
-            set_attr("dice_input", "hidden", ""),
-            set_attr("dice_input", "inert", ""),
-            set_attr("dice_count_row",    "hidden", h_count),
-            set_attr("dice_sides_row",    "hidden", h_sides),
-            set_attr("dice_modifier_row", "hidden", h_mod),
-            set_text("dice_count_val",    &count.to_string()),
-            set_text("dice_sides_val",    &format!("{}面", sides)),
-            set_text("dice_modifier_val", &modifier_str),
-            set_text("dice_hint",         &hint),
-            set_text("dice_next",         next_label),
-            focus("dice_input_focus"),
+            DomCmd::new(Operation::SetAttr, "dice_input",        Some("hidden"), Some("")),
+            DomCmd::new(Operation::SetAttr, "dice_input",        Some("inert"),  Some("")),
+            DomCmd::new(Operation::SetAttr, "dice_count_row",    Some("hidden"), Some(h_count)),
+            DomCmd::new(Operation::SetAttr, "dice_sides_row",    Some("hidden"), Some(h_sides)),
+            DomCmd::new(Operation::SetAttr, "dice_modifier_row", Some("hidden"), Some(h_mod)),
+            DomCmd::new(Operation::SetText, "dice_count_val",    None, Some(&count.to_string())),
+            DomCmd::new(Operation::SetText, "dice_sides_val",    None, Some(&format!("{}面", sides))),
+            DomCmd::new(Operation::SetText, "dice_modifier_val", None, Some(&modifier_str)),
+            DomCmd::new(Operation::SetText, "dice_hint",         None, Some(&hint)),
+            DomCmd::new(Operation::SetText, "dice_next",         None, Some(next_label)),
+            DomCmd::new(Operation::Focus,   "dice_input_focus",  None, None),
         ]
     }
 
@@ -619,7 +514,7 @@ impl App {
         };
         let expr = format!("{}d{}{}", count, sides, modifier_str);
         let msg  = format!("[ダイスロール: {}] 出目: {} → 合計: {}", expr, raw, total);
-        let log_cmd = self.push_log(RollLog::Message(msg));
+        let log_cmd = self.log(RollLog::Message(msg));
         let mut cmds = self.close_dice_input();
         cmds.push(log_cmd);
         cmds
@@ -632,21 +527,18 @@ impl App {
 
     fn open_char_edit(&self) -> Vec<DomCmd> {
         let ch = &self.character;
-        let mut cmds = vec![show_modal("char_edit")];
+        let mut cmds = vec![DomCmd::new(Operation::OpenModal, "char_edit", None, None)];
         for &field in schema::attribute(schema::Attribute::Characteristic) {
             if let Ok(v) = schema::get(ch, field) {
-                cmds.push(set_attr(&format!("edit_{}", field.dom_id()), "value", &v.to_string()));
+                cmds.push(DomCmd::new(Operation::SetValue, &format!("edit_{}", field.dom_id()), None, Some(&v.to_string())));
             }
         }
         for &field in schema::attribute(schema::Attribute::Skill) {
             let occ_id = format!("skill_occ_{}", field.dom_id());
             let int_id = format!("skill_int_{}", field.dom_id());
-            if let Ok(v) = schema::skill::get(ch, field) {
-                cmds.push(set_attr(&occ_id, "value", &v.to_string()));
-            } else {
-                cmds.push(set_attr(&occ_id, "value", ""));
-            }
-            cmds.push(set_attr(&int_id, "value", ""));
+            let occ_val = schema::skill::get(ch, field).map(|v| v.to_string()).unwrap_or_default();
+            cmds.push(DomCmd::new(Operation::SetValue, &occ_id, None, Some(&occ_val)));
+            cmds.push(DomCmd::new(Operation::SetValue, &int_id, None, Some("")));
         }
         cmds
     }
@@ -660,22 +552,22 @@ impl App {
         let v = schema::roll_characteristic(field);
         let _ = schema::set(&mut self.character, field, v);
         let _ = schema::update(&mut self.character);
-        let mut cmds = vec![set_attr(&format!("edit_{}", field.dom_id()), "value", &v.to_string())];
+        let mut cmds = vec![DomCmd::new(Operation::SetValue, &format!("edit_{}", field.dom_id()), None, Some(&v.to_string()))];
         cmds.extend(self.stat_view_cmds());
         cmds
     }
 
     fn on_char_edit_save(&mut self, fields: &JsValue) -> Vec<DomCmd> {
         for &field in schema::attribute(schema::Attribute::Characteristic) {
-            let s = get_js_str(fields, &format!("stat_{}", field.dom_id()));
+            let s = get_js_str(fields, &format!("stat_{}", field.dom_id())).unwrap_or_default();
             if !s.is_empty() {
                 let v: u16 = s.trim().parse().unwrap_or(0);
                 let _ = schema::set(&mut self.character, field, v);
             }
         }
         for &field in schema::attribute(schema::Attribute::Skill) {
-            let occ: u16 = get_js_str(fields, &format!("occ_{}", field.dom_id())).trim().parse().unwrap_or(0);
-            let int: u16 = get_js_str(fields, &format!("int_{}", field.dom_id())).trim().parse().unwrap_or(0);
+            let occ: u16 = get_js_str(fields, &format!("occ_{}", field.dom_id())).unwrap_or_default().trim().parse().unwrap_or(0);
+            let int: u16 = get_js_str(fields, &format!("int_{}", field.dom_id())).unwrap_or_default().trim().parse().unwrap_or(0);
             if occ > 0 || int > 0 {
                 let base  = schema::skill::base_value(field);
                 let total = base.saturating_add(occ).saturating_add(int);
@@ -683,7 +575,7 @@ impl App {
             }
         }
         let _ = schema::update(&mut self.character);
-        let mut cmds = vec![close_modal("char_edit")];
+        let mut cmds = vec![DomCmd::new(Operation::CloseModal, "char_edit", None, None)];
         cmds.extend(self.stat_view_cmds());
         cmds
     }
@@ -693,21 +585,21 @@ impl App {
         let mut cmds = vec![];
         for &field in schema::attribute(schema::Attribute::Characteristic) {
             if let Ok(v) = schema::get(ch, field) {
-                cmds.push(set_attr(&format!("char_view_{}", field.dom_id()), "hidden", ""));
-                cmds.push(set_text(&format!("char_val_{}", field.dom_id()), &v.to_string()));
-                cmds.push(set_attr(&format!("edit_{}", field.dom_id()), "value", &v.to_string()));
+                cmds.push(DomCmd::new(Operation::SetAttr,  &format!("char_view_{}", field.dom_id()), Some("hidden"), Some("")));
+                cmds.push(DomCmd::new(Operation::SetText,  &format!("char_val_{}", field.dom_id()),  None,           Some(&v.to_string())));
+                cmds.push(DomCmd::new(Operation::SetValue, &format!("edit_{}", field.dom_id()),      None,           Some(&v.to_string())));
             }
         }
         for &field in schema::attribute(schema::Attribute::Derived) {
             if let Ok(v) = schema::get(ch, field) {
-                cmds.push(set_attr(&format!("char_view_{}", field.dom_id()), "hidden", ""));
-                cmds.push(set_text(&format!("char_val_{}", field.dom_id()), &v.to_string()));
+                cmds.push(DomCmd::new(Operation::SetAttr, &format!("char_view_{}", field.dom_id()), Some("hidden"), Some("")));
+                cmds.push(DomCmd::new(Operation::SetText, &format!("char_val_{}", field.dom_id()),  None,           Some(&v.to_string())));
             }
         }
         for &field in schema::attribute(schema::Attribute::Skill) {
             if let Ok(v) = schema::skill::get(ch, field) {
-                cmds.push(set_attr(&format!("skill_view_{}", field.dom_id()), "hidden", ""));
-                cmds.push(set_text(&format!("skill_val_{}", field.dom_id()), &v.to_string()));
+                cmds.push(DomCmd::new(Operation::SetAttr, &format!("skill_view_{}", field.dom_id()), Some("hidden"), Some("")));
+                cmds.push(DomCmd::new(Operation::SetText, &format!("skill_val_{}", field.dom_id()),  None,           Some(&v.to_string())));
             }
         }
         cmds
@@ -720,36 +612,36 @@ impl App {
     fn close_selector(&mut self) -> Vec<DomCmd> {
         self.state = State::Idle;
         vec![
-            set_attr("selector", "hidden", "true"),
-            set_attr("selector", "inert", "true"),
-            focus("chat_input"),
+            DomCmd::new(Operation::SetAttr, "selector", Some("hidden"), Some("true")),
+            DomCmd::new(Operation::SetAttr, "selector", Some("inert"),  Some("true")),
+            DomCmd::new(Operation::Focus,   "chat_input", None, None),
         ]
     }
 
     fn close_char_selector(&mut self) -> Vec<DomCmd> {
         self.state = State::Idle;
         vec![
-            set_attr("char_selector", "hidden", "true"),
-            set_attr("char_selector", "inert", "true"),
-            focus("chat_input"),
+            DomCmd::new(Operation::SetAttr, "char_selector", Some("hidden"), Some("true")),
+            DomCmd::new(Operation::SetAttr, "char_selector", Some("inert"),  Some("true")),
+            DomCmd::new(Operation::Focus,   "chat_input", None, None),
         ]
     }
 
     fn close_skill_selector(&mut self) -> Vec<DomCmd> {
         self.state = State::Idle;
         vec![
-            set_attr("skill_selector", "hidden", "true"),
-            set_attr("skill_selector", "inert", "true"),
-            focus("chat_input"),
+            DomCmd::new(Operation::SetAttr, "skill_selector", Some("hidden"), Some("true")),
+            DomCmd::new(Operation::SetAttr, "skill_selector", Some("inert"),  Some("true")),
+            DomCmd::new(Operation::Focus,   "chat_input", None, None),
         ]
     }
 
     fn close_dice_input(&mut self) -> Vec<DomCmd> {
         self.state = State::Idle;
         vec![
-            set_attr("dice_input", "hidden", "true"),
-            set_attr("dice_input", "inert", "true"),
-            focus("chat_input"),
+            DomCmd::new(Operation::SetAttr, "dice_input", Some("hidden"), Some("true")),
+            DomCmd::new(Operation::SetAttr, "dice_input", Some("inert"),  Some("true")),
+            DomCmd::new(Operation::Focus,   "chat_input", None, None),
         ]
     }
 
@@ -757,10 +649,10 @@ impl App {
     // log
     // ----------------------------------------------------------
 
-    fn push_log(&mut self, entry: RollLog) -> DomCmd {
+    fn log(&mut self, entry: RollLog) -> DomCmd {
         self.roll_log.push(entry);
         let text: String = self.roll_log.iter().map(|e| format!("{}\n", e)).collect();
-        set_text("chat_log", &text)
+        DomCmd::new(Operation::SetText, "chat_log", None, Some(&text))
     }
 }
 

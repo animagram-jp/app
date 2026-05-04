@@ -59,76 +59,6 @@ impl DomCmd {
 // receive (js value)
 // ============================================================
 
-pub enum EventType {
-    Submit,
-    Click,
-    ContextMenu,
-    KeyDown,
-    Input,
-    Change,
-    FocusIn,
-    Blur,
-    Resize,
-    Scroll,
-    Drop,
-    PointerDown,
-    PointerUp,
-    PointerMove,
-    PointerCancel,
-    Other,
-}
-
-impl EventType {
-    pub fn decode(s: &str) -> Self {
-        match s {
-            "submit"       => Self::Submit,
-            "click"        => Self::Click,
-            "contextmenu"  => Self::ContextMenu,
-            "keydown"      => Self::KeyDown,
-            "input"        => Self::Input,
-            "change"       => Self::Change,
-            "focusin"      => Self::FocusIn,
-            "blur"         => Self::Blur,
-            "resize"       => Self::Resize,
-            "scroll"       => Self::Scroll,
-            "drop"         => Self::Drop,
-            "pointerdown"  => Self::PointerDown,
-            "pointerup"    => Self::PointerUp,
-            "pointermove"  => Self::PointerMove,
-            "pointercancel"=> Self::PointerCancel,
-            _              => Self::Other,
-        }
-    }
-}
-
-pub enum KeyName {
-    ArrowUp,
-    ArrowDown,
-    ArrowLeft,
-    ArrowRight,
-    Enter,
-    Escape,
-    Tab,
-    Backspace,
-    Other,
-}
-
-impl KeyName {
-    pub fn decode(s: &str) -> Self {
-        match s {
-            "ArrowUp"    => Self::ArrowUp,
-            "ArrowDown"  => Self::ArrowDown,
-            "ArrowLeft"  => Self::ArrowLeft,
-            "ArrowRight" => Self::ArrowRight,
-            "Enter"      => Self::Enter,
-            "Escape"     => Self::Escape,
-            "Tab"        => Self::Tab,
-            "Backspace"  => Self::Backspace,
-            _            => Self::Other,
-        }
-    }
-}
-
 /// js由来の文字列をstrとして取得
 pub fn get_js_str(obj: &JsValue, key: &str) -> Option<String> {
     Reflect::get(obj, &JsValue::from_str(key))
@@ -168,4 +98,200 @@ pub fn get_js_f64(obj: &JsValue, key: &str) -> Option<f64> {
 /// js由来のデータを構造体のまま取得
 pub fn get_js_field(obj: &JsValue, key: &str) -> Option<JsValue> {
     Reflect::get(obj, &JsValue::from_str(key)).ok()
+}
+
+pub enum EventType {
+    Submit,
+    Click,
+    ContextMenu,
+    KeyDown,
+    Input,
+    Change,
+    FocusIn,
+    Blur,
+    Resize,
+    Scroll,
+    Drop,
+    PointerDown,
+    PointerUp,
+    PointerMove,
+    PointerCancel,
+    Other,
+}
+
+impl EventType {
+    pub fn decode(event_type: &str) -> Self {
+        match event_type {
+            "submit"       => Self::Submit,
+            "click"        => Self::Click,
+            "contextmenu"  => Self::ContextMenu,
+            "keydown"      => Self::KeyDown,
+            "input"        => Self::Input,
+            "change"       => Self::Change,
+            "focusin"      => Self::FocusIn,
+            "blur"         => Self::Blur,
+            "resize"       => Self::Resize,
+            "scroll"       => Self::Scroll,
+            "drop"         => Self::Drop,
+            "pointerdown"  => Self::PointerDown,
+            "pointerup"    => Self::PointerUp,
+            "pointermove"  => Self::PointerMove,
+            "pointercancel"=> Self::PointerCancel,
+            _              => Self::Other,
+        }
+    }
+}
+
+pub enum KeyName {
+    ArrowUp,
+    ArrowDown,
+    ArrowLeft,
+    ArrowRight,
+    Enter,
+    Escape,
+    Tab,
+    Backspace,
+    Other,
+}
+
+impl KeyName {
+    pub fn decode(key_name: &str) -> Self {
+        match key_name {
+            "ArrowUp"    => Self::ArrowUp,
+            "ArrowDown"  => Self::ArrowDown,
+            "ArrowLeft"  => Self::ArrowLeft,
+            "ArrowRight" => Self::ArrowRight,
+            "Enter"      => Self::Enter,
+            "Escape"     => Self::Escape,
+            "Tab"        => Self::Tab,
+            "Backspace"  => Self::Backspace,
+            _            => Self::Other,
+        }
+    }
+}
+
+// ============================================================
+// gesture: long press, swipe (up,down,left,right), drag
+// ============================================================
+
+pub enum Gesture {
+    LongPress,
+    SwipeUp,
+    SwipeDown,
+    SwipeLeft,
+    SwipeRight,
+    Drag,
+}
+
+// pointerdown → is_down = true, 座標・時刻記録, タイマー起動
+// pointermove → 座標がブレてたら長押しキャンセル (指がズレた)
+// pointerup   → 経過時間で click か 長押し か判定
+// pointercancel → 全部リセット (割り込まれた時)
+#[derive(Default)]
+struct PointerState {
+    is_down:    bool,   // default: false
+    start_x:    f64,    // default: 0.0
+    start_y:    f64,    // default: 0.0
+    current_x:  f64,    // default: 0.0
+    current_y:  f64,    // default: 0.0
+    start_time: f64,    // default: 0.0
+}
+
+// long press: start_time からの経過時間 + 座標のブレが小さい
+// swipe:      pointerup時の差分が閾値以上 + 経過時間が短い
+// drag:       pointermove中に差分が閾値以上
+fn detect_gesture(state: &PointerState) -> Option<Gesture> {
+    let dx = state.current_x - state.start_x;
+    let dy = state.current_y - state.start_y;
+    let dt = now() - state.start_time;
+    let distance = (dx * dx + dy * dy).sqrt();
+
+    // 長押し: 時間長い + 座標ブレ小さい
+    if dt > 500.0 && distance < 10.0 {
+        return Some(GestureKind::LongPress);
+    }
+
+    // スワイプ: 時間短い + 距離大きい
+    if dt < 300.0 && distance > 50.0 {
+        return Some(if dx.abs() > dy.abs() {
+            if dx > 0.0 { GestureKind::SwipeRight } else { GestureKind::SwipeLeft }
+        } else {
+            if dy > 0.0 { GestureKind::SwipeDown } else { GestureKind::SwipeUp }
+        });
+    }
+
+    // ドラッグ: 距離大きい (時間問わず)
+    if distance > 10.0 {
+        return Some(GestureKind::Drag);
+    }
+
+    None
+}
+
+// ============================================================
+// dom (rust item <=> element id)
+// ============================================================
+
+pub enum Dom {
+    SelectorOverlay,
+    RollItem(Roll),
+    CharSelectorOverlay,
+    CharRollItem(Model),
+    SkillSelectorOverlay,
+    SkillRollItem(Model),
+    DiceInputOverlay,
+    DiceUp,
+    DiceDown,
+    DiceNext,
+    CharEditOpen,
+    CharEditCancel,
+    CharRoll,
+    CharEditRoll(Model),
+    Other,
+}
+
+impl Dom {
+    fn decode(id: &str) -> Self {
+        match id {
+            "selector_overlay"       => Self::SelectorOverlay,
+            "char_selector_overlay"  => Self::CharSelectorOverlay,
+            "skill_selector_overlay" => Self::SkillSelectorOverlay,
+            "dice_input_overlay"     => Self::DiceInputOverlay,
+            "dice_up"                => Self::DiceUp,
+            "dice_down"              => Self::DiceDown,
+            "dice_next"              => Self::DiceNext,
+            "char_edit_open"         => Self::CharEditOpen,
+            "char_edit_cancel"       => Self::CharEditCancel,
+            "char_roll"              => Self::CharRoll,
+            _ if id.starts_with("roll_") => {
+                let key = id.strip_prefix("roll_").unwrap_or("");
+                match Roll::all().iter().find(|r| r.dom_id() == key) {
+                    Some(&roll) => Self::RollItem(roll),
+                    None        => Self::Unknown,
+                }
+            }
+            _ if id.starts_with("char_edit_roll_") => {
+                let key = id.strip_prefix("char_edit_roll_").unwrap_or("");
+                match schema::attribute(schema::Attribute::Characteristic).iter().find(|m| m.dom_id() == key) {
+                    Some(&field) => Self::CharEditRoll(field),
+                    None         => Self::Unknown,
+                }
+            }
+            _ if id.starts_with("char_roll_") => {
+                let key = id.strip_prefix("char_roll_").unwrap_or("");
+                match schema::attribute(schema::Attribute::Characteristic).iter().find(|m| m.dom_id() == key) {
+                    Some(&field) => Self::CharRollItem(field),
+                    None         => Self::Unknown,
+                }
+            }
+            _ if id.starts_with("skill_roll_") => {
+                let key = id.strip_prefix("skill_roll_").unwrap_or("");
+                match schema::attribute(schema::Attribute::Skill).iter().find(|m| m.dom_id() == key) {
+                    Some(&field) => Self::SkillRollItem(field),
+                    None         => Self::Unknown,
+                }
+            }
+            _ => Self::Other,
+        }
+    }
 }

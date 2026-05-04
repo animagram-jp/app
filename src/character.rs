@@ -12,7 +12,7 @@ impl Instance {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Model {
-    // --- 基本情報 ---
+    
     Identity,
     Timestamp,
     Occupation,
