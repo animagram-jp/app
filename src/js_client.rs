@@ -66,7 +66,7 @@ pub enum EventType {
     KeyDown,
     Input,
     Change,
-    Focus,
+    FocusIn,
     Blur,
     Resize,
     Scroll,
@@ -75,26 +75,28 @@ pub enum EventType {
     PointerUp,
     PointerMove,
     PointerCancel,
+    Other,
 }
 
 impl EventType {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            Self::Submit      => "submit",
-            Self::Click       => "click",
-            Self::ContextMenu => "contextmenu",
-            Self::KeyDown     => "keydown",
-            Self::Input       => "input",
-            Self::Change      => "change",
-            Self::Focus       => "focus",
-            Self::Blur        => "blur",
-            Self::Resize      => "resize",
-            Self::Scroll      => "scroll",
-            Self::Drop        => "drop"
-            Self::PointerDown => "pointerdown",
-            Self::PointerUp   => "pointerup",
-            Self::PointerMove => "pointermove",
-            Self::PointerCancel => "pointercancel",
+    pub fn decode(s: &str) -> Self {
+        match s {
+            "submit"       => Self::Submit,
+            "click"        => Self::Click,
+            "contextmenu"  => Self::ContextMenu,
+            "keydown"      => Self::KeyDown,
+            "input"        => Self::Input,
+            "change"       => Self::Change,
+            "focusin"      => Self::FocusIn,
+            "blur"         => Self::Blur,
+            "resize"       => Self::Resize,
+            "scroll"       => Self::Scroll,
+            "drop"         => Self::Drop,
+            "pointerdown"  => Self::PointerDown,
+            "pointerup"    => Self::PointerUp,
+            "pointermove"  => Self::PointerMove,
+            "pointercancel"=> Self::PointerCancel,
+            _              => Self::Other,
         }
     }
 }
