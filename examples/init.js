@@ -10,7 +10,7 @@ worker.addEventListener("error", (e) => {
   execute(8, "output_article1", "show");
   // worker.terminate(); worker = new Worker("worker.js");  // 再起動する場合
 });
-const execute = (operation, element_id, attribute = '', value) => {
+const execute = (operation, element_id, attribute = '', value = '') => {
   const element = document.getElementById(element_id);
   if (!element) return;
   switch(operation) {
@@ -19,9 +19,10 @@ const execute = (operation, element_id, attribute = '', value) => {
     case 3: element.toggleAttribute(attribute, value); break
     case 4: element.classList.add(value); break
     case 5: element.classList.remove(value); break
-    case 6: element.openModal(); break
-    case 7: element.close(); break
-    case 8: applyClass(element, value); break
+    case 6: element.focus(); break // preventScroll: trueも引数で可能なので、デフォの挙動のおかしい環境があれば検討
+    case 7: element.openModal(); break
+    case 8: element.close(); break
+    case 9: applyClass(element, value); break
   }
 }
 function applyClass = (element, value) => {

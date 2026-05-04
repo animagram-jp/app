@@ -2,16 +2,46 @@ use wasm_bindgen::prelude::*;
 use crate::{Lang, dice::{self, ResultLevel}};
 use crate::table::Roll;
 use crate::character::{Instance, Model, schema};
+use serde_wasm_bindgen::to_value;
 
 // ============================================================
-// DOM op codes
+// DOM operation
 // ============================================================
 
-const OP_SET_ATTR:    u32 = 0b0001;
-const OP_SET_TEXT:    u32 = 0b0010;
-const OP_FOCUS:       u32 = 0b0100;
-const OP_SHOW_MODAL:  u32 = 0b1000;
-const OP_CLOSE_MODAL: u32 = 0b1001;
+const OPERATION_SET_TEXT:     u8 = 1;
+const OPERATION_SET_VALUE:    u8 = 2;
+const OPERATION_SET_ATTR:     u8 = 3;
+const OPERATION_ADD_CLASS:    u8 = 4;
+const OPERATION_REMOVE_CLASS: u8 = 5;
+const OPERATION_FOCUS:        u8 = 6;
+const OPERATION_OPEN_MODAL:   u8 = 7;
+const OPERATION_CLOSE_MODAL:  u8 = 8;
+const OPERATION_EXCUTE_JS:    u8 = 9;
+
+#[derive(serde::Serialize)]
+struct DomCmd {
+    operation: u8,
+    id:        String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    attribute: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    value:     Option<String>,
+}
+
+// 全引数を露出してstructを組み立てるだけのfn
+fn dom_cmd(op: u8, id: &str, attribute: Option<&str>, value: Option<&str>) -> DomCmd {
+    DomCmd {
+        operation: op,
+        id:        id.to_string(),
+        attribute: attribute.map(str::to_string),
+        value:     value.map(str::to_string),
+    }
+}
+
+// Vecへの追加
+fn push_cmd(cmds: &mut Vec<DomCmd>, op: u8, id: &str, attribute: Option<&str>, value: Option<&str>) {
+    cmds.push(dom_cmd(op, id, attribute, value));
+}
 
 // ============================================================
 // JS → Rust 変換境界
@@ -166,6 +196,7 @@ fn js_get_field(obj: &JsValue, key: &str) -> JsValue {
 #[wasm_bindgen]
 pub struct App {
     state:     State,
+    cmds:      Vec<DomCmd>,
     roll_log:  Vec<RollLog>,
     character: Instance,
 }
@@ -178,6 +209,16 @@ impl App {
             roll_log:  Vec::new(),
             character: Instance::new(),
         }
+    }
+    
+    fn push(&mut self, op: u8, id: &str, attribute: Option<&str>, value: Option<&str>) {
+        self.cmds.push(dom_cmd(op, id, attribute, value));
+    }
+
+    fn flush(&mut self) -> JsValue {
+        let out = serde_wasm_bindgen::to_value(&self.cmds).unwrap_or(JsValue::NULL);
+        self.cmds.clear();
+        out
     }
 
     pub fn event(&mut self, payload: JsValue) -> JsValue {
@@ -840,37 +881,4 @@ impl std::fmt::Display for RollLog {
             Self::Message(s)                  => f.write_str(s),
         }
     }
-}
-
-// ============================================================
-// DOM コマンド型
-// ============================================================
-
-#[derive(serde::Serialize)]
-struct DomCmd {
-    op: u32,
-    id: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    attr: Option<String>,
-    value: String,
-}
-
-fn set_text(id: &str, value: &str) -> DomCmd {
-    DomCmd { op: OP_SET_TEXT, id: id.to_string(), attr: None, value: value.to_string() }
-}
-
-fn set_attr(id: &str, attr: &str, value: &str) -> DomCmd {
-    DomCmd { op: OP_SET_ATTR, id: id.to_string(), attr: Some(attr.to_string()), value: value.to_string() }
-}
-
-fn focus(id: &str) -> DomCmd {
-    DomCmd { op: OP_FOCUS, id: id.to_string(), attr: None, value: String::new() }
-}
-
-fn show_modal(id: &str) -> DomCmd {
-    DomCmd { op: OP_SHOW_MODAL, id: id.to_string(), attr: None, value: String::new() }
-}
-
-fn close_modal(id: &str) -> DomCmd {
-    DomCmd { op: OP_CLOSE_MODAL, id: id.to_string(), attr: None, value: String::new() }
 }
