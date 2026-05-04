@@ -125,6 +125,9 @@ html:
   head:
   body:
     main:
+      header:
+      div:
+      footer:
     drawer: # <dialog id="drawer"> set/removeAttribute("open")
     modal: # <dialog id="modal"> showModal()
     form:  # <form id="form" method="dialog"></form> のみの1行要素
@@ -138,3 +141,52 @@ html:
 - 以降
   - セッションライフタイム中に以降絶対に不要: addAttribute("hidden")
   - 表示(非表示)したい: classList.add/remove("hidden")
+
+### Roll
+
+ - 開いた時点で一番目の選択肢にfocusを当てる。
+ - 上下キー/tab/shift+tabでフォーカスが移動, enter(click, tap)で次へ 
+
+#### Dice Roll - ダイスロール (nDn + n) 
+
+選択後に表示されるべきインタラクティブUIは、出現順に
+1. text[field](Roll::Field::DiceCount), +-ボタン(上下キーも同等に), 初期値1のnumber[1~100]入力欄(focusが当たったら直接入力とする。入力時のkeyboard enterで決定を発火), 「次へ」ボタン(enterも同等に))
+2. text[field](Roll::Field::DiceSide), button[up] button[down], input[number(2(初期値),3,4,5,6,8,12,16,20,50,100)], button[next]
+3. text[field](Roll::Field::「補正」の英単語), input[number(0(初期値), -100~100), button[submit])
+結果のState::Stack(roll: Roll)保持は不要。
+
+Skill Roll — 技能値に対する基本判定
+1. State::Character::Instance()に存在する技能を優先ソートしてセレクタとして表示。 text[field](skills: Instance::Fields(attribute: Schema::Attribute::Skill), button[up] button[down], button[next]
+- 列指向で表示。1列にまとまる数で無い場合も多いので、画面幅に応じてflexに表示する
+2. text[field](Roll::Field::「補正」の英単語), input[number(0(初期値), -100~100), button[submit]をinline表示
+3. submitしたらApp::Roll::display()をしつつ結果をApp::Roll::stack(State::Stack(roll: SkillRoll))する。
+    SkillRoll,
+
+Characteristic Roll — 能力値判定 (幸運含む)
+1. select[characteristic] を表示。nextボタンは無し
+2. text[field](Roll::Field::「補正」の英単語), input[number(0(初期値), -100~100), button[submit]をinline表示
+ - str~luck。Sanityは含まない (それは狂気判定)
+
+Sanity Roll — 正気度喪失判定
+
+Bout of Madness (Real Time) — 狂気の発作 (リアルタイム)
+intを判定対象としてロール。regularまでの成功で「発狂」が判定結果。failure以下の場合は、「発狂しない」では微妙なので達成度を出して表す。
+期間 (ラウンド) (1d10)も同時に実行してBoundOfMadnessResultに含む
+regular以上(狂気の発作は)
+BoutOfMadnessRealTime,
+Bout of Madness (Summary) — 狂気の発作 (サマリー)
+RealTimeとの違いは、label文字列と、期間の単位が「時間(hour)」なことだけ
+BoutOfMadnessSummary,
+Pushed Roll — 失敗後の再挑戦ロール
+保持しているskill stack stateの中で、failure以下のものだけ候補化する。この時、新しい順にソートする
+既にpush stackに紐づけがあるロールは候補から外すのが正確だが、複雑性が一気に増すので一旦省略。
+PushedRoll,
+Combined Skill Roll — 2技能を1ロールで同時判定
+1. select[Skill]
+2. select[Skill] って感じでrulebook通り2つ技能を選択したら実行で良いんだが、プレイヤーを観察していると、skill+characteristicの混合も需要あるので、一応メモ。
+3. 出力は、[技能1 技能2] 実値1 実値2 出目 判定1(普通のSkill Rollと同様) 判定2。「部分的成功」みたいな組み合わせロール特有の用語は、rulebookに実は無いので、それは扱わない
+
+Development Check - 上達チェック
+- ボーナスダイスの無いregular以上のstackのあるskillを候補にする。
+- ロールした結果、技能値を超過しているか、96~100の範囲であれば、上達する。1d10を追加で処理して、判定としては 上達 n という出力になる
+- 通常の「失敗」「成功」という概念と違うので、Judge::{Developed,Undeveloped}を使う。labelは「上達」「上達なし」

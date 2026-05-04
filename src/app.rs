@@ -31,7 +31,7 @@ struct CanvasState {
 }
 
 impl CanvasState {
-    fn update(&mut self, gesture: Gesture, dom: Dom, key: KeyName) -> Vec<DomCmd> {
+    fn update(&mut self, gesture: Gesture, dom: Dom::Tag, key: KeyName) -> Vec<DomCmd> {
         match dom {
             Dom::ModalOpen  => { self.modal = true;  vec![DomCmd::new(Operation::OpenModal,  "modal",  None, None)] }
             Dom::ModalClose => { self.modal = false; vec![DomCmd::new(Operation::CloseModal, "modal",  None, None)] }
@@ -76,7 +76,8 @@ impl App {
 
     pub fn event(&mut self, payload: JsValue) {
         let event_type = EventType::decode(&get_js_str(&payload, "event_type").unwrap_or_default());
-        let dom        = Dom::decode(&get_js_str(&payload, "target_id").unwrap_or_default());
+        let id  = Dom::Id::decode(&get_js_str(&payload, "target_id").unwrap_or_default());
+        let dom = id.last_tag().cloned().unwrap_or(Dom::Tag::Other);
         let key        = KeyName::decode(&get_js_str(&payload, "key").unwrap_or_default());
         let x          = get_js_f64(&payload, "x").unwrap_or(0.0);
         let y          = get_js_f64(&payload, "y").unwrap_or(0.0);
@@ -112,7 +113,7 @@ impl App {
         self.dom_cmds.extend(dom_cmds);
     }
 
-    fn on_gesture(&mut self, gesture: Option<Gesture>, dom: Dom, key: KeyName) -> Vec<DomCmd> {
+    fn on_gesture(&mut self, gesture: Option<Gesture>, dom: Dom::Tag, key: KeyName) -> Vec<DomCmd> {
         match gesture {
             Some(g) => self.canvas_state.update(g, dom, key),
             None    => vec![],

@@ -1,87 +1,47 @@
 use crate::Lang;
+use crate::character,
 
-// Roll - ロール
-//
-// 登場するUIアイテム:
-// アイテムはdomだけ最大出現数htmlにhidden付きでハードコードする。但し、textなどcontentは徹底してrsでの生成、DomCmdによる機械的表示に一貫させる。
-// 現在、一般的慣習に従いhtml側のelement idは、一意な文字列をハードコードしているが、これをアンダーバーで区切った形に一斉見直しを行う。
-// 目標は、asm側は、flatな一意mappingではなく、ランタイムでhtmlを捜索することも無く、itemのlabel(en)の静的な組み立てfnによって決め打ちでDomCmdを作成出来ること。
-// - select[Roll] label(Roll::DiceRoll, ja/en)=("dice roll (nDn +n)"/"ダイスロール(nDn +n)")
-//  - 開いた時点で一番目の選択肢にfocusを当てる。
-//  - 上下キー/tab/shift+tabでフォーカスが移動, enter(click, tap)で次へ
-//  - enum Rollのvariant数だけindex.htmlに用意して置く。idは"selector-roll-dice",...など? input-select-roll-dice,...かも。
-// - select[Skill] label(Character::Skill, ja/en) 仕様はselector[Roll]と同様
-//  - 最大数がRollより多い。htmlに用意しておく。
-//  - idは"selector-skill-1",...など? 自由入力の専門分野の都合、htmlに意味合いをハードコード出来ないので、1,2,...,50と最大数見積りで連番をidにする。
-// - select[characteristic]
-// - text[field] label(Roll::Field,Language::Japanese/English)=("ダイス数"/"dices", "ダイス面数"/"dice sides",...)
-//  - インタラクティブ要素の無い表示アイテム(但し、必ずwasmがcmdで充填する)
-//  - tabでfocusさせない。コピペの範囲選択はできること。
-// - button[up] button[down] label(ja/en)=("↑") label(ja/en)=("↓")
-// - select[number] labelはケースバイケースなのでhtmlハードコードはしない。text[field]で別途表現。
-// - input[number] 同上
-// - button[next] label(ja/en)=("次へ"/"next")
-// - button[submit] label(ja/en)=("決定"/"submit")
-//
-// - textarea[watch] textareaであればなんでもよい。App::new(..., watch: dom)で使う。
-// - div[display] blockオブジェクトであり、inlineをn個書き出せればなんでもよい。App::Roll::Display(DisplayDom: dom, Roll::Result)で用いる
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Roll { 
-    // Dice Roll - ダイスロール (nDn + n) 
-    //
-    // 選択後に表示されるべきインタラクティブUIは、出現順に
-    // 1. text[field](Roll::Field::DiceCount), +-ボタン(上下キーも同等に), 初期値1のnumber[1~100]入力欄(focusが当たったら直接入力とする。入力時のkeyboard enterで決定を発火), 「次へ」ボタン(enterも同等に))
-    // 2. text[field](Roll::Field::DiceSide), button[up] button[down], input[number(2(初期値),3,4,5,6,8,12,16,20,50,100)], button[next])
-    // 3. text[field](Roll::Field::「補正」の英単語), input[number(0(初期値), -100~100), button[submit])
-    // 結果のState::Stack(roll: Roll)保持は不要。
     DiceRoll,
-    // Skill Roll — 技能値に対する基本判定
-    //
-    // 1. State::Character::Instance()に存在する技能を優先ソートしてセレクタとして表示。 text[field](skills: Instance::Fields(attribute: Schema::Attribute::Skill), button[up] button[down], button[next]
-    //  - 列指向で表示。1列にまとまる数で無い場合も多いので、画面幅に応じてflexに表示する
-    // 2. text[field](Roll::Field::「補正」の英単語), input[number(0(初期値), -100~100), button[submit]をinline表示
-    // 3. submitしたらApp::Roll::display()をしつつ結果をApp::Roll::stack(State::Stack(roll: SkillRoll))する。
     SkillRoll,
-    // Characteristic Roll — 能力値判定 (幸運含む)
-    //
-    // 1. select[characteristic] を表示。nextボタンは無し
-    // 2. text[field](Roll::Field::「補正」の英単語), input[number(0(初期値), -100~100), button[submit]をinline表示
-    // - str~luck。Sanityは含まない (それは狂気判定)
     CharacteristicRoll,
-    /// Sanity Roll — 正気度喪失判定
     SanityRoll,
-    // Bout of Madness (Real Time) — 狂気の発作 (リアルタイム)
-    // intを判定対象としてロール。regularまでの成功で「発狂」が判定結果。failure以下の場合は、「発狂しない」では微妙なので達成度を出して表す。
-    // 期間 (ラウンド) (1d10)も同時に実行してBoundOfMadnessResultに含む
-    // regular以上(狂気の発作は)
     BoutOfMadnessRealTime,
-    // Bout of Madness (Summary) — 狂気の発作 (サマリー)
-    // RealTimeとの違いは、label文字列と、期間の単位が「時間(hour)」なことだけ
     BoutOfMadnessSummary,
-    // Pushed Roll — 失敗後の再挑戦ロール
-    // 保持しているskill stack stateの中で、failure以下のものだけ候補化する。この時、新しい順にソートする
-    // 既にpush stackに紐づけがあるロールは候補から外すのが正確だが、複雑性が一気に増すので一旦省略。
     PushedRoll,
-    // Combined Skill Roll — 2技能を1ロールで同時判定
-    // 1. select[Skill]
-    // 2. select[Skill] って感じでrulebook通り2つ技能を選択したら実行で良いんだが、プレイヤーを観察していると、skill+characteristicの混合も需要あるので、一応メモ。
-    // 3. 出力は、[技能1 技能2] 実値1 実値2 出目 判定1(普通のSkill Rollと同様) 判定2。「部分的成功」みたいな組み合わせロール特有の用語は、rulebookに実は無いので、それは扱わない
     CombinedSkillRoll,
-    /// Phobia Table — 恐怖症表
     PhobiaTable,
-    /// Mania Table — マニア表
     ManiaTable,
-    /// Automatic Fire Roll — 自動火器の連射判定
     AutoFireRoll,
-    /// Failed Casting (Minor) — 呪文失敗表（小）
     FailedCastingMinor,
-    /// Failed Casting (Major) — 呪文失敗表（大）
     FailedCastingMajor,
-    // Development Check - 上達チェック
-    // ボーナスダイスの無いregular以上のstackのあるskillを候補にする。
-    // ロールした結果、技能値を超過しているか、96~100の範囲であれば、上達する。1d10を追加で処理して、判定としては 上達 n という出力になる
-    // 通常の「失敗」「成功」という概念と違うので、Roll Result enumの別variantとして扱う。上達しない場合は「上達なし」ってlableにしよう
     DevelopmentCheck,
+}
+
+pub struct DiceRoll {
+    select: Vec<DiceRollSelect>,
+    input:  Vec<DiceRollInput>,
+    Result: DiceRollResult,
+}
+
+pub DiceRollSelect {
+    character: character::Instance,
+}
+
+pub struct DiceRollResult {
+    total: i16,
+    judge: RollJudge,
+}
+
+pub enum RollJudge {
+    Failure,
+    Famble,
+    Regular,
+    Hard,
+    Extreme,
+    Critical,
+    Developed,
+    Undeveloped,
 }
 
 impl Roll {
@@ -115,30 +75,9 @@ impl Roll {
             (Self::FailedCastingMajor,    Lang::En) => "Failed Casting (Major)",
             (Self::DevelopmentCheck,      Lang::En) => "Development Check",
             (Self::DevelopmentCheck,      Lang::Ja) => "上達チェック",
-
         }
     }
 
-    pub fn dom_id(self) -> &'static str {
-        match self {
-            Self::DiceRoll               => "dice_roll",
-            Self::SkillRoll              => "skill_roll",
-            Self::CharacteristicRoll     => "characteristic_roll",
-            Self::SanityRoll             => "sanity_roll",
-            Self::BoutOfMadnessRealTime  => "bout_of_madness_real_time",
-            Self::BoutOfMadnessSummary   => "bout_of_madness_summary",
-            Self::PushedRoll             => "pushed_roll",
-            Self::CombinedSkillRoll      => "combined_skill_roll",
-            Self::PhobiaTable            => "phobia_table",
-            Self::ManiaTable             => "mania_table",
-            Self::AutoFireRoll           => "auto_fire_roll",
-            Self::FailedCastingMinor     => "failed_casting_minor",
-            Self::FailedCastingMajor     => "failed_casting_major",
-            Self::DevelopmentCheck       => "development_check",
-        }
-    }
-
-    /// UIセレクタ用に全種別を順序付きで返す
     pub fn all() -> &'static [Roll] {
         &[
             Self::DiceRoll,

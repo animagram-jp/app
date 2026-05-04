@@ -255,81 +255,158 @@ pub fn detect_gesture(state: &PointerState, current_time: f64) -> Option<Gesture
 // ============================================================
 // dom (rust item <=> element id)
 // ============================================================
+//
+// id規則:
+//   "_" = 親子セグメント区切り  例: main_div_section-1
+//   "-N" = 同タグ内の連番       例: span-3, th-2
+//   連番なし = その階層に1つだけ 例: thead_tr, legend_h5
+//
+// Dom::Id::encode()  -> "seg1_seg2_seg-N_..."
+// Dom::Id::decode()  -> Vec<Dom::Segment> のパース
 
-pub enum Dom {
-    ChatForm,
-    CharEditForm,
-    ChatInput,
-    ModalOpen,
-    ModalClose,
-    DrawerOpen,
-    DrawerClose,
-    SelectorOverlay,
-    RollItem(Roll),
-    CharSelectorOverlay,
-    CharRollItem(Model),
-    SkillSelectorOverlay,
-    SkillRollItem(Model),
-    DiceInputOverlay,
-    DiceUp,
-    DiceDown,
-    DiceNext,
-    CharEditOpen,
-    CharEditCancel,
-    CharRoll,
-    CharEditRoll(Model),
-    Other,
-}
+pub mod Dom {
+    #[derive(Debug, Clone, PartialEq)]
+    pub enum Tag {
+        Head,
+        Main,
+        Drawer,   // <dialog id="drawer">
+        Modal,    // <dialog id="modal">
+        Form,
+        Header,
+        Div,
+        Fieldset,
+        Footer,
+        Section,
+        Span,
+        Ol, Ul, Li,
+        Textarea,
+        Button,
+        Input,
+        H4, H5,
+        Legend,
+        P,
+        Table, Thead, Tbody, Tr, Th, Td,
+        Save,
+        Other,
+    }
 
-impl Dom {
-    pub fn decode(id: &str) -> Self {
-        match id {
-            "chat_form"              => Self::ChatForm,
-            "char_edit_form"         => Self::CharEditForm,
-            "chat_input"             => Self::ChatInput,
-            "modal_open"             => Self::ModalOpen,
-            "modal_close"            => Self::ModalClose,
-            "drawer_open"            => Self::DrawerOpen,
-            "drawer_close"           => Self::DrawerClose,
-            "selector_overlay"       => Self::SelectorOverlay,
-            "char_selector_overlay"  => Self::CharSelectorOverlay,
-            "skill_selector_overlay" => Self::SkillSelectorOverlay,
-            "dice_input_overlay"     => Self::DiceInputOverlay,
-            "dice_up"                => Self::DiceUp,
-            "dice_down"              => Self::DiceDown,
-            "dice_next"              => Self::DiceNext,
-            "char_edit_open"         => Self::CharEditOpen,
-            "char_edit_cancel"       => Self::CharEditCancel,
-            "char_roll"              => Self::CharRoll,
-            _ if id.starts_with("roll_") => {
-                let key = id.strip_prefix("roll_").unwrap_or("");
-                match Roll::all().iter().find(|r| r.dom_id() == key) {
-                    Some(&roll) => Self::RollItem(roll),
-                    None        => Self::Other,
+    impl Tag {
+        pub fn decode(s: &str) -> Self {
+            match s {
+                "head"     => Self::Head,
+                "main"     => Self::Main,
+                "drawer"   => Self::Drawer,
+                "modal"    => Self::Modal,
+                "form"     => Self::Form,
+                "header"   => Self::Header,
+                "div"      => Self::Div,
+                "fieldset" => Self::Fieldset,
+                "footer"   => Self::Footer,
+                "section"  => Self::Section,
+                "span"     => Self::Span,
+                "ol"       => Self::Ol,
+                "ul"       => Self::Ul,
+                "li"       => Self::Li,
+                "textarea" => Self::Textarea,
+                "button"   => Self::Button,
+                "input"    => Self::Input,
+                "h4"       => Self::H4,
+                "h5"       => Self::H5,
+                "legend"   => Self::Legend,
+                "p"        => Self::P,
+                "table"    => Self::Table,
+                "thead"    => Self::Thead,
+                "tbody"    => Self::Tbody,
+                "tr"       => Self::Tr,
+                "th"       => Self::Th,
+                "td"       => Self::Td,
+                "save"     => Self::Save,
+                _          => Self::Other,
+            }
+        }
+
+        pub fn encode(&self) -> &'static str {
+            match self {
+                Self::Head     => "head",
+                Self::Main     => "main",
+                Self::Drawer   => "drawer",
+                Self::Modal    => "modal",
+                Self::Form     => "form",
+                Self::Header   => "header",
+                Self::Div      => "div",
+                Self::Fieldset => "fieldset",
+                Self::Footer   => "footer",
+                Self::Section  => "section",
+                Self::Span     => "span",
+                Self::Ol       => "ol",
+                Self::Ul       => "ul",
+                Self::Li       => "li",
+                Self::Textarea => "textarea",
+                Self::Button   => "button",
+                Self::Input    => "input",
+                Self::H4       => "h4",
+                Self::H5       => "h5",
+                Self::Legend   => "legend",
+                Self::P        => "p",
+                Self::Table    => "table",
+                Self::Thead    => "thead",
+                Self::Tbody    => "tbody",
+                Self::Tr       => "tr",
+                Self::Th       => "th",
+                Self::Td       => "td",
+                Self::Save     => "save",
+                Self::Other    => "",
+            }
+        }
+    }
+
+    // セグメント1つ: タグ + オプション連番
+    #[derive(Debug, Clone, PartialEq)]
+    pub struct Segment {
+        pub tag: Tag,
+        pub n:   Option<u32>,
+    }
+
+    impl Segment {
+        pub fn new(tag: Tag) -> Self { Self { tag, n: None } }
+        pub fn numbered(tag: Tag, n: u32) -> Self { Self { tag, n: Some(n) } }
+
+        pub fn decode(s: &str) -> Self {
+            if let Some(pos) = s.rfind('-') {
+                let (tag, num) = s.split_at(pos);
+                if let Ok(n) = num[1..].parse::<u32>() {
+                    return Self::numbered(Tag::decode(tag), n);
                 }
             }
-            _ if id.starts_with("char_edit_roll_") => {
-                let key = id.strip_prefix("char_edit_roll_").unwrap_or("");
-                match schema::attribute(schema::Attribute::Characteristic).iter().find(|m| m.dom_id() == key) {
-                    Some(&field) => Self::CharEditRoll(field),
-                    None         => Self::Other,
-                }
+            Self::new(Tag::decode(s))
+        }
+
+        pub fn encode(&self) -> String {
+            match self.n {
+                Some(n) => format!("{}-{}", self.tag.encode(), n),
+                None    => self.tag.encode().to_string(),
             }
-            _ if id.starts_with("char_roll_") => {
-                let key = id.strip_prefix("char_roll_").unwrap_or("");
-                match schema::attribute(schema::Attribute::Characteristic).iter().find(|m| m.dom_id() == key) {
-                    Some(&field) => Self::CharRollItem(field),
-                    None         => Self::Other,
-                }
-            }
-            _ if id.starts_with("skill_roll_") => {
-                let key = id.strip_prefix("skill_roll_").unwrap_or("");
-                match schema::attribute(schema::Attribute::Skill).iter().find(|m| m.dom_id() == key) {
-                    Some(&field) => Self::SkillRollItem(field),
-                    None         => Self::Other,
-                }
-            }
-            _ => Self::Other,
+        }
+    }
+
+    // id全体: セグメントのリスト
+    #[derive(Debug, Clone, PartialEq)]
+    pub struct Id(pub Vec<Segment>);
+
+    impl Id {
+        pub fn decode(id: &str) -> Self {
+            Self(id.split('_').map(Segment::decode).collect())
+        }
+
+        pub fn encode(&self) -> String {
+            self.0.iter()
+                .map(Segment::encode)
+                .collect::<Vec<_>>()
+                .join("_")
+        }
+
+        pub fn last_tag(&self) -> Option<&Tag> {
+            self.0.last().map(|s| &s.tag)
         }
     }
 }
