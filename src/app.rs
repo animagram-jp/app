@@ -30,6 +30,19 @@ struct CanvasState {
     drawer: bool,     // true = open, false = close
 }
 
+impl CanvasState {
+    fn update(&mut self, gesture: Gesture, dom: Dom, key: KeyName) -> Vec<DomCmd> {
+        match dom {
+            Dom::ModalOpen  => { self.modal = true;  vec![DomCmd::new(Operation::OpenModal,  "modal",  None, None)] }
+            Dom::ModalClose => { self.modal = false; vec![DomCmd::new(Operation::CloseModal, "modal",  None, None)] }
+            Dom::DrawerOpen  => { self.drawer = true;  vec![DomCmd::new(Operation::OpenModal,  "drawer", None, None)] }
+            Dom::DrawerClose => { self.drawer = false; vec![DomCmd::new(Operation::CloseModal, "drawer", None, None)] }
+            // overlay 遷移はアプリ固有 — TODO
+            _ => vec![],
+        }
+    }
+}
+
 // ============================================================
 // app
 // ============================================================
@@ -92,16 +105,16 @@ impl App {
             EventType::PointerDown
             | EventType::PointerMove
             | EventType::PointerUp
-            | EventType::PointerCancel => self.on_gesture(gesture),
+            | EventType::PointerCancel => self.on_gesture(gesture, dom, key),
             _ => vec![],
         };
 
         self.dom_cmds.extend(dom_cmds);
     }
 
-    fn on_gesture(&mut self, gesture: Option<Gesture>) -> Vec<DomCmd> {
+    fn on_gesture(&mut self, gesture: Option<Gesture>, dom: Dom, key: KeyName) -> Vec<DomCmd> {
         match gesture {
-            Some(g) => self.canvas_state.update(g),
+            Some(g) => self.canvas_state.update(g, dom, key),
             None    => vec![],
         }
     }
