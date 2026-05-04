@@ -98,14 +98,14 @@ impl KeyName {
 }
 
 /// js由来の文字列をstrとして取得
-fn js_get_str(obj: &JsValue, key: &str) -> Option<String> {
+pub fn js_get_str(obj: &JsValue, key: &str) -> Option<String> {
     js_sys::Reflect::get(obj, &JsValue::from_str(key))
         .ok()
         .and_then(|v| v.as_string())
 }
 
 /// js由来の整数をu32として取得
-fn js_get_u32(obj: &JsValue, key: &str) -> u32 {
+pub fn js_get_u32(obj: &JsValue, key: &str) -> u32 {
     Reflect::get(obj, &JsValue::from_str(key))
         .ok()
         .and_then(|v| v.as_f64())
@@ -120,7 +120,7 @@ fn js_get_u32(obj: &JsValue, key: &str) -> u32 {
 }
 
 /// js由来の小数をf64として取得
-fn js_get_f64(obj: &JsValue, key: &str) -> Option<f64> {
+pub fn js_get_f64(obj: &JsValue, key: &str) -> Option<f64> {
     Reflect::get(obj, &JsValue::from_str(key))
         .ok()
         .and_then(|v| v.as_f64())
@@ -134,6 +134,6 @@ fn js_get_f64(obj: &JsValue, key: &str) -> Option<f64> {
 }
 
 /// js由来のデータを構造体のまま取得
-fn js_get_field(obj: &JsValue, key: &str) -> Option<JsValue> {
+pub fn js_get_field(obj: &JsValue, key: &str) -> Option<JsValue> {
     Reflect::get(obj, &JsValue::from_str(key)).ok()
 }

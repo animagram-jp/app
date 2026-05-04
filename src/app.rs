@@ -97,6 +97,22 @@ enum State {
     DiceInput     { phase: DicePhase, count: u32, sides_idx: usize, modifier: i32 },
 }
 
+// 長押し判定  → start_time からの経過時間 + 座標のブレが小さい
+// スワイプ判定 → pointerup時の差分が閾値以上 + 経過時間が短い
+// ドラッグ判定 → pointermove中に差分が閾値以上
+// pointerdown → is_down = true, 座標・時刻記録, タイマー起動
+// pointermove → 座標がブレてたら長押しキャンセル (指がズレた)
+// pointerup   → 経過時間で click か 長押し か判定
+// pointercancel → 全部リセット (電話着信とかで割り込まれた時)
+struct PointerState {
+    is_down: bool,
+    start_x: f64,
+    start_y: f64,
+    current_x: f64,
+    current_y: f64,
+    start_time: f64,
+}
+
 const DICE_SIDES: &[u32] = &[2, 3, 4, 5, 6, 8, 10, 12, 20, 100];
 
 // ============================================================
