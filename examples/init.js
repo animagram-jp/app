@@ -1,8 +1,10 @@
 const worker = new Worker("./worker.js", { type: "module" })
+
 worker.addEventListener("message", (e) => {
   const { type, payload } = e.data;
   if (type === "execute") { payload.forEach(execute); return; }
 })
+
 worker.addEventListener("error", (e) => {
   execute(4, "output_article1", "warning");
   execute(1, "output_article1_span", "!");
@@ -10,6 +12,7 @@ worker.addEventListener("error", (e) => {
   execute(8, "output_article1", "show");
   // worker.terminate(); worker = new Worker("worker.js");  // 再起動する場合
 });
+
 const execute = (operation, element_id, attribute = '', value = '') => {
   const element = document.getElementById(element_id);
   if (!element) return;
@@ -25,15 +28,17 @@ const execute = (operation, element_id, attribute = '', value = '') => {
     case 9: applyClass(element, value); break
   }
 }
-function applyClass = (element, value) => {
+
+function applyClass(element, value) {
   switch(value) {
     case "show": 
       element.classList.remove("hide");
-      requestAnimationFrame(() =>requestAnimationFrame(() => element.classList.add("show"))); break
+      requestAnimationFrame(() => requestAnimationFrame(() => element.classList.add("show"))); break
     case "hide":
       element.classList.replace("show", "hide");
   }
 }
+
 function bind() {
   document.getElementById("form")?.addEventListener("submit", (e) => {
     e.preventDefault();
@@ -47,9 +52,11 @@ function bind() {
   document.getElementById("input")?.addEventListener("input", (e) => {
     worker.postMessage({ 
       type: "event",
-      event_type: "input", 
-      target_id: e.target.id, 
-      value: e.target.value,
+      payload: {
+        event_type: "input", 
+        target_id: e.target.id, 
+        value: e.target.value,
+      }
     })
   })
   document.addEventListener("keydown", (e) => {
