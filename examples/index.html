@@ -1,298 +1,154 @@
 <!DOCTYPE html>
 <html lang="ja">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Dice Engine (Call of Cthulhu 7th)</title>
+    <link rel="stylesheet" href="dads-base.css">
+    <link rel="stylesheet" href="button.css">
+    <link rel="stylesheet" href="style.css">
+    <script type="module" src="init.js"></script>
+  </head>
 
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ダイスエンジン (クトゥルフ神話TRPG 7版)</title>
-  <link rel="stylesheet" href="dads-base.css">
-  <link rel="stylesheet" href="button.css">
-  <link rel="stylesheet" href="style.css">
-  <script type="module" src="init.js"></script>
-</head>
+  <body>
+    <main>
+      <header>
+        <button id="main_header_button" class="dads-button" data-type="outline" data-size="sm">✏️</button>
+      </header>
+      <div>
+        <section id="main_div_section-1" aria-label="show character sheet">
+          <span id="main_div_section-1_span-1" class="hidden"><span id="main_div_section-1_span-1_span-1"></span><span id="main_div_section-1_span-1_span-2"></span></span>
+          <span id="main_div_section-1_span-2" class="hidden"><span id="main_div_section-1_span-2_span-1"></span><span id="main_div_section-1_span-2_span-2"></span></span>
+          <span id="main_div_section-1_span-3" class="hidden"><span id="main_div_section-1_span-3_span-1"></span><span id="main_div_section-1_span-3_span-2"></span></span>
+          <span id="main_div_section-1_span-4" class="hidden"><span id="main_div_section-1_span-4_span-1"></span><span id="main_div_section-1_span-4_span-2"></span></span>
+          <span id="main_div_section-1_span-5" class="hidden"><span id="main_div_section-1_span-5_span-1"></span><span id="main_div_section-1_span-5_span-2"></span></span>
+          <span id="main_div_section-1_span-6" class="hidden"><span id="main_div_section-1_span-6_span-1"></span><span id="main_div_section-1_span-6_span-2"></span></span>
+          <span id="main_div_section-1_span-7" class="hidden"><span id="main_div_section-1_span-7_span-1"></span><span id="main_div_section-1_span-7_span-2"></span></span>
+          <span id="main_div_section-1_span-8" class="hidden"><span id="main_div_section-1_span-8_span-1"></span><span id="main_div_section-1_span-8_span-2"></span></span>
+          <span id="main_div_section-1_span-9" class="hidden"><span id="main_div_section-1_span-9_span-1"></span><span id="main_div_section-1_span-9_span-2"></span></span>
+          <span id="main_div_section-1_span-10" class="hidden"><span id="main_div_section-1_span-10_span-1"></span><span id="main_div_section-1_span-10_span-2"></span></span>
+          <span id="main_div_section-1_span-11" class="hidden"><span id="main_div_section-1_span-11_span-1"></span><span id="main_div_section-1_span-11_span-2"></span></span>
+          <span id="main_div_section-1_span-12" class="hidden"><span id="main_div_section-1_span-12_span-1"></span><span id="main_div_section-1_span-12_span-2"></span></span>
+          <span id="main_div_section-1_span-13" class="hidden"><span id="main_div_section-1_span-13_span-1"></span><span id="main_div_section-1_span-13_span-2"></span></span>
+          <span id="main_div_section-1_span-14" class="hidden"><span id="main_div_section-1_span-14_span-1"></span><span id="main_div_section-1_span-14_span-2"></span></span>
+          <span id="main_div_section-1_span-15" class="hidden"><span id="main_div_section-1_span-15_span-1"></span><span id="main_div_section-1_span-15_span-2"></span></span>
+          <span id="main_div_section-1_span-16" class="hidden"><span id="main_div_section-1_span-16_span-1"></span><span id="main_div_section-1_span-16_span-2"></span></span>
+          <span id="main_div_section-1_span-17" class="hidden"><span id="main_div_section-1_span-17_span-1"></span><span id="main_div_section-1_span-17_span-2"></span></span>
+          <span id="main_div_section-1_span-18" class="hidden"><span id="main_div_section-1_span-18_span-1"></span><span id="main_div_section-1_span-18_span-2"></span></span>
+          <span id="main_div_section-1_span-19" class="hidden"><span id="main_div_section-1_span-19_span-1"></span><span id="main_div_section-1_span-19_span-2"></span></span>
+          <span id="main_div_section-1_span-20" class="hidden"><span id="main_div_section-1_span-20_span-1"></span><span id="main_div_section-1_span-20_span-2"></span></span>
+        </section>
+        <section id="main_div_section-2" aria-label="chat log">
+          <ol>
+            <li id="main_div_section-2_ol_li-1" class="hidden"><span id="main_div_section-2_ol_li-1_span"></span><p id="main_div_section-2_ol_li-1_p"></p></li>
+            <li id="main_div_section-2_ol_li-2" class="hidden"><span id="main_div_section-2_ol_li-2_span"></span><p id="main_div_section-2_ol_li-2_p"></p></li>
+            <li id="main_div_section-2_ol_li-3" class="hidden"><span id="main_div_section-2_ol_li-3_span"></span><p id="main_div_section-2_ol_li-3_p"></p></li>
+            <li id="main_div_section-2_ol_li-4" class="hidden"><span id="main_div_section-2_ol_li-4_span"></span><p id="main_div_section-2_ol_li-4_p"></p></li>
+            <li id="main_div_section-2_ol_li-5" class="hidden"><span id="main_div_section-2_ol_li-5_span"></span><p id="main_div_section-2_ol_li-5_p"></p></li>
+            <li id="main_div_section-2_ol_li-6" class="hidden"><span id="main_div_section-2_ol_li-6_span"></span><p id="main_div_section-2_ol_li-6_p"></p></li>
+            <li id="main_div_section-2_ol_li-7" class="hidden"><span id="main_div_section-2_ol_li-7_span"></span><p id="main_div_section-2_ol_li-7_p"></p></li>
+            <li id="main_div_section-2_ol_li-8" class="hidden"><span id="main_div_section-2_ol_li-8_span"></span><p id="main_div_section-2_ol_li-8_p"></p></li>
+            <li id="main_div_section-2_ol_li-9" class="hidden"><span id="main_div_section-2_ol_li-9_span"></span><p id="main_div_section-2_ol_li-9_p"></p></li>
+            <li id="main_div_section-2_ol_li-10" class="hidden"><span id="main_div_section-2_ol_li-10_span"></span><p id="main_div_section-2_ol_li-10_p"></p></li>
+          </ol>
+        </section>
+        <section id="main_div_section-3">
+          <textarea id="main_div_section-3_textarea" name="main_section-3_textarea" rows="2" placeholder="/"></textarea>
+          <button id="main_div_section-3_button" type="submit" class="dads-button" data-type="solid-fill" data-size="sm">↑</button>
+        </section>
 
-<body>
-  <main>
-    <div id="character">
-      <div id="char-header">
-        <button id="char-edit-open" class="dads-button" data-type="outline" data-size="sm">キャラクター編集</button>
+        <dialog id="main_div_modal" aria-label="overlay">
+          <h5 id="main_div_dialog_h5"></h5>
+          <ul role="menu" id="main_div_dialog_ul" class="hidden">
+            <li role="menuitem" id="main_div_dialog_ul_li-1" tabindex="0" hidden></li>
+            <li role="menuitem" id="main_div_dialog_ul_li-2" tabindex="0" hidden></li>
+            <li role="menuitem" id="main_div_dialog_ul_li-3" tabindex="0" hidden></li>
+            <li role="menuitem" id="main_div_dialog_ul_li-4" tabindex="0" hidden></li>
+            <li role="menuitem" id="main_div_dialog_ul_li-5" tabindex="0" hidden></li>
+            <li role="menuitem" id="main_div_dialog_ul_li-6" tabindex="0" hidden></li>
+            <li role="menuitem" id="main_div_dialog_ul_li-7" tabindex="0" hidden></li>
+            <li role="menuitem" id="main_div_dialog_ul_li-8" tabindex="0" hidden></li>
+            <li role="menuitem" id="main_div_dialog_ul_li-9" tabindex="0" hidden></li>
+            <li role="menuitem" id="main_div_dialog_ul_li-10" tabindex="0" hidden></li>
+          </ul>
+          <form id="main_div_modal_form" class="hidden">
+            <button type="button" id="main_div_dialog_form_button-1">↓</button>
+            <button type="button" id="main_div_dialog_form_button-2">↑</button>
+            <input type="number" id="main_div_dialog_form_input">
+            <button id="main_div_dialog_form_button-3">→</button>
+          </form>
+        </dialog>
       </div>
-      <div id="char-stats">
-        <span id="char-view-str"  hidden><span>STR</span> <span id="char-val-str"></span></span>
-        <span id="char-view-con"  hidden><span>CON</span> <span id="char-val-con"></span></span>
-        <span id="char-view-siz"  hidden><span>SIZ</span> <span id="char-val-siz"></span></span>
-        <span id="char-view-dex"  hidden><span>DEX</span> <span id="char-val-dex"></span></span>
-        <span id="char-view-app"  hidden><span>APP</span> <span id="char-val-app"></span></span>
-        <span id="char-view-int"  hidden><span>INT</span> <span id="char-val-int"></span></span>
-        <span id="char-view-pow"  hidden><span>POW</span> <span id="char-val-pow"></span></span>
-        <span id="char-view-edu"  hidden><span>EDU</span> <span id="char-val-edu"></span></span>
-        <span id="char-view-luk"  hidden><span>幸運</span><span id="char-val-luk"></span></span>
-      </div>
-      <div id="char-derived">
-        <span id="char-view-hp"    hidden><span>HP</span>   <span id="char-hp">—</span></span>
-        <span id="char-view-mp"    hidden><span>MP</span>   <span id="char-mp">—</span></span>
-        <span id="char-view-san"   hidden><span>SAN</span>  <span id="char-san">—</span></span>
-        <span id="char-view-dodge" hidden><span>回避</span> <span id="char-dodge">—</span></span>
-      </div>
-      <div id="char-skills">
-        <span id="skill-view-accounting"          hidden><span>経理</span>          <span id="skill-val-accounting"></span></span>
-        <span id="skill-view-anthropology"         hidden><span>人類学</span>        <span id="skill-val-anthropology"></span></span>
-        <span id="skill-view-archaeology"          hidden><span>考古学</span>        <span id="skill-val-archaeology"></span></span>
-        <span id="skill-view-appraise"             hidden><span>鑑定</span>          <span id="skill-val-appraise"></span></span>
-        <span id="skill-view-art-craft"            hidden><span>芸術/製作</span>     <span id="skill-val-art-craft"></span></span>
-        <span id="skill-view-charm"                hidden><span>魅惑</span>          <span id="skill-val-charm"></span></span>
-        <span id="skill-view-climb"                hidden><span>登攀</span>          <span id="skill-val-climb"></span></span>
-        <span id="skill-view-computer-use"         hidden><span>コンピューター</span><span id="skill-val-computer-use"></span></span>
-        <span id="skill-view-credit-rating"        hidden><span>信用</span>          <span id="skill-val-credit-rating"></span></span>
-        <span id="skill-view-cthulhu-mythos"       hidden><span>クトゥルフ神話</span><span id="skill-val-cthulhu-mythos"></span></span>
-        <span id="skill-view-disguise"             hidden><span>変装</span>          <span id="skill-val-disguise"></span></span>
-        <span id="skill-view-drive-auto"           hidden><span>運転(自動車)</span>  <span id="skill-val-drive-auto"></span></span>
-        <span id="skill-view-elec-repair"          hidden><span>電気修理</span>      <span id="skill-val-elec-repair"></span></span>
-        <span id="skill-view-electronics"          hidden><span>電子工学</span>      <span id="skill-val-electronics"></span></span>
-        <span id="skill-view-fast-talk"            hidden><span>言いくるめ</span>    <span id="skill-val-fast-talk"></span></span>
-        <span id="skill-view-fighting-brawl"       hidden><span>格闘</span>          <span id="skill-val-fighting-brawl"></span></span>
-        <span id="skill-view-fighting-other"       hidden><span>近接(その他)</span>  <span id="skill-val-fighting-other"></span></span>
-        <span id="skill-view-firearms-handgun"     hidden><span>拳銃</span>          <span id="skill-val-firearms-handgun"></span></span>
-        <span id="skill-view-firearms-rifle-shotgun" hidden><span>ライフル/SG</span><span id="skill-val-firearms-rifle-shotgun"></span></span>
-        <span id="skill-view-firearms-other"       hidden><span>射撃(その他)</span>  <span id="skill-val-firearms-other"></span></span>
-        <span id="skill-view-first-aid"            hidden><span>応急手当</span>      <span id="skill-val-first-aid"></span></span>
-        <span id="skill-view-history"              hidden><span>歴史</span>          <span id="skill-val-history"></span></span>
-        <span id="skill-view-intimidate"           hidden><span>威圧</span>          <span id="skill-val-intimidate"></span></span>
-        <span id="skill-view-jump"                 hidden><span>跳躍</span>          <span id="skill-val-jump"></span></span>
-        <span id="skill-view-language-other"       hidden><span>ほかの言語</span>    <span id="skill-val-language-other"></span></span>
-        <span id="skill-view-language-own"         hidden><span>母国語</span>        <span id="skill-val-language-own"></span></span>
-        <span id="skill-view-law"                  hidden><span>法律</span>          <span id="skill-val-law"></span></span>
-        <span id="skill-view-library-use"          hidden><span>図書館</span>        <span id="skill-val-library-use"></span></span>
-        <span id="skill-view-listen"               hidden><span>聞き耳</span>        <span id="skill-val-listen"></span></span>
-        <span id="skill-view-locksmith"            hidden><span>鍵開け</span>        <span id="skill-val-locksmith"></span></span>
-        <span id="skill-view-mech-repair"          hidden><span>機械修理</span>      <span id="skill-val-mech-repair"></span></span>
-        <span id="skill-view-medicine"             hidden><span>医学</span>          <span id="skill-val-medicine"></span></span>
-        <span id="skill-view-natural-world"        hidden><span>自然</span>          <span id="skill-val-natural-world"></span></span>
-        <span id="skill-view-navigate"             hidden><span>ナビゲート</span>    <span id="skill-val-navigate"></span></span>
-        <span id="skill-view-occult"               hidden><span>オカルト</span>      <span id="skill-val-occult"></span></span>
-        <span id="skill-view-persuade"             hidden><span>説得</span>          <span id="skill-val-persuade"></span></span>
-        <span id="skill-view-pilot"                hidden><span>操縦</span>          <span id="skill-val-pilot"></span></span>
-        <span id="skill-view-psychoanalysis"       hidden><span>精神分析</span>      <span id="skill-val-psychoanalysis"></span></span>
-        <span id="skill-view-psychology"           hidden><span>心理学</span>        <span id="skill-val-psychology"></span></span>
-        <span id="skill-view-ride"                 hidden><span>乗馬</span>          <span id="skill-val-ride"></span></span>
-        <span id="skill-view-science"              hidden><span>科学</span>          <span id="skill-val-science"></span></span>
-        <span id="skill-view-sleight-of-hand"      hidden><span>手さばき</span>      <span id="skill-val-sleight-of-hand"></span></span>
-        <span id="skill-view-spot-hidden"          hidden><span>目星</span>          <span id="skill-val-spot-hidden"></span></span>
-        <span id="skill-view-stealth"              hidden><span>隠密</span>          <span id="skill-val-stealth"></span></span>
-        <span id="skill-view-survival"             hidden><span>サバイバル</span>    <span id="skill-val-survival"></span></span>
-        <span id="skill-view-swim"                 hidden><span>水泳</span>          <span id="skill-val-swim"></span></span>
-        <span id="skill-view-throw"                hidden><span>投擲</span>          <span id="skill-val-throw"></span></span>
-        <span id="skill-view-track"                hidden><span>追跡</span>          <span id="skill-val-track"></span></span>
-      </div>
-    </div>
+      <footer></footer>
+    </main>
 
-    <div id="chat-log"></div>
+    <dialog id="drawer">
+      <header></header>
+      <section></section>
+      <footer></footer>
+    </dialog>
 
-    <div id="char-selector" hidden inert>
-      <div id="char-selector-overlay"></div>
-      <div id="char-selector-menu">
-        <button id="charroll-str">STR 筋力</button>
-        <button id="charroll-con">CON 体質</button>
-        <button id="charroll-siz">SIZ 体格</button>
-        <button id="charroll-dex">DEX 敏捷</button>
-        <button id="charroll-app">APP 外見</button>
-        <button id="charroll-int">INT 知性</button>
-        <button id="charroll-pow">POW 意志</button>
-        <button id="charroll-edu">EDU 教育</button>
-        <button id="charroll-luk">幸運</button>
-      </div>
-    </div>
-
-    <div id="skill-selector" hidden inert>
-      <div id="skill-selector-overlay"></div>
-      <div id="skill-selector-menu">
-        <span id="skill-selector-title"></span>
-        <button id="skillroll-accounting"            hidden inert>経理</button>
-        <button id="skillroll-anthropology"          hidden inert>人類学</button>
-        <button id="skillroll-archaeology"           hidden inert>考古学</button>
-        <button id="skillroll-appraise"              hidden inert>鑑定</button>
-        <button id="skillroll-art-craft"             hidden inert>芸術/製作</button>
-        <button id="skillroll-charm"                 hidden inert>魅惑</button>
-        <button id="skillroll-climb"                 hidden inert>登攀</button>
-        <button id="skillroll-computer-use"          hidden inert>コンピューター</button>
-        <button id="skillroll-credit-rating"         hidden inert>信用</button>
-        <button id="skillroll-cthulhu-mythos"        hidden inert>クトゥルフ神話</button>
-        <button id="skillroll-disguise"              hidden inert>変装</button>
-        <button id="skillroll-drive-auto"            hidden inert>運転(自動車)</button>
-        <button id="skillroll-elec-repair"           hidden inert>電気修理</button>
-        <button id="skillroll-electronics"           hidden inert>電子工学</button>
-        <button id="skillroll-fast-talk"             hidden inert>言いくるめ</button>
-        <button id="skillroll-fighting-brawl"        hidden inert>格闘</button>
-        <button id="skillroll-fighting-other"        hidden inert>近接(その他)</button>
-        <button id="skillroll-firearms-handgun"      hidden inert>拳銃</button>
-        <button id="skillroll-firearms-rifle-shotgun" hidden inert>ライフル/SG</button>
-        <button id="skillroll-firearms-other"        hidden inert>射撃(その他)</button>
-        <button id="skillroll-first-aid"             hidden inert>応急手当</button>
-        <button id="skillroll-history"               hidden inert>歴史</button>
-        <button id="skillroll-intimidate"            hidden inert>威圧</button>
-        <button id="skillroll-jump"                  hidden inert>跳躍</button>
-        <button id="skillroll-language-other"        hidden inert>ほかの言語</button>
-        <button id="skillroll-language-own"          hidden inert>母国語</button>
-        <button id="skillroll-law"                   hidden inert>法律</button>
-        <button id="skillroll-library-use"           hidden inert>図書館</button>
-        <button id="skillroll-listen"                hidden inert>聞き耳</button>
-        <button id="skillroll-locksmith"             hidden inert>鍵開け</button>
-        <button id="skillroll-mech-repair"           hidden inert>機械修理</button>
-        <button id="skillroll-medicine"              hidden inert>医学</button>
-        <button id="skillroll-natural-world"         hidden inert>自然</button>
-        <button id="skillroll-navigate"              hidden inert>ナビゲート</button>
-        <button id="skillroll-occult"                hidden inert>オカルト</button>
-        <button id="skillroll-persuade"              hidden inert>説得</button>
-        <button id="skillroll-pilot"                 hidden inert>操縦</button>
-        <button id="skillroll-psychoanalysis"        hidden inert>精神分析</button>
-        <button id="skillroll-psychology"            hidden inert>心理学</button>
-        <button id="skillroll-ride"                  hidden inert>乗馬</button>
-        <button id="skillroll-science"               hidden inert>科学</button>
-        <button id="skillroll-sleight-of-hand"       hidden inert>手さばき</button>
-        <button id="skillroll-spot-hidden"           hidden inert>目星</button>
-        <button id="skillroll-stealth"               hidden inert>隠密</button>
-        <button id="skillroll-survival"              hidden inert>サバイバル</button>
-        <button id="skillroll-swim"                  hidden inert>水泳</button>
-        <button id="skillroll-throw"                 hidden inert>投擲</button>
-        <button id="skillroll-track"                 hidden inert>追跡</button>
-      </div>
-    </div>
-
-    <div id="dice-input" hidden inert>
-      <div id="dice-input-overlay"></div>
-      <div id="dice-input-menu">
-        <button id="dice-input-focus" tabindex="0" style="position:absolute;opacity:0;pointer-events:none;width:0;height:0"></button>
-        <div id="dice-count-row" class="dice-row" hidden>
-          <span class="dice-row-label">個数</span>
-          <span id="dice-count-val">1</span>
-        </div>
-        <div id="dice-sides-row" class="dice-row" hidden>
-          <span class="dice-row-label">面数</span>
-          <span id="dice-sides-val">6面</span>
-        </div>
-        <div id="dice-modifier-row" class="dice-row" hidden>
-          <span class="dice-row-label">修正値</span>
-          <span id="dice-modifier-val">0</span>
-        </div>
-        <div id="dice-controls">
-          <button id="dice-down"  type="button">－</button>
-          <button id="dice-up"    type="button">＋</button>
-          <button id="dice-next"  type="button">次へ</button>
-        </div>
-        <div id="dice-hint"></div>
-      </div>
-    </div>
-
-    <div id="selector" hidden inert>
-      <div id="selector-overlay"></div>
-      <div id="selector-menu">
-        <button id="roll-dice">ダイスロール</button>
-        <button id="roll-skill">技能判定</button>
-        <button id="roll-char">能力値判定</button>
-        <button id="roll-sanity">正気度判定</button>
-        <button id="roll-madness-rt">狂気の発作 (リアルタイム)</button>
-        <button id="roll-madness-sum">狂気の発作 (サマリー)</button>
-        <button id="roll-combine">組み合わせ判定</button>
-        <button id="roll-pushed">プッシュロール</button>
-        <button id="roll-dev-check">上達チェック</button>
-        <button id="roll-autofire">自動火器の連射判定</button>
-        <button id="roll-cast-minor">呪文失敗 (小)</button>
-        <button id="roll-cast-major">呪文失敗 (大)</button>
-        <button id="roll-phobia">恐怖症表</button>
-        <button id="roll-mania">マニア表</button>
-      </div>
-    </div>
-
-    <form id="chat-form">
-      <textarea id="chat-input" name="text" rows="2" placeholder="/ でコマンド選択"></textarea>
-      <button type="submit" class="dads-button" data-type="solid-fill" data-size="sm">送信</button>
-    </form>
-  </main>
-
-  <dialog id="char-edit">
-    <header>
-      <span>キャラクター編集</span>
-      <button id="char-edit-cancel" type="button">×</button>
-    </header>
-    <fieldset>
-      <fieldset id="edit-stats">
-        <legend>能力値 <button id="char-roll" type="button" class="dads-button" data-type="outline" data-size="xs">一括ロール</button></legend>
+    <dialog id="modal">
+      <header>
+        <h4></h4>
+      </header>
+      <fieldset id="modal_fieldset-1">
+        <legend>
+          <h5 id="modal_fieldset-1_legend_h5"></h5>
+          <button id="modal_fieldset-1_legend_button" type="button" class="dads-button" data-type="outline" data-size="xs"></button>
+        </legend>
         <table>
-          <tr><th>STR</th><td><input id="edit-str" type="number" min="1" max="9999" name="stat-str" required></td><td><button id="charroll-edit-str" type="button" class="dads-button" data-type="outline" data-size="xs">ロール</button></td></tr>
-          <tr><th>CON</th><td><input id="edit-con" type="number" min="1" max="9999" name="stat-con" required></td><td><button id="charroll-edit-con" type="button" class="dads-button" data-type="outline" data-size="xs">ロール</button></td></tr>
-          <tr><th>SIZ</th><td><input id="edit-siz" type="number" min="1" max="9999" name="stat-siz" required></td><td><button id="charroll-edit-siz" type="button" class="dads-button" data-type="outline" data-size="xs">ロール</button></td></tr>
-          <tr><th>DEX</th><td><input id="edit-dex" type="number" min="1" max="9999" name="stat-dex" required></td><td><button id="charroll-edit-dex" type="button" class="dads-button" data-type="outline" data-size="xs">ロール</button></td></tr>
-          <tr><th>APP</th><td><input id="edit-app" type="number" min="1" max="9999" name="stat-app" required></td><td><button id="charroll-edit-app" type="button" class="dads-button" data-type="outline" data-size="xs">ロール</button></td></tr>
-          <tr><th>INT</th><td><input id="edit-int" type="number" min="1" max="9999" name="stat-int" required></td><td><button id="charroll-edit-int" type="button" class="dads-button" data-type="outline" data-size="xs">ロール</button></td></tr>
-          <tr><th>POW</th><td><input id="edit-pow" type="number" min="1" max="9999" name="stat-pow" required></td><td><button id="charroll-edit-pow" type="button" class="dads-button" data-type="outline" data-size="xs">ロール</button></td></tr>
-          <tr><th>EDU</th><td><input id="edit-edu" type="number" min="1" max="9999" name="stat-edu" required></td><td><button id="charroll-edit-edu" type="button" class="dads-button" data-type="outline" data-size="xs">ロール</button></td></tr>
-          <tr><th>幸運</th><td><input id="edit-luk" type="number" min="1" max="9999" name="stat-luk" required></td><td><button id="charroll-edit-luk" type="button" class="dads-button" data-type="outline" data-size="xs">ロール</button></td></tr>
-        </table>
-      </fieldset>
-      <fieldset id="edit-skills">
-        <legend>技能</legend>
-        <table>
-          <thead><tr><th>技能</th><th>初期値</th><th>職業P</th><th>興味P</th></tr></thead>
+          <thead>
+            <tr id="modal_fieldset-1_table_thead_tr">
+              <th id="modal_fieldset-1_table_thead_th-1"></th>
+              <th id="modal_fieldset-1_table_thead_th-2"></th>
+              <th id="modal_fieldset-1_table_thead_th-3"></th>
+              <th id="modal_fieldset-1_table_thead_th-4"></th>
+              <th id="modal_fieldset-1_table_thead_th-5"></th>
+            </tr>
+          </thead>
           <tbody>
-            <tr><th>経理</th>              <td>5</td>  <td><input id="skill-occ-accounting"            type="number" min="0" max="9999" name="occ-accounting"></td>            <td><input id="skill-int-accounting"            type="number" min="0" max="9999" name="int-accounting"></td></tr>
-            <tr><th>人類学</th>            <td>1</td>  <td><input id="skill-occ-anthropology"          type="number" min="0" max="9999" name="occ-anthropology"></td>          <td><input id="skill-int-anthropology"          type="number" min="0" max="9999" name="int-anthropology"></td></tr>
-            <tr><th>考古学</th>            <td>1</td>  <td><input id="skill-occ-archaeology"           type="number" min="0" max="9999" name="occ-archaeology"></td>           <td><input id="skill-int-archaeology"           type="number" min="0" max="9999" name="int-archaeology"></td></tr>
-            <tr><th>鑑定</th>              <td>5</td>  <td><input id="skill-occ-appraise"              type="number" min="0" max="9999" name="occ-appraise"></td>              <td><input id="skill-int-appraise"              type="number" min="0" max="9999" name="int-appraise"></td></tr>
-            <tr><th>芸術/製作</th>         <td>5</td>  <td><input id="skill-occ-art-craft"             type="number" min="0" max="9999" name="occ-art-craft"></td>             <td><input id="skill-int-art-craft"             type="number" min="0" max="9999" name="int-art-craft"></td></tr>
-            <tr><th>魅惑</th>              <td>15</td> <td><input id="skill-occ-charm"                 type="number" min="0" max="9999" name="occ-charm"></td>                 <td><input id="skill-int-charm"                 type="number" min="0" max="9999" name="int-charm"></td></tr>
-            <tr><th>登攀</th>              <td>20</td> <td><input id="skill-occ-climb"                 type="number" min="0" max="9999" name="occ-climb"></td>                 <td><input id="skill-int-climb"                 type="number" min="0" max="9999" name="int-climb"></td></tr>
-            <tr><th>コンピューター</th>    <td>5</td>  <td><input id="skill-occ-computer-use"          type="number" min="0" max="9999" name="occ-computer-use"></td>          <td><input id="skill-int-computer-use"          type="number" min="0" max="9999" name="int-computer-use"></td></tr>
-            <tr><th>信用</th>              <td>0</td>  <td><input id="skill-occ-credit-rating"         type="number" min="0" max="9999" name="occ-credit-rating"></td>         <td><input id="skill-int-credit-rating"         type="number" min="0" max="9999" name="int-credit-rating"></td></tr>
-            <tr><th>クトゥルフ神話</th>    <td>0</td>  <td><input id="skill-occ-cthulhu-mythos"        type="number" min="0" max="9999" name="occ-cthulhu-mythos"></td>        <td><input id="skill-int-cthulhu-mythos"        type="number" min="0" max="9999" name="int-cthulhu-mythos"></td></tr>
-            <tr><th>変装</th>              <td>5</td>  <td><input id="skill-occ-disguise"              type="number" min="0" max="9999" name="occ-disguise"></td>              <td><input id="skill-int-disguise"              type="number" min="0" max="9999" name="int-disguise"></td></tr>
-            <tr><th>運転（自動車）</th>    <td>20</td> <td><input id="skill-occ-drive-auto"            type="number" min="0" max="9999" name="occ-drive-auto"></td>            <td><input id="skill-int-drive-auto"            type="number" min="0" max="9999" name="int-drive-auto"></td></tr>
-            <tr><th>電気修理</th>          <td>10</td> <td><input id="skill-occ-elec-repair"           type="number" min="0" max="9999" name="occ-elec-repair"></td>           <td><input id="skill-int-elec-repair"           type="number" min="0" max="9999" name="int-elec-repair"></td></tr>
-            <tr><th>電子工学</th>          <td>1</td>  <td><input id="skill-occ-electronics"           type="number" min="0" max="9999" name="occ-electronics"></td>           <td><input id="skill-int-electronics"           type="number" min="0" max="9999" name="int-electronics"></td></tr>
-            <tr><th>言いくるめ</th>        <td>5</td>  <td><input id="skill-occ-fast-talk"             type="number" min="0" max="9999" name="occ-fast-talk"></td>             <td><input id="skill-int-fast-talk"             type="number" min="0" max="9999" name="int-fast-talk"></td></tr>
-            <tr><th>近接戦闘（格闘）</th>  <td>25</td> <td><input id="skill-occ-fighting-brawl"        type="number" min="0" max="9999" name="occ-fighting-brawl"></td>        <td><input id="skill-int-fighting-brawl"        type="number" min="0" max="9999" name="int-fighting-brawl"></td></tr>
-            <tr><th>近接戦闘（その他）</th><td>0</td>  <td><input id="skill-occ-fighting-other"        type="number" min="0" max="9999" name="occ-fighting-other"></td>        <td><input id="skill-int-fighting-other"        type="number" min="0" max="9999" name="int-fighting-other"></td></tr>
-            <tr><th>射撃（拳銃）</th>      <td>20</td> <td><input id="skill-occ-firearms-handgun"      type="number" min="0" max="9999" name="occ-firearms-handgun"></td>      <td><input id="skill-int-firearms-handgun"      type="number" min="0" max="9999" name="int-firearms-handgun"></td></tr>
-            <tr><th>射撃（ライフル/SG）</th><td>25</td><td><input id="skill-occ-firearms-rifle-shotgun" type="number" min="0" max="9999" name="occ-firearms-rifle-shotgun"></td><td><input id="skill-int-firearms-rifle-shotgun" type="number" min="0" max="9999" name="int-firearms-rifle-shotgun"></td></tr>
-            <tr><th>射撃（その他）</th>    <td>0</td>  <td><input id="skill-occ-firearms-other"        type="number" min="0" max="9999" name="occ-firearms-other"></td>        <td><input id="skill-int-firearms-other"        type="number" min="0" max="9999" name="int-firearms-other"></td></tr>
-            <tr><th>応急手当</th>          <td>30</td> <td><input id="skill-occ-first-aid"             type="number" min="0" max="9999" name="occ-first-aid"></td>             <td><input id="skill-int-first-aid"             type="number" min="0" max="9999" name="int-first-aid"></td></tr>
-            <tr><th>歴史</th>              <td>5</td>  <td><input id="skill-occ-history"               type="number" min="0" max="9999" name="occ-history"></td>               <td><input id="skill-int-history"               type="number" min="0" max="9999" name="int-history"></td></tr>
-            <tr><th>威圧</th>              <td>15</td> <td><input id="skill-occ-intimidate"            type="number" min="0" max="9999" name="occ-intimidate"></td>            <td><input id="skill-int-intimidate"            type="number" min="0" max="9999" name="int-intimidate"></td></tr>
-            <tr><th>跳躍</th>              <td>20</td> <td><input id="skill-occ-jump"                  type="number" min="0" max="9999" name="occ-jump"></td>                  <td><input id="skill-int-jump"                  type="number" min="0" max="9999" name="int-jump"></td></tr>
-            <tr><th>ほかの言語</th>        <td>1</td>  <td><input id="skill-occ-language-other"        type="number" min="0" max="9999" name="occ-language-other"></td>        <td><input id="skill-int-language-other"        type="number" min="0" max="9999" name="int-language-other"></td></tr>
-            <tr><th>母国語</th>            <td>EDU</td><td><input id="skill-occ-language-own"          type="number" min="0" max="9999" name="occ-language-own"></td>          <td><input id="skill-int-language-own"          type="number" min="0" max="9999" name="int-language-own"></td></tr>
-            <tr><th>法律</th>              <td>5</td>  <td><input id="skill-occ-law"                   type="number" min="0" max="9999" name="occ-law"></td>                   <td><input id="skill-int-law"                   type="number" min="0" max="9999" name="int-law"></td></tr>
-            <tr><th>図書館</th>            <td>20</td> <td><input id="skill-occ-library-use"           type="number" min="0" max="9999" name="occ-library-use"></td>           <td><input id="skill-int-library-use"           type="number" min="0" max="9999" name="int-library-use"></td></tr>
-            <tr><th>聞き耳</th>            <td>20</td> <td><input id="skill-occ-listen"                type="number" min="0" max="9999" name="occ-listen"></td>                <td><input id="skill-int-listen"                type="number" min="0" max="9999" name="int-listen"></td></tr>
-            <tr><th>鍵開け</th>            <td>1</td>  <td><input id="skill-occ-locksmith"             type="number" min="0" max="9999" name="occ-locksmith"></td>             <td><input id="skill-int-locksmith"             type="number" min="0" max="9999" name="int-locksmith"></td></tr>
-            <tr><th>機械修理</th>          <td>10</td> <td><input id="skill-occ-mech-repair"           type="number" min="0" max="9999" name="occ-mech-repair"></td>           <td><input id="skill-int-mech-repair"           type="number" min="0" max="9999" name="int-mech-repair"></td></tr>
-            <tr><th>医学</th>              <td>1</td>  <td><input id="skill-occ-medicine"              type="number" min="0" max="9999" name="occ-medicine"></td>              <td><input id="skill-int-medicine"              type="number" min="0" max="9999" name="int-medicine"></td></tr>
-            <tr><th>自然</th>              <td>10</td> <td><input id="skill-occ-natural-world"         type="number" min="0" max="9999" name="occ-natural-world"></td>         <td><input id="skill-int-natural-world"         type="number" min="0" max="9999" name="int-natural-world"></td></tr>
-            <tr><th>ナビゲート</th>        <td>10</td> <td><input id="skill-occ-navigate"              type="number" min="0" max="9999" name="occ-navigate"></td>              <td><input id="skill-int-navigate"              type="number" min="0" max="9999" name="int-navigate"></td></tr>
-            <tr><th>オカルト</th>          <td>5</td>  <td><input id="skill-occ-occult"                type="number" min="0" max="9999" name="occ-occult"></td>                <td><input id="skill-int-occult"                type="number" min="0" max="9999" name="int-occult"></td></tr>
-            <tr><th>説得</th>              <td>10</td> <td><input id="skill-occ-persuade"              type="number" min="0" max="9999" name="occ-persuade"></td>              <td><input id="skill-int-persuade"              type="number" min="0" max="9999" name="int-persuade"></td></tr>
-            <tr><th>操縦</th>              <td>1</td>  <td><input id="skill-occ-pilot"                 type="number" min="0" max="9999" name="occ-pilot"></td>                 <td><input id="skill-int-pilot"                 type="number" min="0" max="9999" name="int-pilot"></td></tr>
-            <tr><th>精神分析</th>          <td>1</td>  <td><input id="skill-occ-psychoanalysis"        type="number" min="0" max="9999" name="occ-psychoanalysis"></td>        <td><input id="skill-int-psychoanalysis"        type="number" min="0" max="9999" name="int-psychoanalysis"></td></tr>
-            <tr><th>心理学</th>            <td>10</td> <td><input id="skill-occ-psychology"            type="number" min="0" max="9999" name="occ-psychology"></td>            <td><input id="skill-int-psychology"            type="number" min="0" max="9999" name="int-psychology"></td></tr>
-            <tr><th>乗馬</th>              <td>5</td>  <td><input id="skill-occ-ride"                  type="number" min="0" max="9999" name="occ-ride"></td>                  <td><input id="skill-int-ride"                  type="number" min="0" max="9999" name="int-ride"></td></tr>
-            <tr><th>科学</th>              <td>1</td>  <td><input id="skill-occ-science"               type="number" min="0" max="9999" name="occ-science"></td>               <td><input id="skill-int-science"               type="number" min="0" max="9999" name="int-science"></td></tr>
-            <tr><th>手さばき</th>          <td>10</td> <td><input id="skill-occ-sleight-of-hand"       type="number" min="0" max="9999" name="occ-sleight-of-hand"></td>       <td><input id="skill-int-sleight-of-hand"       type="number" min="0" max="9999" name="int-sleight-of-hand"></td></tr>
-            <tr><th>目星</th>              <td>25</td> <td><input id="skill-occ-spot-hidden"           type="number" min="0" max="9999" name="occ-spot-hidden"></td>           <td><input id="skill-int-spot-hidden"           type="number" min="0" max="9999" name="int-spot-hidden"></td></tr>
-            <tr><th>隠密</th>              <td>20</td> <td><input id="skill-occ-stealth"               type="number" min="0" max="9999" name="occ-stealth"></td>               <td><input id="skill-int-stealth"               type="number" min="0" max="9999" name="int-stealth"></td></tr>
-            <tr><th>サバイバル</th>        <td>10</td> <td><input id="skill-occ-survival"              type="number" min="0" max="9999" name="occ-survival"></td>              <td><input id="skill-int-survival"              type="number" min="0" max="9999" name="int-survival"></td></tr>
-            <tr><th>水泳</th>              <td>20</td> <td><input id="skill-occ-swim"                  type="number" min="0" max="9999" name="occ-swim"></td>                  <td><input id="skill-int-swim"                  type="number" min="0" max="9999" name="int-swim"></td></tr>
-            <tr><th>投擲</th>              <td>20</td> <td><input id="skill-occ-throw"                 type="number" min="0" max="9999" name="occ-throw"></td>                 <td><input id="skill-int-throw"                 type="number" min="0" max="9999" name="int-throw"></td></tr>
-            <tr><th>追跡</th>              <td>10</td> <td><input id="skill-occ-track"                 type="number" min="0" max="9999" name="occ-track"></td>                 <td><input id="skill-int-track"                 type="number" min="0" max="9999" name="int-track"></td></tr>
+            <tr id="modal_fieldset-1_table_tr-1">
+              <td id="modal_fieldset-1_table_tr-1_td"></td>
+              <td><input id="modal_fieldset-1_table_tr-1_input-1" type="number" min="0" max="9999" name="modal_fieldset-1_table_tr-1_input-1"></td>
+              <td><input id="modal_fieldset-1_table_tr-1_input-2" type="number" min="0" max="9999" name="modal_fieldset-1_table_tr-1_input-2"></td>
+              <td><input id="modal_fieldset-1_table_tr-1_input-3" type="number" min="0" max="9999" name="modal_fieldset-1_table_tr-1_input-3"></td>
+              <td><button id="modal_fieldset-1_table_tr-1_button" type="button" class="dads-button" data-type="outline" data-size="xs">🎲</button></td>
+            </tr>
           </tbody>
         </table>
       </fieldset>
-    </fieldset>
-    <footer>
-      <button id="char-edit-cancel2" type="button" class="dads-button" data-type="outline" data-size="sm">キャンセル</button>
-      <button id="char-edit-save" type="submit" form="char-edit-form" class="dads-button" data-type="solid-fill" data-size="sm">保存</button>
-    </footer>
-  </dialog>
-  <form id="char-edit-form" method="dialog"></form>
-
-</body>
-
+      <fieldset id="modal_fieldset-2">
+        <legend>
+          <h5 id="modal_fieldset-2_legend_h5"></h5>
+          <button id="modal_fieldset-2_legend_button" type="button" class="dads-button" data-type="outline"
+            data-size="xs"></button>
+        </legend>
+        <table>
+          <thead>
+            <tr id="modal_fieldset-2_table_thead_tr">
+              <th id="modal_fieldset-2_table_thead_th-1"></th>
+              <th id="modal_fieldset-2_table_thead_th-2"></th>
+              <th id="modal_fieldset-2_table_thead_th-3"></th>
+              <th id="modal_fieldset-2_table_thead_th-4"></th>
+              <th id="modal_fieldset-2_table_thead_th-5"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr id="modal_fieldset-2_table_tr-1">
+              <th id="modal_fieldset-2_table_tr-1_th"></th>
+              <td><input id="modal_fieldset-2_table_tr-1_input-1" type="number" min="0" max="9999" name="modal_fieldset-2_table_tr-1_input-1"></td>
+              <td><input id="modal_fieldset-2_table_tr-1_input-2" type="number" min="0" max="9999" name="modal_fieldset-2_table_tr-1_input-2"></td>
+              <td><input id="modal_fieldset-2_table_tr-1_input-3" type="number" min="0" max="9999" name="modal_fieldset-2_table_tr-1_input-3"></td>
+              <td><button id="modal_fieldset-2_table_tr-1_button" type="button" class="dads-button" data-type="outline" data-size="xs">🎲</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </fieldset>
+      <footer>
+        <button id="modal_save" type="submit" form="form" class="dads-button" data-type="solid-fill" data-size="sm">💾</button>
+      </footer>
+    </dialog>
+    <form id="form" method="dialog"></form>
+  </body>
 </html>
