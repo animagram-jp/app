@@ -1,17 +1,4 @@
-use crate::list::VariableList;
-use crate::datetime;
-
-pub struct Instance {
-    pub data: VariableList<u8>,
-}
-
-impl Instance {
-    pub fn new() -> Self {
-        Self { data: VariableList::new() }
-    }
-}
-
-/// --- 能力値 (Characteristic) --- 
+// --- 能力値 (Characteristic) --- 
 enum Characteristic {
     Strength,
     Constitution,
@@ -51,7 +38,7 @@ impl Characteristic {
     }
 }
 
-/// occupation (職業)
+// occupation (職業)
 pub enum Occupation { // p.38
     Activist,
     Antiquarian,
@@ -148,7 +135,7 @@ impl Occupation {
     }
 }
 
-/// --- 芸術/製作 (Art/Craft) 専門分野 --- p.62
+// --- 芸術/製作 (Art/Craft) 専門分野 --- p.62
 enum ArtCraftSpec {
     Acting,       // 演劇
     Barber,       // 理容
@@ -202,7 +189,7 @@ impl ArtCraftSpec {
     }
 }
 
-/// --- 近接戦闘 (Fighting) 専門分野 --- p.61
+// --- 近接戦闘 (Fighting) 専門分野 --- p.61
 enum FightingSpec {
     Axe,          // 斧           15%
     Brawl,        // 格闘         25%
@@ -246,14 +233,14 @@ impl FightingSpec {
             (Self::Spear,     Lang::En) => "Spear",
             (Self::Sword,     Lang::Ja) => "刀剣",
             (Self::Sword,     Lang::En) => "Sword",
-            (Self::Whip,                    Lang::Ja) => "鞭",
-            (Self::Whip,                    Lang::En) => "Whip",
-            (Self::Custom { name, .. },     _)        => name.as_str(),
+            (Self::Whip,      Lang::Ja) => "鞭",
+            (Self::Whip,      Lang::En) => "Whip",
+            (Self::Custom { name, .. }, _) => name.as_str(),
         }
     }
 }
 
-/// --- 射撃 (Firearms) 専門分野 --- p.64
+// --- 射撃 (Firearms) 専門分野 --- p.64
 enum FirearmsSpec {
     Bow,           // 弓                   15%
     Handgun,       // 拳銃                 20%
@@ -296,7 +283,7 @@ impl FirearmsSpec {
     }
 }
 
-/// --- ほかの言語 (Language Other) 専門分野 ---
+// --- ほかの言語 (Language Other) 専門分野 ---
 enum LanguageSpec {
     Custom(String),
 }
@@ -311,7 +298,7 @@ impl LanguageSpec {
     }
 }
 
-/// --- 操縦 (Pilot) 専門分野 --- p.67
+// --- 操縦 (Pilot) 専門分野 --- p.67
 enum PilotSpec {
     // --- 両時代共通 ---
     Boat,       // ボート
@@ -362,7 +349,7 @@ impl PilotSpec {
     }
 }
 
-/// --- 科学 (Science) 専門分野 --- p.59
+// --- 科学 (Science) 専門分野 --- p.59
 enum ScienceSpec {
     Astronomy,    // 天文学
     Biology,      // 生物学
@@ -416,7 +403,7 @@ impl ScienceSpec {
     }
 }
 
-/// --- サバイバル (Survival) 専門分野 --- p.63
+// --- サバイバル (Survival) 専門分野 --- p.63
 enum SurvivalSpec {
     Arctic,
     Desert,
@@ -440,7 +427,7 @@ impl SurvivalSpec {
     }
 }
 
-/// --- スキル (Skill) --- p.54
+// --- スキル (Skill) --- p.54
 enum Skill {
     Accounting,
     Anthropology,
@@ -975,13 +962,27 @@ impl AgeCategory {
     }
 }
 
-pub enum DataStruct {
+pub enum Character {
+    // 依存無し
     Identity,
-    Timestamp,
+
+    // Identityのみに依存
+    Timestamp, // createとupdateの二値。
+
+    // IdentityとTimestampのみに依存
+    Profile,
+    Equipment,
+    Backstory,
+
+    // Profileに依存
     Characteristic,
+
+    // Characteristicに依存
     Derived,
     Skill,
-    Backstory,
+
+    // Characteristic, Skill, Equipmentに依存
+    Roll,
 }
 
 impl DataStruct {
