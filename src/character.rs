@@ -131,6 +131,211 @@ enum Skill {
     Custom { name: String, spec: Option<String> },
 }
 
+// ============================================================
+// --- CoC 7th 導出値・判定カテゴリ ---
+// ============================================================
+
+// --- ビルド (Build) ---
+// STR + SIZ の合計値から決定される離散段階。DamageBonusDice と 1対1 対応する。
+enum BuildRank {
+    NegTwo,   // -2  (STR+SIZ:   2- 64)
+    NegOne,   // -1  (STR+SIZ:  65- 84)
+    Zero,     //  0  (STR+SIZ:  85-124)
+    PosOne,   // +1  (STR+SIZ: 125-164)
+    PosTwo,   // +2  (STR+SIZ: 165-204)
+    PosThree, // +3  (STR+SIZ: 205-284)
+    PosFour,  // +4  (STR+SIZ: 285-364)
+    PosFive,  // +5  (STR+SIZ: 365+   )
+}
+
+impl BuildRank {
+    pub fn from_str_siz(sum: u16) -> Self {
+        match sum {
+              2..= 64 => Self::NegTwo,
+             65..= 84 => Self::NegOne,
+             85..=124 => Self::Zero,
+            125..=164 => Self::PosOne,
+            165..=204 => Self::PosTwo,
+            205..=284 => Self::PosThree,
+            285..=364 => Self::PosFour,
+            _         => Self::PosFive,
+        }
+    }
+
+    pub fn int_value(&self) -> i8 {
+        match self {
+            Self::NegTwo   => -2,
+            Self::NegOne   => -1,
+            Self::Zero     =>  0,
+            Self::PosOne   =>  1,
+            Self::PosTwo   =>  2,
+            Self::PosThree =>  3,
+            Self::PosFour  =>  4,
+            Self::PosFive  =>  5,
+        }
+    }
+
+    pub fn damage_bonus(&self) -> DamageBonusDice {
+        match self {
+            Self::NegTwo   => DamageBonusDice::NegTwo,
+            Self::NegOne   => DamageBonusDice::NegOne,
+            Self::Zero     => DamageBonusDice::None,
+            Self::PosOne   => DamageBonusDice::PosOnD4,
+            Self::PosTwo   => DamageBonusDice::PosOnD6,
+            Self::PosThree => DamageBonusDice::PosTwD6,
+            Self::PosFour  => DamageBonusDice::PosThrD6,
+            Self::PosFive  => DamageBonusDice::PosForD6,
+        }
+    }
+}
+
+// --- ダメージボーナス (DamageBonus) ---
+// ダイス式のため整数で表現できない。BuildRank と 1対1 対応する。
+enum DamageBonusDice {
+    NegTwo,   // -2    (Build -2)
+    NegOne,   // -1    (Build -1)
+    None,     // なし   (Build  0)
+    PosOnD4,  // +1D4  (Build +1)
+    PosOnD6,  // +1D6  (Build +2)
+    PosTwD6,  // +2D6  (Build +3)
+    PosThrD6, // +3D6  (Build +4)
+    PosForD6, // +4D6  (Build +5)
+}
+
+// --- 移動率基準値 (MoveBase) ---
+// STR・DEX と SIZ の大小比較から決定される。年齢修正は AgeCategory で別途管理する。
+enum MoveBase {
+    Seven, // 7: STR <  SIZ かつ DEX <  SIZ
+    Eight, // 8: STR >= SIZ または DEX >= SIZ（どちらか一方のみが超える）
+    Nine,  // 9: STR >  SIZ かつ DEX >  SIZ
+}
+
+impl MoveBase {
+    pub fn from_str_dex_siz(str_val: u16, dex: u16, siz: u16) -> Self {
+        match (str_val > siz, dex > siz) {
+            (false, false) => Self::Seven,
+            (true,  true)  => Self::Nine,
+            _              => Self::Eight,
+        }
+    }
+
+    pub fn int_value(&self) -> u8 {
+        match self {
+            Self::Seven => 7,
+            Self::Eight => 8,
+            Self::Nine  => 9,
+        }
+    }
+}
+
+// --- 生活水準 (Standard of Living) ---
+// 信用 (Credit Rating) の値から決定される区分。
+enum StandardOfLiving {
+    Pauper,    // 惨め      (CR: 0     )
+    Poor,      // 貧乏      (CR: 1-  9 )
+    Average,   // 平均      (CR: 10- 49)
+    Wealthy,   // 裕福      (CR: 50- 89)
+    Rich,      // 金持ち    (CR: 90- 98)
+    SuperRich, // 超大金持ち (CR: 99    )
+}
+
+impl StandardOfLiving {
+    pub fn from_cr(cr: u16) -> Self {
+        match cr {
+             0        => Self::Pauper,
+             1..= 9   => Self::Poor,
+            10..= 49  => Self::Average,
+            50..= 89  => Self::Wealthy,
+            90..= 98  => Self::Rich,
+            _         => Self::SuperRich,
+        }
+    }
+}
+
+// --- 年齢カテゴリ (AgeCategory) ---
+// キャラクター作成時の能力値修正ルールの区分。
+// Teen のみ STR+SIZ からの差し引きで、それ以外は STR/CON/DEX からの合計差し引き。
+enum AgeCategory {
+    Teen,    // 15-19: STR/SIZ合計-5、EDU-5、幸運再ロール（高い方）
+    Young,   // 20-39: EDU改善1回、修正なし
+    Middle,  // 40-49: EDU改善2回、STR/CON/DEX合計-5、 APP-5、 MOV-1
+    Senior,  // 50-59: EDU改善3回、STR/CON/DEX合計-10、APP-10、MOV-2
+    Elderly, // 60-69: EDU改善4回、STR/CON/DEX合計-20、APP-15、MOV-3
+    Old,     // 70-79: EDU改善4回、STR/CON/DEX合計-40、APP-20、MOV-4
+    Ancient, // 80+  : EDU改善4回、STR/CON/DEX合計-80、APP-25、MOV-5
+}
+
+impl AgeCategory {
+    pub fn from_age(age: u8) -> Self {
+        match age {
+            15..=19 => Self::Teen,
+            20..=39 => Self::Young,
+            40..=49 => Self::Middle,
+            50..=59 => Self::Senior,
+            60..=69 => Self::Elderly,
+            70..=79 => Self::Old,
+            _       => Self::Ancient,
+        }
+    }
+
+    // MOV への減算値
+    pub fn mov_penalty(&self) -> u8 {
+        match self {
+            Self::Teen    => 0,
+            Self::Young   => 0,
+            Self::Middle  => 1,
+            Self::Senior  => 2,
+            Self::Elderly => 3,
+            Self::Old     => 4,
+            Self::Ancient => 5,
+        }
+    }
+
+    // STR/CON/DEX から合計で差し引く点数（Teen は STR/SIZ から差し引く）
+    pub fn phys_deduction(&self) -> u8 {
+        match self {
+            Self::Teen    =>  5, // STR+SIZ から差し引く（Teen 専用ルール）
+            Self::Young   =>  0,
+            Self::Middle  =>  5,
+            Self::Senior  => 10,
+            Self::Elderly => 20,
+            Self::Old     => 40,
+            Self::Ancient => 80,
+        }
+    }
+
+    // APP からの固定減算値
+    pub fn app_deduction(&self) -> u8 {
+        match self {
+            Self::Teen    =>  0,
+            Self::Young   =>  0,
+            Self::Middle  =>  5,
+            Self::Senior  => 10,
+            Self::Elderly => 15,
+            Self::Old     => 20,
+            Self::Ancient => 25,
+        }
+    }
+
+    // EDU 改善チェック回数（成功すれば EDU +1D10、上限 99）
+    pub fn edu_improvement_checks(&self) -> u8 {
+        match self {
+            Self::Teen    => 0,
+            Self::Young   => 1,
+            Self::Middle  => 2,
+            Self::Senior  => 3,
+            Self::Elderly => 4,
+            Self::Old     => 4,
+            Self::Ancient => 4,
+        }
+    }
+
+    // Teen のみ特殊ルール（STR/SIZ差し引き・EDU-5・幸運再ロール）
+    pub fn is_teen(&self) -> bool {
+        matches!(self, Self::Teen)
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Model {
     
@@ -916,6 +1121,84 @@ pub mod schema {
             (Sea,       Lang::Ja) => "海上",
             (Sea,       Lang::En) => "Sea",
             (Custom(_), _)        => "",
+        }
+    }
+
+    // --- 導出値・判定カテゴリ ラベル ---
+
+    pub fn build_rank_label(rank: super::BuildRank, lang: Lang) -> &'static str {
+        use super::BuildRank::*;
+        match (rank, lang) {
+            (NegTwo,   _) => "-2",
+            (NegOne,   _) => "-1",
+            (Zero,     _) => "0",
+            (PosOne,   _) => "+1",
+            (PosTwo,   _) => "+2",
+            (PosThree, _) => "+3",
+            (PosFour,  _) => "+4",
+            (PosFive,  _) => "+5",
+        }
+    }
+
+    pub fn damage_bonus_dice_label(dice: super::DamageBonusDice, lang: Lang) -> &'static str {
+        use super::DamageBonusDice::*;
+        match (dice, lang) {
+            (NegTwo,   _)        => "-2",
+            (NegOne,   _)        => "-1",
+            (None,     Lang::Ja) => "なし",
+            (None,     Lang::En) => "None",
+            (PosOnD4,  _)        => "+1D4",
+            (PosOnD6,  _)        => "+1D6",
+            (PosTwD6,  _)        => "+2D6",
+            (PosThrD6, _)        => "+3D6",
+            (PosForD6, _)        => "+4D6",
+        }
+    }
+
+    pub fn move_base_label(mov: super::MoveBase, _lang: Lang) -> &'static str {
+        use super::MoveBase::*;
+        match mov {
+            Seven => "7",
+            Eight => "8",
+            Nine  => "9",
+        }
+    }
+
+    pub fn standard_of_living_label(sol: super::StandardOfLiving, lang: Lang) -> &'static str {
+        use super::StandardOfLiving::*;
+        match (sol, lang) {
+            (Pauper,    Lang::Ja) => "惨め",
+            (Pauper,    Lang::En) => "Pauper",
+            (Poor,      Lang::Ja) => "貧乏",
+            (Poor,      Lang::En) => "Poor",
+            (Average,   Lang::Ja) => "平均",
+            (Average,   Lang::En) => "Average",
+            (Wealthy,   Lang::Ja) => "裕福",
+            (Wealthy,   Lang::En) => "Wealthy",
+            (Rich,      Lang::Ja) => "金持ち",
+            (Rich,      Lang::En) => "Rich",
+            (SuperRich, Lang::Ja) => "超大金持ち",
+            (SuperRich, Lang::En) => "Super Rich",
+        }
+    }
+
+    pub fn age_category_label(cat: super::AgeCategory, lang: Lang) -> &'static str {
+        use super::AgeCategory::*;
+        match (cat, lang) {
+            (Teen,    Lang::Ja) => "10代 (15-19)",
+            (Teen,    Lang::En) => "Teen (15-19)",
+            (Young,   Lang::Ja) => "若年 (20-39)",
+            (Young,   Lang::En) => "Young Adult (20-39)",
+            (Middle,  Lang::Ja) => "中年 (40-49)",
+            (Middle,  Lang::En) => "Middle-Aged (40-49)",
+            (Senior,  Lang::Ja) => "熟年 (50-59)",
+            (Senior,  Lang::En) => "Senior (50-59)",
+            (Elderly, Lang::Ja) => "高齢 (60-69)",
+            (Elderly, Lang::En) => "Elderly (60-69)",
+            (Old,     Lang::Ja) => "老年 (70-79)",
+            (Old,     Lang::En) => "Old (70-79)",
+            (Ancient, Lang::Ja) => "超高齢 (80+)",
+            (Ancient, Lang::En) => "Very Old (80+)",
         }
     }
 
