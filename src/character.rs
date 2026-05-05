@@ -11,6 +11,50 @@ impl Instance {
     }
 }
 
+pub enum Occupation {
+    Athlete, 
+    Doctor, 
+    Engineer, 
+    Entertainer, 
+    Activist, 
+    Professor, 
+    Police, 
+    Detective, 
+    Artist,
+    Antiquarian, 
+    Author, 
+    MilitaryOfficer, 
+    Librarian, 
+    Journalist, 
+    PrivateInvestigator,
+    Clergy, 
+    Parapsychologist, 
+    Dilettante, 
+    Missionary, 
+    TribeMember, 
+    Farmer,
+    Pilot, 
+    Hacker, 
+    Criminal, 
+    Soldier, 
+    Lawyer, 
+    Drifter, 
+    Musician,
+    Custom(String),
+}
+
+impl Occupation {
+    pub fn label(&self, lang: Lang) -> &'static str {
+        match (self, lang) {
+            (Self::Athlete, Lang::Ja) => "アスリート",
+            (Self::Athlete, Lang::En) => "Athlete",
+            (Self::Doctor,  Lang::Ja) => "医師",
+            (Self::Doctor,  Lang::En) => "Doctor",
+
+        }
+    }
+}
+
 // --- 芸術/製作 (Art/Craft) 専門分野 ---
 // ルールブック掲載例。他は Custom で自由記入。
 enum ArtCraftSpec {
@@ -231,12 +275,12 @@ impl MoveBase {
 // --- 生活水準 (Standard of Living) ---
 // 信用 (Credit Rating) の値から決定される区分。
 enum StandardOfLiving {
-    Pauper,    // 惨め      (CR: 0     )
-    Poor,      // 貧乏      (CR: 1-  9 )
-    Average,   // 平均      (CR: 10- 49)
-    Wealthy,   // 裕福      (CR: 50- 89)
-    Rich,      // 金持ち    (CR: 90- 98)
-    SuperRich, // 超大金持ち (CR: 99    )
+    Pauper,    // 無一文  (CR: 0     )
+    Poor,      // 貧乏    (CR: 1-  9 )
+    Average,   // 平均    (CR: 10- 49)
+    Wealthy,   // 裕福    (CR: 50- 89)
+    Rich,      // 富豪    (CR: 90- 98)
+    SuperRich, // 大富豪  (CR: 99    )
 }
 
 impl StandardOfLiving {
@@ -248,6 +292,22 @@ impl StandardOfLiving {
             50..= 89  => Self::Wealthy,
             90..= 98  => Self::Rich,
             _         => Self::SuperRich,
+        }
+    }
+    pub fn label(self, lang: Lang) -> &'static str {
+        match (self, lang) {
+            (Self::Pauper,    Lang::Ja) => "無一文",
+            (Self::Pauper,    Lang::En) => "Pauper",
+            (Self::Poor,      Lang::Ja) => "貧乏",
+            (Self::Poor,      Lang::En) => "Poor",
+            (Self::Average,   Lang::Ja) => "平均",
+            (Self::Average,   Lang::En) => "Average",
+            (Self::Wealthy,   Lang::Ja) => "裕福",
+            (Self::Wealthy,   Lang::En) => "Wealthy",
+            (Self::Rich,      Lang::Ja) => "富豪",
+            (Self::Rich,      Lang::En) => "Rich",
+            (Self::SuperRich, Lang::Ja) => "大富豪",
+            (Self::SuperRich, Lang::En) => "Super Rich",
         }
     }
 }
@@ -333,6 +393,25 @@ impl AgeCategory {
     // Teen のみ特殊ルール（STR/SIZ差し引き・EDU-5・幸運再ロール）
     pub fn is_teen(&self) -> bool {
         matches!(self, Self::Teen)
+    }
+
+    pub fn label(&self, lang: Lang) -> &'static str {
+        match (cat, lang) {
+            (Self::Teen,    Lang::Ja) => "10代 (15-19)",
+            (Self::Teen,    Lang::En) => "Teen (15-19)",
+            (Self::Young,   Lang::Ja) => "若年 (20-39)",
+            (Self::Young,   Lang::En) => "Young Adult (20-39)",
+            (Self::Middle,  Lang::Ja) => "中年 (40-49)",
+            (Self::Middle,  Lang::En) => "Middle-Aged (40-49)",
+            (Self::Senior,  Lang::Ja) => "熟年 (50-59)",
+            (Self::Senior,  Lang::En) => "Senior (50-59)",
+            (Self::Elderly, Lang::Ja) => "老年 (60-69)",
+            (Self::Elderly, Lang::En) => "Elderly (60-69)",
+            (Self::Old,     Lang::Ja) => "高齢 (70-79)",
+            (Self::Old,     Lang::En) => "Old (70-79)",
+            (Self::Ancient, Lang::Ja) => "超高齢 (80+)",
+            (Self::Ancient, Lang::En) => "Very Old (80+)",
+        }
     }
 }
 
@@ -522,14 +601,6 @@ impl Model {
             Self::ArcaneTomesAndSpells   => "arcane_tomes_and_spells",
         }
     }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum OccupationKind {
-    Athlete, Doctor, Engineer, Entertainer, Activist, Professor, Police, Detective, Artist,
-    Antiquarian, Author, MilitaryOfficer, Librarian, Journalist, PrivateInvestigator,
-    Clergy, Parapsychologist, Dilettante, Missionary, TribeMember, Farmer,
-    Pilot, Hacker, Criminal, Soldier, Lawyer, Drifter, Musician,
 }
 
 pub mod schema {
@@ -1161,54 +1232,6 @@ pub mod schema {
             Seven => "7",
             Eight => "8",
             Nine  => "9",
-        }
-    }
-
-    pub fn standard_of_living_label(sol: super::StandardOfLiving, lang: Lang) -> &'static str {
-        use super::StandardOfLiving::*;
-        match (sol, lang) {
-            (Pauper,    Lang::Ja) => "惨め",
-            (Pauper,    Lang::En) => "Pauper",
-            (Poor,      Lang::Ja) => "貧乏",
-            (Poor,      Lang::En) => "Poor",
-            (Average,   Lang::Ja) => "平均",
-            (Average,   Lang::En) => "Average",
-            (Wealthy,   Lang::Ja) => "裕福",
-            (Wealthy,   Lang::En) => "Wealthy",
-            (Rich,      Lang::Ja) => "金持ち",
-            (Rich,      Lang::En) => "Rich",
-            (SuperRich, Lang::Ja) => "超大金持ち",
-            (SuperRich, Lang::En) => "Super Rich",
-        }
-    }
-
-    pub fn age_category_label(cat: super::AgeCategory, lang: Lang) -> &'static str {
-        use super::AgeCategory::*;
-        match (cat, lang) {
-            (Teen,    Lang::Ja) => "10代 (15-19)",
-            (Teen,    Lang::En) => "Teen (15-19)",
-            (Young,   Lang::Ja) => "若年 (20-39)",
-            (Young,   Lang::En) => "Young Adult (20-39)",
-            (Middle,  Lang::Ja) => "中年 (40-49)",
-            (Middle,  Lang::En) => "Middle-Aged (40-49)",
-            (Senior,  Lang::Ja) => "熟年 (50-59)",
-            (Senior,  Lang::En) => "Senior (50-59)",
-            (Elderly, Lang::Ja) => "高齢 (60-69)",
-            (Elderly, Lang::En) => "Elderly (60-69)",
-            (Old,     Lang::Ja) => "老年 (70-79)",
-            (Old,     Lang::En) => "Old (70-79)",
-            (Ancient, Lang::Ja) => "超高齢 (80+)",
-            (Ancient, Lang::En) => "Very Old (80+)",
-        }
-    }
-
-    pub fn occupation_label(kind: OccupationKind, lang: Lang) -> &'static str {
-        match (kind, lang) {
-            (OccupationKind::Athlete, Lang::Ja) => "アスリート",
-            (OccupationKind::Athlete, Lang::En) => "Athlete",
-            (OccupationKind::Doctor,  Lang::Ja) => "医師",
-            (OccupationKind::Doctor,  Lang::En) => "Doctor",
-            _ => todo!("occupation label not yet defined"),
         }
     }
 }
