@@ -11,46 +11,98 @@ impl Instance {
     }
 }
 
-pub enum Occupation {
-    Athlete, 
-    Doctor, 
-    Engineer, 
-    Entertainer, 
-    Activist, 
-    Professor, 
-    Police, 
-    Detective, 
+pub enum Occupation { // p.38
+    Activist,
+    Antiquarian,
     Artist,
-    Antiquarian, 
-    Author, 
-    MilitaryOfficer, 
-    Librarian, 
-    Journalist, 
-    PrivateInvestigator,
-    Clergy, 
-    Parapsychologist, 
-    Dilettante, 
-    Missionary, 
-    TribeMember, 
+    Athlete,
+    Author,
+    Clergy,
+    Criminal,
+    Detective,
+    Dilettante,
+    Doctor,
+    Drifter,
+    Engineer,
+    Entertainer,
     Farmer,
-    Pilot, 
-    Hacker, 
-    Criminal, 
-    Soldier, 
-    Lawyer, 
-    Drifter, 
+    Hacker,
+    Journalist,
+    Lawyer,
+    Librarian,
+    MilitaryOfficer,
+    Missionary,
     Musician,
+    Parapsychologist,
+    Pilot,
+    Police,
+    PrivateInvestigator,
+    Professor,
+    Soldier,
+    TribeMember,
     Custom(String),
 }
 
 impl Occupation {
-    pub fn label(&self, lang: Lang) -> &'static str {
+    pub fn label(&self, lang: Lang) -> &str {
         match (self, lang) {
-            (Self::Athlete, Lang::Ja) => "アスリート",
-            (Self::Athlete, Lang::En) => "Athlete",
-            (Self::Doctor,  Lang::Ja) => "医師",
-            (Self::Doctor,  Lang::En) => "Doctor",
-
+            (Self::Activist,           Lang::En) => "Activist",
+            (Self::Activist,           Lang::Ja) => "活動家",
+            (Self::Antiquarian,        Lang::En) => "Antiquarian",
+            (Self::Antiquarian,        Lang::Ja) => "古物研究家",
+            (Self::Artist,             Lang::En) => "Artist",
+            (Self::Artist,             Lang::Ja) => "芸術家",
+            (Self::Athlete,            Lang::En) => "Athlete",
+            (Self::Athlete,            Lang::Ja) => "スポーツ選手",
+            (Self::Author,             Lang::En) => "Author",
+            (Self::Author,             Lang::Ja) => "作家",
+            (Self::Clergy,             Lang::En) => "Clergy",
+            (Self::Clergy,             Lang::Ja) => "聖職者",
+            (Self::Criminal,           Lang::En) => "Criminal",
+            (Self::Criminal,           Lang::Ja) => "犯罪者",
+            (Self::Detective,          Lang::En) => "Detective",
+            (Self::Detective,          Lang::Ja) => "刑事",
+            (Self::Dilettante,         Lang::En) => "Dilettante",
+            (Self::Dilettante,         Lang::Ja) => "ディレッタント",
+            (Self::Doctor,             Lang::En) => "Doctor",
+            (Self::Doctor,             Lang::Ja) => "医師",
+            (Self::Drifter,            Lang::En) => "Drifter",
+            (Self::Drifter,            Lang::Ja) => "放浪者",
+            (Self::Engineer,           Lang::En) => "Engineer",
+            (Self::Engineer,           Lang::Ja) => "技術者",
+            (Self::Entertainer,        Lang::En) => "Entertainer",
+            (Self::Entertainer,        Lang::Ja) => "芸能人",
+            (Self::Farmer,             Lang::En) => "Farmer",
+            (Self::Farmer,             Lang::Ja) => "農民",
+            (Self::Hacker,             Lang::En) => "Hacker",
+            (Self::Hacker,             Lang::Ja) => "ハッカー",
+            (Self::Journalist,         Lang::En) => "Journalist",
+            (Self::Journalist,         Lang::Ja) => "ジャーナリスト",
+            (Self::Lawyer,             Lang::En) => "Lawyer",
+            (Self::Lawyer,             Lang::Ja) => "弁護士",
+            (Self::Librarian,          Lang::En) => "Librarian",
+            (Self::Librarian,          Lang::Ja) => "司書",
+            (Self::MilitaryOfficer,    Lang::En) => "Military Officer",
+            (Self::MilitaryOfficer,    Lang::Ja) => "士官",
+            (Self::Missionary,         Lang::En) => "Missionary",
+            (Self::Missionary,         Lang::Ja) => "伝道者",
+            (Self::Musician,           Lang::En) => "Musician",
+            (Self::Musician,           Lang::Ja) => "音楽家",
+            (Self::Parapsychologist,   Lang::En) => "Parapsychologist",
+            (Self::Parapsychologist,   Lang::Ja) => "超心理学者",
+            (Self::Pilot,              Lang::En) => "Pilot",
+            (Self::Pilot,              Lang::Ja) => "パイロット",
+            (Self::Police,             Lang::En) => "Police",
+            (Self::Police,             Lang::Ja) => "警察官",
+            (Self::PrivateInvestigator,Lang::En) => "Private Investigator",
+            (Self::PrivateInvestigator,Lang::Ja) => "私立探偵",
+            (Self::Professor,          Lang::En) => "Professor",
+            (Self::Professor,          Lang::Ja) => "教授",
+            (Self::Soldier,            Lang::En) => "Soldier",
+            (Self::Soldier,            Lang::Ja) => "兵士",
+            (Self::TribeMember,        Lang::En) => "Tribe Member",
+            (Self::TribeMember,        Lang::Ja) => "トライブ・メンバー",
+            (Self::Custom(s),          _)        => s.as_str(),
         }
     }
 }
@@ -74,6 +126,40 @@ enum ArtCraftSpec {
     Custom(String),
 }
 
+impl ArtCraftSpec {
+    pub fn label(&self, lang: Lang) -> &str {
+        match (self, lang) {
+            (Self::Acting,      Lang::Ja) => "演劇",
+            (Self::Acting,      Lang::En) => "Acting",
+            (Self::Barber,      Lang::Ja) => "理容",
+            (Self::Barber,      Lang::En) => "Barber",
+            (Self::Calligraphy, Lang::Ja) => "書道",
+            (Self::Calligraphy, Lang::En) => "Calligraphy",
+            (Self::Carpentry,   Lang::Ja) => "大工仕事",
+            (Self::Carpentry,   Lang::En) => "Carpentry",
+            (Self::Cobbling,    Lang::Ja) => "靴製造",
+            (Self::Cobbling,    Lang::En) => "Cobbling",
+            (Self::Cook,        Lang::Ja) => "料理",
+            (Self::Cook,        Lang::En) => "Cook",
+            (Self::Dancing,     Lang::Ja) => "踊り",
+            (Self::Dancing,     Lang::En) => "Dancing",
+            (Self::FineArt,     Lang::Ja) => "絵画",
+            (Self::FineArt,     Lang::En) => "Fine Art",
+            (Self::Forgery,     Lang::Ja) => "文書偽造",
+            (Self::Forgery,     Lang::En) => "Forgery",
+            (Self::Photography, Lang::Ja) => "写真術",
+            (Self::Photography, Lang::En) => "Photography",
+            (Self::Pottery,     Lang::Ja) => "陶芸",
+            (Self::Pottery,     Lang::En) => "Pottery",
+            (Self::Sculpting,   Lang::Ja) => "彫刻",
+            (Self::Sculpting,   Lang::En) => "Sculpting",
+            (Self::Writing,     Lang::Ja) => "執筆",
+            (Self::Writing,     Lang::En) => "Writing",
+            (Self::Custom(s),   _)        => s.as_str(),
+        }
+    }
+}
+
 // --- 近接戦闘 (Fighting) 専門分野 ---
 // ルールブックで初期値が個別定義済み。
 enum FightingSpec {
@@ -88,6 +174,30 @@ enum FightingSpec {
     Custom(String),
 }
 
+impl FightingSpec {
+    pub fn label(&self, lang: Lang) -> &str {
+        match (self, lang) {
+            (Self::Axe,       Lang::Ja) => "斧",
+            (Self::Axe,       Lang::En) => "Axe",
+            (Self::Brawl,     Lang::Ja) => "格闘",
+            (Self::Brawl,     Lang::En) => "Brawl",
+            (Self::Chainsaw,  Lang::Ja) => "チェーンソー",
+            (Self::Chainsaw,  Lang::En) => "Chainsaw",
+            (Self::Flail,     Lang::Ja) => "フレイル",
+            (Self::Flail,     Lang::En) => "Flail",
+            (Self::Garrote,   Lang::Ja) => "絞殺ひも",
+            (Self::Garrote,   Lang::En) => "Garrote",
+            (Self::Spear,     Lang::Ja) => "槍",
+            (Self::Spear,     Lang::En) => "Spear",
+            (Self::Sword,     Lang::Ja) => "刀剣",
+            (Self::Sword,     Lang::En) => "Sword",
+            (Self::Whip,      Lang::Ja) => "鞭",
+            (Self::Whip,      Lang::En) => "Whip",
+            (Self::Custom(s), _)        => s.as_str(),
+        }
+    }
+}
+
 // --- 射撃 (Firearms) 専門分野 ---
 // ルールブックで初期値が個別定義済み。
 enum FirearmsSpec {
@@ -100,6 +210,26 @@ enum FirearmsSpec {
     Custom(String),
 }
 
+impl FirearmsSpec {
+    pub fn label(&self, lang: Lang) -> &str {
+        match (self, lang) {
+            (Self::Bow,           Lang::Ja) => "弓",
+            (Self::Bow,           Lang::En) => "Bow",
+            (Self::Handgun,       Lang::Ja) => "拳銃",
+            (Self::Handgun,       Lang::En) => "Handgun",
+            (Self::HeavyWeapons,  Lang::Ja) => "重火器",
+            (Self::HeavyWeapons,  Lang::En) => "Heavy Weapons",
+            (Self::MachineGun,    Lang::Ja) => "機関銃",
+            (Self::MachineGun,    Lang::En) => "Machine Gun",
+            (Self::RifleShotgun,  Lang::Ja) => "ライフル/ショットガン",
+            (Self::RifleShotgun,  Lang::En) => "Rifle/Shotgun",
+            (Self::SubmachineGun, Lang::Ja) => "サブマシンガン",
+            (Self::SubmachineGun, Lang::En) => "Submachine Gun",
+            (Self::Custom(s),     _)        => s.as_str(),
+        }
+    }
+}
+
 // --- ほかの言語 (Language Other) 専門分野 ---
 // 言語名を自由記入。母国語 (LanguageOwn) は専門分野なし (初期値 = EDU)。
 enum LanguageSpec {
@@ -107,9 +237,6 @@ enum LanguageSpec {
 }
 
 // --- 操縦 (Pilot) 専門分野 ---
-// ルールブック掲載例。他は Custom で自由記入。
-// 1920s: Balloon / Dirigible / CivilProp / Boat / SteamShip / Sailboat
-// Modern: CivilProp / CivilJet / Airliner / JetFighter / Helicopter / Boat / SteamShip / Sailboat
 enum PilotSpec {
     // --- 両時代共通 ---
     Boat,       // ボート
@@ -127,9 +254,38 @@ enum PilotSpec {
     Custom(String),
 }
 
-// --- 科学 (Science) 専門分野 ---
-// ルールブック掲載例。他は Custom で自由記入。
-// ※ 考古学 (Archaeology) は独立技能のため対象外。
+impl PilotSpec {
+    pub fn label(&self, lang: Lang) -> &str {
+        match (self, lang) {
+            // --- 両時代共通 ---
+            (Self::Boat,       Lang::Ja) => "ボート",
+            (Self::Boat,       Lang::En) => "Boat",
+            (Self::SteamShip,  Lang::Ja) => "汽船",
+            (Self::SteamShip,  Lang::En) => "Steam Ship",
+            (Self::Sailboat,   Lang::Ja) => "帆船",
+            (Self::Sailboat,   Lang::En) => "Sailboat",
+            (Self::CivilProp,  Lang::Ja) => "民間プロペラ機",
+            (Self::CivilProp,  Lang::En) => "Civil Prop",
+            // --- 1920s のみ ---
+            (Self::Balloon,    Lang::Ja) => "気球",
+            (Self::Balloon,    Lang::En) => "Balloon",
+            (Self::Dirigible,  Lang::Ja) => "飛行船",
+            (Self::Dirigible,  Lang::En) => "Dirigible",
+            // --- Modern (1990s) のみ ---
+            (Self::CivilJet,   Lang::Ja) => "民間ジェット機",
+            (Self::CivilJet,   Lang::En) => "Civil Jet",
+            (Self::Airliner,   Lang::Ja) => "定期旅客機",
+            (Self::Airliner,   Lang::En) => "Airliner",
+            (Self::JetFighter, Lang::Ja) => "ジェット戦闘機",
+            (Self::JetFighter, Lang::En) => "Jet Fighter",
+            (Self::Helicopter, Lang::Ja) => "ヘリコプター",
+            (Self::Helicopter, Lang::En) => "Helicopter",
+            (Self::Custom(s),  _)        => s.as_str(),
+        }
+    }
+}
+
+// --- 科学 (Science) 専門分野 --- p.59
 enum ScienceSpec {
     Astronomy,    // 天文学
     Biology,      // 生物学
@@ -147,32 +303,206 @@ enum ScienceSpec {
     Custom(String),
 }
 
-// --- サバイバル (Survival) 専門分野 ---
-// ルールブック掲載例。他は Custom で自由記入。
+impl ScienceSpec {
+    pub fn label(&self, lang: Lang) -> &str {
+        match (spec, lang) {
+            (Self::Astronomy,    Lang::Ja) => "天文学",
+            (Self::Astronomy,    Lang::En) => "Astronomy",
+            (Self::Biology,      Lang::Ja) => "生物学",
+            (Self::Biology,      Lang::En) => "Biology",
+            (Self::Botany,       Lang::Ja) => "植物学",
+            (Self::Botany,       Lang::En) => "Botany",
+            (Self::Chemistry,    Lang::Ja) => "化学",
+            (Self::Chemistry,    Lang::En) => "Chemistry",
+            (Self::Cryptography, Lang::Ja) => "暗号学",
+            (Self::Cryptography, Lang::En) => "Cryptography",
+            (Self::Engineering,  Lang::Ja) => "工学",
+            (Self::Engineering,  Lang::En) => "Engineering",
+            (Self::Forensics,    Lang::Ja) => "法医学",
+            (Self::Forensics,    Lang::En) => "Forensics",
+            (Self::Geology,      Lang::Ja) => "地質学",
+            (Self::Geology,      Lang::En) => "Geology",
+            (Self::Mathematics,  Lang::Ja) => "数学",
+            (Self::Mathematics,  Lang::En) => "Mathematics",
+            (Self::Meteorology,  Lang::Ja) => "気象学",
+            (Self::Meteorology,  Lang::En) => "Meteorology",
+            (Self::Pharmacy,     Lang::Ja) => "薬学",
+            (Self::Pharmacy,     Lang::En) => "Pharmacy",
+            (Self::Physics,      Lang::Ja) => "物理学",
+            (Self::Physics,      Lang::En) => "Physics",
+            (Self::Zoology,      Lang::Ja) => "動物学",
+            (Self::Zoology,      Lang::En) => "Zoology",
+            (Self::Custom(s), _)  => s.as_str(),
+        }
+    }
+}
+
+// --- サバイバル (Survival) 専門分野 --- p.63
 enum SurvivalSpec {
-    Arctic,  // 北極/寒冷地
-    Desert,  // 砂漠
-    Sea,     // 海上
+    Arctic,
+    Desert,
+    Sea,
     Custom(String),
 }
 
-enum Skill {
-    // 専門分野なし
-    LibraryUse,
-    Medicine,
-    Psychology,
+impl SurvivalSpec {
+    pub fn label(self, lang: Lang) -> &str {
+        match (spec, lang) {
+            (Self::Arctic,    Lang::Ja) => "極地",
+            (Self::Arctic,    Lang::En) => "Arctic",
+            (Self::Desert,    Lang::Ja) => "砂漠",
+            (Self::Desert,    Lang::En) => "Desert",
+            (Self::Sea,       Lang::Ja) => "海",
+            (Self::Sea,       Lang::En) => "Sea",
+            (Self::Custom(s),        _) => s.as_str(),
+        }
+    }
+}
 
+// --- スキル (Skill) --- p.54
+enum Skill {
+    Accounting,
+    Anthropology,
+    Archaeology,
+    Appraise,
     // 専門分野あり（ルールブック定義済み選択肢 + 自由記入）
-    ArtCraft(ArtCraftSpec),
+    ArtCraft(ArtCraftSpec), 
+    Charm,
+    Climb,
+    ComputerUse,
+    CreditRating,
+    CthulhuMythos,
+    Disguise,
+    Dodge,
+    DriveAuto,
+    ElecRepair,
+    Electronics,
+    FastTalk,
     Fighting(FightingSpec),
     Firearms(FirearmsSpec),
+    FirstAid,
+    History,
+    Intimidate,
+    Jump,
     LanguageOther(LanguageSpec),
+    LanguageOwn,
+    Law,
+    LibraryUse,
+    Listen,
+    Locksmith,
+    MechRepair,
+    NaturalWorld,
+    Navigate,
+    Occult,
+    Persuade,
     Pilot(PilotSpec),
+    Psychoanalysis,
+    Psychology,
+    Ride,
     Science(ScienceSpec),
+    SleightOfHand,
+    SpotHidden,
+    Stealth,
     Survival(SurvivalSpec),
-
+    Swim,
+    Throw,
+    Track,
     // 技能名+専門分野 完全自由記入（キャラシ空白欄に対応）
     Custom { name: String, spec: Option<String> },
+}
+
+impl Skill {
+    pub fn label(&self, lang: Lang) -> String {
+        match (self, lang) {
+            (Self::Accounting,           Lang::Ja) => "経理".into(),
+            (Self::Accounting,           Lang::En) => "Accounting".into(),
+            (Self::Anthropology,         Lang::Ja) => "人類学".into(),
+            (Self::Anthropology,         Lang::En) => "Anthropology".into(),
+            (Self::Archaeology,          Lang::Ja) => "考古学".into(),
+            (Self::Archaeology,          Lang::En) => "Archaeology".into(),
+            (Self::Appraise,             Lang::Ja) => "鑑定".into(),
+            (Self::Appraise,             Lang::En) => "Appraise".into(),
+            (Self::ArtCraft(spec),       _)        => format!("芸術/製作 ({})", spec.label(lang)),
+            (Self::Charm,                Lang::Ja) => "魅惑".into(),
+            (Self::Charm,                Lang::En) => "Charm".into(),
+            (Self::Climb,                Lang::Ja) => "登攀".into(),
+            (Self::Climb,                Lang::En) => "Climb".into(),
+            (Self::ComputerUse,          Lang::Ja) => "コンピューター".into(),
+            (Self::ComputerUse,          Lang::En) => "Computer Use".into(),
+            (Self::CreditRating,         Lang::Ja) => "信用".into(),
+            (Self::CreditRating,         Lang::En) => "Credit Rating".into(),
+            (Self::CthulhuMythos,        Lang::Ja) => "クトゥルフ神話".into(),
+            (Self::CthulhuMythos,        Lang::En) => "Cthulhu Mythos".into(),
+            (Self::Disguise,             Lang::Ja) => "変装".into(),
+            (Self::Disguise,             Lang::En) => "Disguise".into(),
+            (Self::Dodge,                Lang::Ja) => "回避".into(),
+            (Self::Dodge,                Lang::En) => "Dodge".into(),
+            (Self::DriveAuto,            Lang::Ja) => "運転（自動車）".into(),
+            (Self::DriveAuto,            Lang::En) => "Drive Auto".into(),
+            (Self::ElecRepair,           Lang::Ja) => "電気修理".into(),
+            (Self::ElecRepair,           Lang::En) => "Elec. Repair".into(),
+            (Self::Electronics,          Lang::Ja) => "電子工学".into(),
+            (Self::Electronics,          Lang::En) => "Electronics".into(),
+            (Self::FastTalk,             Lang::Ja) => "言いくるめ".into(),
+            (Self::FastTalk,             Lang::En) => "Fast Talk".into(),
+            (Self::Fighting(spec),       _)        => format!("近接戦闘 ({})", spec.label(lang)),
+            (Self::Firearms(spec),       _)        => format!("射撃 ({})", spec.label(lang)),
+            (Self::FirstAid,             Lang::Ja) => "応急手当".into(),
+            (Self::FirstAid,             Lang::En) => "First Aid".into(),
+            (Self::History,              Lang::Ja) => "歴史".into(),
+            (Self::History,              Lang::En) => "History".into(),
+            (Self::Intimidate,           Lang::Ja) => "威圧".into(),
+            (Self::Intimidate,           Lang::En) => "Intimidate".into(),
+            (Self::Jump,                 Lang::Ja) => "跳躍".into(),
+            (Self::Jump,                 Lang::En) => "Jump".into(),
+            (Self::LanguageOther(spec),  _)        => format!("ほかの言語 ({})", spec.label(lang)),
+            (Self::LanguageOwn,          Lang::Ja) => "母国語".into(),
+            (Self::LanguageOwn,          Lang::En) => "Language (Own)".into(),
+            (Self::Law,                  Lang::Ja) => "法律".into(),
+            (Self::Law,                  Lang::En) => "Law".into(),
+            (Self::LibraryUse,           Lang::Ja) => "図書館".into(),
+            (Self::LibraryUse,           Lang::En) => "Library Use".into(),
+            (Self::Listen,               Lang::Ja) => "聞き耳".into(),
+            (Self::Listen,               Lang::En) => "Listen".into(),
+            (Self::Locksmith,            Lang::Ja) => "鍵開け".into(),
+            (Self::Locksmith,            Lang::En) => "Locksmith".into(),
+            (Self::MechRepair,           Lang::Ja) => "機械修理".into(),
+            (Self::MechRepair,           Lang::En) => "Mech. Repair".into(),
+            (Self::Medicine,             Lang::Ja) => "医学".into(),
+            (Self::Medicine,             Lang::En) => "Medicine".into(),
+            (Self::NaturalWorld,         Lang::Ja) => "自然".into(),
+            (Self::NaturalWorld,         Lang::En) => "Natural World".into(),
+            (Self::Navigate,             Lang::Ja) => "ナビゲート".into(),
+            (Self::Navigate,             Lang::En) => "Navigate".into(),
+            (Self::Occult,               Lang::Ja) => "オカルト".into(),
+            (Self::Occult,               Lang::En) => "Occult".into(),
+            (Self::Persuade,             Lang::Ja) => "説得".into(),
+            (Self::Persuade,             Lang::En) => "Persuade".into(),
+            (Self::Pilot(spec),          _)        => format!("操縦 ({})", spec.label(lang)),
+            (Self::Psychoanalysis,       Lang::Ja) => "精神分析".into(),
+            (Self::Psychoanalysis,       Lang::En) => "Psychoanalysis".into(),
+            (Self::Psychology,           Lang::Ja) => "心理学".into(),
+            (Self::Psychology,           Lang::En) => "Psychology".into(),
+            (Self::Ride,                 Lang::Ja) => "乗馬".into(),
+            (Self::Ride,                 Lang::En) => "Ride".into(),
+            (Self::Science(spec),        _)        => format!("科学 ({})", spec.label(lang)),
+            (Self::SleightOfHand,        Lang::Ja) => "手さばき".into(),
+            (Self::SleightOfHand,        Lang::En) => "Sleight of Hand".into(),
+            (Self::SpotHidden,           Lang::Ja) => "目星".into(),
+            (Self::SpotHidden,           Lang::En) => "Spot Hidden".into(),
+            (Self::Stealth,              Lang::Ja) => "隠密".into(),
+            (Self::Stealth,              Lang::En) => "Stealth".into(),
+            (Self::Survival(spec),       _)        => format!("サバイバル ({})", spec.label(lang)),
+            (Self::Swim,                 Lang::Ja) => "水泳".into(),
+            (Self::Swim,                 Lang::En) => "Swim".into(),
+            (Self::Throw,                Lang::Ja) => "投擲".into(),
+            (Self::Throw,                Lang::En) => "Throw".into(),
+            (Self::Track,                Lang::Ja) => "追跡".into(),
+            (Self::Track,                Lang::En) => "Track".into(),
+            (Self::Custom { name, spec: Some(s) }, _) => format!("{} ({})", name, s),
+            (Self::Custom { name, spec: None },   _) => name.clone(),
+        }
+    }
 }
 
 // ============================================================
@@ -180,7 +510,7 @@ enum Skill {
 // ============================================================
 
 // --- ビルド (Build) ---
-// STR + SIZ の合計値から決定される離散段階。DamageBonusDice と 1対1 対応する。
+// STR + SIZ の合計値から決定される離散段階。DamageBonus と 1対1 対応する。
 enum BuildRank {
     NegTwo,   // -2  (STR+SIZ:   2- 64)
     NegOne,   // -1  (STR+SIZ:  65- 84)
@@ -206,7 +536,7 @@ impl BuildRank {
         }
     }
 
-    pub fn int_value(&self) -> i8 {
+    pub fn value(&self) -> i8 {
         match self {
             Self::NegTwo   => -2,
             Self::NegOne   => -1,
@@ -219,31 +549,45 @@ impl BuildRank {
         }
     }
 
-    pub fn damage_bonus(&self) -> DamageBonusDice {
+    pub fn damage_bonus(&self) -> DamageBonus {
         match self {
-            Self::NegTwo   => DamageBonusDice::NegTwo,
-            Self::NegOne   => DamageBonusDice::NegOne,
-            Self::Zero     => DamageBonusDice::None,
-            Self::PosOne   => DamageBonusDice::PosOnD4,
-            Self::PosTwo   => DamageBonusDice::PosOnD6,
-            Self::PosThree => DamageBonusDice::PosTwD6,
-            Self::PosFour  => DamageBonusDice::PosThrD6,
-            Self::PosFive  => DamageBonusDice::PosForD6,
+            Self::NegTwo   => DamageBonus::NegTwo,
+            Self::NegOne   => DamageBonus::NegOne,
+            Self::Zero     => DamageBonus::None,
+            Self::PosOne   => DamageBonus::PosOnD4,
+            Self::PosTwo   => DamageBonus::PosOnD6,
+            Self::PosThree => DamageBonus::PosTwD6,
+            Self::PosFour  => DamageBonus::PosThrD6,
+            Self::PosFive  => DamageBonus::PosForD6,
         }
     }
 }
 
 // --- ダメージボーナス (DamageBonus) ---
-// ダイス式のため整数で表現できない。BuildRank と 1対1 対応する。
-enum DamageBonusDice {
+enum DamageBonus {
     NegTwo,   // -2    (Build -2)
     NegOne,   // -1    (Build -1)
-    None,     // なし   (Build  0)
+    Zero,     // なし   (Build  0)
     PosOnD4,  // +1D4  (Build +1)
     PosOnD6,  // +1D6  (Build +2)
     PosTwD6,  // +2D6  (Build +3)
     PosThrD6, // +3D6  (Build +4)
     PosForD6, // +4D6  (Build +5)
+}
+
+impl DamageBonus {
+    pub fn label(&self) -> &'static str {
+        match self {
+            Self::NegTwo   => "-2",
+            Self::NegOne   => "-1",
+            Self::Zero     => "0",
+            Self::PosOnD4  => "+1D4",
+            Self::PosOnD6  => "+1D6",
+            Self::PosTwD6  => "+2D6",
+            Self::PosThrD6 => "+3D6",
+            Self::PosForD6 => "+4D6",
+        }
+    }
 }
 
 // --- 移動率基準値 (MoveBase) ---
@@ -268,6 +612,14 @@ impl MoveBase {
             Self::Seven => 7,
             Self::Eight => 8,
             Self::Nine  => 9,
+        }
+    }
+
+    pub fn label(&self) -> &'static str {
+        match self {
+            Seven => "7",
+            Eight => "8",
+            Nine  => "9",
         }
     }
 }
@@ -424,7 +776,6 @@ pub enum Model {
     Timestamp::Updated: u64, // datetime.rs
 
     // --- primary but not required ---
-    Occupation: enum<str>|str,
     Age::Initial: u8,
     Age::Change: u8,
 
@@ -452,54 +803,6 @@ pub enum Model {
     // --- スキルポイント ---
     OccupationSkillPoints,
     InterestSkillPoints,
-
-    // --- スキル ---
-    Accounting,
-    Anthropology,
-    Archaeology,
-    Appraise,
-    ArtCraft(Specializations),
-    Charm,
-    Climb,
-    ComputerUse,
-    CreditRating,
-    CthulhuMythos,
-    Disguise,
-    Dodge,
-    DriveAuto,
-    ElecRepair,
-    Electronics,
-    FastTalk,
-    Fighting(Specializations),
-    FightingOther,
-    Firearms(Specializations),
-    FirstAid,
-    History,
-    Intimidate,
-    Jump,
-    LanguageOther(Specializations),
-    LanguageOwn(Specializations),
-    Law,
-    LibraryUse,
-    Listen,
-    Locksmith,
-    MechRepair,
-    NaturalWorld,
-    Navigate,
-    Occult,
-    Persuade,
-    Pilot(Specializations),
-    Psychoanalysis,
-    Psychology,
-    Ride,
-    Science(Specializations),
-    SleightOfHand,
-    SpotHidden,
-    Stealth,
-    Survival(Specializations),
-    Swim,
-    Throw,
-    Track,
 
     // --- バックストーリー ---
     KeyConnection,
@@ -919,106 +1222,6 @@ pub mod schema {
             (Model::InterestSkillPoints,   Lang::Ja) => "興味技能ポイント",
             (Model::InterestSkillPoints,   Lang::En) => "Interest Skill Points",
 
-            // --- スキル ---
-            (Model::Accounting,           Lang::Ja) => "経理",
-            (Model::Accounting,           Lang::En) => "Accounting",
-            (Model::Anthropology,         Lang::Ja) => "人類学",
-            (Model::Anthropology,         Lang::En) => "Anthropology",
-            (Model::Archaeology,          Lang::Ja) => "考古学",
-            (Model::Archaeology,          Lang::En) => "Archaeology",
-            (Model::Appraise,             Lang::Ja) => "鑑定",
-            (Model::Appraise,             Lang::En) => "Appraise",
-            (Model::ArtCraft,             Lang::Ja) => "芸術/製作",
-            (Model::ArtCraft,             Lang::En) => "Art/Craft",
-            (Model::Charm,                Lang::Ja) => "魅惑",
-            (Model::Charm,                Lang::En) => "Charm",
-            (Model::Climb,                Lang::Ja) => "登攀",
-            (Model::Climb,                Lang::En) => "Climb",
-            (Model::ComputerUse,          Lang::Ja) => "コンピューター",
-            (Model::ComputerUse,          Lang::En) => "Computer Use",
-            (Model::CreditRating,         Lang::Ja) => "信用",
-            (Model::CreditRating,         Lang::En) => "Credit Rating",
-            (Model::CthulhuMythos,        Lang::Ja) => "クトゥルフ神話",
-            (Model::CthulhuMythos,        Lang::En) => "Cthulhu Mythos",
-            (Model::Disguise,             Lang::Ja) => "変装",
-            (Model::Disguise,             Lang::En) => "Disguise",
-            (Model::Dodge,                Lang::Ja) => "回避",
-            (Model::Dodge,                Lang::En) => "Dodge",
-            (Model::DriveAuto,            Lang::Ja) => "運転（自動車）",
-            (Model::DriveAuto,            Lang::En) => "Drive Auto",
-            (Model::ElecRepair,           Lang::Ja) => "電気修理",
-            (Model::ElecRepair,           Lang::En) => "Elec. Repair",
-            (Model::Electronics,          Lang::Ja) => "電子工学",
-            (Model::Electronics,          Lang::En) => "Electronics",
-            (Model::FastTalk,             Lang::Ja) => "言いくるめ",
-            (Model::FastTalk,             Lang::En) => "Fast Talk",
-            (Model::FightingBrawl,        Lang::Ja) => "近接戦闘（格闘）",
-            (Model::FightingBrawl,        Lang::En) => "Fighting (Brawl)",
-            (Model::FightingOther,        Lang::Ja) => "近接戦闘（その他）",
-            (Model::FightingOther,        Lang::En) => "Fighting (Other)",
-            (Model::FirearmsHandgun,      Lang::Ja) => "射撃（拳銃）",
-            (Model::FirearmsHandgun,      Lang::En) => "Firearms (Handgun)",
-            (Model::FirearmsRifleShotgun, Lang::Ja) => "射撃（ライフル/ショットガン）",
-            (Model::FirearmsRifleShotgun, Lang::En) => "Firearms (Rifle/Shotgun)",
-            (Model::FirearmsOther,        Lang::Ja) => "射撃（その他）",
-            (Model::FirearmsOther,        Lang::En) => "Firearms (Other)",
-            (Model::FirstAid,             Lang::Ja) => "応急手当",
-            (Model::FirstAid,             Lang::En) => "First Aid",
-            (Model::History,              Lang::Ja) => "歴史",
-            (Model::History,              Lang::En) => "History",
-            (Model::Intimidate,           Lang::Ja) => "威圧",
-            (Model::Intimidate,           Lang::En) => "Intimidate",
-            (Model::Jump,                 Lang::Ja) => "跳躍",
-            (Model::Jump,                 Lang::En) => "Jump",
-            (Model::LanguageOther,        Lang::Ja) => "ほかの言語",
-            (Model::LanguageOther,        Lang::En) => "Language (Other)",
-            (Model::LanguageOwn,          Lang::Ja) => "母国語",
-            (Model::LanguageOwn,          Lang::En) => "Language (Own)",
-            (Model::Law,                  Lang::Ja) => "法律",
-            (Model::Law,                  Lang::En) => "Law",
-            (Model::LibraryUse,           Lang::Ja) => "図書館",
-            (Model::LibraryUse,           Lang::En) => "Library Use",
-            (Model::Listen,               Lang::Ja) => "聞き耳",
-            (Model::Listen,               Lang::En) => "Listen",
-            (Model::Locksmith,            Lang::Ja) => "鍵開け",
-            (Model::Locksmith,            Lang::En) => "Locksmith",
-            (Model::MechRepair,           Lang::Ja) => "機械修理",
-            (Model::MechRepair,           Lang::En) => "Mech. Repair",
-            (Model::Medicine,             Lang::Ja) => "医学",
-            (Model::Medicine,             Lang::En) => "Medicine",
-            (Model::NaturalWorld,         Lang::Ja) => "自然",
-            (Model::NaturalWorld,         Lang::En) => "Natural World",
-            (Model::Navigate,             Lang::Ja) => "ナビゲート",
-            (Model::Navigate,             Lang::En) => "Navigate",
-            (Model::Occult,               Lang::Ja) => "オカルト",
-            (Model::Occult,               Lang::En) => "Occult",
-            (Model::Persuade,             Lang::Ja) => "説得",
-            (Model::Persuade,             Lang::En) => "Persuade",
-            (Model::Pilot,                Lang::Ja) => "操縦",
-            (Model::Pilot,                Lang::En) => "Pilot",
-            (Model::Psychoanalysis,       Lang::Ja) => "精神分析",
-            (Model::Psychoanalysis,       Lang::En) => "Psychoanalysis",
-            (Model::Psychology,           Lang::Ja) => "心理学",
-            (Model::Psychology,           Lang::En) => "Psychology",
-            (Model::Ride,                 Lang::Ja) => "乗馬",
-            (Model::Ride,                 Lang::En) => "Ride",
-            (Model::Science,              Lang::Ja) => "科学",
-            (Model::Science,              Lang::En) => "Science",
-            (Model::SleightOfHand,        Lang::Ja) => "手さばき",
-            (Model::SleightOfHand,        Lang::En) => "Sleight of Hand",
-            (Model::SpotHidden,           Lang::Ja) => "目星",
-            (Model::SpotHidden,           Lang::En) => "Spot Hidden",
-            (Model::Stealth,              Lang::Ja) => "隠密",
-            (Model::Stealth,              Lang::En) => "Stealth",
-            (Model::Survival,             Lang::Ja) => "サバイバル",
-            (Model::Survival,             Lang::En) => "Survival",
-            (Model::Swim,                 Lang::Ja) => "水泳",
-            (Model::Swim,                 Lang::En) => "Swim",
-            (Model::Throw,                Lang::Ja) => "投擲",
-            (Model::Throw,                Lang::En) => "Throw",
-            (Model::Track,                Lang::Ja) => "追跡",
-            (Model::Track,                Lang::En) => "Track",
-
             // --- バックストーリー ---
             (Model::KeyConnection,        Lang::Ja) => "キーコネクション",
             (Model::KeyConnection,        Lang::En) => "Key Connection",
@@ -1041,197 +1244,6 @@ pub mod schema {
         }
     }
 
-    // --- 専門分野ラベル ---
-    // Custom(_) は動的な文字列のため "" を返す。呼び出し側でinner Stringを直接使用すること。
-
-    pub fn art_craft_spec_label(spec: &super::ArtCraftSpec, lang: Lang) -> &'static str {
-        use super::ArtCraftSpec::*;
-        match (spec, lang) {
-            (Acting,      Lang::Ja) => "演劇",
-            (Acting,      Lang::En) => "Acting",
-            (Barber,      Lang::Ja) => "理容",
-            (Barber,      Lang::En) => "Barber",
-            (Calligraphy, Lang::Ja) => "書道",
-            (Calligraphy, Lang::En) => "Calligraphy",
-            (Carpentry,   Lang::Ja) => "大工仕事",
-            (Carpentry,   Lang::En) => "Carpentry",
-            (Cobbling,    Lang::Ja) => "靴製造",
-            (Cobbling,    Lang::En) => "Cobbling",
-            (Cook,        Lang::Ja) => "料理",
-            (Cook,        Lang::En) => "Cook",
-            (Dancing,     Lang::Ja) => "踊り",
-            (Dancing,     Lang::En) => "Dancing",
-            (FineArt,     Lang::Ja) => "絵画",
-            (FineArt,     Lang::En) => "Fine Art",
-            (Forgery,     Lang::Ja) => "文書偽造",
-            (Forgery,     Lang::En) => "Forgery",
-            (Photography, Lang::Ja) => "写真術",
-            (Photography, Lang::En) => "Photography",
-            (Pottery,     Lang::Ja) => "陶芸",
-            (Pottery,     Lang::En) => "Pottery",
-            (Sculpting,   Lang::Ja) => "彫刻",
-            (Sculpting,   Lang::En) => "Sculpting",
-            (Writing,     Lang::Ja) => "執筆",
-            (Writing,     Lang::En) => "Writing",
-            (Custom(_),   _)        => "",
-        }
-    }
-
-    pub fn fighting_spec_label(spec: &super::FightingSpec, lang: Lang) -> &'static str {
-        use super::FightingSpec::*;
-        match (spec, lang) {
-            (Axe,       Lang::Ja) => "斧",
-            (Axe,       Lang::En) => "Axe",
-            (Brawl,     Lang::Ja) => "格闘",
-            (Brawl,     Lang::En) => "Brawl",
-            (Chainsaw,  Lang::Ja) => "チェーンソー",
-            (Chainsaw,  Lang::En) => "Chainsaw",
-            (Flail,     Lang::Ja) => "フレイル",
-            (Flail,     Lang::En) => "Flail",
-            (Garrote,   Lang::Ja) => "絞殺ひも",
-            (Garrote,   Lang::En) => "Garrote",
-            (Spear,     Lang::Ja) => "槍",
-            (Spear,     Lang::En) => "Spear",
-            (Sword,     Lang::Ja) => "刀剣",
-            (Sword,     Lang::En) => "Sword",
-            (Whip,      Lang::Ja) => "鞭",
-            (Whip,      Lang::En) => "Whip",
-            (Custom(_), _)        => "",
-        }
-    }
-
-    pub fn firearms_spec_label(spec: &super::FirearmsSpec, lang: Lang) -> &'static str {
-        use super::FirearmsSpec::*;
-        match (spec, lang) {
-            (Bow,           Lang::Ja) => "弓",
-            (Bow,           Lang::En) => "Bow",
-            (Handgun,       Lang::Ja) => "拳銃",
-            (Handgun,       Lang::En) => "Handgun",
-            (HeavyWeapons,  Lang::Ja) => "重火器",
-            (HeavyWeapons,  Lang::En) => "Heavy Weapons",
-            (MachineGun,    Lang::Ja) => "機関銃",
-            (MachineGun,    Lang::En) => "Machine Gun",
-            (RifleShotgun,  Lang::Ja) => "ライフル/ショットガン",
-            (RifleShotgun,  Lang::En) => "Rifle/Shotgun",
-            (SubmachineGun, Lang::Ja) => "サブマシンガン",
-            (SubmachineGun, Lang::En) => "Submachine Gun",
-            (Custom(_),     _)        => "",
-        }
-    }
-
-    pub fn pilot_spec_label(spec: &super::PilotSpec, lang: Lang) -> &'static str {
-        use super::PilotSpec::*;
-        match (spec, lang) {
-            // --- 両時代共通 ---
-            (Boat,       Lang::Ja) => "ボート",
-            (Boat,       Lang::En) => "Boat",
-            (SteamShip,  Lang::Ja) => "汽船",
-            (SteamShip,  Lang::En) => "Steam Ship",
-            (Sailboat,   Lang::Ja) => "帆船",
-            (Sailboat,   Lang::En) => "Sailboat",
-            (CivilProp,  Lang::Ja) => "民間プロペラ機",
-            (CivilProp,  Lang::En) => "Civil Prop",
-            // --- 1920s のみ ---
-            (Balloon,    Lang::Ja) => "気球",
-            (Balloon,    Lang::En) => "Balloon",
-            (Dirigible,  Lang::Ja) => "飛行船",
-            (Dirigible,  Lang::En) => "Dirigible",
-            // --- Modern (1990s) のみ ---
-            (CivilJet,   Lang::Ja) => "民間ジェット機",
-            (CivilJet,   Lang::En) => "Civil Jet",
-            (Airliner,   Lang::Ja) => "定期旅客機",
-            (Airliner,   Lang::En) => "Airliner",
-            (JetFighter, Lang::Ja) => "ジェット戦闘機",
-            (JetFighter, Lang::En) => "Jet Fighter",
-            (Helicopter, Lang::Ja) => "ヘリコプター",
-            (Helicopter, Lang::En) => "Helicopter",
-            (Custom(_),  _)        => "",
-        }
-    }
-
-    pub fn science_spec_label(spec: &super::ScienceSpec, lang: Lang) -> &'static str {
-        use super::ScienceSpec::*;
-        match (spec, lang) {
-            (Astronomy,    Lang::Ja) => "天文学",
-            (Astronomy,    Lang::En) => "Astronomy",
-            (Biology,      Lang::Ja) => "生物学",
-            (Biology,      Lang::En) => "Biology",
-            (Botany,       Lang::Ja) => "植物学",
-            (Botany,       Lang::En) => "Botany",
-            (Chemistry,    Lang::Ja) => "化学",
-            (Chemistry,    Lang::En) => "Chemistry",
-            (Cryptography, Lang::Ja) => "暗号学",
-            (Cryptography, Lang::En) => "Cryptography",
-            (Engineering,  Lang::Ja) => "工学",
-            (Engineering,  Lang::En) => "Engineering",
-            (Forensics,    Lang::Ja) => "法医学",
-            (Forensics,    Lang::En) => "Forensics",
-            (Geology,      Lang::Ja) => "地質学",
-            (Geology,      Lang::En) => "Geology",
-            (Mathematics,  Lang::Ja) => "数学",
-            (Mathematics,  Lang::En) => "Mathematics",
-            (Meteorology,  Lang::Ja) => "気象学",
-            (Meteorology,  Lang::En) => "Meteorology",
-            (Pharmacy,     Lang::Ja) => "薬学",
-            (Pharmacy,     Lang::En) => "Pharmacy",
-            (Physics,      Lang::Ja) => "物理学",
-            (Physics,      Lang::En) => "Physics",
-            (Zoology,      Lang::Ja) => "動物学",
-            (Zoology,      Lang::En) => "Zoology",
-            (Custom(_),    _)        => "",
-        }
-    }
-
-    pub fn survival_spec_label(spec: &super::SurvivalSpec, lang: Lang) -> &'static str {
-        use super::SurvivalSpec::*;
-        match (spec, lang) {
-            (Arctic,    Lang::Ja) => "北極",
-            (Arctic,    Lang::En) => "Arctic",
-            (Desert,    Lang::Ja) => "砂漠",
-            (Desert,    Lang::En) => "Desert",
-            (Sea,       Lang::Ja) => "海上",
-            (Sea,       Lang::En) => "Sea",
-            (Custom(_), _)        => "",
-        }
-    }
-
-    // --- 導出値・判定カテゴリ ラベル ---
-
-    pub fn build_rank_label(rank: super::BuildRank, lang: Lang) -> &'static str {
-        use super::BuildRank::*;
-        match (rank, lang) {
-            (NegTwo,   _) => "-2",
-            (NegOne,   _) => "-1",
-            (Zero,     _) => "0",
-            (PosOne,   _) => "+1",
-            (PosTwo,   _) => "+2",
-            (PosThree, _) => "+3",
-            (PosFour,  _) => "+4",
-            (PosFive,  _) => "+5",
-        }
-    }
-
-    pub fn damage_bonus_dice_label(dice: super::DamageBonusDice, lang: Lang) -> &'static str {
-        use super::DamageBonusDice::*;
-        match (dice, lang) {
-            (NegTwo,   _)        => "-2",
-            (NegOne,   _)        => "-1",
-            (None,     Lang::Ja) => "なし",
-            (None,     Lang::En) => "None",
-            (PosOnD4,  _)        => "+1D4",
-            (PosOnD6,  _)        => "+1D6",
-            (PosTwD6,  _)        => "+2D6",
-            (PosThrD6, _)        => "+3D6",
-            (PosForD6, _)        => "+4D6",
-        }
-    }
-
-    pub fn move_base_label(mov: super::MoveBase, _lang: Lang) -> &'static str {
-        use super::MoveBase::*;
-        match mov {
-            Seven => "7",
-            Eight => "8",
-            Nine  => "9",
-        }
-    }
 }
+
+
