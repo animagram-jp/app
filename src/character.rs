@@ -985,7 +985,7 @@ pub enum Character {
     Roll,
 }
 
-impl DataStruct {
+impl Character {
     pub fn label(&self, lang: Lang) -> &'static str {
         match (self, lang) {
             (Self::Identity,   _)        => "ID",
@@ -999,7 +999,3 @@ impl DataStruct {
         }
     }
 }
-
-
-
-
