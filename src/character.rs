@@ -64,12 +64,22 @@ enum LanguageSpec {
 
 // --- 操縦 (Pilot) 専門分野 ---
 // ルールブック掲載例。他は Custom で自由記入。
+// 1920s: Balloon / Dirigible / CivilProp / Boat / SteamShip / Sailboat
+// Modern: CivilProp / CivilJet / Airliner / JetFighter / Helicopter / Boat / SteamShip / Sailboat
 enum PilotSpec {
-    Balloon,   // 気球
-    Dirigible, // 飛行船
-    CivilProp, // プロペラ機 (セスナ等)
-    Boat,      // ボート
-    SteamShip, // 汽船
+    // --- 両時代共通 ---
+    Boat,       // ボート
+    SteamShip,  // 汽船
+    Sailboat,   // 帆船
+    CivilProp,  // 民間プロペラ機
+    // --- 1920s のみ ---
+    Balloon,    // 気球
+    Dirigible,  // 飛行船
+    // --- Modern (1990s) のみ ---
+    CivilJet,   // 民間ジェット機
+    Airliner,   // 定期旅客機
+    JetFighter, // ジェット戦闘機
+    Helicopter, // ヘリコプター
     Custom(String),
 }
 
@@ -116,6 +126,9 @@ enum Skill {
     Pilot(PilotSpec),
     Science(ScienceSpec),
     Survival(SurvivalSpec),
+
+    // 技能名+専門分野 完全自由記入（キャラシ空白欄に対応）
+    Custom { name: String, spec: Option<String> },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -780,17 +793,30 @@ pub mod schema {
     pub fn pilot_spec_label(spec: &super::PilotSpec, lang: Lang) -> &'static str {
         use super::PilotSpec::*;
         match (spec, lang) {
-            (Balloon,   Lang::Ja) => "気球",
-            (Balloon,   Lang::En) => "Balloon",
-            (Dirigible, Lang::Ja) => "飛行船",
-            (Dirigible, Lang::En) => "Dirigible",
-            (CivilProp, Lang::Ja) => "プロペラ機",
-            (CivilProp, Lang::En) => "Civil Prop",
-            (Boat,      Lang::Ja) => "ボート",
-            (Boat,      Lang::En) => "Boat",
-            (SteamShip, Lang::Ja) => "汽船",
-            (SteamShip, Lang::En) => "Steam Ship",
-            (Custom(_), _)        => "",
+            // --- 両時代共通 ---
+            (Boat,       Lang::Ja) => "ボート",
+            (Boat,       Lang::En) => "Boat",
+            (SteamShip,  Lang::Ja) => "汽船",
+            (SteamShip,  Lang::En) => "Steam Ship",
+            (Sailboat,   Lang::Ja) => "帆船",
+            (Sailboat,   Lang::En) => "Sailboat",
+            (CivilProp,  Lang::Ja) => "民間プロペラ機",
+            (CivilProp,  Lang::En) => "Civil Prop",
+            // --- 1920s のみ ---
+            (Balloon,    Lang::Ja) => "気球",
+            (Balloon,    Lang::En) => "Balloon",
+            (Dirigible,  Lang::Ja) => "飛行船",
+            (Dirigible,  Lang::En) => "Dirigible",
+            // --- Modern (1990s) のみ ---
+            (CivilJet,   Lang::Ja) => "民間ジェット機",
+            (CivilJet,   Lang::En) => "Civil Jet",
+            (Airliner,   Lang::Ja) => "定期旅客機",
+            (Airliner,   Lang::En) => "Airliner",
+            (JetFighter, Lang::Ja) => "ジェット戦闘機",
+            (JetFighter, Lang::En) => "Jet Fighter",
+            (Helicopter, Lang::Ja) => "ヘリコプター",
+            (Helicopter, Lang::En) => "Helicopter",
+            (Custom(_),  _)        => "",
         }
     }
 
