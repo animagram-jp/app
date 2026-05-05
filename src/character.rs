@@ -536,6 +536,59 @@ pub mod schema {
             }
         }
 
+        // 専門分野ごとの初期値。
+        // 0 は「任意入力（Keeper・プレイヤーが決定）」を示す。
+        // Fighting / Firearms は専門分野ごとに値が異なる。
+        // その他の専門分野技能は全選択肢で親技能の初期値と同じ値を返す。
+
+        pub fn art_craft_spec_base_value(_spec: &super::super::ArtCraftSpec) -> u16 {
+            5 // 全専門分野共通
+        }
+
+        pub fn fighting_spec_base_value(spec: &super::super::FightingSpec) -> u16 {
+            use super::super::FightingSpec::*;
+            match spec {
+                Axe       => 15,
+                Brawl     => 25,
+                Chainsaw  => 10,
+                Flail     => 10,
+                Garrote   => 15,
+                Spear     => 20,
+                Sword     => 20,
+                Whip      =>  5,
+                Custom(_) =>  0,
+            }
+        }
+
+        pub fn firearms_spec_base_value(spec: &super::super::FirearmsSpec) -> u16 {
+            use super::super::FirearmsSpec::*;
+            match spec {
+                Bow           => 15,
+                Handgun       => 20,
+                HeavyWeapons  => 10,
+                MachineGun    => 10,
+                RifleShotgun  => 25,
+                SubmachineGun => 15,
+                Custom(_)     =>  0,
+            }
+        }
+
+        pub fn language_spec_base_value(_spec: &super::super::LanguageSpec) -> u16 {
+            1 // 全言語共通
+        }
+
+        pub fn pilot_spec_base_value(_spec: &super::super::PilotSpec) -> u16 {
+            1 // 全専門分野共通
+        }
+
+        pub fn science_spec_base_value(_spec: &super::super::ScienceSpec) -> u16 {
+            1 // 全専門分野共通
+        }
+
+        pub fn survival_spec_base_value(_spec: &super::super::SurvivalSpec) -> u16 {
+            10 // 全専門分野共通
+        }
+
         pub fn get(instance: &Instance, field: Model) -> Result<u16, ListError> {
             get_u16(instance, field)
         }
