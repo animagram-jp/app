@@ -1,107 +1,3 @@
-use rand::{rng, RngExt};
-use crate::{n_d_n, Lang};
-
-use crate::table::{
-    Roll,
-    FAILED_CASTING_MINOR, FAILED_CASTING_MAJOR,
-    MADNESS_REALTIME, MADNESS_SUMMARY,
-    MANIAS, PHOBIAS,
-};
-
-// ============================================================
-// Bonus/Penalty dice
-// ============================================================
-
-/// ボーナス/ペナルティダイスを考慮した 1d100 ロール
-/// bonus > 0 → min選択（ボーナス）、bonus < 0 → max選択（ペナルティ）、0 → 通常
-/// 戻り値: (採用値, 全候補リスト)
-fn roll_with_bonus(bonus: i32) -> (u32, Vec<u32>) {
-    let mut rng = rng();
-    let roll_tens = |r: &mut _| {
-        let d: u32 = RngExt::random_range(r, 1..=10u32);
-        if d == 10 { 0 } else { d * 10 }
-    };
-    let ones: u32 = {
-        let d: u32 = rng.random_range(1..=10u32);
-        if d == 10 { 0 } else { d }
-    };
-    let count = (bonus.unsigned_abs() + 1) as usize;
-    let tens_list: Vec<u32> = (0..count).map(|_| roll_tens(&mut rng)).collect();
-    let dice_list: Vec<u32> = tens_list
-        .iter()
-        .map(|&t| { let v = t + ones; if v == 0 { 100 } else { v } })
-        .collect();
-    let total = if bonus >= 0 {
-        *dice_list.iter().min().unwrap()
-    } else {
-        *dice_list.iter().max().unwrap()
-    };
-    (total, dice_list)
-}
-
-// ============================================================
-// ResultLevel
-// ============================================================
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub enum ResultLevel {
-    Fumble,
-    Failure,
-    Regular,
-    Hard,
-    Extreme,
-    Critical,
-}
-
-impl ResultLevel {
-    /// fumbleable: 連射でhard以上の難易度段階に入った場合 true（ファンブル閾値が96固定になる）
-    pub fn from_values(total: u32, difficulty: u32, fumbleable: bool) -> Self {
-        let fumble_at = if difficulty < 50 || fumbleable { 96 } else { 100 };
-        if total == 1                   { Self::Critical }
-        else if total >= fumble_at      { Self::Fumble }
-        else if total <= difficulty / 5 { Self::Extreme }
-        else if total <= difficulty / 2 { Self::Hard }
-        else if total <= difficulty     { Self::Regular }
-        else                            { Self::Failure }
-    }
-
-    /// 難易度指定判定（R/H/E/C 指定時）
-    /// 成功段階は出さず、成功/失敗/クリティカル/ファンブルのみ返す
-    pub fn with_difficulty_level(total: u32, difficulty: u32) -> Self {
-        let fumble_at = if difficulty < 50 { 96 } else { 100 };
-        if total == 1              { Self::Critical }
-        else if total >= fumble_at { Self::Fumble }
-        else if total <= difficulty { Self::Regular }
-        else                       { Self::Failure }
-    }
-
-    pub fn is_success(self) -> bool { self >= Self::Regular }
-    pub fn is_failure(self) -> bool { self <= Self::Failure }
-
-    pub fn label(self, lang: Lang) -> &'static str {
-        match (self, lang) {
-            (Self::Critical, Lang::Ja) => "クリティカル",
-            (Self::Critical, Lang::En) => "Critical",
-            (Self::Extreme,  Lang::Ja) => "イクストリーム成功",
-            (Self::Extreme,  Lang::En) => "Extreme Success",
-            (Self::Hard,     Lang::Ja) => "ハード成功",
-            (Self::Hard,     Lang::En) => "Hard Success",
-            (Self::Regular,  Lang::Ja) => "レギュラー成功",
-            (Self::Regular,  Lang::En) => "Regular Success",
-            (Self::Failure,  Lang::Ja) => "失敗",
-            (Self::Failure,  Lang::En) => "Failure",
-            (Self::Fumble,   Lang::Ja) => "ファンブル",
-            (Self::Fumble,   Lang::En) => "Fumble",
-        }
-    }
-}
-
-impl std::fmt::Display for ResultLevel {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(self.label(Lang::Ja))
-    }
-}
-
 // ============================================================
 // 判定結果型
 // ============================================================
@@ -121,23 +17,9 @@ pub struct SkillRollResult {
     pub level: Option<ResultLevel>,
 }
 
-impl SkillRollResult {
-    pub fn is_success(&self) -> bool { self.level.map_or(false, |l| l.is_success()) }
-    pub fn is_critical(&self) -> bool { self.level == Some(ResultLevel::Critical) }
-    pub fn is_fumble(&self)   -> bool { self.level == Some(ResultLevel::Fumble) }
-}
-
 impl std::fmt::Display for SkillRollResult {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let candidates = self.dice_candidates.iter()
-            .map(|d| d.to_string()).collect::<Vec<_>>().join(", ");
-        write!(f, "1D100 bonus=[{}] candidates=[{}] total={}", self.bonus_dice, candidates, self.total)?;
-        if let Some(d) = self.effective_difficulty {
-            write!(f, " difficulty={}", d)?;
-        }
-        if let Some(lvl) = self.level {
-            write!(f, " result={:?}", lvl)?;
-        }
+        write!(f, "1D100 bonus=[{}] candidates=[{}] total={} difficulty={} result={}", self.bonus_dice, candidates, self.total, self.effective_difficulty, self.level)?;
         Ok(())
     }
 }
@@ -282,15 +164,6 @@ impl std::fmt::Display for MadnessResult {
 // ============================================================
 // 技能判定
 // ============================================================
-
-#[derive(Debug, Clone, Copy)]
-pub enum DifficultySpec {
-    None,
-    Regular,
-    Hard,
-    Extreme,
-    Critical,
-}
 
 /// 技能判定
 ///
@@ -579,28 +452,4 @@ pub fn roll_madness_summary() -> MadnessResult {
         duration_roll: n_d_n(1, 10),
         duration_unit: DurationUnit::Hours,
     }
-}
-
-/// キャスティング・ロール失敗（小） — 1d8
-pub fn roll_failed_casting_minor() -> TableResult {
-    let n = n_d_n(1, 8) as usize;
-    TableResult { roll_type: Roll::FailedCastingMinor, roll: n as u32, label: FAILED_CASTING_MINOR[n - 1].label }
-}
-
-/// キャスティング・ロール失敗（大） — 1d8
-pub fn roll_failed_casting_major() -> TableResult {
-    let n = n_d_n(1, 8) as usize;
-    TableResult { roll_type: Roll::FailedCastingMajor, roll: n as u32, label: FAILED_CASTING_MAJOR[n - 1].label }
-}
-
-/// 恐怖症表 — 1d100
-pub fn roll_phobia() -> TableResult {
-    let n = n_d_n(1, 100) as usize;
-    TableResult { roll_type: Roll::PhobiaTable, roll: n as u32, label: PHOBIAS[n - 1].label }
-}
-
-/// マニア表 — 1d100
-pub fn roll_mania() -> TableResult {
-    let n = n_d_n(1, 100) as usize;
-    TableResult { roll_type: Roll::ManiaTable, roll: n as u32, label: MANIAS[n - 1].label }
 }

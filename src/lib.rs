@@ -1,3 +1,5 @@
+use rand::{rng, RngExt};
+
 pub mod list;
 pub mod character;
 pub mod dice;
@@ -13,6 +15,33 @@ pub enum Lang { En, Ja }
 // ============================================================
 
 pub fn n_d_n(count: u32, sides: u32) -> u32 {
-    use rand::RngExt;
     (0..count).map(|_| rand::rng().random_range(1..=sides)).sum()
+}
+
+// ============================================================
+// Bonus/Penalty dice
+// ============================================================
+
+pub fn roll_with_bonus(bonus: i32) -> (u32, Vec<u32>) {
+    let mut rng = rng();
+    let roll_tens = |r: &mut _| {
+        let d: u32 = RngExt::random_range(r, 1..=10u32);
+        if d == 10 { 0 } else { d * 10 }
+    };
+    let ones: u32 = {
+        let d: u32 = rng.random_range(1..=10u32);
+        if d == 10 { 0 } else { d }
+    };
+    let count = (bonus.unsigned_abs() + 1) as usize;
+    let tens_list: Vec<u32> = (0..count).map(|_| roll_tens(&mut rng)).collect();
+    let dice_list: Vec<u32> = tens_list
+        .iter()
+        .map(|&t| { let v = t + ones; if v == 0 { 100 } else { v } })
+        .collect();
+    let total = if bonus >= 0 {
+        *dice_list.iter().min().unwrap()
+    } else {
+        *dice_list.iter().max().unwrap()
+    };
+    (total, dice_list)
 }

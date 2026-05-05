@@ -1,49 +1,6 @@
-use crate::Lang;
-use crate::character::Character,
-
-pub enum Roll {
-    DiceRoll(Count,Side,Count,Side,DiceModifier),
-    SkillRoll(Character, Skills(Skill), Option(SuccessLevel), Option(i16)), // option(i16)とは補正値(+-i)のこと
-    CharacteristicRoll(Character, Characteristics(Characteristic), Option(SuccessLevel), SkillModifier), 
-    SanityRoll(Character),
-    BoutOfMadness(BoutScene),
-    PushedRoll(Character, SkillOrCharacteristic, Option(SuccessLevel), Option(i16)), // todo: pushでも新規技能はありうるので、履歴利用はソートサジェストだけにする
-    CombinedSkillRoll,(Character, SkillOrCharacteristic,SkillOrCharacteristic)
-    PhobiaAndMania(Impulse),
-    // todo: 射撃時の連射判定, 射撃時のボーナス・ペナルティダイスのセレクタガイド
-    AutoFireRoll,
-    FailedCastingMinor,
-    FailedCastingMajor,
-    DevelopmentCheck,
-}
-
-
-
-pub enum SkillOrCharacteristic {
-    Skills(Skill),
-    Characteristics(Characteristic),
-}
-
-pub enum BoutScene {
-    RealTime,
-    Summary,
-}
-impl BoutScene {
-    pub fn label(self, lang: Lang) -> &'static str {
-        match(self, lang) {
-            (Self::RealTime, Lang::En) => "real time",
-            (Self::RealTime, Lang::Ja) => "リアルタイム",
-            (Self::Summary,  Lang::En) => "summary",
-            (Self::Summary,  Lang::Ja) => "サマリー",                                          
-        }
-    }
-}
-
-pub enum SuccessLevel {
-    Regular,
-    Hard,
-    Extreme,
-    Critical,
+use crate::{
+    n_d_n, 
+    Lang,
 }
 
 pub struct DiceRoll {
@@ -66,7 +23,10 @@ pub enum RollJudge {
     Fumble,
     Failure,
     Success,
-    SuccessLevel(Level),
+    Regular,
+    Hard,
+    Extreme,
+    Critical,
     Sane,
     Insane,
     Developed,
@@ -74,6 +34,17 @@ pub enum RollJudge {
 }
 
 impl RollJudge {
+    /// fumbleable: 連射でhard以上の難易度段階に入った場合 true（ファンブル閾値が96固定になる）
+    pub fn judge(total: u32, difficulty: u32, fumbleable: bool, success_level: &self) -> Self {
+        let fumble_at = if difficulty < 50 || fumbleable { 96 } else { 100 };
+        if total == 1                   { Self::Critical }
+        else if total >= fumble_at      { Self::Fumble }
+        else if success_level and (total <= difficulty) { Self::Success }
+        else if total <= difficulty / 5 { Self::Extreme }
+        else if total <= difficulty / 2 { Self::Hard }
+        else if total <= difficulty     { Self::Regular }
+        else                            { Self::Failure }
+    }
     pub fn label(self, lang: Lang) -> &'static str {
         match(self, lang) {
             (Self::Fumble,      Lang::En) => "fumble",
@@ -102,37 +73,67 @@ impl RollJudge {
     }
 }
 
+pub enum BoutScene {
+    RealTime,
+    Summary,
+}
+
+impl BoutScene {
+    pub fn label(self, lang: Lang) -> &'static str {
+        match(self, lang) {
+            (Self::RealTime, Lang::En) => "real time",
+            (Self::RealTime, Lang::Ja) => "リアルタイム",
+            (Self::Summary,  Lang::En) => "summary",
+            (Self::Summary,  Lang::Ja) => "サマリー",                                          
+        }
+    }
+}
+
+pub enum Roll {
+    DiceRoll(Count,Side,Count,Side,DiceModifier),
+    SkillRoll(Character, Skills(Skill), Option(SuccessLevel), Option(i16)), // option(i16)とは補正値(+-i)のこと
+    CharacteristicRoll(Character, Characteristics(Characteristic), Option(SuccessLevel), SkillModifier), 
+    SanityRoll(Character),
+    BoutOfMadness(BoutScene),
+    PushedRoll(Character, SkillOrCharacteristic, Option(SuccessLevel), Option(i16)), // todo: pushでも新規技能はありうるので、履歴利用はソートサジェストだけにする
+    CombinedSkillRoll,(Character, SkillOrCharacteristic,SkillOrCharacteristic)
+    PhobiaAndMania(Impulse),
+    // todo: 射撃時の連射判定, 射撃時のボーナス・ペナルティダイスのセレクタガイド
+    AutoFireRoll,
+    FailedCastingMinor,
+    FailedCastingMajor,
+    DevelopmentCheck,
+}
+
 impl Roll {
     pub fn label(self, lang: Lang) -> &'static str {
         match (self, lang) {
-            (Self::DiceRoll,              Lang::Ja) => "ダイスロール (nDn +-n)",
-            (Self::DiceRoll,              Lang::En) => "Dice Roll (nDn +-n)",
-            (Self::SkillRoll,             Lang::Ja) => "技能ロール",
-            (Self::SkillRoll,             Lang::En) => "Skill Roll",
-            (Self::CharacteristicRoll,    Lang::Ja) => "能力値ロール",
-            (Self::CharacteristicRoll,    Lang::En) => "Characteristic Roll",
-            (Self::SanityRoll,            Lang::Ja) => "正気度ロール",
-            (Self::SanityRoll,            Lang::En) => "Sanity Roll",
-            (Self::BoutOfMadnessRealTime, Lang::Ja) => "狂気の発作 (リアルタイム)",
-            (Self::BoutOfMadnessRealTime, Lang::En) => "Bout of Madness (Real Time)",
-            (Self::BoutOfMadnessSummary,  Lang::Ja) => "狂気の発作 (サマリー)",
-            (Self::BoutOfMadnessSummary,  Lang::En) => "Bout of Madness (Summary)",
-            (Self::PushedRoll,            Lang::Ja) => "プッシュロール",
-            (Self::PushedRoll,            Lang::En) => "Pushed Roll",
-            (Self::CombinedSkillRoll,     Lang::Ja) => "組み合わせ技能ロール",
-            (Self::CombinedSkillRoll,     Lang::En) => "Combined Skill Roll",
-            (Self::PhobiaTable,           Lang::Ja) => "恐怖症表",
-            (Self::PhobiaTable,           Lang::En) => "Phobia Table",
-            (Self::ManiaTable,            Lang::Ja) => "マニア表",
-            (Self::ManiaTable,            Lang::En) => "Mania Table",
-            (Self::AutoFireRoll,          Lang::Ja) => "自動火器の連射判定",
-            (Self::AutoFireRoll,          Lang::En) => "Automatic Fire Roll",
-            (Self::FailedCastingMinor,    Lang::Ja) => "呪文失敗 (小)",
-            (Self::FailedCastingMinor,    Lang::En) => "Failed Casting (Minor)",
-            (Self::FailedCastingMajor,    Lang::Ja) => "呪文失敗 (大)",
-            (Self::FailedCastingMajor,    Lang::En) => "Failed Casting (Major)",
-            (Self::DevelopmentCheck,      Lang::En) => "Development Check",
-            (Self::DevelopmentCheck,      Lang::Ja) => "上達チェック",
+            (Self::DiceRoll,           Lang::Ja) => "ダイスロール (nDn +-n)",
+            (Self::DiceRoll,           Lang::En) => "Dice Roll (nDn +-n)",
+            (Self::SkillRoll,          Lang::Ja) => "技能ロール",
+            (Self::SkillRoll,          Lang::En) => "Skill Roll",
+            (Self::CharacteristicRoll, Lang::Ja) => "能力値ロール",
+            (Self::CharacteristicRoll, Lang::En) => "Characteristic Roll",
+            (Self::SanityRoll,         Lang::Ja) => "正気度ロール",
+            (Self::SanityRoll,         Lang::En) => "Sanity Roll",
+            (Self::BoutOfMadness,      Lang::Ja) => "狂気の発作",
+            (Self::BoutOfMadness,      Lang::En) => "Bout of Madness",
+            (Self::PushedRoll,         Lang::Ja) => "プッシュロール",
+            (Self::PushedRoll,         Lang::En) => "Pushed Roll",
+            (Self::CombinedSkillRoll,  Lang::Ja) => "組み合わせ技能ロール",
+            (Self::CombinedSkillRoll,  Lang::En) => "Combined Skill Roll",
+            (Self::PhobiaTable,        Lang::Ja) => "恐怖症表",
+            (Self::PhobiaTable,        Lang::En) => "Phobia Table",
+            (Self::ManiaTable,         Lang::Ja) => "マニア表",
+            (Self::ManiaTable,         Lang::En) => "Mania Table",
+            (Self::AutoFireRoll,       Lang::Ja) => "自動火器の連射判定",
+            (Self::AutoFireRoll,       Lang::En) => "Automatic Fire Roll",
+            (Self::FailedCastingMinor, Lang::Ja) => "呪文失敗 (小)",
+            (Self::FailedCastingMinor, Lang::En) => "Failed Casting (Minor)",
+            (Self::FailedCastingMajor, Lang::Ja) => "呪文失敗 (大)",
+            (Self::FailedCastingMajor, Lang::En) => "Failed Casting (Major)",
+            (Self::DevelopmentCheck,   Lang::En) => "Development Check",
+            (Self::DevelopmentCheck,   Lang::Ja) => "上達チェック",
         }
     }
 
@@ -172,6 +173,12 @@ pub enum MadnessRealTime {
 }
 
 impl MadnessRealTime {
+    pub fn get(&self, index: &u8) -> Self {
+        // todo: 実装
+    }
+    pub fn index(&self) -> u8 {
+        *self as u8 + 1
+    }
     pub fn label(&self, lang: Lang) -> &'static str {
         match (self, lang) {
             (Self::Amnesia,                Lang::En) => "Amnesia",
@@ -196,21 +203,6 @@ impl MadnessRealTime {
             (Self::Mania,                  Lang::Ja) => "マニア",
         }
     }
-
-    pub fn all() -> &'static [Self] {
-        &[
-            Self::Amnesia,
-            Self::PsychosomaticDisability,
-            Self::Violence,
-            Self::Paranoia,
-            Self::SignificantPerson,
-            Self::Faint,
-            Self::FleeInPanic,
-            Self::PhysicalHysterics,
-            Self::Phobia,
-            Self::Mania,
-        ]
-    }
 }
 
 /// ルールブック 日本語訳版 155頁
@@ -228,6 +220,12 @@ pub enum MadnessSummary {
 }
 
 impl MadnessSummary {
+    pub fn get(&self, index: &u8) -> Self {
+        // todo: 実装
+    }
+    pub fn index(&self) -> u8 {
+        *self as u8 + 1
+    }
     pub fn label(&self, lang: Lang) -> &'static str {
         match (self, lang) {
             (Self::Amnesia,          Lang::En) => "Amnesia",
@@ -252,21 +250,6 @@ impl MadnessSummary {
             (Self::Mania,            Lang::Ja) => "マニア",
         }
     }
-
-    pub fn all() -> &'static [Self] {
-        &[
-            Self::Amnesia,
-            Self::Robbed,
-            Self::Battered,
-            Self::Violence,
-            Self::IdeologyBeliefs,
-            Self::SignificantPeople,
-            Self::Institutionalized,
-            Self::FleeInPanic,
-            Self::Phobia,
-            Self::Mania,
-        ]
-    }
 }
 
 /// ルールブック 日本語訳版 174頁
@@ -282,6 +265,12 @@ pub enum FailedCastingMinor {
 }
 
 impl FailedCastingMinor {
+    pub fn get(&self, &index: u8) -> Self {
+        // todo: 実装
+    }
+    pub fn index(&self) -> u8 {
+        *self as u8 + 1
+    }
     pub fn label(&self, lang: Lang) -> &'static str {
         match (self, lang) {
             (Self::BlurredVision,          Lang::En) => "Blurred vision or temporary blindness",
@@ -302,19 +291,6 @@ impl FailedCastingMinor {
             (Self::MythosCreatureSummoned, Lang::Ja) => "クトゥルフ神話の怪物が偶然召喚される",
         }
     }
-
-    pub fn all() -> &'static [Self] {
-        &[
-            Self::BlurredVision,
-            Self::Screaming,
-            Self::StrongWind,
-            Self::Bleeding,
-            Self::StrangeVisions,
-            Self::SmallAnimalsExplode,
-            Self::StenchOfSulphur,
-            Self::MythosCreatureSummoned,
-        ]
-    }
 }
 
 /// ルールブック 日本語訳版 P175
@@ -330,6 +306,12 @@ pub enum FailedCastingMajor {
 }
 
 impl FailedCastingMajor {
+    pub fn get(&self, &index: u8) -> Self {
+        // todo: 実装
+    }
+    pub fn index(&self) -> u8 {
+        *self as u8 + 1
+    }
     pub fn label(&self, lang: Lang) -> &'static str {
         match (self, lang) {
             (Self::Earthquake,           Lang::En) => "The earth shakes and walls crack and crumble",
@@ -349,19 +331,6 @@ impl FailedCastingMajor {
             (Self::MythosDeityInvoked,   Lang::En) => "A Mythos deity is accidentally invoked",
             (Self::MythosDeityInvoked,   Lang::Ja) => "クトゥルフ神話の神格が偶然招来される",
         }
-    }
-
-    pub fn all() -> &'static [Self] {
-        &[
-            Self::Earthquake,
-            Self::EpicLightning,
-            Self::BloodRain,
-            Self::CasterHandsWither,
-            Self::CasterAgesUnaturally,
-            Self::MythosCreatureAttacks,
-            Self::SweptAwayInTime,
-            Self::MythosDeityInvoked,
-        ]
     }
 }
 
@@ -470,6 +439,9 @@ pub enum Phobia {
 }
 
 impl Phobia {
+    pub fn get(&self, &index: u8) -> Self {
+        // todo: 実装
+    }
     pub fn index(&self) -> u8 {
         *self as u8 + 1
     }
@@ -677,111 +649,6 @@ impl Phobia {
             (Self::Zoophobia,          Lang::Ja) => "動物",
         }
     }
-
-    pub fn all() -> &'static [Self] {
-        &[
-            Self::Ablutophobia,
-            Self::Acrophobia,
-            Self::Aerophobia,
-            Self::Agoraphobia,
-            Self::Alektorophobia,
-            Self::Alliumphobia,
-            Self::Amaxophobia,
-            Self::Ancraophobia,
-            Self::Androphobia,
-            Self::Anglophobia,
-            Self::Anthophobia,
-            Self::Apotemnophobia,
-            Self::Arachnophobia,
-            Self::Astraphobia,
-            Self::Atephobia,
-            Self::Aulophobia,
-            Self::Bacteriophobia,
-            Self::Ballistophobia,
-            Self::Basophobia,
-            Self::Bibliophobia,
-            Self::Botanophobia,
-            Self::Caligynephobia,
-            Self::Cheimaphobia,
-            Self::Chronomentrophobia,
-            Self::Claustrophobia,
-            Self::Coulrophobia,
-            Self::Cynophobia,
-            Self::Demonophobia,
-            Self::Demophobia,
-            Self::Dentophobia,
-            Self::Disposophobia,
-            Self::Doraphobia,
-            Self::Dromophobia,
-            Self::Ecclesiophobia,
-            Self::Eisoptrophobia,
-            Self::Enetophobia,
-            Self::Entomophobia,
-            Self::Felinophobia,
-            Self::Gephyrophobia,
-            Self::Gerontophobia,
-            Self::Gynophobia,
-            Self::Haemaphobia,
-            Self::Hamartophobia,
-            Self::Haphophobia,
-            Self::Herpetophobia,
-            Self::Homichlophobia,
-            Self::Hoplophobia,
-            Self::Hydrophobia,
-            Self::Hypnophobia,
-            Self::Iatrophobia,
-            Self::Ichthyophobia,
-            Self::Katsaridaphobia,
-            Self::Keraunophobia,
-            Self::Lachanophobia,
-            Self::Ligyrophobia,
-            Self::Limnophobia,
-            Self::Mechanophobia,
-            Self::Megalophobia,
-            Self::Merinthophobia,
-            Self::Meteorophobia,
-            Self::Monophobia,
-            Self::Mysophobia,
-            Self::Myxophobia,
-            Self::Necrophobia,
-            Self::Octophobia,
-            Self::Odontophobia,
-            Self::Oneirophobia,
-            Self::Onomatophobia,
-            Self::Ophidiophobia,
-            Self::Ornithophobia,
-            Self::Parasitophobia,
-            Self::Pediophobia,
-            Self::Phagophobia,
-            Self::Pharmacophobia,
-            Self::Phasmophobia,
-            Self::Phenogophobia,
-            Self::Pogonophobia,
-            Self::Potamophobia,
-            Self::Potophobia,
-            Self::Pyrophobia,
-            Self::Rhabdophobia,
-            Self::Scotophobia,
-            Self::Selenophobia,
-            Self::Siderodromophobia,
-            Self::Siderophobia,
-            Self::Stenophobia,
-            Self::Symmetrophobia,
-            Self::Taphephobia,
-            Self::Taurophobia,
-            Self::Telephonophobia,
-            Self::Teratophobia,
-            Self::Thalassophobia,
-            Self::Tomophobia,
-            Self::Triskadekaphobia,
-            Self::Vestiphobia,
-            Self::Wiccaphobia,
-            Self::Xanthophobia,
-            Self::Xenoglossophobia,
-            Self::Xenophobia,
-            Self::Zoophobia,
-        ]
-    }
 }
 
 /// ルールブック 日本語訳版 157頁
@@ -889,10 +756,12 @@ pub enum Mania {
 }
 
 impl Mania {
+    pub fn get(&self, &index: u8) -> Self {
+        // todo: 実装
+    }
     pub fn index(&self) -> u8 {
         *self as u8 + 1
     }
-
     pub fn label(&self, lang: Lang) -> &'static str {
         match (self, lang) {
             (Self::Ablutomania,      Lang::En) => "Abluto",
@@ -1096,110 +965,5 @@ impl Mania {
             (Self::Zoomania,         Lang::En) => "Zoo",
             (Self::Zoomania,         Lang::Ja) => "動物",
         }
-    }
-
-    pub fn all() -> &'static [Self] {
-        &[
-            Self::Ablutomania,
-            Self::Aboulomania,
-            Self::Achluomania,
-            Self::Acromaniaheights,
-            Self::Agathomania,
-            Self::Agromania,
-            Self::Aichmomania,
-            Self::Ailuromania,
-            Self::Algomania,
-            Self::Alliomania,
-            Self::Amaxomania,
-            Self::Amenomania,
-            Self::Anthomania,
-            Self::Arithmomania,
-            Self::Asoticamania,
-            Self::Eremiomania,
-            Self::Balletmania,
-            Self::Biliokleptomania,
-            Self::Bibliomania,
-            Self::Bruxomania,
-            Self::Cacodemomania,
-            Self::Callomania,
-            Self::Cartacoethes,
-            Self::Catapedamania,
-            Self::Cheimatomania,
-            Self::Choreomania,
-            Self::Clinomania,
-            Self::Coimetormania,
-            Self::Coloromania,
-            Self::Coulromania,
-            Self::Countermania,
-            Self::Dacnomania,
-            Self::Demonomania,
-            Self::Dermatillomania,
-            Self::Dikemania,
-            Self::Dipsomania,
-            Self::Doramania,
-            Self::Doromania,
-            Self::Drapetomania,
-            Self::Ecdemiomania,
-            Self::Egomania,
-            Self::Empleomania,
-            Self::Enosimania,
-            Self::Epistemomania,
-            Self::Eremiomaniaquiet,
-            Self::Etheromania,
-            Self::Gamomania,
-            Self::Geliomania,
-            Self::Goetomania,
-            Self::Graphomania,
-            Self::Gymnomania,
-            Self::Habromania,
-            Self::Helminthomania,
-            Self::Hoplomania,
-            Self::Hydromania,
-            Self::Ichthyomania,
-            Self::Iconomania,
-            Self::Idolomania,
-            Self::Infomania,
-            Self::Klazomania,
-            Self::Kleptomania,
-            Self::Ligyromania,
-            Self::Linonomania,
-            Self::Lotterymania,
-            Self::Lypemania,
-            Self::Megalithomania,
-            Self::Melomania,
-            Self::Metromania,
-            Self::Misomania,
-            Self::Monomania,
-            Self::Mythomania,
-            Self::Nosomania,
-            Self::Notomania,
-            Self::Onomamania,
-            Self::Onomatomania,
-            Self::Onychotillomania,
-            Self::Opsomania,
-            Self::Paramania,
-            Self::Personamania,
-            Self::Phasmomania,
-            Self::Phonomania,
-            Self::Photomania,
-            Self::Antinomiamania,
-            Self::Plutomania,
-            Self::Pseudomania,
-            Self::Pyromania,
-            Self::QuestionAsking,
-            Self::Rhinotillexomania,
-            Self::Scribbleomania,
-            Self::Siderodromomania,
-            Self::Sophomania,
-            Self::Technomania,
-            Self::Thanatomania,
-            Self::Theomania,
-            Self::Titillomaniac,
-            Self::Tomomania,
-            Self::Trichotillomania,
-            Self::Typhlomania,
-            Self::Xenomania,
-            Self::Zoomania,
-        ]
     }
 }
