@@ -35,14 +35,43 @@ pub struct RollResult {
 }
 
 pub enum RollJudge {
-    Failure,
     Famble,
+    Failure,
     Regular,
     Hard,
     Extreme,
     Critical,
+    Sane,
+    Insane,
     Developed,
     Undeveloped,
+}
+
+impl RollJudge {
+    pub fn label(self, lang: Lang) -> &'static str {
+        match(self, lang) {
+            (Self::Famble, Lang::En) => "famble",
+            (Self::Famble, Lang::Ja) => "致命的失敗",
+            (Self::Failure, Lang::En) => "failure",
+            (Self::Failure, Lang::Ja) => "失敗",
+            (Self::Regular, Lang::En) => "regular success",
+            (Self::Regular, Lang::Ja) => "レギュラー成功",
+            (Self::Hard, Lang::En) => "hard success",
+            (Self::Hard, Lang::Ja) => "ハード成功",
+            (Self::Extreme, Lang::En) => "extreme success",
+            (Self::Extreme, Lang::Ja) => "イクストリーム成功",  
+            (Self::Ctirical, Lang::En) => "critical success",
+            (Self::Critical, Lang::Ja) => "クリティカル成功",  
+            (Self::Sane, Lang::En) => "stay sane",
+            (Self::Sane, Lang::Ja) => "発狂しない",  
+            (Self::Insane, Lang::En) => "go insane",
+            (Self::Insane, Lang::Ja) => "発狂",  
+            (Self::Developed, Lang::En) => "developed",
+            (Self::Developed, Lang::Ja) => "上達",
+            (Self::Undeveloped, Lang::En) => "undeveloped",
+            (Self::Undeveloped, Lang::Ja) => "上達しない",                                            
+        }
+    }
 }
 
 impl Roll {
