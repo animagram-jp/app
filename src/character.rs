@@ -14,19 +14,19 @@ impl Instance {
 // --- 芸術/製作 (Art/Craft) 専門分野 ---
 // ルールブック掲載例。他は Custom で自由記入。
 enum ArtCraftSpec {
-    Acting,       // 演技
+    Acting,       // 演劇
     Barber,       // 理容
     Calligraphy,  // 書道
     Carpentry,    // 大工仕事
     Cobbling,     // 靴製造
     Cook,         // 料理
     Dancing,      // 踊り
-    FineArt,      // 美術
-    Forgery,      // 偽造
-    Photography,  // 写真
+    FineArt,      // 絵画
+    Forgery,      // 文書偽造
+    Photography,  // 写真術
     Pottery,      // 陶芸
     Sculpting,    // 彫刻
-    Writing,      // 文芸
+    Writing,      // 執筆
     Custom(String),
 }
 
@@ -37,7 +37,7 @@ enum FightingSpec {
     Brawl,        // 格闘         25%
     Chainsaw,     // チェーンソー  10%
     Flail,        // フレイル      10%  (ヌンチャク・モーニングスター等)
-    Garrote,      // 絞殺紐        15%
+    Garrote,      // 絞殺ひも      15%
     Spear,        // 槍           20%
     Sword,        // 刀剣          20%
     Whip,         // 鞭            05%  (ボーラ含む)
@@ -696,6 +696,147 @@ pub mod schema {
             (Model::PhobiasAndManias,     Lang::En) => "Phobias & Manias",
             (Model::ArcaneTomesAndSpells, Lang::Ja) => "魔道書と呪文",
             (Model::ArcaneTomesAndSpells, Lang::En) => "Arcane Tomes & Spells",
+        }
+    }
+
+    // --- 専門分野ラベル ---
+    // Custom(_) は動的な文字列のため "" を返す。呼び出し側でinner Stringを直接使用すること。
+
+    pub fn art_craft_spec_label(spec: &super::ArtCraftSpec, lang: Lang) -> &'static str {
+        use super::ArtCraftSpec::*;
+        match (spec, lang) {
+            (Acting,      Lang::Ja) => "演劇",
+            (Acting,      Lang::En) => "Acting",
+            (Barber,      Lang::Ja) => "理容",
+            (Barber,      Lang::En) => "Barber",
+            (Calligraphy, Lang::Ja) => "書道",
+            (Calligraphy, Lang::En) => "Calligraphy",
+            (Carpentry,   Lang::Ja) => "大工仕事",
+            (Carpentry,   Lang::En) => "Carpentry",
+            (Cobbling,    Lang::Ja) => "靴製造",
+            (Cobbling,    Lang::En) => "Cobbling",
+            (Cook,        Lang::Ja) => "料理",
+            (Cook,        Lang::En) => "Cook",
+            (Dancing,     Lang::Ja) => "踊り",
+            (Dancing,     Lang::En) => "Dancing",
+            (FineArt,     Lang::Ja) => "絵画",
+            (FineArt,     Lang::En) => "Fine Art",
+            (Forgery,     Lang::Ja) => "文書偽造",
+            (Forgery,     Lang::En) => "Forgery",
+            (Photography, Lang::Ja) => "写真術",
+            (Photography, Lang::En) => "Photography",
+            (Pottery,     Lang::Ja) => "陶芸",
+            (Pottery,     Lang::En) => "Pottery",
+            (Sculpting,   Lang::Ja) => "彫刻",
+            (Sculpting,   Lang::En) => "Sculpting",
+            (Writing,     Lang::Ja) => "執筆",
+            (Writing,     Lang::En) => "Writing",
+            (Custom(_),   _)        => "",
+        }
+    }
+
+    pub fn fighting_spec_label(spec: &super::FightingSpec, lang: Lang) -> &'static str {
+        use super::FightingSpec::*;
+        match (spec, lang) {
+            (Axe,       Lang::Ja) => "斧",
+            (Axe,       Lang::En) => "Axe",
+            (Brawl,     Lang::Ja) => "格闘",
+            (Brawl,     Lang::En) => "Brawl",
+            (Chainsaw,  Lang::Ja) => "チェーンソー",
+            (Chainsaw,  Lang::En) => "Chainsaw",
+            (Flail,     Lang::Ja) => "フレイル",
+            (Flail,     Lang::En) => "Flail",
+            (Garrote,   Lang::Ja) => "絞殺ひも",
+            (Garrote,   Lang::En) => "Garrote",
+            (Spear,     Lang::Ja) => "槍",
+            (Spear,     Lang::En) => "Spear",
+            (Sword,     Lang::Ja) => "刀剣",
+            (Sword,     Lang::En) => "Sword",
+            (Whip,      Lang::Ja) => "鞭",
+            (Whip,      Lang::En) => "Whip",
+            (Custom(_), _)        => "",
+        }
+    }
+
+    pub fn firearms_spec_label(spec: &super::FirearmsSpec, lang: Lang) -> &'static str {
+        use super::FirearmsSpec::*;
+        match (spec, lang) {
+            (Bow,           Lang::Ja) => "弓",
+            (Bow,           Lang::En) => "Bow",
+            (Handgun,       Lang::Ja) => "拳銃",
+            (Handgun,       Lang::En) => "Handgun",
+            (HeavyWeapons,  Lang::Ja) => "重火器",
+            (HeavyWeapons,  Lang::En) => "Heavy Weapons",
+            (MachineGun,    Lang::Ja) => "機関銃",
+            (MachineGun,    Lang::En) => "Machine Gun",
+            (RifleShotgun,  Lang::Ja) => "ライフル/ショットガン",
+            (RifleShotgun,  Lang::En) => "Rifle/Shotgun",
+            (SubmachineGun, Lang::Ja) => "サブマシンガン",
+            (SubmachineGun, Lang::En) => "Submachine Gun",
+            (Custom(_),     _)        => "",
+        }
+    }
+
+    pub fn pilot_spec_label(spec: &super::PilotSpec, lang: Lang) -> &'static str {
+        use super::PilotSpec::*;
+        match (spec, lang) {
+            (Balloon,   Lang::Ja) => "気球",
+            (Balloon,   Lang::En) => "Balloon",
+            (Dirigible, Lang::Ja) => "飛行船",
+            (Dirigible, Lang::En) => "Dirigible",
+            (CivilProp, Lang::Ja) => "プロペラ機",
+            (CivilProp, Lang::En) => "Civil Prop",
+            (Boat,      Lang::Ja) => "ボート",
+            (Boat,      Lang::En) => "Boat",
+            (SteamShip, Lang::Ja) => "汽船",
+            (SteamShip, Lang::En) => "Steam Ship",
+            (Custom(_), _)        => "",
+        }
+    }
+
+    pub fn science_spec_label(spec: &super::ScienceSpec, lang: Lang) -> &'static str {
+        use super::ScienceSpec::*;
+        match (spec, lang) {
+            (Astronomy,    Lang::Ja) => "天文学",
+            (Astronomy,    Lang::En) => "Astronomy",
+            (Biology,      Lang::Ja) => "生物学",
+            (Biology,      Lang::En) => "Biology",
+            (Botany,       Lang::Ja) => "植物学",
+            (Botany,       Lang::En) => "Botany",
+            (Chemistry,    Lang::Ja) => "化学",
+            (Chemistry,    Lang::En) => "Chemistry",
+            (Cryptography, Lang::Ja) => "暗号学",
+            (Cryptography, Lang::En) => "Cryptography",
+            (Engineering,  Lang::Ja) => "工学",
+            (Engineering,  Lang::En) => "Engineering",
+            (Forensics,    Lang::Ja) => "法医学",
+            (Forensics,    Lang::En) => "Forensics",
+            (Geology,      Lang::Ja) => "地質学",
+            (Geology,      Lang::En) => "Geology",
+            (Mathematics,  Lang::Ja) => "数学",
+            (Mathematics,  Lang::En) => "Mathematics",
+            (Meteorology,  Lang::Ja) => "気象学",
+            (Meteorology,  Lang::En) => "Meteorology",
+            (Pharmacy,     Lang::Ja) => "薬学",
+            (Pharmacy,     Lang::En) => "Pharmacy",
+            (Physics,      Lang::Ja) => "物理学",
+            (Physics,      Lang::En) => "Physics",
+            (Zoology,      Lang::Ja) => "動物学",
+            (Zoology,      Lang::En) => "Zoology",
+            (Custom(_),    _)        => "",
+        }
+    }
+
+    pub fn survival_spec_label(spec: &super::SurvivalSpec, lang: Lang) -> &'static str {
+        use super::SurvivalSpec::*;
+        match (spec, lang) {
+            (Arctic,    Lang::Ja) => "北極",
+            (Arctic,    Lang::En) => "Arctic",
+            (Desert,    Lang::Ja) => "砂漠",
+            (Desert,    Lang::En) => "Desert",
+            (Sea,       Lang::Ja) => "海上",
+            (Sea,       Lang::En) => "Sea",
+            (Custom(_), _)        => "",
         }
     }
 
