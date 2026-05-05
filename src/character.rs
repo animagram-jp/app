@@ -11,39 +11,329 @@ impl Instance {
     }
 }
 
-enum ScienceSpec {
-    Astronomy,
-    Archaeology,
-    Biology,
-    Chemistry,
-    Custom(String),
-}
-
+// --- 芸術/製作 (Art/Craft) 専門分野 ---
+// ルールブック掲載例。他は Custom で自由記入。
 enum ArtCraftSpec {
-    Painting,
-    Sculpture,
-    Photography,
+    Acting,       // 演劇
+    Barber,       // 理容
+    Calligraphy,  // 書道
+    Carpentry,    // 大工仕事
+    Cobbling,     // 靴製造
+    Cook,         // 料理
+    Dancing,      // 踊り
+    FineArt,      // 絵画
+    Forgery,      // 文書偽造
+    Photography,  // 写真術
+    Pottery,      // 陶芸
+    Sculpting,    // 彫刻
+    Writing,      // 執筆
     Custom(String),
 }
 
+// --- 近接戦闘 (Fighting) 専門分野 ---
+// ルールブックで初期値が個別定義済み。
+enum FightingSpec {
+    Axe,          // 斧           15%
+    Brawl,        // 格闘         25%
+    Chainsaw,     // チェーンソー  10%
+    Flail,        // フレイル      10%  (ヌンチャク・モーニングスター等)
+    Garrote,      // 絞殺ひも      15%
+    Spear,        // 槍           20%
+    Sword,        // 刀剣          20%
+    Whip,         // 鞭            05%  (ボーラ含む)
+    Custom(String),
+}
+
+// --- 射撃 (Firearms) 専門分野 ---
+// ルールブックで初期値が個別定義済み。
+enum FirearmsSpec {
+    Bow,           // 弓                   15%
+    Handgun,       // 拳銃                 20%
+    HeavyWeapons,  // 重火器               10%
+    MachineGun,    // 機関銃               10%
+    RifleShotgun,  // ライフル/ショットガン  25%
+    SubmachineGun, // サブマシンガン         15%
+    Custom(String),
+}
+
+// --- ほかの言語 (Language Other) 専門分野 ---
+// 言語名を自由記入。母国語 (LanguageOwn) は専門分野なし (初期値 = EDU)。
 enum LanguageSpec {
-    English,
-    French,
-    Japanese,
+    Custom(String),
+}
+
+// --- 操縦 (Pilot) 専門分野 ---
+// ルールブック掲載例。他は Custom で自由記入。
+// 1920s: Balloon / Dirigible / CivilProp / Boat / SteamShip / Sailboat
+// Modern: CivilProp / CivilJet / Airliner / JetFighter / Helicopter / Boat / SteamShip / Sailboat
+enum PilotSpec {
+    // --- 両時代共通 ---
+    Boat,       // ボート
+    SteamShip,  // 汽船
+    Sailboat,   // 帆船
+    CivilProp,  // 民間プロペラ機
+    // --- 1920s のみ ---
+    Balloon,    // 気球
+    Dirigible,  // 飛行船
+    // --- Modern (1990s) のみ ---
+    CivilJet,   // 民間ジェット機
+    Airliner,   // 定期旅客機
+    JetFighter, // ジェット戦闘機
+    Helicopter, // ヘリコプター
+    Custom(String),
+}
+
+// --- 科学 (Science) 専門分野 ---
+// ルールブック掲載例。他は Custom で自由記入。
+// ※ 考古学 (Archaeology) は独立技能のため対象外。
+enum ScienceSpec {
+    Astronomy,    // 天文学
+    Biology,      // 生物学
+    Botany,       // 植物学
+    Chemistry,    // 化学
+    Cryptography, // 暗号学
+    Engineering,  // 工学
+    Forensics,    // 法医学
+    Geology,      // 地質学
+    Mathematics,  // 数学
+    Meteorology,  // 気象学
+    Pharmacy,     // 薬学
+    Physics,      // 物理学
+    Zoology,      // 動物学
+    Custom(String),
+}
+
+// --- サバイバル (Survival) 専門分野 ---
+// ルールブック掲載例。他は Custom で自由記入。
+enum SurvivalSpec {
+    Arctic,  // 北極/寒冷地
+    Desert,  // 砂漠
+    Sea,     // 海上
     Custom(String),
 }
 
 enum Skill {
     // 専門分野なし
-    Library,
+    LibraryUse,
     Medicine,
     Psychology,
 
-    // 専門分野あり
-    Science(ScienceSpec),
+    // 専門分野あり（ルールブック定義済み選択肢 + 自由記入）
     ArtCraft(ArtCraftSpec),
-    Language(LanguageSpec),
+    Fighting(FightingSpec),
+    Firearms(FirearmsSpec),
+    LanguageOther(LanguageSpec),
     Pilot(PilotSpec),
+    Science(ScienceSpec),
+    Survival(SurvivalSpec),
+
+    // 技能名+専門分野 完全自由記入（キャラシ空白欄に対応）
+    Custom { name: String, spec: Option<String> },
+}
+
+// ============================================================
+// --- CoC 7th 導出値・判定カテゴリ ---
+// ============================================================
+
+// --- ビルド (Build) ---
+// STR + SIZ の合計値から決定される離散段階。DamageBonusDice と 1対1 対応する。
+enum BuildRank {
+    NegTwo,   // -2  (STR+SIZ:   2- 64)
+    NegOne,   // -1  (STR+SIZ:  65- 84)
+    Zero,     //  0  (STR+SIZ:  85-124)
+    PosOne,   // +1  (STR+SIZ: 125-164)
+    PosTwo,   // +2  (STR+SIZ: 165-204)
+    PosThree, // +3  (STR+SIZ: 205-284)
+    PosFour,  // +4  (STR+SIZ: 285-364)
+    PosFive,  // +5  (STR+SIZ: 365+   )
+}
+
+impl BuildRank {
+    pub fn from_str_siz(sum: u16) -> Self {
+        match sum {
+              2..= 64 => Self::NegTwo,
+             65..= 84 => Self::NegOne,
+             85..=124 => Self::Zero,
+            125..=164 => Self::PosOne,
+            165..=204 => Self::PosTwo,
+            205..=284 => Self::PosThree,
+            285..=364 => Self::PosFour,
+            _         => Self::PosFive,
+        }
+    }
+
+    pub fn int_value(&self) -> i8 {
+        match self {
+            Self::NegTwo   => -2,
+            Self::NegOne   => -1,
+            Self::Zero     =>  0,
+            Self::PosOne   =>  1,
+            Self::PosTwo   =>  2,
+            Self::PosThree =>  3,
+            Self::PosFour  =>  4,
+            Self::PosFive  =>  5,
+        }
+    }
+
+    pub fn damage_bonus(&self) -> DamageBonusDice {
+        match self {
+            Self::NegTwo   => DamageBonusDice::NegTwo,
+            Self::NegOne   => DamageBonusDice::NegOne,
+            Self::Zero     => DamageBonusDice::None,
+            Self::PosOne   => DamageBonusDice::PosOnD4,
+            Self::PosTwo   => DamageBonusDice::PosOnD6,
+            Self::PosThree => DamageBonusDice::PosTwD6,
+            Self::PosFour  => DamageBonusDice::PosThrD6,
+            Self::PosFive  => DamageBonusDice::PosForD6,
+        }
+    }
+}
+
+// --- ダメージボーナス (DamageBonus) ---
+// ダイス式のため整数で表現できない。BuildRank と 1対1 対応する。
+enum DamageBonusDice {
+    NegTwo,   // -2    (Build -2)
+    NegOne,   // -1    (Build -1)
+    None,     // なし   (Build  0)
+    PosOnD4,  // +1D4  (Build +1)
+    PosOnD6,  // +1D6  (Build +2)
+    PosTwD6,  // +2D6  (Build +3)
+    PosThrD6, // +3D6  (Build +4)
+    PosForD6, // +4D6  (Build +5)
+}
+
+// --- 移動率基準値 (MoveBase) ---
+// STR・DEX と SIZ の大小比較から決定される。年齢修正は AgeCategory で別途管理する。
+enum MoveBase {
+    Seven, // 7: STR <  SIZ かつ DEX <  SIZ
+    Eight, // 8: STR >= SIZ または DEX >= SIZ（どちらか一方のみが超える）
+    Nine,  // 9: STR >  SIZ かつ DEX >  SIZ
+}
+
+impl MoveBase {
+    pub fn from_str_dex_siz(str_val: u16, dex: u16, siz: u16) -> Self {
+        match (str_val > siz, dex > siz) {
+            (false, false) => Self::Seven,
+            (true,  true)  => Self::Nine,
+            _              => Self::Eight,
+        }
+    }
+
+    pub fn int_value(&self) -> u8 {
+        match self {
+            Self::Seven => 7,
+            Self::Eight => 8,
+            Self::Nine  => 9,
+        }
+    }
+}
+
+// --- 生活水準 (Standard of Living) ---
+// 信用 (Credit Rating) の値から決定される区分。
+enum StandardOfLiving {
+    Pauper,    // 惨め      (CR: 0     )
+    Poor,      // 貧乏      (CR: 1-  9 )
+    Average,   // 平均      (CR: 10- 49)
+    Wealthy,   // 裕福      (CR: 50- 89)
+    Rich,      // 金持ち    (CR: 90- 98)
+    SuperRich, // 超大金持ち (CR: 99    )
+}
+
+impl StandardOfLiving {
+    pub fn from_cr(cr: u16) -> Self {
+        match cr {
+             0        => Self::Pauper,
+             1..= 9   => Self::Poor,
+            10..= 49  => Self::Average,
+            50..= 89  => Self::Wealthy,
+            90..= 98  => Self::Rich,
+            _         => Self::SuperRich,
+        }
+    }
+}
+
+// --- 年齢カテゴリ (AgeCategory) ---
+// キャラクター作成時の能力値修正ルールの区分。
+// Teen のみ STR+SIZ からの差し引きで、それ以外は STR/CON/DEX からの合計差し引き。
+enum AgeCategory {
+    Teen,    // 15-19: STR/SIZ合計-5、EDU-5、幸運再ロール（高い方）
+    Young,   // 20-39: EDU改善1回、修正なし
+    Middle,  // 40-49: EDU改善2回、STR/CON/DEX合計-5、 APP-5、 MOV-1
+    Senior,  // 50-59: EDU改善3回、STR/CON/DEX合計-10、APP-10、MOV-2
+    Elderly, // 60-69: EDU改善4回、STR/CON/DEX合計-20、APP-15、MOV-3
+    Old,     // 70-79: EDU改善4回、STR/CON/DEX合計-40、APP-20、MOV-4
+    Ancient, // 80+  : EDU改善4回、STR/CON/DEX合計-80、APP-25、MOV-5
+}
+
+impl AgeCategory {
+    pub fn from_age(age: u8) -> Self {
+        match age {
+            15..=19 => Self::Teen,
+            20..=39 => Self::Young,
+            40..=49 => Self::Middle,
+            50..=59 => Self::Senior,
+            60..=69 => Self::Elderly,
+            70..=79 => Self::Old,
+            _       => Self::Ancient,
+        }
+    }
+
+    // MOV への減算値
+    pub fn mov_penalty(&self) -> u8 {
+        match self {
+            Self::Teen    => 0,
+            Self::Young   => 0,
+            Self::Middle  => 1,
+            Self::Senior  => 2,
+            Self::Elderly => 3,
+            Self::Old     => 4,
+            Self::Ancient => 5,
+        }
+    }
+
+    // STR/CON/DEX から合計で差し引く点数（Teen は STR/SIZ から差し引く）
+    pub fn phys_deduction(&self) -> u8 {
+        match self {
+            Self::Teen    =>  5, // STR+SIZ から差し引く（Teen 専用ルール）
+            Self::Young   =>  0,
+            Self::Middle  =>  5,
+            Self::Senior  => 10,
+            Self::Elderly => 20,
+            Self::Old     => 40,
+            Self::Ancient => 80,
+        }
+    }
+
+    // APP からの固定減算値
+    pub fn app_deduction(&self) -> u8 {
+        match self {
+            Self::Teen    =>  0,
+            Self::Young   =>  0,
+            Self::Middle  =>  5,
+            Self::Senior  => 10,
+            Self::Elderly => 15,
+            Self::Old     => 20,
+            Self::Ancient => 25,
+        }
+    }
+
+    // EDU 改善チェック回数（成功すれば EDU +1D10、上限 99）
+    pub fn edu_improvement_checks(&self) -> u8 {
+        match self {
+            Self::Teen    => 0,
+            Self::Young   => 1,
+            Self::Middle  => 2,
+            Self::Senior  => 3,
+            Self::Elderly => 4,
+            Self::Old     => 4,
+            Self::Ancient => 4,
+        }
+    }
+
+    // Teen のみ特殊ルール（STR/SIZ差し引き・EDU-5・幸運再ロール）
+    pub fn is_teen(&self) -> bool {
+        matches!(self, Self::Teen)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -451,6 +741,59 @@ pub mod schema {
             }
         }
 
+        // 専門分野ごとの初期値。
+        // 0 は「任意入力（Keeper・プレイヤーが決定）」を示す。
+        // Fighting / Firearms は専門分野ごとに値が異なる。
+        // その他の専門分野技能は全選択肢で親技能の初期値と同じ値を返す。
+
+        pub fn art_craft_spec_base_value(_spec: &super::super::ArtCraftSpec) -> u16 {
+            5 // 全専門分野共通
+        }
+
+        pub fn fighting_spec_base_value(spec: &super::super::FightingSpec) -> u16 {
+            use super::super::FightingSpec::*;
+            match spec {
+                Axe       => 15,
+                Brawl     => 25,
+                Chainsaw  => 10,
+                Flail     => 10,
+                Garrote   => 15,
+                Spear     => 20,
+                Sword     => 20,
+                Whip      =>  5,
+                Custom(_) =>  0,
+            }
+        }
+
+        pub fn firearms_spec_base_value(spec: &super::super::FirearmsSpec) -> u16 {
+            use super::super::FirearmsSpec::*;
+            match spec {
+                Bow           => 15,
+                Handgun       => 20,
+                HeavyWeapons  => 10,
+                MachineGun    => 10,
+                RifleShotgun  => 25,
+                SubmachineGun => 15,
+                Custom(_)     =>  0,
+            }
+        }
+
+        pub fn language_spec_base_value(_spec: &super::super::LanguageSpec) -> u16 {
+            1 // 全言語共通
+        }
+
+        pub fn pilot_spec_base_value(_spec: &super::super::PilotSpec) -> u16 {
+            1 // 全専門分野共通
+        }
+
+        pub fn science_spec_base_value(_spec: &super::super::ScienceSpec) -> u16 {
+            1 // 全専門分野共通
+        }
+
+        pub fn survival_spec_base_value(_spec: &super::super::SurvivalSpec) -> u16 {
+            10 // 全専門分野共通
+        }
+
         pub fn get(instance: &Instance, field: Model) -> Result<u16, ListError> {
             get_u16(instance, field)
         }
@@ -624,6 +967,238 @@ pub mod schema {
             (Model::PhobiasAndManias,     Lang::En) => "Phobias & Manias",
             (Model::ArcaneTomesAndSpells, Lang::Ja) => "魔道書と呪文",
             (Model::ArcaneTomesAndSpells, Lang::En) => "Arcane Tomes & Spells",
+        }
+    }
+
+    // --- 専門分野ラベル ---
+    // Custom(_) は動的な文字列のため "" を返す。呼び出し側でinner Stringを直接使用すること。
+
+    pub fn art_craft_spec_label(spec: &super::ArtCraftSpec, lang: Lang) -> &'static str {
+        use super::ArtCraftSpec::*;
+        match (spec, lang) {
+            (Acting,      Lang::Ja) => "演劇",
+            (Acting,      Lang::En) => "Acting",
+            (Barber,      Lang::Ja) => "理容",
+            (Barber,      Lang::En) => "Barber",
+            (Calligraphy, Lang::Ja) => "書道",
+            (Calligraphy, Lang::En) => "Calligraphy",
+            (Carpentry,   Lang::Ja) => "大工仕事",
+            (Carpentry,   Lang::En) => "Carpentry",
+            (Cobbling,    Lang::Ja) => "靴製造",
+            (Cobbling,    Lang::En) => "Cobbling",
+            (Cook,        Lang::Ja) => "料理",
+            (Cook,        Lang::En) => "Cook",
+            (Dancing,     Lang::Ja) => "踊り",
+            (Dancing,     Lang::En) => "Dancing",
+            (FineArt,     Lang::Ja) => "絵画",
+            (FineArt,     Lang::En) => "Fine Art",
+            (Forgery,     Lang::Ja) => "文書偽造",
+            (Forgery,     Lang::En) => "Forgery",
+            (Photography, Lang::Ja) => "写真術",
+            (Photography, Lang::En) => "Photography",
+            (Pottery,     Lang::Ja) => "陶芸",
+            (Pottery,     Lang::En) => "Pottery",
+            (Sculpting,   Lang::Ja) => "彫刻",
+            (Sculpting,   Lang::En) => "Sculpting",
+            (Writing,     Lang::Ja) => "執筆",
+            (Writing,     Lang::En) => "Writing",
+            (Custom(_),   _)        => "",
+        }
+    }
+
+    pub fn fighting_spec_label(spec: &super::FightingSpec, lang: Lang) -> &'static str {
+        use super::FightingSpec::*;
+        match (spec, lang) {
+            (Axe,       Lang::Ja) => "斧",
+            (Axe,       Lang::En) => "Axe",
+            (Brawl,     Lang::Ja) => "格闘",
+            (Brawl,     Lang::En) => "Brawl",
+            (Chainsaw,  Lang::Ja) => "チェーンソー",
+            (Chainsaw,  Lang::En) => "Chainsaw",
+            (Flail,     Lang::Ja) => "フレイル",
+            (Flail,     Lang::En) => "Flail",
+            (Garrote,   Lang::Ja) => "絞殺ひも",
+            (Garrote,   Lang::En) => "Garrote",
+            (Spear,     Lang::Ja) => "槍",
+            (Spear,     Lang::En) => "Spear",
+            (Sword,     Lang::Ja) => "刀剣",
+            (Sword,     Lang::En) => "Sword",
+            (Whip,      Lang::Ja) => "鞭",
+            (Whip,      Lang::En) => "Whip",
+            (Custom(_), _)        => "",
+        }
+    }
+
+    pub fn firearms_spec_label(spec: &super::FirearmsSpec, lang: Lang) -> &'static str {
+        use super::FirearmsSpec::*;
+        match (spec, lang) {
+            (Bow,           Lang::Ja) => "弓",
+            (Bow,           Lang::En) => "Bow",
+            (Handgun,       Lang::Ja) => "拳銃",
+            (Handgun,       Lang::En) => "Handgun",
+            (HeavyWeapons,  Lang::Ja) => "重火器",
+            (HeavyWeapons,  Lang::En) => "Heavy Weapons",
+            (MachineGun,    Lang::Ja) => "機関銃",
+            (MachineGun,    Lang::En) => "Machine Gun",
+            (RifleShotgun,  Lang::Ja) => "ライフル/ショットガン",
+            (RifleShotgun,  Lang::En) => "Rifle/Shotgun",
+            (SubmachineGun, Lang::Ja) => "サブマシンガン",
+            (SubmachineGun, Lang::En) => "Submachine Gun",
+            (Custom(_),     _)        => "",
+        }
+    }
+
+    pub fn pilot_spec_label(spec: &super::PilotSpec, lang: Lang) -> &'static str {
+        use super::PilotSpec::*;
+        match (spec, lang) {
+            // --- 両時代共通 ---
+            (Boat,       Lang::Ja) => "ボート",
+            (Boat,       Lang::En) => "Boat",
+            (SteamShip,  Lang::Ja) => "汽船",
+            (SteamShip,  Lang::En) => "Steam Ship",
+            (Sailboat,   Lang::Ja) => "帆船",
+            (Sailboat,   Lang::En) => "Sailboat",
+            (CivilProp,  Lang::Ja) => "民間プロペラ機",
+            (CivilProp,  Lang::En) => "Civil Prop",
+            // --- 1920s のみ ---
+            (Balloon,    Lang::Ja) => "気球",
+            (Balloon,    Lang::En) => "Balloon",
+            (Dirigible,  Lang::Ja) => "飛行船",
+            (Dirigible,  Lang::En) => "Dirigible",
+            // --- Modern (1990s) のみ ---
+            (CivilJet,   Lang::Ja) => "民間ジェット機",
+            (CivilJet,   Lang::En) => "Civil Jet",
+            (Airliner,   Lang::Ja) => "定期旅客機",
+            (Airliner,   Lang::En) => "Airliner",
+            (JetFighter, Lang::Ja) => "ジェット戦闘機",
+            (JetFighter, Lang::En) => "Jet Fighter",
+            (Helicopter, Lang::Ja) => "ヘリコプター",
+            (Helicopter, Lang::En) => "Helicopter",
+            (Custom(_),  _)        => "",
+        }
+    }
+
+    pub fn science_spec_label(spec: &super::ScienceSpec, lang: Lang) -> &'static str {
+        use super::ScienceSpec::*;
+        match (spec, lang) {
+            (Astronomy,    Lang::Ja) => "天文学",
+            (Astronomy,    Lang::En) => "Astronomy",
+            (Biology,      Lang::Ja) => "生物学",
+            (Biology,      Lang::En) => "Biology",
+            (Botany,       Lang::Ja) => "植物学",
+            (Botany,       Lang::En) => "Botany",
+            (Chemistry,    Lang::Ja) => "化学",
+            (Chemistry,    Lang::En) => "Chemistry",
+            (Cryptography, Lang::Ja) => "暗号学",
+            (Cryptography, Lang::En) => "Cryptography",
+            (Engineering,  Lang::Ja) => "工学",
+            (Engineering,  Lang::En) => "Engineering",
+            (Forensics,    Lang::Ja) => "法医学",
+            (Forensics,    Lang::En) => "Forensics",
+            (Geology,      Lang::Ja) => "地質学",
+            (Geology,      Lang::En) => "Geology",
+            (Mathematics,  Lang::Ja) => "数学",
+            (Mathematics,  Lang::En) => "Mathematics",
+            (Meteorology,  Lang::Ja) => "気象学",
+            (Meteorology,  Lang::En) => "Meteorology",
+            (Pharmacy,     Lang::Ja) => "薬学",
+            (Pharmacy,     Lang::En) => "Pharmacy",
+            (Physics,      Lang::Ja) => "物理学",
+            (Physics,      Lang::En) => "Physics",
+            (Zoology,      Lang::Ja) => "動物学",
+            (Zoology,      Lang::En) => "Zoology",
+            (Custom(_),    _)        => "",
+        }
+    }
+
+    pub fn survival_spec_label(spec: &super::SurvivalSpec, lang: Lang) -> &'static str {
+        use super::SurvivalSpec::*;
+        match (spec, lang) {
+            (Arctic,    Lang::Ja) => "北極",
+            (Arctic,    Lang::En) => "Arctic",
+            (Desert,    Lang::Ja) => "砂漠",
+            (Desert,    Lang::En) => "Desert",
+            (Sea,       Lang::Ja) => "海上",
+            (Sea,       Lang::En) => "Sea",
+            (Custom(_), _)        => "",
+        }
+    }
+
+    // --- 導出値・判定カテゴリ ラベル ---
+
+    pub fn build_rank_label(rank: super::BuildRank, lang: Lang) -> &'static str {
+        use super::BuildRank::*;
+        match (rank, lang) {
+            (NegTwo,   _) => "-2",
+            (NegOne,   _) => "-1",
+            (Zero,     _) => "0",
+            (PosOne,   _) => "+1",
+            (PosTwo,   _) => "+2",
+            (PosThree, _) => "+3",
+            (PosFour,  _) => "+4",
+            (PosFive,  _) => "+5",
+        }
+    }
+
+    pub fn damage_bonus_dice_label(dice: super::DamageBonusDice, lang: Lang) -> &'static str {
+        use super::DamageBonusDice::*;
+        match (dice, lang) {
+            (NegTwo,   _)        => "-2",
+            (NegOne,   _)        => "-1",
+            (None,     Lang::Ja) => "なし",
+            (None,     Lang::En) => "None",
+            (PosOnD4,  _)        => "+1D4",
+            (PosOnD6,  _)        => "+1D6",
+            (PosTwD6,  _)        => "+2D6",
+            (PosThrD6, _)        => "+3D6",
+            (PosForD6, _)        => "+4D6",
+        }
+    }
+
+    pub fn move_base_label(mov: super::MoveBase, _lang: Lang) -> &'static str {
+        use super::MoveBase::*;
+        match mov {
+            Seven => "7",
+            Eight => "8",
+            Nine  => "9",
+        }
+    }
+
+    pub fn standard_of_living_label(sol: super::StandardOfLiving, lang: Lang) -> &'static str {
+        use super::StandardOfLiving::*;
+        match (sol, lang) {
+            (Pauper,    Lang::Ja) => "惨め",
+            (Pauper,    Lang::En) => "Pauper",
+            (Poor,      Lang::Ja) => "貧乏",
+            (Poor,      Lang::En) => "Poor",
+            (Average,   Lang::Ja) => "平均",
+            (Average,   Lang::En) => "Average",
+            (Wealthy,   Lang::Ja) => "裕福",
+            (Wealthy,   Lang::En) => "Wealthy",
+            (Rich,      Lang::Ja) => "金持ち",
+            (Rich,      Lang::En) => "Rich",
+            (SuperRich, Lang::Ja) => "超大金持ち",
+            (SuperRich, Lang::En) => "Super Rich",
+        }
+    }
+
+    pub fn age_category_label(cat: super::AgeCategory, lang: Lang) -> &'static str {
+        use super::AgeCategory::*;
+        match (cat, lang) {
+            (Teen,    Lang::Ja) => "10代 (15-19)",
+            (Teen,    Lang::En) => "Teen (15-19)",
+            (Young,   Lang::Ja) => "若年 (20-39)",
+            (Young,   Lang::En) => "Young Adult (20-39)",
+            (Middle,  Lang::Ja) => "中年 (40-49)",
+            (Middle,  Lang::En) => "Middle-Aged (40-49)",
+            (Senior,  Lang::Ja) => "熟年 (50-59)",
+            (Senior,  Lang::En) => "Senior (50-59)",
+            (Elderly, Lang::Ja) => "高齢 (60-69)",
+            (Elderly, Lang::En) => "Elderly (60-69)",
+            (Old,     Lang::Ja) => "老年 (70-79)",
+            (Old,     Lang::En) => "Old (70-79)",
+            (Ancient, Lang::Ja) => "超高齢 (80+)",
+            (Ancient, Lang::En) => "Very Old (80+)",
         }
     }
 
