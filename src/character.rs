@@ -1,45 +1,9 @@
-// --- 能力値 (Characteristic) --- 
-enum Characteristic {
-    Strength,
-    Constitution,
-    Size,
-    Dexterity,
-    Appearance,
-    Intelligence,
-    Power,
-    Education,
-    Luck,
-}
+// ============================================================
+// --- プロフィール (Name, Birthppalce, Pronoun, Occupation, Residence, Age) ---
+// ============================================================
 
-impl Characteristic {
-    pub fn label(&self, lang: Lang) -> &str {
-        match (self, lang) {
-            (Self::Strength,     _) => "STR",
-            (Self::Constitution, _) => "CON",
-            (Self::Size,         _) => "SIZ",
-            (Self::Dexterity,    _) => "DEX",
-            (Self::Appearance,   _) => "APP",
-            (Self::Intelligence, _) => "INT",
-            (Self::Power,        _) => "POW",
-            (Self::Education,    _) => "EDU",
-            (Self::Luck,  Lang::Ja) => "幸運",
-            (Self::Luck,  Lang::En) => "Luck",
-        }
-    }
-
-    pub fn generate(&self) -> u16 {
-        // SIZ / INT / EDU は (2d6+6)×5、それ以外は 3d6×5
-        match self {
-            Self::Size | Self::Intelligence | Self::Education => 
-                (crate::n_d_n(2, 6) + 6) as u16 * 5,
-            _ => 
-                crate::n_d_n(3, 6) as u16 * 5,
-        }
-    }
-}
-
-// occupation (職業)
-pub enum Occupation { // p.38
+// --- 職業 (Occupation) --- p.38
+pub enum Occupation {
     Activist,
     Antiquarian,
     Artist,
@@ -135,7 +99,55 @@ impl Occupation {
     }
 }
 
-// --- 芸術/製作 (Art/Craft) 専門分野 --- p.62
+// ============================================================
+// --- 能力値 (Characteristic) ---
+// ============================================================
+
+// --- 能力値 (Characteristic) --- p.28
+enum Characteristic {
+    Strength,
+    Constitution,
+    Size,
+    Dexterity,
+    Appearance,
+    Intelligence,
+    Power,
+    Education,
+    Luck,
+}
+
+impl Characteristic {
+    pub fn label(&self, lang: Lang) -> &str {
+        match (self, lang) {
+            (Self::Strength,     _) => "STR",
+            (Self::Constitution, _) => "CON",
+            (Self::Size,         _) => "SIZ",
+            (Self::Dexterity,    _) => "DEX",
+            (Self::Appearance,   _) => "APP",
+            (Self::Intelligence, _) => "INT",
+            (Self::Power,        _) => "POW",
+            (Self::Education,    _) => "EDU",
+            (Self::Luck,  Lang::Ja) => "幸運",
+            (Self::Luck,  Lang::En) => "Luck",
+        }
+    }
+
+    pub fn generate(&self) -> u16 {
+        // SIZ / INT / EDU は (2d6+6)×5、それ以外は 3d6×5
+        match self {
+            Self::Size | Self::Intelligence | Self::Education => 
+                (crate::n_d_n(2, 6) + 6) as u16 * 5,
+            _ => 
+                crate::n_d_n(3, 6) as u16 * 5,
+        }
+    }
+}
+
+// ============================================================
+// --- スキル (Skill) ---
+// ============================================================
+
+// --- 芸術/製作 専門分野 (Art/Craft Specialization)  --- p.62
 enum ArtCraftSpec {
     Acting,       // 演劇
     Barber,       // 理容
@@ -189,16 +201,16 @@ impl ArtCraftSpec {
     }
 }
 
-// --- 近接戦闘 (Fighting) 専門分野 --- p.61
+// --- 近接戦闘 専門分野 (Fighting Specialization) --- p.61
 enum FightingSpec {
-    Axe,          // 斧           15%
-    Brawl,        // 格闘         25%
+    Axe,          // 斧          15%
+    Brawl,        // 格闘        25%
     Chainsaw,     // チェーンソー  10%
-    Flail,        // フレイル      10%
-    Garrote,      // 絞殺ひも      15%
-    Spear,        // 槍           20%
-    Sword,        // 刀剣          20%
-    Whip,         // 鞭            05%
+    Flail,        // フレイル     10%
+    Garrote,      // 絞殺ひも     15%
+    Spear,        // 槍          20%
+    Sword,        // 刀剣        20%
+    Whip,         // 鞭          05%
     Custom { name: String, base_value: u16 },
 }
 
@@ -240,7 +252,7 @@ impl FightingSpec {
     }
 }
 
-// --- 射撃 (Firearms) 専門分野 --- p.64
+// --- 射撃 専門分野 (Firearms Specialization) --- p.64
 enum FirearmsSpec {
     Bow,           // 弓                   15%
     Handgun,       // 拳銃                 20%
@@ -276,21 +288,19 @@ impl FirearmsSpec {
             (Self::MachineGun,    Lang::En) => "Machine Gun",
             (Self::RifleShotgun,  Lang::Ja) => "ライフル/ショットガン",
             (Self::RifleShotgun,  Lang::En) => "Rifle/Shotgun",
-            (Self::SubmachineGun,           Lang::Ja) => "サブマシンガン",
-            (Self::SubmachineGun,           Lang::En) => "Submachine Gun",
-            (Self::Custom { name, .. },     _)        => name.as_str(),
+            (Self::SubmachineGun, Lang::Ja) => "サブマシンガン",
+            (Self::SubmachineGun, Lang::En) => "Submachine Gun",
+            (Self::Custom { name, .. },  _) => name.as_str(),
         }
     }
 }
 
-// --- ほかの言語 (Language Other) 専門分野 ---
+// --- ほかの言語 専門分野 (Language Other Specialization) ---
 enum LanguageSpec {
     Custom(String),
 }
 
 impl LanguageSpec {
-    pub fn base_value(&self) -> u16 { 1 }
-
     pub fn label(&self) -> &str {
         match self {
             Self::Custom(s) => s.as_str(),
@@ -298,7 +308,7 @@ impl LanguageSpec {
     }
 }
 
-// --- 操縦 (Pilot) 専門分野 --- p.67
+// --- 操縦 専門分野 (Pilot Specialization) --- p.67
 enum PilotSpec {
     // --- 両時代共通 ---
     Boat,       // ボート
@@ -349,7 +359,7 @@ impl PilotSpec {
     }
 }
 
-// --- 科学 (Science) 専門分野 --- p.59
+// --- 科学 専門分野 (Science Specialization) --- p.59
 enum ScienceSpec {
     Astronomy,    // 天文学
     Biology,      // 生物学
@@ -403,7 +413,7 @@ impl ScienceSpec {
     }
 }
 
-// --- サバイバル (Survival) 専門分野 --- p.63
+// --- サバイバル 専門分野 (Survival Specialization) --- p.63
 enum SurvivalSpec {
     Arctic,
     Desert,
@@ -503,7 +513,7 @@ impl Skill {
             Self::History              =>  5,
             Self::Intimidate           => 15,
             Self::Jump                 => 20,
-            Self::LanguageOther(spec)  => spec.base_value(),
+            Self::LanguageOther(spec)  =>  1,
             Self::LanguageOwn          =>  0, // derived: EDU
             Self::Law                  =>  5,
             Self::LibraryUse           => 20,
@@ -981,7 +991,7 @@ pub enum Character {
     Derived,
     Skill,
 
-    // Characteristic, Skill, Equipmentに依存
+    // Characteristic, Skill, Equipment, Derivedに依存
     Roll,
 }
 
