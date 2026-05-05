@@ -1,15 +1,13 @@
 use crate::Lang;
 use crate::character,
 
-pub enum Roll { 
-    DiceRoll,
-    SkillRoll,
-    CharacteristicRoll,
-    // todo: SkillRollとChracteristicRollへの難易度指定セレクタ追加 (これによりRollJudgeが成功/失敗の二値表現に変わる)
-    SanityRoll,
-    BoutOfMadnessRealTime,
-    BoutOfMadnessSummary,
-    PushedRoll,
+pub enum Roll {
+    DiceRoll(Character, Count,Side,Count,Side,DiceModifier),
+    SkillRoll(Character, Skills(Skill), Option(SuccessLevel), Option(i16)),
+    CharacteristicRoll(Character, Characteristics(Characteristic), Option(SuccessLevel), SkillModifier), 
+    SanityRoll(Character),
+    BoutOfMadness(BoutScene),
+    PushedRoll(SkillOrCharacteristic, Option(SuccessLevel), Option(i16)), // todo: pushでも新規技能はありうるので、履歴利用はソートサジェストだけにする
     CombinedSkillRoll,
     PhobiaTable,
     ManiaTable,
@@ -18,6 +16,33 @@ pub enum Roll {
     FailedCastingMinor,
     FailedCastingMajor,
     DevelopmentCheck,
+}
+
+pub enum SkillOrCharacteristic {
+    Skills(Skill),
+    Characteristics(Characteristic),
+}
+
+pub enum BoutScene {
+    RealTime,
+    Summary,
+}
+impl BoutScene {
+    pub fn label(self, lang: Lang) -> &'static str {
+        match(self, lang) {
+            (Self::RealTime, Lang::En) => "real time",
+            (Self::RealTime, Lang::Ja) => "リアルタイム",
+            (Self::Summary,  Lang::En) => "summary",
+            (Self::Summary,  Lang::Ja) => "サマリー",                                          
+        }
+    }
+}
+
+pub enum SuccessLevel {
+    Regular,
+    Hard,
+    Extreme,
+    Critical,
 }
 
 pub struct DiceRoll {
@@ -37,12 +62,10 @@ pub struct RollResult {
 }
 
 pub enum RollJudge {
-    Famble,
+    Fumble,
     Failure,
-    Regular,
-    Hard,
-    Extreme,
-    Critical,
+    Success,
+    SuccessLevel(Level),
     Sane,
     Insane,
     Developed,
@@ -52,10 +75,12 @@ pub enum RollJudge {
 impl RollJudge {
     pub fn label(self, lang: Lang) -> &'static str {
         match(self, lang) {
-            (Self::Famble,      Lang::En) => "famble",
-            (Self::Famble,      Lang::Ja) => "致命的失敗",
+            (Self::Fumble,      Lang::En) => "fumble",
+            (Self::Fumble,      Lang::Ja) => "致命的失敗",
             (Self::Failure,     Lang::En) => "failure",
             (Self::Failure,     Lang::Ja) => "失敗",
+            (Self::Success,     Lang::En) => "Success",
+            (Self::Success,     Lang::Ja) => "成功",
             (Self::Regular,     Lang::En) => "regular success",
             (Self::Regular,     Lang::Ja) => "レギュラー成功",
             (Self::Hard,        Lang::En) => "hard success",
@@ -81,11 +106,11 @@ impl Roll {
         match (self, lang) {
             (Self::DiceRoll,              Lang::Ja) => "ダイスロール (nDn +-n)",
             (Self::DiceRoll,              Lang::En) => "Dice Roll (nDn +-n)",
-            (Self::SkillRoll,             Lang::Ja) => "技能判定",
+            (Self::SkillRoll,             Lang::Ja) => "技能ロール",
             (Self::SkillRoll,             Lang::En) => "Skill Roll",
-            (Self::CharacteristicRoll,    Lang::Ja) => "能力値判定 (幸運含む)",
+            (Self::CharacteristicRoll,    Lang::Ja) => "能力値ロール",
             (Self::CharacteristicRoll,    Lang::En) => "Characteristic Roll",
-            (Self::SanityRoll,            Lang::Ja) => "正気度判定",
+            (Self::SanityRoll,            Lang::Ja) => "正気度ロール",
             (Self::SanityRoll,            Lang::En) => "Sanity Roll",
             (Self::BoutOfMadnessRealTime, Lang::Ja) => "狂気の発作 (リアルタイム)",
             (Self::BoutOfMadnessRealTime, Lang::En) => "Bout of Madness (Real Time)",
@@ -93,7 +118,7 @@ impl Roll {
             (Self::BoutOfMadnessSummary,  Lang::En) => "Bout of Madness (Summary)",
             (Self::PushedRoll,            Lang::Ja) => "プッシュロール",
             (Self::PushedRoll,            Lang::En) => "Pushed Roll",
-            (Self::CombinedSkillRoll,     Lang::Ja) => "組み合わせ判定",
+            (Self::CombinedSkillRoll,     Lang::Ja) => "組み合わせ技能ロール",
             (Self::CombinedSkillRoll,     Lang::En) => "Combined Skill Roll",
             (Self::PhobiaTable,           Lang::Ja) => "恐怖症表",
             (Self::PhobiaTable,           Lang::En) => "Phobia Table",
