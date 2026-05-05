@@ -1,4 +1,5 @@
 use crate::list::VariableList;
+use crate::datetime;
 
 pub struct Instance {
     pub data: VariableList<u8>,
@@ -10,17 +11,59 @@ impl Instance {
     }
 }
 
+enum ScienceSpec {
+    Astronomy,
+    Archaeology,
+    Biology,
+    Chemistry,
+    Custom(String),
+}
+
+enum ArtCraftSpec {
+    Painting,
+    Sculpture,
+    Photography,
+    Custom(String),
+}
+
+enum LanguageSpec {
+    English,
+    French,
+    Japanese,
+    Custom(String),
+}
+
+enum Skill {
+    // 専門分野なし
+    Library,
+    Medicine,
+    Psychology,
+
+    // 専門分野あり
+    Science(ScienceSpec),
+    ArtCraft(ArtCraftSpec),
+    Language(LanguageSpec),
+    Pilot(PilotSpec),
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Model {
     
-    Identity,
-    Timestamp,
-    Occupation,
-    Age,
+    // --- system ---
+    Identity: u32,
+    Timestamp::Created: u64, // datetime.rs
+    Timestamp::Updated: u64, // datetime.rs
 
-    // --- 能力値 ---
-    Strength,
-    Constitution,
+    // --- primary but not required ---
+    Occupation: enum<str>|str,
+    Age::Initial: u8,
+    Age::Change: u8,
+
+    // --- primary and required (for all roll, not required to users) ---
+    Strength::Initial: u16,
+    Strength::Change: u16,
+    Constitution::Initial: u16,
+    Constitution::Change: u16,
     Size,
     Dexterity,
     Appearance,
@@ -29,7 +72,7 @@ pub enum Model {
     Education,
     Luck,
 
-    // --- 導出ステータス ---
+    // --- derived ---
     Sanity,
     DamageBonus,
     Build,
@@ -46,7 +89,7 @@ pub enum Model {
     Anthropology,
     Archaeology,
     Appraise,
-    ArtCraft,
+    ArtCraft(Specializations),
     Charm,
     Climb,
     ComputerUse,
@@ -58,36 +101,33 @@ pub enum Model {
     ElecRepair,
     Electronics,
     FastTalk,
-    FightingBrawl,
+    Fighting(Specializations),
     FightingOther,
-    FirearmsHandgun,
-    FirearmsRifleShotgun,
-    FirearmsOther,
+    Firearms(Specializations),
     FirstAid,
     History,
     Intimidate,
     Jump,
-    LanguageOther,
-    LanguageOwn,
+    LanguageOther(Specializations),
+    LanguageOwn(Specializations),
     Law,
     LibraryUse,
     Listen,
     Locksmith,
     MechRepair,
-    Medicine,
     NaturalWorld,
     Navigate,
     Occult,
     Persuade,
-    Pilot,
+    Pilot(Specializations),
     Psychoanalysis,
     Psychology,
     Ride,
-    Science,
+    Science(Specializations),
     SleightOfHand,
     SpotHidden,
     Stealth,
-    Survival,
+    Survival(Specializations),
     Swim,
     Throw,
     Track,
