@@ -11,39 +11,111 @@ impl Instance {
     }
 }
 
-enum ScienceSpec {
-    Astronomy,
-    Archaeology,
-    Biology,
-    Chemistry,
-    Custom(String),
-}
-
+// --- 芸術/製作 (Art/Craft) 専門分野 ---
+// ルールブック掲載例。他は Custom で自由記入。
 enum ArtCraftSpec {
-    Painting,
-    Sculpture,
-    Photography,
+    Acting,       // 演技
+    Barber,       // 理容
+    Calligraphy,  // 書道
+    Carpentry,    // 大工仕事
+    Cobbling,     // 靴製造
+    Cook,         // 料理
+    Dancing,      // 踊り
+    FineArt,      // 美術
+    Forgery,      // 偽造
+    Photography,  // 写真
+    Pottery,      // 陶芸
+    Sculpting,    // 彫刻
+    Writing,      // 文芸
     Custom(String),
 }
 
+// --- 近接戦闘 (Fighting) 専門分野 ---
+// ルールブックで初期値が個別定義済み。
+enum FightingSpec {
+    Axe,          // 斧           15%
+    Brawl,        // 格闘         25%
+    Chainsaw,     // チェーンソー  10%
+    Flail,        // フレイル      10%  (ヌンチャク・モーニングスター等)
+    Garrote,      // 絞殺紐        15%
+    Spear,        // 槍           20%
+    Sword,        // 刀剣          20%
+    Whip,         // 鞭            05%  (ボーラ含む)
+    Custom(String),
+}
+
+// --- 射撃 (Firearms) 専門分野 ---
+// ルールブックで初期値が個別定義済み。
+enum FirearmsSpec {
+    Bow,           // 弓                   15%
+    Handgun,       // 拳銃                 20%
+    HeavyWeapons,  // 重火器               10%
+    MachineGun,    // 機関銃               10%
+    RifleShotgun,  // ライフル/ショットガン  25%
+    SubmachineGun, // サブマシンガン         15%
+    Custom(String),
+}
+
+// --- ほかの言語 (Language Other) 専門分野 ---
+// 言語名を自由記入。母国語 (LanguageOwn) は専門分野なし (初期値 = EDU)。
 enum LanguageSpec {
-    English,
-    French,
-    Japanese,
+    Custom(String),
+}
+
+// --- 操縦 (Pilot) 専門分野 ---
+// ルールブック掲載例。他は Custom で自由記入。
+enum PilotSpec {
+    Balloon,   // 気球
+    Dirigible, // 飛行船
+    CivilProp, // プロペラ機 (セスナ等)
+    Boat,      // ボート
+    SteamShip, // 汽船
+    Custom(String),
+}
+
+// --- 科学 (Science) 専門分野 ---
+// ルールブック掲載例。他は Custom で自由記入。
+// ※ 考古学 (Archaeology) は独立技能のため対象外。
+enum ScienceSpec {
+    Astronomy,    // 天文学
+    Biology,      // 生物学
+    Botany,       // 植物学
+    Chemistry,    // 化学
+    Cryptography, // 暗号学
+    Engineering,  // 工学
+    Forensics,    // 法医学
+    Geology,      // 地質学
+    Mathematics,  // 数学
+    Meteorology,  // 気象学
+    Pharmacy,     // 薬学
+    Physics,      // 物理学
+    Zoology,      // 動物学
+    Custom(String),
+}
+
+// --- サバイバル (Survival) 専門分野 ---
+// ルールブック掲載例。他は Custom で自由記入。
+enum SurvivalSpec {
+    Arctic,  // 北極/寒冷地
+    Desert,  // 砂漠
+    Sea,     // 海上
     Custom(String),
 }
 
 enum Skill {
     // 専門分野なし
-    Library,
+    LibraryUse,
     Medicine,
     Psychology,
 
-    // 専門分野あり
-    Science(ScienceSpec),
+    // 専門分野あり（ルールブック定義済み選択肢 + 自由記入）
     ArtCraft(ArtCraftSpec),
-    Language(LanguageSpec),
+    Fighting(FightingSpec),
+    Firearms(FirearmsSpec),
+    LanguageOther(LanguageSpec),
     Pilot(PilotSpec),
+    Science(ScienceSpec),
+    Survival(SurvivalSpec),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
