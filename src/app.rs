@@ -17,38 +17,30 @@ use crate::wal::WalStore;
 // ============================================================
 
 #[derive(Clone, Copy, PartialEq, Default)]
-pub enum Overlay {
-    #[default]
-    None,
-    Select { step: u8, index: usize },
-    Input  { step: u8, value: u32 },
-}
-
-#[derive(Clone, Copy, PartialEq, Default)]
-enum Dialog {
+pub enum Dialog {
     #[default]
     None,
     Modal,
     Drawer,
+    Select { step: u8, index: usize },
+    Input  { step: u8, value: u32 },
 }
 
 struct CanvasState {
-    overlay:  Overlay,
-    dialog:   Dialog,
-    buf:      DataStruct,               // 編集中バッファ。buf.identity=0は未保存
-    pool:     BTreeMap<u32, DataStruct>, // char_id → 全フィールド
-    next_id:  u32,
-    wal:      WalStore,
+    dialog:  Dialog,
+    buf:     DataStruct,               // 編集中バッファ。buf.identity=0は未保存
+    pool:    BTreeMap<u32, DataStruct>, // char_id → 全フィールド
+    next_id: u32,
+    wal:     WalStore,
 }
 
 impl CanvasState {
     fn new(wal: WalStore) -> Self {
         Self {
-            overlay:  Overlay::default(),
-            dialog:   Dialog::default(),
-            buf:      DataStruct::new(),
-            pool:     BTreeMap::new(),
-            next_id:  0,
+            dialog:  Dialog::default(),
+            buf:     DataStruct::new(),
+            pool:    BTreeMap::new(),
+            next_id: 0,
             wal,
         }
     }
@@ -122,6 +114,7 @@ impl CanvasState {
             (Dialog::Modal,  _, _) => self.on_click_normal(id, id.last_tag()),
             (Dialog::Drawer, _, _) => vec![],
             (Dialog::None, last_tag, _) => self.on_click_normal(id, last_tag),
+            (Dialog::Select { .. } | Dialog::Input { .. }, _, _) => vec![],
         }
     }
 
@@ -178,9 +171,9 @@ impl CanvasState {
                         return vec![DomCmd::new(Operation::CloseModal, "drawer", None, None)];
                     }
                     Dialog::None => {}
-                }
-                if self.overlay != Overlay::None {
-                    self.overlay = Overlay::None;
+                    Dialog::Select { .. } | Dialog::Input { .. } => {
+                        self.dialog = Dialog::None;
+                    }
                 }
                 vec![]
             }
