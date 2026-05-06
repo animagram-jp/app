@@ -371,6 +371,20 @@ impl Characteristic {
         }
     }
 
+    pub fn all() -> &'static [Characteristic] {
+        &[
+            Self::Strength,
+            Self::Constitution,
+            Self::Size,
+            Self::Dexterity,
+            Self::Appearance,
+            Self::Intelligence,
+            Self::Power,
+            Self::Education,
+            Self::Luck,
+        ]
+    }
+
     pub fn generate(&self) -> u16 {
         // SIZ / INT / EDU は (2d6+6)×5、それ以外は 3d6×5
         match self {
@@ -449,6 +463,31 @@ pub enum Skill {
 }
 
 impl Skill {
+    pub fn default_rows() -> Vec<Skill> {
+        vec![
+            Self::Accounting,
+            Self::Anthropology,
+            Self::Archaeology,
+            Self::Appraise,
+            Self::ArtCraft(ArtCraftSpec::Acting),
+            Self::Charm,
+            Self::Climb,
+            Self::ComputerUse,
+            Self::CreditRating(CreditRating),
+            Self::CthulhuMythos,
+            Self::Disguise,
+            Self::Dodge,
+            Self::DriveAuto,
+            Self::ElecRepair,
+            Self::Electronics,
+            Self::FastTalk,
+            Self::Fighting(FightingSpec::Brawl),
+            Self::Firearms(FirearmsSpec::Handgun),
+            Self::FirstAid,
+            Self::History,
+        ]
+    }
+
     pub fn id(&self) -> usize { 0 } // todo: 一意ID割り当て
     pub fn decode(&self, _js_value: &[JsValue]) -> Vec<u8> { todo!() }
     pub fn encode(&self, _value: &[u8]) -> Vec<JsValue> { todo!() }

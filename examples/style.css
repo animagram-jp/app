@@ -85,6 +85,22 @@ article.warning { background: var(--color-semantic-warning-yellow-2); }
 }
 
 
+/* ───── dialog ───── */
+
+dialog {
+  width: 100%;
+  max-width: 100%;
+  max-height: 90dvh;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
+@media (width >= 45rem) {
+  dialog {
+    max-width: 45rem;
+  }
+}
+
 /* ───── レスポンシブ ───── */
 
 @media (width >= 40rem) {

@@ -31,9 +31,16 @@ function execute({ operation, id, attribute, value }) {
 function applyClass(el, value) {
   if (value === "show") {
     el.classList.remove("hidden");
-    requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add("show")));
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      el.classList.add("show");
+      setTimeout(() => {
+        el.classList.replace("show", "hide");
+        el.addEventListener("transitionend", () => el.classList.remove("hide"), { once: true });
+      }, 3000);
+    }));
   } else if (value === "hide") {
-    el.classList.replace("show", "hidden");
+    el.classList.replace("show", "hide");
+    el.addEventListener("transitionend", () => el.classList.remove("hide"), { once: true });
   }
 }
 
@@ -52,7 +59,7 @@ function bind() {
 
   // keydown: Appが意味を持つキーのみ転送
   document.addEventListener("keydown", (e) => {
-    const keys = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Enter", "Escape", "Tab", "Backspace"];
+    const keys = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Enter", "Escape", "Tab"];
     if (!keys.includes(e.key)) return;
     e.preventDefault();
     dispatch({ event_type: "keydown", target_id: e.target.id ?? "", key: e.key });
@@ -61,6 +68,17 @@ function bind() {
   // textarea input: "/" トリガー検知用
   document.getElementById("main_div_section-3_textarea")?.addEventListener("input", (e) => {
     dispatch({ event_type: "input", target_id: e.target.id, value: e.target.value });
+  });
+
+  // modal内 number input: 値をそのままRust側に渡す
+  document.getElementById("modal")?.addEventListener("input", (e) => {
+    const el = e.target;
+    if (el.tagName !== "INPUT" || el.type !== "number") return;
+    dispatch({
+      event_type: "input",
+      target_id: el.id,
+      value: String(isNaN(el.valueAsNumber) ? 0 : el.valueAsNumber),
+    });
   });
 }
 

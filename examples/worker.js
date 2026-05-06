@@ -12,8 +12,9 @@ self.addEventListener('message', async (e) => {
     return;
   }
 
-  if (!app) return;
+  if (!app || type !== 'event') return;
 
-  const dom_cmds = Array.from(app[type](payload) ?? []);
+  app.event(payload);
+  const dom_cmds = Array.from(app.flush() ?? []);
   if (dom_cmds.length) self.postMessage({ type: 'execute', payload: dom_cmds });
 });

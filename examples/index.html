@@ -16,6 +16,8 @@
         <button id="main_header_button" class="dads-button" data-type="outline" data-size="sm">✏️</button>
       </header>
       <div>
+
+        <!-- section-1: character view -->
         <section id="main_div_section-1" aria-label="show character sheet">
           <span id="main_div_section-1_span-1" class="hidden"><span id="main_div_section-1_span-1_span-1"></span><span id="main_div_section-1_span-1_span-2"></span></span>
           <span id="main_div_section-1_span-2" class="hidden"><span id="main_div_section-1_span-2_span-1"></span><span id="main_div_section-1_span-2_span-2"></span></span>
@@ -38,6 +40,8 @@
           <span id="main_div_section-1_span-19" class="hidden"><span id="main_div_section-1_span-19_span-1"></span><span id="main_div_section-1_span-19_span-2"></span></span>
           <span id="main_div_section-1_span-20" class="hidden"><span id="main_div_section-1_span-20_span-1"></span><span id="main_div_section-1_span-20_span-2"></span></span>
         </section>
+
+        <!-- section-2: chat log -->
         <section id="main_div_section-2" aria-label="chat log">
           <ol>
             <li id="main_div_section-2_ol_li-1" class="hidden"><span id="main_div_section-2_ol_li-1_span"></span><p id="main_div_section-2_ol_li-1_p"></p></li>
@@ -90,39 +94,31 @@
 
     <dialog id="modal">
       <header>
-        <h4></h4>
+        <h4 id="modal_header_h4"></h4>
       </header>
+
+      <!-- fieldset-1: Profile -->
       <fieldset id="modal_fieldset-1">
         <legend>
           <h5 id="modal_fieldset-1_legend_h5"></h5>
-          <button id="modal_fieldset-1_legend_button" type="button" class="dads-button" data-type="outline" data-size="xs"></button>
         </legend>
         <table>
-          <thead>
-            <tr id="modal_fieldset-1_table_thead_tr">
-              <th id="modal_fieldset-1_table_thead_th-1"></th>
-              <th id="modal_fieldset-1_table_thead_th-2"></th>
-              <th id="modal_fieldset-1_table_thead_th-3"></th>
-              <th id="modal_fieldset-1_table_thead_th-4"></th>
-              <th id="modal_fieldset-1_table_thead_th-5"></th>
-            </tr>
-          </thead>
           <tbody>
-            <tr id="modal_fieldset-1_table_tr-1">
-              <td id="modal_fieldset-1_table_tr-1_td"></td>
-              <td><input id="modal_fieldset-1_table_tr-1_input-1" type="number" min="0" max="9999" name="modal_fieldset-1_table_tr-1_input-1"></td>
-              <td><input id="modal_fieldset-1_table_tr-1_input-2" type="number" min="0" max="9999" name="modal_fieldset-1_table_tr-1_input-2"></td>
-              <td><input id="modal_fieldset-1_table_tr-1_input-3" type="number" min="0" max="9999" name="modal_fieldset-1_table_tr-1_input-3"></td>
-              <td><button id="modal_fieldset-1_table_tr-1_button" type="button" class="dads-button" data-type="outline" data-size="xs">🎲</button></td>
-            </tr>
+            <tr id="modal_fieldset-1_table_tr-1"><th id="modal_fieldset-1_table_tr-1_th"></th><td><input id="modal_fieldset-1_table_tr-1_input" type="text" name="modal_fieldset-1_table_tr-1_input"></td></tr>
+            <tr id="modal_fieldset-1_table_tr-2"><th id="modal_fieldset-1_table_tr-2_th"></th><td><input id="modal_fieldset-1_table_tr-2_input" type="text" name="modal_fieldset-1_table_tr-2_input"></td></tr>
+            <tr id="modal_fieldset-1_table_tr-3"><th id="modal_fieldset-1_table_tr-3_th"></th><td><input id="modal_fieldset-1_table_tr-3_input" type="text" name="modal_fieldset-1_table_tr-3_input"></td></tr>
+            <tr id="modal_fieldset-1_table_tr-4"><th id="modal_fieldset-1_table_tr-4_th"></th><td><input id="modal_fieldset-1_table_tr-4_input" type="text" name="modal_fieldset-1_table_tr-4_input"></td></tr>
+            <tr id="modal_fieldset-1_table_tr-5"><th id="modal_fieldset-1_table_tr-5_th"></th><td><input id="modal_fieldset-1_table_tr-5_input" type="text" name="modal_fieldset-1_table_tr-5_input"></td></tr>
+            <tr id="modal_fieldset-1_table_tr-6"><th id="modal_fieldset-1_table_tr-6_th"></th><td><input id="modal_fieldset-1_table_tr-6_input" type="number" min="15" max="99" name="modal_fieldset-1_table_tr-6_input"></td></tr>
           </tbody>
         </table>
       </fieldset>
+
+      <!-- fieldset-2: Characteristic (label / 初期値 / 変動値 / 合計 / 🎲) -->
       <fieldset id="modal_fieldset-2">
         <legend>
           <h5 id="modal_fieldset-2_legend_h5"></h5>
-          <button id="modal_fieldset-2_legend_button" type="button" class="dads-button" data-type="outline"
-            data-size="xs"></button>
+          <button id="modal_fieldset-2_legend_button" type="button" class="dads-button" data-type="outline" data-size="xs"></button>
         </legend>
         <table>
           <thead>
@@ -135,20 +131,66 @@
             </tr>
           </thead>
           <tbody>
-            <tr id="modal_fieldset-2_table_tr-1">
-              <th id="modal_fieldset-2_table_tr-1_th"></th>
-              <td><input id="modal_fieldset-2_table_tr-1_input-1" type="number" min="0" max="9999" name="modal_fieldset-2_table_tr-1_input-1"></td>
-              <td><input id="modal_fieldset-2_table_tr-1_input-2" type="number" min="0" max="9999" name="modal_fieldset-2_table_tr-1_input-2"></td>
-              <td><input id="modal_fieldset-2_table_tr-1_input-3" type="number" min="0" max="9999" name="modal_fieldset-2_table_tr-1_input-3"></td>
-              <td><button id="modal_fieldset-2_table_tr-1_button" type="button" class="dads-button" data-type="outline" data-size="xs">🎲</button></td>
-            </tr>
+            <tr id="modal_fieldset-2_table_tr-1"><th id="modal_fieldset-2_table_tr-1_th"></th><td><input id="modal_fieldset-2_table_tr-1_input-1" type="number" min="0" max="9999" name="modal_fieldset-2_table_tr-1_input-1"></td><td><input id="modal_fieldset-2_table_tr-1_input-2" type="number" min="-9999" max="9999" name="modal_fieldset-2_table_tr-1_input-2"></td><td><span id="modal_fieldset-2_table_tr-1_span"></span></td><td><button id="modal_fieldset-2_table_tr-1_button" type="button" class="dads-button" data-type="outline" data-size="xs">🎲</button></td></tr>
+            <tr id="modal_fieldset-2_table_tr-2"><th id="modal_fieldset-2_table_tr-2_th"></th><td><input id="modal_fieldset-2_table_tr-2_input-1" type="number" min="0" max="9999" name="modal_fieldset-2_table_tr-2_input-1"></td><td><input id="modal_fieldset-2_table_tr-2_input-2" type="number" min="-9999" max="9999" name="modal_fieldset-2_table_tr-2_input-2"></td><td><span id="modal_fieldset-2_table_tr-2_span"></span></td><td><button id="modal_fieldset-2_table_tr-2_button" type="button" class="dads-button" data-type="outline" data-size="xs">🎲</button></td></tr>
+            <tr id="modal_fieldset-2_table_tr-3"><th id="modal_fieldset-2_table_tr-3_th"></th><td><input id="modal_fieldset-2_table_tr-3_input-1" type="number" min="0" max="9999" name="modal_fieldset-2_table_tr-3_input-1"></td><td><input id="modal_fieldset-2_table_tr-3_input-2" type="number" min="-9999" max="9999" name="modal_fieldset-2_table_tr-3_input-2"></td><td><span id="modal_fieldset-2_table_tr-3_span"></span></td><td><button id="modal_fieldset-2_table_tr-3_button" type="button" class="dads-button" data-type="outline" data-size="xs">🎲</button></td></tr>
+            <tr id="modal_fieldset-2_table_tr-4"><th id="modal_fieldset-2_table_tr-4_th"></th><td><input id="modal_fieldset-2_table_tr-4_input-1" type="number" min="0" max="9999" name="modal_fieldset-2_table_tr-4_input-1"></td><td><input id="modal_fieldset-2_table_tr-4_input-2" type="number" min="-9999" max="9999" name="modal_fieldset-2_table_tr-4_input-2"></td><td><span id="modal_fieldset-2_table_tr-4_span"></span></td><td><button id="modal_fieldset-2_table_tr-4_button" type="button" class="dads-button" data-type="outline" data-size="xs">🎲</button></td></tr>
+            <tr id="modal_fieldset-2_table_tr-5"><th id="modal_fieldset-2_table_tr-5_th"></th><td><input id="modal_fieldset-2_table_tr-5_input-1" type="number" min="0" max="9999" name="modal_fieldset-2_table_tr-5_input-1"></td><td><input id="modal_fieldset-2_table_tr-5_input-2" type="number" min="-9999" max="9999" name="modal_fieldset-2_table_tr-5_input-2"></td><td><span id="modal_fieldset-2_table_tr-5_span"></span></td><td><button id="modal_fieldset-2_table_tr-5_button" type="button" class="dads-button" data-type="outline" data-size="xs">🎲</button></td></tr>
+            <tr id="modal_fieldset-2_table_tr-6"><th id="modal_fieldset-2_table_tr-6_th"></th><td><input id="modal_fieldset-2_table_tr-6_input-1" type="number" min="0" max="9999" name="modal_fieldset-2_table_tr-6_input-1"></td><td><input id="modal_fieldset-2_table_tr-6_input-2" type="number" min="-9999" max="9999" name="modal_fieldset-2_table_tr-6_input-2"></td><td><span id="modal_fieldset-2_table_tr-6_span"></span></td><td><button id="modal_fieldset-2_table_tr-6_button" type="button" class="dads-button" data-type="outline" data-size="xs">🎲</button></td></tr>
+            <tr id="modal_fieldset-2_table_tr-7"><th id="modal_fieldset-2_table_tr-7_th"></th><td><input id="modal_fieldset-2_table_tr-7_input-1" type="number" min="0" max="9999" name="modal_fieldset-2_table_tr-7_input-1"></td><td><input id="modal_fieldset-2_table_tr-7_input-2" type="number" min="-9999" max="9999" name="modal_fieldset-2_table_tr-7_input-2"></td><td><span id="modal_fieldset-2_table_tr-7_span"></span></td><td><button id="modal_fieldset-2_table_tr-7_button" type="button" class="dads-button" data-type="outline" data-size="xs">🎲</button></td></tr>
+            <tr id="modal_fieldset-2_table_tr-8"><th id="modal_fieldset-2_table_tr-8_th"></th><td><input id="modal_fieldset-2_table_tr-8_input-1" type="number" min="0" max="9999" name="modal_fieldset-2_table_tr-8_input-1"></td><td><input id="modal_fieldset-2_table_tr-8_input-2" type="number" min="-9999" max="9999" name="modal_fieldset-2_table_tr-8_input-2"></td><td><span id="modal_fieldset-2_table_tr-8_span"></span></td><td><button id="modal_fieldset-2_table_tr-8_button" type="button" class="dads-button" data-type="outline" data-size="xs">🎲</button></td></tr>
+            <tr id="modal_fieldset-2_table_tr-9"><th id="modal_fieldset-2_table_tr-9_th"></th><td><input id="modal_fieldset-2_table_tr-9_input-1" type="number" min="0" max="9999" name="modal_fieldset-2_table_tr-9_input-1"></td><td><input id="modal_fieldset-2_table_tr-9_input-2" type="number" min="-9999" max="9999" name="modal_fieldset-2_table_tr-9_input-2"></td><td><span id="modal_fieldset-2_table_tr-9_span"></span></td><td><button id="modal_fieldset-2_table_tr-9_button" type="button" class="dads-button" data-type="outline" data-size="xs">🎲</button></td></tr>
           </tbody>
         </table>
       </fieldset>
+
+      <!-- fieldset-3: Skill (label / base / 職業pt / 興味pt / 合計) -->
+      <fieldset id="modal_fieldset-3">
+        <legend>
+          <h5 id="modal_fieldset-3_legend_h5"></h5>
+        </legend>
+        <table>
+          <thead>
+            <tr id="modal_fieldset-3_table_thead_tr">
+              <th id="modal_fieldset-3_table_thead_th-1"></th>
+              <th id="modal_fieldset-3_table_thead_th-2"></th>
+              <th id="modal_fieldset-3_table_thead_th-3"></th>
+              <th id="modal_fieldset-3_table_thead_th-4"></th>
+              <th id="modal_fieldset-3_table_thead_th-5"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr id="modal_fieldset-3_table_tr-1"><th id="modal_fieldset-3_table_tr-1_th"></th><td><span id="modal_fieldset-3_table_tr-1_span-1"></span></td><td><input id="modal_fieldset-3_table_tr-1_input-1" type="number" min="0" max="9999" name="modal_fieldset-3_table_tr-1_input-1"></td><td><input id="modal_fieldset-3_table_tr-1_input-2" type="number" min="0" max="9999" name="modal_fieldset-3_table_tr-1_input-2"></td><td><span id="modal_fieldset-3_table_tr-1_span-2"></span></td></tr>
+            <tr id="modal_fieldset-3_table_tr-2"><th id="modal_fieldset-3_table_tr-2_th"></th><td><span id="modal_fieldset-3_table_tr-2_span-1"></span></td><td><input id="modal_fieldset-3_table_tr-2_input-1" type="number" min="0" max="9999" name="modal_fieldset-3_table_tr-2_input-1"></td><td><input id="modal_fieldset-3_table_tr-2_input-2" type="number" min="0" max="9999" name="modal_fieldset-3_table_tr-2_input-2"></td><td><span id="modal_fieldset-3_table_tr-2_span-2"></span></td></tr>
+            <tr id="modal_fieldset-3_table_tr-3"><th id="modal_fieldset-3_table_tr-3_th"></th><td><span id="modal_fieldset-3_table_tr-3_span-1"></span></td><td><input id="modal_fieldset-3_table_tr-3_input-1" type="number" min="0" max="9999" name="modal_fieldset-3_table_tr-3_input-1"></td><td><input id="modal_fieldset-3_table_tr-3_input-2" type="number" min="0" max="9999" name="modal_fieldset-3_table_tr-3_input-2"></td><td><span id="modal_fieldset-3_table_tr-3_span-2"></span></td></tr>
+            <tr id="modal_fieldset-3_table_tr-4"><th id="modal_fieldset-3_table_tr-4_th"></th><td><span id="modal_fieldset-3_table_tr-4_span-1"></span></td><td><input id="modal_fieldset-3_table_tr-4_input-1" type="number" min="0" max="9999" name="modal_fieldset-3_table_tr-4_input-1"></td><td><input id="modal_fieldset-3_table_tr-4_input-2" type="number" min="0" max="9999" name="modal_fieldset-3_table_tr-4_input-2"></td><td><span id="modal_fieldset-3_table_tr-4_span-2"></span></td></tr>
+            <tr id="modal_fieldset-3_table_tr-5"><th id="modal_fieldset-3_table_tr-5_th"></th><td><span id="modal_fieldset-3_table_tr-5_span-1"></span></td><td><input id="modal_fieldset-3_table_tr-5_input-1" type="number" min="0" max="9999" name="modal_fieldset-3_table_tr-5_input-1"></td><td><input id="modal_fieldset-3_table_tr-5_input-2" type="number" min="0" max="9999" name="modal_fieldset-3_table_tr-5_input-2"></td><td><span id="modal_fieldset-3_table_tr-5_span-2"></span></td></tr>
+            <tr id="modal_fieldset-3_table_tr-6"><th id="modal_fieldset-3_table_tr-6_th"></th><td><span id="modal_fieldset-3_table_tr-6_span-1"></span></td><td><input id="modal_fieldset-3_table_tr-6_input-1" type="number" min="0" max="9999" name="modal_fieldset-3_table_tr-6_input-1"></td><td><input id="modal_fieldset-3_table_tr-6_input-2" type="number" min="0" max="9999" name="modal_fieldset-3_table_tr-6_input-2"></td><td><span id="modal_fieldset-3_table_tr-6_span-2"></span></td></tr>
+            <tr id="modal_fieldset-3_table_tr-7"><th id="modal_fieldset-3_table_tr-7_th"></th><td><span id="modal_fieldset-3_table_tr-7_span-1"></span></td><td><input id="modal_fieldset-3_table_tr-7_input-1" type="number" min="0" max="9999" name="modal_fieldset-3_table_tr-7_input-1"></td><td><input id="modal_fieldset-3_table_tr-7_input-2" type="number" min="0" max="9999" name="modal_fieldset-3_table_tr-7_input-2"></td><td><span id="modal_fieldset-3_table_tr-7_span-2"></span></td></tr>
+            <tr id="modal_fieldset-3_table_tr-8"><th id="modal_fieldset-3_table_tr-8_th"></th><td><span id="modal_fieldset-3_table_tr-8_span-1"></span></td><td><input id="modal_fieldset-3_table_tr-8_input-1" type="number" min="0" max="9999" name="modal_fieldset-3_table_tr-8_input-1"></td><td><input id="modal_fieldset-3_table_tr-8_input-2" type="number" min="0" max="9999" name="modal_fieldset-3_table_tr-8_input-2"></td><td><span id="modal_fieldset-3_table_tr-8_span-2"></span></td></tr>
+            <tr id="modal_fieldset-3_table_tr-9"><th id="modal_fieldset-3_table_tr-9_th"></th><td><span id="modal_fieldset-3_table_tr-9_span-1"></span></td><td><input id="modal_fieldset-3_table_tr-9_input-1" type="number" min="0" max="9999" name="modal_fieldset-3_table_tr-9_input-1"></td><td><input id="modal_fieldset-3_table_tr-9_input-2" type="number" min="0" max="9999" name="modal_fieldset-3_table_tr-9_input-2"></td><td><span id="modal_fieldset-3_table_tr-9_span-2"></span></td></tr>
+            <tr id="modal_fieldset-3_table_tr-10"><th id="modal_fieldset-3_table_tr-10_th"></th><td><span id="modal_fieldset-3_table_tr-10_span-1"></span></td><td><input id="modal_fieldset-3_table_tr-10_input-1" type="number" min="0" max="9999" name="modal_fieldset-3_table_tr-10_input-1"></td><td><input id="modal_fieldset-3_table_tr-10_input-2" type="number" min="0" max="9999" name="modal_fieldset-3_table_tr-10_input-2"></td><td><span id="modal_fieldset-3_table_tr-10_span-2"></span></td></tr>
+            <tr id="modal_fieldset-3_table_tr-11"><th id="modal_fieldset-3_table_tr-11_th"></th><td><span id="modal_fieldset-3_table_tr-11_span-1"></span></td><td><input id="modal_fieldset-3_table_tr-11_input-1" type="number" min="0" max="9999" name="modal_fieldset-3_table_tr-11_input-1"></td><td><input id="modal_fieldset-3_table_tr-11_input-2" type="number" min="0" max="9999" name="modal_fieldset-3_table_tr-11_input-2"></td><td><span id="modal_fieldset-3_table_tr-11_span-2"></span></td></tr>
+            <tr id="modal_fieldset-3_table_tr-12"><th id="modal_fieldset-3_table_tr-12_th"></th><td><span id="modal_fieldset-3_table_tr-12_span-1"></span></td><td><input id="modal_fieldset-3_table_tr-12_input-1" type="number" min="0" max="9999" name="modal_fieldset-3_table_tr-12_input-1"></td><td><input id="modal_fieldset-3_table_tr-12_input-2" type="number" min="0" max="9999" name="modal_fieldset-3_table_tr-12_input-2"></td><td><span id="modal_fieldset-3_table_tr-12_span-2"></span></td></tr>
+            <tr id="modal_fieldset-3_table_tr-13"><th id="modal_fieldset-3_table_tr-13_th"></th><td><span id="modal_fieldset-3_table_tr-13_span-1"></span></td><td><input id="modal_fieldset-3_table_tr-13_input-1" type="number" min="0" max="9999" name="modal_fieldset-3_table_tr-13_input-1"></td><td><input id="modal_fieldset-3_table_tr-13_input-2" type="number" min="0" max="9999" name="modal_fieldset-3_table_tr-13_input-2"></td><td><span id="modal_fieldset-3_table_tr-13_span-2"></span></td></tr>
+            <tr id="modal_fieldset-3_table_tr-14"><th id="modal_fieldset-3_table_tr-14_th"></th><td><span id="modal_fieldset-3_table_tr-14_span-1"></span></td><td><input id="modal_fieldset-3_table_tr-14_input-1" type="number" min="0" max="9999" name="modal_fieldset-3_table_tr-14_input-1"></td><td><input id="modal_fieldset-3_table_tr-14_input-2" type="number" min="0" max="9999" name="modal_fieldset-3_table_tr-14_input-2"></td><td><span id="modal_fieldset-3_table_tr-14_span-2"></span></td></tr>
+            <tr id="modal_fieldset-3_table_tr-15"><th id="modal_fieldset-3_table_tr-15_th"></th><td><span id="modal_fieldset-3_table_tr-15_span-1"></span></td><td><input id="modal_fieldset-3_table_tr-15_input-1" type="number" min="0" max="9999" name="modal_fieldset-3_table_tr-15_input-1"></td><td><input id="modal_fieldset-3_table_tr-15_input-2" type="number" min="0" max="9999" name="modal_fieldset-3_table_tr-15_input-2"></td><td><span id="modal_fieldset-3_table_tr-15_span-2"></span></td></tr>
+            <tr id="modal_fieldset-3_table_tr-16"><th id="modal_fieldset-3_table_tr-16_th"></th><td><span id="modal_fieldset-3_table_tr-16_span-1"></span></td><td><input id="modal_fieldset-3_table_tr-16_input-1" type="number" min="0" max="9999" name="modal_fieldset-3_table_tr-16_input-1"></td><td><input id="modal_fieldset-3_table_tr-16_input-2" type="number" min="0" max="9999" name="modal_fieldset-3_table_tr-16_input-2"></td><td><span id="modal_fieldset-3_table_tr-16_span-2"></span></td></tr>
+            <tr id="modal_fieldset-3_table_tr-17"><th id="modal_fieldset-3_table_tr-17_th"></th><td><span id="modal_fieldset-3_table_tr-17_span-1"></span></td><td><input id="modal_fieldset-3_table_tr-17_input-1" type="number" min="0" max="9999" name="modal_fieldset-3_table_tr-17_input-1"></td><td><input id="modal_fieldset-3_table_tr-17_input-2" type="number" min="0" max="9999" name="modal_fieldset-3_table_tr-17_input-2"></td><td><span id="modal_fieldset-3_table_tr-17_span-2"></span></td></tr>
+            <tr id="modal_fieldset-3_table_tr-18"><th id="modal_fieldset-3_table_tr-18_th"></th><td><span id="modal_fieldset-3_table_tr-18_span-1"></span></td><td><input id="modal_fieldset-3_table_tr-18_input-1" type="number" min="0" max="9999" name="modal_fieldset-3_table_tr-18_input-1"></td><td><input id="modal_fieldset-3_table_tr-18_input-2" type="number" min="0" max="9999" name="modal_fieldset-3_table_tr-18_input-2"></td><td><span id="modal_fieldset-3_table_tr-18_span-2"></span></td></tr>
+            <tr id="modal_fieldset-3_table_tr-19"><th id="modal_fieldset-3_table_tr-19_th"></th><td><span id="modal_fieldset-3_table_tr-19_span-1"></span></td><td><input id="modal_fieldset-3_table_tr-19_input-1" type="number" min="0" max="9999" name="modal_fieldset-3_table_tr-19_input-1"></td><td><input id="modal_fieldset-3_table_tr-19_input-2" type="number" min="0" max="9999" name="modal_fieldset-3_table_tr-19_input-2"></td><td><span id="modal_fieldset-3_table_tr-19_span-2"></span></td></tr>
+            <tr id="modal_fieldset-3_table_tr-20"><th id="modal_fieldset-3_table_tr-20_th"></th><td><span id="modal_fieldset-3_table_tr-20_span-1"></span></td><td><input id="modal_fieldset-3_table_tr-20_input-1" type="number" min="0" max="9999" name="modal_fieldset-3_table_tr-20_input-1"></td><td><input id="modal_fieldset-3_table_tr-20_input-2" type="number" min="0" max="9999" name="modal_fieldset-3_table_tr-20_input-2"></td><td><span id="modal_fieldset-3_table_tr-20_span-2"></span></td></tr>
+          </tbody>
+        </table>
+      </fieldset>
+
       <footer>
         <button id="modal_footer_button" type="submit" form="form" class="dads-button" data-type="solid-fill" data-size="sm">💾</button>
       </footer>
     </dialog>
     <form id="form" method="dialog"></form>
+    <output id="output">
+      <article id="output_article-1"><span id="output_article-1_span"></span><p id="output_article-1_p"></p></article>
+    </output>
   </body>
 </html>

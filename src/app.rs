@@ -31,8 +31,10 @@ enum Dialog {
 
 #[derive(Default)]
 struct CanvasState {
-    overlay: Overlay,
-    dialog:  Dialog,
+    overlay:    Overlay,
+    dialog:     Dialog,
+    char_vals:  [[i32; 2]; 9],   // [row-1] = [初期値, 変動値]
+    skill_pts:  [[u16; 2]; 20],  // [row-1] = [職業pt, 興味pt]
 }
 
 impl CanvasState {
@@ -41,20 +43,21 @@ impl CanvasState {
         let is_backdrop = id.0.len() == 1;
 
         match (self.dialog, id.last_tag(), is_backdrop) {
-            // --- modal backdrop → close ---
+            // --- modal backdrop → close + reset ---
             (Dialog::Modal, Some(dom::Tag::Modal), true) => {
                 self.dialog = Dialog::None;
-                vec![DomCmd::new(Operation::CloseModal, "modal", None, None)]
+                let mut cmds = crate::event::reset_modal(&mut self.char_vals, &mut self.skill_pts);
+                cmds.push(DomCmd::new(Operation::CloseModal, "modal", None, None));
+                cmds
             }
             // --- drawer backdrop → close ---
             (Dialog::Drawer, Some(dom::Tag::Drawer), true) => {
                 self.dialog = Dialog::None;
                 vec![DomCmd::new(Operation::CloseModal, "drawer", None, None)]
             }
-            // --- modal内部イベント: overlay close ---
+            // --- modal内部イベント ---
             (Dialog::Modal, _, _) => {
-                // todo: modal内キャラシ編集操作
-                vec![]
+                self.on_click_normal(id, id.last_tag())
             }
             // --- drawer内部イベント ---
             (Dialog::Drawer, _, _) => {
@@ -71,7 +74,32 @@ impl CanvasState {
             // ✏️ ヘッダーボタン → modal open
             Some(dom::Tag::Button) if id.encode() == "main_header_button" => {
                 self.dialog = Dialog::Modal;
-                vec![DomCmd::new(Operation::OpenModal, "modal", None, None)]
+                let mut cmds = crate::event::open_modal();
+                cmds.push(DomCmd::new(Operation::OpenModal, "modal", None, None));
+                cmds
+            }
+            // 🎲 fieldset-2 行サイコロ: "modal_fieldset-2_table_tr-{row}_button"
+            Some(dom::Tag::Button) if {
+                let s = &id.0;
+                s.len() == 5
+                && s[0].tag == dom::Tag::Modal
+                && s[1].tag == dom::Tag::Fieldset && s[1].n == Some(2)
+                && s[3].tag == dom::Tag::Tr
+                && s[4].tag == dom::Tag::Button
+            } => {
+                let row = id.0[3].n.unwrap_or(0) as usize;
+                crate::event::roll_characteristic(row, &mut self.char_vals)
+            }
+            // 🎲 fieldset-2 legend button: 能力値一括ロール
+            Some(dom::Tag::Button) if id.encode() == "modal_fieldset-2_legend_button" => {
+                crate::event::roll_all_characteristics(&mut self.char_vals)
+            }
+            // 💾 保存ボタン: キャッシュ保持のままclose + toast (todo: DataStructへの保存)
+            Some(dom::Tag::Button) if id.encode() == "modal_footer_button" => {
+                self.dialog = Dialog::None;
+                let mut cmds = crate::event::toast_saved();
+                cmds.push(DomCmd::new(Operation::CloseModal, "modal", None, None));
+                cmds
             }
             // todo: overlay系ボタン、li選択、etc.
             _ => vec![],
@@ -85,7 +113,9 @@ impl CanvasState {
                 match self.dialog {
                     Dialog::Modal => {
                         self.dialog = Dialog::None;
-                        return vec![DomCmd::new(Operation::CloseModal, "modal", None, None)];
+                        let mut cmds = crate::event::reset_modal(&mut self.char_vals, &mut self.skill_pts);
+                        cmds.push(DomCmd::new(Operation::CloseModal, "modal", None, None));
+                        return cmds;
                     }
                     Dialog::Drawer => {
                         self.dialog = Dialog::None;
@@ -99,7 +129,51 @@ impl CanvasState {
                 }
                 vec![]
             }
-            // todo: ArrowUp/Down, Enter (overlay内選択)
+            KeyName::Enter => {
+                if self.dialog == Dialog::Modal {
+                    self.dialog = Dialog::None;
+                    let mut cmds = crate::event::toast_saved();
+                    cmds.push(DomCmd::new(Operation::CloseModal, "modal", None, None));
+                    return cmds;
+                }
+                vec![]
+            }
+            // todo: ArrowUp/Down (overlay内選択)
+            _ => vec![],
+        }
+    }
+
+    fn on_input(&mut self, id: &dom::Id, value: &str) -> Vec<DomCmd> {
+        // 対象: "modal_fieldset-{fs}_table_tr-{row}_input-{col}"
+        // segments: [modal, fieldset-N, table, tr-N, input-N]
+        let segs = &id.0;
+        if segs.len() != 5 { return vec![]; }
+        if segs[0].tag != dom::Tag::Modal    { return vec![]; }
+        if segs[1].tag != dom::Tag::Fieldset { return vec![]; }
+        if segs[3].tag != dom::Tag::Tr       { return vec![]; }
+        if segs[4].tag != dom::Tag::Input    { return vec![]; }
+
+        let fs  = segs[1].n.unwrap_or(0) as usize;
+        let row = segs[3].n.unwrap_or(0) as usize;
+        let col = segs[4].n.unwrap_or(0) as usize; // 1 or 2
+
+        if row == 0 { return vec![]; }
+
+        match fs {
+            2 if row <= 9 => {
+                let v: i32 = value.parse().unwrap_or(0);
+                self.char_vals[row - 1][col - 1] = v;
+                let [base, delta] = self.char_vals[row - 1];
+                crate::event::on_characteristic_input(row, base, delta)
+            }
+            3 if row <= 20 => {
+                let v: u16 = value.parse().unwrap_or(0);
+                self.skill_pts[row - 1][col - 1] = v;
+                let [occ, int] = self.skill_pts[row - 1];
+                let skills = crate::character::Skill::default_rows();
+                let base = skills.get(row - 1).map(|s| s.base_value()).unwrap_or(0);
+                crate::event::on_skill_input(row, base, occ, int)
+            }
             _ => vec![],
         }
     }
@@ -156,8 +230,8 @@ impl App {
                 self.canvas_state.on_keydown(&id, key)
             }
             EventType::Input => {
-                // todo: textarea "/" トリガー
-                vec![]
+                let value = get_js_str(&payload, "value").unwrap_or_default();
+                self.canvas_state.on_input(&id, &value)
             }
             // pointer系: gesture判定に委ねる
             EventType::PointerDown | EventType::PointerMove
