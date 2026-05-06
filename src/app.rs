@@ -2,7 +2,8 @@ use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsValue;
 use crate::{Lang, dice::{self, ResultLevel}};
 use crate::table::Roll;
-use crate::character::{Instance, Model, schema};
+use crate::data_struct;
+use crate::character;
 use crate::js_client::{
     Operation, DomCmd,
     get_js_str, get_js_field, get_js_f64,

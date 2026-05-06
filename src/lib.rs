@@ -2,8 +2,8 @@ use rand::{rng, RngExt};
 
 pub mod list;
 pub mod character;
-pub mod dice;
-pub mod table;
+pub mod data_struct;
+pub mod roll;
 pub mod js_client;
 pub mod app;
 
