@@ -134,7 +134,7 @@ impl Character {
         }
     }
     pub fn id(&self) -> usize {
-        // todo: こういうイメージで余裕をもって数値を一意にする
+        // todo: Profile以降のid()にオフセット整数を渡すイメージで、余裕をもって数値を一意にする
         match self {
             Self::Identity(i)       => i.id(),
             Self::Timestamp(t)      => t.id(),
