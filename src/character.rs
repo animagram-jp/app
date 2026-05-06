@@ -361,6 +361,14 @@ impl CreditRating {
     }
 }
 
+/// 各Spec enumのCustomスロット数。追加ルールブック対応時にここだけ変える。
+pub const SPEC_CUSTOM_SLOTS: usize = 4;
+
+/// selectのoption生成用。固定variantのlabelを返す。
+pub trait SpecLabel {
+    fn spec_label(&self, lang: Lang) -> &str;
+}
+
 // --- スキル (Skill) --- p.54
 #[derive(Clone)]
 pub enum Skill {
@@ -411,17 +419,20 @@ pub enum Skill {
     Throw,
     Track,
     // 技能名+専門分野 完全自由記入（キャラシ空白欄に対応）
-    Custom { name: String, spec: Option<String> },
+    // slot: 0..SPEC_CUSTOM_SLOTS-1
+    Custom { slot: usize, name: String, spec: Option<String> },
 }
 
 impl Skill {
+    /// UIのrow管理用。spec持ちは代表1エントリ、Customスロットは1エントリ。
+    /// IDマッピングには Skill::id() / SpecEnum::id() を直接使う。
     pub fn list() -> Vec<Skill> {
         vec![
             Self::Accounting,
             Self::Anthropology,
             Self::Archaeology,
             Self::Appraise,
-            Self::ArtCraft(ArtCraftSpec::Acting),
+            Self::ArtCraft(ArtCraftSpec::Acting),   // spec持ち代表
             Self::Charm,
             Self::Climb,
             Self::ComputerUse,
@@ -433,13 +444,13 @@ impl Skill {
             Self::ElecRepair,
             Self::Electronics,
             Self::FastTalk,
-            Self::Fighting(FightingSpec::Brawl),
-            Self::Firearms(FirearmsSpec::Handgun),
+            Self::Fighting(FightingSpec::Brawl),    // spec持ち代表
+            Self::Firearms(FirearmsSpec::Handgun),  // spec持ち代表
             Self::FirstAid,
             Self::History,
             Self::Intimidate,
             Self::Jump,
-            Self::LanguageOther(LanguageSpec::Custom(String::new())),
+            Self::LanguageOther(LanguageSpec::Custom0(String::new())), // 全部自由記入
             Self::LanguageOwn,
             Self::Law,
             Self::LibraryUse,
@@ -451,71 +462,75 @@ impl Skill {
             Self::Navigate,
             Self::Occult,
             Self::Persuade,
-            Self::Pilot(PilotSpec::Boat),
+            Self::Pilot(PilotSpec::Boat),           // spec持ち代表
             Self::Psychoanalysis,
             Self::Psychology,
             Self::Ride,
-            Self::Science(ScienceSpec::Biology),
+            Self::Science(ScienceSpec::Biology),    // spec持ち代表
             Self::SleightOfHand,
             Self::SpotHidden,
             Self::Stealth,
-            Self::Survival(SurvivalSpec::Sea),
+            Self::Survival(SurvivalSpec::Sea),      // spec持ち代表
             Self::Swim,
             Self::Throw,
             Self::Track,
-            Self::Custom { name: String::new(), spec: None },
+            Self::Custom { slot: 0, name: String::new(), spec: None },
         ]
     }
 
     pub fn id(&self, base: usize) -> usize {
-        base + match self {
-            Self::Accounting        =>  0,
-            Self::Anthropology      =>  1,
-            Self::Archaeology       =>  2,
-            Self::Appraise          =>  3,
-            Self::ArtCraft(_)       =>  4,
-            Self::Charm             =>  5,
-            Self::Climb             =>  6,
-            Self::ComputerUse       =>  7,
-            Self::CreditRating(_)   =>  8,
-            Self::CthulhuMythos     =>  9,
-            Self::Disguise          => 10,
-            Self::Dodge             => 11,
-            Self::DriveAuto         => 12,
-            Self::ElecRepair        => 13,
-            Self::Electronics       => 14,
-            Self::FastTalk          => 15,
-            Self::Fighting(_)       => 16,
-            Self::Firearms(_)       => 17,
-            Self::FirstAid          => 18,
-            Self::History           => 19,
-            Self::Intimidate        => 20,
-            Self::Jump              => 21,
-            Self::LanguageOther(_)  => 22,
-            Self::LanguageOwn       => 23,
-            Self::Law               => 24,
-            Self::LibraryUse        => 25,
-            Self::Listen            => 26,
-            Self::Locksmith         => 27,
-            Self::MechRepair        => 28,
-            Self::Medicine          => 29,
-            Self::NaturalWorld      => 30,
-            Self::Navigate          => 31,
-            Self::Occult            => 32,
-            Self::Persuade          => 33,
-            Self::Pilot(_)          => 34,
-            Self::Psychoanalysis    => 35,
-            Self::Psychology        => 36,
-            Self::Ride              => 37,
-            Self::Science(_)        => 38,
-            Self::SleightOfHand     => 39,
-            Self::SpotHidden        => 40,
-            Self::Stealth           => 41,
-            Self::Survival(_)       => 42,
-            Self::Swim              => 43,
-            Self::Throw             => 44,
-            Self::Track             => 45,
-            Self::Custom { .. }     => 46,
+        // spec有り: Specにbaseを伝播してSpec内でIDを確定する
+        // spec無し: base+100 以降に配置（Specオフセット域 0..100 と衝突しない）
+        match self {
+            Self::ArtCraft(spec)      => spec.id(base +   0),  //   0.. 16 (幅17)
+            Self::Fighting(spec)      => spec.id(base +  17),  //  17.. 28 (幅12)
+            Self::Firearms(spec)      => spec.id(base +  29),  //  29.. 38 (幅10)
+            Self::LanguageOther(spec) => spec.id(base +  39),  //  39.. 42 (幅4)
+            Self::Pilot(spec)         => spec.id(base +  43),  //  43.. 56 (幅14)
+            Self::Science(spec)       => spec.id(base +  57),  //  57.. 73 (幅17)
+            Self::Survival(spec)      => spec.id(base +  74),  //  74.. 80 (幅7)
+            // spec無しスキル: 100 以降
+            Self::Accounting          => base + 100,
+            Self::Anthropology        => base + 101,
+            Self::Archaeology         => base + 102,
+            Self::Appraise            => base + 103,
+            Self::Charm               => base + 104,
+            Self::Climb               => base + 105,
+            Self::ComputerUse         => base + 106,
+            Self::CreditRating(_)     => base + 107,
+            Self::CthulhuMythos       => base + 108,
+            Self::Disguise            => base + 109,
+            Self::Dodge               => base + 110,
+            Self::DriveAuto           => base + 111,
+            Self::ElecRepair          => base + 112,
+            Self::Electronics         => base + 113,
+            Self::FastTalk            => base + 114,
+            Self::FirstAid            => base + 115,
+            Self::History             => base + 116,
+            Self::Intimidate          => base + 117,
+            Self::Jump                => base + 118,
+            Self::LanguageOwn         => base + 119,
+            Self::Law                 => base + 120,
+            Self::LibraryUse          => base + 121,
+            Self::Listen              => base + 122,
+            Self::Locksmith           => base + 123,
+            Self::MechRepair          => base + 124,
+            Self::Medicine            => base + 125,
+            Self::NaturalWorld        => base + 126,
+            Self::Navigate            => base + 127,
+            Self::Occult              => base + 128,
+            Self::Persuade            => base + 129,
+            Self::Psychoanalysis      => base + 130,
+            Self::Psychology          => base + 131,
+            Self::Ride                => base + 132,
+            Self::SleightOfHand       => base + 133,
+            Self::SpotHidden          => base + 134,
+            Self::Stealth             => base + 135,
+            Self::Swim                => base + 136,
+            Self::Throw               => base + 137,
+            Self::Track               => base + 138,
+            // Custom: 140.. (SPEC_CUSTOM_SLOTS 個)
+            Self::Custom { slot, .. } => base + 140 + slot,
         }
     }
 
@@ -554,6 +569,7 @@ impl Skill {
             Self::Science(spec)       => Some(spec.label(lang).to_string()),
             Self::Survival(spec)      => Some(spec.label(lang).to_string()),
             Self::Custom { spec, .. } => spec.as_deref().map(str::to_string),
+            // CreditRating も spec 表示なし（label()内で処理済み）
             _                         => None,
         }
     }
@@ -637,7 +653,7 @@ impl Skill {
             (Self::Archaeology,          Lang::En) => "Archaeology".into(),
             (Self::Appraise,             Lang::Ja) => "鑑定".into(),
             (Self::Appraise,             Lang::En) => "Appraise".into(),
-            (Self::ArtCraft(spec),       _)        => format!("芸術/製作 ({})", spec.label(lang)),
+            (Self::ArtCraft(spec),       _)        => { let s = spec.label(lang); if s.is_empty() { "芸術/製作".into() } else { format!("芸術/製作 ({})", s) } }
             (Self::Charm,                Lang::Ja) => "魅惑".into(),
             (Self::Charm,                Lang::En) => "Charm".into(),
             (Self::Climb,                Lang::Ja) => "登攀".into(),
@@ -660,8 +676,8 @@ impl Skill {
             (Self::Electronics,          Lang::En) => "Electronics".into(),
             (Self::FastTalk,             Lang::Ja) => "言いくるめ".into(),
             (Self::FastTalk,             Lang::En) => "Fast Talk".into(),
-            (Self::Fighting(spec),       _)        => format!("近接戦闘 ({})", spec.label(lang)),
-            (Self::Firearms(spec),       _)        => format!("射撃 ({})", spec.label(lang)),
+            (Self::Fighting(spec),       _)        => { let s = spec.label(lang); if s.is_empty() { "近接戦闘".into() } else { format!("近接戦闘 ({})", s) } }
+            (Self::Firearms(spec),       _)        => { let s = spec.label(lang); if s.is_empty() { "射撃".into() } else { format!("射撃 ({})", s) } }
             (Self::FirstAid,             Lang::Ja) => "応急手当".into(),
             (Self::FirstAid,             Lang::En) => "First Aid".into(),
             (Self::History,              Lang::Ja) => "歴史".into(),
@@ -670,7 +686,7 @@ impl Skill {
             (Self::Intimidate,           Lang::En) => "Intimidate".into(),
             (Self::Jump,                 Lang::Ja) => "跳躍".into(),
             (Self::Jump,                 Lang::En) => "Jump".into(),
-            (Self::LanguageOther(spec),  _)        => format!("ほかの言語 ({})", spec.label(lang)),
+            (Self::LanguageOther(spec),  _)        => { let s = spec.label(lang); if s.is_empty() { "ほかの言語".into() } else { format!("ほかの言語 ({})", s) } }
             (Self::LanguageOwn,          Lang::Ja) => "母国語".into(),
             (Self::LanguageOwn,          Lang::En) => "Language (Own)".into(),
             (Self::Law,                  Lang::Ja) => "法律".into(),
@@ -693,29 +709,29 @@ impl Skill {
             (Self::Occult,               Lang::En) => "Occult".into(),
             (Self::Persuade,             Lang::Ja) => "説得".into(),
             (Self::Persuade,             Lang::En) => "Persuade".into(),
-            (Self::Pilot(spec),          _)        => format!("操縦 ({})", spec.label(lang)),
+            (Self::Pilot(spec),          _)        => { let s = spec.label(lang); if s.is_empty() { "操縦".into() } else { format!("操縦 ({})", s) } }
             (Self::Psychoanalysis,       Lang::Ja) => "精神分析".into(),
             (Self::Psychoanalysis,       Lang::En) => "Psychoanalysis".into(),
             (Self::Psychology,           Lang::Ja) => "心理学".into(),
             (Self::Psychology,           Lang::En) => "Psychology".into(),
             (Self::Ride,                 Lang::Ja) => "乗馬".into(),
             (Self::Ride,                 Lang::En) => "Ride".into(),
-            (Self::Science(spec),        _)        => format!("科学 ({})", spec.label(lang)),
+            (Self::Science(spec),        _)        => { let s = spec.label(lang); if s.is_empty() { "科学".into() } else { format!("科学 ({})", s) } }
             (Self::SleightOfHand,        Lang::Ja) => "手さばき".into(),
             (Self::SleightOfHand,        Lang::En) => "Sleight of Hand".into(),
             (Self::SpotHidden,           Lang::Ja) => "目星".into(),
             (Self::SpotHidden,           Lang::En) => "Spot Hidden".into(),
             (Self::Stealth,              Lang::Ja) => "隠密".into(),
             (Self::Stealth,              Lang::En) => "Stealth".into(),
-            (Self::Survival(spec),       _)        => format!("サバイバル ({})", spec.label(lang)),
+            (Self::Survival(spec),       _)        => { let s = spec.label(lang); if s.is_empty() { "サバイバル".into() } else { format!("サバイバル ({})", s) } }
             (Self::Swim,                 Lang::Ja) => "水泳".into(),
             (Self::Swim,                 Lang::En) => "Swim".into(),
             (Self::Throw,                Lang::Ja) => "投擲".into(),
             (Self::Throw,                Lang::En) => "Throw".into(),
             (Self::Track,                Lang::Ja) => "追跡".into(),
             (Self::Track,                Lang::En) => "Track".into(),
-            (Self::Custom { name, spec: Some(s) }, _) => format!("{} ({})", name, s),
-            (Self::Custom { name, spec: None },   _) => name.clone(),
+            (Self::Custom { name, spec: Some(s), .. }, _) => format!("{} ({})", name, s),
+            (Self::Custom { name, spec: None,    .. }, _) => name.clone(),
         }
     }
 }
@@ -736,10 +752,45 @@ pub enum ArtCraftSpec {
     Pottery,      // 陶芸
     Sculpting,    // 彫刻
     Writing,      // 執筆
-    Custom(String),
+    Custom0(String), Custom1(String), Custom2(String), Custom3(String),
+}
+
+impl crate::character::SpecLabel for ArtCraftSpec {
+    fn spec_label(&self, lang: Lang) -> &str { self.label(lang) }
 }
 
 impl ArtCraftSpec {
+    pub fn list() -> &'static [Self] {
+        &[
+            Self::Acting, Self::Barber, Self::Calligraphy, Self::Carpentry,
+            Self::Cobbling, Self::Cook, Self::Dancing, Self::FineArt,
+            Self::Forgery, Self::Photography, Self::Pottery, Self::Sculpting,
+            Self::Writing,
+        ]
+    }
+
+    pub fn id(&self, base: usize) -> usize {
+        base + match self {
+            Self::Acting      =>  0,
+            Self::Barber      =>  1,
+            Self::Calligraphy =>  2,
+            Self::Carpentry   =>  3,
+            Self::Cobbling    =>  4,
+            Self::Cook        =>  5,
+            Self::Dancing     =>  6,
+            Self::FineArt     =>  7,
+            Self::Forgery     =>  8,
+            Self::Photography =>  9,
+            Self::Pottery     => 10,
+            Self::Sculpting   => 11,
+            Self::Writing     => 12,
+            Self::Custom0(_)  => 13,
+            Self::Custom1(_)  => 14,
+            Self::Custom2(_)  => 15,
+            Self::Custom3(_)  => 16,
+        }
+    }
+
     pub fn base_value(&self) -> u16 { 5 }
 
     pub fn label(&self, lang: Lang) -> &str {
@@ -770,7 +821,7 @@ impl ArtCraftSpec {
             (Self::Sculpting,   Lang::En) => "Sculpting",
             (Self::Writing,     Lang::Ja) => "執筆",
             (Self::Writing,     Lang::En) => "Writing",
-            (Self::Custom(s),   _)        => s.as_str(),
+            (Self::Custom0(s) | Self::Custom1(s) | Self::Custom2(s) | Self::Custom3(s), _) => s.as_str(),
         }
     }
 }
@@ -786,43 +837,76 @@ pub enum FightingSpec {
     Spear,        // 槍          20%
     Sword,        // 刀剣        20%
     Whip,         // 鞭          05%
-    Custom { name: String, base_value: u16 },
+    Custom0 { name: String, base_value: u16 },
+    Custom1 { name: String, base_value: u16 },
+    Custom2 { name: String, base_value: u16 },
+    Custom3 { name: String, base_value: u16 },
+}
+
+impl crate::character::SpecLabel for FightingSpec {
+    fn spec_label(&self, lang: Lang) -> &str { self.label(lang) }
 }
 
 impl FightingSpec {
+    pub fn list() -> &'static [Self] {
+        &[Self::Axe, Self::Brawl, Self::Chainsaw, Self::Flail,
+          Self::Garrote, Self::Spear, Self::Sword, Self::Whip]
+    }
+
+    pub fn id(&self, base: usize) -> usize {
+        base + match self {
+            Self::Axe        => 0,
+            Self::Brawl      => 1,
+            Self::Chainsaw   => 2,
+            Self::Flail      => 3,
+            Self::Garrote    => 4,
+            Self::Spear      => 5,
+            Self::Sword      => 6,
+            Self::Whip       => 7,
+            Self::Custom0 { .. } => 8,
+            Self::Custom1 { .. } => 9,
+            Self::Custom2 { .. } => 10,
+            Self::Custom3 { .. } => 11,
+        }
+    }
+
     pub fn base_value(&self) -> u16 {
         match self {
-            Self::Axe                          => 15,
-            Self::Brawl                        => 25,
-            Self::Chainsaw                     => 10,
-            Self::Flail                        => 10,
-            Self::Garrote                      => 15,
-            Self::Spear                        => 20,
-            Self::Sword                        => 20,
-            Self::Whip                         =>  5,
-            Self::Custom { base_value, .. }    => *base_value,
+            Self::Axe                               => 15,
+            Self::Brawl                             => 25,
+            Self::Chainsaw                          => 10,
+            Self::Flail                             => 10,
+            Self::Garrote                           => 15,
+            Self::Spear                             => 20,
+            Self::Sword                             => 20,
+            Self::Whip                              =>  5,
+            Self::Custom0 { base_value, .. }
+            | Self::Custom1 { base_value, .. }
+            | Self::Custom2 { base_value, .. }
+            | Self::Custom3 { base_value, .. }      => *base_value,
         }
     }
 
     pub fn label(&self, lang: Lang) -> &str {
         match (self, lang) {
-            (Self::Axe,       Lang::Ja) => "斧",
-            (Self::Axe,       Lang::En) => "Axe",
-            (Self::Brawl,     Lang::Ja) => "格闘",
-            (Self::Brawl,     Lang::En) => "Brawl",
-            (Self::Chainsaw,  Lang::Ja) => "チェーンソー",
-            (Self::Chainsaw,  Lang::En) => "Chainsaw",
-            (Self::Flail,     Lang::Ja) => "フレイル",
-            (Self::Flail,     Lang::En) => "Flail",
-            (Self::Garrote,   Lang::Ja) => "絞殺ひも",
-            (Self::Garrote,   Lang::En) => "Garrote",
-            (Self::Spear,     Lang::Ja) => "槍",
-            (Self::Spear,     Lang::En) => "Spear",
-            (Self::Sword,     Lang::Ja) => "刀剣",
-            (Self::Sword,     Lang::En) => "Sword",
-            (Self::Whip,      Lang::Ja) => "鞭",
-            (Self::Whip,      Lang::En) => "Whip",
-            (Self::Custom { name, .. }, _) => name.as_str(),
+            (Self::Axe,      Lang::Ja) => "斧",
+            (Self::Axe,      Lang::En) => "Axe",
+            (Self::Brawl,    Lang::Ja) => "格闘",
+            (Self::Brawl,    Lang::En) => "Brawl",
+            (Self::Chainsaw, Lang::Ja) => "チェーンソー",
+            (Self::Chainsaw, Lang::En) => "Chainsaw",
+            (Self::Flail,    Lang::Ja) => "フレイル",
+            (Self::Flail,    Lang::En) => "Flail",
+            (Self::Garrote,  Lang::Ja) => "絞殺ひも",
+            (Self::Garrote,  Lang::En) => "Garrote",
+            (Self::Spear,    Lang::Ja) => "槍",
+            (Self::Spear,    Lang::En) => "Spear",
+            (Self::Sword,    Lang::Ja) => "刀剣",
+            (Self::Sword,    Lang::En) => "Sword",
+            (Self::Whip,     Lang::Ja) => "鞭",
+            (Self::Whip,     Lang::En) => "Whip",
+            (Self::Custom0 { name, .. } | Self::Custom1 { name, .. }
+            | Self::Custom2 { name, .. } | Self::Custom3 { name, .. }, _) => name.as_str(),
         }
     }
 }
@@ -836,19 +920,49 @@ pub enum FirearmsSpec {
     MachineGun,    // 機関銃               10%
     RifleShotgun,  // ライフル/ショットガン  25%
     SubmachineGun, // サブマシンガン         15%
-    Custom { name: String, base_value: u16 },
+    Custom0 { name: String, base_value: u16 },
+    Custom1 { name: String, base_value: u16 },
+    Custom2 { name: String, base_value: u16 },
+    Custom3 { name: String, base_value: u16 },
+}
+
+impl crate::character::SpecLabel for FirearmsSpec {
+    fn spec_label(&self, lang: Lang) -> &str { self.label(lang) }
 }
 
 impl FirearmsSpec {
+    pub fn list() -> &'static [Self] {
+        &[Self::Bow, Self::Handgun, Self::HeavyWeapons,
+          Self::MachineGun, Self::RifleShotgun, Self::SubmachineGun]
+    }
+
+    pub fn id(&self, base: usize) -> usize {
+        base + match self {
+            Self::Bow           => 0,
+            Self::Handgun       => 1,
+            Self::HeavyWeapons  => 2,
+            Self::MachineGun    => 3,
+            Self::RifleShotgun  => 4,
+            Self::SubmachineGun => 5,
+            Self::Custom0 { .. } => 6,
+            Self::Custom1 { .. } => 7,
+            Self::Custom2 { .. } => 8,
+            Self::Custom3 { .. } => 9,
+        }
+    }
+
     pub fn base_value(&self) -> u16 {
         match self {
-            Self::Bow                       => 15,
-            Self::Handgun                   => 20,
-            Self::HeavyWeapons              => 10,
-            Self::MachineGun                => 10,
-            Self::RifleShotgun              => 25,
-            Self::SubmachineGun             => 15,
-            Self::Custom { base_value, .. } => *base_value,
+            Self::Bow                               => 15,
+            Self::Handgun                           => 20,
+            Self::HeavyWeapons                      => 10,
+            Self::MachineGun                        => 10,
+            Self::RifleShotgun                      => 25,
+            Self::SubmachineGun                     => 15,
+            Self::Custom0 { base_value, .. }
+            | Self::Custom1 { base_value, .. }
+            | Self::Custom2 { base_value, .. }
+            | Self::Custom3 { base_value, .. }      => *base_value,
         }
     }
 
@@ -866,7 +980,8 @@ impl FirearmsSpec {
             (Self::RifleShotgun,  Lang::En) => "Rifle/Shotgun",
             (Self::SubmachineGun, Lang::Ja) => "サブマシンガン",
             (Self::SubmachineGun, Lang::En) => "Submachine Gun",
-            (Self::Custom { name, .. },  _) => name.as_str(),
+            (Self::Custom0 { name, .. } | Self::Custom1 { name, .. }
+            | Self::Custom2 { name, .. } | Self::Custom3 { name, .. }, _) => name.as_str(),
         }
     }
 }
@@ -874,13 +989,23 @@ impl FirearmsSpec {
 // --- ほかの言語 専門分野 (Language Other Specialization) ---
 #[derive(Clone)]
 pub enum LanguageSpec {
-    Custom(String),
+    Custom0(String), Custom1(String), Custom2(String), Custom3(String),
 }
 
 impl LanguageSpec {
+    pub fn id(&self, base: usize) -> usize {
+        base + match self {
+            Self::Custom0(_) => 0,
+            Self::Custom1(_) => 1,
+            Self::Custom2(_) => 2,
+            Self::Custom3(_) => 3,
+        }
+    }
+
     pub fn label(&self, _lang: Lang) -> &str {
         match self {
-            Self::Custom(s) => s.as_str(),
+            Self::Custom0(s) | Self::Custom1(s)
+            | Self::Custom2(s) | Self::Custom3(s) => s.as_str(),
         }
     }
 }
@@ -901,10 +1026,39 @@ pub enum PilotSpec {
     Airliner,   // 定期旅客機
     JetFighter, // ジェット戦闘機
     Helicopter, // ヘリコプター
-    Custom(String),
+    Custom0(String), Custom1(String), Custom2(String), Custom3(String),
+}
+
+impl crate::character::SpecLabel for PilotSpec {
+    fn spec_label(&self, lang: Lang) -> &str { self.label(lang) }
 }
 
 impl PilotSpec {
+    pub fn list() -> &'static [Self] {
+        &[Self::Boat, Self::SteamShip, Self::Sailboat, Self::CivilProp,
+          Self::Balloon, Self::Dirigible, Self::CivilJet, Self::Airliner,
+          Self::JetFighter, Self::Helicopter]
+    }
+
+    pub fn id(&self, base: usize) -> usize {
+        base + match self {
+            Self::Boat       =>  0,
+            Self::SteamShip  =>  1,
+            Self::Sailboat   =>  2,
+            Self::CivilProp  =>  3,
+            Self::Balloon    =>  4,
+            Self::Dirigible  =>  5,
+            Self::CivilJet   =>  6,
+            Self::Airliner   =>  7,
+            Self::JetFighter =>  8,
+            Self::Helicopter =>  9,
+            Self::Custom0(_) => 10,
+            Self::Custom1(_) => 11,
+            Self::Custom2(_) => 12,
+            Self::Custom3(_) => 13,
+        }
+    }
+
     pub fn base_value(&self) -> u16 { 1 }
 
     pub fn label(&self, lang: Lang) -> &str {
@@ -932,7 +1086,8 @@ impl PilotSpec {
             (Self::JetFighter, Lang::En) => "Jet Fighter",
             (Self::Helicopter, Lang::Ja) => "ヘリコプター",
             (Self::Helicopter, Lang::En) => "Helicopter",
-            (Self::Custom(s),  _)        => s.as_str(),
+            (Self::Custom0(s) | Self::Custom1(s)
+            | Self::Custom2(s) | Self::Custom3(s), _) => s.as_str(),
         }
     }
 }
@@ -953,10 +1108,43 @@ pub enum ScienceSpec {
     Pharmacy,     // 薬学
     Physics,      // 物理学
     Zoology,      // 動物学
-    Custom(String),
+    Custom0(String), Custom1(String), Custom2(String), Custom3(String),
+}
+
+impl crate::character::SpecLabel for ScienceSpec {
+    fn spec_label(&self, lang: Lang) -> &str { self.label(lang) }
 }
 
 impl ScienceSpec {
+    pub fn list() -> &'static [Self] {
+        &[Self::Astronomy, Self::Biology, Self::Botany, Self::Chemistry,
+          Self::Cryptography, Self::Engineering, Self::Forensics, Self::Geology,
+          Self::Mathematics, Self::Meteorology, Self::Pharmacy, Self::Physics,
+          Self::Zoology]
+    }
+
+    pub fn id(&self, base: usize) -> usize {
+        base + match self {
+            Self::Astronomy    =>  0,
+            Self::Biology      =>  1,
+            Self::Botany       =>  2,
+            Self::Chemistry    =>  3,
+            Self::Cryptography =>  4,
+            Self::Engineering  =>  5,
+            Self::Forensics    =>  6,
+            Self::Geology      =>  7,
+            Self::Mathematics  =>  8,
+            Self::Meteorology  =>  9,
+            Self::Pharmacy     => 10,
+            Self::Physics      => 11,
+            Self::Zoology      => 12,
+            Self::Custom0(_)   => 13,
+            Self::Custom1(_)   => 14,
+            Self::Custom2(_)   => 15,
+            Self::Custom3(_)   => 16,
+        }
+    }
+
     pub fn base_value(&self) -> u16 { 1 }
 
     pub fn label(&self, lang: Lang) -> &str {
@@ -987,7 +1175,8 @@ impl ScienceSpec {
             (Self::Physics,      Lang::En) => "Physics",
             (Self::Zoology,      Lang::Ja) => "動物学",
             (Self::Zoology,      Lang::En) => "Zoology",
-            (Self::Custom(s), _)  => s.as_str(),
+            (Self::Custom0(s) | Self::Custom1(s)
+            | Self::Custom2(s) | Self::Custom3(s), _) => s.as_str(),
         }
     }
 }
@@ -998,21 +1187,42 @@ pub enum SurvivalSpec {
     Arctic,
     Desert,
     Sea,
-    Custom(String),
+    Custom0(String), Custom1(String), Custom2(String), Custom3(String),
+}
+
+impl crate::character::SpecLabel for SurvivalSpec {
+    fn spec_label(&self, lang: Lang) -> &str { self.label(lang) }
 }
 
 impl SurvivalSpec {
+    pub fn list() -> &'static [Self] {
+        &[Self::Arctic, Self::Desert, Self::Sea]
+    }
+
+    pub fn id(&self, base: usize) -> usize {
+        base + match self {
+            Self::Arctic    => 0,
+            Self::Desert    => 1,
+            Self::Sea       => 2,
+            Self::Custom0(_) => 3,
+            Self::Custom1(_) => 4,
+            Self::Custom2(_) => 5,
+            Self::Custom3(_) => 6,
+        }
+    }
+
     pub fn base_value(&self) -> u16 { 10 }
 
     pub fn label(&self, lang: Lang) -> &str {
         match (self, lang) {
-            (Self::Arctic,    Lang::Ja) => "極地",
-            (Self::Arctic,    Lang::En) => "Arctic",
-            (Self::Desert,    Lang::Ja) => "砂漠",
-            (Self::Desert,    Lang::En) => "Desert",
-            (Self::Sea,       Lang::Ja) => "海",
-            (Self::Sea,       Lang::En) => "Sea",
-            (Self::Custom(s),        _) => s.as_str(),
+            (Self::Arctic,   Lang::Ja) => "極地",
+            (Self::Arctic,   Lang::En) => "Arctic",
+            (Self::Desert,   Lang::Ja) => "砂漠",
+            (Self::Desert,   Lang::En) => "Desert",
+            (Self::Sea,      Lang::Ja) => "海",
+            (Self::Sea,      Lang::En) => "Sea",
+            (Self::Custom0(s) | Self::Custom1(s)
+            | Self::Custom2(s) | Self::Custom3(s), _) => s.as_str(),
         }
     }
 }

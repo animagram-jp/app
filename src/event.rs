@@ -1,5 +1,8 @@
 use crate::Lang;
-use crate::character::{Profile, Characteristic, Skill};
+use crate::character::{
+    Profile, Characteristic, Skill,
+    ArtCraftSpec, FightingSpec, FirearmsSpec, PilotSpec, ScienceSpec, SurvivalSpec,
+};
 use crate::js_client::{DomCmd, Operation};
 use crate::data_struct::DataStruct;
 use crate::character::Character;
@@ -81,22 +84,48 @@ pub fn open_modal() -> Vec<DomCmd> {
     cmds.push(DomCmd::new(Operation::SetText, "modal_fieldset-3_table_thead_th-7", None, Some("合計")));
 
     for (i, skill) in Skill::list().iter().enumerate() {
-        let row = i + 1;
+        let row      = i + 1;
         let th_id    = format!("modal_fieldset-3_table_tr-{}_th", row);
-        let spec_id  = format!("modal_fieldset-3_table_tr-{}_td-1_input", row);
         let base_id  = format!("modal_fieldset-3_table_tr-{}_span-1", row);
         let total_id = format!("modal_fieldset-3_table_tr-{}_span-2", row);
         let base_val = skill.base_value().to_string();
-        cmds.push(DomCmd::new(Operation::SetText,  &th_id,    None, Some(&skill.label(LANG))));
-        if let Some(spec) = skill.spec_label(LANG) {
-            cmds.push(DomCmd::new(Operation::RemoveClass, &spec_id, None, Some("hidden")));
-            cmds.push(DomCmd::new(Operation::SetValue,    &spec_id, None, Some(&spec)));
+        // Custom行(最終行)はth内にinputがあるのでSetTextで上書きしない
+        if !matches!(skill, Skill::Custom { .. }) {
+            cmds.push(DomCmd::new(Operation::SetText, &th_id, None, Some(&skill.label(LANG))));
         }
-        cmds.push(DomCmd::new(Operation::SetText,  &base_id,  None, Some(&base_val)));
-        cmds.push(DomCmd::new(Operation::SetText,  &total_id, None, Some(&base_val)));
+        cmds.push(DomCmd::new(Operation::SetText, &base_id,  None, Some(&base_val)));
+        cmds.push(DomCmd::new(Operation::SetText, &total_id, None, Some(&base_val)));
+
+        // spec持ち行: selectのoptionを生成
+        if let Some(html) = spec_select_html(row, LANG) {
+            let sel_id = format!("modal_fieldset-3_table_tr-{}_td-1_select", row);
+            cmds.push(DomCmd::new(Operation::SetHtml, &sel_id, None, Some(&html)));
+        }
     }
 
     cmds
+}
+
+/// spec持ち行のselectにセットするoption HTML。spec無し行はNone。
+fn spec_select_html(row: usize, lang: Lang) -> Option<String> {
+    fn build<T: crate::character::SpecLabel>(items: &[T], lang: Lang) -> String {
+        let mut html = String::new();
+        for item in items {
+            let l = item.spec_label(lang);
+            html.push_str(&format!("<option value=\"{}\">{}</option>", l, l));
+        }
+        html.push_str("<option value=\"custom\">自由記入…</option>");
+        html
+    }
+    match row {
+        5  => Some(build(ArtCraftSpec::list(), lang)),
+        17 => Some(build(FightingSpec::list(), lang)),
+        18 => Some(build(FirearmsSpec::list(), lang)),
+        35 => Some(build(PilotSpec::list(), lang)),
+        39 => Some(build(ScienceSpec::list(), lang)),
+        43 => Some(build(SurvivalSpec::list(), lang)),
+        _  => None,
+    }
 }
 
 // ============================================================
@@ -195,16 +224,36 @@ pub fn restore_modal(ds: &DataStruct) -> Vec<DomCmd> {
     // fieldset-3: Skill
     let skills = Skill::list();
     for (i, skill) in skills.iter().enumerate() {
-        let row = i + 1;
+        let row   = i + 1;
         let field = Character::Skill(Skill::list().into_iter().nth(i).unwrap());
         let (occ, int, bonus, spec) = ds.get(&field).map(Skill::decode).unwrap_or((0, 0, 0, String::new()));
+
         if !spec.is_empty() {
-            let spec_id = format!("modal_fieldset-3_table_tr-{}_td-1_input", row);
-            cmds.push(DomCmd::new(Operation::RemoveClass, &spec_id, None, Some("hidden")));
-            cmds.push(DomCmd::new(Operation::SetValue,    &spec_id, None, Some(&spec)));
+            if spec_select_html(row, LANG).is_some() {
+                // spec持ち行: selectに値をセット、自由記入ならinputも復元
+                let sel_id = format!("modal_fieldset-3_table_tr-{}_td-1_select", row);
+                let inp_id = format!("modal_fieldset-3_table_tr-{}_td-1_input", row);
+                // 固定variantに一致すればselectにそのまま、なければcustomモード
+                let is_fixed = spec_select_html(row, LANG)
+                    .map(|h| h.contains(&format!("value=\"{}\"", spec)))
+                    .unwrap_or(false);
+                if is_fixed {
+                    cmds.push(DomCmd::new(Operation::SetValue, &sel_id, None, Some(&spec)));
+                } else {
+                    cmds.push(DomCmd::new(Operation::SetValue,    &sel_id, None, Some("custom")));
+                    cmds.push(DomCmd::new(Operation::RemoveClass, &inp_id, None, Some("hidden")));
+                    cmds.push(DomCmd::new(Operation::SetValue,    &inp_id, None, Some(&spec)));
+                }
+            } else {
+                // LanguageOther / Custom行: inputに直接
+                let inp_id = format!("modal_fieldset-3_table_tr-{}_td-1_input", row);
+                cmds.push(DomCmd::new(Operation::RemoveClass, &inp_id, None, Some("hidden")));
+                cmds.push(DomCmd::new(Operation::SetValue,    &inp_id, None, Some(&spec)));
+            }
             let th_id = format!("modal_fieldset-3_table_tr-{}_th", row);
             cmds.push(DomCmd::new(Operation::SetText, &th_id, None, Some(&skill.label_with_spec(LANG, &spec))));
         }
+
         if occ != 0 || int != 0 || bonus != 0 {
             let base  = skill.base_value();
             let total = (base as i32 + occ as i32 + int as i32 + bonus).max(0) as u32;
@@ -354,16 +403,29 @@ pub fn reset_modal() -> Vec<DomCmd> {
     }
 
     // fieldset-3: Skill pt input クリア
-    for row in 1..=20 {
-        let spec   = format!("modal_fieldset-3_table_tr-{}_td-1_input", row);
+    let skill_rows = Skill::list().len();
+    for row in 1..=skill_rows {
         let input1 = format!("modal_fieldset-3_table_tr-{}_input-1", row);
         let input2 = format!("modal_fieldset-3_table_tr-{}_input-2", row);
         let input3 = format!("modal_fieldset-3_table_tr-{}_input-3", row);
-        cmds.push(DomCmd::new(Operation::AddClass,  &spec,   None, Some("hidden")));
-        cmds.push(DomCmd::new(Operation::SetValue,  &spec,   None, Some("")));
-        cmds.push(DomCmd::new(Operation::SetValue,  &input1, None, Some("")));
-        cmds.push(DomCmd::new(Operation::SetValue,  &input2, None, Some("")));
-        cmds.push(DomCmd::new(Operation::SetValue,  &input3, None, Some("")));
+        cmds.push(DomCmd::new(Operation::SetValue, &input1, None, Some("")));
+        cmds.push(DomCmd::new(Operation::SetValue, &input2, None, Some("")));
+        cmds.push(DomCmd::new(Operation::SetValue, &input3, None, Some("")));
+        // spec持ち行: selectをデフォルトに戻し、inputをhidden
+        if spec_select_html(row, LANG).is_some() {
+            let sel_id = format!("modal_fieldset-3_table_tr-{}_td-1_select", row);
+            let inp_id = format!("modal_fieldset-3_table_tr-{}_td-1_input", row);
+            cmds.push(DomCmd::new(Operation::SetValue,  &sel_id, None, Some("")));
+            cmds.push(DomCmd::new(Operation::AddClass,  &inp_id, None, Some("hidden")));
+            cmds.push(DomCmd::new(Operation::SetValue,  &inp_id, None, Some("")));
+        }
+        // Custom行: th_inputとtd-1_inputをクリア
+        if row == skill_rows {
+            let th_inp = format!("modal_fieldset-3_table_tr-{}_th_input", row);
+            let td_inp = format!("modal_fieldset-3_table_tr-{}_td-1_input", row);
+            cmds.push(DomCmd::new(Operation::SetValue, &th_inp, None, Some("")));
+            cmds.push(DomCmd::new(Operation::SetValue, &td_inp, None, Some("")));
+        }
     }
 
     cmds

@@ -190,3 +190,10 @@ Development Check - 上達チェック
 - ボーナスダイスの無いregular以上のstackのあるskillを候補にする。
 - ロールした結果、技能値を超過しているか、96~100の範囲であれば、上達する。1d10を追加で処理して、判定としては 上達 n という出力になる
 - 通常の「失敗」「成功」という概念と違うので、Judge::{Developed,Undeveloped}を使う。labelは「上達」「上達なし」
+
+## Specification (仕様)
+
+### Limitation (制限事項)
+
+
+

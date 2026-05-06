@@ -76,6 +76,21 @@ function bind() {
     dispatch({ event_type: "input", target_id: e.target.id, value: e.target.value });
   });
 
+  // modal内 select: spec選択をRust側に渡す
+  document.getElementById("modal")?.addEventListener("change", (e) => {
+    const el = e.target;
+    if (el.tagName !== "SELECT") return;
+    dispatch({ event_type: "change", target_id: el.id, value: el.value });
+  });
+
+  // modal内 spec input: focusout時にRust側へ通知（空かどうかはwasm側で判断）
+  document.getElementById("modal")?.addEventListener("focusout", (e) => {
+    const el = e.target;
+    if (el.tagName !== "INPUT" || el.type !== "text") return;
+    if (!el.id.endsWith("_td-1_input")) return;
+    dispatch({ event_type: "blur", target_id: el.id, value: el.value });
+  });
+
   // modal内 input: number と text を Rust 側に渡す
   document.getElementById("modal")?.addEventListener("input", (e) => {
     const el = e.target;

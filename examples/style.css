@@ -91,8 +91,9 @@ article.warning { background: var(--color-semantic-warning-yellow-2); }
   width: 100%;
 }
 
-/* ───── fieldset-3 専門分野input ───── */
+/* ───── fieldset-3 専門分野 select/input ───── */
 
+#modal [id$="_td-1_select"],
 #modal [id$="_td-1_input"] {
   max-width: 5rem;
 }

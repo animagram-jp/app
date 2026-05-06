@@ -9,6 +9,8 @@ use crate::js_client::{
     dom,
 };
 use crate::character::{Character, Characteristic, Skill, Profile};
+use crate::Lang;
+const LANG: Lang = Lang::Ja;
 use crate::data_struct::{DataStruct, WAL_NAME};
 use crate::wal::WalStore;
 
@@ -205,7 +207,7 @@ impl CanvasState {
             && segs[5].tag == dom::Tag::Input
         {
             let row = segs[3].n.unwrap_or(0) as usize;
-            if row == 0 || row > 20 { return vec![]; }
+            if row == 0 || row > Skill::list().len() { return vec![]; }
             let skills = Skill::list();
             let skill  = &skills[row - 1];
             let field  = Character::Skill(Skill::list().remove(row - 1));
@@ -248,7 +250,7 @@ impl CanvasState {
                 let [base, delta, bonus] = vals;
                 crate::event::on_characteristic_input(row, base, delta, bonus)
             }
-            3 if row <= 20 => {
+            3 if row <= Skill::list().len() => {
                 let skills = Skill::list();
                 let field  = Character::Skill(Skill::list().remove(row - 1));
                 let (mut occ, mut int, mut bonus, spec) = self.buf.get(&field)
@@ -278,6 +280,73 @@ impl CanvasState {
             let mut cmds = crate::event::update_character_view(&self.buf);
             cmds.extend(crate::event::update_debug_select(&self.saved_name_list(), self.buf.identity_opt()));
             return cmds;
+        }
+
+        let segs = &id.0;
+
+        // "modal_fieldset-3_table_tr-{row}_td-1_select"
+        if segs.len() == 5
+            && segs[0].tag == dom::Tag::Modal
+            && segs[1].tag == dom::Tag::Fieldset && segs[1].n == Some(3)
+            && segs[3].tag == dom::Tag::Tr
+            && segs[4].tag == dom::Tag::Select
+        {
+            let row    = segs[3].n.unwrap_or(0) as usize;
+            let inp_id = format!("modal_fieldset-3_table_tr-{}_td-1_input", row);
+            if value == "custom" {
+                // 自由記入モード: inputをshow+focus、specをクリア
+                let field = Character::Skill(Skill::list().remove(row - 1));
+                let (occ, int, bonus, _) = self.buf.get(&field)
+                    .map(Skill::decode).unwrap_or((0, 0, 0, String::new()));
+                let _ = self.buf.set(&field, &Skill::encode(occ, int, bonus, Some("")));
+                return vec![
+                    DomCmd::new(Operation::RemoveClass, &inp_id, None, Some("hidden")),
+                    DomCmd::new(Operation::SetValue,    &inp_id, None, Some("")),
+                    DomCmd::new(Operation::Focus,       &inp_id, None, None),
+                ];
+            } else {
+                // 固定variant選択: inputをhide、specをvalueで保存
+                let field = Character::Skill(Skill::list().remove(row - 1));
+                let (occ, int, bonus, _) = self.buf.get(&field)
+                    .map(Skill::decode).unwrap_or((0, 0, 0, String::new()));
+                let _ = self.buf.set(&field, &Skill::encode(occ, int, bonus, Some(value)));
+                let skill  = Skill::list().remove(row - 1);
+                let th_id  = format!("modal_fieldset-3_table_tr-{}_th", row);
+                let base_id = format!("modal_fieldset-3_table_tr-{}_span-1", row);
+                let mut cmds = vec![
+                    DomCmd::new(Operation::AddClass, &inp_id, None, Some("hidden")),
+                    DomCmd::new(Operation::SetText,  &th_id,  None, Some(&skill.label_with_spec(LANG, value))),
+                    DomCmd::new(Operation::SetText,  &base_id, None, Some(&skill.base_value().to_string())),
+                ];
+                // 合計も更新
+                let (occ2, int2, bonus2, _) = self.buf.get(&field)
+                    .map(Skill::decode).unwrap_or((0, 0, 0, String::new()));
+                cmds.extend(crate::event::on_skill_input(row, skill.base_value(), occ2, int2, bonus2));
+                return cmds;
+            }
+        }
+
+        vec![]
+    }
+
+    fn on_blur(&mut self, id: &dom::Id, value: &str) -> Vec<DomCmd> {
+        let segs = &id.0;
+        // "modal_fieldset-3_table_tr-{row}_td-1_input" + 空 → selectに戻す
+        if segs.len() == 6
+            && segs[0].tag == dom::Tag::Modal
+            && segs[1].tag == dom::Tag::Fieldset && segs[1].n == Some(3)
+            && segs[3].tag == dom::Tag::Tr
+            && segs[4].tag == dom::Tag::Td && segs[4].n == Some(1)
+            && segs[5].tag == dom::Tag::Input
+            && value.is_empty()
+        {
+            let row    = segs[3].n.unwrap_or(0) as usize;
+            let inp_id = format!("modal_fieldset-3_table_tr-{}_td-1_input", row);
+            let sel_id = format!("modal_fieldset-3_table_tr-{}_td-1_select", row);
+            return vec![
+                DomCmd::new(Operation::AddClass,    &inp_id, None, Some("hidden")),
+                DomCmd::new(Operation::RemoveClass, &sel_id, None, Some("hidden")),
+            ];
         }
         vec![]
     }
@@ -348,6 +417,10 @@ impl App {
             EventType::Input    => {
                 let value = get_js_str(&payload, "value").unwrap_or_default();
                 self.canvas_state.on_input(&id, &value)
+            }
+            EventType::Blur     => {
+                let value = get_js_str(&payload, "value").unwrap_or_default();
+                self.canvas_state.on_blur(&id, &value)
             }
             EventType::PointerDown | EventType::PointerMove
             | EventType::PointerUp | EventType::PointerCancel => {
