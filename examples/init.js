@@ -25,6 +25,7 @@ function execute({ operation, id, attribute, value }) {
     case 7: el.showModal(); break;
     case 8: el.close(); break;
     case 9: applyClass(el, value); break;
+    case 10: el.innerHTML = value ?? ""; break;
   }
 }
 
@@ -65,20 +66,29 @@ function bind() {
     dispatch({ event_type: "keydown", target_id: e.target.id ?? "", key: e.key });
   });
 
+  // character select: キャラ切り替え
+  document.getElementById("main_div_section-1_section-1_select")?.addEventListener("change", (e) => {
+    dispatch({ event_type: "change", target_id: e.target.id, value: e.target.value });
+  });
+
   // textarea input: "/" トリガー検知用
   document.getElementById("main_div_section-3_textarea")?.addEventListener("input", (e) => {
     dispatch({ event_type: "input", target_id: e.target.id, value: e.target.value });
   });
 
-  // modal内 number input: 値をそのままRust側に渡す
+  // modal内 input: number と text を Rust 側に渡す
   document.getElementById("modal")?.addEventListener("input", (e) => {
     const el = e.target;
-    if (el.tagName !== "INPUT" || el.type !== "number") return;
-    dispatch({
-      event_type: "input",
-      target_id: el.id,
-      value: String(isNaN(el.valueAsNumber) ? 0 : el.valueAsNumber),
-    });
+    if (el.tagName !== "INPUT") return;
+    if (el.type === "number") {
+      dispatch({
+        event_type: "input",
+        target_id: el.id,
+        value: String(isNaN(el.valueAsNumber) ? 0 : el.valueAsNumber),
+      });
+    } else if (el.type === "text") {
+      dispatch({ event_type: "input", target_id: el.id, value: el.value });
+    }
   });
 }
 

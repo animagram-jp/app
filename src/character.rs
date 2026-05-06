@@ -1,8 +1,5 @@
-use wasm_bindgen::JsValue;
 use crate::Lang;
 use crate::datetime;
-use crate::data_struct::DataStruct;
-use crate::list::ListError;
 
 // ============================================================
 // --- システム (System) ---
@@ -20,36 +17,16 @@ impl Identity {
             Self::Global => "UUID",
         }
     }
-    pub fn id(&self) -> usize {
-        match self {
-            Self::Local  => 1,
-            Self::Global => 2,
+    pub fn id(&self, base: usize) -> usize {
+        base + match self {
+            Self::Local  => 0,
+            Self::Global => 1,
         }
     }
-    pub fn decode(&self, js_value: &[JsValue]) -> Vec<u8> {
-        match self {
-            Self::Local  => {
-                let v = js_value[0].as_f64().unwrap_or(0.0) as u32;
-                v.to_le_bytes().to_vec()
-            }
-            Self::Global => {
-                let v = js_value[0].as_f64().unwrap_or(0.0) as u128;
-                v.to_le_bytes().to_vec()
-            }
-        }
-    }
-    pub fn encode(&self, value: &[u8]) -> Vec<JsValue> {
-        match self {
-            Self::Local  => {
-                let v = u32::from_le_bytes(value[..4].try_into().unwrap_or_default());
-                vec![JsValue::from_f64(v as f64)]
-            }
-            Self::Global => {
-                let v = u128::from_le_bytes(value[..16].try_into().unwrap_or_default());
-                vec![JsValue::from_f64(v as f64)]
-            }
-        }
-    }
+    /// u32 (Local) or u128 (Global) → LE bytes
+    pub fn encode(&self, value: &[u8]) -> Vec<u8> { value.to_vec() }
+    /// LE bytes → u32 (Local) or u128 (Global)
+    pub fn decode(&self, bytes: &[u8]) -> Vec<u8> { bytes.to_vec() }
 }
 
 pub enum Timestamp {
@@ -66,24 +43,14 @@ impl Timestamp {
             (Self::Update, Lang::Ja) => "更新日時",
         }
     }
-    pub fn id(&self) -> usize {
-        match self {
-            Self::Create => 3,
-            Self::Update => 4,
+    pub fn id(&self, base: usize) -> usize {
+        base + match self {
+            Self::Create => 0,
+            Self::Update => 1,
         }
     }
-    // pub Timestamp label(&self, lang: Lang) -> String {
-    //     match (self, lang) {
-    //         (_, Lang::En) => format!"{}-{}-{} {}:{}",
-    //         (_, Lang::Ja) => format!"{}年{}月{}日 {}時{}分",
-    //     }
-    // }
-    pub fn decode(&self, js_value: &[JsValue]) -> Vec<u8> { // -> u64
-        let year        = js_value.get(0).and_then(|v| v.as_f64()).unwrap_or(0.0) as u64;
-        let month       = js_value.get(1).and_then(|v| v.as_f64()).unwrap_or(0.0) as u64;
-        let day         = js_value.get(2).and_then(|v| v.as_f64()).unwrap_or(0.0) as u64;
-        let hour        = js_value.get(3).and_then(|v| v.as_f64()).unwrap_or(0.0) as u64;
-        let minute      = js_value.get(4).and_then(|v| v.as_f64()).unwrap_or(0.0) as u64;
+    /// (year, month, day, hour, minute) → 8バイト LE u64 (datetimeパック)
+    pub fn encode(year: u64, month: u64, day: u64, hour: u64, minute: u64) -> Vec<u8> {
         let mut ko = 0u64;
         ko = datetime::set(ko, datetime::OFFSET_YEAR,   datetime::MASK_YEAR,   year);
         ko = datetime::set(ko, datetime::OFFSET_MONTH,  datetime::MASK_MONTH,  month);
@@ -93,15 +60,16 @@ impl Timestamp {
         ko.to_le_bytes().to_vec()
     }
 
-    pub fn encode(&self, value: &[u8]) -> Vec<JsValue> { // → [year, month, day, hour, minute]
-        let ko = u64::from_le_bytes(value[..8].try_into().unwrap_or_default());
-        vec![
-            JsValue::from_f64(datetime::get(ko, datetime::OFFSET_YEAR,   datetime::MASK_YEAR)   as f64),
-            JsValue::from_f64(datetime::get(ko, datetime::OFFSET_MONTH,  datetime::MASK_MONTH)  as f64),
-            JsValue::from_f64(datetime::get(ko, datetime::OFFSET_DAY,    datetime::MASK_DAY)    as f64),
-            JsValue::from_f64(datetime::get(ko, datetime::OFFSET_HOUR,   datetime::MASK_HOUR)   as f64),
-            JsValue::from_f64(datetime::get(ko, datetime::OFFSET_MINUTE, datetime::MASK_MINUTE) as f64),
-        ]
+    /// 8バイト LE u64 → (year, month, day, hour, minute)
+    pub fn decode(bytes: &[u8]) -> (u64, u64, u64, u64, u64) {
+        let ko = u64::from_le_bytes(bytes[..8].try_into().unwrap_or_default());
+        (
+            datetime::get(ko, datetime::OFFSET_YEAR,   datetime::MASK_YEAR),
+            datetime::get(ko, datetime::OFFSET_MONTH,  datetime::MASK_MONTH),
+            datetime::get(ko, datetime::OFFSET_DAY,    datetime::MASK_DAY),
+            datetime::get(ko, datetime::OFFSET_HOUR,   datetime::MASK_HOUR),
+            datetime::get(ko, datetime::OFFSET_MINUTE, datetime::MASK_MINUTE),
+        )
     }
 }
 
@@ -134,55 +102,25 @@ impl Character {
         }
     }
     pub fn id(&self) -> usize {
-        // todo: Profile以降のid()にオフセット整数を渡すイメージで、余裕をもって数値を一意にする
         match self {
-            Self::Identity(i)       => i.id(),
-            Self::Timestamp(t)      => t.id(),
-            Self::Profile(p)        => p.id(),
-            Self::Characteristic(c) => c.id(),
-            Self::Derived(d)        => d.id(),
-            Self::Skill(s)          => s.id(),
-            Self::Equipment(e)      => e.id(),
-            Self::Backstory(b)      => b.id(),
+            Self::Identity(i)       => i.id(  0),  //   0-  1 (2件)
+            Self::Timestamp(t)      => t.id(  2),  //   2-  3 (2件)
+            Self::Profile(p)        => p.id( 10),  //  10- 15 (6件)
+            Self::Characteristic(c) => c.id( 20),  //  20- 28 (9件)
+            Self::Derived(d)        => d.id( 30),  //  30- 37 (8件)
+            Self::Skill(s)          => s.id( 40),  //  40- 86 (47件)
+            Self::Equipment(e)      => e.id( 90),  //  90-... (拡張余地)
+            Self::Backstory(b)      => b.id(100),  // 100-109 (10件)
         }
-    }
-    pub fn decode(&self, js_value: &[JsValue]) -> Vec<u8> {
-        match self {
-            Self::Identity(i)       => i.decode(js_value),
-            Self::Timestamp(t)      => t.decode(js_value),
-            Self::Profile(p)        => p.decode(js_value),
-            Self::Characteristic(c) => c.decode(js_value),
-            Self::Derived(d)        => d.decode(js_value),
-            Self::Skill(s)          => s.decode(js_value),
-            Self::Equipment(e)      => e.decode(js_value),
-            Self::Backstory(b)      => b.decode(js_value),
-        }
-    }
-    pub fn encode(&self, value: &[u8]) -> Vec<JsValue> {
-        match self {
-            Self::Identity(i)       => i.encode(value),
-            Self::Timestamp(t)      => t.encode(value),
-            Self::Profile(p)        => p.encode(value),
-            Self::Characteristic(c) => c.encode(value),
-            Self::Derived(d)        => d.encode(value),
-            Self::Skill(s)          => s.encode(value),
-            Self::Equipment(e)      => e.encode(value),
-            Self::Backstory(b)      => b.encode(value),
-        }
-    }
-    pub fn update(&self) {
-        // todo: Derived/Skill の再計算
     }
 }
 
-impl crate::data_struct::CharacterField for Character {
-    fn id(&self) -> usize { self.id() }
-}
 
 // ============================================================
 // --- プロフィール (Name, Birthppalce, Pronoun, Occupation, Residence, Age) ---
 // ============================================================
 
+#[derive(Clone, Copy)]
 pub enum Profile {
     Name, // todo: 「名前」と「Option(呼び方)」の二値構成に拡充。labelは format!"{} ({})"。
     Birthpalce,
@@ -193,17 +131,14 @@ pub enum Profile {
 }
 
 impl Profile {
-    pub fn decode(&self, _js_value: &[JsValue]) -> Vec<u8> { todo!() }
-    pub fn encode(&self, _value: &[u8]) -> Vec<JsValue> { todo!() }
-
-    pub fn id(&self) -> usize {
-        match self {
-            Self::Name       => 10,
-            Self::Birthpalce => 11,
-            Self::Pronoun    => 12,
-            Self::Occupation => 13,
-            Self::Residence  => 14,
-            Self::Age        => 15,
+    pub fn id(&self, base: usize) -> usize {
+        base + match self {
+            Self::Name       => 0,
+            Self::Birthpalce => 1,
+            Self::Pronoun    => 2,
+            Self::Occupation => 3,
+            Self::Residence  => 4,
+            Self::Age        => 5,
         }
     }
 
@@ -327,6 +262,7 @@ impl Occupation {
 // ============================================================
 
 // --- 能力値 (Characteristic) --- p.28
+#[derive(Clone, Copy)]
 pub enum Characteristic {
     Strength,
     Constitution,
@@ -340,21 +276,35 @@ pub enum Characteristic {
 }
 
 impl Characteristic {
-    pub fn id(&self) -> usize {
-        match self {
-            Self::Strength     => 20,
-            Self::Constitution => 21,
-            Self::Size         => 22,
-            Self::Dexterity    => 23,
-            Self::Appearance   => 24,
-            Self::Intelligence => 25,
-            Self::Power        => 26,
-            Self::Education    => 27,
-            Self::Luck         => 28,
+    pub fn id(&self, base: usize) -> usize {
+        base + match self {
+            Self::Strength     => 0,
+            Self::Constitution => 1,
+            Self::Size         => 2,
+            Self::Dexterity    => 3,
+            Self::Appearance   => 4,
+            Self::Intelligence => 5,
+            Self::Power        => 6,
+            Self::Education    => 7,
+            Self::Luck         => 8,
         }
     }
-    pub fn decode(&self, _js_value: &[JsValue]) -> Vec<u8> { todo!() }
-    pub fn encode(&self, _value: &[u8]) -> Vec<JsValue> { todo!() }
+
+    /// [base, delta, bonus] → 12バイト (各4バイト LE i32)
+    pub fn encode(vals: [i32; 3]) -> Vec<u8> {
+        vals.iter().flat_map(|v| v.to_le_bytes()).collect()
+    }
+
+    /// 12バイト → [base, delta, bonus]
+    pub fn decode(bytes: &[u8]) -> [i32; 3] {
+        std::array::from_fn(|i| {
+            let s = i * 4;
+            bytes.get(s..s + 4)
+                .and_then(|b| b.try_into().ok())
+                .map(i32::from_le_bytes)
+                .unwrap_or(0)
+        })
+    }
 
     pub fn label(&self, lang: Lang) -> &str {
         match (self, lang) {
@@ -371,7 +321,7 @@ impl Characteristic {
         }
     }
 
-    pub fn all() -> &'static [Characteristic] {
+    pub fn list() -> &'static [Characteristic] {
         &[
             Self::Strength,
             Self::Constitution,
@@ -402,6 +352,7 @@ impl Characteristic {
 
 
 // --- 信用 (Credit Rating) ---
+#[derive(Clone, Copy)]
 pub struct CreditRating;
 
 impl CreditRating {
@@ -411,6 +362,7 @@ impl CreditRating {
 }
 
 // --- スキル (Skill) --- p.54
+#[derive(Clone)]
 pub enum Skill {
     Accounting,
     Anthropology,
@@ -463,13 +415,13 @@ pub enum Skill {
 }
 
 impl Skill {
-    pub fn default_rows() -> Vec<Skill> {
+    pub fn list() -> Vec<Skill> {
         vec![
             Self::Accounting,
             Self::Anthropology,
             Self::Archaeology,
             Self::Appraise,
-            Self::ArtCraft(ArtCraftSpec::Acting),
+            Self::ArtCraft(ArtCraftSpec),
             Self::Charm,
             Self::Climb,
             Self::ComputerUse,
@@ -481,16 +433,136 @@ impl Skill {
             Self::ElecRepair,
             Self::Electronics,
             Self::FastTalk,
-            Self::Fighting(FightingSpec::Brawl),
-            Self::Firearms(FirearmsSpec::Handgun),
+            Self::Fighting(FightingSpec),
+            Self::Firearms(FirearmsSpec),
             Self::FirstAid,
             Self::History,
+            Self::Intimidate,
+            Self::Jump,
+            Self::LanguageOther(LanguageSpec),
+            Self::LanguageOwn,
+            Self::Law,
+            Self::LibraryUse,
+            Self::Listen,
+            Self::Locksmith,
+            Self::MechRepair,
+            Self::Medicine,
+            Self::NaturalWorld,
+            Self::Navigate,
+            Self::Occult,
+            Self::Persuade,
+            Self::Pilot(PilotSpec),
+            Self::Psychoanalysis,
+            Self::Psychology,
+            Self::Ride,
+            Self::Science(ScienceSpec),
+            Self::SleightOfHand,
+            Self::SpotHidden,
+            Self::Stealth,
+            Self::Survival(SurvivalSpec),
+            Self::Swim,
+            Self::Throw,
+            Self::Track,
+            Self::Custom { .. }
         ]
     }
 
-    pub fn id(&self) -> usize { 0 } // todo: 一意ID割り当て
-    pub fn decode(&self, _js_value: &[JsValue]) -> Vec<u8> { todo!() }
-    pub fn encode(&self, _value: &[u8]) -> Vec<JsValue> { todo!() }
+    pub fn id(&self, base: usize) -> usize {
+        base + match self {
+            Self::Accounting        =>  0,
+            Self::Anthropology      =>  1,
+            Self::Archaeology       =>  2,
+            Self::Appraise          =>  3,
+            Self::ArtCraft(_)       =>  4,
+            Self::Charm             =>  5,
+            Self::Climb             =>  6,
+            Self::ComputerUse       =>  7,
+            Self::CreditRating(_)   =>  8,
+            Self::CthulhuMythos     =>  9,
+            Self::Disguise          => 10,
+            Self::Dodge             => 11,
+            Self::DriveAuto         => 12,
+            Self::ElecRepair        => 13,
+            Self::Electronics       => 14,
+            Self::FastTalk          => 15,
+            Self::Fighting(_)       => 16,
+            Self::Firearms(_)       => 17,
+            Self::FirstAid          => 18,
+            Self::History           => 19,
+            Self::Intimidate        => 20,
+            Self::Jump              => 21,
+            Self::LanguageOther(_)  => 22,
+            Self::LanguageOwn       => 23,
+            Self::Law               => 24,
+            Self::LibraryUse        => 25,
+            Self::Listen            => 26,
+            Self::Locksmith         => 27,
+            Self::MechRepair        => 28,
+            Self::Medicine          => 29,
+            Self::NaturalWorld      => 30,
+            Self::Navigate          => 31,
+            Self::Occult            => 32,
+            Self::Persuade          => 33,
+            Self::Pilot(_)          => 34,
+            Self::Psychoanalysis    => 35,
+            Self::Psychology        => 36,
+            Self::Ride              => 37,
+            Self::Science(_)        => 38,
+            Self::SleightOfHand     => 39,
+            Self::SpotHidden        => 40,
+            Self::Stealth           => 41,
+            Self::Survival(_)       => 42,
+            Self::Swim              => 43,
+            Self::Throw             => 44,
+            Self::Track             => 45,
+            Self::Custom { .. }     => 46,
+        }
+    }
+
+    /// [occ: u16 LE][int: u16 LE][bonus: i32 LE][spec_len: u16 LE][spec: utf8...]
+    pub fn encode(occ: u16, int: u16, bonus: i32, spec: Option<&str>) -> Vec<u8> {
+        let spec_bytes = spec.unwrap_or("").as_bytes();
+        let mut b = Vec::with_capacity(10 + spec_bytes.len());
+        b.extend_from_slice(&occ.to_le_bytes());
+        b.extend_from_slice(&int.to_le_bytes());
+        b.extend_from_slice(&bonus.to_le_bytes());
+        b.extend_from_slice(&(spec_bytes.len() as u16).to_le_bytes());
+        b.extend_from_slice(spec_bytes);
+        b
+    }
+
+    /// → (occ, int, bonus, spec)
+    pub fn decode(bytes: &[u8]) -> (u16, u16, i32, String) {
+        let occ   = bytes.get(0..2).and_then(|b| b.try_into().ok()).map(u16::from_le_bytes).unwrap_or(0);
+        let int   = bytes.get(2..4).and_then(|b| b.try_into().ok()).map(u16::from_le_bytes).unwrap_or(0);
+        let bonus = bytes.get(4..8).and_then(|b| b.try_into().ok()).map(i32::from_le_bytes).unwrap_or(0);
+        let spec_len = bytes.get(8..10).and_then(|b| b.try_into().ok()).map(u16::from_le_bytes).unwrap_or(0) as usize;
+        let spec = bytes.get(10..10 + spec_len)
+            .map(|b| String::from_utf8_lossy(b).into_owned())
+            .unwrap_or_default();
+        (occ, int, bonus, spec)
+    }
+
+    /// spec有りvariantのデフォルト専門分野ラベルを返す。spec無しはNone。
+    pub fn spec_label(&self, lang: Lang) -> Option<String> {
+        match self {
+            Self::ArtCraft(spec)      => Some(spec.label(lang).to_string()),
+            Self::Fighting(spec)      => Some(spec.label(lang).to_string()),
+            Self::Firearms(spec)      => Some(spec.label(lang).to_string()),
+            Self::LanguageOther(spec) => Some(spec.label(lang).to_string()),
+            Self::Pilot(spec)         => Some(spec.label(lang).to_string()),
+            Self::Science(spec)       => Some(spec.label(lang).to_string()),
+            Self::Survival(spec)      => Some(spec.label(lang).to_string()),
+            Self::Custom { spec, .. } => spec.as_deref().map(str::to_string),
+            _                         => None,
+        }
+    }
+
+    /// spec文字列を受け取り "スキル名 (spec)" を返す。specが空ならスキル名のみ。
+    pub fn label_with_spec(&self, lang: Lang, spec: &str) -> String {
+        let base = self.label(lang);
+        if spec.is_empty() { base } else { format!("{} ({})", base, spec) }
+    }
 
     pub fn base_value(&self) -> u16 {
         match self {
@@ -649,6 +721,7 @@ impl Skill {
 }
 
 // --- 芸術/製作 専門分野 (Art/Craft Specialization)  --- p.62
+#[derive(Clone)]
 pub enum ArtCraftSpec {
     Acting,       // 演劇
     Barber,       // 理容
@@ -703,6 +776,7 @@ impl ArtCraftSpec {
 }
 
 // --- 近接戦闘 専門分野 (Fighting Specialization) --- p.61
+#[derive(Clone)]
 pub enum FightingSpec {
     Axe,          // 斧          15%
     Brawl,        // 格闘        25%
@@ -754,6 +828,7 @@ impl FightingSpec {
 }
 
 // --- 射撃 専門分野 (Firearms Specialization) --- p.64
+#[derive(Clone)]
 pub enum FirearmsSpec {
     Bow,           // 弓                   15%
     Handgun,       // 拳銃                 20%
@@ -797,6 +872,7 @@ impl FirearmsSpec {
 }
 
 // --- ほかの言語 専門分野 (Language Other Specialization) ---
+#[derive(Clone)]
 pub enum LanguageSpec {
     Custom(String),
 }
@@ -810,6 +886,7 @@ impl LanguageSpec {
 }
 
 // --- 操縦 専門分野 (Pilot Specialization) --- p.67
+#[derive(Clone)]
 pub enum PilotSpec {
     // --- 両時代共通 ---
     Boat,       // ボート
@@ -861,6 +938,7 @@ impl PilotSpec {
 }
 
 // --- 科学 専門分野 (Science Specialization) --- p.59
+#[derive(Clone)]
 pub enum ScienceSpec {
     Astronomy,    // 天文学
     Biology,      // 生物学
@@ -915,6 +993,7 @@ impl ScienceSpec {
 }
 
 // --- サバイバル 専門分野 (Survival Specialization) --- p.63
+#[derive(Clone)]
 pub enum SurvivalSpec {
     Arctic,
     Desert,
@@ -948,10 +1027,12 @@ pub enum Equipment {
 }
 
 impl Equipment {
-    pub fn id(&self) -> usize { 0 }
+    pub fn id(&self, base: usize) -> usize {
+        base + match self {
+            Self::Custom(_) => 0,
+        }
+    }
     pub fn label(&self, _lang: Lang) -> &str { "" }
-    pub fn decode(&self, _js_value: &[JsValue]) -> Vec<u8> { vec![] }
-    pub fn encode(&self, _value: &[u8]) -> Vec<JsValue> { vec![] }
 }
 
 // ============================================================
@@ -972,9 +1053,20 @@ pub enum Backstory {
 }
 
 impl Backstory {
-    pub fn id(&self) -> usize { 0 } // todo: 一意ID割り当て
-    pub fn decode(&self, _js_value: &[JsValue]) -> Vec<u8> { vec![] } // todo
-    pub fn encode(&self, _value: &[u8]) -> Vec<JsValue> { vec![] } // todo
+    pub fn id(&self, base: usize) -> usize {
+        base + match self {
+            Self::KeyConnection(_)              => 0,
+            Self::PersonalDescription           => 1,
+            Self::IdeologyAndBeliefs            => 2,
+            Self::SignificantPeople             => 3,
+            Self::MeaningfulLocation            => 4,
+            Self::TreasuredPossessions          => 5,
+            Self::Trait                         => 6,
+            Self::PhobiasAndManias              => 7,
+            Self::ArcaneTomesAndSpells          => 8,
+            Self::EncountersWithStrangeEntities => 9,
+        }
+    }
 
     pub fn label(&self, lang: Lang) -> &'static str {
         match (self, lang) {
@@ -1018,9 +1110,18 @@ pub enum Derived {
 }
 
 impl Derived {
-    pub fn id(&self) -> usize { 0 } // todo: 一意ID割り当て
-    pub fn decode(&self, _js_value: &[JsValue]) -> Vec<u8> { todo!() }
-    pub fn encode(&self, _value: &[u8]) -> Vec<JsValue> { todo!() }
+    pub fn id(&self, base: usize) -> usize {
+        base + match self {
+            Self::HitPoints             => 0,
+            Self::MagicPoints           => 1,
+            Self::Build                 => 2,
+            Self::DamageBonus           => 3,
+            Self::MoveRate              => 4,
+            Self::Sanity                => 5,
+            Self::OccupationSkillPoints => 6,
+            Self::InterestSkillPoints   => 7,
+        }
+    }
 
     pub fn label(&self, lang: Lang) -> &str {
         match (self, lang){
@@ -1040,7 +1141,7 @@ impl Derived {
             (Self::InterestSkillPoints,   Lang::Ja) => "興味技能ポイント",
         }
     }
-    pub fn compute(&self, data_struct: &crate::data_struct::DataStruct<Character>) -> Result<Vec<u8>, crate::list::ListError> {
+    pub fn compute(&self, data_struct: &crate::data_struct::DataStruct) -> Result<Vec<u8>, crate::list::ListError> {
         match self {
             Self::HitPoints => {
                 let constitution = data_struct.get(&Character::Characteristic(Characteristic::Constitution))?;

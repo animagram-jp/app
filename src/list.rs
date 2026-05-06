@@ -50,6 +50,7 @@ fn is_null<T: Default + PartialEq>(unit: &[T]) -> bool {
 /// let r = list.set(&0, &mut 2, &[50u32, 60], true).unwrap();
 /// assert!(matches!(r, SetOutcome::Created(1)));
 /// ```
+#[derive(Clone)]
 pub struct List<T> {
     pub data: Vec<T>,
 }
@@ -170,6 +171,7 @@ impl<T: Copy + Default + PartialEq> List<T> {
 /// vl.delete(&1).unwrap();
 /// assert!(vl.get(&1).is_err());
 /// ```
+#[derive(Clone)]
 pub struct VariableList<T> {
     pub identity: Vec<usize>,
     pub data: Vec<T>,

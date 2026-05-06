@@ -9,6 +9,9 @@ self.addEventListener('message', async (e) => {
 
     app = await App.init();
     self.postMessage({ type: 'ready' });
+    const init_cmds = Array.from(app.flush() ?? []);
+    console.log('[init] dom_cmds count:', init_cmds.length, init_cmds);
+    if (init_cmds.length) self.postMessage({ type: 'execute', payload: init_cmds });
     return;
   }
 

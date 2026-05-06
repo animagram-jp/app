@@ -16,6 +16,7 @@ pub enum Operation {
     OpenModal,
     CloseModal,
     JsClass,
+    SetHtml,
 }
 
 impl Operation {
@@ -30,6 +31,7 @@ impl Operation {
             Self::OpenModal   => 7,
             Self::CloseModal  => 8,
             Self::JsClass     => 9,
+            Self::SetHtml     => 10,
         }
     }
 }

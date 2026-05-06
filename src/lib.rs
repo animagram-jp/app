@@ -8,6 +8,7 @@ pub mod roll;
 pub mod js_client;
 pub mod event;
 pub mod app;
+pub mod wal;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Lang { En, Ja }

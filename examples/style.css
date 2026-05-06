@@ -85,6 +85,18 @@ article.warning { background: var(--color-semantic-warning-yellow-2); }
 }
 
 
+/* ───── debug select: キャラ一覧 ───── */
+
+#main_div_section-1_section-1_select {
+  width: 100%;
+}
+
+/* ───── fieldset-3 専門分野input ───── */
+
+#modal [id$="_td-1_input"] {
+  max-width: 5rem;
+}
+
 /* ───── dialog ───── */
 
 dialog {
