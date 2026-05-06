@@ -284,7 +284,6 @@ pub mod Dom {
         Legend,
         P,
         Table, Thead, Tbody, Tr, Th, Td,
-        Save,
         Other,
     }
 

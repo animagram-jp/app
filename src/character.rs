@@ -1,3 +1,9 @@
+use wasm_bindgen::JsValue;
+use crate::Lang;
+use crate::datetime;
+use crate::data_struct::DataStruct;
+use crate::list::ListError;
+
 // ============================================================
 // --- システム (System) ---
 // ============================================================
@@ -47,7 +53,7 @@ impl Identity {
 }
 
 pub enum Timestamp {
-    Create
+    Create,
     Update,
 }
 
@@ -117,21 +123,21 @@ pub enum Character {
 impl Character {
     pub fn label(&self, lang: Lang) -> String {
         match self {
-            Self::Identity(i)       => i.label(lang),
-            Self::Timestamp(t)      => t.label(lang),
-            Self::Profile(p)        => p.label(lang),
-            Self::Characteristic(c) => c.label(lang),
-            Self::Derived(d)        => d.label(lang),
+            Self::Identity(i)       => i.label().to_string(),
+            Self::Timestamp(t)      => t.label(lang).to_string(),
+            Self::Profile(p)        => p.label(lang).to_string(),
+            Self::Characteristic(c) => c.label(lang).to_string(),
+            Self::Derived(d)        => d.label(lang).to_string(),
             Self::Skill(s)          => s.label(lang),
-            Self::Equipment(e)      => e.label(lang),
-            Self::Backstory(b)      => b.label(lang),
+            Self::Equipment(e)      => e.label(lang).to_string(),
+            Self::Backstory(b)      => b.label(lang).to_string(),
         }
     }
     pub fn id(&self) -> usize {
-        INDEX_OFFSET = [2,3]
+        // todo: こういうイメージで余裕をもって数値を一意にする
         match self {
-            Self::Identity(i)       => i.id(INDEX_OFFSET[0]), // todo: こういうイメージで余裕をもって数値を一意にする
-            Self::Timestamp(t)      => t.id(INDEX_OFFSET[1]),
+            Self::Identity(i)       => i.id(),
+            Self::Timestamp(t)      => t.id(),
             Self::Profile(p)        => p.id(),
             Self::Characteristic(c) => c.id(),
             Self::Derived(d)        => d.id(),
@@ -164,13 +170,13 @@ impl Character {
             Self::Backstory(b)      => b.encode(value),
         }
     }
-    pub fn update(&self, data: &Data) -> Option<Vec<u8>> {
-        match self {
-            Self::Derived(d) => Some(d.update(data)),
-            Self::Skill(s)   => Some(s.update(data)),
-            _                => None,
-        }
+    pub fn update(&self) {
+        // todo: Derived/Skill の再計算
     }
+}
+
+impl crate::data_struct::CharacterField for Character {
+    fn id(&self) -> usize { self.id() }
 }
 
 // ============================================================
@@ -187,14 +193,28 @@ pub enum Profile {
 }
 
 impl Profile {
+    pub fn decode(&self, _js_value: &[JsValue]) -> Vec<u8> { todo!() }
+    pub fn encode(&self, _value: &[u8]) -> Vec<JsValue> { todo!() }
+
+    pub fn id(&self) -> usize {
+        match self {
+            Self::Name       => 10,
+            Self::Birthpalce => 11,
+            Self::Pronoun    => 12,
+            Self::Occupation => 13,
+            Self::Residence  => 14,
+            Self::Age        => 15,
+        }
+    }
+
     pub fn label(&self, lang: Lang) -> &'static str {
         match (self, lang) {
             (Self::Name, Lang::En) => "Name",
             (Self::Name, Lang::Ja) => "名前",
             (Self::Birthpalce, Lang::En) => "Birthplace",
             (Self::Birthpalce, Lang::Ja) => "出身",
-            (Self::Birthpalce, Lang::En) => "Pronoun",
-            (Self::Birthpalce, Lang::Ja) => "性別",            
+            (Self::Pronoun, Lang::En) => "Pronoun",
+            (Self::Pronoun, Lang::Ja) => "性別",
             (Self::Occupation, Lang::En) => "Occupation",
             (Self::Occupation, Lang::Ja) => "職業",
             (Self::Residence, Lang::En) => "Residence",
@@ -307,7 +327,7 @@ impl Occupation {
 // ============================================================
 
 // --- 能力値 (Characteristic) --- p.28
-enum Characteristic {
+pub enum Characteristic {
     Strength,
     Constitution,
     Size,
@@ -320,6 +340,22 @@ enum Characteristic {
 }
 
 impl Characteristic {
+    pub fn id(&self) -> usize {
+        match self {
+            Self::Strength     => 20,
+            Self::Constitution => 21,
+            Self::Size         => 22,
+            Self::Dexterity    => 23,
+            Self::Appearance   => 24,
+            Self::Intelligence => 25,
+            Self::Power        => 26,
+            Self::Education    => 27,
+            Self::Luck         => 28,
+        }
+    }
+    pub fn decode(&self, _js_value: &[JsValue]) -> Vec<u8> { todo!() }
+    pub fn encode(&self, _value: &[u8]) -> Vec<JsValue> { todo!() }
+
     pub fn label(&self, lang: Lang) -> &str {
         match (self, lang) {
             (Self::Strength,     _) => "STR",
@@ -352,7 +388,7 @@ impl Characteristic {
 
 
 // --- スキル (Skill) --- p.54
-enum Skill {
+pub enum Skill {
     Accounting,
     Anthropology,
     Archaeology,
@@ -382,6 +418,7 @@ enum Skill {
     Listen,
     Locksmith,
     MechRepair,
+    Medicine,
     NaturalWorld,
     Navigate,
     Occult,
@@ -403,6 +440,10 @@ enum Skill {
 }
 
 impl Skill {
+    pub fn id(&self) -> usize { 0 } // todo: 一意ID割り当て
+    pub fn decode(&self, _js_value: &[JsValue]) -> Vec<u8> { todo!() }
+    pub fn encode(&self, _value: &[u8]) -> Vec<JsValue> { todo!() }
+
     pub fn base_value(&self) -> u16 {
         match self {
             Self::Accounting           =>  5,
@@ -702,7 +743,7 @@ enum LanguageSpec {
 }
 
 impl LanguageSpec {
-    pub fn label(&self) -> &str {
+    pub fn label(&self, _lang: Lang) -> &str {
         match self {
             Self::Custom(s) => s.as_str(),
         }
@@ -782,7 +823,7 @@ impl ScienceSpec {
     pub fn base_value(&self) -> u16 { 1 }
 
     pub fn label(&self, lang: Lang) -> &str {
-        match (spec, lang) {
+        match (self, lang) {
             (Self::Astronomy,    Lang::Ja) => "天文学",
             (Self::Astronomy,    Lang::En) => "Astronomy",
             (Self::Biology,      Lang::Ja) => "生物学",
@@ -825,8 +866,8 @@ enum SurvivalSpec {
 impl SurvivalSpec {
     pub fn base_value(&self) -> u16 { 10 }
 
-    pub fn label(self, lang: Lang) -> &str {
-        match (spec, lang) {
+    pub fn label(&self, lang: Lang) -> &str {
+        match (self, lang) {
             (Self::Arctic,    Lang::Ja) => "極地",
             (Self::Arctic,    Lang::En) => "Arctic",
             (Self::Desert,    Lang::Ja) => "砂漠",
@@ -839,10 +880,26 @@ impl SurvivalSpec {
 }
 
 // ============================================================
+// --- 装備 (Equipment) ---
+// ============================================================
+
+pub enum Equipment {
+    // todo: 装備・武器・所持品の定義
+    Custom(String),
+}
+
+impl Equipment {
+    pub fn id(&self) -> usize { 0 }
+    pub fn label(&self, _lang: Lang) -> &str { "" }
+    pub fn decode(&self, _js_value: &[JsValue]) -> Vec<u8> { vec![] }
+    pub fn encode(&self, _value: &[u8]) -> Vec<JsValue> { vec![] }
+}
+
+// ============================================================
 // --- バックストーリー (Backstory) ---
 // ============================================================
 
-enum Backstory {
+pub enum Backstory {
     KeyConnection(Box<Backstory>),
     PersonalDescription,
     IdeologyAndBeliefs,
@@ -856,10 +913,14 @@ enum Backstory {
 }
 
 impl Backstory {
-    pub fn label() {
-        match self {
-            (Self::KeyConnection,                 Lang::En) => "Key Connection",
-            (Self::KeyConnection,                 Lang::Ja) => "キーコネクション",
+    pub fn id(&self) -> usize { 0 } // todo: 一意ID割り当て
+    pub fn decode(&self, _js_value: &[JsValue]) -> Vec<u8> { vec![] } // todo
+    pub fn encode(&self, _value: &[u8]) -> Vec<JsValue> { vec![] } // todo
+
+    pub fn label(&self, lang: Lang) -> &'static str {
+        match (self, lang) {
+            (Self::KeyConnection(_),              Lang::En) => "Key Connection",
+            (Self::KeyConnection(_),              Lang::Ja) => "キーコネクション",
             (Self::PersonalDescription,           Lang::En) => "Personal Description",
             (Self::PersonalDescription,           Lang::Ja) => "個人的な記述",
             (Self::IdeologyAndBeliefs,            Lang::En) => "Ideology & Beliefs",
@@ -901,92 +962,76 @@ pub enum Derived {
 }
 
 impl Derived {
+    pub fn id(&self) -> usize { 0 } // todo: 一意ID割り当て
+    pub fn decode(&self, _js_value: &[JsValue]) -> Vec<u8> { todo!() }
+    pub fn encode(&self, _value: &[u8]) -> Vec<JsValue> { todo!() }
+
     pub fn label(&self, lang: Lang) -> &str {
         match (self, lang){
-            (Self::HitPoints,                    _) => "HP"
-            (Self::MagicPoints,                  _) => "MP"
-            (Self::Build,                 Lang::En) => "Build"
-            (Self::Build,                 Lang::Ja) => "ビルド"
-            (Self::DamageBonus,           Lang::En) => "Damage Bonus"
-            (Self::DamageBonus,           Lang::Ja) => "ダメージボーナス"
-            (Self::MoveRate,              Lang::En) => "Move Rate"
-            (Self::MoveRate,              Lang::Ja) => "移動率 (MOV)"
-            (Self::Sanity,                Lang::En) => "Sanity"
-            (Self::Sanity,                Lang::Ja) => "正気度"
+            (Self::HitPoints,                    _) => "HP",
+            (Self::MagicPoints,                  _) => "MP",
+            (Self::Build,                 Lang::En) => "Build",
+            (Self::Build,                 Lang::Ja) => "ビルド",
+            (Self::DamageBonus,           Lang::En) => "Damage Bonus",
+            (Self::DamageBonus,           Lang::Ja) => "ダメージボーナス",
+            (Self::MoveRate,              Lang::En) => "Move Rate",
+            (Self::MoveRate,              Lang::Ja) => "移動率 (MOV)",
+            (Self::Sanity,                Lang::En) => "Sanity",
+            (Self::Sanity,                Lang::Ja) => "正気度",
+            (Self::Dodge,                 Lang::En) => "Dodge",
+            (Self::Dodge,                 Lang::Ja) => "回避",
+            (Self::LanguageOwn,           Lang::En) => "Language (Own)",
+            (Self::LanguageOwn,           Lang::Ja) => "母国語",
             (Self::OccupationSkillPoints, Lang::En) => "Occupation Skill Points",
             (Self::OccupationSkillPoints, Lang::Ja) => "職業技能ポイント",
             (Self::InterestSkillPoints,   Lang::En) => "Interest Skill Points",
             (Self::InterestSkillPoints,   Lang::Ja) => "興味技能ポイント",
-            (Self::StandardOfLiving,      Lang::En) => "Standard of Living"
-            (Self::StandardOfLiving,      Lang::Ja) => "生活水準"
+            (Self::StandardOfLiving,      Lang::En) => "Standard of Living",
+            (Self::StandardOfLiving,      Lang::Ja) => "生活水準",
         }
     }
-        fn compute(&self, ds: &DataStruct) -> Result<Vec<u8>, ListError> {
-            let raw = data_struct.get(&Character::Characteristic(Characteristic::Strength))?;
-            // 計算...
-        }
-    }
-    pub fn compute(&self, data_struct: &DataStruct) -> Result<Vec<u8>, ListError> {
+    pub fn compute(&self, data_struct: &crate::data_struct::DataStruct<Character>) -> Result<Vec<u8>, crate::list::ListError> {
         match self {
             Self::HitPoints => {
                 let constitution = data_struct.get(&Character::Characteristic(Characteristic::Constitution))?;
                 let size         = data_struct.get(&Character::Characteristic(Characteristic::Size))?;
-                (constitution + size) / 10
+                let val = (constitution.iter().map(|&b| b as u16).sum::<u16>() + size.iter().map(|&b| b as u16).sum::<u16>()) / 10;
+                Ok(val.to_le_bytes().to_vec())
             }
-            Self::MagicPoints -> {
-                let power  = data_struct.get(&Character::Characteristic(Characteristic::Power))?;
-                power / 5
+            Self::MagicPoints => {
+                let power = data_struct.get(&Character::Characteristic(Characteristic::Power))?;
+                let val = power.iter().map(|&b| b as u16).sum::<u16>() / 5;
+                Ok(val.to_le_bytes().to_vec())
             }
-            Self::Build -> {
-                let strength  = data_struct.get(&Character::Characteristic(Characteristic::Strength))?;
-                let size      = data_struct.get(&Character::Characteristic(Characteristic::Size))?;                
-                match (strength + size) {
-                     2..= 64 => BuildRank::NegTwo,
-                    65..= 84 => BuildRank::NegOne,
-                    85..=124 => BuildRank::Zero,
-                   125..=164 => BuildRank::Pos1,
-                   165..=204 => BuildRank::Pos2,
-                   205..=284 => BuildRank::Pos3,
-                   285..=364 => BuildRank::Pos4,
-                   _         => BuildRank::Pos5,
-                }
+            Self::Build => {
+                // todo: Build計算
+                Ok(vec![0])
             }
-            Self::DamageBonus ->{
-                let strength  = data_struct.get(&Character::Characteristic(Characteristic::Strength))?;
-                let size      = data_struct.get(&Character::Characteristic(Characteristic::Size))?;                
-                match (strength + size) {
-                    2..= 64 => DamageBonusDice::Neg2,
-                   65..= 84 => DamageBonusDice::Neg1,
-                   85..=124 => DamageBonusDice::Zero,
-                  125..=164 => DamageBonusDice::Pos1,
-                  165..=204 => DamageBonusDice::Pos1D4,
-                  205..=284 => DamageBonusDice::Pos2D6,
-                  285..=364 => DamageBonusDice::Pos3D6,
-                  _         => DamageBonusDice::Pos4D6,
-               }                
+            Self::DamageBonus => {
+                // todo: DamageBonus計算
+                Ok(vec![0])
             }
-            // --- 移動率 (Move Rate) --- p.31
-            // STR・DEX と SIZ の大小比較から決定される。年齢修正は AgeCategory で別途管理する。
-            Self::MoveRate -> {
-                match (characteristic::Strength::value() > characteristic::Size::value(), characteristic::Dexterity::value() > characteristic::Size::value()) {
-                    (false, false) => 7,
-                    (true,  true)  => 8,
-                    _              => 9,
-                }
+            Self::MoveRate => {
+                // todo: 移動率計算 (STR/DEX/SIZ比較)
+                Ok(vec![0])
             }
-            Self::Sanity -> {
-                characteristic::Power::value()?
+            Self::Sanity => {
+                let power = data_struct.get(&Character::Characteristic(Characteristic::Power))?;
+                Ok(power.to_vec())
             }
-            Self::Dodge -> {
-                characteristic::Dexterity::value()? / 2
+            Self::Dodge => {
+                let dex = data_struct.get(&Character::Characteristic(Characteristic::Dexterity))?;
+                let val = dex.iter().map(|&b| b as u16).sum::<u16>() / 2;
+                Ok(val.to_le_bytes().to_vec())
             }
-            Self::LanguageOwn -> {
-                characteristic::Education?
+            Self::LanguageOwn => {
+                let edu = data_struct.get(&Character::Characteristic(Characteristic::Education))?;
+                Ok(edu.to_vec())
             }
-            _ => None,
+            _ => Ok(vec![]),
         }
     }
-    pub fn update {
+    pub fn update(&self) {
         // todo: Derivedを一括再計算する
     }
 }
@@ -1032,14 +1077,14 @@ enum DamageBonusDice {
 impl DamageBonusDice {
     pub fn label(&self) -> &'static str {
         match self {
-            Self::NegTwo   => "-2",
-            Self::NegOne   => "-1",
-            Self::Zero     => "0",
-            Self::PosOnD4  => "+1D4",
-            Self::PosOnD6  => "+1D6",
-            Self::PosTwD6  => "+2D6",
-            Self::PosThrD6 => "+3D6",
-            Self::PosForD6 => "+4D6",
+            Self::Neg2  => "-2",
+            Self::Neg1  => "-1",
+            Self::Zero  => "0",
+            Self::Pos1D4 => "+1D4",
+            Self::Pos1D6 => "+1D6",
+            Self::Pos2D6 => "+2D6",
+            Self::Pos3D6 => "+3D6",
+            Self::Pos4D6 => "+4D6",
         }
     }
 }
@@ -1165,7 +1210,7 @@ impl AgeCategory {
     }
 
     pub fn label(&self, lang: Lang) -> &'static str {
-        match (cat, lang) {
+        match (self, lang) {
             (Self::Teen,    Lang::Ja) => "10代 (15-19)",
             (Self::Teen,    Lang::En) => "Teen (15-19)",
             (Self::Young,   Lang::Ja) => "若年 (20-39)",

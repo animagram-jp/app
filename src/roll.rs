@@ -1,4 +1,53 @@
-use crate::{Lang, n_d_n}
+use crate::{Lang, n_d_n, percent_roll};
+use crate::character::{Skill, Characteristic};
+
+// ============================================================
+// todo: 未定義型のスタブ（各型が確定次第、対応モジュールに移動する）
+// ============================================================
+
+pub type Count = u16;
+pub type Side  = u16;
+
+pub struct DiceModifier(pub i16);
+pub struct Skills<T>(pub Vec<T>);
+pub struct Characteristics<T>(pub Vec<T>);
+pub struct SkillModifier(pub i32);
+
+pub enum SkillOrCharacteristic {
+    Skill(crate::character::Skill),
+    Characteristic(crate::character::Characteristic),
+}
+
+pub enum SuccessLevel { Regular, Hard, Extreme, Critical }
+
+pub struct SkillRoll;
+pub struct SkillRollResult;
+
+#[derive(Debug)]
+pub enum SkillRollError { BonusDiceOutOfRange }
+
+pub enum DifficultySpec { None, Hard, Extreme, Critical }
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum ResultLevel { Regular, Hard, Extreme, Critical, Fumble, Failure }
+impl ResultLevel {
+    pub fn from_values(total: u32, skill: u32) -> Self {
+        if total == 1               { Self::Critical }
+        else if total <= skill / 5  { Self::Extreme }
+        else if total <= skill / 2  { Self::Hard }
+        else if total <= skill      { Self::Regular }
+        else if total >= if skill < 50 { 96 } else { 100 } { Self::Fumble }
+        else                        { Self::Failure }
+    }
+    pub fn with_difficulty_level(total: u32, skill: u32) -> Self {
+        Self::from_values(total, skill)
+    }
+}
+
+pub enum DiceRollSelect {}
+pub enum Level { Regular, Hard, Extreme }
+
+pub enum BulletSetCap { Auto, Specified(u32) }
 
 // ============================================================
 // ロール (Roll)
@@ -6,12 +55,12 @@ use crate::{Lang, n_d_n}
 
 pub enum Roll {
     DiceRoll(Count,Side,Count,Side,DiceModifier),
-    SkillRoll(Skills(Skill), Option(SuccessLevel), Option(i16)), // option(i16)とは補正値(+-i)のこと
-    CharacteristicRoll(Characteristics(Characteristic), Option(SuccessLevel), SkillModifier), 
+    SkillRoll(Skills<Skill>, Option<SuccessLevel>, Option<i16>), // option(i16)とは補正値(+-i)のこと
+    CharacteristicRoll(Characteristics<Characteristic>, Option<SuccessLevel>, SkillModifier),
     SanityRoll(),
     BoutOfMadness(BoutScene),
-    PushedRoll(SkillOrCharacteristic, Option(SuccessLevel), Option(i16)), // todo: pushでも新規技能はありうるので、履歴利用はソートサジェストだけにする
-    CombinedSkillRoll,(SkillOrCharacteristic,SkillOrCharacteristic)
+    PushedRoll(SkillOrCharacteristic, Option<SuccessLevel>, Option<i16>), // todo: pushでも新規技能はありうるので、履歴利用はソートサジェストだけにする
+    CombinedSkillRoll(SkillOrCharacteristic, SkillOrCharacteristic),
     PhobiaAndMania(Impulse),
     // todo: 射撃時の連射判定, 射撃時のボーナス・ペナルティダイスのセレクタガイド
     // AutoFireRoll, ロジックが煩雑・そこまで使わないので一時コメントアウト
@@ -20,49 +69,35 @@ pub enum Roll {
 }
 
 impl Roll {
-    pub fn label(self, lang: Lang) -> &str {
+    pub fn label(self, lang: Lang) -> &'static str {
         match (self, lang) {
-            (Self::DiceRoll,           Lang::En) => "Dice Roll (nDn +-n)",
-            (Self::DiceRoll,           Lang::Ja) => "ダイスロール (nDn +-n)",
-            (Self::SkillRoll,          Lang::En) => "Skill Roll",
-            (Self::SkillRoll,          Lang::Ja) => "技能ロール",
-            (Self::CharacteristicRoll, Lang::En) => "Characteristic Roll",
-            (Self::CharacteristicRoll, Lang::Ja) => "能力値ロール",
-            (Self::SanityRoll,         Lang::En) => "Sanity Roll",
-            (Self::SanityRoll,         Lang::Ja) => "正気度ロール",
-            (Self::BoutOfMadness,      Lang::En) => "Bout of Madness",
-            (Self::BoutOfMadness,      Lang::Ja) => "狂気の発作",
-            (Self::PushedRoll,         Lang::En) => "Pushed Roll",
-            (Self::PushedRoll,         Lang::Ja) => "プッシュロール",
-            (Self::CombinedSkillRoll,  Lang::En) => "Combined Skill Roll",
-            (Self::CombinedSkillRoll,  Lang::Ja) => "組み合わせ技能ロール",
-            (Self::PhobiaAndMania,     Lang::En) => "Phobia and Mania",
-            (Self::PhobiaAndMania,     Lang::Ja) => "恐怖症とマニア",
-
+            (Self::DiceRoll(..),           Lang::En) => "Dice Roll (nDn +-n)",
+            (Self::DiceRoll(..),           Lang::Ja) => "ダイスロール (nDn +-n)",
+            (Self::SkillRoll(..),          Lang::En) => "Skill Roll",
+            (Self::SkillRoll(..),          Lang::Ja) => "技能ロール",
+            (Self::CharacteristicRoll(..), Lang::En) => "Characteristic Roll",
+            (Self::CharacteristicRoll(..), Lang::Ja) => "能力値ロール",
+            (Self::SanityRoll(),           Lang::En) => "Sanity Roll",
+            (Self::SanityRoll(),           Lang::Ja) => "正気度ロール",
+            (Self::BoutOfMadness(_),       Lang::En) => "Bout of Madness",
+            (Self::BoutOfMadness(_),       Lang::Ja) => "狂気の発作",
+            (Self::PushedRoll(..),         Lang::En) => "Pushed Roll",
+            (Self::PushedRoll(..),         Lang::Ja) => "プッシュロール",
+            (Self::CombinedSkillRoll(..),  Lang::En) => "Combined Skill Roll",
+            (Self::CombinedSkillRoll(..),  Lang::Ja) => "組み合わせ技能ロール",
+            (Self::PhobiaAndMania(_),      Lang::En) => "Phobia and Mania",
+            (Self::PhobiaAndMania(_),      Lang::Ja) => "恐怖症とマニア",
             // (Self::AutoFireRoll,       Lang::Ja) => "自動火器の連射判定",
             // (Self::AutoFireRoll,       Lang::En) => "Automatic Fire Roll",
-            (Self::FailedCasting(f), Lang::En)   => f."Failed Casting ({})",
-            (Self::FailedCasting(f), Lang::Ja)   => f."呪文失敗 ({})",
-            (Self::DevelopmentCheck,   Lang::En) => "Development Check",
-            (Self::DevelopmentCheck,   Lang::Ja) => "上達チェック",
+            (Self::FailedCasting(_),       Lang::En) => "Failed Casting",
+            (Self::FailedCasting(_),       Lang::Ja) => "呪文失敗",
+            (Self::DevelopmentCheck,       Lang::En) => "Development Check",
+            (Self::DevelopmentCheck,       Lang::Ja) => "上達チェック",
         }
     }
 
-    pub fn all() -> &'static [Roll] {
-        &[
-            Self::DiceRoll,
-            Self::SkillRoll,
-            Self::CharacteristicRoll,
-            Self::SanityRoll,
-            Self::BoutOfMadness(BoutScene),
-            Self::PushedRoll,
-            Self::CombinedSkillRoll,
-            Self::PhobiaAndMania,
-            Self::AutoFireRoll,
-            Self::FailedCasting(FailureDepth),
-            Self::DevelopmentCheck,
-        ]
-    }
+    // NOTE: BoutOfMadness, FailedCasting はバリアント引数を持つため静的スライスに含められない
+    // pub fn all() -> &'static [Roll] { ... }
 }
 
 pub enum BoutScene { RealTime, Summary }
@@ -107,7 +142,7 @@ impl FailureDepth {
 
 // --- 狂気の発作表 結果 (Bout of Madness Result)---
 pub struct BoutOfMadnessResult {
-    BoutScene: Time,
+    scene: BoutScene,
     total: u8,    // n_d_n(1, 10)
     duration: u8, // n_d_n(1, 10) 持続時間
 }
@@ -115,12 +150,13 @@ pub struct BoutOfMadnessResult {
 // --- ロール結果 (Roll Result) ---
 pub struct RollResult {
     roll_total: Vec<i16>,
-    roll_judge: Option(Vev<RollJudge>),
+    roll_judge: Option<Vec<RollJudge>>,
 }
 
 impl RollResult {
-    pub display {
+    pub fn display(&self) {
         // "[{}: {}] {} {}"
+        todo!()
     }
 }
 
@@ -146,15 +182,15 @@ pub enum RollJudge {
 }
 
 impl RollJudge {
-    pub fn judge(total: u32, target: u32, difficulty: &self) -> Self {
-        let fumble_at = if target < 50 else { 100 };
-        if total == 1                                  { Self::Critical }
-        else if total >= fumble_at                     { Self::Fumble }
-        else if Some(difficulty) and (total <= target) { Self::Success }
-        else if total <= target / 5                    { Self::Extreme }
-        else if total <= target / 2                    { Self::Hard }
-        else if total <= target                        { Self::Regular }
-        else                                           { Self::Failure }
+    pub fn judge(total: u32, target: u32, difficulty: Option<&Self>) -> Self {
+        let fumble_at = if target < 50 { 96 } else { 100 };
+        if total == 1                                         { Self::Critical }
+        else if total >= fumble_at                            { Self::Fumble }
+        else if difficulty.is_some() && total <= target       { Self::Success }
+        else if total <= target / 5                           { Self::Extreme }
+        else if total <= target / 2                           { Self::Hard }
+        else if total <= target                               { Self::Regular }
+        else                                                  { Self::Failure }
     }
     pub fn label(self, lang: Lang) -> &'static str {
         match(self, lang) {
@@ -170,7 +206,7 @@ impl RollJudge {
             (Self::Hard,        Lang::Ja) => "ハード成功",
             (Self::Extreme,     Lang::En) => "extreme success",
             (Self::Extreme,     Lang::Ja) => "イクストリーム成功",  
-            (Self::Ctirical,    Lang::En) => "critical success",
+            (Self::Critical,    Lang::En) => "critical success",
             (Self::Critical,    Lang::Ja) => "クリティカル成功",  
             (Self::Sane,        Lang::En) => "stay sane",
             (Self::Sane,        Lang::Ja) => "発狂しない",  
@@ -192,41 +228,42 @@ impl SkillRoll {
     /// - bonus_dice の絶対値が 100 超 → Err
     /// - difficulty == None かつ bonus_dice == 0 → 出目のみ（level=None）
     /// - difficulty == Some(0) → None 扱い
-    /// - Hard → difficulty / 2、Extreme → difficulty / 5、Critical → difficulty = 0
-    pub fn roll(target: u32, bonus_dice: i64, difficulty: RollJudge) -> Result<SkillRollResult, SkillRollError> {
+    /// - Hard → target / 2、Extreme → target / 5、Critical → target = 1
+    pub fn roll(
+        target: u32,
+        bonus_dice: i32,
+        difficulty: DifficultySpec,
+    ) -> Result<SkillRollResult, SkillRollError> {
         if bonus_dice.unsigned_abs() > 100 {
             return Err(SkillRollError::BonusDiceOutOfRange);
         }
 
-        let difficulty = difficulty.filter(|&d| d > 0);
+        let effective_target: u32 = match difficulty {
+            DifficultySpec::Hard     => target / 2,
+            DifficultySpec::Extreme  => target / 5,
+            DifficultySpec::Critical => 1,
+            DifficultySpec::None     => target,
+        };
 
-        let effective_diff: Option<u32> = difficulty.map(|d| match difficulty_spec {
-            DifficultySpec::Hard     => d / 2,
-            DifficultySpec::Extreme  => d / 5,
-            DifficultySpec::Critical => 0,
-            _                        => d,
-        });
+        let (total, _dice_candidates) = percent_roll(bonus_dice);
 
-        let (total, dice_candidates) = percent_roll(bonus_dice);
+        let _level = match difficulty {
+            DifficultySpec::None => ResultLevel::from_values(total, effective_target),
+            _                    => ResultLevel::with_difficulty_level(total, effective_target),
+        };
 
-        let level: Option<ResultLevel> = effective_diff.map(|d| match difficulty_spec {
-            DifficultySpec::None => ResultLevel::from_values(total, d, false),
-            _                    => ResultLevel::with_difficulty_level(total, d),
-        });
-
-        Ok(SkillRollResult{})
+        Ok(SkillRollResult)
     }
 }
 
 pub struct DiceRoll {
-    character:   character::Instance,
     roll_select:   Roll,
     select: Vec<DiceRollSelect>,
     bonus_dice: i32,
     level: Level,
-    target_select: (character::Schema::Characteristic,character::Schema::Skill),
+    target_select: (crate::character::Characteristic, crate::character::Skill),
     input_counts: u16,
-    input_sides: [2, 3, 4, 5, 6, 8, 10, 12, 20, 100];
+    input_sides: [u32; 10],
     input_modifier: i16,
     result: RollResult,
 }
@@ -236,16 +273,20 @@ pub struct DiceRoll {
 // ============================================================
 
 // 1回の1d100を2技能値に対してそれぞれ判定する
-pub fn combined_roll(target: (u32,u32)) -> RollResult {
+pub fn combined_roll(target: (u32, u32)) -> RollResult {
     let total = n_d_n(1, 100);
-    let judge = [RollJudge(total, target[0]), RollJudge(total, target[1])];
-    RollResult {total, judges}
+    let judges = vec![
+        RollJudge::judge(total, target.0, None),
+        RollJudge::judge(total, target.1, None),
+    ];
+    RollResult { roll_total: vec![total as i16], roll_judge: Some(judges) }
 }
 
 // ============================================================
-// 自動火器射撃判定 (Full Auto Roll)
+// 自動火器射撃判定 (Full Auto Roll) — 未実装、放置中
 // ============================================================
 
+/*
 #[derive(Debug)]
 pub enum FullAutoWarning {
     BulletsClamped { original: u32 },
@@ -262,7 +303,17 @@ pub enum FullAutoError {
     BulletSetCapNonPositive,
 }
 
-/// 連射の1ボレー分の命中結果
+pub enum BulletSetCap {
+    Auto,
+    Specified(u32),
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum ResultLevel { Regular, Hard, Extreme, Critical, Fumble, Failure }
+impl ResultLevel {
+    pub fn from_values(_total: u32, _skill: u32) -> Self { Self::Failure }
+}
+
 #[derive(Debug)]
 pub struct VolleyResult {
     pub stage: u32,
@@ -276,7 +327,6 @@ pub struct VolleyResult {
     pub jammed: bool,
 }
 
-/// 連射全体の結果
 #[derive(Debug)]
 pub struct FullAutoResult {
     pub warnings: Vec<FullAutoWarning>,
@@ -289,145 +339,31 @@ pub struct FullAutoResult {
     pub jammed: bool,
 }
 
-/// 連射停止難易度
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub enum StopAt {
-    None,
-    Regular,
-    Hard,
-    Extreme,
-}
+pub enum StopAt { None, Regular, Hard, Extreme }
 
 /// - bullet_count > 100 → クランプ+warning
 /// - bullet_count == 0 / skill == 0 → Err
 /// - broken_number < 0 → 絶対値補正+warning
 /// - bonus_dice 絶対値 > 2 → Err
-/// - BulletSetCap::Specified(0) → Err ボレーあたり弾数上限の指定
+/// - BulletSetCap::Specified(0) → Err
 /// - BulletSetCap::Specified(1〜2) → 下限3にクランプ+warning
 /// - skill <= 39 → BulletSetCap 上限は3固定
 /// - skill >= 40 → BulletSetCap 上限は skill/10
 /// - ジャム（total >= broken_number） → 即時終了
-/// - 難易度段階: レギュラー→ハード→イクストリーム→クリティカル->不可能 の 4段階
+/// - 難易度段階: レギュラー→ハード→イクストリーム→クリティカル の4段階
 pub fn full_auto(
     bullet_count: u32,
     skill: u32,
     broken_number: i32,
     bonus_dice: i32,
     stop_at: StopAt,
-    bullet_set_cap: Option(u32),
+    bullet_set_cap: Option<BulletSetCap>,
 ) -> Result<FullAutoResult, FullAutoError> {
-    let mut warnings: Vec<FullAutoWarning> = Vec::new();
-    let mut bullet_count = bullet_count;
+    todo!()
+}
 
-    if bullet_count > 100 {
-        warnings.push(FullAutoWarning::BulletsClamped { original: bullet_count });
-        bullet_count = 100;
-    }
-    if bullet_count == 0 { return Err(FullAutoError::NoBullets); }
-    if skill == 0        { return Err(FullAutoError::NoSkill); }
-
-    let base = if skill < 30 { 3 } else { skill / 10 };
-        base.min(cap)
-
-    let broken_number = if broken_number < 0 {
-        warnings.push(FullAutoWarning::BrokenNumberNegated);
-        broken_number.unsigned_abs()
-    } else {
-        broken_number as u32
-    };
-
-    if bonus_dice.unsigned_abs() > 2 {
-        return Err(FullAutoError::BonusDiceOutOfRange);
-    }
-
-    let bullet_set_cap: u32 = match bullet_set_cap {
-        BulletSetCap::Auto => {
-            if skill <= 39 { 3 } else { skill / 10 }
-        }
-        BulletSetCap::Specified(v) => {
-            if v == 0 { return Err(FullAutoError::BulletSetCapNonPositive); }
-            let cap_max = if skill <= 39 { 3 } else { skill / 10 };
-            if v > cap_max {
-                warnings.push(FullAutoWarning::BulletSetCapClampedHigh {
-                    clamped_to: cap_max,
-                    low_skill: skill <= 39,
-                });
-                cap_max
-            } else if v < 3 {
-                warnings.push(FullAutoWarning::BulletSetCapClampedLow { clamped_to: 3 });
-                3
-            } else {
-                v
-            }
-        }
-    };
-
-    let mut volleys: Vec<VolleyResult> = Vec::new();
-    let mut loop_count = 0u32;
-    let mut hit_total = 0u32;
-    let mut impale_total = 0u32;
-    let mut current_bonus = bonus_dice;
-    let mut stopped_by_difficulty = false;
-    let mut prev_stage = 0u32;
-
-    'outer: for stage in 0u32..4 {
-        let mut first_in_stage = stage != prev_stage;
-        prev_stage = stage;
-
-        while current_bonus >= -2 {
-            loop_count += 1;
-            let stage_changed = first_in_stage;
-            first_in_stage = false;
-            let (total, dice_candidates) = percent_roll(current_bonus);
-            let level = ResultLevel::from_values(total, skill);
-
-            if total >= broken_number {
-                volleys.push(VolleyResult {
-                    stage, stage_changed, loop_index: loop_count, total, dice_candidates, level,
-                    hit: 0, impale: 0, jammed: true,
-                });
-                return Ok(FullAutoResult {
-                    warnings, bonus_dice, volleys,
-                    hit_total, impale_total,
-                    remaining_bullets: bullet_count,
-                    stopped_by_difficulty: false,
-                    jammed: true,
-                });
-            }
-
-            let bullet_set = get_bullet_set(skill, bullet_set_cap);
-            let is_last = bullet_count < bullet_set;
-            let (hit, impale, lost) = bullet_result(bullet_count, level, skill, bullet_set, is_last, stage);
-
-            hit_total += hit;
-            impale_total += impale;
-            bullet_count = bullet_count.saturating_sub(lost);
-
-            volleys.push(VolleyResult {
-                stage, stage_changed, loop_index: loop_count, total, dice_candidates, level,
-                hit, impale, jammed: false,
-            });
-
-            if bullet_count == 0 { break 'outer; }
-            current_bonus -= 1;
-        }
-
-        match StopAt {
-                StopAt::Regular => break,
-                StopAt::Hard    => stage >= 1; break
-                StopAt::Extreme => stage >= 2; break
-                StopAt::None    => ,
-            }
-        }
-        current_bonus += 1;
-
-    Ok(FullAutoResult {
-        warnings, bonus_dice, volleys,
-        hit_total, impale_total,
-        remaining_bullets: bullet_count,
-        stopped_by_difficulty,
-        jammed: false,
-    })
+fn bullet_result(
     bullet_count: u32,
     level: ResultLevel,
     skill: u32,
@@ -436,7 +372,6 @@ pub fn full_auto(
     stage: u32,
 ) -> (u32, u32, u32) {
     let hit_base = if skill < 30 { 1 } else { bullet_set / 2 };
-
     let is_hit = match stage {
         0 => matches!(level, ResultLevel::Hard | ResultLevel::Regular),
         1 => matches!(level, ResultLevel::Hard),
@@ -447,32 +382,24 @@ pub fn full_auto(
         0..=2 => matches!(level, ResultLevel::Critical | ResultLevel::Extreme),
         _     => false,
     };
-
     if is_hit {
-        if is_last {
-            let h = (bullet_count + 1) / 2;
-            (h, 0, bullet_count)
-        } else {
-            (hit_base, 0, bullet_set)
-        }
+        if is_last { let h = (bullet_count + 1) / 2; (h, 0, bullet_count) }
+        else       { (hit_base, 0, bullet_set) }
     } else if is_impale {
-        if is_last {
-            let i = bullet_count / 2;
-            (bullet_count - i, i, bullet_count)
-        } else {
-            let i = bullet_set / 2;
-            (bullet_set - i, i, bullet_set)
-        }
+        if is_last { let i = bullet_count / 2; (bullet_count - i, i, bullet_count) }
+        else       { let i = bullet_set / 2; (bullet_set - i, i, bullet_set) }
     } else {
         (0, 0, bullet_set.min(bullet_count))
     }
 }
+*/
 
 // ============================================================
 // ランダム表
 // ============================================================
 
 /// ルールブック 日本語訳版 153頁
+#[derive(Clone, Copy)]
 pub enum MadnessRealTime {
     Amnesia,
     PsychosomaticDisability,
@@ -487,8 +414,8 @@ pub enum MadnessRealTime {
 }
 
 impl MadnessRealTime {
-    pub fn get(&self, index: &u8) -> Self {
-        // todo: 実装
+    pub fn get(&self, _index: u8) -> Self {
+        todo!()
     }
     pub fn index(&self) -> u8 {
         *self as u8 + 1
@@ -520,6 +447,7 @@ impl MadnessRealTime {
 }
 
 /// ルールブック 日本語訳版 155頁
+#[derive(Clone, Copy)]
 pub enum MadnessSummary {
     Amnesia,
     Robbed,
@@ -534,8 +462,8 @@ pub enum MadnessSummary {
 }
 
 impl MadnessSummary {
-    pub fn get(&self, index: &u8) -> Self {
-        // todo: 実装
+    pub fn get(&self, _index: u8) -> Self {
+        todo!()
     }
     pub fn index(&self) -> u8 {
         *self as u8 + 1
@@ -567,6 +495,7 @@ impl MadnessSummary {
 }
 
 /// ルールブック 日本語訳版 174頁
+#[derive(Clone, Copy)]
 pub enum FailedCastingMinor {
     BlurredVision,
     Screaming,
@@ -579,8 +508,8 @@ pub enum FailedCastingMinor {
 }
 
 impl FailedCastingMinor {
-    pub fn get(&self, &index: u8) -> Self {
-        // todo: 実装
+    pub fn get(&self, _index: u8) -> Self {
+        todo!()
     }
     pub fn index(&self) -> u8 {
         *self as u8 + 1
@@ -608,6 +537,7 @@ impl FailedCastingMinor {
 }
 
 /// ルールブック 日本語訳版 P175
+#[derive(Clone, Copy)]
 pub enum FailedCastingMajor {
     Earthquake,
     EpicLightning,
@@ -620,8 +550,8 @@ pub enum FailedCastingMajor {
 }
 
 impl FailedCastingMajor {
-    pub fn get(&self, &index: u8) -> Self {
-        // todo: 実装
+    pub fn get(&self, _index: u8) -> Self {
+        todo!()
     }
     pub fn index(&self) -> u8 {
         *self as u8 + 1
@@ -649,6 +579,7 @@ impl FailedCastingMajor {
 }
 
 /// ルールブック 日本語訳版 156頁
+#[derive(Clone, Copy)]
 pub enum Phobia {
     Ablutophobia,
     Acrophobia,
@@ -753,8 +684,8 @@ pub enum Phobia {
 }
 
 impl Phobia {
-    pub fn get(&self, &index: u8) -> Self {
-        // todo: 実装
+    pub fn get(&self, _index: u8) -> Self {
+        todo!()
     }
     pub fn index(&self) -> u8 {
         *self as u8 + 1
@@ -966,6 +897,7 @@ impl Phobia {
 }
 
 /// ルールブック 日本語訳版 157頁
+#[derive(Clone, Copy)]
 pub enum Mania {
     Ablutomania,
     Aboulomania,
@@ -1070,8 +1002,8 @@ pub enum Mania {
 }
 
 impl Mania {
-    pub fn get(&self, &index: u8) -> Self {
-        // todo: 実装
+    pub fn get(&self, _index: u8) -> Self {
+        todo!()
     }
     pub fn index(&self) -> u8 {
         *self as u8 + 1

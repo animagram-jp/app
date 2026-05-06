@@ -1,21 +1,20 @@
-use crate::js_client::{
-    Operation, DomCmd,
-    get_js_str, get_js_f64, 
-    EventType, KeyName,
-    Dom,
-};
-use crate::roll;
-
 // ============================================================
 // ログスタック (Log Stack)
 // ============================================================
 
-enum LogStack {
-    Skill{  },
-    Characteristic{  },
+pub enum LogStack {
+    Skill {
+        // todo: ロール結果など
+    },
+    Characteristic {
+        // todo: ロール結果など
+    },
     Message(String),
 }
 
-impl display {
-    // format!
+impl std::fmt::Display for LogStack {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // todo: format!
+        write!(f, "")
+    }
 }

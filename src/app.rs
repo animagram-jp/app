@@ -1,45 +1,41 @@
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsValue;
-use crate::Lang;
-use crate::data_struct::DataStruct;
-use crate::Roll;
 use crate::js_client::{
-    Operation, DomCmd,
-    get_js_str, get_js_f64, 
+    DomCmd,
+    get_js_str, get_js_f64,
     EventType, KeyName,
     Gesture, PointerState, detect_gesture,
     Dom,
 };
-use crate::event;
 
 // ============================================================
 // canvas state
 // ============================================================
 
 #[derive(Clone, Copy, PartialEq, Default)]
-enum Overlay {
+pub enum Overlay {
     #[default]
     None,
     Select { step: u8, index: usize }, // 上下方向のボタンリストとfocusで構成するセレクターUI
-    Input  { step: u8, value: u32 },   // 左端からlabel, up, down, value, nextのワンライナーUI)
+    Input  { step: u8, value: u32 },   // 左端からlabel, up, down, value, nextのワンライナーUI
 }
 
 #[derive(Default)]
 struct CanvasState {
     overlay: Overlay,
-    drawer: bool,     // true = open, false = close
-    modal: bool,      // true = open, false = close
+    drawer: bool,   // true = open, false = close
+    modal:  bool,   // true = open, false = close
 }
 
 impl CanvasState {
     fn update(&mut self, gesture: Gesture, dom: Dom::Id, key: KeyName) -> Vec<DomCmd> {
-        if (self.modal) {
+        if self.modal {
             // todo: modal open時のclose処理
         }
-        if (self.drawer) {
+        if self.drawer {
             // todo: drawer open時のclose処理
         }
-        match dom {
+        match dom.last_tag() {
             // todo: overlay 遷移
             _ => vec![],
         }
@@ -55,8 +51,8 @@ pub struct App {
     pointer_state: PointerState,
     canvas_state:  CanvasState,
     dom_cmds:      Vec<DomCmd>,
-    log_stack:     Vec<Log>,
-    character:     Instance,
+    pub(crate) log_stack: Vec<crate::event::LogStack>,
+    // todo: DataStruct を追加する
 }
 
 #[wasm_bindgen]
@@ -67,7 +63,6 @@ impl App {
             canvas_state:  CanvasState::default(),
             dom_cmds:      Vec::new(),
             log_stack:     Vec::new(),
-            character:     Instance::new(),
         }
     }
 
@@ -88,9 +83,9 @@ impl App {
         self.pointer_state = self.pointer_state.update(&event_type, x, y, time);
         let gesture = detect_gesture(&self.pointer_state, time);
 
-        match gesture {
-            Some(g) => self.canvas_state.update(g, id, key),
-            None    => vec![],
+        if let Some(g) = gesture {
+            let cmds = self.canvas_state.update(g, id, key);
+            self.dom_cmds.extend(cmds);
         }
     }
 }

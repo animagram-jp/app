@@ -2,8 +2,11 @@ use rand::{rng, RngExt};
 
 pub mod list;
 pub mod data_struct;
+pub mod datetime;
+pub mod character;
 pub mod roll;
 pub mod js_client;
+pub mod event;
 pub mod app;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
