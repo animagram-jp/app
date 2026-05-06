@@ -33,8 +33,8 @@ enum Dialog {
 struct CanvasState {
     overlay:    Overlay,
     dialog:     Dialog,
-    char_vals:  [[i32; 2]; 9],   // [row-1] = [初期値, 変動値]
-    skill_pts:  [[u16; 2]; 20],  // [row-1] = [職業pt, 興味pt]
+    char_vals:  [[i32; 3]; 9],   // [row-1] = [初期値, 変動値, 補正値]
+    skill_pts:  [[i32; 3]; 20],  // [row-1] = [職業pt, 興味pt, 補正値]
 }
 
 impl CanvasState {
@@ -155,7 +155,7 @@ impl CanvasState {
 
         let fs  = segs[1].n.unwrap_or(0) as usize;
         let row = segs[3].n.unwrap_or(0) as usize;
-        let col = segs[4].n.unwrap_or(0) as usize; // 1 or 2
+        let col = segs[4].n.unwrap_or(0) as usize; // 1, 2, or 3
 
         if row == 0 { return vec![]; }
 
@@ -163,16 +163,16 @@ impl CanvasState {
             2 if row <= 9 => {
                 let v: i32 = value.parse().unwrap_or(0);
                 self.char_vals[row - 1][col - 1] = v;
-                let [base, delta] = self.char_vals[row - 1];
-                crate::event::on_characteristic_input(row, base, delta)
+                let [base, delta, bonus] = self.char_vals[row - 1];
+                crate::event::on_characteristic_input(row, base, delta, bonus)
             }
             3 if row <= 20 => {
-                let v: u16 = value.parse().unwrap_or(0);
+                let v: i32 = value.parse().unwrap_or(0);
                 self.skill_pts[row - 1][col - 1] = v;
-                let [occ, int] = self.skill_pts[row - 1];
+                let [occ, int, bonus] = self.skill_pts[row - 1];
                 let skills = crate::character::Skill::default_rows();
                 let base = skills.get(row - 1).map(|s| s.base_value()).unwrap_or(0);
-                crate::event::on_skill_input(row, base, occ, int)
+                crate::event::on_skill_input(row, base, occ as u16, int as u16, bonus)
             }
             _ => vec![],
         }
