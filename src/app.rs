@@ -31,7 +31,7 @@ struct CanvasState {
 }
 
 impl CanvasState {
-    fn update(&mut self, gesture: Gesture, dom: Dom::Tag, key: KeyName) -> Vec<DomCmd> {
+    fn update(&mut self, gesture: Gesture, dom: Dom::Id, key: KeyName) -> Vec<DomCmd> {
         if (self.modal) {
             // todo: modal open時のclose処理
         }

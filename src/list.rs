@@ -82,7 +82,7 @@ impl<T: Copy + Default + PartialEq> List<T> {
     pub fn set(
         &mut self,
         identity: &usize,
-        schema: &mut usize,
+        schema: &usize,
         value: &[T],
         reuse_vacant: bool,
     ) -> Result<SetOutcome, ListError> {

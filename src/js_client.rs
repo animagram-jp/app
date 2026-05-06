@@ -1,8 +1,6 @@
 use wasm_bindgen::JsValue;
 use js_sys::Reflect;
 use serde::Serialize;
-use crate::table::Roll;
-use crate::character::{Model, schema};
 
 // ============================================================
 // send (dom operation)
@@ -320,7 +318,6 @@ pub mod Dom {
                 "tr"       => Self::Tr,
                 "th"       => Self::Th,
                 "td"       => Self::Td,
-                "save"     => Self::Save,
                 _          => Self::Other,
             }
         }
@@ -354,7 +351,6 @@ pub mod Dom {
                 Self::Tr       => "tr",
                 Self::Th       => "th",
                 Self::Td       => "td",
-                Self::Save     => "save",
                 Self::Other    => "",
             }
         }

@@ -1,6 +1,209 @@
 // ============================================================
+// --- システム (System) ---
+// ============================================================
+
+pub enum Identity {
+    Local,
+    Global,
+}
+
+impl Identity {
+    pub fn label(&self) -> &'static str {
+        match self {
+            Self::Local  => "ID",
+            Self::Global => "UUID",
+        }
+    }
+    pub fn id(&self) -> usize {
+        match self {
+            Self::Local  => 1,
+            Self::Global => 2,
+        }
+    }
+    pub fn decode(&self, js_value: &[JsValue]) -> Vec<u8> {
+        match self {
+            Self::Local  => {
+                let v = js_value[0].as_f64().unwrap_or(0.0) as u32;
+                v.to_le_bytes().to_vec()
+            }
+            Self::Global => {
+                let v = js_value[0].as_f64().unwrap_or(0.0) as u128;
+                v.to_le_bytes().to_vec()
+            }
+        }
+    }
+    pub fn encode(&self, value: &[u8]) -> Vec<JsValue> {
+        match self {
+            Self::Local  => {
+                let v = u32::from_le_bytes(value[..4].try_into().unwrap_or_default());
+                vec![JsValue::from_f64(v as f64)]
+            }
+            Self::Global => {
+                let v = u128::from_le_bytes(value[..16].try_into().unwrap_or_default());
+                vec![JsValue::from_f64(v as f64)]
+            }
+        }
+    }
+}
+
+pub enum Timestamp {
+    Create
+    Update,
+}
+
+impl Timestamp {
+    pub fn label(&self, lang: Lang) -> &'static str {
+        match (self, lang) {
+            (Self::Create, Lang::En) => "Create Time",
+            (Self::Create, Lang::Ja) => "作成日時",
+            (Self::Update, Lang::En) => "Update Time",
+            (Self::Update, Lang::Ja) => "更新日時",
+        }
+    }
+    pub fn id(&self) -> usize {
+        match self {
+            Self::Create => 3,
+            Self::Update => 4,
+        }
+    }
+    // pub Timestamp label(&self, lang: Lang) -> String {
+    //     match (self, lang) {
+    //         (_, Lang::En) => format!"{}-{}-{} {}:{}",
+    //         (_, Lang::Ja) => format!"{}年{}月{}日 {}時{}分",
+    //     }
+    // }
+    pub fn decode(&self, js_value: &[JsValue]) -> Vec<u8> { // -> u64
+        let year        = js_value.get(0).and_then(|v| v.as_f64()).unwrap_or(0.0) as u64;
+        let month       = js_value.get(1).and_then(|v| v.as_f64()).unwrap_or(0.0) as u64;
+        let day         = js_value.get(2).and_then(|v| v.as_f64()).unwrap_or(0.0) as u64;
+        let hour        = js_value.get(3).and_then(|v| v.as_f64()).unwrap_or(0.0) as u64;
+        let minute      = js_value.get(4).and_then(|v| v.as_f64()).unwrap_or(0.0) as u64;
+        let mut ko = 0u64;
+        ko = datetime::set(ko, datetime::OFFSET_YEAR,   datetime::MASK_YEAR,   year);
+        ko = datetime::set(ko, datetime::OFFSET_MONTH,  datetime::MASK_MONTH,  month);
+        ko = datetime::set(ko, datetime::OFFSET_DAY,    datetime::MASK_DAY,    day);
+        ko = datetime::set(ko, datetime::OFFSET_HOUR,   datetime::MASK_HOUR,   hour);
+        ko = datetime::set(ko, datetime::OFFSET_MINUTE, datetime::MASK_MINUTE, minute);
+        ko.to_le_bytes().to_vec()
+    }
+
+    pub fn encode(&self, value: &[u8]) -> Vec<JsValue> { // → [year, month, day, hour, minute]
+        let ko = u64::from_le_bytes(value[..8].try_into().unwrap_or_default());
+        vec![
+            JsValue::from_f64(datetime::get(ko, datetime::OFFSET_YEAR,   datetime::MASK_YEAR)   as f64),
+            JsValue::from_f64(datetime::get(ko, datetime::OFFSET_MONTH,  datetime::MASK_MONTH)  as f64),
+            JsValue::from_f64(datetime::get(ko, datetime::OFFSET_DAY,    datetime::MASK_DAY)    as f64),
+            JsValue::from_f64(datetime::get(ko, datetime::OFFSET_HOUR,   datetime::MASK_HOUR)   as f64),
+            JsValue::from_f64(datetime::get(ko, datetime::OFFSET_MINUTE, datetime::MASK_MINUTE) as f64),
+        ]
+    }
+}
+
+// ============================================================
+// --- キャラクター (Character) ---
+// ============================================================
+
+pub enum Character {
+    Identity(Identity),
+    Timestamp(Timestamp),
+    Profile(Profile),
+    Characteristic(Characteristic),
+    Derived(Derived),
+    Skill(Skill),
+    Equipment(Equipment),
+    Backstory(Backstory),
+}
+
+impl Character {
+    pub fn label(&self, lang: Lang) -> String {
+        match self {
+            Self::Identity(i)       => i.label(lang),
+            Self::Timestamp(t)      => t.label(lang),
+            Self::Profile(p)        => p.label(lang),
+            Self::Characteristic(c) => c.label(lang),
+            Self::Derived(d)        => d.label(lang),
+            Self::Skill(s)          => s.label(lang),
+            Self::Equipment(e)      => e.label(lang),
+            Self::Backstory(b)      => b.label(lang),
+        }
+    }
+    pub fn id(&self) -> usize {
+        INDEX_OFFSET = [2,3]
+        match self {
+            Self::Identity(i)       => i.id(INDEX_OFFSET[0]), // todo: こういうイメージで余裕をもって数値を一意にする
+            Self::Timestamp(t)      => t.id(INDEX_OFFSET[1]),
+            Self::Profile(p)        => p.id(),
+            Self::Characteristic(c) => c.id(),
+            Self::Derived(d)        => d.id(),
+            Self::Skill(s)          => s.id(),
+            Self::Equipment(e)      => e.id(),
+            Self::Backstory(b)      => b.id(),
+        }
+    }
+    pub fn decode(&self, js_value: &[JsValue]) -> Vec<u8> {
+        match self {
+            Self::Identity(i)       => i.decode(js_value),
+            Self::Timestamp(t)      => t.decode(js_value),
+            Self::Profile(p)        => p.decode(js_value),
+            Self::Characteristic(c) => c.decode(js_value),
+            Self::Derived(d)        => d.decode(js_value),
+            Self::Skill(s)          => s.decode(js_value),
+            Self::Equipment(e)      => e.decode(js_value),
+            Self::Backstory(b)      => b.decode(js_value),
+        }
+    }
+    pub fn encode(&self, value: &[u8]) -> Vec<JsValue> {
+        match self {
+            Self::Identity(i)       => i.encode(value),
+            Self::Timestamp(t)      => t.encode(value),
+            Self::Profile(p)        => p.encode(value),
+            Self::Characteristic(c) => c.encode(value),
+            Self::Derived(d)        => d.encode(value),
+            Self::Skill(s)          => s.encode(value),
+            Self::Equipment(e)      => e.encode(value),
+            Self::Backstory(b)      => b.encode(value),
+        }
+    }
+    pub fn update(&self, data: &Data) -> Option<Vec<u8>> {
+        match self {
+            Self::Derived(d) => Some(d.update(data)),
+            Self::Skill(s)   => Some(s.update(data)),
+            _                => None,
+        }
+    }
+}
+
+// ============================================================
 // --- プロフィール (Name, Birthppalce, Pronoun, Occupation, Residence, Age) ---
 // ============================================================
+
+pub enum Profile {
+    Name, // todo: 「名前」と「Option(呼び方)」の二値構成に拡充。labelは format!"{} ({})"。
+    Birthpalce,
+    Pronoun,
+    Occupation, // todo: 「ルール上の職業」と「Option(肩書 title)」の二値構成に拡充。 labelは format!"{} ({})"。
+    Residence,
+    Age,
+}
+
+impl Profile {
+    pub fn label(&self, lang: Lang) -> &'static str {
+        match (self, lang) {
+            (Self::Name, Lang::En) => "Name",
+            (Self::Name, Lang::Ja) => "名前",
+            (Self::Birthpalce, Lang::En) => "Birthplace",
+            (Self::Birthpalce, Lang::Ja) => "出身",
+            (Self::Birthpalce, Lang::En) => "Pronoun",
+            (Self::Birthpalce, Lang::Ja) => "性別",            
+            (Self::Occupation, Lang::En) => "Occupation",
+            (Self::Occupation, Lang::Ja) => "職業",
+            (Self::Residence, Lang::En) => "Residence",
+            (Self::Residence, Lang::Ja) => "住所",
+            (Self::Age, Lang::En) => "Age",
+            (Self::Age, Lang::Ja) => "年齢",
+        }
+    }
+}
 
 // --- 職業 (Occupation) --- p.38
 pub enum Occupation {
@@ -146,6 +349,204 @@ impl Characteristic {
 // ============================================================
 // --- スキル (Skill) ---
 // ============================================================
+
+
+// --- スキル (Skill) --- p.54
+enum Skill {
+    Accounting,
+    Anthropology,
+    Archaeology,
+    Appraise,
+    ArtCraft(ArtCraftSpec), 
+    Charm,
+    Climb,
+    ComputerUse,
+    CreditRating,
+    CthulhuMythos,
+    Disguise,
+    Dodge,
+    DriveAuto,
+    ElecRepair,
+    Electronics,
+    FastTalk,
+    Fighting(FightingSpec),
+    Firearms(FirearmsSpec),
+    FirstAid,
+    History,
+    Intimidate,
+    Jump,
+    LanguageOther(LanguageSpec),
+    LanguageOwn,
+    Law,
+    LibraryUse,
+    Listen,
+    Locksmith,
+    MechRepair,
+    NaturalWorld,
+    Navigate,
+    Occult,
+    Persuade,
+    Pilot(PilotSpec),
+    Psychoanalysis,
+    Psychology,
+    Ride,
+    Science(ScienceSpec),
+    SleightOfHand,
+    SpotHidden,
+    Stealth,
+    Survival(SurvivalSpec),
+    Swim,
+    Throw,
+    Track,
+    // 技能名+専門分野 完全自由記入（キャラシ空白欄に対応）
+    Custom { name: String, spec: Option<String> },
+}
+
+impl Skill {
+    pub fn base_value(&self) -> u16 {
+        match self {
+            Self::Accounting           =>  5,
+            Self::Anthropology         =>  1,
+            Self::Archaeology          =>  1,
+            Self::Appraise             =>  5,
+            Self::ArtCraft(spec)       => spec.base_value(),
+            Self::Charm                => 15,
+            Self::Climb                => 20,
+            Self::ComputerUse          =>  5,
+            Self::CreditRating         =>  0,
+            Self::CthulhuMythos        =>  0,
+            Self::Disguise             =>  5,
+            Self::Dodge                =>  0, // derived: DEX / 2
+            Self::DriveAuto            => 20,
+            Self::ElecRepair           => 10,
+            Self::Electronics          =>  1,
+            Self::FastTalk             =>  5,
+            Self::Fighting(spec)       => spec.base_value(),
+            Self::Firearms(spec)       => spec.base_value(),
+            Self::FirstAid             => 30,
+            Self::History              =>  5,
+            Self::Intimidate           => 15,
+            Self::Jump                 => 20,
+            Self::LanguageOther(spec)  =>  1,
+            Self::LanguageOwn          =>  0, // derived: EDU
+            Self::Law                  =>  5,
+            Self::LibraryUse           => 20,
+            Self::Listen               => 20,
+            Self::Locksmith            =>  1,
+            Self::MechRepair           => 10,
+            Self::Medicine             =>  1,
+            Self::NaturalWorld         => 10,
+            Self::Navigate             => 10,
+            Self::Occult               =>  5,
+            Self::Persuade             => 10,
+            Self::Pilot(spec)          => spec.base_value(),
+            Self::Psychoanalysis       =>  1,
+            Self::Psychology           => 10,
+            Self::Ride                 =>  5,
+            Self::Science(spec)        => spec.base_value(),
+            Self::SleightOfHand        => 10,
+            Self::SpotHidden           => 25,
+            Self::Stealth              => 20,
+            Self::Survival(spec)       => spec.base_value(),
+            Self::Swim                 => 20,
+            Self::Throw                => 20,
+            Self::Track                => 10,
+            Self::Custom { .. }        =>  0,
+        }
+    }
+
+    pub fn label(&self, lang: Lang) -> String {
+        match (self, lang) {
+            (Self::Accounting,           Lang::Ja) => "経理".into(),
+            (Self::Accounting,           Lang::En) => "Accounting".into(),
+            (Self::Anthropology,         Lang::Ja) => "人類学".into(),
+            (Self::Anthropology,         Lang::En) => "Anthropology".into(),
+            (Self::Archaeology,          Lang::Ja) => "考古学".into(),
+            (Self::Archaeology,          Lang::En) => "Archaeology".into(),
+            (Self::Appraise,             Lang::Ja) => "鑑定".into(),
+            (Self::Appraise,             Lang::En) => "Appraise".into(),
+            (Self::ArtCraft(spec),       _)        => format!("芸術/製作 ({})", spec.label(lang)),
+            (Self::Charm,                Lang::Ja) => "魅惑".into(),
+            (Self::Charm,                Lang::En) => "Charm".into(),
+            (Self::Climb,                Lang::Ja) => "登攀".into(),
+            (Self::Climb,                Lang::En) => "Climb".into(),
+            (Self::ComputerUse,          Lang::Ja) => "コンピューター".into(),
+            (Self::ComputerUse,          Lang::En) => "Computer Use".into(),
+            (Self::CreditRating,         Lang::Ja) => "信用".into(),
+            (Self::CreditRating,         Lang::En) => "Credit Rating".into(),
+            (Self::CthulhuMythos,        Lang::Ja) => "クトゥルフ神話".into(),
+            (Self::CthulhuMythos,        Lang::En) => "Cthulhu Mythos".into(),
+            (Self::Disguise,             Lang::Ja) => "変装".into(),
+            (Self::Disguise,             Lang::En) => "Disguise".into(),
+            (Self::Dodge,                Lang::Ja) => "回避".into(),
+            (Self::Dodge,                Lang::En) => "Dodge".into(),
+            (Self::DriveAuto,            Lang::Ja) => "運転（自動車）".into(),
+            (Self::DriveAuto,            Lang::En) => "Drive Auto".into(),
+            (Self::ElecRepair,           Lang::Ja) => "電気修理".into(),
+            (Self::ElecRepair,           Lang::En) => "Elec. Repair".into(),
+            (Self::Electronics,          Lang::Ja) => "電子工学".into(),
+            (Self::Electronics,          Lang::En) => "Electronics".into(),
+            (Self::FastTalk,             Lang::Ja) => "言いくるめ".into(),
+            (Self::FastTalk,             Lang::En) => "Fast Talk".into(),
+            (Self::Fighting(spec),       _)        => format!("近接戦闘 ({})", spec.label(lang)),
+            (Self::Firearms(spec),       _)        => format!("射撃 ({})", spec.label(lang)),
+            (Self::FirstAid,             Lang::Ja) => "応急手当".into(),
+            (Self::FirstAid,             Lang::En) => "First Aid".into(),
+            (Self::History,              Lang::Ja) => "歴史".into(),
+            (Self::History,              Lang::En) => "History".into(),
+            (Self::Intimidate,           Lang::Ja) => "威圧".into(),
+            (Self::Intimidate,           Lang::En) => "Intimidate".into(),
+            (Self::Jump,                 Lang::Ja) => "跳躍".into(),
+            (Self::Jump,                 Lang::En) => "Jump".into(),
+            (Self::LanguageOther(spec),  _)        => format!("ほかの言語 ({})", spec.label(lang)),
+            (Self::LanguageOwn,          Lang::Ja) => "母国語".into(),
+            (Self::LanguageOwn,          Lang::En) => "Language (Own)".into(),
+            (Self::Law,                  Lang::Ja) => "法律".into(),
+            (Self::Law,                  Lang::En) => "Law".into(),
+            (Self::LibraryUse,           Lang::Ja) => "図書館".into(),
+            (Self::LibraryUse,           Lang::En) => "Library Use".into(),
+            (Self::Listen,               Lang::Ja) => "聞き耳".into(),
+            (Self::Listen,               Lang::En) => "Listen".into(),
+            (Self::Locksmith,            Lang::Ja) => "鍵開け".into(),
+            (Self::Locksmith,            Lang::En) => "Locksmith".into(),
+            (Self::MechRepair,           Lang::Ja) => "機械修理".into(),
+            (Self::MechRepair,           Lang::En) => "Mech. Repair".into(),
+            (Self::Medicine,             Lang::Ja) => "医学".into(),
+            (Self::Medicine,             Lang::En) => "Medicine".into(),
+            (Self::NaturalWorld,         Lang::Ja) => "自然".into(),
+            (Self::NaturalWorld,         Lang::En) => "Natural World".into(),
+            (Self::Navigate,             Lang::Ja) => "ナビゲート".into(),
+            (Self::Navigate,             Lang::En) => "Navigate".into(),
+            (Self::Occult,               Lang::Ja) => "オカルト".into(),
+            (Self::Occult,               Lang::En) => "Occult".into(),
+            (Self::Persuade,             Lang::Ja) => "説得".into(),
+            (Self::Persuade,             Lang::En) => "Persuade".into(),
+            (Self::Pilot(spec),          _)        => format!("操縦 ({})", spec.label(lang)),
+            (Self::Psychoanalysis,       Lang::Ja) => "精神分析".into(),
+            (Self::Psychoanalysis,       Lang::En) => "Psychoanalysis".into(),
+            (Self::Psychology,           Lang::Ja) => "心理学".into(),
+            (Self::Psychology,           Lang::En) => "Psychology".into(),
+            (Self::Ride,                 Lang::Ja) => "乗馬".into(),
+            (Self::Ride,                 Lang::En) => "Ride".into(),
+            (Self::Science(spec),        _)        => format!("科学 ({})", spec.label(lang)),
+            (Self::SleightOfHand,        Lang::Ja) => "手さばき".into(),
+            (Self::SleightOfHand,        Lang::En) => "Sleight of Hand".into(),
+            (Self::SpotHidden,           Lang::Ja) => "目星".into(),
+            (Self::SpotHidden,           Lang::En) => "Spot Hidden".into(),
+            (Self::Stealth,              Lang::Ja) => "隠密".into(),
+            (Self::Stealth,              Lang::En) => "Stealth".into(),
+            (Self::Survival(spec),       _)        => format!("サバイバル ({})", spec.label(lang)),
+            (Self::Swim,                 Lang::Ja) => "水泳".into(),
+            (Self::Swim,                 Lang::En) => "Swim".into(),
+            (Self::Throw,                Lang::Ja) => "投擲".into(),
+            (Self::Throw,                Lang::En) => "Throw".into(),
+            (Self::Track,                Lang::Ja) => "追跡".into(),
+            (Self::Track,                Lang::En) => "Track".into(),
+            (Self::Custom { name, spec: Some(s) }, _) => format!("{} ({})", name, s),
+            (Self::Custom { name, spec: None },   _) => name.clone(),
+        }
+    }
+}
 
 // --- 芸術/製作 専門分野 (Art/Craft Specialization)  --- p.62
 enum ArtCraftSpec {
@@ -437,209 +838,12 @@ impl SurvivalSpec {
     }
 }
 
-// --- スキル (Skill) --- p.54
-enum Skill {
-    Accounting,
-    Anthropology,
-    Archaeology,
-    Appraise,
-    ArtCraft(ArtCraftSpec), 
-    Charm,
-    Climb,
-    ComputerUse,
-    CreditRating,
-    CthulhuMythos,
-    Disguise,
-    Dodge,
-    DriveAuto,
-    ElecRepair,
-    Electronics,
-    FastTalk,
-    Fighting(FightingSpec),
-    Firearms(FirearmsSpec),
-    FirstAid,
-    History,
-    Intimidate,
-    Jump,
-    LanguageOther(LanguageSpec),
-    LanguageOwn,
-    Law,
-    LibraryUse,
-    Listen,
-    Locksmith,
-    MechRepair,
-    NaturalWorld,
-    Navigate,
-    Occult,
-    Persuade,
-    Pilot(PilotSpec),
-    Psychoanalysis,
-    Psychology,
-    Ride,
-    Science(ScienceSpec),
-    SleightOfHand,
-    SpotHidden,
-    Stealth,
-    Survival(SurvivalSpec),
-    Swim,
-    Throw,
-    Track,
-    // 技能名+専門分野 完全自由記入（キャラシ空白欄に対応）
-    Custom { name: String, spec: Option<String> },
-}
-
-impl Skill {
-    pub fn base_value(&self) -> u16 {
-        match self {
-            Self::Accounting           =>  5,
-            Self::Anthropology         =>  1,
-            Self::Archaeology          =>  1,
-            Self::Appraise             =>  5,
-            Self::ArtCraft(spec)       => spec.base_value(),
-            Self::Charm                => 15,
-            Self::Climb                => 20,
-            Self::ComputerUse          =>  5,
-            Self::CreditRating         =>  0,
-            Self::CthulhuMythos        =>  0,
-            Self::Disguise             =>  5,
-            Self::Dodge                =>  0, // derived: DEX / 2
-            Self::DriveAuto            => 20,
-            Self::ElecRepair           => 10,
-            Self::Electronics          =>  1,
-            Self::FastTalk             =>  5,
-            Self::Fighting(spec)       => spec.base_value(),
-            Self::Firearms(spec)       => spec.base_value(),
-            Self::FirstAid             => 30,
-            Self::History              =>  5,
-            Self::Intimidate           => 15,
-            Self::Jump                 => 20,
-            Self::LanguageOther(spec)  =>  1,
-            Self::LanguageOwn          =>  0, // derived: EDU
-            Self::Law                  =>  5,
-            Self::LibraryUse           => 20,
-            Self::Listen               => 20,
-            Self::Locksmith            =>  1,
-            Self::MechRepair           => 10,
-            Self::Medicine             =>  1,
-            Self::NaturalWorld         => 10,
-            Self::Navigate             => 10,
-            Self::Occult               =>  5,
-            Self::Persuade             => 10,
-            Self::Pilot(spec)          => spec.base_value(),
-            Self::Psychoanalysis       =>  1,
-            Self::Psychology           => 10,
-            Self::Ride                 =>  5,
-            Self::Science(spec)        => spec.base_value(),
-            Self::SleightOfHand        => 10,
-            Self::SpotHidden           => 25,
-            Self::Stealth              => 20,
-            Self::Survival(spec)       => spec.base_value(),
-            Self::Swim                 => 20,
-            Self::Throw                => 20,
-            Self::Track                => 10,
-            Self::Custom { .. }        =>  0,
-        }
-    }
-
-    pub fn label(&self, lang: Lang) -> String {
-        match (self, lang) {
-            (Self::Accounting,           Lang::Ja) => "経理".into(),
-            (Self::Accounting,           Lang::En) => "Accounting".into(),
-            (Self::Anthropology,         Lang::Ja) => "人類学".into(),
-            (Self::Anthropology,         Lang::En) => "Anthropology".into(),
-            (Self::Archaeology,          Lang::Ja) => "考古学".into(),
-            (Self::Archaeology,          Lang::En) => "Archaeology".into(),
-            (Self::Appraise,             Lang::Ja) => "鑑定".into(),
-            (Self::Appraise,             Lang::En) => "Appraise".into(),
-            (Self::ArtCraft(spec),       _)        => format!("芸術/製作 ({})", spec.label(lang)),
-            (Self::Charm,                Lang::Ja) => "魅惑".into(),
-            (Self::Charm,                Lang::En) => "Charm".into(),
-            (Self::Climb,                Lang::Ja) => "登攀".into(),
-            (Self::Climb,                Lang::En) => "Climb".into(),
-            (Self::ComputerUse,          Lang::Ja) => "コンピューター".into(),
-            (Self::ComputerUse,          Lang::En) => "Computer Use".into(),
-            (Self::CreditRating,         Lang::Ja) => "信用".into(),
-            (Self::CreditRating,         Lang::En) => "Credit Rating".into(),
-            (Self::CthulhuMythos,        Lang::Ja) => "クトゥルフ神話".into(),
-            (Self::CthulhuMythos,        Lang::En) => "Cthulhu Mythos".into(),
-            (Self::Disguise,             Lang::Ja) => "変装".into(),
-            (Self::Disguise,             Lang::En) => "Disguise".into(),
-            (Self::Dodge,                Lang::Ja) => "回避".into(),
-            (Self::Dodge,                Lang::En) => "Dodge".into(),
-            (Self::DriveAuto,            Lang::Ja) => "運転（自動車）".into(),
-            (Self::DriveAuto,            Lang::En) => "Drive Auto".into(),
-            (Self::ElecRepair,           Lang::Ja) => "電気修理".into(),
-            (Self::ElecRepair,           Lang::En) => "Elec. Repair".into(),
-            (Self::Electronics,          Lang::Ja) => "電子工学".into(),
-            (Self::Electronics,          Lang::En) => "Electronics".into(),
-            (Self::FastTalk,             Lang::Ja) => "言いくるめ".into(),
-            (Self::FastTalk,             Lang::En) => "Fast Talk".into(),
-            (Self::Fighting(spec),       _)        => format!("近接戦闘 ({})", spec.label(lang)),
-            (Self::Firearms(spec),       _)        => format!("射撃 ({})", spec.label(lang)),
-            (Self::FirstAid,             Lang::Ja) => "応急手当".into(),
-            (Self::FirstAid,             Lang::En) => "First Aid".into(),
-            (Self::History,              Lang::Ja) => "歴史".into(),
-            (Self::History,              Lang::En) => "History".into(),
-            (Self::Intimidate,           Lang::Ja) => "威圧".into(),
-            (Self::Intimidate,           Lang::En) => "Intimidate".into(),
-            (Self::Jump,                 Lang::Ja) => "跳躍".into(),
-            (Self::Jump,                 Lang::En) => "Jump".into(),
-            (Self::LanguageOther(spec),  _)        => format!("ほかの言語 ({})", spec.label(lang)),
-            (Self::LanguageOwn,          Lang::Ja) => "母国語".into(),
-            (Self::LanguageOwn,          Lang::En) => "Language (Own)".into(),
-            (Self::Law,                  Lang::Ja) => "法律".into(),
-            (Self::Law,                  Lang::En) => "Law".into(),
-            (Self::LibraryUse,           Lang::Ja) => "図書館".into(),
-            (Self::LibraryUse,           Lang::En) => "Library Use".into(),
-            (Self::Listen,               Lang::Ja) => "聞き耳".into(),
-            (Self::Listen,               Lang::En) => "Listen".into(),
-            (Self::Locksmith,            Lang::Ja) => "鍵開け".into(),
-            (Self::Locksmith,            Lang::En) => "Locksmith".into(),
-            (Self::MechRepair,           Lang::Ja) => "機械修理".into(),
-            (Self::MechRepair,           Lang::En) => "Mech. Repair".into(),
-            (Self::Medicine,             Lang::Ja) => "医学".into(),
-            (Self::Medicine,             Lang::En) => "Medicine".into(),
-            (Self::NaturalWorld,         Lang::Ja) => "自然".into(),
-            (Self::NaturalWorld,         Lang::En) => "Natural World".into(),
-            (Self::Navigate,             Lang::Ja) => "ナビゲート".into(),
-            (Self::Navigate,             Lang::En) => "Navigate".into(),
-            (Self::Occult,               Lang::Ja) => "オカルト".into(),
-            (Self::Occult,               Lang::En) => "Occult".into(),
-            (Self::Persuade,             Lang::Ja) => "説得".into(),
-            (Self::Persuade,             Lang::En) => "Persuade".into(),
-            (Self::Pilot(spec),          _)        => format!("操縦 ({})", spec.label(lang)),
-            (Self::Psychoanalysis,       Lang::Ja) => "精神分析".into(),
-            (Self::Psychoanalysis,       Lang::En) => "Psychoanalysis".into(),
-            (Self::Psychology,           Lang::Ja) => "心理学".into(),
-            (Self::Psychology,           Lang::En) => "Psychology".into(),
-            (Self::Ride,                 Lang::Ja) => "乗馬".into(),
-            (Self::Ride,                 Lang::En) => "Ride".into(),
-            (Self::Science(spec),        _)        => format!("科学 ({})", spec.label(lang)),
-            (Self::SleightOfHand,        Lang::Ja) => "手さばき".into(),
-            (Self::SleightOfHand,        Lang::En) => "Sleight of Hand".into(),
-            (Self::SpotHidden,           Lang::Ja) => "目星".into(),
-            (Self::SpotHidden,           Lang::En) => "Spot Hidden".into(),
-            (Self::Stealth,              Lang::Ja) => "隠密".into(),
-            (Self::Stealth,              Lang::En) => "Stealth".into(),
-            (Self::Survival(spec),       _)        => format!("サバイバル ({})", spec.label(lang)),
-            (Self::Swim,                 Lang::Ja) => "水泳".into(),
-            (Self::Swim,                 Lang::En) => "Swim".into(),
-            (Self::Throw,                Lang::Ja) => "投擲".into(),
-            (Self::Throw,                Lang::En) => "Throw".into(),
-            (Self::Track,                Lang::Ja) => "追跡".into(),
-            (Self::Track,                Lang::En) => "Track".into(),
-            (Self::Custom { name, spec: Some(s) }, _) => format!("{} ({})", name, s),
-            (Self::Custom { name, spec: None },   _) => name.clone(),
-        }
-    }
-}
-
 // ============================================================
 // --- バックストーリー (Backstory) ---
 // ============================================================
 
 enum Backstory {
-    // KeyConnection(Backstory),
+    KeyConnection(Box<Backstory>),
     PersonalDescription,
     IdeologyAndBeliefs,
     SignificantPeople,
@@ -682,7 +886,7 @@ impl Backstory {
 // --- 導出値・判定カテゴリ (Derived) ---
 // ============================================================
 
-pub Derived {
+pub enum Derived {
     HitPoints,
     MagicPoints,
     Build,
@@ -717,16 +921,26 @@ impl Derived {
             (Self::StandardOfLiving,      Lang::Ja) => "生活水準"
         }
     }
-    pub fn derive(&self, &characteristic: Characteristic) -> u16 {
+        fn compute(&self, ds: &DataStruct) -> Result<Vec<u8>, ListError> {
+            let raw = data_struct.get(&Character::Characteristic(Characteristic::Strength))?;
+            // 計算...
+        }
+    }
+    pub fn compute(&self, data_struct: &DataStruct) -> Result<Vec<u8>, ListError> {
         match self {
             Self::HitPoints => {
-                (characteristic::Constitution::value()? + characteristic::Size::value()?) / 10
+                let constitution = data_struct.get(&Character::Characteristic(Characteristic::Constitution))?;
+                let size         = data_struct.get(&Character::Characteristic(Characteristic::Size))?;
+                (constitution + size) / 10
             }
             Self::MagicPoints -> {
-                (characteristic::Power::value()?) / 5
+                let power  = data_struct.get(&Character::Characteristic(Characteristic::Power))?;
+                power / 5
             }
             Self::Build -> {
-                match (characteristic::Strength::value() + characteristic::Size::value()) {
+                let strength  = data_struct.get(&Character::Characteristic(Characteristic::Strength))?;
+                let size      = data_struct.get(&Character::Characteristic(Characteristic::Size))?;                
+                match (strength + size) {
                      2..= 64 => BuildRank::NegTwo,
                     65..= 84 => BuildRank::NegOne,
                     85..=124 => BuildRank::Zero,
@@ -738,7 +952,9 @@ impl Derived {
                 }
             }
             Self::DamageBonus ->{
-                match (characteristic::Strength::value() + characteristic::Size::value()) {
+                let strength  = data_struct.get(&Character::Characteristic(Characteristic::Strength))?;
+                let size      = data_struct.get(&Character::Characteristic(Characteristic::Size))?;                
+                match (strength + size) {
                     2..= 64 => DamageBonusDice::Neg2,
                    65..= 84 => DamageBonusDice::Neg1,
                    85..=124 => DamageBonusDice::Zero,
@@ -776,8 +992,7 @@ impl Derived {
 }
 
 // --- ビルド (Build) ---
-// STR + SIZ の合計値から決定される離散段階。DamageBonus と 1対1 対応する。
-enum BuildRank {
+enum BuildRank { // STR + SIZ の合計値から決定される離散段階。DamageBonus と 1対1 対応する。
     Neg2, // -2  (STR+SIZ:   2- 64)
     Neg1, // -1  (STR+SIZ:  65- 84)
     Zero, //  0  (STR+SIZ:  85-124)
@@ -826,9 +1041,6 @@ impl DamageBonusDice {
             Self::PosThrD6 => "+3D6",
             Self::PosForD6 => "+4D6",
         }
-    }
-    pub fn value() {
-        // todo n_d_n()に反映
     }
 }
 
@@ -968,44 +1180,6 @@ impl AgeCategory {
             (Self::Old,     Lang::En) => "Old (70-79)",
             (Self::Ancient, Lang::Ja) => "超高齢 (80+)",
             (Self::Ancient, Lang::En) => "Very Old (80+)",
-        }
-    }
-}
-
-pub enum Character {
-    // 依存無し
-    Identity,
-
-    // Identityのみに依存
-    Timestamp, // createとupdateの二値。
-
-    // IdentityとTimestampのみに依存
-    Profile,
-    Equipment,
-    Backstory,
-
-    // Profileに依存
-    Characteristic,
-
-    // Characteristicに依存
-    Derived,
-    Skill,
-
-    // Characteristic, Skill, Equipment, Derivedに依存
-    Roll,
-}
-
-impl Character {
-    pub fn label(&self, lang: Lang) -> &'static str {
-        match (self, lang) {
-            (Self::Identity,   _)        => "ID",
-            (Self::Timestamp,  Lang::En) => "yyyy-mm-dd hh:MM::ss",
-            (Self::Timestamp,  Lang::Ja) => "yyyy年mm月dd日 hh時mm分ss秒",
-            (Self::Occupation, Lang::Ja) => "職業",
-            (Self::Occupation, Lang::En) => "Occupation",
-            (Self::Age,        Lang::Ja) => "年齢",
-            (Self::Age,        Lang::En) => "Age",
-    
         }
     }
 }
