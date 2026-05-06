@@ -1,7 +1,6 @@
 use rand::{rng, RngExt};
 
 pub mod list;
-pub mod character;
 pub mod data_struct;
 pub mod roll;
 pub mod js_client;
@@ -19,10 +18,10 @@ pub fn n_d_n(count: u32, sides: u32) -> u32 {
 }
 
 // ============================================================
-// Bonus/Penalty dice
+// Percent Roll (1d100 + Bonus/Penalty Dice)
 // ============================================================
 
-pub fn roll_with_bonus(bonus: i32) -> (u32, Vec<u32>) {
+pub fn percent_roll(bonus: i32) -> (u32, Vec<u32>) {
     let mut rng = rng();
     let roll_tens = |r: &mut _| {
         let d: u32 = RngExt::random_range(r, 1..=10u32);

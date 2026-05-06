@@ -1,16 +1,16 @@
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsValue;
-use crate::{Lang, dice::{self, ResultLevel}};
-use crate::table::Roll;
-use crate::data_struct;
-use crate::character;
+use crate::Lang;
+use crate::data_struct::DataStruct;
+use crate::Roll;
 use crate::js_client::{
     Operation, DomCmd,
-    get_js_str, get_js_field, get_js_f64,
+    get_js_str, get_js_f64, 
     EventType, KeyName,
     Gesture, PointerState, detect_gesture,
     Dom,
 };
+use crate::event;
 
 // ============================================================
 // canvas state
