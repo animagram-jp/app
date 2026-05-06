@@ -387,17 +387,26 @@ impl Characteristic {
 // ============================================================
 
 
+// --- 信用 (Credit Rating) ---
+pub struct CreditRating;
+
+impl CreditRating {
+    pub fn standard_of_living(&self, value: u16) -> StandardOfLiving {
+        StandardOfLiving::from_cr(value)
+    }
+}
+
 // --- スキル (Skill) --- p.54
 pub enum Skill {
     Accounting,
     Anthropology,
     Archaeology,
     Appraise,
-    ArtCraft(ArtCraftSpec), 
+    ArtCraft(ArtCraftSpec),
     Charm,
     Climb,
     ComputerUse,
-    CreditRating,
+    CreditRating(CreditRating),
     CthulhuMythos,
     Disguise,
     Dodge,
@@ -454,7 +463,7 @@ impl Skill {
             Self::Charm                => 15,
             Self::Climb                => 20,
             Self::ComputerUse          =>  5,
-            Self::CreditRating         =>  0,
+            Self::CreditRating(_)      =>  0,
             Self::CthulhuMythos        =>  0,
             Self::Disguise             =>  5,
             Self::Dodge                =>  0, // derived: DEX / 2
@@ -496,6 +505,17 @@ impl Skill {
         }
     }
 
+    // Characteristic依存で初期値が決まるスキルについて、依存先を返す。
+    // 呼び出し側がCharacteristic値を取得し、スキルのbase_valueを上書きする責務を持つ。
+    // Dodge: DEX/2、LanguageOwn: EDU そのまま。
+    pub fn characteristic_base(&self) -> Option<(Characteristic, fn(u16) -> u16)> {
+        match self {
+            Self::Dodge     => Some((Characteristic::Dexterity, |dex| dex / 2)),
+            Self::LanguageOwn => Some((Characteristic::Education, |edu| edu)),
+            _ => None,
+        }
+    }
+
     pub fn label(&self, lang: Lang) -> String {
         match (self, lang) {
             (Self::Accounting,           Lang::Ja) => "経理".into(),
@@ -513,8 +533,8 @@ impl Skill {
             (Self::Climb,                Lang::En) => "Climb".into(),
             (Self::ComputerUse,          Lang::Ja) => "コンピューター".into(),
             (Self::ComputerUse,          Lang::En) => "Computer Use".into(),
-            (Self::CreditRating,         Lang::Ja) => "信用".into(),
-            (Self::CreditRating,         Lang::En) => "Credit Rating".into(),
+            (Self::CreditRating(_),      Lang::Ja) => "信用".into(),
+            (Self::CreditRating(_),      Lang::En) => "Credit Rating".into(),
             (Self::CthulhuMythos,        Lang::Ja) => "クトゥルフ神話".into(),
             (Self::CthulhuMythos,        Lang::En) => "Cthulhu Mythos".into(),
             (Self::Disguise,             Lang::Ja) => "変装".into(),
@@ -590,7 +610,7 @@ impl Skill {
 }
 
 // --- 芸術/製作 専門分野 (Art/Craft Specialization)  --- p.62
-enum ArtCraftSpec {
+pub enum ArtCraftSpec {
     Acting,       // 演劇
     Barber,       // 理容
     Calligraphy,  // 書道
@@ -644,7 +664,7 @@ impl ArtCraftSpec {
 }
 
 // --- 近接戦闘 専門分野 (Fighting Specialization) --- p.61
-enum FightingSpec {
+pub enum FightingSpec {
     Axe,          // 斧          15%
     Brawl,        // 格闘        25%
     Chainsaw,     // チェーンソー  10%
@@ -695,7 +715,7 @@ impl FightingSpec {
 }
 
 // --- 射撃 専門分野 (Firearms Specialization) --- p.64
-enum FirearmsSpec {
+pub enum FirearmsSpec {
     Bow,           // 弓                   15%
     Handgun,       // 拳銃                 20%
     HeavyWeapons,  // 重火器               10%
@@ -738,7 +758,7 @@ impl FirearmsSpec {
 }
 
 // --- ほかの言語 専門分野 (Language Other Specialization) ---
-enum LanguageSpec {
+pub enum LanguageSpec {
     Custom(String),
 }
 
@@ -751,7 +771,7 @@ impl LanguageSpec {
 }
 
 // --- 操縦 専門分野 (Pilot Specialization) --- p.67
-enum PilotSpec {
+pub enum PilotSpec {
     // --- 両時代共通 ---
     Boat,       // ボート
     SteamShip,  // 汽船
@@ -802,7 +822,7 @@ impl PilotSpec {
 }
 
 // --- 科学 専門分野 (Science Specialization) --- p.59
-enum ScienceSpec {
+pub enum ScienceSpec {
     Astronomy,    // 天文学
     Biology,      // 生物学
     Botany,       // 植物学
@@ -856,7 +876,7 @@ impl ScienceSpec {
 }
 
 // --- サバイバル 専門分野 (Survival Specialization) --- p.63
-enum SurvivalSpec {
+pub enum SurvivalSpec {
     Arctic,
     Desert,
     Sea,
@@ -954,11 +974,8 @@ pub enum Derived {
     DamageBonus,
     MoveRate,
     Sanity,
-    Dodge,
-    LanguageOwn,
     OccupationSkillPoints,
     InterestSkillPoints,
-    StandardOfLiving,
 }
 
 impl Derived {
@@ -978,16 +995,10 @@ impl Derived {
             (Self::MoveRate,              Lang::Ja) => "移動率 (MOV)",
             (Self::Sanity,                Lang::En) => "Sanity",
             (Self::Sanity,                Lang::Ja) => "正気度",
-            (Self::Dodge,                 Lang::En) => "Dodge",
-            (Self::Dodge,                 Lang::Ja) => "回避",
-            (Self::LanguageOwn,           Lang::En) => "Language (Own)",
-            (Self::LanguageOwn,           Lang::Ja) => "母国語",
             (Self::OccupationSkillPoints, Lang::En) => "Occupation Skill Points",
             (Self::OccupationSkillPoints, Lang::Ja) => "職業技能ポイント",
             (Self::InterestSkillPoints,   Lang::En) => "Interest Skill Points",
             (Self::InterestSkillPoints,   Lang::Ja) => "興味技能ポイント",
-            (Self::StandardOfLiving,      Lang::En) => "Standard of Living",
-            (Self::StandardOfLiving,      Lang::Ja) => "生活水準",
         }
     }
     pub fn compute(&self, data_struct: &crate::data_struct::DataStruct<Character>) -> Result<Vec<u8>, crate::list::ListError> {
@@ -1018,15 +1029,6 @@ impl Derived {
             Self::Sanity => {
                 let power = data_struct.get(&Character::Characteristic(Characteristic::Power))?;
                 Ok(power.to_vec())
-            }
-            Self::Dodge => {
-                let dex = data_struct.get(&Character::Characteristic(Characteristic::Dexterity))?;
-                let val = dex.iter().map(|&b| b as u16).sum::<u16>() / 2;
-                Ok(val.to_le_bytes().to_vec())
-            }
-            Self::LanguageOwn => {
-                let edu = data_struct.get(&Character::Characteristic(Characteristic::Education))?;
-                Ok(edu.to_vec())
             }
             _ => Ok(vec![]),
         }
@@ -1090,7 +1092,7 @@ impl DamageBonusDice {
 }
 
 // --- 生活水準 (Standard of Living) ---
-enum StandardOfLiving {
+pub enum StandardOfLiving {
     Pauper,    // 無一文  (CR: 0     )
     Poor,      // 貧乏    (CR: 1-  9 )
     Average,   // 平均    (CR: 10- 49)

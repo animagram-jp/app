@@ -1,11 +1,11 @@
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsValue;
 use crate::js_client::{
-    DomCmd,
+    DomCmd, Operation,
     get_js_str, get_js_f64,
     EventType, KeyName,
     Gesture, PointerState, detect_gesture,
-    Dom,
+    dom,
 };
 
 // ============================================================
@@ -20,25 +20,93 @@ pub enum Overlay {
     Input  { step: u8, value: u32 },   // 左端からlabel, up, down, value, nextのワンライナーUI
 }
 
+// modal/drawerは排他。同時に開かない。
+#[derive(Clone, Copy, PartialEq, Default)]
+enum Dialog {
+    #[default]
+    None,
+    Modal,   // <dialog id="modal">  キャラシ編集
+    Drawer,  // <dialog id="drawer"> サイドドロワー
+}
+
 #[derive(Default)]
 struct CanvasState {
     overlay: Overlay,
-    drawer: bool,   // true = open, false = close
-    modal:  bool,   // true = open, false = close
+    dialog:  Dialog,
 }
 
 impl CanvasState {
-    fn update(&mut self, gesture: Gesture, dom: Dom::Id, key: KeyName) -> Vec<DomCmd> {
-        if self.modal {
-            // todo: modal open時のclose処理
+    fn on_click(&mut self, id: &dom::Id, _key: KeyName) -> Vec<DomCmd> {
+        // backdrop click: segments が1つ = dialog要素そのものへのclick
+        let is_backdrop = id.0.len() == 1;
+
+        match (self.dialog, id.last_tag(), is_backdrop) {
+            // --- modal backdrop → close ---
+            (Dialog::Modal, Some(dom::Tag::Modal), true) => {
+                self.dialog = Dialog::None;
+                vec![DomCmd::new(Operation::CloseModal, "modal", None, None)]
+            }
+            // --- drawer backdrop → close ---
+            (Dialog::Drawer, Some(dom::Tag::Drawer), true) => {
+                self.dialog = Dialog::None;
+                vec![DomCmd::new(Operation::CloseModal, "drawer", None, None)]
+            }
+            // --- modal内部イベント: overlay close ---
+            (Dialog::Modal, _, _) => {
+                // todo: modal内キャラシ編集操作
+                vec![]
+            }
+            // --- drawer内部イベント ---
+            (Dialog::Drawer, _, _) => {
+                // todo: drawer内操作
+                vec![]
+            }
+            // --- 通常状態 ---
+            (Dialog::None, last_tag, _) => self.on_click_normal(id, last_tag),
         }
-        if self.drawer {
-            // todo: drawer open時のclose処理
-        }
-        match dom.last_tag() {
-            // todo: overlay 遷移
+    }
+
+    fn on_click_normal(&mut self, id: &dom::Id, last_tag: Option<&dom::Tag>) -> Vec<DomCmd> {
+        match last_tag {
+            // ✏️ ヘッダーボタン → modal open
+            Some(dom::Tag::Button) if id.encode() == "main_header_button" => {
+                self.dialog = Dialog::Modal;
+                vec![DomCmd::new(Operation::OpenModal, "modal", None, None)]
+            }
+            // todo: overlay系ボタン、li選択、etc.
             _ => vec![],
         }
+    }
+
+    fn on_keydown(&mut self, id: &dom::Id, key: KeyName) -> Vec<DomCmd> {
+        match key {
+            // Escape: 開いているものを優先順で閉じる
+            KeyName::Escape => {
+                match self.dialog {
+                    Dialog::Modal => {
+                        self.dialog = Dialog::None;
+                        return vec![DomCmd::new(Operation::CloseModal, "modal", None, None)];
+                    }
+                    Dialog::Drawer => {
+                        self.dialog = Dialog::None;
+                        return vec![DomCmd::new(Operation::CloseModal, "drawer", None, None)];
+                    }
+                    Dialog::None => {}
+                }
+                if self.overlay != Overlay::None {
+                    self.overlay = Overlay::None;
+                    // todo: overlay DOM非表示
+                }
+                vec![]
+            }
+            // todo: ArrowUp/Down, Enter (overlay内選択)
+            _ => vec![],
+        }
+    }
+
+    fn on_gesture(&mut self, _gesture: Gesture, _id: &dom::Id) -> Vec<DomCmd> {
+        // todo: swipe/longpress
+        vec![]
     }
 }
 
@@ -74,18 +142,36 @@ impl App {
 
     pub fn event(&mut self, payload: JsValue) {
         let event_type = EventType::decode(&get_js_str(&payload, "event_type").unwrap_or_default());
-        let id         = Dom::Id::decode(&get_js_str(&payload, "target_id").unwrap_or_default());
+        let id         = dom::Id::decode(&get_js_str(&payload, "target_id").unwrap_or_default());
         let key        = KeyName::decode(&get_js_str(&payload, "key").unwrap_or_default());
         let x          = get_js_f64(&payload, "x").unwrap_or(0.0);
         let y          = get_js_f64(&payload, "y").unwrap_or(0.0);
         let time       = get_js_f64(&payload, "time").unwrap_or(0.0);
 
-        self.pointer_state = self.pointer_state.update(&event_type, x, y, time);
-        let gesture = detect_gesture(&self.pointer_state, time);
+        let cmds = match event_type {
+            EventType::Click => {
+                self.canvas_state.on_click(&id, key)
+            }
+            EventType::KeyDown => {
+                self.canvas_state.on_keydown(&id, key)
+            }
+            EventType::Input => {
+                // todo: textarea "/" トリガー
+                vec![]
+            }
+            // pointer系: gesture判定に委ねる
+            EventType::PointerDown | EventType::PointerMove
+            | EventType::PointerUp | EventType::PointerCancel => {
+                self.pointer_state = self.pointer_state.update(&event_type, x, y, time);
+                if let Some(g) = detect_gesture(&self.pointer_state, time) {
+                    self.canvas_state.on_gesture(g, &id)
+                } else {
+                    vec![]
+                }
+            }
+            _ => vec![],
+        };
 
-        if let Some(g) = gesture {
-            let cmds = self.canvas_state.update(g, id, key);
-            self.dom_cmds.extend(cmds);
-        }
+        self.dom_cmds.extend(cmds);
     }
 }

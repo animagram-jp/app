@@ -259,10 +259,10 @@ pub fn detect_gesture(state: &PointerState, current_time: f64) -> Option<Gesture
 //   "-N" = 同タグ内の連番       例: span-3, th-2
 //   連番なし = その階層に1つだけ 例: thead_tr, legend_h5
 //
-// Dom::Id::encode()  -> "seg1_seg2_seg-N_..."
-// Dom::Id::decode()  -> Vec<Dom::Segment> のパース
+// dom::Id::encode()  -> "seg1_seg2_seg-N_..."
+// dom::Id::decode()  -> Vec<dom::Segment> のパース
 
-pub mod Dom {
+pub mod dom {
     #[derive(Debug, Clone, PartialEq)]
     pub enum Tag {
         Head,
