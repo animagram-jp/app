@@ -1,6 +1,9 @@
 const worker = new Worker("./worker.js", { type: "module" });
 
-// ── worker → main: DOM操作 ───────────────────────────────────────
+// ============================================================
+// receive canvas commands and excute
+// ============================================================
+
 worker.addEventListener("message", (e) => {
   const { type, payload } = e.data;
   if (type === "execute") { payload.forEach(execute); }
@@ -10,8 +13,7 @@ worker.addEventListener("error", (e) => {
   console.error("[worker]", e.message);
 });
 
-// ── DOM操作 ──────────────────────────────────────────────────────
-// DomCmd: { operation: u8, id: string, attribute?: string, value?: string }
+// CanvasCmd: { operation: u8, id: string, attribute?: string, value?: string }
 function execute({ operation, id, attribute, value }) {
   const el = document.getElementById(id);
   if (!el) return;
@@ -45,7 +47,10 @@ function applyClass(el, value) {
   }
 }
 
-// ── main → worker: イベント送信 ──────────────────────────────────
+// ============================================================
+// send event
+// ============================================================
+
 function dispatch(payload) {
   worker.postMessage({ type: "event", payload });
 }
@@ -58,7 +63,6 @@ function bind() {
     dispatch({ event_type: "click", target_id: el.id });
   });
 
-  // keydown: Appが意味を持つキーのみ転送
   document.addEventListener("keydown", (e) => {
     const keys = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Enter", "Escape", "Tab"];
     if (!keys.includes(e.key)) return;

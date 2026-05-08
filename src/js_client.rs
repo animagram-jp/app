@@ -3,7 +3,7 @@ use js_sys::Reflect;
 use serde::Serialize;
 
 // ============================================================
-// send (dom operation)
+// send operation
 // ============================================================
 
 pub enum Operation {
@@ -37,7 +37,7 @@ impl Operation {
 }
 
 #[derive(Serialize)]
-pub struct DomCmd {
+pub struct CanvasCmd {
     operation: u8,
     id:        String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -46,7 +46,7 @@ pub struct DomCmd {
     value:     Option<String>,
 }
 
-impl DomCmd {
+impl CanvasCmd {
     pub fn new(operation: Operation, id: &str, attribute: Option<&str>, value: Option<&str>) -> Self {
         Self {
             operation: operation.as_u8(),
@@ -173,7 +173,7 @@ impl KeyName {
 }
 
 // ============================================================
-// device context
+// device
 // ============================================================
 
 pub enum Device {
@@ -206,7 +206,7 @@ pub enum Gesture {
 }
 
 // pointerdown:   is_down = true, 座標・時刻記録, タイマー起動
-// pointermove:   座標がブレてたら長押しキャンセル (指がズレた)
+// pointermove:   座標がブレていたら長押しキャンセル (指がズレた)
 // pointerup:     経過時間で click か 長押し か判定
 // pointercancel: 全部リセット (割り込まれた時)
 #[derive(Default, Clone, Copy)]

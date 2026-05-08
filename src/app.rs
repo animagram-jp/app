@@ -2,7 +2,7 @@ use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsValue;
 use std::collections::BTreeMap;
 use crate::js_client::{
-    DomCmd, Operation,
+    CanvasCmd, Operation,
     get_js_str, get_js_f64,
     EventType, KeyName,
     Gesture, PointerState, detect_gesture,
@@ -99,7 +99,7 @@ impl CanvasState {
         }).collect()
     }
 
-    fn on_click(&mut self, id: &dom::Id, _key: KeyName) -> Vec<DomCmd> {
+    fn on_click(&mut self, id: &dom::Id, _key: KeyName) -> Vec<CanvasCmd> {
         let is_backdrop = id.0.len() == 1;
 
         match (self.dialog, id.last_tag(), is_backdrop) {
@@ -107,12 +107,12 @@ impl CanvasState {
                 self.dialog = Dialog::None;
                 self.discard_buffer();
                 let mut cmds = crate::event::reset_modal();
-                cmds.push(DomCmd::new(Operation::CloseModal, "modal", None, None));
+                cmds.push(CanvasCmd::new(Operation::CloseModal, "modal", None, None));
                 cmds
             }
             (Dialog::Drawer, Some(dom::Tag::Drawer), true) => {
                 self.dialog = Dialog::None;
-                vec![DomCmd::new(Operation::CloseModal, "drawer", None, None)]
+                vec![CanvasCmd::new(Operation::CloseModal, "drawer", None, None)]
             }
             (Dialog::Modal,  _, _) => self.on_click_normal(id, id.last_tag()),
             (Dialog::Drawer, _, _) => vec![],
@@ -121,14 +121,14 @@ impl CanvasState {
         }
     }
 
-    fn on_click_normal(&mut self, id: &dom::Id, last_tag: Option<&dom::Tag>) -> Vec<DomCmd> {
+    fn on_click_normal(&mut self, id: &dom::Id, last_tag: Option<&dom::Tag>) -> Vec<CanvasCmd> {
         match last_tag {
             Some(dom::Tag::Button) if id.encode() == "main_header_button" => {
                 self.dialog = Dialog::Modal;
                 self.load_saved();
                 let mut cmds = crate::event::open_modal();
                 cmds.extend(crate::event::restore_modal(&self.buf));
-                cmds.push(DomCmd::new(Operation::OpenModal, "modal", None, None));
+                cmds.push(CanvasCmd::new(Operation::OpenModal, "modal", None, None));
                 cmds
             }
             Some(dom::Tag::Button) if {
@@ -151,14 +151,14 @@ impl CanvasState {
                 let mut cmds = crate::event::toast_saved();
                 cmds.extend(crate::event::update_debug_select(&self.saved_name_list(), self.buf.identity_opt()));
                 cmds.extend(crate::event::update_character_view(&self.buf));
-                cmds.push(DomCmd::new(Operation::CloseModal, "modal", None, None));
+                cmds.push(CanvasCmd::new(Operation::CloseModal, "modal", None, None));
                 cmds
             }
             _ => vec![],
         }
     }
 
-    fn on_keydown(&mut self, _id: &dom::Id, key: KeyName) -> Vec<DomCmd> {
+    fn on_keydown(&mut self, _id: &dom::Id, key: KeyName) -> Vec<CanvasCmd> {
         match key {
             KeyName::Escape => {
                 match self.dialog {
@@ -166,12 +166,12 @@ impl CanvasState {
                         self.dialog = Dialog::None;
                         self.discard_buffer();
                         let mut cmds = crate::event::reset_modal();
-                        cmds.push(DomCmd::new(Operation::CloseModal, "modal", None, None));
+                        cmds.push(CanvasCmd::new(Operation::CloseModal, "modal", None, None));
                         return cmds;
                     }
                     Dialog::Drawer => {
                         self.dialog = Dialog::None;
-                        return vec![DomCmd::new(Operation::CloseModal, "drawer", None, None)];
+                        return vec![CanvasCmd::new(Operation::CloseModal, "drawer", None, None)];
                     }
                     Dialog::None => {}
                     Dialog::Select { .. } | Dialog::Input { .. } => {
@@ -187,7 +187,7 @@ impl CanvasState {
                     let mut cmds = crate::event::toast_saved();
                     cmds.extend(crate::event::update_debug_select(&self.saved_name_list(), self.buf.identity_opt()));
                     cmds.extend(crate::event::update_character_view(&self.buf));
-                    cmds.push(DomCmd::new(Operation::CloseModal, "modal", None, None));
+                    cmds.push(CanvasCmd::new(Operation::CloseModal, "modal", None, None));
                     return cmds;
                 }
                 vec![]
@@ -196,7 +196,7 @@ impl CanvasState {
         }
     }
 
-    fn on_input(&mut self, id: &dom::Id, value: &str) -> Vec<DomCmd> {
+    fn on_input(&mut self, id: &dom::Id, value: &str) -> Vec<CanvasCmd> {
         let segs = &id.0;
 
         // 専門分野: "modal_fieldset-3_table_tr-{row}_td-1_input"
@@ -272,7 +272,7 @@ impl CanvasState {
         }
     }
 
-    fn on_change(&mut self, id: &dom::Id, value: &str) -> Vec<DomCmd> {
+    fn on_change(&mut self, id: &dom::Id, value: &str) -> Vec<CanvasCmd> {
         if id.encode() == "main_div_section-1_section-1_select" {
             let char_id: u32 = value.parse().unwrap_or(0);
             if char_id == 0 || !self.pool.contains_key(&char_id) { return vec![]; }
@@ -301,9 +301,9 @@ impl CanvasState {
                     .map(Skill::decode).unwrap_or((0, 0, 0, String::new()));
                 let _ = self.buf.set(&field, &Skill::encode(occ, int, bonus, Some("")));
                 return vec![
-                    DomCmd::new(Operation::RemoveClass, &inp_id, None, Some("hidden")),
-                    DomCmd::new(Operation::SetValue,    &inp_id, None, Some("")),
-                    DomCmd::new(Operation::Focus,       &inp_id, None, None),
+                    CanvasCmd::new(Operation::RemoveClass, &inp_id, None, Some("hidden")),
+                    CanvasCmd::new(Operation::SetValue,    &inp_id, None, Some("")),
+                    CanvasCmd::new(Operation::Focus,       &inp_id, None, None),
                 ];
             } else {
                 // 固定variant選択: inputをhide、specをvalueで保存
@@ -315,9 +315,9 @@ impl CanvasState {
                 let th_id  = format!("modal_fieldset-3_table_tr-{}_th", row);
                 let base_id = format!("modal_fieldset-3_table_tr-{}_span-1", row);
                 let mut cmds = vec![
-                    DomCmd::new(Operation::AddClass, &inp_id, None, Some("hidden")),
-                    DomCmd::new(Operation::SetText,  &th_id,  None, Some(&skill.label_with_spec(LANG, value))),
-                    DomCmd::new(Operation::SetText,  &base_id, None, Some(&skill.base_value().to_string())),
+                    CanvasCmd::new(Operation::AddClass, &inp_id, None, Some("hidden")),
+                    CanvasCmd::new(Operation::SetText,  &th_id,  None, Some(&skill.label_with_spec(LANG, value))),
+                    CanvasCmd::new(Operation::SetText,  &base_id, None, Some(&skill.base_value().to_string())),
                 ];
                 // 合計も更新
                 let (occ2, int2, bonus2, _) = self.buf.get(&field)
@@ -330,7 +330,7 @@ impl CanvasState {
         vec![]
     }
 
-    fn on_blur(&mut self, id: &dom::Id, value: &str) -> Vec<DomCmd> {
+    fn on_blur(&mut self, id: &dom::Id, value: &str) -> Vec<CanvasCmd> {
         let segs = &id.0;
         // "modal_fieldset-3_table_tr-{row}_td-1_input" + 空 → selectに戻す
         if segs.len() == 6
@@ -345,14 +345,14 @@ impl CanvasState {
             let inp_id = format!("modal_fieldset-3_table_tr-{}_td-1_input", row);
             let sel_id = format!("modal_fieldset-3_table_tr-{}_td-1_select", row);
             return vec![
-                DomCmd::new(Operation::AddClass,    &inp_id, None, Some("hidden")),
-                DomCmd::new(Operation::RemoveClass, &sel_id, None, Some("hidden")),
+                CanvasCmd::new(Operation::AddClass,    &inp_id, None, Some("hidden")),
+                CanvasCmd::new(Operation::RemoveClass, &sel_id, None, Some("hidden")),
             ];
         }
         vec![]
     }
 
-    fn on_gesture(&mut self, _gesture: Gesture, _id: &dom::Id) -> Vec<DomCmd> {
+    fn on_gesture(&mut self, _gesture: Gesture, _id: &dom::Id) -> Vec<CanvasCmd> {
         vec![]
     }
 }
@@ -361,13 +361,9 @@ impl CanvasState {
 // App
 // ============================================================
 
-// ============================================================
-// App
-// ============================================================
-
 /// JS から受け取った生ペイロードをデコードした入力イベント。
 /// ドメイン知識を持たない汎用の構造体として定義する。
-struct InputEvent {
+struct CanvasEvent {
     event_type: EventType,
     id:         dom::Id,
     key:        KeyName,
@@ -377,9 +373,9 @@ struct InputEvent {
     time:       f64,
 }
 
-impl InputEvent {
+impl CanvasEvent {
     fn decode(payload: &JsValue) -> Self {
-        todo!("JsValue から各フィールドをデコードして InputEvent を返す")
+        todo!("JsValue から各フィールドをデコードして CanvasEvent を返す")
     }
 }
 
@@ -388,8 +384,8 @@ pub struct App {
     device:        Device,
     pointer_state: PointerState,
     canvas_state:  CanvasState,
-    inbox:         Vec<InputEvent>,  // 受信キュー
-    dom_cmds:      Vec<DomCmd>,      // 送信キュー
+    events:         Vec<CanvasEvent>,  // 受信キュー
+    cmds:      Vec<CanvasCmd>,      // 送信キュー
     pub(crate) log_stack: Vec<crate::event::LogStack>,
 }
 
@@ -401,43 +397,43 @@ impl App {
         let mut canvas_state = CanvasState::new(wal);
         canvas_state.load_all_from_wal();
 
-        let mut dom_cmds = Vec::new();
+        let mut cmds = Vec::new();
         let name_list = canvas_state.saved_name_list();
         if !name_list.is_empty() {
             canvas_state.buf.identity = name_list[0].0;
             canvas_state.load_saved();
-            dom_cmds.extend(crate::event::update_character_view(&canvas_state.buf));
+            cmds.extend(crate::event::update_character_view(&canvas_state.buf));
         }
-        dom_cmds.extend(crate::event::update_debug_select(&name_list, canvas_state.buf.identity_opt()));
+        cmds.extend(crate::event::update_debug_select(&name_list, canvas_state.buf.identity_opt()));
 
         App {
             device:        detect_device(screen_width, pointer_coarse),
             pointer_state: PointerState::default(),
             canvas_state,
-            inbox: Vec::new(),
-            dom_cmds,
+            events: Vec::new(),
+            cmds,
             log_stack: Vec::new(),
         }
     }
 
     pub fn flush(&mut self) -> JsValue {
-        let out = serde_wasm_bindgen::to_value(&self.dom_cmds).unwrap_or(JsValue::NULL);
-        self.dom_cmds.clear();
+        let out = serde_wasm_bindgen::to_value(&self.cmds).unwrap_or(JsValue::NULL);
+        self.cmds.clear();
         out
     }
 
     /// JS 側からイベントを受け取り、受信キューに積んでループを回す。
     pub fn event(&mut self, payload: JsValue) {
-        self.inbox.push(InputEvent::decode(&payload));
-        while let Some(ev) = self.inbox.pop() {
+        self.events.push(CanvasEvent::decode(&payload));
+        while let Some(ev) = self.events.pop() {
             let cmds = self.dispatch(ev);
-            self.dom_cmds.extend(cmds);
-            // todo: cmd 間の整合処理（必要なら inbox に追加イベントを積む）
+            self.cmds.extend(cmds);
+            // todo: cmd 間の整合処理（必要なら events に追加イベントを積む）
         }
     }
 
-    /// InputEvent をディスパッチして DomCmd のリストを返す。
-    fn dispatch(&mut self, ev: InputEvent) -> Vec<DomCmd> {
-        todo!("ev.event_type に応じて canvas_state.on_* を呼び分け、DomCmd を返す")
+    /// CanvasEvent をディスパッチして CanvasCmd のリストを返す。
+    fn dispatch(&mut self, ev: CanvasEvent) -> Vec<CanvasCmd> {
+        todo!("ev.event_type に応じて canvas_state.on_* を呼び分け、CanvasCmd を返す")
     }
 }
