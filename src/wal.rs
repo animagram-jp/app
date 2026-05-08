@@ -17,9 +17,19 @@
 ///   let data = store.get("characters", 1);
 ///   store.compact("characters");
 
-use std::collections::HashMap;
+use std::collections::BTreeMap;
+use std::collections::HashSet;
 use wasm_bindgen::JsCast;
 use wasm_bindgen_futures::JsFuture;
+use web_sys::{
+    FileSystemAccessHandle, 
+    WorkerGlobalScope, 
+    FileSystemDirectoryHandle,
+    FileSystemGetFileOptions
+    FileSystemSyncAccessHandle,
+    FileSystemReadWriteOptions,
+    FileSystemFileHandle,
+};
 
 // ============================================================
 // Log record — pure, no WASM dependency
@@ -82,13 +92,13 @@ pub fn parse_log(raw: &[u8]) -> Vec<LogRecord> {
 pub fn merge(snap_len: usize, log: &[u8]) -> Vec<(u64, u32, u32)> {
     let records = parse_log(log);
 
-    let deleted: std::collections::HashSet<u64> = records.iter()
+    let deleted: HashSet<u64> = records.iter()
         .filter(|r| r.op == Op::Delete)
         .map(|r| r.id)
         .collect();
 
     // 同一 id の最後の Set を採用
-    let mut latest: std::collections::BTreeMap<u64, (u32, u32)> = std::collections::BTreeMap::new();
+    let mut latest: BTreeMap<u64, (u32, u32)> = BTreeMap::new();
     for r in records.iter().filter(|r| r.op == Op::Set) {
         if !deleted.contains(&r.id) {
             let end = r.offset as usize + r.len as usize;
@@ -112,16 +122,16 @@ pub fn compact(snap: &[u8], log: &[u8]) -> Vec<u8> {
 }
 
 // ============================================================
-// WalStore — OPFS I/O (Dedicated Worker 内でのみ使用可能)
+// WalStore — OPFS I/O (only for dedicated worker)
 // ============================================================
 
 struct FilePair {
-    snap: web_sys::FileSystemSyncAccessHandle,
-    log:  web_sys::FileSystemSyncAccessHandle,
+    snap: FileSystemSyncAccessHandle,
+    log:  FileSystemSyncAccessHandle,
 }
 
 pub struct WalStore {
-    files: HashMap<String, FilePair>,
+    files: BTreeMapMap<String, FilePair>,
 }
 
 // FileSystemSyncAccessHandle は Send でないが Dedicated Worker は単一スレッドなので安全
@@ -130,7 +140,7 @@ unsafe impl Sync for WalStore {}
 
 impl WalStore {
     pub fn new() -> Self {
-        Self { files: HashMap::new() }
+        Self { files: BTreeMap::new() }
     }
 
     /// OPFS から name.snap / name.log を開く（なければ作成）。
@@ -138,7 +148,7 @@ impl WalStore {
     pub async fn open(&mut self, name: &str) -> Result<(), String> {
         if self.files.contains_key(name) { return Ok(()); }
 
-        let worker: web_sys::WorkerGlobalScope = js_sys::global()
+        let worker: WorkerGlobalScope = js_sys::global()
             .dyn_into()
             .map_err(|_| "not in WorkerGlobalScope".to_string())?;
 
@@ -146,8 +156,8 @@ impl WalStore {
             .await
             .map_err(|e| format!("getDirectory: {:?}", e))?;
 
-        let dir = root.unchecked_ref::<web_sys::FileSystemDirectoryHandle>();
-        let opts = web_sys::FileSystemGetFileOptions::new();
+        let dir = root.unchecked_ref::<FileSystemDirectoryHandle>();
+        let opts = FileSystemGetFileOptions::new();
         opts.set_create(true);
 
         let snap = open_handle(dir, &format!("{}.snap", name), &opts).await?;
@@ -159,7 +169,7 @@ impl WalStore {
 
     // ── read ────────────────────────────────────────────────
 
-    fn read_all(h: &web_sys::FileSystemSyncAccessHandle) -> Vec<u8> {
+    fn read_all(h: &FileSystemSyncAccessHandle) -> Vec<u8> {
         let size = h.get_size().unwrap_or(0.0) as usize;
         if size == 0 { return vec![]; }
         let mut buf = vec![0u8; size];
@@ -230,13 +240,13 @@ impl WalStore {
 
 // ── helpers ────────────────────────────────────────────────
 
-fn at(pos: u32) -> web_sys::FileSystemReadWriteOptions {
-    let o = web_sys::FileSystemReadWriteOptions::new();
+fn at(pos: u32) -> FileSystemReadWriteOptions {
+    let o = FileSystemReadWriteOptions::new();
     o.set_at(pos as f64);
     o
 }
 
-fn append(h: &web_sys::FileSystemSyncAccessHandle, data: &[u8]) -> Option<()> {
+fn append(h: &FileSystemSyncAccessHandle, data: &[u8]) -> Option<()> {
     let pos = h.get_size().ok()? as u32;
     h.write_with_u8_array_and_options(&mut data.to_vec(), &at(pos)).ok()?;
     h.flush().ok()?;
@@ -244,17 +254,17 @@ fn append(h: &web_sys::FileSystemSyncAccessHandle, data: &[u8]) -> Option<()> {
 }
 
 async fn open_handle(
-    dir: &web_sys::FileSystemDirectoryHandle,
+    dir: &FileSystemDirectoryHandle,
     filename: &str,
-    opts: &web_sys::FileSystemGetFileOptions,
-) -> Result<web_sys::FileSystemSyncAccessHandle, String> {
+    opts: &FileSystemGetFileOptions,
+) -> Result<FileSystemSyncAccessHandle, String> {
     let file_handle = JsFuture::from(dir.get_file_handle_with_options(filename, opts))
         .await
         .map_err(|e| format!("getFileHandle {}: {:?}", filename, e))?;
 
     let handle = JsFuture::from(
         file_handle
-            .unchecked_ref::<web_sys::FileSystemFileHandle>()
+            .unchecked_ref::<FileSystemFileHandle>()
             .create_sync_access_handle()
     )
     .await

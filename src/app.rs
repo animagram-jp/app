@@ -9,7 +9,6 @@ use crate::js_client::{
     Device, detect_device,
     dom,
 };
-use crate::character::{Character, Characteristic, Skill, Profile};
 use crate::Lang;
 const LANG: Lang = Lang::Ja;
 use crate::data_struct::{DataStruct, WAL_NAME};

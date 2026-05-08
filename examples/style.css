@@ -23,6 +23,14 @@ main {
   gap: 0.5rem;
 }
 
+dialog {
+  width: 100%;
+  max-width: 45rem;
+  max-height: 90dvh;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
 output {
   position: fixed;
   bottom: 1.5rem;
@@ -84,38 +92,18 @@ article.warning { background: var(--color-semantic-warning-yellow-2); }
   height:0;
 }
 
-
-/* ───── debug select: キャラ一覧 ───── */
-
+/* ───── select: キャラ一覧 ───── */
 #main_div_section-1_section-1_select {
   width: 100%;
 }
 
 /* ───── fieldset-3 専門分野 select/input ───── */
-
 #modal [id$="_td-1_select"],
 #modal [id$="_td-1_input"] {
   max-width: 5rem;
 }
 
-/* ───── dialog ───── */
-
-dialog {
-  width: 100%;
-  max-width: 100%;
-  max-height: 90dvh;
-  overflow-y: auto;
-  box-sizing: border-box;
-}
-
-@media (width >= 45rem) {
-  dialog {
-    max-width: 45rem;
-  }
-}
-
-/* ───── レスポンシブ ───── */
-
+/* ───── media query (wider window) ───── */
 @media (width >= 40rem) {
   main {
     padding: 1rem;
