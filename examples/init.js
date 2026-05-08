@@ -108,7 +108,13 @@ function bind() {
 }
 
 // ── 初期化 ───────────────────────────────────────────────────────
-worker.postMessage({ type: "init" });
+worker.postMessage({
+  type: "init",
+  payload: {
+    screen_width:   screen.width,
+    pointer_coarse: window.matchMedia("(pointer: coarse)").matches,
+  },
+});
 worker.addEventListener("message", (e) => {
   if (e.data.type === "ready") bind();
 }, { once: true });

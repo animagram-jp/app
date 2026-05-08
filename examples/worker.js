@@ -7,7 +7,7 @@ self.addEventListener('message', async (e) => {
     const { default: init, App } = await import('./dice-engine/app.js');
     await init();
 
-    app = await App.init();
+    app = await App.init(payload.screen_width, payload.pointer_coarse);
     self.postMessage({ type: 'ready' });
     const init_cmds = Array.from(app.flush() ?? []);
     console.log('[init] dom_cmds count:', init_cmds.length, init_cmds);

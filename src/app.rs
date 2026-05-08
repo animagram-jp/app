@@ -6,6 +6,7 @@ use crate::js_client::{
     get_js_str, get_js_f64,
     EventType, KeyName,
     Gesture, PointerState, detect_gesture,
+    Device, detect_device,
     dom,
 };
 use crate::character::{Character, Characteristic, Skill, Profile};
@@ -360,17 +361,41 @@ impl CanvasState {
 // App
 // ============================================================
 
+// ============================================================
+// App
+// ============================================================
+
+/// JS から受け取った生ペイロードをデコードした入力イベント。
+/// ドメイン知識を持たない汎用の構造体として定義する。
+struct InputEvent {
+    event_type: EventType,
+    id:         dom::Id,
+    key:        KeyName,
+    value:      String,
+    x:          f64,
+    y:          f64,
+    time:       f64,
+}
+
+impl InputEvent {
+    fn decode(payload: &JsValue) -> Self {
+        todo!("JsValue から各フィールドをデコードして InputEvent を返す")
+    }
+}
+
 #[wasm_bindgen]
 pub struct App {
+    device:        Device,
     pointer_state: PointerState,
     canvas_state:  CanvasState,
-    dom_cmds:      Vec<DomCmd>,
+    inbox:         Vec<InputEvent>,  // 受信キュー
+    dom_cmds:      Vec<DomCmd>,      // 送信キュー
     pub(crate) log_stack: Vec<crate::event::LogStack>,
 }
 
 #[wasm_bindgen]
 impl App {
-    pub async fn init() -> App {
+    pub async fn init(screen_width: u32, pointer_coarse: bool) -> App {
         let mut wal = WalStore::new();
         let _ = wal.open(WAL_NAME).await;
         let mut canvas_state = CanvasState::new(wal);
@@ -386,8 +411,10 @@ impl App {
         dom_cmds.extend(crate::event::update_debug_select(&name_list, canvas_state.buf.identity_opt()));
 
         App {
+            device:        detect_device(screen_width, pointer_coarse),
             pointer_state: PointerState::default(),
             canvas_state,
+            inbox: Vec::new(),
             dom_cmds,
             log_stack: Vec::new(),
         }
@@ -399,41 +426,18 @@ impl App {
         out
     }
 
+    /// JS 側からイベントを受け取り、受信キューに積んでループを回す。
     pub fn event(&mut self, payload: JsValue) {
-        let event_type = EventType::decode(&get_js_str(&payload, "event_type").unwrap_or_default());
-        let id         = dom::Id::decode(&get_js_str(&payload, "target_id").unwrap_or_default());
-        let key        = KeyName::decode(&get_js_str(&payload, "key").unwrap_or_default());
-        let x          = get_js_f64(&payload, "x").unwrap_or(0.0);
-        let y          = get_js_f64(&payload, "y").unwrap_or(0.0);
-        let time       = get_js_f64(&payload, "time").unwrap_or(0.0);
+        self.inbox.push(InputEvent::decode(&payload));
+        while let Some(ev) = self.inbox.pop() {
+            let cmds = self.dispatch(ev);
+            self.dom_cmds.extend(cmds);
+            // todo: cmd 間の整合処理（必要なら inbox に追加イベントを積む）
+        }
+    }
 
-        let cmds = match event_type {
-            EventType::Click    => self.canvas_state.on_click(&id, key),
-            EventType::KeyDown  => self.canvas_state.on_keydown(&id, key),
-            EventType::Change   => {
-                let value = get_js_str(&payload, "value").unwrap_or_default();
-                self.canvas_state.on_change(&id, &value)
-            }
-            EventType::Input    => {
-                let value = get_js_str(&payload, "value").unwrap_or_default();
-                self.canvas_state.on_input(&id, &value)
-            }
-            EventType::Blur     => {
-                let value = get_js_str(&payload, "value").unwrap_or_default();
-                self.canvas_state.on_blur(&id, &value)
-            }
-            EventType::PointerDown | EventType::PointerMove
-            | EventType::PointerUp | EventType::PointerCancel => {
-                self.pointer_state = self.pointer_state.update(&event_type, x, y, time);
-                if let Some(g) = detect_gesture(&self.pointer_state, time) {
-                    self.canvas_state.on_gesture(g, &id)
-                } else {
-                    vec![]
-                }
-            }
-            _ => vec![],
-        };
-
-        self.dom_cmds.extend(cmds);
+    /// InputEvent をディスパッチして DomCmd のリストを返す。
+    fn dispatch(&mut self, ev: InputEvent) -> Vec<DomCmd> {
+        todo!("ev.event_type に応じて canvas_state.on_* を呼び分け、DomCmd を返す")
     }
 }

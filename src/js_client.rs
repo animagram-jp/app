@@ -173,6 +173,26 @@ impl KeyName {
 }
 
 // ============================================================
+// device context
+// ============================================================
+
+pub enum Device {
+    Mobile,
+    Tablet,
+    Desktop,
+}
+
+// screen_width: screen.width (px)
+// pointer_coarse: window.matchMedia('(pointer: coarse)').matches
+pub fn detect_device(screen_width: u32, pointer_coarse: bool) -> Device {
+    match (pointer_coarse, screen_width) {
+        (true, w) if w < 768  => Device::Mobile,
+        (true, _)             => Device::Tablet,
+        _                     => Device::Desktop,
+    }
+}
+
+// ============================================================
 // gesture: long press, swipe (up,down,left,right), drag
 // ============================================================
 
