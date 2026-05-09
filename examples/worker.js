@@ -7,16 +7,19 @@ self.addEventListener("message", async (e) => {
     const { default: init, App } = await import("./dice-engine/app.js");
     await init();
 
-    app = await App.init(payload.screen_width, payload.pointer_coarse);
+    const [a, init_cmds] = await App.init(payload.screen_width, payload.pointer_coarse);
+    app = a;
     self.postMessage({ type: "ready" });
-    const init_cmds = Array.from(app.flush() ?? []);
-    if (init_cmds.length) self.postMessage({ type: "execute", payload: init_cmds });
+    if (init_cmds?.length) self.postMessage({ type: "execute", payload: Array.from(init_cmds) });
     return;
   }
 
   if (!app || type !== "event") return;
 
-  app.event(payload);
-  const cmds = Array.from(app.flush() ?? []);
-  if (cmds.length) self.postMessage({ type: "execute", payload: cmds });
+  const cmds = app.event(payload);
+  if (cmds?.length) self.postMessage({ type: "execute", payload: Array.from(cmds) });
+});
+
+self.addEventListener("error", (e) => {
+  self.postMessage({ type: "error", message: e.message });
 });

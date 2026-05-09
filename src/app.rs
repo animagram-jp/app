@@ -139,7 +139,7 @@ impl App {
 
 #[wasm_bindgen]
 impl App {
-    pub async fn init(screen_width: u32, pointer_coarse: bool) -> App {
+    pub async fn init(screen_width: u32, pointer_coarse: bool) -> (App, JsValue) {
         let characters = WalStore::open(SCHEMA_NAME).await
             .unwrap_or_else(|e| panic!("WalStore::open failed: {}", e));
 
@@ -159,22 +159,22 @@ impl App {
             app.cmds.extend(event::update_character_view(&app.canvas_state.buf));
         }
         app.cmds.extend(event::update_debug_select(&list, app.canvas_state.buf.identity.get()));
-        app
+
+        let cmds = serde_wasm_bindgen::to_value(&app.cmds).unwrap_or(JsValue::NULL);
+        app.cmds.clear();
+        (app, cmds)
     }
 
-    pub fn flush(&mut self) -> JsValue {
-        let out = serde_wasm_bindgen::to_value(&self.cmds).unwrap_or(JsValue::NULL);
-        self.cmds.clear();
-        out
-    }
-
-    /// JS 側からイベントを受け取り、受信キューに積んでループを回す。
-    pub fn event(&mut self, payload: JsValue) {
+    /// JS 側からイベントを受け取り、CanvasCmd のリストを返す。
+    pub fn event(&mut self, payload: JsValue) -> JsValue {
         self.events.push(CanvasEvent::decode(&payload));
         while let Some(ev) = self.events.pop() {
             let cmds = self.dispatch(ev);
             self.cmds.extend(cmds);
         }
+        let out = serde_wasm_bindgen::to_value(&self.cmds).unwrap_or(JsValue::NULL);
+        self.cmds.clear();
+        out
     }
 
     /// CanvasEvent をディスパッチして CanvasCmd のリストを返す。

@@ -1,17 +1,38 @@
-const worker = new Worker("./worker.js", { type: "module" });
+let worker = start();
+
+function start() {
+  const w = new Worker("./worker.js", { type: "module" });
+
+  w.addEventListener("message", (e) => {
+    const { type, payload } = e.data;
+    if (type === "execute") { payload.forEach(execute); }
+    if (type === "error")   { restart(e.data.message); }
+  });
+
+  w.addEventListener("error", (e) => {
+    console.error("[worker] restart:", e.message);
+    worker.terminate();
+    worker = start();
+  });
+
+  w.postMessage({
+    type: "init",
+    payload: {
+      screen_width:   screen.width,
+      pointer_coarse: window.matchMedia("(pointer: coarse)").matches,
+    },
+  });
+
+  w.addEventListener("message", (e) => {
+    if (e.data.type === "ready") bind();
+  }, { once: true });
+
+  return w;
+}
 
 // ============================================================
 // receive canvas commands and excute
 // ============================================================
-
-worker.addEventListener("message", (e) => {
-  const { type, payload } = e.data;
-  if (type === "execute") { payload.forEach(execute); }
-});
-
-worker.addEventListener("error", (e) => {
-  console.error("[worker]", e.message);
-});
 
 // CanvasCmd: { operation: u8, id: string, attribute?: string, value?: string }
 function execute({ operation, id, attribute, value }) {
@@ -71,14 +92,3 @@ function bind() {
   }
 }
 
-worker.postMessage({
-  type: "init",
-  payload: {
-    screen_width:   screen.width,
-    pointer_coarse: window.matchMedia("(pointer: coarse)").matches,
-  },
-});
-
-worker.addEventListener("message", (e) => {
-  if (e.data.type === "ready") bind();
-}, { once: true });
