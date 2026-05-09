@@ -3,7 +3,7 @@ use crate::character::{
     Profile, Characteristic, Skill,
     ArtCraftSpec, FightingSpec, FirearmsSpec, PilotSpec, ScienceSpec, SurvivalSpec,
 };
-use crate::js_client::{CanvasCmd, Operation, EventType, KeyName, Gesture, dom};
+use crate::js_client::{CanvasCmd, Operation, EventType, Gesture, dom};
 use crate::data_struct::DataStruct;
 use crate::character::Character;
 use crate::wal::WalStore;
@@ -92,10 +92,79 @@ pub fn handle_gesture(gesture: Gesture, state: &mut CanvasState) -> Vec<CanvasCm
 }
 
 // ============================================================
-// make canvas command
+// map item to dom::Id
 // ============================================================
 
-
+fn map_id(item: &Character, parent: &dom::Id, n: u32) -> Vec<dom::Id> {
+    use dom::{Id, Tag};
+    match parent {
+        p if p == &Id::new(&[(Tag::Main, None)]) => {
+            let section_n = match item {
+                Character::Profile(_)        => 1,
+                Character::Characteristic(_) => 2,
+                Character::Skill(_)          => 3,
+                Character::Derived(_)        => todo!(),
+                Character::Equipment(_)      => todo!(),
+                Character::Backstory(_)      => todo!(),
+            };
+            let base: Vec<(Tag, Option<u32>)> = vec![
+                (Tag::Main,    None),
+                (Tag::Div,     None),
+                (Tag::Section, Some(1)),
+                (Tag::Section, Some(section_n)),
+                (Tag::Span,    Some(n)),
+            ];
+            vec![
+                Id::new(&[base.as_slice(), &[(Tag::Span, Some(1))]].concat()),  // label
+                Id::new(&[base.as_slice(), &[(Tag::Span, Some(2))]].concat()),  // value
+            ]
+        }
+        p if p == &Id::new(&[(Tag::Modal, None)]) => {
+            let fieldset_n = match item {
+                Character::Profile(_)        => 1,
+                Character::Characteristic(_) => 2,
+                Character::Skill(_)          => 3,
+                Character::Derived(_)        => 4,
+                Character::Equipment(_)      => 5,
+                Character::Backstory(_)      => 6,
+            };
+            let tr: Vec<(Tag, Option<u32>)> = vec![
+                (Tag::Modal,    None),
+                (Tag::Fieldset, Some(fieldset_n)),
+                (Tag::Table,    None),
+                (Tag::Tr,       Some(n)),
+            ];
+            let s = tr.as_slice();
+            match item {
+                Character::Profile(_) => vec![
+                    // [0] th, [1] input
+                    Id::new(&[s, &[(Tag::Th,    None   )]].concat()),
+                    Id::new(&[s, &[(Tag::Input, None   )]].concat()),
+                ],
+                Character::Characteristic(_) => vec![
+                    // [0] th, [1] input-1(初期値), [2] input-2(変動), [3] input-3(補正), [4] span(合計)
+                    Id::new(&[s, &[(Tag::Th,    None   )]].concat()),
+                    Id::new(&[s, &[(Tag::Input, Some(1))]].concat()),
+                    Id::new(&[s, &[(Tag::Input, Some(2))]].concat()),
+                    Id::new(&[s, &[(Tag::Input, Some(3))]].concat()),
+                    Id::new(&[s, &[(Tag::Span,  None   )]].concat()),
+                ],
+                Character::Skill(_) => vec![
+                    // [0] th, [1] span-1(base), [2] input-1(職業), [3] input-2(興味), [4] input-3(補正), [5] span-2(合計), [6] td-1_select
+                    Id::new(&[s, &[(Tag::Th,     None   )]].concat()),
+                    Id::new(&[s, &[(Tag::Span,   Some(1))]].concat()),
+                    Id::new(&[s, &[(Tag::Input,  Some(1))]].concat()),
+                    Id::new(&[s, &[(Tag::Input,  Some(2))]].concat()),
+                    Id::new(&[s, &[(Tag::Input,  Some(3))]].concat()),
+                    Id::new(&[s, &[(Tag::Span,   Some(2))]].concat()),
+                    Id::new(&[s, &[(Tag::Td, Some(1)), (Tag::Select, None)]].concat()),
+                ],
+                _ => todo!(),
+            }
+        }
+        _ => todo!(),
+    }
+}
 
 // ============================================================
 // action
@@ -103,30 +172,23 @@ pub fn handle_gesture(gesture: Gesture, state: &mut CanvasState) -> Vec<CanvasCm
 
 enum action {
     open_modal,
-    
+    compute_on_input,
+    update_on_submit,
+    toast_saved,
 }
 
 pub fn open_modal() -> Vec<CanvasCmd> {
     let mut cmds = Vec::new();
 
-    // --- header ---
-    cmds.push(CanvasCmd::new(Operation::SetText, "modal_header_h4", None, Some("キャラクターシート")));
-
     // --- fieldset-1: Profile ---
     cmds.push(CanvasCmd::new(Operation::SetText, "modal_fieldset-1_legend_h5", None, Some("プロフィール")));
 
-    let profiles = [
-        Profile::Name,
-        Profile::Birthpalce,
-        Profile::Pronoun,
-        Profile::Occupation,
-        Profile::Residence,
-        Profile::Age,
-    ];
-    for (i, profile) in profiles.iter().enumerate() {
-        let row = i + 1;
-        let th_id = format!("modal_fieldset-1_table_tr-{}_th", row);
-        cmds.push(CanvasCmd::new(Operation::SetText, &th_id, None, Some(profile.label(LANG))));
+    let modal = dom::Id::new(&[(dom::Tag::Modal, None)]);
+
+    for (i, profile) in character::Profile::list().iter().enumerate() {
+        let ids = map_id(&Character::Profile(*profile), &modal, (i + 1) as u32);
+        // ids[0]=th
+        cmds.push(CanvasCmd::new(Operation::SetText, &ids[0].encode(), None, Some(profile.label(LANG))));
     }
 
     // --- fieldset-2: Characteristic ---
@@ -139,9 +201,9 @@ pub fn open_modal() -> Vec<CanvasCmd> {
     cmds.push(CanvasCmd::new(Operation::SetText, "modal_fieldset-2_table_thead_th-6", None, Some("")));
 
     for (i, ch) in Characteristic::list().iter().enumerate() {
-        let row = i + 1;
-        let th_id = format!("modal_fieldset-2_table_tr-{}_th", row);
-        cmds.push(CanvasCmd::new(Operation::SetText, &th_id, None, Some(ch.label(LANG))));
+        let ids = map_id(&Character::Characteristic(*ch), &modal, (i + 1) as u32);
+        // ids[0]=th
+        cmds.push(CanvasCmd::new(Operation::SetText, &ids[0].encode(), None, Some(ch.label(LANG))));
     }
 
     // --- fieldset-3: Skill ---
@@ -155,22 +217,16 @@ pub fn open_modal() -> Vec<CanvasCmd> {
     cmds.push(CanvasCmd::new(Operation::SetText, "modal_fieldset-3_table_thead_th-7", None, Some("合計")));
 
     for (i, skill) in Skill::list().iter().enumerate() {
-        let row      = i + 1;
-        let th_id    = format!("modal_fieldset-3_table_tr-{}_th", row);
-        let base_id  = format!("modal_fieldset-3_table_tr-{}_span-1", row);
-        let total_id = format!("modal_fieldset-3_table_tr-{}_span-2", row);
+        let ids = map_id(&Character::Skill(skill.clone()), &modal, (i + 1) as u32);
         let base_val = skill.base_value().to_string();
-        // Custom行(最終行)はth内にinputがあるのでSetTextで上書きしない
+        // ids[0]=th, [1]=span-1(base), [2]=input-1(職業), [3]=input-2(興味), [4]=input-3(補正), [5]=span-2(合計), [6]=td-1_select
         if !matches!(skill, Skill::Custom { .. }) {
-            cmds.push(CanvasCmd::new(Operation::SetText, &th_id, None, Some(&skill.label(LANG))));
+            cmds.push(CanvasCmd::new(Operation::SetText, &ids[0].encode(), None, Some(&skill.label(LANG))));
         }
-        cmds.push(CanvasCmd::new(Operation::SetText, &base_id,  None, Some(&base_val)));
-        cmds.push(CanvasCmd::new(Operation::SetText, &total_id, None, Some(&base_val)));
-
-        // spec持ち行: selectのoptionを生成
-        if let Some(html) = spec_select_html(row, LANG) {
-            let sel_id = format!("modal_fieldset-3_table_tr-{}_td-1_select", row);
-            cmds.push(CanvasCmd::new(Operation::SetHtml, &sel_id, None, Some(&html)));
+        cmds.push(CanvasCmd::new(Operation::SetText, &ids[1].encode(), None, Some(&base_val)));
+        cmds.push(CanvasCmd::new(Operation::SetText, &ids[5].encode(), None, Some(&base_val)));
+        if let Some(html) = spec_select_html(i + 1, LANG) {
+            cmds.push(CanvasCmd::new(Operation::SetHtml, &ids[6].encode(), None, Some(&html)));
         }
     }
 

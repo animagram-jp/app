@@ -1,14 +1,7 @@
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsValue;
 use serde_wasm_bindgen::to_value;
-use crate::js_client::{
-    CanvasCmd,
-    get_js_str, get_js_f64,
-    EventType,
-    Gesture, PointerState, detect_gesture,
-    Device, detect_device,
-    dom,
-};
+use crate::js_client::{CanvasCmd, get_js_str, get_js_f64, EventType, Gesture, PointerState, detect_gesture, Device, detect_device, dom};
 use crate::wal::WalStore;
 use crate::character::CHARACTER_SCHEMA_NAME;
 use crate::event::{self, CanvasEvent, CanvasState, Event, LogStack};

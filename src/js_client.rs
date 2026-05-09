@@ -414,6 +414,10 @@ pub mod dom {
     pub struct Id(pub Vec<Segment>);
 
     impl Id {
+        pub fn new(segs: &[(Tag, Option<u32>)]) -> Self {
+            Self(segs.iter().map(|(tag, n)| Segment { tag: tag.clone(), n: *n }).collect())
+        }
+
         pub fn decode(id: &str) -> Self {
             Self(id.split('_').map(Segment::decode).collect())
         }

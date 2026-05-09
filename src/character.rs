@@ -83,6 +83,16 @@ impl Profile {
             (Self::Age, Lang::Ja) => "年齢",
         }
     }
+    pub fn list() -> &'static [Profile] {
+        &[
+            Self::Name,
+            Self::Birthpalce,
+            Self::Pronoun,
+            Self::Occupation,
+            Self::Residence,
+            Self::Age,
+        ]
+    }
 }
 
 // --- 職業 (Occupation) --- p.38
