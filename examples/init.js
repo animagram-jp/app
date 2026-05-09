@@ -51,64 +51,24 @@ function applyClass(el, value) {
 // send event
 // ============================================================
 
-function dispatch(payload) {
-  worker.postMessage({ type: "event", payload });
+function dispatch(e) {
+  worker.postMessage({ type: "event", payload: {
+    event_type: e.type,
+    target_id:  e.target.id ?? "",
+    key:        e.key ?? "",
+    value:      e.target.value ?? "",
+    x:          e.clientX ?? 0,
+    y:          e.clientY ?? 0,
+    time:       e.timeStamp ?? 0,
+  }});
 }
 
 function bind() {
-  // click / backdrop close (modal, drawer外クリックを含む)
-  document.addEventListener("click", (e) => {
-    const el = e.target.closest("[id]");
-    if (!el) return;
-    dispatch({ event_type: "click", target_id: el.id });
-  });
-
-  document.addEventListener("keydown", (e) => {
-    const keys = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Enter", "Escape", "Tab"];
-    if (!keys.includes(e.key)) return;
-    e.preventDefault();
-    dispatch({ event_type: "keydown", target_id: e.target.id ?? "", key: e.key });
-  });
-
-  // character select: キャラ切り替え
-  document.getElementById("main_div_section-1_section-1_select")?.addEventListener("change", (e) => {
-    dispatch({ event_type: "change", target_id: e.target.id, value: e.target.value });
-  });
-
-  // textarea input: "/" トリガー検知用
-  document.getElementById("main_div_section-3_textarea")?.addEventListener("input", (e) => {
-    dispatch({ event_type: "input", target_id: e.target.id, value: e.target.value });
-  });
-
-  // modal内 select: spec選択をRust側に渡す
-  document.getElementById("modal")?.addEventListener("change", (e) => {
-    const el = e.target;
-    if (el.tagName !== "SELECT") return;
-    dispatch({ event_type: "change", target_id: el.id, value: el.value });
-  });
-
-  // modal内 spec input: focusout時にRust側へ通知（空かどうかはwasm側で判断）
-  document.getElementById("modal")?.addEventListener("focusout", (e) => {
-    const el = e.target;
-    if (el.tagName !== "INPUT" || el.type !== "text") return;
-    if (!el.id.endsWith("_td-1_input")) return;
-    dispatch({ event_type: "blur", target_id: el.id, value: el.value });
-  });
-
-  // modal内 input: number と text を Rust 側に渡す
-  document.getElementById("modal")?.addEventListener("input", (e) => {
-    const el = e.target;
-    if (el.tagName !== "INPUT") return;
-    if (el.type === "number") {
-      dispatch({
-        event_type: "input",
-        target_id: el.id,
-        value: String(isNaN(el.valueAsNumber) ? 0 : el.valueAsNumber),
-      });
-    } else if (el.type === "text") {
-      dispatch({ event_type: "input", target_id: el.id, value: el.value });
-    }
-  });
+  const EVENTS = ["click", "keydown", "input", "change", "submit", "focusout",
+                  "pointerdown", "pointerup", "pointermove", "pointercancel"];
+  for (const type of EVENTS) {
+    document.addEventListener(type, dispatch);
+  }
 }
 
 worker.postMessage({

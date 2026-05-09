@@ -1,85 +1,14 @@
 use crate::Lang;
-use crate::datetime;
 
 // ============================================================
-// --- システム (System) ---
-// ============================================================
 
-pub enum Identity {
-    Local,
-    Global,
-}
-
-impl Identity {
-    pub fn label(&self) -> &'static str {
-        match self {
-            Self::Local  => "ID",
-            Self::Global => "UUID",
-        }
-    }
-    pub fn id(&self, base: usize) -> usize {
-        base + match self {
-            Self::Local  => 0,
-            Self::Global => 1,
-        }
-    }
-    /// u32 (Local) or u128 (Global) → LE bytes
-    pub fn encode(&self, value: &[u8]) -> Vec<u8> { value.to_vec() }
-    /// LE bytes → u32 (Local) or u128 (Global)
-    pub fn decode(&self, bytes: &[u8]) -> Vec<u8> { bytes.to_vec() }
-}
-
-pub enum Timestamp {
-    Create,
-    Update,
-}
-
-impl Timestamp {
-    pub fn label(&self, lang: Lang) -> &'static str {
-        match (self, lang) {
-            (Self::Create, Lang::En) => "Create Time",
-            (Self::Create, Lang::Ja) => "作成日時",
-            (Self::Update, Lang::En) => "Update Time",
-            (Self::Update, Lang::Ja) => "更新日時",
-        }
-    }
-    pub fn id(&self, base: usize) -> usize {
-        base + match self {
-            Self::Create => 0,
-            Self::Update => 1,
-        }
-    }
-    /// (year, month, day, hour, minute) → 8バイト LE u64 (datetimeパック)
-    pub fn encode(year: u64, month: u64, day: u64, hour: u64, minute: u64) -> Vec<u8> {
-        let mut ko = 0u64;
-        ko = datetime::set(ko, datetime::OFFSET_YEAR,   datetime::MASK_YEAR,   year);
-        ko = datetime::set(ko, datetime::OFFSET_MONTH,  datetime::MASK_MONTH,  month);
-        ko = datetime::set(ko, datetime::OFFSET_DAY,    datetime::MASK_DAY,    day);
-        ko = datetime::set(ko, datetime::OFFSET_HOUR,   datetime::MASK_HOUR,   hour);
-        ko = datetime::set(ko, datetime::OFFSET_MINUTE, datetime::MASK_MINUTE, minute);
-        ko.to_le_bytes().to_vec()
-    }
-
-    /// 8バイト LE u64 → (year, month, day, hour, minute)
-    pub fn decode(bytes: &[u8]) -> (u64, u64, u64, u64, u64) {
-        let ko = u64::from_le_bytes(bytes[..8].try_into().unwrap_or_default());
-        (
-            datetime::get(ko, datetime::OFFSET_YEAR,   datetime::MASK_YEAR),
-            datetime::get(ko, datetime::OFFSET_MONTH,  datetime::MASK_MONTH),
-            datetime::get(ko, datetime::OFFSET_DAY,    datetime::MASK_DAY),
-            datetime::get(ko, datetime::OFFSET_HOUR,   datetime::MASK_HOUR),
-            datetime::get(ko, datetime::OFFSET_MINUTE, datetime::MASK_MINUTE),
-        )
-    }
-}
+pub const SCHEMA_NAME: &str = "characters";
 
 // ============================================================
 // --- キャラクター (Character) ---
 // ============================================================
 
 pub enum Character {
-    Identity(Identity),
-    Timestamp(Timestamp),
     Profile(Profile),
     Characteristic(Characteristic),
     Derived(Derived),
@@ -91,8 +20,6 @@ pub enum Character {
 impl Character {
     pub fn label(&self, lang: Lang) -> String {
         match self {
-            Self::Identity(i)       => i.label().to_string(),
-            Self::Timestamp(t)      => t.label(lang).to_string(),
             Self::Profile(p)        => p.label(lang).to_string(),
             Self::Characteristic(c) => c.label(lang).to_string(),
             Self::Derived(d)        => d.label(lang).to_string(),
@@ -103,8 +30,6 @@ impl Character {
     }
     pub fn id(&self) -> usize {
         match self {
-            Self::Identity(i)       => i.id(  0),  //   0-  1 (2件)
-            Self::Timestamp(t)      => t.id(  2),  //   2-  3 (2件)
             Self::Profile(p)        => p.id( 10),  //  10- 15 (6件)
             Self::Characteristic(c) => c.id( 20),  //  20- 28 (9件)
             Self::Derived(d)        => d.id( 30),  //  30- 37 (8件)

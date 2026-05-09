@@ -36,8 +36,6 @@
       - 同様に、インタラクティブUIの1->2->3で1つ前に戻る手段は用意しない。単純なのでescクリアで十分。
       - 必ずすべてのシーンで、appが「初期focus対象」を想定してそこにautofocusを設定しておく。
       - tabやshift+tabで操作可能なdomだけを適切にfocusできるようにする。
-      - App::Rollがこれらのロール実行モジュールを担当する。よって、今table.rsにあるこれはapp.rsに移す。
-    - ダイスロール (nDn + n)
 
 ### Script
 
@@ -195,5 +193,29 @@ Development Check - 上達チェック
 
 ### Limitation (制限事項)
 
+## Note
 
+```rust
+use Lang;
+impl Id {
+    pub fn label(&self) -> &'static str {
+        match self {
+            Self::Local  => "ID",
+            Self::Global => "UUID",
+        }
+    }
+}
+
+impl Timestamp {
+    pub fn label(&self, lang: Lang) -> &'static str {
+        match (self, lang) {
+            (Self::Create, Lang::En) => "Create Time",
+            (Self::Create, Lang::Ja) => "作成日時",
+            (Self::Update, Lang::En) => "Update Time",
+            (Self::Update, Lang::Ja) => "更新日時",
+        }
+    }
+    pub fn decode()
+}
+```
 
