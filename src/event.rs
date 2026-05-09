@@ -3,341 +3,103 @@ use crate::character::{
     Profile, Characteristic, Skill,
     ArtCraftSpec, FightingSpec, FirearmsSpec, PilotSpec, ScienceSpec, SurvivalSpec,
 };
-use crate::js_client::{CanvasCmd, Operation};
+use crate::js_client::{CanvasCmd, Operation, EventType, KeyName, Gesture, dom};
 use crate::data_struct::DataStruct;
 use crate::character::Character;
+use crate::wal::WalStore;
+
+const LANG: Lang = Lang::Ja;
 
 // ============================================================
-// canvas state
+// canvas event schema
 // ============================================================
 
-// impl CanvasState {
-//     fn new(wal: WalStore) -> Self {
-//         Self { dialog: Dialog::default(), buf: DataStruct::new(), wal }
-//     }
-
-//     // buf.identity が指すエントリをWALから復元する。0なら何もしない。
-//     fn load_saved(&mut self) {
-//         let id = self.buf.identity;
-//         if id.get().is_none() { return; }
-//         if let Some(raw) = self.wal.get(id.0 as u64) {
-//             self.buf = DataStruct::from_bytes(&raw);
-//             self.buf.identity = id;
-//         }
-//     }
-
-//     fn save(&mut self) {
-//         if self.buf.identity.get().is_none() {
-//             self.buf.identity = Id(self.wal.alloc() as u32);
-//         }
-//         let id = self.buf.identity;
-//         self.wal.set(id.0 as u64, &self.buf.to_bytes());
-//     }
-
-//     // bufのフィールドをクリアしつつidentityは保持する
-//     fn discard_buffer(&mut self) {
-//         let id = self.buf.identity;
-//         self.buf = DataStruct::new();
-//         self.buf.identity = id;
-//     }
-
-//     fn saved_name_list(&self) -> Vec<(u32, String)> {
-//         self.wal.get_all().into_iter().map(|(id, raw)| {
-//             let id = id as u32;
-//             let ds = DataStruct::from_bytes(&raw);
-//             let name = ds.get(&Character::Profile(Profile::Name)).ok()
-//                 .map(|b| String::from_utf8_lossy(b).into_owned())
-//                 .filter(|s| !s.is_empty())
-//                 .unwrap_or_else(|| format!("#{}", id));
-//             (id, name)
-//         }).collect()
-//     }
-
-//     fn on_click(&mut self, id: &dom::Id, _key: KeyName) -> Vec<CanvasCmd> {
-//         let is_backdrop = id.0.len() == 1;
-
-//         match (self.dialog, id.last_tag(), is_backdrop) {
-//             (Dialog::Modal, Some(dom::Tag::Modal), true) => {
-//                 self.dialog = Dialog::None;
-//                 self.discard_buffer();
-//                 let mut cmds = event::reset_modal();
-//                 cmds.push(CanvasCmd::new(Operation::CloseModal, "modal", None, None));
-//                 cmds
-//             }
-//             (Dialog::Drawer, Some(dom::Tag::Drawer), true) => {
-//                 self.dialog = Dialog::None;
-//                 vec![CanvasCmd::new(Operation::CloseModal, "drawer", None, None)]
-//             }
-//             (Dialog::Modal,  _, _) => self.on_click_normal(id, id.last_tag()),
-//             (Dialog::Drawer, _, _) => vec![],
-//             (Dialog::None, last_tag, _) => self.on_click_normal(id, last_tag),
-//             (Dialog::Select { .. } | Dialog::Input { .. }, _, _) => vec![],
-//         }
-//     }
-
-//     fn on_click_normal(&mut self, id: &dom::Id, last_tag: Option<&dom::Tag>) -> Vec<CanvasCmd> {
-//         match last_tag {
-//             Some(dom::Tag::Button) if id.encode() == "main_header_button" => {
-//                 self.dialog = Dialog::Modal;
-//                 self.load_saved();
-//                 let mut cmds = event::open_modal();
-//                 cmds.extend(event::restore_modal(&self.buf));
-//                 cmds.push(CanvasCmd::new(Operation::OpenModal, "modal", None, None));
-//                 cmds
-//             }
-//             Some(dom::Tag::Button) if {
-//                 let s = &id.0;
-//                 s.len() == 5
-//                 && s[0].tag == dom::Tag::Modal
-//                 && s[1].tag == dom::Tag::Fieldset && s[1].n == Some(2)
-//                 && s[3].tag == dom::Tag::Tr
-//                 && s[4].tag == dom::Tag::Button
-//             } => {
-//                 let row = id.0[3].n.unwrap_or(0) as usize;
-//                 event::roll_characteristic(row, &mut self.buf)
-//             }
-//             Some(dom::Tag::Button) if id.encode() == "modal_fieldset-2_legend_button" => {
-//                 event::roll_all_characteristics(&mut self.buf)
-//             }
-//             Some(dom::Tag::Button) if id.encode() == "modal_footer_button" => {
-//                 self.dialog = Dialog::None;
-//                 self.save();
-//                 let mut cmds = event::toast_saved();
-//                 cmds.extend(event::update_debug_select(&self.saved_name_list(), self.buf.identity.get()));
-//                 cmds.extend(event::update_character_view(&self.buf));
-//                 cmds.push(CanvasCmd::new(Operation::CloseModal, "modal", None, None));
-//                 cmds
-//             }
-//             _ => vec![],
-//         }
-//     }
-
-//     fn on_keydown(&mut self, _id: &dom::Id, key: KeyName) -> Vec<CanvasCmd> {
-//         match key {
-//             KeyName::Escape => {
-//                 match self.dialog {
-//                     Dialog::Modal => {
-//                         self.dialog = Dialog::None;
-//                         self.discard_buffer();
-//                         let mut cmds = event::reset_modal();
-//                         cmds.push(CanvasCmd::new(Operation::CloseModal, "modal", None, None));
-//                         return cmds;
-//                     }
-//                     Dialog::Drawer => {
-//                         self.dialog = Dialog::None;
-//                         return vec![CanvasCmd::new(Operation::CloseModal, "drawer", None, None)];
-//                     }
-//                     Dialog::None => {}
-//                     Dialog::Select { .. } | Dialog::Input { .. } => {
-//                         self.dialog = Dialog::None;
-//                     }
-//                 }
-//                 vec![]
-//             }
-//             KeyName::Enter => {
-//                 if self.dialog == Dialog::Modal {
-//                     self.dialog = Dialog::None;
-//                     self.save();
-//                     let mut cmds = event::toast_saved();
-//                     cmds.extend(event::update_debug_select(&self.saved_name_list(), self.buf.identity.get()));
-//                     cmds.extend(event::update_character_view(&self.buf));
-//                     cmds.push(CanvasCmd::new(Operation::CloseModal, "modal", None, None));
-//                     return cmds;
-//                 }
-//                 vec![]
-//             }
-//             _ => vec![],
-//         }
-//     }
-
-//     fn on_input(&mut self, id: &dom::Id, value: &str) -> Vec<CanvasCmd> {
-//         let segs = &id.0;
-
-//         // 専門分野: "modal_fieldset-3_table_tr-{row}_td-1_input"
-//         if segs.len() == 6
-//             && segs[0].tag == dom::Tag::Modal
-//             && segs[1].tag == dom::Tag::Fieldset && segs[1].n == Some(3)
-//             && segs[3].tag == dom::Tag::Tr
-//             && segs[4].tag == dom::Tag::Td && segs[4].n == Some(1)
-//             && segs[5].tag == dom::Tag::Input
-//         {
-//             let row = segs[3].n.unwrap_or(0) as usize;
-//             if row == 0 || row > Skill::list().len() { return vec![]; }
-//             let skills = Skill::list();
-//             let skill  = &skills[row - 1];
-//             let field  = Character::Skill(Skill::list().remove(row - 1));
-//             let (occ, int, bonus, _) = self.buf.get(&field)
-//                 .map(Skill::decode).unwrap_or((0, 0, 0, String::new()));
-//             let _ = self.buf.set(&field, &Skill::encode(occ, int, bonus, Some(value)));
-//             return event::on_skill_spec_input(row, skill, value);
-//         }
-
-//         // "modal_fieldset-{fs}_table_tr-{row}_input-{col}"
-//         if segs.len() != 5 { return vec![]; }
-//         if segs[0].tag != dom::Tag::Modal    { return vec![]; }
-//         if segs[1].tag != dom::Tag::Fieldset { return vec![]; }
-//         if segs[3].tag != dom::Tag::Tr       { return vec![]; }
-//         if segs[4].tag != dom::Tag::Input    { return vec![]; }
-
-//         let fs  = segs[1].n.unwrap_or(0) as usize;
-//         let row = segs[3].n.unwrap_or(0) as usize;
-//         let col = segs[4].n.unwrap_or(0) as usize;
-
-//         if row == 0 { return vec![]; }
-
-//         match fs {
-//             1 if row <= 6 => {
-//                 let profiles = [
-//                     Profile::Name, Profile::Birthpalce, Profile::Pronoun,
-//                     Profile::Occupation, Profile::Residence, Profile::Age,
-//                 ];
-//                 let field = Character::Profile(profiles[row - 1]);
-//                 let _ = self.buf.set(&field, value.as_bytes());
-//                 vec![]
-//             }
-//             2 if row <= 9 => {
-//                 let field = Character::Characteristic(Characteristic::list()[row - 1]);
-//                 let mut vals = self.buf.get(&field)
-//                     .map(Characteristic::decode)
-//                     .unwrap_or([0; 3]);
-//                 vals[col - 1] = value.parse().unwrap_or(0);
-//                 let _ = self.buf.set(&field, &Characteristic::encode(vals));
-//                 let [base, delta, bonus] = vals;
-//                 event::on_characteristic_input(row, base, delta, bonus)
-//             }
-//             3 if row <= Skill::list().len() => {
-//                 let skills = Skill::list();
-//                 let field  = Character::Skill(Skill::list().remove(row - 1));
-//                 let (mut occ, mut int, mut bonus, spec) = self.buf.get(&field)
-//                     .map(Skill::decode)
-//                     .unwrap_or((0, 0, 0, String::new()));
-//                 let v: i32 = value.parse().unwrap_or(0);
-//                 match col {
-//                     1 => occ   = v.max(0) as u16,
-//                     2 => int   = v.max(0) as u16,
-//                     3 => bonus = v,
-//                     _ => {}
-//                 }
-//                 let _ = self.buf.set(&field, &Skill::encode(occ, int, bonus, Some(&spec)));
-//                 let base = skills[row - 1].base_value();
-//                 event::on_skill_input(row, base, occ, int, bonus)
-//             }
-//             _ => vec![],
-//         }
-//     }
-
-//     fn on_change(&mut self, id: &dom::Id, value: &str) -> Vec<CanvasCmd> {
-//         if id.encode() == "main_div_section-1_section-1_select" {
-//             let char_id: u32 = value.parse().unwrap_or(0);
-//             if char_id == 0 || self.wal.get(char_id as u64).is_none() { return vec![]; }
-//             self.buf.identity = Id(char_id);
-//             self.load_saved();
-//             let mut cmds = event::update_character_view(&self.buf);
-//             cmds.extend(event::update_debug_select(&self.saved_name_list(), self.buf.identity.get()));
-//             return cmds;
-//         }
-
-//         let segs = &id.0;
-
-//         // "modal_fieldset-3_table_tr-{row}_td-1_select"
-//         if segs.len() == 5
-//             && segs[0].tag == dom::Tag::Modal
-//             && segs[1].tag == dom::Tag::Fieldset && segs[1].n == Some(3)
-//             && segs[3].tag == dom::Tag::Tr
-//             && segs[4].tag == dom::Tag::Select
-//         {
-//             let row    = segs[3].n.unwrap_or(0) as usize;
-//             let inp_id = format!("modal_fieldset-3_table_tr-{}_td-1_input", row);
-//             if value == "custom" {
-//                 // 自由記入モード: inputをshow+focus、specをクリア
-//                 let field = Character::Skill(Skill::list().remove(row - 1));
-//                 let (occ, int, bonus, _) = self.buf.get(&field)
-//                     .map(Skill::decode).unwrap_or((0, 0, 0, String::new()));
-//                 let _ = self.buf.set(&field, &Skill::encode(occ, int, bonus, Some("")));
-//                 return vec![
-//                     CanvasCmd::new(Operation::RemoveClass, &inp_id, None, Some("hidden")),
-//                     CanvasCmd::new(Operation::SetValue,    &inp_id, None, Some("")),
-//                     CanvasCmd::new(Operation::Focus,       &inp_id, None, None),
-//                 ];
-//             } else {
-//                 // 固定variant選択: inputをhide、specをvalueで保存
-//                 let field = Character::Skill(Skill::list().remove(row - 1));
-//                 let (occ, int, bonus, _) = self.buf.get(&field)
-//                     .map(Skill::decode).unwrap_or((0, 0, 0, String::new()));
-//                 let _ = self.buf.set(&field, &Skill::encode(occ, int, bonus, Some(value)));
-//                 let skill  = Skill::list().remove(row - 1);
-//                 let th_id  = format!("modal_fieldset-3_table_tr-{}_th", row);
-//                 let base_id = format!("modal_fieldset-3_table_tr-{}_span-1", row);
-//                 let mut cmds = vec![
-//                     CanvasCmd::new(Operation::AddClass, &inp_id, None, Some("hidden")),
-//                     CanvasCmd::new(Operation::SetText,  &th_id,  None, Some(&skill.label_with_spec(LANG, value))),
-//                     CanvasCmd::new(Operation::SetText,  &base_id, None, Some(&skill.base_value().to_string())),
-//                 ];
-//                 // 合計も更新
-//                 let (occ2, int2, bonus2, _) = self.buf.get(&field)
-//                     .map(Skill::decode).unwrap_or((0, 0, 0, String::new()));
-//                 cmds.extend(event::on_skill_input(row, skill.base_value(), occ2, int2, bonus2));
-//                 return cmds;
-//             }
-//         }
-
-//         vec![]
-//     }
-
-//     fn on_blur(&mut self, id: &dom::Id, value: &str) -> Vec<CanvasCmd> {
-//         let segs = &id.0;
-//         // "modal_fieldset-3_table_tr-{row}_td-1_input" + 空 → selectに戻す
-//         if segs.len() == 6
-//             && segs[0].tag == dom::Tag::Modal
-//             && segs[1].tag == dom::Tag::Fieldset && segs[1].n == Some(3)
-//             && segs[3].tag == dom::Tag::Tr
-//             && segs[4].tag == dom::Tag::Td && segs[4].n == Some(1)
-//             && segs[5].tag == dom::Tag::Input
-//             && value.is_empty()
-//         {
-//             let row    = segs[3].n.unwrap_or(0) as usize;
-//             let inp_id = format!("modal_fieldset-3_table_tr-{}_td-1_input", row);
-//             let sel_id = format!("modal_fieldset-3_table_tr-{}_td-1_select", row);
-//             return vec![
-//                 CanvasCmd::new(Operation::AddClass,    &inp_id, None, Some("hidden")),
-//                 CanvasCmd::new(Operation::RemoveClass, &sel_id, None, Some("hidden")),
-//             ];
-//         }
-//         vec![]
-//     }
-
-//     fn on_gesture(&mut self, _gesture: Gesture, _id: &dom::Id) -> Vec<CanvasCmd> {
-//         vec![]
-//     }
-// }
-
-// ============================================================
-// ログスタック (Log Stack)
-// ============================================================
-
-pub enum LogStack {
-    Skill {
-        // todo: ロール結果など
-    },
-    Characteristic {
-        // todo: ロール結果など
-    },
-    Message(String),
+#[derive(Clone, Copy, PartialEq, Default)]
+pub enum Dialog {
+    #[default]
+    None,
+    Modal,
+    Drawer,
+    Select { step: u8, index: usize },
+    Input  { step: u8, value: u32 },
 }
 
-impl std::fmt::Display for LogStack {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        // todo: format!
-        write!(f, "")
+pub struct CanvasState {
+    pub dialog:    Dialog,
+    pub lang:      Lang,
+    pub character: DataStruct,
+}
+
+impl CanvasState {
+    pub fn new() -> Self {
+        Self { dialog: Dialog::default(), lang: Lang::Ja, character: DataStruct::new() }
+    }
+}
+
+pub struct CanvasEvent {
+    pub event_type: EventType,
+    pub id:         dom::Id,
+    pub key:        KeyName,
+    pub value:      String,
+    pub x:          f64,
+    pub y:          f64,
+    pub time:       f64,
+}
+
+pub enum Event {
+    Canvas(CanvasEvent),
+    Gesture(Gesture),
+    Ready,
+}
+
+impl CanvasEvent {
+    pub fn decode(payload: &wasm_bindgen::JsValue) -> Self {
+        use crate::js_client::{get_js_str, get_js_f64};
+        let event_type = get_js_str(payload, "event_type").as_deref().map(EventType::decode).unwrap_or(EventType::Other);
+        let id         = get_js_str(payload, "target_id").as_deref().map(dom::Id::decode).unwrap_or_else(|| dom::Id(vec![]));
+        let key        = get_js_str(payload, "key").as_deref().map(KeyName::decode).unwrap_or(KeyName::Other);
+        let value      = get_js_str(payload, "value").unwrap_or_default();
+        let x          = get_js_f64(payload, "x").unwrap_or(0.0);
+        let y          = get_js_f64(payload, "y").unwrap_or(0.0);
+        let time       = get_js_f64(payload, "time").unwrap_or(0.0);
+        Self { event_type, id, key, value, x, y, time }
     }
 }
 
 // ============================================================
-// modal open: キャラクターシート編集画面の展開
+// handle event
 // ============================================================
 
-const LANG: Lang = Lang::Ja;
+pub fn handle(state: &mut CanvasState, ev: &CanvasEvent, characters: &mut WalStore) -> Vec<CanvasCmd> {
+    match (&ev.event_type, state.dialog) {
+        (EventType::Click,   Dialog::None)  => todo!("normal click"),
+        (EventType::Click,   Dialog::Modal) => todo!("dialog click"),
+        (EventType::KeyDown, _)             => todo!("keydown"),
+        (EventType::Input,   _)             => todo!("input"),
+        (EventType::Change,  _)             => todo!("change"),
+        (EventType::Blur,    _)             => todo!("blur"),
+        (EventType::Submit,  _)             => todo!("submit"),
+        _                                   => vec![],
+    }
+}
 
+pub fn handle_ready(state: &CanvasState, characters: &WalStore) -> Vec<CanvasCmd> {
+    todo!("初期描画コマンドを返す")
+}
+
+pub fn handle_gesture(gesture: Gesture, state: &mut CanvasState) -> Vec<CanvasCmd> {
+    todo!("ジェスチャー処理")
+}
+
+// ============================================================
+// make canvas command
+// ============================================================
+
+
+
+// ============================================================
+// modal open: キャラクターシート編集画面の展開
+// ============================================================
 
 pub fn open_modal() -> Vec<CanvasCmd> {
     let mut cmds = Vec::new();
@@ -665,10 +427,10 @@ pub fn update_character_view(ds: &DataStruct) -> Vec<CanvasCmd> {
 }
 
 // ============================================================
-// debug select: 保存済みキャラ一覧を select に反映
+//  select: 保存済みキャラ一覧を select に反映
 // ============================================================
 
-pub fn update_debug_select(list: &[(u32, String)], selected_id: Option<u32>) -> Vec<CanvasCmd> {
+pub fn update_select(list: &[(u32, String)], selected_id: Option<u32>) -> Vec<CanvasCmd> {
     let html: String = list.iter().map(|(id, name)| {
         let escaped = name
             .replace('&', "&amp;")

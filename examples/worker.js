@@ -7,9 +7,9 @@ self.addEventListener("message", async (e) => {
     const { default: init, App } = await import("./dice-engine/app.js");
     await init();
 
-    const [a, init_cmds] = await App.init(payload.screen_width, payload.pointer_coarse);
-    app = a;
+    app = await App.init(payload.screen_width, payload.pointer_coarse);
     self.postMessage({ type: "ready" });
+    const init_cmds = app.event({});
     if (init_cmds?.length) self.postMessage({ type: "execute", payload: Array.from(init_cmds) });
     return;
   }
