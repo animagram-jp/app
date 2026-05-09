@@ -9,7 +9,6 @@ use crate::js_client::{
     dom,
 };
 use crate::Lang;
-const LANG: Lang = Lang::Ja;
 use crate::data_struct::{DataStruct, Id};
 use crate::wal::WalStore;
 use crate::character::CHARACTER_SCHEMA_NAME;
@@ -31,20 +30,20 @@ pub enum Dialog {
 
 struct CanvasState {
     dialog:    Dialog,
+    lang:      Lang,
     character: DataStruct,  // 編集中バッファ。character.identity=0は未保存
 }
 
 impl CanvasState {
     fn new() -> Self {
-        Self { dialog: Dialog::default(), character: DataStruct::new() }
+        Self { dialog: Dialog::default(), lang: Lang::Ja, character: DataStruct::new() }
     }
 }
 
 // ============================================================
-// App
+// app
 // ============================================================
 
-/// JS から受け取った生ペイロードをデコードした入力イベント。
 struct CanvasEvent {
     event_type: EventType,
     id:         dom::Id,
@@ -78,7 +77,7 @@ impl App {
     }
 
     fn save(&mut self) {
-        
+
     }
 }
 
