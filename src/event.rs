@@ -98,8 +98,13 @@ pub fn handle_gesture(gesture: Gesture, state: &mut CanvasState) -> Vec<CanvasCm
 
 
 // ============================================================
-// modal open: キャラクターシート編集画面の展開
+// action
 // ============================================================
+
+enum action {
+    open_modal,
+    
+}
 
 pub fn open_modal() -> Vec<CanvasCmd> {
     let mut cmds = Vec::new();

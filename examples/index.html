@@ -11,27 +11,32 @@
   </head>
 
   <body>
+    <header>
+      <button id="body_header_select" aria-label="lanuage selector">
+        <option id="body_header_select_option-1" value="1" aria-label="Japanese lanuage option"></option>
+        <option id="body_header_select_option-2" value="2" aria-label="English lanuage option"></option>
+      </button>
+      <select id="body_header_button-1" aria-label="cancel dialogs" class="hidden">×</select>
+    </header>
     <main>
       <header>
-        <button id="main_header_button" class="dads-button" data-type="outline" data-size="sm">✏️</button>
+        <select id="main_header_select" class="hidden" aria-label="character select">
+          <option id="main_header_select_option-1" value="0" aria-label="no character select"></option>
+          <option id="main_header_select_option-2" class="hidden" value="1"></option>
+          <option id="main_header_select_option-3" class="hidden" value="2"></option>
+          <option id="main_header_select_option-4" class="hidden" value="3"></option>
+          <option id="main_header_select_option-5" class="hidden" value="4"></option>
+          <option id="main_header_select_option-6" class="hidden" value="5"></option>
+          <option id="main_header_select_option-7" class="hidden" value="6"></option>
+          <option id="main_header_select_option-8" class="hidden" value="7"></option>
+          <option id="main_header_select_option-9" class="hidden" value="8"></option>
+          <option id="main_header_select_option-10" class="hidden" value="9"></option>
+        </select>
+        <button id="main_header_button" class="dads-button" data-type="outline" data-size="sm" aria-label="character edit modal open">✏️</button>
       </header>
       <div>
-
-        <!-- section-1: character view -->
         <section id="main_div_section-1" aria-label="character view">
           <section id="main_div_section-1_section-1" aria-label="character profile view">
-            <select id="main_div_section-1_section-1_select" aria-label="character select">
-              <option id="main_div_section-1_section-1_select_1" value="1"></option>
-              <option id="main_div_section-1_section-1_select_2" value="2"></option>
-              <option id="main_div_section-1_section-1_select_3" value="3"></option>
-              <option id="main_div_section-1_section-1_select_4" value="4"></option>
-              <option id="main_div_section-1_section-1_select_5" value="5"></option>
-              <option id="main_div_section-1_section-1_select_6" value="6"></option>
-              <option id="main_div_section-1_section-1_select_7" value="7"></option>
-              <option id="main_div_section-1_section-1_select_8" value="8"></option>
-              <option id="main_div_section-1_section-1_select_9" value="9"></option>
-              <option id="main_div_section-1_section-1_select_10" value="10"></option>
-            </select>
             <span id="main_div_section-1_section-1_span-1" class="hidden"><span id="main_div_section-1_section-1_span-1_span-1"></span><span id="main_div_section-1_section-1_span-1_span-2"></span></span>
             <span id="main_div_section-1_section-1_span-2" class="hidden"><span id="main_div_section-1_section-1_span-2_span-1"></span><span id="main_div_section-1_section-1_span-2_span-2"></span></span>
             <span id="main_div_section-1_section-1_span-3" class="hidden"><span id="main_div_section-1_section-1_span-3_span-1"></span><span id="main_div_section-1_section-1_span-3_span-2"></span></span>
@@ -64,6 +69,7 @@
             <span id="main_div_section-1_section-3_span-10" class="hidden"><span id="main_div_section-1_section-3_span-10_span-1"></span><span id="main_div_section-1_section-3_span-10_span-2"></span></span>
           </section>
           <!-- <section id="main_div_section-1_section-5" aria-label="character equipment view"></section> -->
+          <!-- <section id="main_div_section-1_section-6" aria-label="character backstory view"></section> -->
         </section>
 
         <!-- section-2: chat log -->
@@ -89,16 +95,16 @@
         <dialog id="main_div_modal" aria-label="overlay">
           <h5 id="main_div_dialog_h5"></h5>
           <ul role="menu" id="main_div_dialog_ul" class="hidden">
-            <li role="menuitem" id="main_div_dialog_ul_li-1" tabindex="0" hidden></li>
-            <li role="menuitem" id="main_div_dialog_ul_li-2" tabindex="0" hidden></li>
-            <li role="menuitem" id="main_div_dialog_ul_li-3" tabindex="0" hidden></li>
-            <li role="menuitem" id="main_div_dialog_ul_li-4" tabindex="0" hidden></li>
-            <li role="menuitem" id="main_div_dialog_ul_li-5" tabindex="0" hidden></li>
-            <li role="menuitem" id="main_div_dialog_ul_li-6" tabindex="0" hidden></li>
-            <li role="menuitem" id="main_div_dialog_ul_li-7" tabindex="0" hidden></li>
-            <li role="menuitem" id="main_div_dialog_ul_li-8" tabindex="0" hidden></li>
-            <li role="menuitem" id="main_div_dialog_ul_li-9" tabindex="0" hidden></li>
-            <li role="menuitem" id="main_div_dialog_ul_li-10" tabindex="0" hidden></li>
+            <li role="menuitem" id="main_div_dialog_ul_li-1" tabindex="0" class="hidden"></li>
+            <li role="menuitem" id="main_div_dialog_ul_li-2" tabindex="0" class="hidden"></li>
+            <li role="menuitem" id="main_div_dialog_ul_li-3" tabindex="0" class="hidden"></li>
+            <li role="menuitem" id="main_div_dialog_ul_li-4" tabindex="0" class="hidden"></li>
+            <li role="menuitem" id="main_div_dialog_ul_li-5" tabindex="0" class="hidden"></li>
+            <li role="menuitem" id="main_div_dialog_ul_li-6" tabindex="0" class="hidden"></li>
+            <li role="menuitem" id="main_div_dialog_ul_li-7" tabindex="0" class="hidden"></li>
+            <li role="menuitem" id="main_div_dialog_ul_li-8" tabindex="0" class="hidden"></li>
+            <li role="menuitem" id="main_div_dialog_ul_li-9" tabindex="0" class="hidden"></li>
+            <li role="menuitem" id="main_div_dialog_ul_li-10" tabindex="0" class="hidden"></li>
           </ul>
           <form id="main_div_modal_form" class="hidden">
             <button type="button" id="main_div_dialog_form_button-1">↓</button>
@@ -108,22 +114,17 @@
           </form>
         </dialog>
       </div>
-      <footer></footer>
     </main>
 
-    <dialog id="drawer">
-      <header></header>
-      <section></section>
-      <footer></footer>
-    </dialog>
+    <dialog id="drawer"></dialog>
 
-    <dialog id="modal">
+    <dialog id="modal" aria-label="character edit modal">
       <header>
-        <h4 id="modal_header_h4"></h4>
+        <button id="modal_header_button" type="submit" form="form" class="dads-button" data-type="solid-fill" data-size="sm">💾</button>
       </header>
 
       <!-- fieldset-1: Profile -->
-      <fieldset id="modal_fieldset-1">
+      <fieldset id="modal_fieldset-1" aria-label="character profile edit fieldset">
         <legend>
           <h5 id="modal_fieldset-1_legend_h5"></h5>
         </legend>
@@ -140,7 +141,7 @@
       </fieldset>
 
       <!-- fieldset-2: Characteristic (label / 初期値 / 変動値 / 合計 / 🎲) -->
-      <fieldset id="modal_fieldset-2">
+      <fieldset id="modal_fieldset-2" aria-label="characteristic edit fieldset">
         <legend>
           <h5 id="modal_fieldset-2_legend_h5"></h5>
           <button id="modal_fieldset-2_legend_button" type="button" class="dads-button" data-type="outline" data-size="xs">🎲</button>
@@ -171,7 +172,7 @@
       </fieldset>
 
       <!-- fieldset-3: Skill (label / base / 職業pt / 興味pt / 合計) -->
-      <fieldset id="modal_fieldset-3">
+      <fieldset id="modal_fieldset-3" aria-label="character skill fieldset">
         <legend>
           <h5 id="modal_fieldset-3_legend_h5"></h5>
         </legend>
@@ -238,13 +239,9 @@
           </tbody>
         </table>
       </fieldset>
-
-      <footer>
-        <button id="modal_footer_button" type="submit" form="form" class="dads-button" data-type="solid-fill" data-size="sm">💾</button>
-      </footer>
     </dialog>
     <form id="form" method="dialog"></form>
-    <output id="output">
+    <output id="output" aria-label="toast">
       <article id="output_article-1"><span id="output_article-1_span"></span><p id="output_article-1_p"></p></article>
     </output>
   </body>
