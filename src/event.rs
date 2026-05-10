@@ -508,7 +508,6 @@ pub fn update_select(list: &[(u32, String)], selected_id: Option<u32>) -> Vec<Ca
 // modal リセット: save以外のclose時にinput・キャッシュを初期化
 // ============================================================
 
-// DataStructのリセットは呼び出し側(app.rs)でDataStruct::new()に差し替え済み
 pub fn reset_modal() -> Vec<CanvasCmd> {
 
     let mut cmds = Vec::new();
