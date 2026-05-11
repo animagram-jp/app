@@ -2,7 +2,7 @@
 
 # Architecture
 
-## dice-engine 
+## dice-engine
 
 1. dice-engine (D-Engine) は、CoC TRPG 7th Editionをプレイするために必要なデータ処理機能を集約した、webブラウザソフトウェアです。
 2. 開発者本人のやる気が湧くCoC TRPG 7th Editionに特化している点、ダイスロールを出力するだけではない点に注意してください。
@@ -36,19 +36,11 @@
       - 同様に、インタラクティブUIの1->2->3で1つ前に戻る手段は用意しない。単純なのでescクリアで十分。
       - 必ずすべてのシーンで、appが「初期focus対象」を想定してそこにautofocusを設定しておく。
       - tabやshift+tabで操作可能なdomだけを適切にfocusできるようにする。
+  - ディスプレイに表示するのは、ルールブック準拠の言葉(label)であることを徹底する。プレイヤーの知らない実装都合の略称を作らない・使わない・表示しない。ラベルは、1つの変数の属性値(UTF-8)であり、言語(ja,en)別・略称等の引数を取って一意に決まる。
+  - UI実装上の割り切りとして、入力欄の単位などの後置は排除する。単位は" ()""などでラベルに含めてinput外に前置することで、複雑性を抑える。
 
-### Script
 
-以下、実装にあたっての具体的な手法規則
-
-1. ディスプレイに表示するのは、ルールブック準拠の言葉(label)であることを徹底する。プレイヤーの知らない実装都合の略称を作らない・使わない・表示しない。ラベルは、1つの変数の属性値(UTF-8)であり、言語(ja,en)別・略称等の引数を取って一意に決まる。
-2. UI実装上の割り切りとして、入力欄の単位などの後置は排除する。単位は" ()""などでラベルに含めてinput外に前置することで、複雑性を抑える。
-
-### Module
-
-システムのモジュール構成
-
-#### Diagram
+### System diagram
 
 ```
 ┌──────┐
@@ -58,34 +50,34 @@
 ┌────────────────────────┐
 │ terminal (browser)     │
 │┌──────────────────────┐│
-││ canvas (html+css+js) ││
+││ canvas (html,css,js) ││
 │└──────────────────────┘│
 │┌──────────────────────┐│
-││ app (Rust as Wasm)   ││
+││ app (rust as wasm)   ││
 │└──────────────────────┘│
 │┌──────────────────────┐│
-││ opfs (local disk)    ││
+││ opfs                 ││
 │└──────────────────────┘│
 │┌──────────────────────┐│
 ││ pwa (service worker) ││
 │└──────────────────────┘│
 └────────────────────────┘
         ▲         ▲
- ┌──────┴─────┐   │
- │ dns proxy  │   │
- └──────┬─────┘   │
+ ┌──────┴──────┐  │ network functions:
+ │ https proxy │  │ - realtime device-to-device
+ └──────┬──────┘  │ - background data sync
         ▼         ▼
 ┌────────────────────────┐
-│ fixture (cloudflare)   │
-│┌─────────────────┐     │
-││ WebRTC (STUN)   │     │
-│└─────────────────┘     │
-│┌─────────────────┐     │
-││ websocket       │     │
-│└─────────────────┘     │
-│┌─────────────────┐     │
-││ fs (local disk) │     │
-│└─────────────────┘     │
+│ fixture (linux)        │
+│┌──────────────────────┐│
+││ transport (stun,turn)││
+│└──────────────────────┘│
+│┌──────────────────────┐│
+││ app (rust)           ││
+│└──────────────────────┘│
+│┌──────────────────────┐│
+││ fs (linux)           ││
+│└──────────────────────┘│
 └────────────────────────┘
 ```
 
@@ -93,59 +85,73 @@
 
 ##### Canvas
 
-- html:
-  - ファイル名はindex.html。/へのアクセス時に自動転送してくれるサービスが大半なので採用。特殊要件以外では単ファイル完結。
-  - hidden/.hidden: FOUC防止のため、bodyにhiddenを書く。常時表示するelement以外、hiddenクラスを指定しておく。
-  - text:   セッション中絶対に変化の無いテキストは書き込んでおくが、現代社会はja/en切り替えがページタイトルレベルで必要なので、該当はほぼ無い。また、それ以外はtextを書き込まない。
-  - 動的に増えるelement: 最大数を決めて、1,2,...をidの末尾に付けてhtmlに書き込んでおく。
-    - hidden: 初回時一斉にremoveAttribute("hidden")が起こるので、最初からcss .hiddenを付けるべきかも
-  - 各elementはheader/div(またはsemantic tag)/footerで構成する。divはこの意味以外で使用禁止。
-- css:
-  - ファイル名はstyle.css。スタイリング用のアセットなので。外部参照ファイルは、挙動を依存しない範囲で適宜追加してよい。
-  - hidden: .hidden {display: none !important;} を定義しておく。html hiddenが支配的なので、この時点で.hidden適用は不要。
-  - セレクタはtagと列挙,idのみで指定する。classで指定しない。
-- js:
-  - htmlにmoduleとして呼ばれるinit.js, workerメモリを確保するためのworker.js, wasm-packで自動生成されるapp.js, pwa用のsw.js。
-  - init.js: workerに適宜eventをpostMessageで渡す。また、excute()でAppからの指示を実行する。
-  - excute(operation: u8, element_id: str, attribute: str, value: str|u64|i64|boolean){}
-  - appが必要とする指示種は、以下の通り。
-    - Element.getElementId(element_id).textContent = value;
-    - Element.getElementId(element_id).value = value;
-    - Element.getElementId(element_id).toggleAttribute(attribute, value);
-    - Element.getElementId(element_id).classList.add(value);
-    - Element.getElementId(element_id).classList.remove(value);
-    - Element.getElementId(element_id).openModal(); # 08,09はmodal専用
-    - Element.getElementId(element_id).close();
-    - applyClass(element_id, value); # rAFやsetTimeoutなど、非同期処理のみ
+###### html
+
+- index.htmlの1ファイル完結。
+- FOUC防止のため、body atrributeにhiddenを書く。
+- 初期表示しないelement以外、.hiddenクラスを追加しておく。
+- text content: 一切変化しないテキストは書き込むが、言語切り替え必要なので、原則書かない。
+- 動的に増えるelement: 最大数を決めて、-1,-2,...をidの末尾に付けてhtmlに書き込んでおく。
+- divはmainの構成要素{header, div, footer}として定義する。汎用tagとしての利用を禁止する。
+- semantic tagを使用する:
+  - htmlにあるべき基本構造は定まっている。以下yamlを参照のこと。
+  - 基本構造外のタグ決定の第一判断箇所は、「この要素は縦積み(block)か横流し(inline)か」。
+  - 複数の変数を縦に並べる(block): `<p>`,`<section>`,`<article>`,`<header>`,`<footer>`,`<address>`,`<ul>`/`<li>`
+  - 同一行の中に複数変数を並べる(inline): `<span>`,`<time>`,`<a>`,`<img>`,...
+- 開発者向けのコメントが不要になるように、全ての要素にaria-labelを付ける:
+  - h1など1body1つのタグ・並列数の多い要素は省略可。
+  - 命名は「その要素が何であるか」を単一の説明で表す。
 
 ```yaml
+# htmlの基本構造
 html:
   head:
   body:
-    main:
+    main:     # 主に閲覧機能
       header:
-      div:
+      div:    # または、特定のsemantic tag。
       footer:
-    drawer: # <dialog id="drawer"> set/removeAttribute("open")
-    modal: # <dialog id="modal"> showModal()
-    form:  # <form id="form" method="dialog"></form> のみの1行要素
-    toast: # <output>
+    drawer:   # 画面遷移時のメニュー表示。手動UIではなくappが開閉する。<dialog id="drawer">
+    modal:    # 編集機能・要アテンション時 <dialog id="modal"> showModal()
+    form:     # <form id="form" method="dialog"></form> のみの1行要素
+    toast:    # <output>
 ```
 
-##### Terminal app
 
-- ファイル名: app.wasm
-- app初期化時: 初期画面で必要なDOMにremoveAttribute("hidden")指示を出す。
-- 以降
-  - セッションライフタイム中に以降絶対に不要: addAttribute("hidden")
-  - 表示(非表示)したい: classList.add/remove("hidden")
+###### css
+
+- config.css(変数定義), style.css, idや構造に依存のない外部css。
+- [hidden], .hidden {display: none !important;} を定義しておく。
+- セレクタはtagのパイプまたはidのみで指定する。classで指定しない。
+
+###### javascript
+
+- 要件に依らない内容の、以下4ファイルで構成する。
+  - htmlにmoduleとして呼ばれるinit.js
+  - メインと非同期なスレッドでappを実行するためのworker.js
+  - wasm-packで自動生成されるapp.js (app.wasmを実行)
+  - pwa用のservice workerを起動するsw.js
+- init.js: workerに適宜eventをpostMessageで渡す。また、excute()でappからの指示を実行する。
+- excute(operation: u8, element_id: str, attribute: str, value: str){}
+  - Element.getElementId(element_id).textContent = value;
+  - Element.getElementId(element_id).value = value;
+  - Element.getElementId(element_id).toggleAttribute(attribute, value);
+  - Element.getElementId(element_id).classList.add(value);
+  - Element.getElementId(element_id).classList.remove(value);
+  - Element.getElementId(element_id).openModal(); # modal専用
+  - Element.getElementId(element_id).close();     # modal専用
+  - applyClass(element_id, value); # rAFやsetTimeoutなど、非同期処理のみ
+
+#### App (browser)
+
+- app.wasmとして生成する。
 
 ### Roll
 
  - 開いた時点で一番目の選択肢にfocusを当てる。
- - 上下キー/tab/shift+tabでフォーカスが移動, enter(click, tap)で次へ 
+ - 上下キー/tab/shift+tabでフォーカスが移動, enter(click, tap)で次へ
 
-#### Dice Roll - ダイスロール (nDn + n) 
+#### Dice Roll - ダイスロール (nDn + n)
 
 選択後に表示されるべきインタラクティブUIは、出現順に
 1. text[field](Roll::Field::DiceCount), +-ボタン(上下キーも同等に), 初期値1のnumber[1~100]入力欄(focusが当たったら直接入力とする。入力時のkeyboard enterで決定を発火), 「次へ」ボタン(enterも同等に))
@@ -218,4 +224,3 @@ impl Timestamp {
     pub fn decode()
 }
 ```
-
