@@ -70,7 +70,10 @@
 ┌────────────────────────┐
 │ fixture (linux)        │
 │┌──────────────────────┐│
-││ transport (stun,turn)││
+││ nginx (http)         ││
+│└──────────────────────┘│
+│┌──────────────────────┐│
+││ signaling (stun,turn)││
 │└──────────────────────┘│
 │┌──────────────────────┐│
 ││ app (rust)           ││
@@ -95,9 +98,10 @@
 - divはmainの構成要素{header, div, footer}として定義する。汎用tagとしての利用を禁止する。
 - semantic tagを使用する:
   - htmlにあるべき基本構造は定まっている。以下yamlを参照のこと。
-  - 基本構造外のタグ決定の第一判断箇所は、「この要素は縦積み(block)か横流し(inline)か」。
-  - 複数の変数を縦に並べる(block): `<p>`,`<section>`,`<article>`,`<header>`,`<footer>`,`<address>`,`<ul>`/`<li>`
-  - 同一行の中に複数変数を並べる(inline): `<span>`,`<time>`,`<a>`,`<img>`,...
+  - 基本構造外のタグ決定の第一判断箇所は、「この要素は子の中で唯一か? そうでなければ縦積み(block)か横流し(inline)か?」
+  - 子の中で唯一: <header>`,`<footer>`
+  - 複数の変数を縦に並べる(block): `<p>`,`<section>`,`<article>`,`<header>`,`<footer>`,`<address>`, etc.
+  - 同一行の中に複数変数を並べる(inline): `<span>`,`<time>`,`<a>`, etc.
 - 開発者向けのコメントが不要になるように、全ての要素にaria-labelを付ける:
   - h1など1body1つのタグ・並列数の多い要素は省略可。
   - 命名は「その要素が何であるか」を単一の説明で表す。
@@ -121,15 +125,15 @@ html:
 ###### css
 
 - config.css(変数定義), style.css, idや構造に依存のない外部css。
-- [hidden], .hidden {display: none !important;} を定義しておく。
-- セレクタはtagのパイプまたはidのみで指定する。classで指定しない。
+- style.cssにて[hidden], .hidden {display: none !important;} を定義する。
+- 各セレクタはtagのパイプまたはaria-labelで指定する。classで指定しない。
 
 ###### javascript
 
-- 要件に依らない内容の、以下4ファイルで構成する。
+- 要件に依らず、同内容の4ファイルで構成する:
   - htmlにmoduleとして呼ばれるinit.js
   - メインと非同期なスレッドでappを実行するためのworker.js
-  - wasm-packで自動生成されるapp.js (app.wasmを実行)
+  - wasm-packで自動生成されるapp.js (app_bg.wasmを実行)
   - pwa用のservice workerを起動するsw.js
 - init.js: workerに適宜eventをpostMessageで渡す。また、excute()でappからの指示を実行する。
 - excute(operation: u8, element_id: str, attribute: str, value: str){}
@@ -201,12 +205,12 @@ Development Check - 上達チェック
 
 ---
 
-## ネットワーク層
+## Network
 
 browser wasm to browser wasm のリアルタイムp2pを実現する。
 
 ```
-# [前提]
+[前提]
 ブラウザは「非対称なピア」である
 参考例: Nostrのプロトコル仕様書(NIPs)
 
