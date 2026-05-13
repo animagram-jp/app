@@ -242,7 +242,7 @@ impl PointerState {
     }
 }
 
-pub fn detect_gesture(state: &PointerState, current_time: f64) -> Option<Gesture> {
+pub fn detect_gesture(state: &PointerState, event_type: &EventType, current_time: f64) -> Option<Gesture> {
     if !state.is_down { return None; }
 
     let dx = state.current_x - state.start_x;
@@ -255,13 +255,16 @@ pub fn detect_gesture(state: &PointerState, current_time: f64) -> Option<Gesture
         return Some(Gesture::LongPress);
     }
 
-    // swipe: 時間短い + 距離大きい
-    if dt < 300.0 && distance > 50.0 {
-        return Some(if dx.abs() > dy.abs() {
-            if dx > 0.0 { Gesture::SwipeRight } else { Gesture::SwipeLeft }
-        } else {
-            if dy > 0.0 { Gesture::SwipeDown } else { Gesture::SwipeUp }
-        });
+    // swipe: PointerUp時のみ + velocity > 0.3 px/ms
+    if matches!(event_type, EventType::PointerUp) && dt > 0.0 {
+        let velocity = distance / dt;
+        if velocity > 0.3 && distance > 50.0 {
+            return Some(if dx.abs() > dy.abs() {
+                if dx > 0.0 { Gesture::SwipeRight } else { Gesture::SwipeLeft }
+            } else {
+                if dy > 0.0 { Gesture::SwipeDown } else { Gesture::SwipeUp }
+            });
+        }
     }
 
     // drag: 距離大きい

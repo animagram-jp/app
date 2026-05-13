@@ -43,7 +43,19 @@ impl App {
     }
 
     pub fn event(&mut self, payload: JsValue) -> JsValue {
-        self.events.push(Event::Canvas(CanvasEvent::decode(&payload)));
+        let canvas_event = CanvasEvent::decode(&payload);
+        self.pointer_state = self.pointer_state.update(
+            &canvas_event.event_type,
+            canvas_event.x, canvas_event.y, canvas_event.time,
+        );
+        match detect_gesture(&self.pointer_state, &canvas_event.event_type, canvas_event.time) {
+            Some(gesture) => self.events.push(Event::Gesture(gesture)),
+            None => match &canvas_event.event_type {
+                EventType::PointerDown | EventType::PointerMove |
+                EventType::PointerUp   | EventType::PointerCancel => {},
+                _ => self.events.push(Event::Canvas(canvas_event)),
+            },
+        }
         while let Some(ev) = self.events.pop() {
             let cmds = self.dispatch(ev);
             self.cmds.extend(cmds);
@@ -56,18 +68,7 @@ impl App {
     fn dispatch(&mut self, ev: Event) -> Vec<CanvasCmd> {
         match ev {
             Event::Canvas(canvas_event) => {
-                self.pointer_state = self.pointer_state.update(
-                    &canvas_event.event_type,
-                    canvas_event.x, canvas_event.y, canvas_event.time,
-                );
-                if let Some(gesture) = detect_gesture(&self.pointer_state, canvas_event.time) {
-                    self.events.push(Event::Gesture(gesture));
-                }
-                match &canvas_event.event_type {
-                    EventType::PointerDown | EventType::PointerMove |
-                    EventType::PointerUp   | EventType::PointerCancel => vec![],
-                    _ => event::handle(&mut self.canvas_state, &canvas_event, &mut self.characters),
-                }
+                event::handle(&mut self.canvas_state, &canvas_event, &mut self.characters)
             }
             Event::Gesture(gesture) => {
                 event::handle_gesture(gesture, &mut self.canvas_state)
