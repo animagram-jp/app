@@ -31,6 +31,11 @@ dialog {
   box-sizing: border-box;
 }
 
+input, textarea {
+  font-family: inherit;
+  font-size: inherit;
+}
+
 output {
   position: fixed;
   bottom: 1.5rem;
