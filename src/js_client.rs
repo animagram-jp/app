@@ -251,14 +251,14 @@ pub fn detect_gesture(state: &PointerState, event_type: &EventType, current_time
     let distance = (dx * dx + dy * dy).sqrt();
 
     // long press: 時間長い + 座標ブレ小さい
-    if dt > 500.0 && distance < 10.0 {
+    if dt > 251.0 && distance < 9.0 {
         return Some(Gesture::LongPress);
     }
 
-    // swipe: PointerUp時のみ + velocity > 0.3 px/ms
+    // swipe: PointerUp時のみ + velocity > 0.5 px/ms + duration < 250ms
     if matches!(event_type, EventType::PointerUp) && dt > 0.0 {
         let velocity = distance / dt;
-        if velocity > 0.3 && distance > 50.0 {
+        if velocity > 0.5 && distance > 50.0 && dt < 250.0 {
             return Some(if dx.abs() > dy.abs() {
                 if dx > 0.0 { Gesture::SwipeRight } else { Gesture::SwipeLeft }
             } else {
