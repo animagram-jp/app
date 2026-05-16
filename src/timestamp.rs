@@ -51,6 +51,67 @@ impl Timezone {
     }
 }
 
+/// Unix time (ms) からtimestampに変換する。
+/// `is_utc=true` なら UTC のまま格納。`is_utc=false` なら `tz` のローカル時刻に変換して格納。
+///
+/// ```
+/// use app::timestamp::*;
+///
+/// // 2000-01-01 00:00:00 UTC = 946684800000 ms
+/// let ut = 946684800000.0_f64;
+///
+/// // UTC格納
+/// let ts = from_ut(ut, true, &Timezone::AsiaTokyo);
+/// let (year, month, day, hour, ..) = unpack(ts);
+/// assert_eq!(year, 2000);
+/// assert_eq!(month, 1);
+/// assert_eq!(day, 1);
+/// assert_eq!(hour, 0);
+///
+/// // Asia/Tokyo (UTC+9) に変換して格納
+/// let ts = from_ut(ut, false, &Timezone::AsiaTokyo);
+/// let (year, month, day, hour, ..) = unpack(ts);
+/// assert_eq!(year, 2000);
+/// assert_eq!(month, 1);
+/// assert_eq!(day, 1);
+/// assert_eq!(hour, 9);
+/// ```
+pub fn from_ut(ut: f64, is_utc: bool, tz: &Timezone) -> u64 {
+    let s = ut as i64 / 1000;
+    let (s, is_utc_bit, tz_id) = if is_utc {
+        (s, 1u64, 0u64)
+    } else {
+        let offset_s = match tz {
+            Timezone::AsiaTokyo => 9 * 3600,
+        };
+        (s + offset_s, 0u64, tz.id() as u64)
+    };
+
+    let mut days = s / 86400;
+    let time_s   = s % 86400;
+    let hour   = time_s / 3600;
+    let minute = (time_s % 3600) / 60;
+    let second = time_s % 60;
+
+    let mut year = 1970i64;
+    loop {
+        let dy = if year % 4 == 0 && (year % 100 != 0 || year % 400 == 0) { 366 } else { 365 };
+        if days < dy { break; }
+        days -= dy;
+        year += 1;
+    }
+    let mut month = 1i64;
+    loop {
+        let dm = days_in_month(year, month);
+        if days < dm { break; }
+        days -= dm;
+        month += 1;
+    }
+    let day = days + 1;
+
+    pack(year, month, day, hour, minute, second, is_utc_bit, tz_id)
+}
+
 pub fn new(
     year: i15,
     month: i5,
