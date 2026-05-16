@@ -11,6 +11,15 @@ use crate::wal::WalStore;
 const LANG: Lang = Lang::Ja;
 
 // ============================================================
+// event instance
+// ============================================================
+
+pub struct Coc7th {
+    character_in_cunvas,         // a data struct instance of character in main view and modal input
+    characters: &'a mut Vec<u8>, // wired data of characters walstore has in memory
+}
+
+// ============================================================
 // canvas event schema
 // ============================================================
 

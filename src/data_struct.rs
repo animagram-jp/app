@@ -18,8 +18,8 @@ impl DataStruct {
     pub fn new() -> Self {
         Self {
             identity:   todo!(下記と似た感じ),
-            created_at: todo!(0u64か、timestamp::from_ut(now())を入れる),
-            updated_at: todo!(0u64か、timestamp::from_ut(now())を入れる),
+            created_at: todo!(0u64か、timestamp::from_ut(canvas_event.time)を入れる),
+            updated_at: todo!(timestamp::from_ut(canvas_event.time)を入れる),
             index:  List::new(Self::INDEX_WIDTH),
             values: VariableList::new(),
         }
