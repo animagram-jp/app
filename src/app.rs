@@ -15,8 +15,6 @@ pub struct App {
     device:        Device,
     pointer_state: PointerState,
     canvas_state:  CanvasState,
-    characters:    WalStore,
-    log_stack:     Vec<LogStack>,
     events:        Vec<Event>,
     cmds:          Vec<CanvasCmd>,
 }

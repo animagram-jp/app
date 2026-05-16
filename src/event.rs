@@ -11,12 +11,13 @@ use crate::wal::WalStore;
 const LANG: Lang = Lang::Ja;
 
 // ============================================================
-// event instance
+// event handlers
 // ============================================================
 
 pub struct Coc7th {
     character_in_cunvas,         // a data struct instance of character in main view and modal input
     characters: &'a mut Vec<u8>, // wired data of characters walstore has in memory
+    log_stack:     Vec<Log>,
 }
 
 // ============================================================
@@ -29,14 +30,13 @@ pub enum Dialog {
     None,
     Modal,
     Drawer,
-    Select { step: u8, index: usize },
-    Input  { step: u8, value: u32 },
+    Select { step: u8, index: usize }, // dialog id="main_div_modal" aria-label="overlay" のセレクトUI表示状態
+    Input  { step: u8, value: u32 },   // dialog id="main_div_modal" aria-label="overlay" の入力UI表示状態
 }
 
 pub struct CanvasState {
     pub dialog:    Dialog,
     pub lang:      Lang,
-    pub character: DataStruct,
 }
 
 impl CanvasState {
