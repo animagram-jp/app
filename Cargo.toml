@@ -2,6 +2,9 @@
 name = "app"
 version = "0.1.0"
 edition = "2024"
+authors = ["Andyou <andyou@animagram.jp>"]
+description = "Gui application for editing and reading structured data."
+license = "Apache-2.0"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -24,6 +27,11 @@ web-sys = { version = "0.3", features = [
 serde = { version = "1", features = ["derive"] }
 serde-wasm-bindgen = "0.6"
 rand = "0.10"
+log = { version = "0.4", default-features = false, optional = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { version = "0.4", features = ["wasm_js"] }
+
+[features]
+default    = []
+logging    = ["dep:log"]

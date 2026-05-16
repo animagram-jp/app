@@ -3,48 +3,11 @@ use crate::list::{List, VariableList, SetOutcome, ListError, VariableListError};
 use crate::character::Character;
 use crate::timestamp;
 
-#[derive(Clone, Copy, Default)]
-pub struct Id(pub u32);
-
-impl Id {
-    pub fn get(&self) -> Option<u32> {
-        if self.0 == 0 { None } else { Some(self.0) }
-    }
-    pub fn to_bytes(self) -> [u8; 4] { self.0.to_le_bytes() }
-    pub fn from_bytes(b: [u8; 4]) -> Self { Self(u32::from_le_bytes(b)) }
-}
-
-impl Timestamp {
-    pub fn to_bytes(self) -> [u8; 8] { self.0.to_le_bytes() }
-    pub fn from_bytes(b: [u8; 8]) -> Self { Self(u64::from_le_bytes(b)) }
-
-    pub fn encode(year: u64, month: u64, day: u64, hour: u64, minute: u64) -> Self {
-        let mut v = 0u64;
-        v = timestamp::set(v, timestamp::OFFSET_YEAR,   timestamp::MASK_YEAR,   year);
-        v = timestamp::set(v, timestamp::OFFSET_MONTH,  timestamp::MASK_MONTH,  month);
-        v = timestamp::set(v, timestamp::OFFSET_DAY,    timestamp::MASK_DAY,    day);
-        v = timestamp::set(v, timestamp::OFFSET_HOUR,   timestamp::MASK_HOUR,   hour);
-        v = timestamp::set(v, timestamp::OFFSET_MINUTE, timestamp::MASK_MINUTE, minute);
-        Self(v)
-    }
-
-    pub fn decode(self) -> (u64, u64, u64, u64, u64) {
-        let v = self.0;
-        (
-            timestamp::get(v, timestamp::OFFSET_YEAR,   timestamp::MASK_YEAR),
-            timestamp::get(v, timestamp::OFFSET_MONTH,  timestamp::MASK_MONTH),
-            timestamp::get(v, timestamp::OFFSET_DAY,    timestamp::MASK_DAY),
-            timestamp::get(v, timestamp::OFFSET_HOUR,   timestamp::MASK_HOUR),
-            timestamp::get(v, timestamp::OFFSET_MINUTE, timestamp::MASK_MINUTE),
-        )
-    }
-}
-
 #[derive(Clone)]
 pub struct DataStruct {
-    pub identity:   Id,
-    pub created_at: Timestamp,
-    pub updated_at: Timestamp,
+    pub identity:   u32,
+    pub created_at: u64,
+    pub updated_at: u64,
     index:  List<usize>,
     values: VariableList<u8>,
 }
@@ -54,9 +17,9 @@ impl DataStruct {
 
     pub fn new() -> Self {
         Self {
-            identity:   Id::default(),
-            created_at: Timestamp::default(),
-            updated_at: Timestamp::default(),
+            identity:   todo!(下記と似た感じ),
+            created_at: todo!(0u64か、timestamp::from_ut(now())を入れる),
+            updated_at: todo!(0u64か、timestamp::from_ut(now())を入れる),
             index:  List::new(Self::INDEX_WIDTH),
             values: VariableList::new(),
         }
@@ -108,9 +71,9 @@ impl DataStruct {
         let mut ds = Self::new();
         if raw.len() < 20 { return ds; }
 
-        ds.identity   = Id::from_bytes(raw[0..4].try_into().unwrap());
-        ds.created_at = Timestamp::from_bytes(raw[4..12].try_into().unwrap());
-        ds.updated_at = Timestamp::from_bytes(raw[12..20].try_into().unwrap());
+        ds.identity   = u32::from_bytes(raw[0..4].try_into().unwrap());
+        ds.created_at = u64::from_bytes(raw[4..12].try_into().unwrap());
+        ds.updated_at = u64::from_bytes(raw[12..20].try_into().unwrap());
 
         let mut pos = 20;
         while pos + 8 <= raw.len() {

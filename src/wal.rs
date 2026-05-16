@@ -115,7 +115,6 @@ pub struct WalStore {
     unsaved:  Vec<u32>,
 }
 
-// FileSystemSyncAccessHandle は Send でないが Dedicated Worker は単一スレッドなので安全
 unsafe impl Send for WalStore {}
 unsafe impl Sync for WalStore {}
 
