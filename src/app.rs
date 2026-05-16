@@ -1,10 +1,8 @@
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsValue;
 use serde_wasm_bindgen::to_value;
-use crate::js_client::{CanvasCmd, get_js_str, get_js_f64, EventType, Gesture, PointerState, detect_gesture, Device, detect_device, dom};
-use crate::wal::WalStore;
-use crate::character::CHARACTER_SCHEMA_NAME;
-use crate::event::{self, CanvasEvent, CanvasState, Event, LogStack};
+use crate::js_client::{CanvasCmd, get_js_str, get_js_f64, EventType, Gesture, PointerState, detect_gesture, Device, detect_device, dom, CanvasEvent};
+use crate::event::{self, Coc7th, CanvasState, Event, LogStack};
 
 // ============================================================
 // App
@@ -17,14 +15,14 @@ pub struct App {
     canvas_state:  CanvasState,
     events:        Vec<Event>,
     cmds:          Vec<CanvasCmd>,
+    app_state:     Vec<[u8]>,      // 型は適当。event::Logstackなどはここに所属させる
 }
 
 #[wasm_bindgen]
 impl App {
     pub async fn init(screen_width: u32, pointer_coarse: bool) -> App {
         let device = detect_device(screen_width, pointer_coarse);
-        let characters = WalStore::open(CHARACTER_SCHEMA_NAME).await
-            .unwrap_or_else(|e| panic!("WalStore::open failed: {}", e));
+        let characters = Coc7th::ready().await;
 
         let mut app = App {
             device,

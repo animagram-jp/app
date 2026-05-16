@@ -3,7 +3,7 @@ use crate::character::{
     Profile, Characteristic, Skill,
     ArtCraftSpec, FightingSpec, FirearmsSpec, PilotSpec, ScienceSpec, SurvivalSpec,
 };
-use crate::js_client::{CanvasCmd, Operation, EventType, Gesture, dom};
+use crate::js_client::{CanvasCmd, Operation, EventType, Gesture, dom, CanvasEvent};
 use crate::data_struct::DataStruct;
 use crate::character::Character;
 use crate::wal::WalStore;
@@ -14,10 +14,19 @@ const LANG: Lang = Lang::Ja;
 // event handlers
 // ============================================================
 
+const CHARACTER_SCHEMA_NAME: &str = "character";
+
 pub struct Coc7th {
     character_in_cunvas,         // a data struct instance of character in main view and modal input
     characters: &'a mut Vec<u8>, // wired data of characters walstore has in memory
     log_stack:     Vec<Log>,
+}
+
+impl Coc7th {
+    pub async fn ready() -> WalStore {
+        WalStore::open(CHARACTER_SCHEMA_NAME).await
+            .unwrap_or_else(|e| panic!("WalStore::open failed: {}", e))
+    }
 }
 
 // ============================================================
@@ -45,34 +54,10 @@ impl CanvasState {
     }
 }
 
-pub struct CanvasEvent {
-    pub event_type: EventType,
-    pub id:         dom::Id,
-    pub key:        KeyName,
-    pub value:      String,
-    pub x:          f64,
-    pub y:          f64,
-    pub time:       f64,
-}
-
 pub enum Event {
     Canvas(CanvasEvent),
     Gesture(Gesture),
     Ready,
-}
-
-impl CanvasEvent {
-    pub fn decode(payload: &wasm_bindgen::JsValue) -> Self {
-        use crate::js_client::{get_js_str, get_js_f64};
-        let event_type = get_js_str(payload, "event_type").as_deref().map(EventType::decode).unwrap_or(EventType::Other);
-        let id         = get_js_str(payload, "target_id").as_deref().map(dom::Id::decode).unwrap_or_else(|| dom::Id(vec![]));
-        let key        = get_js_str(payload, "key").as_deref().map(KeyName::decode).unwrap_or(KeyName::Other);
-        let value      = get_js_str(payload, "value").unwrap_or_default();
-        let x          = get_js_f64(payload, "x").unwrap_or(0.0);
-        let y          = get_js_f64(payload, "y").unwrap_or(0.0);
-        let time       = get_js_f64(payload, "time").unwrap_or(0.0);
-        Self { event_type, id, key, value, x, y, time }
-    }
 }
 
 // ============================================================

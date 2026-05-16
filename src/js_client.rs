@@ -437,3 +437,30 @@ pub mod dom {
         }
     }
 }
+
+// ============================================================
+// canvas event
+// ============================================================
+
+pub struct CanvasEvent {
+    pub event_type: EventType,
+    pub id:         dom::Id,
+    pub key:        KeyName,
+    pub value:      String,
+    pub x:          f64,
+    pub y:          f64,
+    pub time:       f64,
+}
+
+impl CanvasEvent {
+    pub fn decode(payload: &wasm_bindgen::JsValue) -> Self {
+        let event_type = get_js_str(payload, "event_type").as_deref().map(EventType::decode).unwrap_or(EventType::Other);
+        let id         = get_js_str(payload, "target_id").as_deref().map(dom::Id::decode).unwrap_or_else(|| dom::Id(vec![]));
+        let key        = get_js_str(payload, "key").as_deref().map(KeyName::decode).unwrap_or(KeyName::Other);
+        let value      = get_js_str(payload, "value").unwrap_or_default();
+        let x          = get_js_f64(payload, "x").unwrap_or(0.0);
+        let y          = get_js_f64(payload, "y").unwrap_or(0.0);
+        let time       = get_js_f64(payload, "time").unwrap_or(0.0);
+        Self { event_type, id, key, value, x, y, time }
+    }
+}
