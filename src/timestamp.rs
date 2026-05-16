@@ -140,18 +140,9 @@ pub fn label(ts: u64) -> String {
     let day:    u64 = DAY.get(ts);
     let hour:   u64 = HOUR.get(ts);
     let minute: u64 = MINUTE.get(ts);
-    let tz_id:  u10 = TIMEZONE.get(ts);
-    let tz_label = if tz_id == u10::new(Timezone::AsiaTokyo.id()) {
-        Timezone::AsiaTokyo.label()
-    } else {
-        ""
-    };
-    format!(
-        "{}-{:02}-{:02} {:02}:{:02} {}",
-        year.value(), month.value(), day,
-        hour, minute,
-        tz_label,
-    )
+    let year = year.value();
+    let month = month.value();
+    format!("{year}-{month:02}-{day:02} {hour:02}:{minute:02}")
 }
 
 fn days_in_month(year: i64, month: i64) -> i64 {
