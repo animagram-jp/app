@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use crate::list::{List, VariableList, SetOutcome, ListError, VariableListError};
 use crate::character::Character;
-use crate::datetime;
+use crate::timestamp;
 
 #[derive(Clone, Copy, Default)]
 pub struct Id(pub u32);
@@ -14,31 +14,28 @@ impl Id {
     pub fn from_bytes(b: [u8; 4]) -> Self { Self(u32::from_le_bytes(b)) }
 }
 
-#[derive(Clone, Copy, Default)]
-pub struct Timestamp(pub u64);
-
 impl Timestamp {
     pub fn to_bytes(self) -> [u8; 8] { self.0.to_le_bytes() }
     pub fn from_bytes(b: [u8; 8]) -> Self { Self(u64::from_le_bytes(b)) }
 
     pub fn encode(year: u64, month: u64, day: u64, hour: u64, minute: u64) -> Self {
         let mut v = 0u64;
-        v = datetime::set(v, datetime::OFFSET_YEAR,   datetime::MASK_YEAR,   year);
-        v = datetime::set(v, datetime::OFFSET_MONTH,  datetime::MASK_MONTH,  month);
-        v = datetime::set(v, datetime::OFFSET_DAY,    datetime::MASK_DAY,    day);
-        v = datetime::set(v, datetime::OFFSET_HOUR,   datetime::MASK_HOUR,   hour);
-        v = datetime::set(v, datetime::OFFSET_MINUTE, datetime::MASK_MINUTE, minute);
+        v = timestamp::set(v, timestamp::OFFSET_YEAR,   timestamp::MASK_YEAR,   year);
+        v = timestamp::set(v, timestamp::OFFSET_MONTH,  timestamp::MASK_MONTH,  month);
+        v = timestamp::set(v, timestamp::OFFSET_DAY,    timestamp::MASK_DAY,    day);
+        v = timestamp::set(v, timestamp::OFFSET_HOUR,   timestamp::MASK_HOUR,   hour);
+        v = timestamp::set(v, timestamp::OFFSET_MINUTE, timestamp::MASK_MINUTE, minute);
         Self(v)
     }
 
     pub fn decode(self) -> (u64, u64, u64, u64, u64) {
         let v = self.0;
         (
-            datetime::get(v, datetime::OFFSET_YEAR,   datetime::MASK_YEAR),
-            datetime::get(v, datetime::OFFSET_MONTH,  datetime::MASK_MONTH),
-            datetime::get(v, datetime::OFFSET_DAY,    datetime::MASK_DAY),
-            datetime::get(v, datetime::OFFSET_HOUR,   datetime::MASK_HOUR),
-            datetime::get(v, datetime::OFFSET_MINUTE, datetime::MASK_MINUTE),
+            timestamp::get(v, timestamp::OFFSET_YEAR,   timestamp::MASK_YEAR),
+            timestamp::get(v, timestamp::OFFSET_MONTH,  timestamp::MASK_MONTH),
+            timestamp::get(v, timestamp::OFFSET_DAY,    timestamp::MASK_DAY),
+            timestamp::get(v, timestamp::OFFSET_HOUR,   timestamp::MASK_HOUR),
+            timestamp::get(v, timestamp::OFFSET_MINUTE, timestamp::MASK_MINUTE),
         )
     }
 }

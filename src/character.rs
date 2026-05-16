@@ -2,7 +2,7 @@ use crate::Lang;
 
 // ============================================================
 
-pub const CHARACTER_SCHEMA_NAME: &str = "characters";
+pub const CHARACTER_SCHEMA_NAME: &str = "character";
 
 // ============================================================
 // --- キャラクター (Character) ---

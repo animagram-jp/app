@@ -30,7 +30,7 @@ fn is_null<T: Default + PartialEq>(unit: &[T]) -> bool {
 /// value:  [T]
 ///
 /// ```
-/// use dice_engine::list::{List, SetOutcome};
+/// use app::list::{List, SetOutcome};
 ///
 /// let mut list: List<u32> = List::new(2);
 ///
@@ -149,7 +149,7 @@ impl<T: Copy + Default + PartialEq> List<T> {
 /// value:  [T]
 ///
 /// ```
-/// use dice_engine::list::{VariableList, SetOutcome};
+/// use app::list::{VariableList, SetOutcome};
 ///
 /// let mut vl: VariableList<u32> = VariableList::new();
 ///
@@ -314,7 +314,7 @@ impl<T: Copy + Default + PartialEq> VariableList<T> {
     /// Returns a mapping of old id -> new id for callers that hold external references.
     ///
     /// ```
-    /// use dice_engine::list::VariableList;
+    /// use app::list::VariableList;
     ///
     /// let mut vl: VariableList<u32> = VariableList::new();
     /// vl.set(&0, &[1u32, 2, 3], false).unwrap(); // id=1
