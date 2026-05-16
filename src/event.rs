@@ -64,7 +64,7 @@ pub enum Event {
 // handle event
 // ============================================================
 
-pub fn handle(state: &mut CanvasState, ev: &CanvasEvent, characters: &mut WalStore) -> Vec<CanvasCmd> {
+pub fn handle(state: &mut CanvasState, ev: &CanvasEvent, handler: &mut Coc7th) -> Vec<CanvasCmd> {
     match (&ev.event_type, state.dialog) {
         (EventType::Click,   Dialog::None)  => todo!("normal click"),
         (EventType::Click,   Dialog::Modal) => todo!("dialog click"),
@@ -77,7 +77,7 @@ pub fn handle(state: &mut CanvasState, ev: &CanvasEvent, characters: &mut WalSto
     }
 }
 
-pub fn handle_ready(state: &CanvasState, characters: &WalStore) -> Vec<CanvasCmd> {
+pub fn handle_ready(state: &CanvasState, handler: &Coc7th) -> Vec<CanvasCmd> {
     todo!("初期描画コマンドを返す")
 }
 

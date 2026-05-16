@@ -13,22 +13,21 @@ pub struct App {
     device:        Device,
     pointer_state: PointerState,
     canvas_state:  CanvasState,
+    handler:       Coc7th,
     events:        Vec<Event>,
     cmds:          Vec<CanvasCmd>,
-    app_state:     Vec<[u8]>,      // 型は適当。event::Logstackなどはここに所属させる
 }
 
 #[wasm_bindgen]
 impl App {
     pub async fn init(screen_width: u32, pointer_coarse: bool) -> App {
         let device = detect_device(screen_width, pointer_coarse);
-        let characters = Coc7th::ready().await;
 
         let mut app = App {
             device,
             pointer_state: PointerState::default(),
-            characters,
             canvas_state:  CanvasState::new(),
+            handler:       Coc7th::ready().await,
             events:        Vec::new(),
             cmds:          Vec::new(),
             log_stack:     Vec::new(),
@@ -64,13 +63,13 @@ impl App {
     fn dispatch(&mut self, ev: Event) -> Vec<CanvasCmd> {
         match ev {
             Event::Canvas(canvas_event) => {
-                event::handle(&mut self.canvas_state, &canvas_event, &mut self.characters)
+                event::handle(&mut self.canvas_state, &canvas_event, &mut self.handler)
             }
             Event::Gesture(gesture) => {
                 event::handle_gesture(gesture, &mut self.canvas_state)
             }
             Event::Ready => {
-                event::handle_ready(&self.canvas_state, &self.characters)
+                event::handle_ready(&self.canvas_state, &self.handler)
             }
         }
     }
