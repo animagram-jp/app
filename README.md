@@ -2,7 +2,7 @@
 
 # app
 
-Gui application system for editing and reading structured data with web.
+Gui application system for editing and reading structured data.
 
 ## Call of Cthulhu RPG 7th Edition
 
