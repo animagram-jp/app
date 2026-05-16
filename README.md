@@ -1,8 +1,8 @@
 // This file includes untranslated text (ja).
 
-# rpg-engine
+# app
 
-Softwears for RPG, the joy of understanding how things work.
+Gui application for editing and reading structured data with web.
 
 ## Call of Cthulhu RPG 7th Edition
 
@@ -16,5 +16,5 @@ Softwears for RPG, the joy of understanding how things work.
 cargo test
 
 # Github Pages向けコンパイル
-wasm-pack build --target web --out-dir examples/dice-engine --out-name app
+wasm-pack build --target web --out-dir examples/app --out-name app
 ```

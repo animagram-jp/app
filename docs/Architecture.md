@@ -40,7 +40,7 @@
   - UI実装上の割り切りとして、入力欄の単位などの後置は排除する。単位は" ()""などでラベルに含めてinput外に前置することで、複雑性を抑える。
 
 
-### System diagram
+## System diagram
 
 ```
 ┌──────┐
@@ -56,7 +56,7 @@
 ││ app (rust as wasm)   ││
 │└──────────────────────┘│
 │┌──────────────────────┐│
-││ opfs                 ││
+││ opfs (wal)           ││
 │└──────────────────────┘│
 │┌──────────────────────┐│
 ││ pwa (service worker) ││
@@ -79,16 +79,16 @@
 ││ app (rust)           ││
 │└──────────────────────┘│
 │┌──────────────────────┐│
-││ fs (linux)           ││
+││ filesystem (wal)     ││
 │└──────────────────────┘│
 └────────────────────────┘
 ```
 
-#### Detail
+### Detail
 
-##### Canvas
+#### Canvas
 
-###### html
+##### html
 
 - index.htmlの1ファイル完結。
 - FOUC防止のため、body atrributeにhiddenを書く。
@@ -122,13 +122,13 @@ html:
 ```
 
 
-###### css
+##### css
 
 - config.css(変数定義), style.css, idや構造に依存のない外部css。
 - style.cssにて[hidden], .hidden {display: none !important;} を定義する。
 - 各セレクタはtagのパイプまたはaria-labelで指定する。classで指定しない。
 
-###### javascript
+##### javascript
 
 - 要件に依らず、同内容の4ファイルで構成する:
   - htmlにmoduleとして呼ばれるinit.js
@@ -146,7 +146,7 @@ html:
   - Element.getElementId(element_id).close();     # modal専用
   - applyClass(element_id, value); # rAFやsetTimeoutなど、非同期処理のみ
 
-#### App (browser)
+### App (browser)
 
 - app.wasmとして生成する。
 
@@ -202,173 +202,5 @@ Development Check - 上達チェック
 ## Specification (仕様)
 
 ### Limitation (制限事項)
-
----
-
-## Network
-
-browser wasm to browser wasm のリアルタイムp2pを実現する。
-
-```
-[前提]
-ブラウザは「非対称なピア」である
-参考例: Nostrのプロトコル仕様書(NIPs)
-
-できること
-├── アウトバウンド接続のみ（WebSocket, WebRTC, WebTransport）
-├── WebRTC DataChannel で疑似 P2P（NAT 越え込み）
-└── WASM から web-sys 経由で上記 API を全部叩ける
-
-できないこと
-├── raw TCP/UDP
-├── listen（インカミング接続の受け入れ）
-└── シグナリングなしの P2P 接続確立
-
-[ブラウザ環境i/o提供api]
-libwebrtc (C++、ブラウザ内蔵)
-    ↓ Web IDL
-JS: RTCPeerConnection / RTCDataChannel
-    ↓ wasm-bindgen 1:1 対応
-Rust WASM: web_sys::RtcPeerConnection / RtcDataChannel
-
-接続確立:
-RtcPeerConnection::new()
-create_offer() / create_answer()
-set_local_description() / set_remote_description()
-add_ice_candidate()
-on_ice_candidate コールバック
-
-データ送受信:
-create_data_channel()
-RtcDataChannel::send_with_str() / send_with_u8_array()
-on_message コールバック
-on_open / on_close コールバック
-
-[輸送層の非同期処理]
-
-WASM = 「計算機」+ 「ブラウザへの import 関数呼び出し窓口」
-
-I/O は自分では起こせない
-    → import 経由でブラウザに依頼
-    → 結果は await か コールバックで受け取る（push 型）
-
-async は使える（wasm-bindgen-futures）
-    ただし tokio 不可
-    ブラウザのイベントループが唯一のランタイム
-    await = メインスレッドを返す = イベント処理の隙間を作る
-    参考例: Erlang/Elixir のアクターモデル, matchbox
-
-[技術採用根拠]
-候補              採用判断         理由
-──────────────────────────────────────────────────────
-rust-libp2p       ❌ 採用しない    WASM 対応が不完全
-                                  抽象化が非対称性を隠そうとして破綻
-                                  ネイティブ主戦場の後付け WASM 対応
-matchbox          △ 参考にする    イベントループ設計は正しい
-                                  ゲーム特化でプロトコル層がない
-                                  フルメッシュのみ・汎用には薄い
-web-sys           ✅ 使う         WebRTC API の 1:1 バインディング
-                                  これ以下には行けない最低レイヤー
-wasm-bindgen      ✅ 使う         WASM ↔ JS の唯一の橋
--futures
-futures::channel  ✅ 使う         WASM で動く mpsc チャネル
-::mpsc                            tokio 不要
-
-[実装構成]
-
-自前で作るべきもの          既存を使うもの
-──────────────────────  ──────────────────
-イベントループ本体         web-sys（WebRTC API）
-イベント/コマンド型定義     wasm-bindgen-futures
-状態機械（純粋関数）       futures::channel::mpsc
-ピア管理                 matchbox_server（シグナリングサーバー）
-シグナリングプロトコル      または自前 WebSocket サーバー
-再接続戦略
-フォールバック切り替え
-```
-
-### Example
-
-```rust
-use std::collections::VecDeque;
-use std::cell::RefCell;
-use wasm_bindgen_futures::spawn_local;
-
-// イベント型（純粋なデータ）
-enum NetEvent {
-    IceCandidate { peer_id: PeerId, candidate: String },
-    SdpOffer     { peer_id: PeerId, sdp: String },
-    SdpAnswer    { peer_id: PeerId, sdp: String },
-    DataReceived { peer_id: PeerId, data: Vec<u8> },
-    Connected    { peer_id: PeerId },
-    Disconnected { peer_id: PeerId },
-}
-
-// 出力コマンド型（純粋なデータ）
-enum NetCommand {
-    SendData    { peer_id: PeerId, data: Vec<u8> },
-    Connect     { peer_id: PeerId, signaling_url: String },
-    Disconnect  { peer_id: PeerId },
-}
-
-// メインループ
-async fn net_loop(
-    mut event_rx: Receiver<NetEvent>,
-    command_tx: Sender<NetCommand>,
-) {
-    loop {
-        let event = event_rx.recv().await;  // 唯一の await・唯一の制御返却点
-
-        // 純粋な状態遷移（I/O なし）
-        let commands = state.transition(event);
-
-        // コマンドをキューに積むだけ（実際の I/O はしない）
-        for cmd in commands {
-            command_tx.send(cmd);
-        }
-    }
-}
-
-// futures::channel::mpsc の例
-use futures::channel::mpsc;
-
-let (tx, mut rx) = mpsc::unbounded::<NetEvent>();
-
-// コールバック側（Closure の中）
-let tx_clone = tx.clone();
-let cb = Closure::new(move |ev: MessageEvent| {
-    let data = ev.data().as_string().unwrap();
-    tx_clone.unbounded_send(NetEvent::DataReceived { data }).unwrap();
-    // これだけ。再入なし。Drop の心配なし。
-});
-```
-
----
-
-## Note
-
-```rust
-use Lang;
-impl Id {
-    pub fn label(&self) -> &'static str {
-        match self {
-            Self::Local  => "ID",
-            Self::Global => "UUID",
-        }
-    }
-}
-
-impl Timestamp {
-    pub fn label(&self, lang: Lang) -> &'static str {
-        match (self, lang) {
-            (Self::Create, Lang::En) => "Create Time",
-            (Self::Create, Lang::Ja) => "作成日時",
-            (Self::Update, Lang::En) => "Update Time",
-            (Self::Update, Lang::Ja) => "更新日時",
-        }
-    }
-    pub fn decode()
-}
-```
 
 ---

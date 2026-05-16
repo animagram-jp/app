@@ -4,7 +4,7 @@ self.addEventListener("message", async (e) => {
   const { type, payload } = e.data;
 
   if (type === "init") {
-    const { default: init, App } = await import("./dice-engine/app.js");
+    const { default: init, App } = await import("./app/app.js");
     await init();
 
     app = await App.init(payload.screen_width, payload.pointer_coarse);
