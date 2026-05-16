@@ -1,8 +1,18 @@
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsValue;
 use serde_wasm_bindgen::to_value;
-use crate::js_client::{CanvasCmd, get_js_str, get_js_f64, EventType, Gesture, PointerState, detect_gesture, Device, detect_device, dom, CanvasEvent};
-use crate::event::{self, Coc7th, CanvasState, Event, LogStack};
+use crate::js_client::{CanvasCmd, get_js_str, get_js_f64, EventType, Device, detect_device, Gesture, PointerState, detect_gesture, dom, CanvasEvent};
+use crate::event::{CanvasState, Coc7th};
+
+// ============================================================
+// Event
+// ============================================================
+
+pub enum Event {
+    Ready,
+    Canvas(CanvasEvent),
+    Gesture(Gesture),
+}
 
 // ============================================================
 // App
@@ -30,7 +40,6 @@ impl App {
             handler:       Coc7th::ready().await,
             events:        Vec::new(),
             cmds:          Vec::new(),
-            log_stack:     Vec::new(),
         };
 
         app.events.push(Event::Ready);
@@ -47,11 +56,11 @@ impl App {
             Some(gesture) => self.events.push(Event::Gesture(gesture)),
             None => match &canvas_event.event_type {
                 EventType::PointerDown | EventType::PointerMove |
-                EventType::PointerUp   | EventType::PointerCancel => {},
+                EventType::PointerUp   | EventType::PointerCancel => {}, // 正しいのか要確認
                 _ => self.events.push(Event::Canvas(canvas_event)),
             },
         }
-        while let Some(ev) = self.events.pop() {
+        while let Some(ev) = self.events.pop() { // 必要そうならtimeoutやlimitを設ける
             let cmds = self.dispatch(ev);
             self.cmds.extend(cmds);
         }
@@ -62,14 +71,14 @@ impl App {
 
     fn dispatch(&mut self, ev: Event) -> Vec<CanvasCmd> {
         match ev {
+            Event::Ready => {
+                event::initial_draw(&mut self.canvas_state, &self.handler)
+            }
             Event::Canvas(canvas_event) => {
                 event::handle(&mut self.canvas_state, &canvas_event, &mut self.handler)
             }
             Event::Gesture(gesture) => {
                 event::handle_gesture(gesture, &mut self.canvas_state)
-            }
-            Event::Ready => {
-                event::handle_ready(&self.canvas_state, &self.handler)
             }
         }
     }

@@ -3,7 +3,7 @@ use crate::character::{
     Profile, Characteristic, Skill,
     ArtCraftSpec, FightingSpec, FirearmsSpec, PilotSpec, ScienceSpec, SurvivalSpec,
 };
-use crate::js_client::{CanvasCmd, Operation, EventType, Gesture, dom, CanvasEvent};
+use crate::js_client::{CanvasCmd, Operation, EventType, Gesture, dom::{Id, Tag}, CanvasEvent};
 use crate::data_struct::DataStruct;
 use crate::character::Character;
 use crate::wal::WalStore;
@@ -11,26 +11,24 @@ use crate::wal::WalStore;
 const LANG: Lang = Lang::Ja;
 
 // ============================================================
-// event handlers
+// output commands
 // ============================================================
 
-const CHARACTER_SCHEMA_NAME: &str = "character";
-
-pub struct Coc7th {
-    character_in_cunvas,         // a data struct instance of character in main view and modal input
-    characters: &'a mut Vec<u8>, // wired data of characters walstore has in memory
-    log_stack:     Vec<Log>,
-}
-
-impl Coc7th {
-    pub async fn ready() -> WalStore {
-        WalStore::open(CHARACTER_SCHEMA_NAME).await
-            .unwrap_or_else(|e| panic!("WalStore::open failed: {}", e))
+pub fn output_commands(canvas_state: &CanvasState){
+    match (canvas_state.dialog, canvas_state.lang, canvas_state.editing) {
+        (Dialog::None, _, None)  =>
+        (Dialog::Modal, _, None) =>
+        (_, _, ) => {}
     }
+        
+    for 
+        id = map_id(parent: )
+            => cmds.push(CanvasCmd::new(Operation::SetText, id, None, ));
+    cmds
 }
 
 // ============================================================
-// canvas event schema
+// canvas state
 // ============================================================
 
 #[derive(Clone, Copy, PartialEq, Default)]
@@ -43,21 +41,42 @@ pub enum Dialog {
     Input  { step: u8, value: u32 },   // dialog id="main_div_modal" aria-label="overlay" の入力UI表示状態
 }
 
-pub struct CanvasState {
+pub struct CanvasState { // dialog + lang + editing + dom map(static)  -> canvas commands
     pub dialog:    Dialog,
     pub lang:      Lang,
+    pub editing:   DataStruct,
 }
 
 impl CanvasState {
     pub fn new() -> Self {
-        Self { dialog: Dialog::default(), lang: Lang::Ja, character: DataStruct::new() }
+        Self { 
+            dialog: Dialog::default(), 
+            lang: Lang::Ja, 
+            editing: DataStruct::new(),
+        }
     }
 }
 
-pub enum Event {
-    Canvas(CanvasEvent),
-    Gesture(Gesture),
-    Ready,
+pub fn initial_draw(canvas_state: &mut CanvasState, handler: &Coc7th){
+    canvas_state.editing = handler. // a data struct instance of character in main view and modal input
+}
+
+// ============================================================
+// event handlers
+// ============================================================
+
+const CHARACTER_SCHEMA_NAME: &str = "character";
+
+pub struct Coc7th {     
+    characters: &'a mut Vec<u8>, // wired data of characters walstore has in memory
+    log_stack:     Vec<Log>,
+}
+
+impl Coc7th {
+    pub async fn ready() -> WalStore {
+        WalStore::open(CHARACTER_SCHEMA_NAME).await
+            .unwrap_or_else(|e| panic!("WalStore::open failed: {}", e))
+    }
 }
 
 // ============================================================
@@ -86,11 +105,10 @@ pub fn handle_gesture(gesture: Gesture, state: &mut CanvasState) -> Vec<CanvasCm
 }
 
 // ============================================================
-// map item to dom::Id
+// map item to Id
 // ============================================================
 
-fn map_id(item: &Character, parent: &dom::Id, n: u32) -> Vec<dom::Id> {
-    use dom::{Id, Tag};
+fn map_id(item: &Character, parent: &Id, n: u32) -> Vec<Id> {
     match parent {
         p if p == &Id::new(&[(Tag::Main, None)]) => {
             let section_n = match item {
@@ -177,7 +195,7 @@ pub fn open_modal() -> Vec<CanvasCmd> {
     // --- fieldset-1: Profile ---
     cmds.push(CanvasCmd::new(Operation::SetText, "modal_fieldset-1_legend_h5", None, Some("プロフィール")));
 
-    let modal = dom::Id::new(&[(dom::Tag::Modal, None)]);
+    let modal = Id::new(&[(Tag::Modal, None)]);
 
     for (i, profile) in character::Profile::list().iter().enumerate() {
         let ids = map_id(&Character::Profile(*profile), &modal, (i + 1) as u32);
