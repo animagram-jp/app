@@ -1,11 +1,11 @@
+use crate::timestamp::{pack, unpack, add_days};
+
 // - time: 時。
 // - timeline: 時系列。
 // - timestamp: ex. 2026-05-16 21:43:00
 // - timerange: 視点と終点を持つ時間。(start: timestamp, end: timestamp)
 // - period: 期間。
 // - timevolume: 時間。2日間など。
-
-use crate::timestamp::{pack, unpack, add_days};
 
 #[derive(Default, Clone, Debug, PartialEq)]
 pub struct Timerange {

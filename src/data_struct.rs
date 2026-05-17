@@ -1,7 +1,7 @@
-use std::collections::BTreeMap;
+use core::collections::BTreeMap;
 use crate::list::{List, VariableList, SetOutcome, ListError, VariableListError};
-use crate::character::Character;
 use crate::timestamp;
+use crate::character::Character;
 
 #[derive(Clone)]
 pub struct DataStruct {

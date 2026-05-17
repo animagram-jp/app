@@ -1,11 +1,11 @@
+use arbitrary_int::traits::Integer;
+
 // timestamp (64 bits)
 // note:
 // - Value 0...0 means null in each field.
 // - is_utc:
 //   = 1: The value is UTC time (timezone iana id may store original zone info).
 //   = 0: The value is local time of timezone
-
-use arbitrary_int::traits::Integer;
 
 struct Field {
     position: u32,

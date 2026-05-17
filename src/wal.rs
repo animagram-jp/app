@@ -11,7 +11,7 @@
 /// delete: id only (offset / len = 0)
 /// checksum: Fletcher32 of the first 13 bytes
 
-use std::collections::BTreeMap;
+use core::collections::BTreeMap;
 use wasm_bindgen::JsCast;
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{

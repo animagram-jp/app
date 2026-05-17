@@ -1,15 +1,24 @@
+// #![no_std]
+extern crate core;
+extern crate alloc;
+
 use rand::{rng, RngExt};
 
-// pub mod list;
+pub mod list;
 pub mod timestamp;
 pub mod temporal;
+pub mod js_client;
+pub mod wal;
 // pub mod data_struct;
+// pub mod app;
 // pub mod character;
 // pub mod roll;
-// pub mod js_client;
 // pub mod event;
-// pub mod app;
-// pub mod wal;
+
+
+// ============================================================
+// Lang
+// ============================================================
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Lang { En, Ja }
