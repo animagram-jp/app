@@ -1,8 +1,7 @@
-use std::array::from_fn;
-use crate::n_d_n;
-use crate::Lang;
-use crate::data_struct::DataStruct;
+use core::array::from_fn;
+use crate::{n_d_n, Lang};
 use crate::list::ListError;
+use crate::data_struct::DataStruct;
 
 // ============================================================
 // --- キャラクター (Character) ---
