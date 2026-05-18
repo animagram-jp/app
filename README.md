@@ -13,9 +13,9 @@ Apps from aniagram, made by Andyou.
 |---------|---------|-----------|------------|-------------|
 | CoC 7th | 0.1.0   | Scheduled | 2026-05-31 | 1st release |
 
-[![日本語](https://img.shields.io/badge/言語-日本語-red)](#ja)
-
 ---
+
+[![日本語説明](https://img.shields.io/badge/日本語説明-red)](#ja)
 
 ## CoC 7th (under development)
 
