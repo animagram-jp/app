@@ -3,7 +3,7 @@
 # app
 
 [![animagram](https://img.shields.io/badge/org-animagram-purple)](https://github.com/animagram-jp)
-[![Andyou](https://img.shields.io/badge/X-Andyou_007-white?logo=x&logoColor=black)](https://x.com/Andyou_007)
+[![Andyou](https://img.shields.io/badge/X-Andyou_007-black?logo=x)](https://x.com/Andyou_007)
 
 Apps from aniagram, made by Andyou.
 
