@@ -15,7 +15,7 @@ Apps from aniagram, made by Andyou.
 
 ---
 
-[![日本語説明](https://img.shields.io/badge/日本語説明-red)](#ja)
+[![日本語](https://img.shields.io/badge/言語-日本語-red)](#ja)
 
 ## CoC 7th (under development)
 
