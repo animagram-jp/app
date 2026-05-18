@@ -19,13 +19,16 @@ Apps from aniagram, made by Andyou.
 
 ## CoC 7th (under development)
 
-Application for playing Call of Cthulhu RPG 7th Edition.
+An online tool dedicated to Call of Cthulhu TRPG 7th Edition. Supports character sheet editing, dice rolling during sessions, and post-session log management and tallying.
 
 ---
 
 ## Ja
 
 ### CoC 7th
+
+新クトゥルフ神話TRPG 7版に特化した、オンラインツールです。
+キャラクターシートの編集や、セッション時のダイスロール、セッション後のログや集計が可能です。
 
 ---
 
