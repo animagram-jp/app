@@ -23,10 +23,11 @@ main {
   gap: 0.5rem;
 }
 
-dialog {
+dialog:modal {
   width: 100%;
   max-width: 45rem;
   max-height: 90dvh;
+  overflow-x: clip;
   overflow-y: auto;
   box-sizing: border-box;
 }

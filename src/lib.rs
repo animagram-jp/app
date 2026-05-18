@@ -23,6 +23,13 @@ pub mod wal;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Lang { En, Ja }
 
+pub impl Lang {
+    fn label(self){
+        Self.En => "en-US"
+        Self.Ja => "ja"
+    }
+}
+
 // ============================================================
 // Roll
 // ============================================================

@@ -2,6 +2,16 @@
 
 # Architecture
 
+## Commands
+
+```bash
+# unit test
+cargo test
+
+# wasm-pack compile
+wasm-pack build --target web --out-dir examples/app --out-name app
+```
+
 ## dice-engine
 
 1. dice-engine (D-Engine) は、CoC TRPG 7th Editionをプレイするために必要なデータ処理機能を集約した、webブラウザソフトウェアです。
