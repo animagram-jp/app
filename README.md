@@ -5,7 +5,7 @@
 [![animagram](https://img.shields.io/badge/animagram-purple?logo=github&logoColor=white)](https://github.com/animagram-jp)
 [![Andyou](https://img.shields.io/badge/Andyou_007-black?logo=x)](https://x.com/Andyou_007)
 
-Apps from aniagram, made by Andyou.
+Apps from animagram, made by Andyou.
 
 ## Version
 
