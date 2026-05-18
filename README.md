@@ -7,14 +7,11 @@
 
 Apps from aniagram, made by Andyou.
 
-Gui application system for editing and reading structured data.
-
-
 ## Version
 
-| App | Version | Status    | Date      | Description |
-|-----|---------|-----------|-----------|-------------|
-| CoC 7th | 0.1.0 | Scheduled | 2026-5-31 | 1st release |
+| App     | Version | Status    | Date       | Description |
+|---------|---------|-----------|------------|-------------|
+| CoC 7th | 0.1.0   | Scheduled | 2026-05-31 | 1st release |
 
 [![日本語](https://img.shields.io/badge/言語-日本語-red)](#ja)
 

@@ -2,6 +2,8 @@
 
 # Architecture
 
+Gui application system for editing and reading structured data.
+
 ## Commands
 
 ```bash
