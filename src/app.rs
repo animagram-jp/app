@@ -72,13 +72,13 @@ impl App {
     fn dispatch(&mut self, ev: Event) -> Vec<CanvasCmd> {
         match ev {
             Event::Ready => {
-                event::initial_draw(&mut self.canvas_state, &self.handler)
+                // event::initial_draw(&mut self.canvas_state, &self.handler)
             }
             Event::Canvas(canvas_event) => {
                 event::handle(&mut self.canvas_state, &canvas_event, &mut self.handler)
             }
             Event::Gesture(gesture) => {
-                event::handle_gesture(gesture, &mut self.canvas_state)
+                event::handle_gesture(gesture, &mut self.canvas_state, handler: &mut self.handler)
             }
         }
     }

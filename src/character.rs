@@ -240,6 +240,10 @@ impl Characteristic {
         })
     }
 
+    pub fn sum(base: i32, delta: i32, bonus: i32) -> i32 {
+        (base + delta + bonus).max(1)
+    }
+
     pub fn label(&self, lang: Lang) -> &str {
         match (self, lang) {
             (Self::Strength,     _) => "STR",
@@ -537,6 +541,10 @@ impl Skill {
             Self::Track                => 10,
             Self::Custom { .. }        =>  0,
         }
+    }
+
+    pub fn sum(&self, occ: u16, int: u16, bonus: i32) -> i32 {
+        self.base_value() as i32 + occ as i32 + int as i32 + bonus
     }
 
     // Characteristic依存で初期値が決まるスキルについて、依存先を返す。

@@ -1,3 +1,15 @@
+use alloc::collections::{BTreeMap, BTreeSet};
+use wasm_bindgen::JsCast;
+use wasm_bindgen_futures::JsFuture;
+use web_sys::{
+    WorkerGlobalScope,
+    FileSystemDirectoryHandle,
+    FileSystemGetFileOptions,
+    FileSystemSyncAccessHandle,
+    FileSystemReadWriteOptions,
+    FileSystemFileHandle,
+};
+
 /// Append-only WAL backed by OPFS (.snap / .log file pair)
 ///
 /// .snap: clean snapshot (rewritten on compact)
@@ -10,18 +22,6 @@
 /// set:    offset = byte position in .snap, len = byte length of the value
 /// delete: id only (offset / len = 0)
 /// checksum: Fletcher32 of the first 13 bytes
-
-use alloc::collections::BTreeMap;
-use wasm_bindgen::JsCast;
-use wasm_bindgen_futures::JsFuture;
-use web_sys::{
-    WorkerGlobalScope,
-    FileSystemDirectoryHandle,
-    FileSystemGetFileOptions,
-    FileSystemSyncAccessHandle,
-    FileSystemReadWriteOptions,
-    FileSystemFileHandle,
-};
 
 // ============================================================
 // Log record
@@ -39,7 +39,7 @@ fn fletcher32(data: &[u8]) -> u32 {
     (s2 << 16) | s1
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 enum Op { Set, Delete }
 
 struct LogRecord {
@@ -111,8 +111,8 @@ pub struct WalStore {
     log:      FileSystemSyncAccessHandle,
     index:    BTreeMap<u32, (u32, u32)>,  // id → (offset, len) in snap
     next_id:  u32,
-    memory:   Vec<(u32, Vec<u8>)>,
-    unsaved:  Vec<u32>,
+    memory:   BTreeMap<u32, Vec<u8>>,
+    unsaved:  BTreeSet<u32>,
 }
 
 unsafe impl Send for WalStore {}
@@ -142,16 +142,15 @@ impl WalStore {
         let index = build_index(snap_bytes.len(), &log_bytes);
         let next_id = index.keys().copied().max().unwrap_or(0);
 
-        let memory = index.keys()
-            .filter_map(|&id| {
-                let &(offset, len) = index.get(&id)?;
+        let memory = index.iter()
+            .filter_map(|(&id, &(offset, len))| {
                 let mut buf = vec![0u8; len as usize];
                 snap.read_with_u8_array_and_options(&mut buf, &at(offset)).ok()?;
                 Some((id, buf))
             })
             .collect();
 
-        Ok(Self { filename: filename.to_string(), snap, log, index, next_id, memory, unsaved: Vec::new() })
+        Ok(Self { filename: filename.to_string(), snap, log, index, next_id, memory, unsaved: BTreeSet::new() })
     }
 
     /// 新しい id を発行する。
@@ -161,34 +160,25 @@ impl WalStore {
     }
 
     /// id に対応する値を返す。見つからなければ None。
-    pub fn get(&self, id: u32) -> Option<Vec<u8>> {
-        let &(offset, len) = self.index.get(&id)?;
-        let mut buf = vec![0u8; len as usize];
-        self.snap.read_with_u8_array_and_options(&mut buf, &at(offset)).ok()?;
-        Some(buf)
+    pub fn get(&self, id: u32) -> Option<&Vec<u8>> {
+        self.memory.get(&id)
     }
 
-    /// 全エントリを (id, bytes) のリストで返す。
-    pub fn get_all(&self) -> &[(u32, Vec<u8>)] {
-        &self.memory
+    /// 全エントリを (id, bytes) のイテレータで返す。
+    pub fn get_all(&self) -> impl Iterator<Item = (&u32, &Vec<u8>)> {
+        self.memory.iter()
     }
 
     /// memory上のbytesを更新し、unsavedに積む。
     pub fn set(&mut self, id: u32, bytes: Vec<u8>) {
-        if let Some(entry) = self.memory.iter_mut().find(|(i, _)| *i == id) {
-            entry.1 = bytes;
-        } else {
-            self.memory.push((id, bytes));
-        }
-        if !self.unsaved.contains(&id) {
-            self.unsaved.push(id);
-        }
+        self.memory.insert(id, bytes);
+        self.unsaved.insert(id);
     }
 
     /// unsavedのidをdiskに書き込む。
     pub fn save(&mut self) -> Option<()> {
-        for id in self.unsaved.drain(..) {
-            if let Some((_, bytes)) = self.memory.iter().find(|(i, _)| *i == id) {
+        for id in self.unsaved.iter().copied().collect::<alloc::vec::Vec<_>>() {
+            if let Some(bytes) = self.memory.get(&id) {
                 let bytes = bytes.clone();
                 let offset = self.snap.get_size().ok()? as u32;
                 append(&self.snap, &bytes)?;
@@ -197,6 +187,7 @@ impl WalStore {
                 if id > self.next_id { self.next_id = id; }
             }
         }
+        self.unsaved.clear();
         Some(())
     }
 
@@ -204,8 +195,8 @@ impl WalStore {
     pub fn delete(&mut self, id: u32) -> Option<()> {
         append(&self.log, &LogRecord::delete(id).to_bytes())?;
         self.index.remove(&id);
-        self.memory.retain(|(i, _)| *i != id);
-        self.unsaved.retain(|i| *i != id);
+        self.memory.remove(&id);
+        self.unsaved.remove(&id);
         Some(())
     }
 
@@ -247,6 +238,136 @@ fn append(h: &FileSystemSyncAccessHandle, data: &[u8]) -> Option<()> {
     h.write_with_u8_array_and_options(&mut data.to_vec(), &at(pos)).ok()?;
     h.flush().ok()?;
     Some(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ── fletcher32 ───────────────────────────────────────────
+
+    #[test]
+    fn fletcher32_empty() {
+        assert_eq!(fletcher32(&[]), 0);
+    }
+
+    #[test]
+    fn fletcher32_known() {
+        assert_eq!(fletcher32(b"abcd"), 0x03D4_018A);
+    }
+
+    // ── LogRecord round-trip ──────────────────────────────────
+
+    #[test]
+    fn log_record_set_roundtrip() {
+        let r = LogRecord::set(42, 100, 32);
+        let bytes = r.to_bytes();
+        let decoded = LogRecord::from_bytes(&bytes).unwrap();
+        assert_eq!(decoded.op,     Op::Set);
+        assert_eq!(decoded.id,     42);
+        assert_eq!(decoded.offset, 100);
+        assert_eq!(decoded.len,    32);
+    }
+
+    #[test]
+    fn log_record_delete_roundtrip() {
+        let r = LogRecord::delete(7);
+        let bytes = r.to_bytes();
+        let decoded = LogRecord::from_bytes(&bytes).unwrap();
+        assert_eq!(decoded.op, Op::Delete);
+        assert_eq!(decoded.id, 7);
+        assert_eq!(decoded.offset, 0);
+        assert_eq!(decoded.len,    0);
+    }
+
+    #[test]
+    fn log_record_from_bytes_rejects_bad_checksum() {
+        let mut bytes = LogRecord::set(1, 0, 4).to_bytes();
+        bytes[16] ^= 0xFF; // checksum破壊
+        assert!(LogRecord::from_bytes(&bytes).is_none());
+    }
+
+    #[test]
+    fn log_record_from_bytes_rejects_unknown_op() {
+        let mut bytes = LogRecord::set(1, 0, 4).to_bytes();
+        bytes[0] = 2; // op = 2 は未定義
+        // チェックサムも再計算して op だけ不正にする
+        let cs = fletcher32(&bytes[..13]);
+        bytes[13..17].copy_from_slice(&cs.to_be_bytes());
+        assert!(LogRecord::from_bytes(&bytes).is_none());
+    }
+
+    // ── build_index ───────────────────────────────────────────
+
+    fn make_log(records: &[LogRecord]) -> Vec<u8> {
+        records.iter().flat_map(|r| r.to_bytes()).collect()
+    }
+
+    #[test]
+    fn build_index_set_and_delete() {
+        let snap_len = 100;
+        let log = make_log(&[
+            LogRecord::set(1, 0,  10),
+            LogRecord::set(2, 10, 20),
+            LogRecord::delete(1),
+        ]);
+        let index = build_index(snap_len, &log);
+        assert!(!index.contains_key(&1));       // delete済み
+        assert_eq!(index[&2], (10, 20));
+    }
+
+    #[test]
+    fn build_index_overwrite() {
+        let snap_len = 100;
+        let log = make_log(&[
+            LogRecord::set(1, 0, 10),
+            LogRecord::set(1, 50, 5), // 上書き
+        ]);
+        let index = build_index(snap_len, &log);
+        assert_eq!(index[&1], (50, 5));
+    }
+
+    #[test]
+    fn build_index_ignores_out_of_bounds() {
+        // offset + len > snap_len は無視、== snap_len は通る
+        let snap_len = 10;
+        let log = make_log(&[
+            LogRecord::set(1, 5, 10), // 5+10=15 > 10: 無視
+            LogRecord::set(2, 0, 10), // 0+10=10 == 10: 通る
+        ]);
+        let index = build_index(snap_len, &log);
+        assert!(!index.contains_key(&1));
+        assert_eq!(index[&2], (0, 10));
+    }
+
+    #[test]
+    fn build_index_ignores_corrupt_record() {
+        let snap_len = 100;
+        let mut log = make_log(&[LogRecord::set(1, 0, 10)]);
+        log[16] ^= 0xFF; // checksum破壊
+        let index = build_index(snap_len, &log);
+        assert!(index.is_empty());
+    }
+
+    // ── compact_snap ─────────────────────────────────────────
+
+    #[test]
+    fn compact_snap_extracts_entries() {
+        // snap上の配置はCCC(0-2), BBB(3-5)だがid順(1→2)で出力される
+        let snap = b"CCCBBB";
+        let mut index = BTreeMap::new();
+        index.insert(1u32, (3u32, 3u32)); // id=1 → "BBB"
+        index.insert(2u32, (0u32, 3u32)); // id=2 → "CCC"
+        let out = compact_snap(snap, &index);
+        assert_eq!(out, b"BBBCCC"); // id昇順
+    }
+
+    #[test]
+    fn compact_snap_empty_index() {
+        let snap = b"AAABBB";
+        let index = BTreeMap::new();
+        assert!(compact_snap(snap, &index).is_empty());
+    }
 }
 
 async fn open_handle(

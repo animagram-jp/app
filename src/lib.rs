@@ -8,7 +8,7 @@ pub mod list;
 pub mod timestamp;
 pub mod temporal;
 pub mod js_client;
-pub mod wal;
+pub mod store;
 // pub mod data_struct;
 // pub mod app;
 // pub mod character;

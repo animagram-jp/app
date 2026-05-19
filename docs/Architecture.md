@@ -160,7 +160,16 @@ html:
 
 ### App (browser)
 
-- app.wasmとして生成する。
+- app.wasmとしてコンパイルする。
+
+#### js_client.rs
+
+- html, cssの内容を反映し、操作itemとfn(デバイス判定・ジェスチャー判定含む)を発行するモジュール。
+
+#### store.rs
+
+- ローカルストア(walとopfs)操作を発行するモジュール。
+- ステートにメモリバッファとunsavedインデックスセットを持ち、メモリオンリーの操作関数setと、opfsへの反映関数saveを公開している。
 
 ### Roll
 
@@ -170,9 +179,9 @@ html:
 #### Dice Roll - ダイスロール (nDn + n)
 
 選択後に表示されるべきインタラクティブUIは、出現順に
-1. text[field](Roll::Field::DiceCount), +-ボタン(上下キーも同等に), 初期値1のnumber[1~100]入力欄(focusが当たったら直接入力とする。入力時のkeyboard enterで決定を発火), 「次へ」ボタン(enterも同等に))
+1. text[field](Roll::Field::DiceCount), +-ボタン(上下キーも同等に), 初期値1のnumber[1~100]入力欄(focusが当たったら直接入力とする。入力時のkeyboard enterで決定を発火), 「次へ」ボタン(enterも同等に)
 2. text[field](Roll::Field::DiceSide), button[up] button[down], input[number(2(初期値),3,4,5,6,8,12,16,20,50,100)], button[next]
-3. text[field](Roll::Field::「補正」の英単語), input[number(0(初期値), -100~100), button[submit])
+3. text[field](Roll::Field::「補正」の英単語), input[number(0(初期値), -100~100), button[submit]]
 結果のState::Stack(roll: Roll)保持は不要。
 
 Skill Roll — 技能値に対する基本判定
@@ -214,5 +223,7 @@ Development Check - 上達チェック
 ## Specification (仕様)
 
 ### Limitation (制限事項)
+
+- 各技能の専門分野(自由記入)の発行は最大4つ。
 
 ---

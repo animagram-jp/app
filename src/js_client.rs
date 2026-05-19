@@ -310,6 +310,7 @@ pub mod dom {
         Legend,
         P,
         Table, Thead, Tbody, Tr, Th, Td,
+        Output, Article,
         Other,
     }
 
@@ -344,6 +345,8 @@ pub mod dom {
                 "tr"       => Self::Tr,
                 "th"       => Self::Th,
                 "td"       => Self::Td,
+                "output"   => Self::Output,
+                "article"  => Self::Article,
                 _          => Self::Other,
             }
         }
@@ -378,6 +381,8 @@ pub mod dom {
                 Self::Tr       => "tr",
                 Self::Th       => "th",
                 Self::Td       => "td",
+                Self::Output   => "output",
+                Self::Article  => "article",
                 Self::Other    => "",
             }
         }

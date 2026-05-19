@@ -1,7 +1,6 @@
 use alloc::collections::BTreeMap;
 use crate::list::{List, VariableList, SetOutcome, ListError, VariableListError};
 use crate::timestamp;
-use crate::character::Character;
 
 #[derive(Clone)]
 pub struct DataStruct {
@@ -15,29 +14,30 @@ pub struct DataStruct {
 impl DataStruct {
     const INDEX_WIDTH: usize = 1;
 
-    pub fn new() -> Self {
+    pub fn new(id: u32, time: f64) -> Self {
+        let t = timestamp::from_ut(time);
         Self {
-            identity:   todo!(下記と似た感じ),
-            created_at: todo!(0u64か、timestamp::from_ut(canvas_event.time)を入れる),
-            updated_at: todo!(timestamp::from_ut(canvas_event.time)を入れる),
+            identity:   id,
+            created_at: t,
+            updated_at: t,
             index:  List::new(Self::INDEX_WIDTH),
             values: VariableList::new(),
         }
     }
 
-    pub fn get(&self, field: &Character) -> Result<&[u8], ListError> {
-        self.index.get(&field.id(), &Self::INDEX_WIDTH)?;
-        self.values.get(&field.id())
+    pub fn get(&self, id: usize) -> Result<&[u8], ListError> {
+        self.index.get(&id, &Self::INDEX_WIDTH)?;
+        self.values.get(&id)
     }
 
-    pub fn set(&mut self, field: &Character, value: &[u8]) -> Result<SetOutcome, ListError> {
-        self.index.set(&field.id(), &Self::INDEX_WIDTH, &[field.id()], false)?;
-        self.values.set(&field.id(), value, false)
+    pub fn set(&mut self, id: usize, value: &[u8]) -> Result<SetOutcome, ListError> {
+        self.index.set(&id, &Self::INDEX_WIDTH, &[id], false)?;
+        self.values.set(&id, value, false)
     }
 
-    pub fn delete(&mut self, field: &Character) -> Result<(), ListError> {
-        self.index.delete(&field.id(), &mut { Self::INDEX_WIDTH })?;
-        self.values.delete(&field.id())
+    pub fn delete(&mut self, id: usize) -> Result<(), ListError> {
+        self.index.delete(&id, &mut { Self::INDEX_WIDTH })?;
+        self.values.delete(&id)
     }
 
     pub fn compact(&mut self) -> Result<BTreeMap<usize, usize>, VariableListError> {
@@ -68,12 +68,18 @@ impl DataStruct {
     }
 
     pub fn from_bytes(raw: &[u8]) -> Self {
-        let mut ds = Self::new();
-        if raw.len() < 20 { return ds; }
+        if raw.len() < 20 { return Self::new(0, 0.0); }
 
-        ds.identity   = u32::from_bytes(raw[0..4].try_into().unwrap());
-        ds.created_at = u64::from_bytes(raw[4..12].try_into().unwrap());
-        ds.updated_at = u64::from_bytes(raw[12..20].try_into().unwrap());
+        let identity   = u32::from_bytes(raw[0..4].try_into().unwrap());
+        let created_at = u64::from_bytes(raw[4..12].try_into().unwrap());
+        let updated_at = u64::from_bytes(raw[12..20].try_into().unwrap());
+        let mut ds = Self {
+            identity,
+            created_at,
+            updated_at,
+            index:  List::new(Self::INDEX_WIDTH),
+            values: VariableList::new(),
+        };
 
         let mut pos = 20;
         while pos + 8 <= raw.len() {
