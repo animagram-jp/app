@@ -11,23 +11,6 @@ use crate::wal::WalStore;
 const LANG: Lang = Lang::Ja;
 
 // ============================================================
-// output commands
-// ============================================================
-
-pub fn output_commands(canvas_state: &CanvasState){
-    match (canvas_state.dialog, canvas_state.lang, canvas_state.editing) {
-        (Dialog::None, _, None)  =>
-        (Dialog::Modal, _, None) =>
-        (_, _, ) => {}
-    }
-        
-    for 
-        id = map_id(parent: )
-            => cmds.push(CanvasCmd::new(Operation::SetText, id, None, ));
-    cmds
-}
-
-// ============================================================
 // canvas state
 // ============================================================
 
@@ -57,7 +40,24 @@ impl CanvasState {
     }
 }
 
-pub fn initial_draw(canvas_state: &mut CanvasState, handler: &Coc7th){
+// ============================================================
+// output commands
+// ============================================================
+
+pub fn output_commands(canvas_state: &CanvasState){
+    match (canvas_state.dialog, canvas_state.lang, canvas_state.editing) {
+        (Dialog::None, _, None)  =>
+        (Dialog::Modal, _, None) =>
+        (_, _, ) => {}
+    }
+        
+    for 
+        id = map_id(parent: )
+            => cmds.push(CanvasCmd::new(Operation::SetText, id, None, ));
+    cmds
+}
+
+pub fn initial_draw(canvas_state: &mut CanvasState, handler: &Coc7th) -> Vec<CanvasCmd> {
     canvas_state.editing = handler. // a data struct instance of character in main view and modal input
 }
 
@@ -94,10 +94,6 @@ pub fn handle(state: &mut CanvasState, ev: &CanvasEvent, handler: &mut Coc7th) -
         (EventType::Submit,  _)             => todo!("submit"),
         _                                   => vec![],
     }
-}
-
-pub fn handle_ready(state: &CanvasState, handler: &Coc7th) -> Vec<CanvasCmd> {
-    todo!("初期描画コマンドを返す")
 }
 
 pub fn handle_gesture(gesture: Gesture, state: &mut CanvasState) -> Vec<CanvasCmd> {
@@ -326,87 +322,7 @@ pub fn roll_all_characteristics(char_data: &mut DataStruct) -> Vec<CanvasCmd> {
 
 pub fn restore_modal(ds: &DataStruct) -> Vec<CanvasCmd> {
     let mut cmds = Vec::new();
-
-    // fieldset-1: Profile
-    let profiles = [
-        Profile::Name, Profile::Birthpalce, Profile::Pronoun,
-        Profile::Occupation, Profile::Residence, Profile::Age,
-    ];
-    for (i, profile) in profiles.iter().enumerate() {
-        let row = i + 1;
-        let field = Character::Profile(*profile);
-        if let Ok(bytes) = ds.get(&field) {
-            let text = String::from_utf8_lossy(bytes).into_owned();
-            let input_id = format!("modal_fieldset-1_table_tr-{}_input", row);
-            cmds.push(CanvasCmd::new(Operation::SetValue, &input_id, None, Some(&text)));
-        }
-    }
-
-    // fieldset-2: Characteristic
-    for (i, ch) in Characteristic::list().iter().enumerate() {
-        let row = i + 1;
-        let field = Character::Characteristic(*ch);
-        if let Ok(bytes) = ds.get(&field) {
-            let [base, delta, bonus] = Characteristic::decode(bytes);
-            let total = (base + delta + bonus).max(1);
-            let input1 = format!("modal_fieldset-2_table_tr-{}_input-1", row);
-            let input2 = format!("modal_fieldset-2_table_tr-{}_input-2", row);
-            let input3 = format!("modal_fieldset-2_table_tr-{}_input-3", row);
-            let span   = format!("modal_fieldset-2_table_tr-{}_span", row);
-            if base  != 0 { cmds.push(CanvasCmd::new(Operation::SetValue, &input1, None, Some(&base.to_string()))); }
-            if delta != 0 { cmds.push(CanvasCmd::new(Operation::SetValue, &input2, None, Some(&delta.to_string()))); }
-            if bonus != 0 { cmds.push(CanvasCmd::new(Operation::SetValue, &input3, None, Some(&bonus.to_string()))); }
-            cmds.push(CanvasCmd::new(Operation::SetText, &span, None, Some(&total.to_string())));
-        }
-    }
-
-    // fieldset-3: Skill
-    let skills = Skill::list();
-    for (i, skill) in skills.iter().enumerate() {
-        let row   = i + 1;
-        let field = Character::Skill(Skill::list().into_iter().nth(i).unwrap());
-        let (occ, int, bonus, spec) = ds.get(&field).map(Skill::decode).unwrap_or((0, 0, 0, String::new()));
-
-        if !spec.is_empty() {
-            if spec_select_html(row, LANG).is_some() {
-                // spec持ち行: selectに値をセット、自由記入ならinputも復元
-                let sel_id = format!("modal_fieldset-3_table_tr-{}_td-1_select", row);
-                let inp_id = format!("modal_fieldset-3_table_tr-{}_td-1_input", row);
-                // 固定variantに一致すればselectにそのまま、なければcustomモード
-                let is_fixed = spec_select_html(row, LANG)
-                    .map(|h| h.contains(&format!("value=\"{}\"", spec)))
-                    .unwrap_or(false);
-                if is_fixed {
-                    cmds.push(CanvasCmd::new(Operation::SetValue, &sel_id, None, Some(&spec)));
-                } else {
-                    cmds.push(CanvasCmd::new(Operation::SetValue,    &sel_id, None, Some("custom")));
-                    cmds.push(CanvasCmd::new(Operation::RemoveClass, &inp_id, None, Some("hidden")));
-                    cmds.push(CanvasCmd::new(Operation::SetValue,    &inp_id, None, Some(&spec)));
-                }
-            } else {
-                // LanguageOther / Custom行: inputに直接
-                let inp_id = format!("modal_fieldset-3_table_tr-{}_td-1_input", row);
-                cmds.push(CanvasCmd::new(Operation::RemoveClass, &inp_id, None, Some("hidden")));
-                cmds.push(CanvasCmd::new(Operation::SetValue,    &inp_id, None, Some(&spec)));
-            }
-            let th_id = format!("modal_fieldset-3_table_tr-{}_th", row);
-            cmds.push(CanvasCmd::new(Operation::SetText, &th_id, None, Some(&skill.label_with_spec(LANG, &spec))));
-        }
-
-        if occ != 0 || int != 0 || bonus != 0 {
-            let base  = skill.base_value();
-            let total = (base as i32 + occ as i32 + int as i32 + bonus).max(0) as u32;
-            let input1 = format!("modal_fieldset-3_table_tr-{}_input-1", row);
-            let input2 = format!("modal_fieldset-3_table_tr-{}_input-2", row);
-            let input3 = format!("modal_fieldset-3_table_tr-{}_input-3", row);
-            let span   = format!("modal_fieldset-3_table_tr-{}_span-2", row);
-            if occ   != 0 { cmds.push(CanvasCmd::new(Operation::SetValue, &input1, None, Some(&occ.to_string()))); }
-            if int   != 0 { cmds.push(CanvasCmd::new(Operation::SetValue, &input2, None, Some(&int.to_string()))); }
-            if bonus != 0 { cmds.push(CanvasCmd::new(Operation::SetValue, &input3, None, Some(&bonus.to_string()))); }
-            cmds.push(CanvasCmd::new(Operation::SetText, &span, None, Some(&total.to_string())));
-        }
-    }
-
+    // todo
     cmds
 }
 
@@ -428,74 +344,6 @@ pub fn toast_saved() -> Vec<CanvasCmd> {
 
 pub fn update_character_view(ds: &DataStruct) -> Vec<CanvasCmd> {
     let mut cmds = Vec::new();
-
-    // section-1: Profile
-    let profiles = [
-        Profile::Name, Profile::Birthpalce, Profile::Pronoun,
-        Profile::Occupation, Profile::Residence, Profile::Age,
-    ];
-    for (i, profile) in profiles.iter().enumerate() {
-        let row = i + 1;
-        let field = Character::Profile(*profile);
-        let label_id = format!("main_div_section-1_section-1_span-{}_span-1", row);
-        let value_id = format!("main_div_section-1_section-1_span-{}_span-2", row);
-        let outer_id = format!("main_div_section-1_section-1_span-{}", row);
-        let text = ds.get(&field)
-            .map(|b| String::from_utf8_lossy(b).into_owned())
-            .unwrap_or_default();
-        cmds.push(CanvasCmd::new(Operation::SetText, &label_id, None, Some(profile.label(LANG))));
-        cmds.push(CanvasCmd::new(Operation::SetText, &value_id, None, Some(&text)));
-        if text.is_empty() {
-            cmds.push(CanvasCmd::new(Operation::AddClass, &outer_id, None, Some("hidden")));
-        } else {
-            cmds.push(CanvasCmd::new(Operation::RemoveClass, &outer_id, None, Some("hidden")));
-        }
-    }
-
-    // section-2: Characteristic
-    for (i, ch) in Characteristic::list().iter().enumerate() {
-        let row = i + 1;
-        let field = Character::Characteristic(*ch);
-        let label_id = format!("main_div_section-1_section-2_span-{}_span-1", row);
-        let value_id = format!("main_div_section-1_section-2_span-{}_span-2", row);
-        let outer_id = format!("main_div_section-1_section-2_span-{}", row);
-        if let Ok(bytes) = ds.get(&field) {
-            let [base, delta, bonus] = Characteristic::decode(bytes);
-            let total = (base + delta + bonus).max(1);
-            cmds.push(CanvasCmd::new(Operation::SetText, &label_id, None, Some(ch.label(LANG))));
-            cmds.push(CanvasCmd::new(Operation::SetText, &value_id, None, Some(&total.to_string())));
-            cmds.push(CanvasCmd::new(Operation::RemoveClass, &outer_id, None, Some("hidden")));
-        } else {
-            cmds.push(CanvasCmd::new(Operation::AddClass, &outer_id, None, Some("hidden")));
-        }
-    }
-
-    // section-3: Skill 上位10件（pt入りを合計値降順）
-    let skills = Skill::list();
-    let mut skill_entries: Vec<(String, u32)> = skills.iter().enumerate().filter_map(|(i, skill)| {
-        let field = Character::Skill(Skill::list().into_iter().nth(i)?);
-        let (occ, int, bonus, spec) = ds.get(&field).map(Skill::decode).unwrap_or((0, 0, 0, String::new()));
-        if occ == 0 && int == 0 && bonus == 0 { return None; }
-        let label = skill.label_with_spec(LANG, &spec);
-        let base  = skill.base_value();
-        let total = (base as i32 + occ as i32 + int as i32 + bonus).max(0) as u32;
-        Some((label, total))
-    }).collect();
-    skill_entries.sort_by(|a, b| b.1.cmp(&a.1));
-
-    for row in 1..=10usize {
-        let label_id = format!("main_div_section-1_section-3_span-{}_span-1", row);
-        let value_id = format!("main_div_section-1_section-3_span-{}_span-2", row);
-        let outer_id = format!("main_div_section-1_section-3_span-{}", row);
-        if let Some((label, total)) = skill_entries.get(row - 1) {
-            cmds.push(CanvasCmd::new(Operation::SetText, &label_id, None, Some(label)));
-            cmds.push(CanvasCmd::new(Operation::SetText, &value_id, None, Some(&total.to_string())));
-            cmds.push(CanvasCmd::new(Operation::RemoveClass, &outer_id, None, Some("hidden")));
-        } else {
-            cmds.push(CanvasCmd::new(Operation::AddClass, &outer_id, None, Some("hidden")));
-        }
-    }
-
     cmds
 }
 
@@ -504,16 +352,6 @@ pub fn update_character_view(ds: &DataStruct) -> Vec<CanvasCmd> {
 // ============================================================
 
 pub fn update_select(list: &[(u32, String)], selected_id: Option<u32>) -> Vec<CanvasCmd> {
-    let html: String = list.iter().map(|(id, name)| {
-        let escaped = name
-            .replace('&', "&amp;")
-            .replace('<', "&lt;")
-            .replace('>', "&gt;")
-            .replace('"', "&quot;");
-        let sel = if Some(*id) == selected_id { " selected" } else { "" };
-        format!("<option value=\"{}\"{}>{}</option>", id, sel, escaped)
-    }).collect();
-    vec![CanvasCmd::new(Operation::SetHtml, "main_div_section-1_section-1_select", None, Some(&html))]
 }
 
 // ============================================================
@@ -521,50 +359,6 @@ pub fn update_select(list: &[(u32, String)], selected_id: Option<u32>) -> Vec<Ca
 // ============================================================
 
 pub fn reset_modal() -> Vec<CanvasCmd> {
-
     let mut cmds = Vec::new();
-
-    // fieldset-1: Profile input クリア
-    for row in 1..=6 {
-        let id = format!("modal_fieldset-1_table_tr-{}_input", row);
-        cmds.push(CanvasCmd::new(Operation::SetValue, &id, None, Some("")));
-    }
-
-    // fieldset-2: Characteristic input クリア
-    for row in 1..=9 {
-        let input1 = format!("modal_fieldset-2_table_tr-{}_input-1", row);
-        let input2 = format!("modal_fieldset-2_table_tr-{}_input-2", row);
-        let input3 = format!("modal_fieldset-2_table_tr-{}_input-3", row);
-        cmds.push(CanvasCmd::new(Operation::SetValue, &input1, None, Some("")));
-        cmds.push(CanvasCmd::new(Operation::SetValue, &input2, None, Some("")));
-        cmds.push(CanvasCmd::new(Operation::SetValue, &input3, None, Some("")));
-    }
-
-    // fieldset-3: Skill pt input クリア
-    let skill_rows = Skill::list().len();
-    for row in 1..=skill_rows {
-        let input1 = format!("modal_fieldset-3_table_tr-{}_input-1", row);
-        let input2 = format!("modal_fieldset-3_table_tr-{}_input-2", row);
-        let input3 = format!("modal_fieldset-3_table_tr-{}_input-3", row);
-        cmds.push(CanvasCmd::new(Operation::SetValue, &input1, None, Some("")));
-        cmds.push(CanvasCmd::new(Operation::SetValue, &input2, None, Some("")));
-        cmds.push(CanvasCmd::new(Operation::SetValue, &input3, None, Some("")));
-        // spec持ち行: selectをデフォルトに戻し、inputをhidden
-        if spec_select_html(row, LANG).is_some() {
-            let sel_id = format!("modal_fieldset-3_table_tr-{}_td-1_select", row);
-            let inp_id = format!("modal_fieldset-3_table_tr-{}_td-1_input", row);
-            cmds.push(CanvasCmd::new(Operation::SetValue,  &sel_id, None, Some("")));
-            cmds.push(CanvasCmd::new(Operation::AddClass,  &inp_id, None, Some("hidden")));
-            cmds.push(CanvasCmd::new(Operation::SetValue,  &inp_id, None, Some("")));
-        }
-        // Custom行: th_inputとtd-1_inputをクリア
-        if row == skill_rows {
-            let th_inp = format!("modal_fieldset-3_table_tr-{}_th_input", row);
-            let td_inp = format!("modal_fieldset-3_table_tr-{}_td-1_input", row);
-            cmds.push(CanvasCmd::new(Operation::SetValue, &th_inp, None, Some("")));
-            cmds.push(CanvasCmd::new(Operation::SetValue, &td_inp, None, Some("")));
-        }
-    }
-
     cmds
 }
