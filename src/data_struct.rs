@@ -2,11 +2,12 @@ use alloc::collections::BTreeMap;
 use crate::list::{List, VariableList, SetOutcome, ListError, VariableListError};
 use crate::timestamp;
 
+const ID_IDENTITY:   usize = 1;
+const ID_CREATED_AT: usize = 2;
+const ID_UPDATED_AT: usize = 3;
+
 #[derive(Clone)]
 pub struct DataStruct {
-    pub identity:   u32,
-    pub created_at: u64,
-    pub updated_at: u64,
     index:  List<usize>,
     values: VariableList<u8>,
 }
@@ -16,13 +17,14 @@ impl DataStruct {
 
     pub fn new(id: u32, time: f64) -> Self {
         let t = timestamp::from_ut(time);
-        Self {
-            identity:   id,
-            created_at: t,
-            updated_at: t,
+        let mut ds = Self {
             index:  List::new(Self::INDEX_WIDTH),
             values: VariableList::new(),
-        }
+        };
+        let _ = ds.set(ID_IDENTITY,   &id.to_le_bytes());
+        let _ = ds.set(ID_CREATED_AT, &t.to_le_bytes());
+        let _ = ds.set(ID_UPDATED_AT, &t.to_le_bytes());
+        ds
     }
 
     pub fn get(&self, id: usize) -> Result<&[u8], ListError> {
@@ -44,14 +46,14 @@ impl DataStruct {
         self.values.compact()
     }
 
-    /// [identity: u32 LE][created_at: u64 LE][updated_at: u64 LE]
+    pub fn touch(&mut self, time: f64) -> Result<SetOutcome, ListError> {
+        let t = timestamp::from_ut(time);
+        self.set(ID_UPDATED_AT, &t.to_le_bytes())
+    }
+
     /// [(field_id: u32 LE)(len: u32 LE)(bytes...)]...
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut out = Vec::new();
-        out.extend_from_slice(&self.identity.to_bytes());
-        out.extend_from_slice(&self.created_at.to_bytes());
-        out.extend_from_slice(&self.updated_at.to_bytes());
-
         let ids  = &self.values.identity;
         let data = &self.values.data;
         let count = ids.len() / 2;
@@ -68,20 +70,11 @@ impl DataStruct {
     }
 
     pub fn from_bytes(raw: &[u8]) -> Self {
-        if raw.len() < 20 { return Self::new(0, 0.0); }
-
-        let identity   = u32::from_bytes(raw[0..4].try_into().unwrap());
-        let created_at = u64::from_bytes(raw[4..12].try_into().unwrap());
-        let updated_at = u64::from_bytes(raw[12..20].try_into().unwrap());
         let mut ds = Self {
-            identity,
-            created_at,
-            updated_at,
             index:  List::new(Self::INDEX_WIDTH),
             values: VariableList::new(),
         };
-
-        let mut pos = 20;
+        let mut pos = 0;
         while pos + 8 <= raw.len() {
             let id  = u32::from_le_bytes(raw[pos..pos+4].try_into().unwrap()) as usize;
             let len = u32::from_le_bytes(raw[pos+4..pos+8].try_into().unwrap()) as usize;
