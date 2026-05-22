@@ -46,7 +46,7 @@ impl Character {
 
 #[derive(Clone, Copy)]
 pub enum Profile {
-    Name, // todo: 「名前」と「Option(呼び方)」の二値構成に拡充。labelは format!"{} ({})"。
+    Name, // todo: 「名前」と「Option(呼び方)」の二値構成に拡充。labelは format!"{} ({})"。※Option=noneなら()も出さない
     Birthpalce,
     Pronoun,
     Occupation, // todo: 「ルール上の職業」と「Option(肩書 title)」の二値構成に拡充。 labelは format!"{} ({})"。
