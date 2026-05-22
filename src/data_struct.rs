@@ -2,24 +2,53 @@ use alloc::collections::BTreeMap;
 use crate::list::{List, VariableList, SetOutcome, ListError, VariableListError};
 use crate::timestamp;
 
-const ID_IDENTITY:   usize = 1;
-const ID_CREATED_AT: usize = 2;
-const ID_UPDATED_AT: usize = 3;
+const ID_IDENTITY:   u32 = 1;
+const ID_CREATED_AT: u32 = 2;
+const ID_UPDATED_AT: u32 = 3;
+
+
+struct DataSchema {
+  model: &Hoge,
+  index: List, // [u32, N] // Nはモデル固有のフィールドID最大値
+  value: VariableList, // []
+}
+
+impl DataSchema {
+  pub fn new() -> Self {
+  }
+  pub fn
+}
+
+enum Field(Field) {
+}
+
+impl Field {
+    pub fn label(self, lang: Lang) -> '&static str {
+    }
+    pub fn id(self, sub: &Field) -> u32 {
+    }
+    pub fn encode(self, value: T) -> T {
+    }
+    pub fn decode(self, value: T) -> T {
+    }
+    pub fn display(self, lang: Lang) -> String {
+    }
+}
 
 #[derive(Clone)]
 pub struct DataStruct {
-    index:  List<usize>,      // schema_id → variable_id
+    index:  List<u32>,        // schema_id → variable_id
     values: VariableList<u8>, // variable_id → bytes
 }
 
 impl DataStruct {
-    const INDEX_WIDTH: usize = 1;
+    const INDEX_WIDTH: u32 = 1;
 
     pub fn new(id: u32, time: f64, schema_count: usize) -> Self {
         let t = timestamp::from_ut(time);
         // schema_count+1 スロット分を0で事前確保 (id=0はsentinel)
         let index = List {
-            data: vec![0usize; (schema_count + 1) * Self::INDEX_WIDTH],
+            data: vec![0u32; (schema_count + 1) * Self::INDEX_WIDTH as usize],
         };
         let mut ds = Self {
             index,
@@ -31,12 +60,12 @@ impl DataStruct {
         ds
     }
 
-    pub fn get(&self, schema_id: usize) -> Result<&[u8], ListError> {
+    pub fn get(&self, schema_id: u32) -> Result<&[u8], ListError> {
         let variable_id = self.index.get(&schema_id, &Self::INDEX_WIDTH)?[0];
         self.values.get(&variable_id)
     }
 
-    pub fn set(&mut self, schema_id: usize, value: &[u8]) -> Result<SetOutcome, ListError> {
+    pub fn set(&mut self, schema_id: u32, value: &[u8]) -> Result<SetOutcome, ListError> {
         let slot = self.index.get(&schema_id, &Self::INDEX_WIDTH);
         match slot {
             Ok(s) if s[0] != 0 => {
@@ -57,13 +86,13 @@ impl DataStruct {
         }
     }
 
-    pub fn delete(&mut self, schema_id: usize) -> Result<(), ListError> {
+    pub fn delete(&mut self, schema_id: u32) -> Result<(), ListError> {
         let variable_id = self.index.get(&schema_id, &Self::INDEX_WIDTH)?[0];
-        self.index.delete(&schema_id, &mut { Self::INDEX_WIDTH })?;
+        self.index.delete(&schema_id, &Self::INDEX_WIDTH)?;
         self.values.delete(&variable_id)
     }
 
-    pub fn compact(&mut self) -> Result<BTreeMap<usize, usize>, VariableListError> {
+    pub fn compact(&mut self) -> Result<BTreeMap<u32, u32>, VariableListError> {
         let remap = self.values.compact()?;
         // compact後にvariable_idが変わるのでindexを更新
         for slot in self.index.data.iter_mut() {
@@ -95,7 +124,7 @@ impl DataStruct {
 
     pub fn from_bytes(raw: &[u8], schema_count: usize) -> Self {
         let index = List {
-            data: vec![0usize; (schema_count + 1) * Self::INDEX_WIDTH],
+            data: vec![0u32; (schema_count + 1) * Self::INDEX_WIDTH as usize],
         };
         let mut ds = Self {
             index,
@@ -103,16 +132,16 @@ impl DataStruct {
         };
         let mut pos = 0;
         while pos + 8 <= raw.len() {
-            let schema_id = u32::from_le_bytes(raw[pos..pos+4].try_into().unwrap()) as usize;
+            let schema_id = u32::from_le_bytes(raw[pos..pos+4].try_into().unwrap());
             let len       = u32::from_le_bytes(raw[pos+4..pos+8].try_into().unwrap()) as usize;
             pos += 8;
             if pos + len > raw.len() { break; }
             let bytes = &raw[pos..pos + len];
             pos += len;
-            if schema_id == 0 || schema_id >= ds.index.data.len() { continue; }
-            let outcome = ds.values.set(&0, bytes, false);
+            if schema_id == 0 || schema_id as usize >= ds.index.data.len() { continue; }
+            let outcome = ds.values.set(&0u32, bytes, false);
             if let Ok(SetOutcome::Created(variable_id)) = outcome {
-                ds.index.data[schema_id] = variable_id;
+                ds.index.data[schema_id as usize] = variable_id;
             }
         }
         ds

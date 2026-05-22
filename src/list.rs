@@ -2,7 +2,7 @@ use alloc::collections::BTreeMap;
 
 #[derive(Debug)]
 pub enum SetOutcome {
-    Created(usize),
+    Created(u32),
     Updated,
 }
 
@@ -45,7 +45,7 @@ fn is_null<T: Default + PartialEq>(unit: &[T]) -> bool {
 /// assert_eq!(list.get(&1, &2).unwrap(), &[30u32, 40]);
 ///
 /// // delete then reuse_vacant
-/// list.delete(&1, &mut 2).unwrap();
+/// list.delete(&1, &2).unwrap();
 /// assert!(list.get(&1, &2).is_err());
 /// let r = list.set(&0, &mut 2, &[50u32, 60], true).unwrap();
 /// assert!(matches!(r, SetOutcome::Created(1)));
@@ -67,11 +67,11 @@ impl<T: Copy + Default + PartialEq> List<T> {
 
     pub fn get<'a>(
         &'a self,
-        identity: &usize,
-        schema: &usize,
+        identity: &u32,
+        schema: &u32,
     ) -> Result<&'a [T], ListError> {
-        let start = identity * schema;
-        let end = start + schema;
+        let start = *identity as usize * *schema as usize;
+        let end = start + *schema as usize;
         let unit = self.data.get(start..end).ok_or(ListError::OutOfBounds)?;
         if is_null(unit) {
             return Err(ListError::NotExist);
@@ -82,17 +82,17 @@ impl<T: Copy + Default + PartialEq> List<T> {
     /// reuse_vacant: if true and identity=0, reuse first vacant slot
     pub fn set(
         &mut self,
-        identity: &usize,
-        schema: &usize,
+        identity: &u32,
+        schema: &u32,
         value: &[T],
         reuse_vacant: bool,
     ) -> Result<SetOutcome, ListError> {
-        if value.len() != *schema {
+        let unit = *schema as usize;
+        if value.len() != unit {
             return Err(ListError::OutOfBounds);
         }
-        let unit = *schema;
         if *identity != 0 {
-            let start = identity * unit;
+            let start = *identity as usize * unit;
             let end = start + unit;
             if end > self.data.len() {
                 return Err(ListError::OutOfBounds);
@@ -115,12 +115,12 @@ impl<T: Copy + Default + PartialEq> List<T> {
             match vacant {
                 Some(i) => {
                     self.data[i * unit..(i + 1) * unit].copy_from_slice(value);
-                    Ok(SetOutcome::Created(i))
+                    Ok(SetOutcome::Created(i as u32))
                 }
                 None => {
                     let i = self.data.len() / unit;
                     self.data.extend_from_slice(value);
-                    Ok(SetOutcome::Created(i))
+                    Ok(SetOutcome::Created(i as u32))
                 }
             }
         }
@@ -128,11 +128,11 @@ impl<T: Copy + Default + PartialEq> List<T> {
 
     pub fn delete(
         &mut self,
-        identity: &usize,
-        schema: &mut usize,
+        identity: &u32,
+        schema: &u32,
     ) -> Result<(), ListError> {
-        let unit = *schema;
-        let start = identity * unit;
+        let unit = *schema as usize;
+        let start = *identity as usize * unit;
         let end = start + unit;
         if end > self.data.len() {
             return Err(ListError::OutOfBounds);
@@ -190,9 +190,9 @@ impl<T: Copy + Default + PartialEq> VariableList<T> {
 
     pub fn get<'a>(
         &'a self,
-        identity: &usize,
+        identity: &u32,
     ) -> Result<&'a [T], ListError> {
-        let identity_start = identity * 2;
+        let identity_start = *identity as usize * 2;
         let identity_end = identity_start + 2;
         let identity_range = self.identity.get(identity_start..identity_end).ok_or(ListError::OutOfBounds)?;
         if is_null(identity_range) {
@@ -210,12 +210,12 @@ impl<T: Copy + Default + PartialEq> VariableList<T> {
     ///       until compact is called).
     pub fn set(
         &mut self,
-        identity: &usize,
+        identity: &u32,
         value: &[T],
         intern: bool,
     ) -> Result<SetOutcome, ListError> {
         if *identity != 0 {
-            let identity_start = identity * 2;
+            let identity_start = *identity as usize * 2;
             let identity_end = identity_start + 2;
             if identity_end > self.identity.len() {
                 return Err(ListError::OutOfBounds);
@@ -244,7 +244,7 @@ impl<T: Copy + Default + PartialEq> VariableList<T> {
                     let start = self.identity[identity_start];
                     let end = self.identity[identity_start + 1];
                     if !is_null(&self.identity[identity_start..identity_start + 2]) && &self.data[start..end] == value {
-                        return Ok(SetOutcome::Created(i));
+                        return Ok(SetOutcome::Created(i as u32));
                     }
                 }
             }
@@ -255,7 +255,7 @@ impl<T: Copy + Default + PartialEq> VariableList<T> {
             let mut ls: List<usize> = List {
                 data: std::mem::take(&mut self.identity),
             };
-            let outcome = ls.set(&0, &mut 2usize, &entry, false)
+            let outcome = ls.set(&0u32, &mut 2u32, &entry, false)
                 .map_err(|_| ListError::OutOfBounds)?;
             self.identity = ls.data;
             Ok(outcome)
@@ -265,16 +265,16 @@ impl<T: Copy + Default + PartialEq> VariableList<T> {
     /// identity を直接指定して create-or-update する。
     /// identity=0 は不可（sentinelのため）。
     /// identity がベクタ範囲外なら [0,0] で拡張してから書き込む。
-    pub fn upsert(&mut self, identity: &usize, value: &[T]) -> Result<SetOutcome, ListError> {
+    pub fn upsert(&mut self, identity: &u32, value: &[T]) -> Result<SetOutcome, ListError> {
         if *identity == 0 {
             return Err(ListError::NotExist);
         }
-        let identity_end = identity * 2 + 2;
+        let identity_end = *identity as usize * 2 + 2;
         // 必要な長さまで [0,0] で拡張
         if identity_end > self.identity.len() {
             self.identity.resize(identity_end, 0);
         }
-        let identity_start = identity * 2;
+        let identity_start = *identity as usize * 2;
         let is_new = is_null(&self.identity[identity_start..identity_end]);
         let old_start = self.identity[identity_start];
         let old_end   = self.identity[identity_start + 1];
@@ -293,12 +293,12 @@ impl<T: Copy + Default + PartialEq> VariableList<T> {
 
     pub fn delete(
         &mut self,
-        identity: &usize,
+        identity: &u32,
     ) -> Result<(), ListError> {
         if *identity == 0 {
             return Err(ListError::NotExist);
         }
-        let identity_start = identity * 2;
+        let identity_start = *identity as usize * 2;
         let identity_end = identity_start + 2;
         if identity_end > self.identity.len() {
             return Err(ListError::OutOfBounds);
@@ -325,7 +325,7 @@ impl<T: Copy + Default + PartialEq> VariableList<T> {
     /// assert_eq!(remap[&2], 1); // old id=2 -> new id=1
     /// assert_eq!(vl.get(&1).unwrap(), &[4u32, 5, 6]);
     /// ```
-    pub fn compact(&mut self) -> Result<BTreeMap<usize, usize>, VariableListError> {
+    pub fn compact(&mut self) -> Result<BTreeMap<u32, u32>, VariableListError> {
         let mut new_identity    = vec![0, 0];
         let mut new_data: Vec<T> = Vec::new();
         let mut remap        = BTreeMap::new();
@@ -344,7 +344,7 @@ impl<T: Copy + Default + PartialEq> VariableList<T> {
             let new_id = new_identity.len() / 2;
             new_identity.push(new_start);
             new_identity.push(new_end);
-            remap.insert(i, new_id);
+            remap.insert(i as u32, new_id as u32);
         }
         self.identity = new_identity;
         self.data  = new_data;
@@ -376,7 +376,7 @@ mod tests {
     fn list_set_update_not_exist() {
         let mut list: List<u32> = List::new(2);
         list.set(&0, &mut 2, &[1u32, 2], false).unwrap();
-        list.delete(&1, &mut 2).unwrap();
+        list.delete(&1, &2).unwrap();
         let err = list.set(&1, &mut 2, &[3u32, 4], false).unwrap_err();
         assert!(matches!(err, ListError::NotExist));
     }
