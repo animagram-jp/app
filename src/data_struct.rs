@@ -42,13 +42,11 @@ pub struct DataStruct {
 }
 
 impl DataStruct {
-    const INDEX_WIDTH: u32 = 1;
-
     pub fn new(id: u32, time: f64, schema_count: usize) -> Self {
         let t = timestamp::from_ut(time);
         // schema_count+1 スロット分を0で事前確保 (id=0はsentinel)
         let index = List {
-            data: vec![0u32; (schema_count + 1) * Self::INDEX_WIDTH as usize],
+            data: vec![0u32; schema_count + 1],
         };
         let mut ds = Self {
             index,
@@ -61,34 +59,31 @@ impl DataStruct {
     }
 
     pub fn get(&self, schema_id: u32) -> Result<&[u8], ListError> {
-        let variable_id = self.index.get(&schema_id, &Self::INDEX_WIDTH)?[0];
+        let variable_id = *self.index.get(&schema_id)?;
         self.values.get(&variable_id)
     }
 
     pub fn set(&mut self, schema_id: u32, value: &[u8]) -> Result<SetOutcome, ListError> {
-        let slot = self.index.get(&schema_id, &Self::INDEX_WIDTH);
+        let slot = self.index.get(&schema_id);
         match slot {
-            Ok(s) if s[0] != 0 => {
-                // 既存 variable_id に update
-                let variable_id = s[0];
+            Ok(&variable_id) if variable_id != 0 => {
                 self.values.set(&variable_id, value, false)
             }
             _ => {
-                // 新規: VariableList に append して variable_id を発行
                 let outcome = self.values.set(&0, value, false)?;
                 let variable_id = match outcome {
                     SetOutcome::Created(i) => i,
                     SetOutcome::Updated    => return Err(ListError::OutOfBounds),
                 };
-                self.index.set(&schema_id, &Self::INDEX_WIDTH, &[variable_id], false)?;
+                self.index.set(&schema_id, variable_id, false)?;
                 Ok(SetOutcome::Created(variable_id))
             }
         }
     }
 
     pub fn delete(&mut self, schema_id: u32) -> Result<(), ListError> {
-        let variable_id = self.index.get(&schema_id, &Self::INDEX_WIDTH)?[0];
-        self.index.delete(&schema_id, &Self::INDEX_WIDTH)?;
+        let variable_id = *self.index.get(&schema_id)?;
+        self.index.delete(&schema_id)?;
         self.values.delete(&variable_id)
     }
 
@@ -124,7 +119,7 @@ impl DataStruct {
 
     pub fn from_bytes(raw: &[u8], schema_count: usize) -> Self {
         let index = List {
-            data: vec![0u32; (schema_count + 1) * Self::INDEX_WIDTH as usize],
+            data: vec![0u32; schema_count + 1],
         };
         let mut ds = Self {
             index,

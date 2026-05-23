@@ -78,7 +78,7 @@ impl App {
                 event::handle(&mut self.canvas_state, &canvas_event, &mut self.handler)
             }
             Event::Gesture(gesture) => {
-                event::handle_gesture(gesture, &mut self.canvas_state, handler: &mut self.handler)
+                event::handle_gesture(gesture, &mut self.canvas_state, &mut self.handler)
             }
         }
     }
