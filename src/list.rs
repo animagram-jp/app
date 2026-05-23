@@ -142,6 +142,7 @@ impl<T: Copy + Default + PartialEq> List<T> {
 /// // intern: same value returns existing id
 /// let r = vl.set(&0, &[1u32, 2, 3], true).unwrap();
 /// assert!(matches!(r, SetOutcome::Created(1)));
+/// assert_eq!(vl.identity.len(), 4); // sentinel + id=1 のみ
 ///
 /// // update in-place (value fits)
 /// let r = vl.set(&1, &[9u32, 8], false).unwrap();
@@ -368,6 +369,14 @@ mod tests {
         let mut vl: VariableList<u32> = VariableList::new();
         let err = vl.delete(&0).unwrap_err();
         assert!(matches!(err, ListError::NotExist));
+    }
+
+    #[test]
+    fn variable_list_set_intern_false_appends_duplicate() {
+        let mut vl: VariableList<u32> = VariableList::new();
+        vl.set(&0, &[1u32, 2, 3], false).unwrap();
+        let r = vl.set(&0, &[1u32, 2, 3], false).unwrap();
+        assert!(matches!(r, SetOutcome::Created(2)));
     }
 
     #[test]
