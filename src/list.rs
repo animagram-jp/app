@@ -71,7 +71,7 @@ impl<U: Unsigned> List<U> {
             data: vec![U::default(); slots],
         }
     }
-    pub fn new_from_u8(line: &[u8]) -> Self {
+    pub fn new_from_bytes(line: &[u8]) -> Self {
         let size = size_of::<U>();
         let data = line
             .chunks_exact(size)
@@ -89,7 +89,7 @@ impl<U: Unsigned> List<U> {
         Ok(v)
     }
 
-    pub fn get_from_u8(&self, line: &[u8], shift: &usize, identity: &u32) -> Result<U, ListError> {
+    pub fn get_from_bytes(&self, line: &[u8], shift: &usize, identity: &u32) -> Result<U, ListError> {
         let size = size_of::<U>();
         let offset = shift + *identity as usize * size;
         let bytes = line.get(offset..offset + size).ok_or(ListError::OutOfBounds)?;
@@ -194,9 +194,9 @@ impl VariableList {
         }
     }
 
-    pub fn new_from_u8(index: &[u8], data: &[u8]) -> Self {
+    pub fn new_from_bytes(index: &[u8], data: &[u8]) -> Self {
         Self {
-            index: List::<usize>::new_from_u8(index).data,
+            index: List::<usize>::new_from_bytes(index).data,
             data: data.to_vec(),
         }
     }

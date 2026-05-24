@@ -1,3 +1,4 @@
+use core::mem::size_of;
 use alloc::collections::BTreeMap;
 use crate::list::{List, VariableList, SetOutcome, ListError, VariableListError};
 use crate::timestamp;
@@ -6,46 +7,34 @@ const ID_IDENTITY:   u32 = 1;
 const ID_CREATED_AT: u32 = 2;
 const ID_UPDATED_AT: u32 = 3;
 
-
-struct DataSchema {
-  index: List, // [u32, N] // Nはモデル固有のフィールドID最大値
-  value: VariableList, // []
-}
-
-impl DataSchema {
-  pub fn new() -> Self {
-  }
-  pub fn
-}
-
 enum Field(Field) {
 }
 
 impl Field {
-    pub fn label(self, lang: Lang) -> &'static str {
+    pub fn label(self, lang: Lang) -> &'static str { 
     }
-    pub fn id(self, sub: &Field) -> u32 {
+    pub fn id(&self, child: &Field) -> u32 {
     }
-    pub fn encode(self, value: T) -> T {
+    pub fn encode(self, value: T) -> &[u8] {
     }
-    pub fn decode(self, value: T) -> T {
+    pub fn decode(self, value: &[u8]) -> T {
     }
-    pub fn display(self, lang: Lang) -> String {
+    pub fn display(self, sub: Field, lang: Lang) -> String { // -> &'static str / &str / String
     }
 }
 
 #[derive(Clone)]
 pub struct DataStruct {
-    index:  List<u32>,        // schema_id → variable_id
-    values: VariableList<u8>, // variable_id → bytes
+    index:  List<u32>,    // schema_id → variable_id // Box[u32; schema_size: u32]
+    values: VariableList, // variable_id → bytes
 }
 
 impl DataStruct {
-    pub fn new(id: u32, time: f64, schema_size: usize) -> Self {
+    pub fn new(id: u32, time: f64, schema_size: u32) -> Self {
         let t = timestamp::from_ut(time);
         // schema_size+1 スロット分を0で事前確保 (id=0はsentinel)
         let index = List {
-            data: vec![0u32; schema_size + 1],
+            data: vec![0u32; schema_size as usize + 1],
         };
         let mut ds = Self {
             index,
@@ -55,6 +44,24 @@ impl DataStruct {
         let _ = ds.set(ID_CREATED_AT, &t.to_le_bytes());
         let _ = ds.set(ID_UPDATED_AT, &t.to_le_bytes());
         ds
+    }
+
+    /// Zero-alloc get over a serialized instance byte slice (layout is the same as to_bytes).
+    pub fn get_from_bytes<'a>(&self, instance: &'a [u8], schema_id: u32) -> Result<&'a [u8], ListError> {
+        let index_len = self.index.data.len() * 4;
+        let variable_id = List::<u32>::new(0).get_from_bytes(instance, &0, &schema_id)?;
+        let slice_at       = u32::from_le_bytes(instance[index_len..index_len+4].try_into().unwrap()) as usize;
+        let vl_index_start = index_len + 4;
+        let vl_data_start  = vl_index_start + slice_at;
+        let vl_index = &instance[vl_index_start..vl_data_start];
+        let sz = size_of::<usize>();
+        let index_s = variable_id as usize * 2 * sz;
+        let s = usize::from_ne_bytes(vl_index[index_s..index_s + sz].try_into().unwrap());
+        let e = usize::from_ne_bytes(vl_index[index_s + sz..index_s + sz * 2].try_into().unwrap());
+        if s == 0 && e == 0 {
+            return Err(ListError::NotExist);
+        }
+        instance.get(vl_data_start + s..vl_data_start + e).ok_or(ListError::OutOfBounds)
     }
 
     pub fn get(&self, schema_id: u32) -> Result<&[u8], ListError> {
@@ -97,47 +104,31 @@ impl DataStruct {
         Ok(remap)
     }
 
-    pub fn touch(&mut self, time: f64) -> Result<SetOutcome, ListError> {
-        let t = timestamp::from_ut(time);
-        self.set(ID_UPDATED_AT, &t.to_le_bytes())
-    }
-
-    /// [(schema_id: u32 LE)(len: u32 LE)(bytes...)]...
+    /// [u32 * (schema_size+1)][u32: slice_at][u8 * slice_at: vl.index][u8 * ?: vl.data]
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut out = Vec::new();
-        for (schema_id, &variable_id) in self.index.data.iter().enumerate().skip(1) {
-            if variable_id == 0 { continue; }
-            if let Ok(bytes) = self.values.get(&variable_id) {
-                out.extend_from_slice(&(schema_id as u32).to_le_bytes());
-                out.extend_from_slice(&(bytes.len() as u32).to_le_bytes());
-                out.extend_from_slice(bytes);
-            }
+        for &v in &self.index.data {
+            out.extend_from_slice(&v.to_le_bytes());
         }
+        let vl_index_bytes: Vec<u8> = self.values.index.iter()
+            .flat_map(|&v| v.to_le_bytes())
+            .collect();
+        let slice_at = vl_index_bytes.len() as u32;
+        out.extend_from_slice(&slice_at.to_le_bytes());
+        out.extend_from_slice(&vl_index_bytes);
+        out.extend_from_slice(&self.values.data);
         out
     }
 
     pub fn from_bytes(line: &[u8], schema_size: u32) -> Self {
-        let index = List {
-            data: vec![0u32; schema_size + 1],
-        };
-        let mut ds = Self {
-            index,
-            values: VariableList::new(),
-        };
-        let mut pos = 0;
-        while pos + 8 <= line.len() {
-            let schema_id = u32::from_le_bytes(line[pos..pos+4].try_into().unwrap());
-            let len       = u32::from_le_bytes(line[pos+4..pos+8].try_into().unwrap()) as usize;
-            pos += 8;
-            if pos + len > line.len() { break; }
-            let bytes = &line[pos..pos + len];
-            pos += len;
-            if schema_id == 0 || schema_id as usize >= ds.index.data.len() { continue; }
-            let outcome = ds.values.set(&0u32, bytes, false);
-            if let Ok(SetOutcome::Created(variable_id)) = outcome {
-                ds.index.data[schema_id as usize] = variable_id;
-            }
+        let index_len = (schema_size as usize + 1) * 4;
+        let slice_at  = u32::from_le_bytes(line[index_len..index_len+4].try_into().unwrap()) as usize;
+        let vl_index_start = index_len + 4;
+        let vl_data_start  = vl_index_start + slice_at;
+        Self {
+            index:  List::new_from_bytes(&line[..index_len]),
+            values: VariableList::new_from_bytes(&line[vl_index_start..vl_data_start], &line[vl_data_start..]),
         }
-        ds
     }
 }
+
