@@ -71,6 +71,14 @@ impl<U: Unsigned> List<U> {
             data: vec![U::default(); slots],
         }
     }
+    pub fn new_from_u8(line: &[u8], shift: usize) -> Self {
+        let size = size_of::<U>();
+        let data = line[shift..]
+            .chunks_exact(size)
+            .map(|b| U::from_ne_bytes(b).unwrap())
+            .collect();
+        Self { data }
+    }
 }
 
 impl<U: Unsigned> List<U> {
