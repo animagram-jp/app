@@ -8,7 +8,6 @@ const ID_UPDATED_AT: u32 = 3;
 
 
 struct DataSchema {
-  model: &Hoge,
   index: List, // [u32, N] // Nはモデル固有のフィールドID最大値
   value: VariableList, // []
 }
@@ -23,7 +22,7 @@ enum Field(Field) {
 }
 
 impl Field {
-    pub fn label(self, lang: Lang) -> '&static str {
+    pub fn label(self, lang: Lang) -> &'static str {
     }
     pub fn id(self, sub: &Field) -> u32 {
     }
