@@ -8,37 +8,42 @@ use crate::data_struct::DataStruct;
 // ============================================================
 
 pub enum Character {
-    Profile(Profile),
-    Characteristic(Characteristic),
-    Derived(Derived),
-    Skill(Skill),
-    Equipment(Equipment),
-    Backstory(Backstory),
+    Profile,
+    Characteristic,
+    Derived,
+    Skill,
+    Equipment,
+    Backstory,
 }
 
 impl Character {
-    pub fn label(&self, lang: Lang) -> String {
-        match self {
-            Self::Profile(p)        => p.label(lang).to_string(),
-            Self::Characteristic(c) => c.label(lang).to_string(),
-            Self::Derived(d)        => d.label(lang).to_string(),
-            Self::Skill(s)          => s.label(lang),
-            Self::Equipment(e)      => e.label(lang).to_string(),
-            Self::Backstory(b)      => b.label(lang).to_string(),
+    pub fn label(&self, lang: Lang) -> &'static str {
+        match (self, lang) {
+            (Self::Profile,        Lang::En) => "Profile",
+            (Self::Profile,        Lang::Ja) => "プロフィール",
+            (Self::Characteristic, Lang::En) => "Characteristics",
+            (Self::Characteristic, Lang::Ja) => "能力値",
+            (Self::Derived,        Lang::En) => "Other Attributes",
+            (Self::Derived,        Lang::Ja) => "ほかの属性",
+            (Self::Skill,          Lang::En) => "Skill",
+            (Self::Skill,          Lang::Ja) => "技能",            
+            (Self::Equipment,      Lang::En) => "Equipment",
+            (Self::Equipment,      Lang::Ja) => "所持品",
+            (Self::Backstory,      Lang::En) => "Backstory",
+            (Self::Backstory,      Lang::Ja) => "バックストーリー",
         }
     }
-    pub fn id(&self) -> usize {
+    pub const fn id(&self) -> u32 {
         match self {
-            Self::Profile(p)        => p.id( 10),  //  10- 15 (6件)
-            Self::Characteristic(c) => c.id( 20),  //  20- 28 (9件)
-            Self::Derived(d)        => d.id( 30),  //  30- 37 (8件)
-            Self::Skill(s)          => s.id( 40),  //  40- 86 (47件)
-            Self::Equipment(e)      => e.id( 90),  //  90-... (拡張余地)
-            Self::Backstory(b)      => b.id(100),  // 100-109 (10件)
+            Self::Profile           =>  10,  //  10- 15 (6件)
+            Self::Characteristic    =>  20,  //  20- 28 (9件)
+            Self::Derived           =>  30,  //  30- 37 (8件)
+            Self::Skill             =>  40,  //  40- 86 (47件)
+            Self::Equipment         =>  90,  //  90-... (拡張余地)
+            Self::Backstory         => 100,  // 100-109 (10件)
         }
     }
 }
-
 
 // ============================================================
 // --- プロフィール (Name, Birthppalce, Pronoun, Occupation, Residence, Age) ---

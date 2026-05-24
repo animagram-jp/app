@@ -1,0 +1,28 @@
+{
+    "identity": 11,
+    "created_at": "2024-02-07",
+    "updated_at": "2026-04-18",
+    "Profile": {
+        "Name": "サンプル",
+        "Alias": "さんぷる",
+        "Age": 20,
+        "Occupation": "Professor",
+        "Title": "舞台役者",
+        "Birthplace": null
+    },
+    "characteristic": {
+        "STR":  [90,   0, 0],
+        "CON":  [55,   5, 0],
+        "SIZ":  [75,   0, 0],
+        "DEX":  [60,   0, 0],
+        "APP":  [60,   0, 0],
+        "INT":  [90,   0, 0],
+        "POW":  [60, -10, 0],
+        "EDU":  [90,   0, 0],
+        "LUCK": [60,  12, 0]
+    },
+    "Skill": {
+        "Library Use":       [20, 50, 5, 0],
+        "Art/Craft (Drama)": [ 5, 91, 3, 0]
+    }
+}

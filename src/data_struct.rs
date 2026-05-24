@@ -7,19 +7,16 @@ const ID_IDENTITY:   u32 = 1;
 const ID_CREATED_AT: u32 = 2;
 const ID_UPDATED_AT: u32 = 3;
 
-enum Field(Field) {
-}
-
-impl Field {
-    pub fn label(self, lang: Lang) -> &'static str { 
+trait Field {
+    pub fn label(&self, lang: Lang) -> &'static str { 
     }
     pub fn id(&self, child: &Field) -> u32 {
     }
-    pub fn encode(self, value: T) -> &[u8] {
+    pub fn encode(&self, value: T) -> &[u8] {
     }
-    pub fn decode(self, value: &[u8]) -> T {
+    pub fn decode(&self, value: &[u8]) -> T {
     }
-    pub fn display(self, sub: Field, lang: Lang) -> String { // -> &'static str / &str / String
+    pub fn display(&self, lang: Lang) -> String { // -> &'static str / &str / String
     }
 }
 
@@ -40,9 +37,9 @@ impl DataStruct {
             index,
             values: VariableList::new(),
         };
-        let _ = ds.set(ID_IDENTITY,   &id.to_le_bytes());
-        let _ = ds.set(ID_CREATED_AT, &t.to_le_bytes());
-        let _ = ds.set(ID_UPDATED_AT, &t.to_le_bytes());
+        let _ = ds.set(ID_IDENTITY,   &id.to_le_bytes(), None);
+        let _ = ds.set(ID_CREATED_AT, &t.to_le_bytes(), None);
+        let _ = ds.set(ID_UPDATED_AT, &t.to_le_bytes(), None);
         ds
     }
 
@@ -69,11 +66,11 @@ impl DataStruct {
         self.values.get(&variable_id)
     }
 
-    pub fn set(&mut self, schema_id: u32, value: &[u8]) -> Result<SetOutcome, ListError> {
+    pub fn set(&mut self, schema_id: u32, value: &[u8], time: Option<f64>) -> Result<SetOutcome, ListError> {
         let slot = self.index.get(&schema_id);
-        match slot {
+        let outcome = match slot {
             Ok(&variable_id) if variable_id != 0 => {
-                self.values.set(&variable_id, value, false)
+                self.values.set(&variable_id, value, false)?
             }
             _ => {
                 let outcome = self.values.set(&0, value, false)?;
@@ -82,9 +79,16 @@ impl DataStruct {
                     SetOutcome::Updated    => return Err(ListError::OutOfBounds),
                 };
                 self.index.set(&schema_id, variable_id, false)?;
-                Ok(SetOutcome::Created(variable_id))
+                SetOutcome::Created(variable_id)
+            }
+        };
+        if schema_id != ID_UPDATED_AT {
+            if let Some(t) = time {
+                let ts = timestamp::from_ut(t);
+                self.set(ID_UPDATED_AT, &ts.to_le_bytes(), None)?;
             }
         }
+        Ok(outcome)
     }
 
     pub fn delete(&mut self, schema_id: u32) -> Result<(), ListError> {
@@ -95,7 +99,7 @@ impl DataStruct {
 
     pub fn compact(&mut self) -> Result<BTreeMap<u32, u32>, VariableListError> {
         let remap = self.values.compact()?;
-        // compact後にvariable_idが変わるのでindexを更新
+        // update index with compact result
         for slot in self.index.data.iter_mut() {
             if let Some(&new_id) = remap.get(slot) {
                 *slot = new_id;
