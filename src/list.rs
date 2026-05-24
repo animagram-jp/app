@@ -1,4 +1,15 @@
+use core::{u8, u32, usize};
+use core::mem::size_of;
 use alloc::collections::BTreeMap;
+
+pub trait Unsigned: Copy + Default + PartialEq {
+    fn from_ne_bytes(bytes: &[u8]) -> Option<Self>;
+}
+impl Unsigned for u8    { fn from_ne_bytes(b: &[u8]) -> Option<Self> { Some(Self::from_ne_bytes(b.try_into().ok()?)) } }
+impl Unsigned for u16   { fn from_ne_bytes(b: &[u8]) -> Option<Self> { Some(Self::from_ne_bytes(b.try_into().ok()?)) } }
+impl Unsigned for u32   { fn from_ne_bytes(b: &[u8]) -> Option<Self> { Some(Self::from_ne_bytes(b.try_into().ok()?)) } }
+impl Unsigned for u64   { fn from_ne_bytes(b: &[u8]) -> Option<Self> { Some(Self::from_ne_bytes(b.try_into().ok()?)) } }
+impl Unsigned for usize { fn from_ne_bytes(b: &[u8]) -> Option<Self> { Some(Self::from_ne_bytes(b.try_into().ok()?)) } }
 
 #[derive(Debug)]
 pub enum SetOutcome {
@@ -18,15 +29,15 @@ pub enum VariableListError {
     Compact,
 }
 
-fn is_null<T: Default + PartialEq>(v: &T) -> bool {
-    *v == T::default()
+fn is_null<U: Default + PartialEq>(v: &U) -> bool {
+    *v == U::default()
 }
 
-/// A list provides a 1-based identity store where each entry is one T.
+/// A list provides a 1-based identity store where each entry is one <Unsigned>.
 ///
 /// identity:  u32 - 1-based integer (0 is the null sentinel)
 /// error:  ListError
-/// value:  T
+/// value:  Unsgined
 ///
 /// ```
 /// use app::list::{List, SetOutcome};
@@ -50,24 +61,35 @@ fn is_null<T: Default + PartialEq>(v: &T) -> bool {
 /// assert!(matches!(r, SetOutcome::Created(1)));
 /// ```
 #[derive(Clone)]
-pub struct List<T> {
-    pub data: Vec<T>,
+pub struct List<U> {
+    pub data: Vec<U>,
 }
 
-impl<T: Copy + Default + PartialEq> List<T> {
+impl<U: Unsigned> List<U> {
     pub fn new(slots: usize) -> Self {
         Self {
-            data: vec![T::default(); slots],
+            data: vec![U::default(); slots],
         }
     }
 }
 
-impl<T: Copy + Default + PartialEq> List<T> {
+impl<U: Unsigned> List<U> {
 
-    pub fn get(&self, identity: &u32) -> Result<&T, ListError> {
+    pub fn get(&self, identity: &u32) -> Result<&U, ListError> {
         let i = *identity as usize;
         let v = self.data.get(i).ok_or(ListError::OutOfBounds)?;
         if is_null(v) {
+            return Err(ListError::NotExist);
+        }
+        Ok(v)
+    }
+
+    pub fn get_from_u8(&self, line: &[u8], shift: &usize, identity: &u32) -> Result<U, ListError> {
+        let size = size_of::<U>();
+        let offset = shift + *identity as usize * size;
+        let bytes = line.get(offset..offset + size).ok_or(ListError::OutOfBounds)?;
+        let v = U::from_ne_bytes(bytes).ok_or(ListError::OutOfBounds)?;
+        if is_null(&v) {
             return Err(ListError::NotExist);
         }
         Ok(v)
@@ -77,7 +99,7 @@ impl<T: Copy + Default + PartialEq> List<T> {
     pub fn set(
         &mut self,
         identity: &u32,
-        value: T,
+        value: U,
         reuse_vacant: bool,
     ) -> Result<SetOutcome, ListError> {
         if *identity != 0 {
@@ -92,7 +114,7 @@ impl<T: Copy + Default + PartialEq> List<T> {
             Ok(SetOutcome::Updated)
         } else {
             if self.data.is_empty() {
-                self.data.push(T::default());
+                self.data.push(U::default());
             }
             let vacant = if reuse_vacant {
                 (1..self.data.len()).find(|&i| is_null(&self.data[i]))
@@ -118,7 +140,7 @@ impl<T: Copy + Default + PartialEq> List<T> {
         if i >= self.data.len() {
             return Err(ListError::OutOfBounds);
         }
-        self.data[i] = T::default();
+        self.data[i] = U::default();
         Ok(())
     }
 }
@@ -127,56 +149,53 @@ impl<T: Copy + Default + PartialEq> List<T> {
 ///
 /// identity:  usize - 1-based integer (0 is the null sentinel). 0 on set appends
 /// error:  ListError
-/// value:  [T]
+/// value:  [u8]
 ///
 /// ```
 /// use app::list::{VariableList, SetOutcome};
 ///
-/// let mut vl: VariableList<u32> = VariableList::new();
+/// let mut vl: VariableList = VariableList::new();
 ///
 /// // append: first real entry is id=1
-/// let r = vl.set(&0, &[1u32, 2, 3], false).unwrap();
+/// let r = vl.set(&0, &[1u8, 2, 3], false).unwrap();
 /// assert!(matches!(r, SetOutcome::Created(1)));
-/// assert_eq!(vl.get(&1).unwrap(), &[1u32, 2, 3]);
+/// assert_eq!(vl.get(&1).unwrap(), &[1u8, 2, 3]);
 ///
 /// // intern: same value returns existing id
-/// let r = vl.set(&0, &[1u32, 2, 3], true).unwrap();
+/// let r = vl.set(&0, &[1u8, 2, 3], true).unwrap();
 /// assert!(matches!(r, SetOutcome::Created(1)));
-/// assert_eq!(vl.identity.len(), 4); // sentinel + id=1 のみ
+/// assert_eq!(vl.index.len(), 4); // sentinel + id=1 のみ
 ///
 /// // update in-place (value fits)
-/// let r = vl.set(&1, &[9u32, 8], false).unwrap();
+/// let r = vl.set(&1, &[9u8, 8], false).unwrap();
 /// assert!(matches!(r, SetOutcome::Updated));
-/// assert_eq!(vl.get(&1).unwrap(), &[9u32, 8]);
+/// assert_eq!(vl.get(&1).unwrap(), &[9u8, 8]);
 ///
 /// // delete
 /// vl.delete(&1).unwrap();
 /// assert!(vl.get(&1).is_err());
 /// ```
 #[derive(Clone)]
-pub struct VariableList<T> {
-    pub identity: Vec<usize>,
-    pub data: Vec<T>,
+pub struct VariableList {
+    pub index: Vec<usize>,
+    pub data: Vec<u8>,
 }
 
-impl<T: Copy + Default + PartialEq> VariableList<T> {
+impl VariableList {
     pub fn new() -> Self {
         Self {
-            identity: vec![0, 0], // id=0 sentinel
+            index: vec![0, 0], // id=0 sentinel
             data: Vec::new(),
         }
     }
-}
-
-impl<T: Copy + Default + PartialEq> VariableList<T> {
 
     pub fn get<'a>(
         &'a self,
         identity: &u32,
-    ) -> Result<&'a [T], ListError> {
-        let identity_start = *identity as usize * 2;
-        let s = *self.identity.get(identity_start).ok_or(ListError::OutOfBounds)?;
-        let e = *self.identity.get(identity_start + 1).ok_or(ListError::OutOfBounds)?;
+    ) -> Result<&'a [u8], ListError> {
+        let index_s = *identity as usize * 2;
+        let s = *self.index.get(index_s).ok_or(ListError::OutOfBounds)?;
+        let e = *self.index.get(index_s + 1).ok_or(ListError::OutOfBounds)?;
         if s == 0 && e == 0 {
             return Err(ListError::NotExist);
         }
@@ -186,43 +205,43 @@ impl<T: Copy + Default + PartialEq> VariableList<T> {
     /// intern: if true and identity=0, return first match value identity(i)
     ///
     /// note: update tries in-place if value fits the existing range; otherwise
-    ///       appends to data and rewrites the identity range (old bytes become unreachable
+    ///       appends to data and rewrites the index range (old bytes become unreachable
     ///       until compact is called).
     pub fn set(
         &mut self,
         identity: &u32,
-        value: &[T],
+        value: &[u8],
         intern: bool,
     ) -> Result<SetOutcome, ListError> {
         if *identity != 0 {
-            let identity_start = *identity as usize * 2;
-            if identity_start + 1 >= self.identity.len() {
+            let index_s = *identity as usize * 2;
+            if index_s + 1 >= self.index.len() {
                 return Err(ListError::OutOfBounds);
             }
-            let old_start = self.identity[identity_start];
-            let old_end   = self.identity[identity_start + 1];
+            let old_start = self.index[index_s];
+            let old_end   = self.index[index_s + 1];
             if old_start == 0 && old_end == 0 {
                 return Err(ListError::NotExist);
             }
             let old_len = old_end - old_start;
             if value.len() <= old_len {
                 self.data[old_start..old_start + value.len()].copy_from_slice(value);
-                self.identity[identity_start + 1] = old_start + value.len();
+                self.index[index_s + 1] = old_start + value.len();
             } else {
                 let start = self.data.len();
                 let end = start + value.len();
                 self.data.extend_from_slice(value);
-                self.identity[identity_start]     = start;
-                self.identity[identity_start + 1] = end;
+                self.index[index_s]     = start;
+                self.index[index_s + 1] = end;
             }
             Ok(SetOutcome::Updated)
         } else {
             if intern {
-                let count = self.identity.len() / 2;
+                let count = self.index.len() / 2;
                 for i in 1..count {
-                    let identity_start = i * 2;
-                    let start = self.identity[identity_start];
-                    let end   = self.identity[identity_start + 1];
+                    let index_s = i * 2;
+                    let start = self.index[index_s];
+                    let end   = self.index[index_s + 1];
                     if (start != 0 || end != 0) && &self.data[start..end] == value {
                         return Ok(SetOutcome::Created(i as u32));
                     }
@@ -231,9 +250,9 @@ impl<T: Copy + Default + PartialEq> VariableList<T> {
             let start = self.data.len();
             let end = start + value.len();
             self.data.extend_from_slice(value);
-            let new_id = self.identity.len() / 2;
-            self.identity.push(start);
-            self.identity.push(end);
+            let new_id = self.index.len() / 2;
+            self.index.push(start);
+            self.index.push(end);
             Ok(SetOutcome::Created(new_id as u32))
         }
     }
@@ -241,28 +260,27 @@ impl<T: Copy + Default + PartialEq> VariableList<T> {
     /// identity を直接指定して create-or-update する。
     /// identity=0 は不可（sentinelのため）。
     /// identity がベクタ範囲外なら [0,0] で拡張してから書き込む。
-    pub fn upsert(&mut self, identity: &u32, value: &[T]) -> Result<SetOutcome, ListError> {
+    pub fn upsert(&mut self, identity: &u32, value: &[u8]) -> Result<SetOutcome, ListError> {
         if *identity == 0 {
             return Err(ListError::NotExist);
         }
-        let identity_end = *identity as usize * 2 + 2;
-        // 必要な長さまで [0,0] で拡張
-        if identity_end > self.identity.len() {
-            self.identity.resize(identity_end, 0);
+        let index_e = *identity as usize * 2 + 2;
+        if index_e > self.index.len() {
+            self.index.resize(index_e, 0);
         }
-        let identity_start = *identity as usize * 2;
-        let old_start = self.identity[identity_start];
-        let old_end   = self.identity[identity_start + 1];
+        let index_s = *identity as usize * 2;
+        let old_start = self.index[index_s];
+        let old_end   = self.index[index_s + 1];
         let is_new = old_start == 0 && old_end == 0;
         let old_len   = old_end - old_start;
         if !is_new && value.len() <= old_len {
             self.data[old_start..old_start + value.len()].copy_from_slice(value);
-            self.identity[identity_start + 1] = old_start + value.len();
+            self.index[index_s + 1] = old_start + value.len();
         } else {
             let start = self.data.len();
             let end = start + value.len();
             self.data.extend_from_slice(value);
-            self.identity[identity_start..identity_end].copy_from_slice(&[start, end]);
+            self.index[index_s..index_e].copy_from_slice(&[start, end]);
         }
         if is_new { Ok(SetOutcome::Created(*identity)) } else { Ok(SetOutcome::Updated) }
     }
@@ -274,17 +292,17 @@ impl<T: Copy + Default + PartialEq> VariableList<T> {
         if *identity == 0 {
             return Err(ListError::NotExist);
         }
-        let identity_start = *identity as usize * 2;
-        let identity_end = identity_start + 2;
-        if identity_end > self.identity.len() {
+        let index_s = *identity as usize * 2;
+        let index_e = index_s + 2;
+        if index_e > self.index.len() {
             return Err(ListError::OutOfBounds);
         }
-        self.identity[identity_start..identity_end].fill(0);
+        self.index[index_s..index_e].fill(0);
         Ok(())
     }
 
-    /// Rebuilds both identity and data from scratch:
-    /// - vacant entries are removed from identity (identity shrinks)
+    /// Rebuilds both index and data from scratch:
+    /// - vacant entries are removed from index (index shrinks)
     /// - update-leaked bytes in data are reclaimed
     /// - surviving entries are re-assigned sequential id values starting at 1
     /// Returns a mapping of old id -> new id for callers that hold external references.
@@ -292,37 +310,37 @@ impl<T: Copy + Default + PartialEq> VariableList<T> {
     /// ```
     /// use app::list::VariableList;
     ///
-    /// let mut vl: VariableList<u32> = VariableList::new();
-    /// vl.set(&0, &[1u32, 2, 3], false).unwrap(); // id=1
-    /// vl.set(&0, &[4u32, 5, 6], false).unwrap(); // id=2
-    /// vl.delete(&1).unwrap();                     // id=1 vacant
+    /// let mut vl: VariableList = VariableList::new();
+    /// vl.set(&0, &[1u8, 2, 3], false).unwrap(); // id=1
+    /// vl.set(&0, &[4u8, 5, 6], false).unwrap(); // id=2
+    /// vl.delete(&1).unwrap();                    // id=1 vacant
     ///
     /// let remap = vl.compact().unwrap();
     /// assert_eq!(remap[&2], 1); // old id=2 -> new id=1
-    /// assert_eq!(vl.get(&1).unwrap(), &[4u32, 5, 6]);
+    /// assert_eq!(vl.get(&1).unwrap(), &[4u8, 5, 6]);
     /// ```
     pub fn compact(&mut self) -> Result<BTreeMap<u32, u32>, VariableListError> {
-        let mut new_identity    = vec![0, 0];
-        let mut new_data: Vec<T> = Vec::new();
+        let mut new_index       = vec![0, 0];
+        let mut new_data: Vec<u8> = Vec::new();
         let mut remap        = BTreeMap::new();
-        let count = self.identity.len() / 2;
+        let count = self.index.len() / 2;
         for i in 1..count {
-            let identity_start = i * 2;
-            if self.identity[identity_start] == 0 && self.identity[identity_start + 1] == 0 {
+            let index_s = i * 2;
+            if self.index[index_s] == 0 && self.index[index_s + 1] == 0 {
                 continue;
             }
-            let start = self.identity[identity_start];
-            let end   = self.identity[identity_start + 1];
+            let start = self.index[index_s];
+            let end   = self.index[index_s + 1];
             let slice = self.data.get(start..end).ok_or(VariableListError::Compact)?;
             let new_start = new_data.len();
             new_data.extend_from_slice(slice);
             let new_end = new_data.len();
-            let new_id = new_identity.len() / 2;
-            new_identity.push(new_start);
-            new_identity.push(new_end);
+            let new_id = new_index.len() / 2;
+            new_index.push(new_start);
+            new_index.push(new_end);
             remap.insert(i as u32, new_id as u32);
         }
-        self.identity = new_identity;
+        self.index = new_index;
         self.data  = new_data;
         Ok(remap)
     }
@@ -334,11 +352,11 @@ mod tests {
 
     #[test]
     fn list_set_update_append_when_value_too_large() {
-        let mut vl: VariableList<u32> = VariableList::new();
-        vl.set(&0, &[1u32, 2], false).unwrap();
-        let r = vl.set(&1, &[10u32, 20, 30], false).unwrap();
+        let mut vl: VariableList = VariableList::new();
+        vl.set(&0, &[1u8, 2], false).unwrap();
+        let r = vl.set(&1, &[10u8, 20, 30], false).unwrap();
         assert!(matches!(r, SetOutcome::Updated));
-        assert_eq!(vl.get(&1).unwrap(), &[10u32, 20, 30]);
+        assert_eq!(vl.get(&1).unwrap(), &[10u8, 20, 30]);
     }
 
     #[test]
@@ -366,27 +384,27 @@ mod tests {
 
     #[test]
     fn variable_list_delete_sentinel_returns_not_exist() {
-        let mut vl: VariableList<u32> = VariableList::new();
+        let mut vl: VariableList = VariableList::new();
         let err = vl.delete(&0).unwrap_err();
         assert!(matches!(err, ListError::NotExist));
     }
 
     #[test]
     fn variable_list_set_intern_false_appends_duplicate() {
-        let mut vl: VariableList<u32> = VariableList::new();
-        vl.set(&0, &[1u32, 2, 3], false).unwrap();
-        let r = vl.set(&0, &[1u32, 2, 3], false).unwrap();
+        let mut vl: VariableList = VariableList::new();
+        vl.set(&0, &[1u8, 2, 3], false).unwrap();
+        let r = vl.set(&0, &[1u8, 2, 3], false).unwrap();
         assert!(matches!(r, SetOutcome::Created(2)));
     }
 
     #[test]
     fn variable_list_compact_invalidates_old_identity() {
-        let mut vl: VariableList<u32> = VariableList::new();
-        vl.set(&0, &[1u32, 2, 3], false).unwrap();
-        vl.set(&0, &[4u32, 5, 6], false).unwrap();
+        let mut vl: VariableList = VariableList::new();
+        vl.set(&0, &[1u8, 2, 3], false).unwrap();
+        vl.set(&0, &[4u8, 5, 6], false).unwrap();
         vl.delete(&1).unwrap();
         vl.compact().unwrap();
         assert!(vl.get(&2).is_err());
-        assert_eq!(vl.get(&1).unwrap(), &[4u32, 5, 6]);
+        assert_eq!(vl.get(&1).unwrap(), &[4u8, 5, 6]);
     }
 }
