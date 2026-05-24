@@ -71,17 +71,14 @@ impl<U: Unsigned> List<U> {
             data: vec![U::default(); slots],
         }
     }
-    pub fn new_from_u8(line: &[u8], shift: usize) -> Self {
+    pub fn new_from_u8(line: &[u8]) -> Self {
         let size = size_of::<U>();
-        let data = line[shift..]
+        let data = line
             .chunks_exact(size)
             .map(|b| U::from_ne_bytes(b).unwrap())
             .collect();
         Self { data }
     }
-}
-
-impl<U: Unsigned> List<U> {
 
     pub fn get(&self, identity: &u32) -> Result<&U, ListError> {
         let i = *identity as usize;
@@ -194,6 +191,13 @@ impl VariableList {
         Self {
             index: vec![0, 0], // id=0 sentinel
             data: Vec::new(),
+        }
+    }
+
+    pub fn new_from_u8(index: &[u8], data: &[u8]) -> Self {
+        Self {
+            index: List::<usize>::new_from_u8(index).data,
+            data: data.to_vec(),
         }
     }
 

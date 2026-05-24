@@ -41,11 +41,11 @@ pub struct DataStruct {
 }
 
 impl DataStruct {
-    pub fn new(id: u32, time: f64, schema_count: usize) -> Self {
+    pub fn new(id: u32, time: f64, schema_size: usize) -> Self {
         let t = timestamp::from_ut(time);
-        // schema_count+1 スロット分を0で事前確保 (id=0はsentinel)
+        // schema_size+1 スロット分を0で事前確保 (id=0はsentinel)
         let index = List {
-            data: vec![0u32; schema_count + 1],
+            data: vec![0u32; schema_size + 1],
         };
         let mut ds = Self {
             index,
@@ -116,21 +116,21 @@ impl DataStruct {
         out
     }
 
-    pub fn from_bytes(raw: &[u8], schema_count: usize) -> Self {
+    pub fn from_bytes(line: &[u8], schema_size: u32) -> Self {
         let index = List {
-            data: vec![0u32; schema_count + 1],
+            data: vec![0u32; schema_size + 1],
         };
         let mut ds = Self {
             index,
             values: VariableList::new(),
         };
         let mut pos = 0;
-        while pos + 8 <= raw.len() {
-            let schema_id = u32::from_le_bytes(raw[pos..pos+4].try_into().unwrap());
-            let len       = u32::from_le_bytes(raw[pos+4..pos+8].try_into().unwrap()) as usize;
+        while pos + 8 <= line.len() {
+            let schema_id = u32::from_le_bytes(line[pos..pos+4].try_into().unwrap());
+            let len       = u32::from_le_bytes(line[pos+4..pos+8].try_into().unwrap()) as usize;
             pos += 8;
-            if pos + len > raw.len() { break; }
-            let bytes = &raw[pos..pos + len];
+            if pos + len > line.len() { break; }
+            let bytes = &line[pos..pos + len];
             pos += len;
             if schema_id == 0 || schema_id as usize >= ds.index.data.len() { continue; }
             let outcome = ds.values.set(&0u32, bytes, false);
