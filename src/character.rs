@@ -1153,14 +1153,88 @@ impl SurvivalSpec {
 // --- 装備 (Equipment) ---
 // ============================================================
 
+// --- 定義済み武器 (WeaponSpec) ---
+// JSON の "weapon" フィールド値と対応する。
+// Fighting (Sword) のようにスキル参照のみのケースは SkillRef で表す。
+pub enum WeaponSpec {
+    // 近接
+    ClubLarge,      // Club, large   1D8+DB
+    KnifeMedium,    // Knife, Medium 1D6+DB  (貫通)
+    // スキル参照（ダメージはスキル側に依存）
+    FightingSword,  // Fighting (Sword)
+    // 自由記述
+    Custom(String),
+}
+
+impl WeaponSpec {
+    pub fn label(&self, lang: Lang) -> &str {
+        match (self, lang) {
+            (Self::ClubLarge,    Lang::En) => "Club, large",
+            (Self::ClubLarge,    Lang::Ja) => "棍棒（大）",
+            (Self::KnifeMedium,  Lang::En) => "Knife, Medium",
+            (Self::KnifeMedium,  Lang::Ja) => "ナイフ（中）",
+            (Self::FightingSword,Lang::En) => "Fighting (Sword)",
+            (Self::FightingSword,Lang::Ja) => "近接戦闘（刀剣）",
+            (Self::Custom(s),    _)        => s.as_str(),
+        }
+    }
+
+    /// 基本ダメージ式。スキル参照型は None（呼び出し側でスキルから取得）。
+    pub fn damage(&self) -> Option<&'static str> {
+        match self {
+            Self::ClubLarge     => Some("1D8+DB"),
+            Self::KnifeMedium   => Some("1D6+DB"),
+            Self::FightingSword => None,
+            Self::Custom(_)     => None,
+        }
+    }
+}
+
+// --- 定義済み装甲 (ArmorSpec) ---
+// JSON の "armor" フィールド値と対応する。装甲点は points() で取得。
+pub enum ArmorSpec {
+    ThickLeatherJacket, // 厚い皮のジャケット  1pt
+    MilitaryBodyArmor,  // 軍用ボディ・アーマー 12pt
+    Custom(String),     // 自由記述（装甲点は別途入力）
+}
+
+impl ArmorSpec {
+    pub fn label(&self, lang: Lang) -> &str {
+        match (self, lang) {
+            (Self::ThickLeatherJacket, Lang::En) => "Thick Leather Jacket",
+            (Self::ThickLeatherJacket, Lang::Ja) => "厚い皮のジャケット",
+            (Self::MilitaryBodyArmor,  Lang::En) => "Military Body Armor",
+            (Self::MilitaryBodyArmor,  Lang::Ja) => "軍用ボディ・アーマー",
+            (Self::Custom(s),          _)        => s.as_str(),
+        }
+    }
+
+    /// 定義済み装甲の装甲点。Custom は None（呼び出し側で値を保持）。
+    pub fn points(&self) -> Option<u8> {
+        match self {
+            Self::ThickLeatherJacket =>  Some(1),
+            Self::MilitaryBodyArmor  => Some(12),
+            Self::Custom(_)          => None,
+        }
+    }
+}
+
 // --- 武器行 (Weapon) ---
 pub struct Weapon {
     pub name:               String,
+    pub spec:               WeaponSpec,
     pub damage:             String,          // e.g. "1D4+DB"
     pub range:              Option<String>,  // 射撃武器のみ
     pub attacks_per_round:  u8,
     pub ammunition:         Option<u16>,     // 射撃武器のみ
     pub malfunction:        Option<u16>,     // 射撃武器のみ
+}
+
+// --- 装甲行 (Armor) ---
+pub struct Armor {
+    pub name:   String,
+    pub spec:   ArmorSpec,
+    pub points: u8,   // 実際に適用する装甲点（Custom時は手入力値）
 }
 
 // --- 収入と財産 (Wealth) ---
@@ -1173,6 +1247,7 @@ pub struct Wealth {
 // --- 所持品カテゴリ (Possession) ---
 pub enum Possession {
     Weapon(Weapon),              // 武器テーブル行
+    Armor(Armor),                // 装甲
     GearItem(String),            // 装備と所持品（自由記述）
     Wealth(Wealth),              // 収入と財産（上級ルール）
 }
@@ -1181,8 +1256,9 @@ impl Possession {
     pub fn id(&self, base: usize) -> usize {
         base + match self {
             Self::Weapon(_)   => 0,
-            Self::GearItem(_) => 1,
-            Self::Wealth(_)   => 2,
+            Self::Armor(_)    => 1,
+            Self::GearItem(_) => 2,
+            Self::Wealth(_)   => 3,
         }
     }
 
@@ -1190,6 +1266,8 @@ impl Possession {
         match (self, lang) {
             (Self::Weapon(_),   Lang::En) => "Weapons",
             (Self::Weapon(_),   Lang::Ja) => "武器",
+            (Self::Armor(_),    Lang::En) => "Armor",
+            (Self::Armor(_),    Lang::Ja) => "装甲",
             (Self::GearItem(_), Lang::En) => "Gear & Possessions",
             (Self::GearItem(_), Lang::Ja) => "装備と所持品",
             (Self::Wealth(_),   Lang::En) => "Wealth",
