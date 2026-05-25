@@ -392,7 +392,7 @@ impl Skill {
             Self::History,
             Self::Intimidate,
             Self::Jump,
-            Self::LanguageOther(LanguageSpec::Custom0(String::new())), // 全部自由記入
+            Self::LanguageOther(LanguageSpec::Custom1(String::new())), // 全部自由記入
             Self::LanguageOwn,
             Self::Law,
             Self::LibraryUse,
@@ -678,7 +678,7 @@ pub enum ArtCraftSpec {
     Pottery,      // 陶芸
     Sculpting,    // 彫刻
     Writing,      // 執筆
-    Custom0(String), Custom1(String), Custom2(String), Custom3(String),
+    Custom1(String), Custom2(String), Custom3(String), Custom4(String),
 }
 
 
@@ -708,10 +708,10 @@ impl ArtCraftSpec {
             Self::Pottery     => 10,
             Self::Sculpting   => 11,
             Self::Writing     => 12,
-            Self::Custom0(_)  => 13,
-            Self::Custom1(_)  => 14,
-            Self::Custom2(_)  => 15,
-            Self::Custom3(_)  => 16,
+            Self::Custom1(_)  => 13,
+            Self::Custom2(_)  => 14,
+            Self::Custom3(_)  => 15,
+            Self::Custom4(_)  => 16,
         }
     }
 
@@ -746,7 +746,7 @@ impl ArtCraftSpec {
             (Self::Sculpting,   Lang::En) => Some("Sculpting"),
             (Self::Writing,     Lang::Ja) => Some("執筆"),
             (Self::Writing,     Lang::En) => Some("Writing"),
-            (Self::Custom0(s) | Self::Custom1(s) | Self::Custom2(s) | Self::Custom3(s), _) => Some(s.as_str()),
+            (Self::Custom1(s) | Self::Custom2(s) | Self::Custom3(s) | Self::Custom4(s), _) => Some(s.as_str()),
         }
     }
 }
@@ -763,10 +763,10 @@ pub enum FightingSpec {
     Spear,        // 槍          20%
     Sword,        // 刀剣        20%
     Whip,         // 鞭          05%
-    Custom0 { name: String, base_value: u16 },
     Custom1 { name: String, base_value: u16 },
     Custom2 { name: String, base_value: u16 },
     Custom3 { name: String, base_value: u16 },
+    Custom4 { name: String, base_value: u16 },
 }
 
 
@@ -787,10 +787,10 @@ impl FightingSpec {
             Self::Spear          => 5,
             Self::Sword          => 6,
             Self::Whip           => 7,
-            Self::Custom0 { .. } => 8,
-            Self::Custom1 { .. } => 9,
-            Self::Custom2 { .. } => 10,
-            Self::Custom3 { .. } => 11,
+            Self::Custom1 { .. } => 8,
+            Self::Custom2 { .. } => 9,
+            Self::Custom3 { .. } => 10,
+            Self::Custom4 { .. } => 11,
         }
     }
 
@@ -805,10 +805,10 @@ impl FightingSpec {
             Self::Spear                             => 20,
             Self::Sword                             => 20,
             Self::Whip                              =>  5,
-            Self::Custom0 { base_value, .. }
-            | Self::Custom1 { base_value, .. }
+            Self::Custom1 { base_value, .. }
             | Self::Custom2 { base_value, .. }
-            | Self::Custom3 { base_value, .. }      => *base_value,
+            | Self::Custom3 { base_value, .. }
+            | Self::Custom4 { base_value, .. }      => *base_value,
         }
     }
 
@@ -831,8 +831,8 @@ impl FightingSpec {
             (Self::Sword,    Lang::En) => Some("Sword"),
             (Self::Whip,     Lang::Ja) => Some("鞭"),
             (Self::Whip,     Lang::En) => Some("Whip"),
-            (Self::Custom0 { name, .. } | Self::Custom1 { name, .. }
-            | Self::Custom2 { name, .. } | Self::Custom3 { name, .. }, _) => Some(name.as_str()),
+            (Self::Custom1 { name, .. } | Self::Custom2 { name, .. }
+            | Self::Custom3 { name, .. } | Self::Custom4 { name, .. }, _) => Some(name.as_str()),
         }
     }
 }
@@ -847,10 +847,10 @@ pub enum FirearmsSpec {
     MachineGun,    // 機関銃               10%
     RifleShotgun,  // ライフル/ショットガン  25%
     SubmachineGun, // サブマシンガン         15%
-    Custom0 { name: String, base_value: u16 },
     Custom1 { name: String, base_value: u16 },
     Custom2 { name: String, base_value: u16 },
     Custom3 { name: String, base_value: u16 },
+    Custom4 { name: String, base_value: u16 },
 }
 
 
@@ -869,10 +869,10 @@ impl FirearmsSpec {
             Self::MachineGun     => 3,
             Self::RifleShotgun   => 4,
             Self::SubmachineGun  => 5,
-            Self::Custom0 { .. } => 6,
-            Self::Custom1 { .. } => 7,
-            Self::Custom2 { .. } => 8,
-            Self::Custom3 { .. } => 9,
+            Self::Custom1 { .. } => 6,
+            Self::Custom2 { .. } => 7,
+            Self::Custom3 { .. } => 8,
+            Self::Custom4 { .. } => 9,
         }
     }
 
@@ -885,10 +885,10 @@ impl FirearmsSpec {
             Self::MachineGun                        => 10,
             Self::RifleShotgun                      => 25,
             Self::SubmachineGun                     => 15,
-            Self::Custom0 { base_value, .. }
-            | Self::Custom1 { base_value, .. }
+            Self::Custom1 { base_value, .. }
             | Self::Custom2 { base_value, .. }
-            | Self::Custom3 { base_value, .. }      => *base_value,
+            | Self::Custom3 { base_value, .. }
+            | Self::Custom4 { base_value, .. }      => *base_value,
         }
     }
 
@@ -907,8 +907,8 @@ impl FirearmsSpec {
             (Self::RifleShotgun,  Lang::En) => Some("Rifle/Shotgun"),
             (Self::SubmachineGun, Lang::Ja) => Some("サブマシンガン"),
             (Self::SubmachineGun, Lang::En) => Some("Submachine Gun"),
-            (Self::Custom0 { name, .. } | Self::Custom1 { name, .. }
-            | Self::Custom2 { name, .. } | Self::Custom3 { name, .. }, _) => Some(name.as_str()),
+            (Self::Custom1 { name, .. } | Self::Custom2 { name, .. }
+            | Self::Custom3 { name, .. } | Self::Custom4 { name, .. }, _) => Some(name.as_str()),
         }
     }
 }
@@ -916,23 +916,23 @@ impl FirearmsSpec {
 // --- ほかの言語 専門分野 (Language Other Specialization) ---
 #[derive(Clone)]
 pub enum LanguageSpec {
-    Custom0(String), Custom1(String), Custom2(String), Custom3(String),
+    Custom1(String), Custom2(String), Custom3(String), Custom4(String),
 }
 
 impl LanguageSpec {
     pub fn id(&self, base: u32) -> u32 {
         base + match self {
-            Self::Custom0(_) => 0,
-            Self::Custom1(_) => 1,
-            Self::Custom2(_) => 2,
-            Self::Custom3(_) => 3,
+            Self::Custom1(_) => 0,
+            Self::Custom2(_) => 1,
+            Self::Custom3(_) => 2,
+            Self::Custom4(_) => 3,
         }
     }
 
     pub fn label(&self, _lang: Lang) -> &str {
         match self {
-            Self::Custom0(s) | Self::Custom1(s)
-            | Self::Custom2(s) | Self::Custom3(s) => s.as_str(),
+            Self::Custom1(s) | Self::Custom2(s)
+            | Self::Custom3(s) | Self::Custom4(s) => s.as_str(),
         }
     }
 }
@@ -954,7 +954,7 @@ pub enum PilotSpec {
     Airliner,   // 定期旅客機
     JetFighter, // ジェット戦闘機
     Helicopter, // ヘリコプター
-    Custom0(String), Custom1(String), Custom2(String), Custom3(String),
+    Custom1(String), Custom2(String), Custom3(String), Custom4(String),
 }
 
 
@@ -978,10 +978,10 @@ impl PilotSpec {
             Self::Airliner   =>  7,
             Self::JetFighter =>  8,
             Self::Helicopter =>  9,
-            Self::Custom0(_) => 10,
-            Self::Custom1(_) => 11,
-            Self::Custom2(_) => 12,
-            Self::Custom3(_) => 13,
+            Self::Custom1(_) => 10,
+            Self::Custom2(_) => 11,
+            Self::Custom3(_) => 12,
+            Self::Custom4(_) => 13,
         }
     }
 
@@ -1013,8 +1013,8 @@ impl PilotSpec {
             (Self::JetFighter, Lang::En) => Some("Jet Fighter"),
             (Self::Helicopter, Lang::Ja) => Some("ヘリコプター"),
             (Self::Helicopter, Lang::En) => Some("Helicopter"),
-            (Self::Custom0(s) | Self::Custom1(s)
-            | Self::Custom2(s) | Self::Custom3(s), _) => Some(s.as_str()),
+            (Self::Custom1(s) | Self::Custom2(s)
+            | Self::Custom3(s) | Self::Custom4(s), _) => Some(s.as_str()),
         }
     }
 }
@@ -1036,7 +1036,7 @@ pub enum ScienceSpec {
     Pharmacy,     // 薬学
     Physics,      // 物理学
     Zoology,      // 動物学
-    Custom0(String), Custom1(String), Custom2(String), Custom3(String),
+    Custom1(String), Custom2(String), Custom3(String), Custom4(String),
 }
 
 
@@ -1064,10 +1064,10 @@ impl ScienceSpec {
             Self::Pharmacy     => 10,
             Self::Physics      => 11,
             Self::Zoology      => 12,
-            Self::Custom0(_)   => 13,
-            Self::Custom1(_)   => 14,
-            Self::Custom2(_)   => 15,
-            Self::Custom3(_)   => 16,
+            Self::Custom1(_)   => 13,
+            Self::Custom2(_)   => 14,
+            Self::Custom3(_)   => 15,
+            Self::Custom4(_)   => 16,
         }
     }
 
@@ -1102,8 +1102,8 @@ impl ScienceSpec {
             (Self::Physics,      Lang::En) => Some("Physics"),
             (Self::Zoology,      Lang::Ja) => Some("動物学"),
             (Self::Zoology,      Lang::En) => Some("Zoology"),
-            (Self::Custom0(s) | Self::Custom1(s)
-            | Self::Custom2(s) | Self::Custom3(s), _) => Some(s.as_str()),
+            (Self::Custom1(s) | Self::Custom2(s)
+            | Self::Custom3(s) | Self::Custom4(s), _) => Some(s.as_str()),
         }
     }
 }
@@ -1115,7 +1115,7 @@ pub enum SurvivalSpec {
     Arctic,
     Desert,
     Sea,
-    Custom0(String), Custom1(String), Custom2(String), Custom3(String),
+    Custom1(String), Custom2(String), Custom3(String), Custom4(String),
 }
 
 
@@ -1130,10 +1130,10 @@ impl SurvivalSpec {
             Self::Arctic     => 0,
             Self::Desert     => 1,
             Self::Sea        => 2,
-            Self::Custom0(_) => 3,
-            Self::Custom1(_) => 4,
-            Self::Custom2(_) => 5,
-            Self::Custom3(_) => 6,
+            Self::Custom1(_) => 3,
+            Self::Custom2(_) => 4,
+            Self::Custom3(_) => 5,
+            Self::Custom4(_) => 6,
         }
     }
 
@@ -1148,8 +1148,8 @@ impl SurvivalSpec {
             (Self::Desert,   Lang::En) => Some("Desert"),
             (Self::Sea,      Lang::Ja) => Some("海"),
             (Self::Sea,      Lang::En) => Some("Sea"),
-            (Self::Custom0(s) | Self::Custom1(s)
-            | Self::Custom2(s) | Self::Custom3(s), _) => Some(s.as_str()),
+            (Self::Custom1(s) | Self::Custom2(s)
+            | Self::Custom3(s) | Self::Custom4(s), _) => Some(s.as_str()),
         }
     }
 }
