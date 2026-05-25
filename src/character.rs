@@ -1153,18 +1153,107 @@ impl SurvivalSpec {
 // --- 装備 (Equipment) ---
 // ============================================================
 
+// --- 武器行 (Weapon) ---
+pub struct Weapon {
+    pub name:               String,
+    pub damage:             String,          // e.g. "1D4+DB"
+    pub range:              Option<String>,  // 射撃武器のみ
+    pub attacks_per_round:  u8,
+    pub ammunition:         Option<u16>,     // 射撃武器のみ
+    pub malfunction:        Option<u16>,     // 射撃武器のみ
+}
+
+// --- 収入と財産 (Wealth) ---
+pub struct Wealth {
+    pub spending_level: StandardOfLiving,
+    pub cash:           String,   // e.g. "$20"
+    pub assets:         String,
+}
+
+// --- 所持品カテゴリ (Possession) ---
 pub enum Possession {
-    // todo: 装備・武器・所持品の定義
-    Custom(String),
+    Weapon(Weapon),              // 武器テーブル行
+    GearItem(String),            // 装備と所持品（自由記述）
+    Wealth(Wealth),              // 収入と財産（上級ルール）
 }
 
 impl Possession {
     pub fn id(&self, base: usize) -> usize {
         base + match self {
-            Self::Custom(_) => 0,
+            Self::Weapon(_)   => 0,
+            Self::GearItem(_) => 1,
+            Self::Wealth(_)   => 2,
         }
     }
-    pub fn label(&self, _lang: Lang) -> &str { "" }
+
+    pub fn label(&self, lang: Lang) -> &'static str {
+        match (self, lang) {
+            (Self::Weapon(_),   Lang::En) => "Weapons",
+            (Self::Weapon(_),   Lang::Ja) => "武器",
+            (Self::GearItem(_), Lang::En) => "Gear & Possessions",
+            (Self::GearItem(_), Lang::Ja) => "装備と所持品",
+            (Self::Wealth(_),   Lang::En) => "Wealth",
+            (Self::Wealth(_),   Lang::Ja) => "収入と財産",
+        }
+    }
+}
+
+// --- 武器フィールドラベル (WeaponField) ---
+pub enum WeaponField {
+    Name,
+    Regular,
+    Hard,
+    Extreme,
+    Damage,
+    Range,
+    AttacksPerRound,
+    Ammunition,
+    Malfunction,
+}
+
+impl WeaponField {
+    pub fn label(&self, lang: Lang) -> &'static str {
+        match (self, lang) {
+            (Self::Name,            Lang::En) => "Weapon",
+            (Self::Name,            Lang::Ja) => "武器",
+            (Self::Regular,         Lang::En) => "Regular",
+            (Self::Regular,         Lang::Ja) => "レギュラー",
+            (Self::Hard,            Lang::En) => "Hard",
+            (Self::Hard,            Lang::Ja) => "ハード",
+            (Self::Extreme,         Lang::En) => "Extreme",
+            (Self::Extreme,         Lang::Ja) => "イクストリーム",
+            (Self::Damage,          Lang::En) => "Damage",
+            (Self::Damage,          Lang::Ja) => "ダメージ",
+            (Self::Range,           Lang::En) => "Range",
+            (Self::Range,           Lang::Ja) => "射程",
+            (Self::AttacksPerRound, Lang::En) => "Attacks",
+            (Self::AttacksPerRound, Lang::Ja) => "攻撃回数",
+            (Self::Ammunition,      Lang::En) => "Ammo",
+            (Self::Ammunition,      Lang::Ja) => "装弾数",
+            (Self::Malfunction,     Lang::En) => "Malfunction",
+            (Self::Malfunction,     Lang::Ja) => "故障",
+        }
+    }
+}
+
+// --- 収入と財産フィールドラベル (WealthField) ---
+pub enum WealthField {
+    SpendingLevel,
+    Cash,
+    Assets,
+}
+
+impl WealthField {
+    pub fn label(&self, lang: Lang) -> &'static str {
+        match (self, lang) {
+            (Self::SpendingLevel, Lang::En) => "Spending Level",
+            (Self::SpendingLevel, Lang::Ja) => "支出レベル",
+            (Self::Cash,          Lang::En) => "Cash",
+            (Self::Cash,          Lang::Ja) => "現金",
+            (Self::Assets,        Lang::En) => "Assets",
+            (Self::Assets,        Lang::Ja) => "資産",
+        }
+    }
 }
 
 // ============================================================
