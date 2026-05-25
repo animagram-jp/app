@@ -215,6 +215,8 @@ html:
 
 ##### 2-1. Dice Roll - ダイスロール (nDn + n)
 
+- Calculate {count: i8} *Rand(1..{side: u8}) + {count: i8} *Rand(1..{side: u8}) + {modifier: i8}
+
 選択後に表示されるべきインタラクティブUIは、出現順に
 1. text[field](Roll::Field::DiceCount), +-ボタン(上下キーも同等に), 初期値1のnumber[1~100]入力欄(focusが当たったら直接入力とする。入力時のkeyboard enterで決定を発火), 「次へ」ボタン(enterも同等に)
 2. text[field](Roll::Field::DiceSide), button[up] button[down], input[number(2(初期値),3,4,5,6,8,12,16,20,50,100)], button[next]
