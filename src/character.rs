@@ -14,6 +14,7 @@ pub enum Character {
     Skill,
     Possession,
     Backstory,
+    Memo,
 }
 
 impl Character {
@@ -31,6 +32,8 @@ impl Character {
             (Self::Equipment,      Lang::Ja) => "所持品",
             (Self::Backstory,      Lang::En) => "Backstory",
             (Self::Backstory,      Lang::Ja) => "バックストーリー",
+            (Self::Memo,           Lang::En) => "My Story",
+            (Self::Memo,           Lang::Ja) => "メモ",
         }
     }
     pub const fn id(&self) -> u32 {
@@ -41,6 +44,7 @@ impl Character {
             Self::Skill             =>  40,  //  40- 86 (47件)
             Self::Equipment         =>  90,  //  90-... (拡張余地)
             Self::Backstory         => 100,  // 100-109 (10件)
+            Self::Memo              => 110,  // 110      (1件)
         }
     }
 }
@@ -60,8 +64,8 @@ pub enum Profile {
 }
 
 impl Profile {
-    pub fn id(&self, base: usize) -> usize {
-        base + match self {
+    pub fn id(&self) -> u32 {
+        Character::Profile.id() + match self {
             Self::Name       => 0,
             Self::Birthpalce => 1,
             Self::Pronoun    => 2,
@@ -215,8 +219,8 @@ pub enum Characteristic {
 }
 
 impl Characteristic {
-    pub fn id(&self, base: usize) -> usize {
-        base + match self {
+    pub fn id(&self) -> u32 {
+        Character::Characteristic.id() + match self {
             Self::Strength     => 0,
             Self::Constitution => 1,
             Self::Size         => 2,
@@ -416,9 +420,10 @@ impl Skill {
         ]
     }
 
-    pub fn id(&self, base: usize) -> usize {
-        // spec有り: Specにbaseを伝播してSpec内でIDを確定する
+    pub fn id(&self) -> u32 {
+        // spec有り: Specにオフセットを伝播してSpec内でIDを確定する
         // spec無し: base+100 以降に配置（Specオフセット域 0..100 と衝突しない）
+        let base = Character::Skill.id();
         match self {
             Self::ArtCraft(spec)      => spec.id(base +   0),  //   0.. 16 (幅17)
             Self::Fighting(spec)      => spec.id(base +  17),  //  17.. 28 (幅12)
@@ -468,7 +473,7 @@ impl Skill {
             Self::Throw               => base + 137,
             Self::Track               => base + 138,
             // Custom: 140.. (SPEC_CUSTOM_SLOTS 個)
-            Self::Custom { slot, .. } => base + 140 + slot,
+            Self::Custom { slot, .. } => base + 140 + *slot as u32,
         }
     }
 
@@ -687,7 +692,7 @@ impl ArtCraftSpec {
         ]
     }
 
-    pub fn id(&self, base: usize) -> usize {
+    pub fn id(&self, base: u32) -> u32 {
         base + match self {
             Self::None        => unreachable!(),
             Self::Acting      =>  0,
@@ -771,7 +776,7 @@ impl FightingSpec {
           Self::Garrote, Self::Spear, Self::Sword, Self::Whip]
     }
 
-    pub fn id(&self, base: usize) -> usize {
+    pub fn id(&self, base: u32) -> u32 {
         base + match self {
             Self::None           => unreachable!(),
             Self::Axe            => 0,
@@ -855,7 +860,7 @@ impl FirearmsSpec {
           Self::MachineGun, Self::RifleShotgun, Self::SubmachineGun]
     }
 
-    pub fn id(&self, base: usize) -> usize {
+    pub fn id(&self, base: u32) -> u32 {
         base + match self {
             Self::None           => unreachable!(),
             Self::Bow            => 0,
@@ -915,7 +920,7 @@ pub enum LanguageSpec {
 }
 
 impl LanguageSpec {
-    pub fn id(&self, base: usize) -> usize {
+    pub fn id(&self, base: u32) -> u32 {
         base + match self {
             Self::Custom0(_) => 0,
             Self::Custom1(_) => 1,
@@ -960,7 +965,7 @@ impl PilotSpec {
           Self::JetFighter, Self::Helicopter]
     }
 
-    pub fn id(&self, base: usize) -> usize {
+    pub fn id(&self, base: u32) -> u32 {
         base + match self {
             Self::None       => unreachable!(),
             Self::Boat       =>  0,
@@ -1043,7 +1048,7 @@ impl ScienceSpec {
           Self::Zoology]
     }
 
-    pub fn id(&self, base: usize) -> usize {
+    pub fn id(&self, base: u32) -> u32 {
         base + match self {
             Self::None         => unreachable!(),
             Self::Astronomy    =>  0,
@@ -1119,7 +1124,7 @@ impl SurvivalSpec {
         &[Self::Arctic, Self::Desert, Self::Sea]
     }
 
-    pub fn id(&self, base: usize) -> usize {
+    pub fn id(&self, base: u32) -> u32 {
         base + match self {
             Self::None       => unreachable!(),
             Self::Arctic     => 0,
@@ -1253,8 +1258,8 @@ pub enum Possession {
 }
 
 impl Possession {
-    pub fn id(&self, base: usize) -> usize {
-        base + match self {
+    pub fn id(&self) -> u32 {
+        Character::Equipment.id() + match self {
             Self::Weapon(_)   => 0,
             Self::Armor(_)    => 1,
             Self::GearItem(_) => 2,
@@ -1352,8 +1357,8 @@ pub enum Backstory {
 }
 
 impl Backstory {
-    pub fn id(&self, base: usize) -> usize {
-        base + match self {
+    pub fn id(&self) -> u32 {
+        Character::Backstory.id() + match self {
             Self::KeyConnection(_)              => 0,
             Self::PersonalDescription           => 1,
             Self::IdeologyAndBeliefs            => 2,
@@ -1394,14 +1399,87 @@ impl Backstory {
 }
 
 // ============================================================
+// --- メモ (Memo) ---
+// ============================================================
+
+/// メモスロット。slot: 0..MAX_MEMO_SLOTS-1
+/// encode/decode のバイト列レイアウト:
+///   [title_len: u32 LE][title: utf-8][body: utf-8]
+/// label()  → title（表示名）
+/// display() → body（本文）
+pub struct Memo {
+    pub slot: usize,
+}
+
+pub const MAX_MEMO_SLOTS: usize = 8;
+
+impl Memo {
+    /// slot 0..MAX_MEMO_SLOTS-1 の一覧を返す
+    pub fn list() -> [Memo; MAX_MEMO_SLOTS] {
+        core::array::from_fn(|slot| Memo { slot })
+    }
+
+    /// DataStruct のキーとなる ID。Character::Memo の const id を直接参照。
+    pub fn id(&self) -> u32 {
+        Character::Memo.id() + self.slot as u32
+    }
+
+    /// [title_len: u32 LE][title: utf-8][body: utf-8]
+    pub fn encode(title: &str, body: &str) -> Vec<u8> {
+        let t = title.as_bytes();
+        let b = body.as_bytes();
+        let mut out = Vec::with_capacity(4 + t.len() + b.len());
+        out.extend_from_slice(&(t.len() as u32).to_le_bytes());
+        out.extend_from_slice(t);
+        out.extend_from_slice(b);
+        out
+    }
+
+    /// → (title, body)
+    pub fn decode(bytes: &[u8]) -> (String, String) {
+        let title_len = bytes.get(0..4)
+            .and_then(|b| b.try_into().ok())
+            .map(u32::from_le_bytes)
+            .unwrap_or(0) as usize;
+        let title_start = 4;
+        let title = bytes.get(title_start..title_start + title_len)
+            .map(|b| String::from_utf8_lossy(b).into_owned())
+            .unwrap_or_default();
+        let body = bytes.get(title_start + title_len..)
+            .map(|b| String::from_utf8_lossy(b).into_owned())
+            .unwrap_or_default();
+        (title, body)
+    }
+
+    /// title（表示名）を返す。bytes が空の場合は "Note N" / "メモ N"。
+    pub fn label(&self, bytes: &[u8], lang: Lang) -> String {
+        let (title, _) = Self::decode(bytes);
+        if title.is_empty() {
+            match lang {
+                Lang::En => format!("Note {}",  self.slot + 1),
+                Lang::Ja => format!("メモ {}", self.slot + 1),
+            }
+        } else {
+            title
+        }
+    }
+
+    /// body（本文）を返す。
+    pub fn display(bytes: &[u8]) -> String {
+        let (_, body) = Self::decode(bytes);
+        body
+    }
+}
+
+// ============================================================
 // --- 導出値・判定カテゴリ (Derived) ---
 // ============================================================
 
 pub enum Derived {
     HitPoints,
     MagicPoints,
-    Build,
-    DamageBonus,
+    Build(i8),
+    DamageBonus(i8),
     MoveRate,
     Sanity,
     OccupationSkillPoints,
@@ -1409,12 +1487,12 @@ pub enum Derived {
 }
 
 impl Derived {
-    pub fn id(&self, base: usize) -> usize {
-        base + match self {
+    pub fn id(&self) -> u32 {
+        Character::Derived.id() + match self {
             Self::HitPoints             => 0,
             Self::MagicPoints           => 1,
-            Self::Build                 => 2,
-            Self::DamageBonus           => 3,
+            Self::Build(_)              => 2,
+            Self::DamageBonus(_)        => 3,
             Self::MoveRate              => 4,
             Self::Sanity                => 5,
             Self::OccupationSkillPoints => 6,
@@ -1422,14 +1500,14 @@ impl Derived {
         }
     }
 
-    pub fn label(&self, lang: Lang) -> &str {
-        match (self, lang){
+    pub fn label(&self, lang: Lang) -> &'static str {
+        match (self, lang) {
             (Self::HitPoints,                    _) => "HP",
             (Self::MagicPoints,                  _) => "MP",
-            (Self::Build,                 Lang::En) => "Build",
-            (Self::Build,                 Lang::Ja) => "ビルド",
-            (Self::DamageBonus,           Lang::En) => "Damage Bonus",
-            (Self::DamageBonus,           Lang::Ja) => "ダメージボーナス",
+            (Self::Build(_),              Lang::En) => "Build",
+            (Self::Build(_),              Lang::Ja) => "ビルド",
+            (Self::DamageBonus(_),        Lang::En) => "Damage Bonus",
+            (Self::DamageBonus(_),        Lang::Ja) => "ダメージボーナス",
             (Self::MoveRate,              Lang::En) => "Move Rate",
             (Self::MoveRate,              Lang::Ja) => "移動率 (MOV)",
             (Self::Sanity,                Lang::En) => "Sanity",
@@ -1440,6 +1518,61 @@ impl Derived {
             (Self::InterestSkillPoints,   Lang::Ja) => "興味技能ポイント",
         }
     }
+
+    /// STR + SIZ から Build(i8) を導出する。
+    pub fn derive(str: u16, siz: u16) -> Self {
+        let value = match str as i32 + siz as i32 {
+              2..= 64 => -2,
+             65..= 84 => -1,
+             85..=124 =>  0,
+            125..=164 =>  1,
+            165..=204 =>  2,
+            205..=284 =>  3,
+            285..=364 =>  4,
+            _         =>  5,
+        };
+        Self::Build(value)
+    }
+
+    /// i8 → 1バイト (as u8)
+    pub fn encode(value: i8) -> Vec<u8> {
+        vec![value as u8]
+    }
+
+    /// 1バイト → i8
+    pub fn decode(bytes: &[u8]) -> i8 {
+        bytes.first().copied().map(|b| b as i8).unwrap_or(0)
+    }
+
+    /// Build(i8) の符号付き表示文字列。DamageBonus(i8) はそのまま委譲。
+    pub fn display(value: i8) -> &'static str {
+        match value {
+            i8::MIN..=-2 => "-2",
+            -1           => "-1",
+             0           =>  "0",
+             1           => "+1",
+             2           => "+2",
+             3           => "+3",
+             4           => "+4",
+            _            => "+5",
+        }
+    }
+
+    /// Build の i8 値から対応するダメージボーナス表記を返す。
+    /// DamageBonus(i8) は Build(i8) と 1対1 なので同値を渡す。
+    pub fn damage_bonus_display(build: i8) -> &'static str {
+        match build {
+            i8::MIN..=-2 => "-2",
+            -1           => "-1",
+             0           =>  "0",
+             1           => "+1D4",
+             2           => "+1D6",
+             3           => "+2D6",
+             4           => "+3D6",
+            _            => "+4D6",
+        }
+    }
+
     pub fn compute(&self, data_struct: &DataStruct) -> Result<Vec<u8>, ListError> {
         match self {
             Self::HitPoints => {
@@ -1453,13 +1586,30 @@ impl Derived {
                 let val = power.iter().map(|&b| b as u16).sum::<u16>() / 5;
                 Ok(val.to_le_bytes().to_vec())
             }
-            Self::Build => {
-                // todo: Build計算
-                Ok(vec![0])
+            Self::Build(_) => {
+                let str = data_struct.get(&Character::Characteristic(Characteristic::Strength))?;
+                let siz = data_struct.get(&Character::Characteristic(Characteristic::Size))?;
+                let str_val = str.iter().map(|&b| b as u16).sum::<u16>();
+                let siz_val = siz.iter().map(|&b| b as u16).sum::<u16>();
+                let build = Self::derive(str_val, siz_val);
+                if let Self::Build(v) = build {
+                    Ok(Self::encode(v))
+                } else {
+                    Ok(Self::encode(0))
+                }
             }
-            Self::DamageBonus => {
-                // todo: DamageBonus計算
-                Ok(vec![0])
+            Self::DamageBonus(_) => {
+                // Build と同値なので Build の計算結果をそのまま委譲
+                let str = data_struct.get(&Character::Characteristic(Characteristic::Strength))?;
+                let siz = data_struct.get(&Character::Characteristic(Characteristic::Size))?;
+                let str_val = str.iter().map(|&b| b as u16).sum::<u16>();
+                let siz_val = siz.iter().map(|&b| b as u16).sum::<u16>();
+                let build = Self::derive(str_val, siz_val);
+                if let Self::Build(v) = build {
+                    Ok(Self::encode(v))
+                } else {
+                    Ok(Self::encode(0))
+                }
             }
             Self::MoveRate => {
                 // todo: 移動率計算 (STR/DEX/SIZ比較)
@@ -1472,61 +1622,9 @@ impl Derived {
             _ => Ok(vec![]),
         }
     }
+
     pub fn update(&self) {
         // todo: Derivedを一括再計算する
-    }
-}
-
-// --- ビルド (Build) ---
-enum BuildRank { // STR + SIZ の合計値から決定される離散段階。DamageBonus と 1対1 対応する。
-    Neg2, // -2  (STR+SIZ:   2- 64)
-    Neg1, // -1  (STR+SIZ:  65- 84)
-    Zero, //  0  (STR+SIZ:  85-124)
-    Pos1, // +1  (STR+SIZ: 125-164)
-    Pos2, // +2  (STR+SIZ: 165-204)
-    Pos3, // +3  (STR+SIZ: 205-284)
-    Pos4, // +4  (STR+SIZ: 285-364)
-    Pos5, // +5  (STR+SIZ: 365+   )
-}
-
-impl BuildRank {
-    pub fn value(&self) -> i8 {
-        match self {
-            Self::Neg2 => -2,
-            Self::Neg1 => -1,
-            Self::Zero =>  0,
-            Self::Pos1 =>  1,
-            Self::Pos2 =>  2,
-            Self::Pos3 =>  3,
-            Self::Pos4 =>  4,
-            Self::Pos5 =>  5,
-        }
-    }
-}
-
-enum DamageBonusDice {
-    Neg2,   // -2   (Build -2)
-    Neg1,   // -1   (Build -1)
-    Zero,   // 0    (Build  0)
-    Pos1D4, // +1D4 (Build +1)
-    Pos1D6, // +1D6 (Build +2)
-    Pos2D6, // +2D6 (Build +3)
-    Pos3D6, // +3D6 (Build +4)
-    Pos4D6, // +4D6 (Build +5)
-}
-
-impl DamageBonusDice {
-    pub fn label(&self) -> &'static str {
-        match self {
-            Self::Neg2  => "-2",
-            Self::Neg1  => "-1",
-            Self::Zero  => "0",
-            Self::Pos1D4 => "+1D4",
-            Self::Pos1D6 => "+1D6",
-            Self::Pos2D6 => "+2D6",
-            Self::Pos3D6 => "+3D6",
-            Self::Pos4D6 => "+4D6",
-        }
     }
 }
 
