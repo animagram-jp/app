@@ -12,7 +12,7 @@ pub enum Character {
     Characteristic,
     Derived,
     Skill,
-    Equipment,
+    Possession,
     Backstory,
 }
 
@@ -26,8 +26,8 @@ impl Character {
             (Self::Derived,        Lang::En) => "Other Attributes",
             (Self::Derived,        Lang::Ja) => "ほかの属性",
             (Self::Skill,          Lang::En) => "Skill",
-            (Self::Skill,          Lang::Ja) => "技能",            
-            (Self::Equipment,      Lang::En) => "Equipment",
+            (Self::Skill,          Lang::Ja) => "技能",
+            (Self::Equipment,      Lang::En) => "Possession",
             (Self::Equipment,      Lang::Ja) => "所持品",
             (Self::Backstory,      Lang::En) => "Backstory",
             (Self::Backstory,      Lang::Ja) => "バックストーリー",
@@ -281,9 +281,9 @@ impl Characteristic {
     pub fn generate(&self) -> u16 {
         // SIZ / INT / EDU は (2d6+6)×5、それ以外は 3d6×5
         match self {
-            Self::Size | Self::Intelligence | Self::Education => 
+            Self::Size | Self::Intelligence | Self::Education =>
                 (n_d_n(2, 6) + 6) as u16 * 5,
-            _ => 
+            _ =>
                 n_d_n(3, 6) as u16 * 5,
         }
     }
@@ -1153,12 +1153,12 @@ impl SurvivalSpec {
 // --- 装備 (Equipment) ---
 // ============================================================
 
-pub enum Equipment {
+pub enum Possession {
     // todo: 装備・武器・所持品の定義
     Custom(String),
 }
 
-impl Equipment {
+impl Possession {
     pub fn id(&self, base: usize) -> usize {
         base + match self {
             Self::Custom(_) => 0,
@@ -1177,7 +1177,7 @@ pub enum Backstory {
     IdeologyAndBeliefs,
     SignificantPeople,
     MeaningfulLocation,
-    TreasuredPossessions,
+    TreasuredPossession,
     Trait,
     PhobiasAndManias,
     ArcaneTomesAndSpells,
@@ -1192,7 +1192,7 @@ impl Backstory {
             Self::IdeologyAndBeliefs            => 2,
             Self::SignificantPeople             => 3,
             Self::MeaningfulLocation            => 4,
-            Self::TreasuredPossessions          => 5,
+            Self::TreasuredPossession          => 5,
             Self::Trait                         => 6,
             Self::PhobiasAndManias              => 7,
             Self::ArcaneTomesAndSpells          => 8,
@@ -1212,8 +1212,8 @@ impl Backstory {
             (Self::SignificantPeople,             Lang::Ja) => "重要な人物",
             (Self::MeaningfulLocation,            Lang::En) => "Meaningful Location",
             (Self::MeaningfulLocation,            Lang::Ja) => "思い出の場所",
-            (Self::TreasuredPossessions,          Lang::En) => "Treasured Possessions",
-            (Self::TreasuredPossessions,          Lang::Ja) => "大切な持ち物",
+            (Self::TreasuredPossession,          Lang::En) => "Treasured Possession",
+            (Self::TreasuredPossession,          Lang::Ja) => "大切な持ち物",
             (Self::Trait,                         Lang::En) => "Trait",
             (Self::Trait,                         Lang::Ja) => "特徴・癖",
             (Self::PhobiasAndManias,              Lang::En) => "Phobias & Manias",
