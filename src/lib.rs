@@ -37,7 +37,7 @@ impl Lang {
 // ============================================================
 
 pub fn n_d_n(count: u32, sides: u32) -> u32 {
-    (0..count).map(|_| rand::rng().random_range(1..=sides)).sum()
+    (0..count).map(|_| rng().random_range(1..=sides)).sum()
 }
 
 // ============================================================

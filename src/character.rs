@@ -1155,14 +1155,32 @@ impl SurvivalSpec {
 }
 
 // ============================================================
+// --- ダイスロール (Dice Roll) ---
+// ============================================================
+
+use rand::{rng, RngExt};
+
+type Dice = (u8, u8); // (count, sides)
+
+// ============================================================
 // --- 装備 (Equipment) ---
 // ============================================================
+
+// --- 武器行 (Weapon) ---
+pub struct Weapon {
+    pub name:               String,
+    pub spec:               WeaponSpec,
+    pub damage:             String,          // e.g. "1D4+DB"
+    pub range:              Option<String>,  // 射撃武器のみ
+    pub attacks_per_round:  u8,
+    pub ammunition:         Option<u16>,     // 射撃武器のみ
+    pub malfunction:        Option<u16>,     // 射撃武器のみ
+}
 
 // --- 定義済み武器 (WeaponSpec) ---
 // JSON の "weapon" フィールド値と対応する。
 // Fighting (Sword) のようにスキル参照のみのケースは SkillRef で表す。
-pub enum WeaponSpec {
-    // 近接
+pub enum Weapon {
     ClubLarge,      // Club, large   1D8+DB
     KnifeMedium,    // Knife, Medium 1D6+DB  (貫通)
     // スキル参照（ダメージはスキル側に依存）
@@ -1171,17 +1189,47 @@ pub enum WeaponSpec {
     Custom(String),
 }
 
-impl WeaponSpec {
+impl Weapon {
     pub fn label(&self, lang: Lang) -> &str {
         match (self, lang) {
-            (Self::ClubLarge,    Lang::En) => "Club, large",
-            (Self::ClubLarge,    Lang::Ja) => "棍棒（大）",
+            "Bow and Arrows"
+            "弓と矢",
+            "ブラスナックル",
+            "むち",
+            "燃えているたいまつ",
+            "チェーンソー",
+            "ブラックジャック",
+            (Self::ClubLarge,    Lang::En) => "Club, Large",
+            (Self::ClubLarge,    Lang::Ja) => "大きい棍棒",
+            "小さい棍棒",
+            "クロスボウ",
+            "絞殺ひも",
+            "手斧/小鎌",
+            "大型ナイフ",
             (Self::KnifeMedium,  Lang::En) => "Knife, Medium",
-            (Self::KnifeMedium,  Lang::Ja) => "ナイフ（中）",
+            (Self::KnifeMedium,  Lang::Ja) => "中型ナイフ",
+            "小型ナイフ",
+            "催眠スプレー",
+            "ヌンチャク",
+            "投石",
+            "手裏剣",
+            "騎兵槍",
+            "投げ槍",
+            "重い刀剣",
+            "中型の刀剣",
+            "軽い刀剣",
+            "スタンガン(接触型)",
+            "スタンガン(射出型)",
+            "戦闘用ブーメラン",
+            "木斧",
             (Self::FightingSword,Lang::En) => "Fighting (Sword)",
             (Self::FightingSword,Lang::Ja) => "近接戦闘（刀剣）",
             (Self::Custom(s),    _)        => s.as_str(),
         }
+    }
+
+    pub fn skill() -> &Skill {
+        
     }
 
     /// 基本ダメージ式。スキル参照型は None（呼び出し側でスキルから取得）。
@@ -1196,9 +1244,13 @@ impl WeaponSpec {
 }
 
 // --- 定義済み装甲 (ArmorSpec) ---
-// JSON の "armor" フィールド値と対応する。装甲点は points() で取得。
+// JSON の "armor" フィールド値と対応する。装甲点は points() で取得。 p.108
 pub enum ArmorSpec {
     ThickLeatherJacket, // 厚い皮のジャケット  1pt
+
+
+
+
     MilitaryBodyArmor,  // 軍用ボディ・アーマー 12pt
     Custom(String),     // 自由記述（装甲点は別途入力）
 }
@@ -1208,8 +1260,15 @@ impl ArmorSpec {
         match (self, lang) {
             (Self::ThickLeatherJacket, Lang::En) => "Thick Leather Jacket",
             (Self::ThickLeatherJacket, Lang::Ja) => "厚い皮のジャケット",
+            (Self::, Lang::Ja) => "第一次大戦型のヘルメット",
+            (Self::, Lang::Ja) => "3cmの堅い木",
+            (Self::, Lang::Ja) => "現代アメリカ軍のヘルメット",
+            (Self::, Lang::Ja) => "厚いケブラー製のベスト",
             (Self::MilitaryBodyArmor,  Lang::En) => "Military Body Armor",
             (Self::MilitaryBodyArmor,  Lang::Ja) => "軍用ボディ・アーマー",
+            (Self::, Lang::Ja) => "4cmの防弾ガラス",
+            (Self::, Lang::Ja) => "5cmの鋼鉄板",
+            (Self::, Lang::Ja) => "大きなサンドバッグ",
             (Self::Custom(s),          _)        => s.as_str(),
         }
     }
@@ -1218,21 +1277,17 @@ impl ArmorSpec {
     pub fn points(&self) -> Option<u8> {
         match self {
             Self::ThickLeatherJacket =>  Some(1),
+            2,
+            3,
+            5,
+            8,
             Self::MilitaryBodyArmor  => Some(12),
+            15,
+            19,
+            20,
             Self::Custom(_)          => None,
         }
     }
-}
-
-// --- 武器行 (Weapon) ---
-pub struct Weapon {
-    pub name:               String,
-    pub spec:               WeaponSpec,
-    pub damage:             String,          // e.g. "1D4+DB"
-    pub range:              Option<String>,  // 射撃武器のみ
-    pub attacks_per_round:  u8,
-    pub ammunition:         Option<u16>,     // 射撃武器のみ
-    pub malfunction:        Option<u16>,     // 射撃武器のみ
 }
 
 // --- 装甲行 (Armor) ---
