@@ -123,9 +123,28 @@ html:
 
 #### js_client.rs
 
-- html, cssのweb standard 知識を反映し、操作先elementと操作fn,デバイス判定・ジェスチャー判定を発行する。
+```rust
+use js_client::{
+    Operation, CanvasCmd,
+    get_js_str, get_js_u32, get_js_f64, get_js_field,
+    EventType, KeyName,
+    Device, Gesture, PointerState,
+    dom, CanvasEvent,
+};
+```
+
+- DOM Living Standard知識の操作対象と操作関数を定義する。
+- DOMのステートはブラウザが保持しているので、操作関数は引数に取る。
+- 端末・人間の特性値に関わる操作関数(`detect_gesture`)は既存の知見を参照する: [Gesture.md](./Gesture.md)
 
 #### list.rs
+
+```rust
+use list::{
+    List::{new, new_from_bytes, get, get_from_bytes, set, delete,},
+    VariableList::{new, new_from_bytes, get, set, upsert, delete,},
+};
+```
 
 - 可変長論理バイト列の宣言と、固定長要素列操作Listと可変長(バイト倍数)要素列操作VariabeList。
 - 下記のプールメモリの読み取りに対応して、バイト列読み取り関数new_from_bytesとget_from_bytesも公開。
