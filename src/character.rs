@@ -4,6 +4,14 @@ use crate::list::ListError;
 use crate::data_struct::DataStruct;
 
 // ============================================================
+// --- ダイスロール (Dice Roll) ---
+// ============================================================
+
+use rand::{rng, RngExt};
+
+type Dice = (u8, u8); // (count, sides)
+
+// ============================================================
 // --- キャラクター (Character) ---
 // ============================================================
 
@@ -1152,14 +1160,6 @@ impl Skill {
 }
 
 // ============================================================
-// --- ダイスロール (Dice Roll) ---
-// ============================================================
-
-use rand::{rng, RngExt};
-
-type Dice = (u8, u8); // (count, sides)
-
-// ============================================================
 // --- 装備 (Equipment) ---
 // ============================================================
 
@@ -1183,7 +1183,7 @@ pub enum Weapon {
     Shuriken,               // Shuriken            1D3+half DB      (貫通)
     Spear,                  // Spear               1D8+1            (貫通)
     SpearThrown,            // Spear, Thrown       1D8+half DB      (貫通)
-    // mdにないもの（チェーンソー、マセスプレー、スタンガン、刀剣類、戦闘用ブーメラン、木斧）は別途追加予定
+    // todo!(チェーンソー、マセスプレー、スタンガン、刀剣類、戦闘用ブーメラン、木斧)
     // --- 拳銃 (Handguns) ---
     Auto22Short,            // .22 Short Automatic 1D6
     Derringer25,            // .25 Derringer       1D6
@@ -1219,11 +1219,30 @@ pub enum Weapon {
 }
 
 impl Weapon {
-    pub fn name() {
-        // later todo
-    }
-
-    pub fn label(&self, lang: Lang) -> &str {
+    // pub fn label(&self, lang: Lang) -> &'static str {
+    //     match (self, lang) {
+    //         (Self::Name,            Lang::En) => "Weapon",
+    //         (Self::Name,            Lang::Ja) => "武器",
+    //         (Self::Regular,         Lang::En) => "Regular",
+    //         (Self::Regular,         Lang::Ja) => "レギュラー",
+    //         (Self::Hard,            Lang::En) => "Hard",
+    //         (Self::Hard,            Lang::Ja) => "ハード",
+    //         (Self::Extreme,         Lang::En) => "Extreme",
+    //         (Self::Extreme,         Lang::Ja) => "イクストリーム",
+    //         (Self::Damage,          Lang::En) => "Damage",
+    //         (Self::Damage,          Lang::Ja) => "ダメージ",
+    //         (Self::Range,           Lang::En) => "Range",
+    //         (Self::Range,           Lang::Ja) => "射程",
+    //         (Self::AttacksPerRound, Lang::En) => "Attacks",
+    //         (Self::AttacksPerRound, Lang::Ja) => "攻撃回数",
+    //         (Self::Ammunition,      Lang::En) => "Ammo",
+    //         (Self::Ammunition,      Lang::Ja) => "装弾数",
+    //         (Self::Malfunction,     Lang::En) => "Malfunction",
+    //         (Self::Malfunction,     Lang::Ja) => "故障",
+    //     }
+    // }
+    
+    pub fn display(&self, lang: Lang) -> &str {
         match (self, lang) {
             (Self::BowAndArrows,           Lang::En) => "Bow and Arrows",
             (Self::BowAndArrows,           Lang::Ja) => "弓と矢",
@@ -1344,25 +1363,25 @@ impl Weapon {
             Self::LugerP08                              => Skill::Firearms(FirearmsSpec::Handgun),
             Self::Revolver45                            => Skill::Firearms(FirearmsSpec::Handgun),
             Self::Automatic45                           => Skill::Firearms(FirearmsSpec::Handgun),
-            Self::BoltAction22                          => Skill::Firearms(FirearmsSpec::Rifle),
-            Self::LeverAction30                         => Skill::Firearms(FirearmsSpec::Rifle),
-            Self::MartiniHenry45                        => Skill::Firearms(FirearmsSpec::Rifle),
-            Self::MoranAirRifle                         => Skill::Firearms(FirearmsSpec::Rifle),
-            Self::LeeEnfield303                         => Skill::Firearms(FirearmsSpec::Rifle),
-            Self::BoltAction3006                        => Skill::Firearms(FirearmsSpec::Rifle),
-            Self::ElephantGun                           => Skill::Firearms(FirearmsSpec::Rifle),
-            Self::Shotgun20Gauge                        => Skill::Firearms(FirearmsSpec::Shotgun),
-            Self::Shotgun16Gauge                        => Skill::Firearms(FirearmsSpec::Shotgun),
-            Self::Shotgun12Gauge                        => Skill::Firearms(FirearmsSpec::Shotgun),
-            Self::Shotgun12GaugeSemiAuto                => Skill::Firearms(FirearmsSpec::Shotgun),
-            Self::Shotgun12GaugeSawedOff                => Skill::Firearms(FirearmsSpec::Shotgun),
-            Self::BergmannMP18                          => Skill::Firearms(FirearmsSpec::Smg),
-            Self::Thompson                              => Skill::Firearms(FirearmsSpec::Smg),
-            Self::BrowningAutoRifle                     => Skill::Firearms(FirearmsSpec::Mg),
-            Self::BrowningM1917                         => Skill::Firearms(FirearmsSpec::Mg),
-            Self::BrenGun                               => Skill::Firearms(FirearmsSpec::Mg),
-            Self::LewisGun                              => Skill::Firearms(FirearmsSpec::Mg),
-            Self::Vickers303                            => Skill::Firearms(FirearmsSpec::Mg),
+            Self::BoltAction22                          => Skill::Firearms(FirearmsSpec::RifleShotgun),
+            Self::LeverAction30                         => Skill::Firearms(FirearmsSpec::RifleShotgun),
+            Self::MartiniHenry45                        => Skill::Firearms(FirearmsSpec::RifleShotgun),
+            Self::MoranAirRifle                         => Skill::Firearms(FirearmsSpec::RifleShotgun),
+            Self::LeeEnfield303                         => Skill::Firearms(FirearmsSpec::RifleShotgun),
+            Self::BoltAction3006                        => Skill::Firearms(FirearmsSpec::RifleShotgun),
+            Self::ElephantGun                           => Skill::Firearms(FirearmsSpec::RifleShotgun),
+            Self::Shotgun20Gauge                        => Skill::Firearms(FirearmsSpec::RifleShotgun),
+            Self::Shotgun16Gauge                        => Skill::Firearms(FirearmsSpec::RifleShotgun),
+            Self::Shotgun12Gauge                        => Skill::Firearms(FirearmsSpec::RifleShotgun),
+            Self::Shotgun12GaugeSemiAuto                => Skill::Firearms(FirearmsSpec::RifleShotgun),
+            Self::Shotgun12GaugeSawedOff                => Skill::Firearms(FirearmsSpec::RifleShotgun),
+            Self::BergmannMP18                          => Skill::Firearms(FirearmsSpec::SubmachineGun),
+            Self::Thompson                              => Skill::Firearms(FirearmsSpec::SubmachineGun),
+            Self::BrowningAutoRifle                     => Skill::Firearms(FirearmsSpec::MachineGun),
+            Self::BrowningM1917                         => Skill::Firearms(FirearmsSpec::MachineGun),
+            Self::BrenGun                               => Skill::Firearms(FirearmsSpec::MachineGun),
+            Self::LewisGun                              => Skill::Firearms(FirearmsSpec::MachineGun),
+            Self::Vickers303                            => Skill::Firearms(FirearmsSpec::MachineGun),
             Self::Custom(_)                             => Skill::Fighting(FightingSpec::Brawl),
         }
     }
@@ -1583,58 +1602,59 @@ impl Weapon {
     }
 }
 
-// --- 定義済み装甲 (ArmorSpec) ---
-// JSON の "armor" フィールド値と対応する。装甲点は points() で取得。 p.108
-pub enum ArmorSpec {
-    ThickLeatherJacket, // 厚い皮のジャケット  1pt
-
-
-
-
-    MilitaryBodyArmor,  // 軍用ボディ・アーマー 12pt
+// p.108
+pub enum Armor {
+    ThickLeatherJacket, // Thick Leather Jacket    1pt
+    WwiHelmet,          // WWI Helmet              2pt
+    Hardwood1In,        // 1" Hardwood             3pt
+    PresentUsHelmet,    // Present U.S. Helmet     5pt
+    HeavyKevlarVest,    // Heavy Kevlar Vest       8pt
+    MilitaryBodyArmor,  // Military Body Armor    12pt
+    BulletproofGlass,   // 1.5" Bulletproof Glass 15pt
+    SteelPlate1In,      // 1" Steel Plate         19pt
+    LargeSandbag,       // Large Sandbag          20pt
     Custom(String),     // 自由記述（装甲点は別途入力）
 }
 
-impl ArmorSpec {
+impl Armor {
     pub fn label(&self, lang: Lang) -> &str {
         match (self, lang) {
             (Self::ThickLeatherJacket, Lang::En) => "Thick Leather Jacket",
             (Self::ThickLeatherJacket, Lang::Ja) => "厚い皮のジャケット",
-            (Self::, Lang::Ja) => "第一次大戦型のヘルメット",
-            (Self::, Lang::Ja) => "3cmの堅い木",
-            (Self::, Lang::Ja) => "現代アメリカ軍のヘルメット",
-            (Self::, Lang::Ja) => "厚いケブラー製のベスト",
+            (Self::WwiHelmet,          Lang::En) => "WWI Helmet",
+            (Self::WwiHelmet,          Lang::Ja) => "第一次大戦型のヘルメット",
+            (Self::Hardwood1In,        Lang::En) => "1\" Hardwood",
+            (Self::Hardwood1In,        Lang::Ja) => "3cmの堅い木",
+            (Self::PresentUsHelmet,    Lang::En) => "Present U.S. Helmet",
+            (Self::PresentUsHelmet,    Lang::Ja) => "現代アメリカ軍のヘルメット",
+            (Self::HeavyKevlarVest,    Lang::En) => "Heavy Kevlar Vest",
+            (Self::HeavyKevlarVest,    Lang::Ja) => "厚いケブラー製のベスト",
             (Self::MilitaryBodyArmor,  Lang::En) => "Military Body Armor",
             (Self::MilitaryBodyArmor,  Lang::Ja) => "軍用ボディ・アーマー",
-            (Self::, Lang::Ja) => "4cmの防弾ガラス",
-            (Self::, Lang::Ja) => "5cmの鋼鉄板",
-            (Self::, Lang::Ja) => "大きなサンドバッグ",
+            (Self::BulletproofGlass,   Lang::En) => "1.5\" Bulletproof Glass",
+            (Self::BulletproofGlass,   Lang::Ja) => "4cmの防弾ガラス",
+            (Self::SteelPlate1In,      Lang::En) => "1\" Steel Plate",
+            (Self::SteelPlate1In,      Lang::Ja) => "5cmの鋼鉄板",
+            (Self::LargeSandbag,       Lang::En) => "Large Sandbag",
+            (Self::LargeSandbag,       Lang::Ja) => "大きなサンドバッグ",
             (Self::Custom(s),          _)        => s.as_str(),
         }
     }
 
-    /// 定義済み装甲の装甲点。Custom は None（呼び出し側で値を保持）。
     pub fn points(&self) -> Option<u8> {
         match self {
-            Self::ThickLeatherJacket =>  Some(1),
-            2,
-            3,
-            5,
-            8,
+            Self::ThickLeatherJacket => Some(1),
+            Self::WwiHelmet          => Some(2),
+            Self::Hardwood1In        => Some(3),
+            Self::PresentUsHelmet    => Some(5),
+            Self::HeavyKevlarVest    => Some(8),
             Self::MilitaryBodyArmor  => Some(12),
-            15,
-            19,
-            20,
+            Self::BulletproofGlass   => Some(15),
+            Self::SteelPlate1In      => Some(19),
+            Self::LargeSandbag       => Some(20),
             Self::Custom(_)          => None,
         }
     }
-}
-
-// --- 装甲行 (Armor) ---
-pub struct Armor {
-    pub name:   String,
-    pub spec:   ArmorSpec,
-    pub points: u8,   // 実際に適用する装甲点（Custom時は手入力値）
 }
 
 // --- 収入と財産 (Wealth) ---
@@ -1644,12 +1664,25 @@ pub struct Wealth {
     pub assets:         String,
 }
 
+impl Wealth {
+    pub fn label(&self, lang: Lang) -> &'static str {
+        match (self, lang) {
+            (Self::SpendingLevel, Lang::En) => "Spending Level",
+            (Self::SpendingLevel, Lang::Ja) => "支出レベル",
+            (Self::Cash,          Lang::En) => "Cash",
+            (Self::Cash,          Lang::Ja) => "現金",
+            (Self::Assets,        Lang::En) => "Assets",
+            (Self::Assets,        Lang::Ja) => "資産",
+        }
+    }
+}
+
 // --- 所持品カテゴリ (Possession) ---
 pub enum Possession {
-    Weapon(Weapon),              // 武器テーブル行
-    Armor(Armor),                // 装甲
-    GearItem(String),            // 装備と所持品（自由記述）
-    Wealth(Wealth),              // 収入と財産（上級ルール）
+    Weapon(Weapon), 
+    Armor(Armor),
+    GearItem(String),
+    Wealth(Wealth),
 }
 
 impl Possession {
@@ -1664,73 +1697,19 @@ impl Possession {
 
     pub fn label(&self, lang: Lang) -> &'static str {
         match (self, lang) {
-            (Self::Weapon(_),   Lang::En) => "Weapons",
+            (Self::Weapon(_),   Lang::En) => "Weapon",
             (Self::Weapon(_),   Lang::Ja) => "武器",
             (Self::Armor(_),    Lang::En) => "Armor",
             (Self::Armor(_),    Lang::Ja) => "装甲",
-            (Self::GearItem(_), Lang::En) => "Gear & Possessions",
-            (Self::GearItem(_), Lang::Ja) => "装備と所持品",
+            (Self::GearItem(_), Lang::En) => "Equipment",
+            (Self::GearItem(_), Lang::Ja) => "装備",
             (Self::Wealth(_),   Lang::En) => "Wealth",
             (Self::Wealth(_),   Lang::Ja) => "収入と財産",
         }
     }
-}
 
-// --- 武器フィールドラベル (WeaponField) ---
-pub enum WeaponField {
-    Name,
-    Regular,
-    Hard,
-    Extreme,
-    Damage,
-    Range,
-    AttacksPerRound,
-    Ammunition,
-    Malfunction,
-}
-
-impl WeaponField {
-    pub fn label(&self, lang: Lang) -> &'static str {
-        match (self, lang) {
-            (Self::Name,            Lang::En) => "Weapon",
-            (Self::Name,            Lang::Ja) => "武器",
-            (Self::Regular,         Lang::En) => "Regular",
-            (Self::Regular,         Lang::Ja) => "レギュラー",
-            (Self::Hard,            Lang::En) => "Hard",
-            (Self::Hard,            Lang::Ja) => "ハード",
-            (Self::Extreme,         Lang::En) => "Extreme",
-            (Self::Extreme,         Lang::Ja) => "イクストリーム",
-            (Self::Damage,          Lang::En) => "Damage",
-            (Self::Damage,          Lang::Ja) => "ダメージ",
-            (Self::Range,           Lang::En) => "Range",
-            (Self::Range,           Lang::Ja) => "射程",
-            (Self::AttacksPerRound, Lang::En) => "Attacks",
-            (Self::AttacksPerRound, Lang::Ja) => "攻撃回数",
-            (Self::Ammunition,      Lang::En) => "Ammo",
-            (Self::Ammunition,      Lang::Ja) => "装弾数",
-            (Self::Malfunction,     Lang::En) => "Malfunction",
-            (Self::Malfunction,     Lang::Ja) => "故障",
-        }
-    }
-}
-
-// --- 収入と財産フィールドラベル (WealthField) ---
-pub enum WealthField {
-    SpendingLevel,
-    Cash,
-    Assets,
-}
-
-impl WealthField {
-    pub fn label(&self, lang: Lang) -> &'static str {
-        match (self, lang) {
-            (Self::SpendingLevel, Lang::En) => "Spending Level",
-            (Self::SpendingLevel, Lang::Ja) => "支出レベル",
-            (Self::Cash,          Lang::En) => "Cash",
-            (Self::Cash,          Lang::Ja) => "現金",
-            (Self::Assets,        Lang::En) => "Assets",
-            (Self::Assets,        Lang::Ja) => "資産",
-        }
+    pub fn decode() {
+        // name: &str
     }
 }
 

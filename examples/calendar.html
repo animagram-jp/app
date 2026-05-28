@@ -1,0 +1,285 @@
+<!--
+```yaml
+html:
+  head:
+  body:
+    main:
+      header:
+        h1: month
+      table:
+        thead:
+          tr:
+            th: youbi
+        tbody:
+          tr:
+            td:
+              time: day
+              article:
+                time: start-time
+                span:
+                  h5: "tag"
+                  h5: "title"
+    drawer:
+      header:
+        button: "⇄"
+        button: "×"
+      div:
+        time: "date"
+        article:
+          time: start-time
+          time: end-time
+          span:
+            h5: title-tag
+            h5: title
+        button: "entry+"
+    modal:
+      header:
+        time: date
+        button: "×"
+      fieldset:
+        field:
+          label: "email"
+          input: email
+        field:
+          label: "password"
+          input: password
+        field:
+          label: "title"
+          input: title
+        field:
+          label: "start"
+          input: start-date
+          input: start-time
+          label: "end"
+          input: end-date
+          input: end-time
+        field:
+          label: "color-tag"
+          input: color-tag
+          label: "title-tag"
+          input: title-tag
+          label: "free-tag"
+          input: free-tag
+        field:
+          label: "todo"
+          input: radio[undone]
+          input: radio[done]
+        button: "text+"
+        button: "url+"
+        button: "location+"
+        field:
+          label: "text"
+          textarea: text
+        field:
+          label: "url"
+          input: url
+        field:
+          label: "location"
+          input: location
+        button: "repeat+"
+        fieldset:
+          label: "interval"
+          fieldset:
+            input: interval
+            select: frequency
+          label: "youbi"
+          select: youbi
+          field:
+            label: "until"
+            input: until
+      footer:
+        button: "cancel"
+        button: "save"
+    form:
+```
+-->
+
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>calendar</title>
+  <link rel="icon" href="icon.png" type="image/png">
+  <link rel="stylesheet" href="dads/dads-base.css">
+  <link rel="stylesheet" href="dads/button/button.css">
+  <link rel="stylesheet" href="dads/drawer/drawer.css">
+  <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="manifest.json">
+  <script type="module" src="init.js"></script>
+  <script>
+    if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");
+  </script>
+</head>
+
+<body>
+
+  <main>
+    <header>
+      <h1></h1>
+    </header>
+    <table>
+      <thead>
+        <tr>
+          <th scope="col"></th>
+          <th scope="col"></th>
+          <th scope="col"></th>
+          <th scope="col"></th>
+          <th scope="col"></th>
+          <th scope="col"></th>
+          <th scope="col"></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+        </tr>
+        <tr>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+        </tr>
+        <tr>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+        </tr>
+        <tr>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+        </tr>
+        <tr>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+        </tr>
+      </tbody>
+    </table>
+  </main>
+
+  <dialog class="dads-drawer drawer" data-placement="right">
+    <header class="dads-drawer__header">
+      <button class="flip" aria-label="flip">⇄</button>
+      <button class="close" aria-label="close">×</button>
+    </header>
+    <div class="dads-drawer__body">
+      <time></time>
+      <button class="dads-button" data-type="outline" data-size="sm">追加+</button>
+    </div>
+  </dialog>
+
+  <dialog class="modal">
+    <header>
+      <time></time>
+      <button class="close" type="button" aria-label="close">×</button>
+    </header>
+    <fieldset>
+      <field hidden>
+        <label>メール</label>
+        <input type="email" name="" autocomplete="email">
+      </field>
+      <field hidden>
+        <label>パスワード</label>
+        <input type="password" name="" autocomplete="current-password">
+      </field>
+      <field>
+        <label>タイトル</label>
+        <input type="text" name="" autocomplete="off">
+      </field>
+      <field>
+        <label>開始</label>
+        <input type="date" name="">
+        <input type="time" name="">
+        <label>終了</label>
+        <input type="date" name="">
+        <input type="time" name="">
+      </field>
+      <field>
+        <label>カラータグ</label>
+        <input type="text" name="" autocomplete="off">
+        <label>タイトルタグ</label>
+        <input type="text" name="" autocomplete="off">
+        <label>フリータグ</label>
+        <input type="text" name="" autocomplete="off">
+      </field>
+      <field>
+        <label>Todo</label>
+        <input type="radio" name="" value="01">
+        <input type="radio" name="" value="10">
+      </field>
+      <button type="button" class="dads-button" data-type="outline" data-size="xs">テキスト+</button>
+      <button type="button" class="dads-button" data-type="outline" data-size="xs">URL+</button>
+      <button type="button" class="dads-button" data-type="outline" data-size="xs">場所+</button>
+      <field hidden>
+        <label>テキスト</label>
+        <textarea name="" rows="3"></textarea>
+      </field>
+      <field hidden>
+        <label>URL</label>
+        <input type="url" name="">
+      </field>
+      <field hidden>
+        <label>場所</label>
+        <input type="text" name="" autocomplete="off">
+      </field>
+      <button type="button" class="dads-button" data-type="outline" data-size="xs">繰り返し+</button>
+      <fieldset hidden>
+        <label>間隔</label>
+        <fieldset>
+          <input type="number" name="" value="1" min="1" max="9">
+          <select name="">
+            <option value="001">月</option>
+            <option value="010">週</option>
+            <option value="011">日</option>
+            <option value="100">時間</option>
+          </select>
+        </fieldset>
+        <label>曜日指定</label>
+        <select multiple name="">
+          <option value="001">月</option>
+          <option value="010">火</option>
+          <option value="011">水</option>
+          <option value="100">木</option>
+          <option value="101">金</option>
+          <option value="110">土</option>
+          <option value="111">日</option>
+        </select>
+        <field>
+          <label>有効期限</label>
+          <input type="date" name="">
+        </field>
+      </fieldset>
+    </fieldset>
+    <footer>
+      <button class="dads-button" data-type="outline" data-size="sm" type="button">キャンセル</button>
+      <button class="dads-button" data-type="solid-fill" data-size="sm" type="submit">保存</button>
+    </footer>
+  </dialog>
+  <form method="dialog"></form>
+</body>
+
+</html>
