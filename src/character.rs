@@ -298,6 +298,496 @@ impl Characteristic {
 // ============================================================
 
 
+// --- 芸術/製作 専門分野 (Art/Craft Specialization)  --- p.62
+#[derive(Clone)]
+pub enum ArtCraftSpec {
+    None,
+    Acting,       // 演劇
+    Barber,       // 理容
+    Calligraphy,  // 書道
+    Carpentry,    // 大工仕事
+    Cobbling,     // 靴製造
+    Cook,         // 料理
+    Dancing,      // 踊り
+    FineArt,      // 絵画
+    Forgery,      // 文書偽造
+    Photography,  // 写真術
+    Pottery,      // 陶芸
+    Sculpting,    // 彫刻
+    Writing,      // 執筆
+    Custom1(String), Custom2(String), Custom3(String), Custom4(String),
+}
+
+
+impl ArtCraftSpec {
+    pub fn list() -> &'static [Self] {
+        &[
+            Self::Acting, Self::Barber, Self::Calligraphy, Self::Carpentry,
+            Self::Cobbling, Self::Cook, Self::Dancing, Self::FineArt,
+            Self::Forgery, Self::Photography, Self::Pottery, Self::Sculpting,
+            Self::Writing,
+        ]
+    }
+
+    pub fn id(&self, base: u32) -> u32 {
+        base + match self {
+            Self::None        => unreachable!(),
+            Self::Acting      =>  0,
+            Self::Barber      =>  1,
+            Self::Calligraphy =>  2,
+            Self::Carpentry   =>  3,
+            Self::Cobbling    =>  4,
+            Self::Cook        =>  5,
+            Self::Dancing     =>  6,
+            Self::FineArt     =>  7,
+            Self::Forgery     =>  8,
+            Self::Photography =>  9,
+            Self::Pottery     => 10,
+            Self::Sculpting   => 11,
+            Self::Writing     => 12,
+            Self::Custom1(_)  => 13,
+            Self::Custom2(_)  => 14,
+            Self::Custom3(_)  => 15,
+            Self::Custom4(_)  => 16,
+        }
+    }
+
+    pub fn base_value(&self) -> u16 { 5 }
+
+    pub fn label(&self, lang: Lang) -> Option<&str> {
+        match (self, lang) {
+            (Self::None,        _)        => None,
+            (Self::Acting,      Lang::Ja) => Some("演劇"),
+            (Self::Acting,      Lang::En) => Some("Acting"),
+            (Self::Barber,      Lang::Ja) => Some("理容"),
+            (Self::Barber,      Lang::En) => Some("Barber"),
+            (Self::Calligraphy, Lang::Ja) => Some("書道"),
+            (Self::Calligraphy, Lang::En) => Some("Calligraphy"),
+            (Self::Carpentry,   Lang::Ja) => Some("大工仕事"),
+            (Self::Carpentry,   Lang::En) => Some("Carpentry"),
+            (Self::Cobbling,    Lang::Ja) => Some("靴製造"),
+            (Self::Cobbling,    Lang::En) => Some("Cobbling"),
+            (Self::Cook,        Lang::Ja) => Some("料理"),
+            (Self::Cook,        Lang::En) => Some("Cook"),
+            (Self::Dancing,     Lang::Ja) => Some("踊り"),
+            (Self::Dancing,     Lang::En) => Some("Dancing"),
+            (Self::FineArt,     Lang::Ja) => Some("絵画"),
+            (Self::FineArt,     Lang::En) => Some("Fine Art"),
+            (Self::Forgery,     Lang::Ja) => Some("文書偽造"),
+            (Self::Forgery,     Lang::En) => Some("Forgery"),
+            (Self::Photography, Lang::Ja) => Some("写真術"),
+            (Self::Photography, Lang::En) => Some("Photography"),
+            (Self::Pottery,     Lang::Ja) => Some("陶芸"),
+            (Self::Pottery,     Lang::En) => Some("Pottery"),
+            (Self::Sculpting,   Lang::Ja) => Some("彫刻"),
+            (Self::Sculpting,   Lang::En) => Some("Sculpting"),
+            (Self::Writing,     Lang::Ja) => Some("執筆"),
+            (Self::Writing,     Lang::En) => Some("Writing"),
+            (Self::Custom1(s) | Self::Custom2(s) | Self::Custom3(s) | Self::Custom4(s), _) => Some(s.as_str()),
+        }
+    }
+}
+
+// --- 近接戦闘 専門分野 (Fighting Specialization) --- p.61
+#[derive(Clone)]
+pub enum FightingSpec {
+    None,
+    Axe,          // 斧          15%
+    Brawl,        // 格闘        25%
+    Chainsaw,     // チェーンソー  10%
+    Flail,        // フレイル     10%
+    Garrote,      // 絞殺ひも     15%
+    Spear,        // 槍          20%
+    Sword,        // 刀剣        20%
+    Whip,         // 鞭          05%
+    Custom1 { name: String, base_value: u16 },
+    Custom2 { name: String, base_value: u16 },
+    Custom3 { name: String, base_value: u16 },
+    Custom4 { name: String, base_value: u16 },
+}
+
+
+impl FightingSpec {
+    pub fn list() -> &'static [Self] {
+        &[Self::Axe, Self::Brawl, Self::Chainsaw, Self::Flail,
+          Self::Garrote, Self::Spear, Self::Sword, Self::Whip]
+    }
+
+    pub fn id(&self, base: u32) -> u32 {
+        base + match self {
+            Self::None           => unreachable!(),
+            Self::Axe            => 0,
+            Self::Brawl          => 1,
+            Self::Chainsaw       => 2,
+            Self::Flail          => 3,
+            Self::Garrote        => 4,
+            Self::Spear          => 5,
+            Self::Sword          => 6,
+            Self::Whip           => 7,
+            Self::Custom1 { .. } => 8,
+            Self::Custom2 { .. } => 9,
+            Self::Custom3 { .. } => 10,
+            Self::Custom4 { .. } => 11,
+        }
+    }
+
+    pub fn base_value(&self) -> u16 {
+        match self {
+            Self::None                              =>  0,
+            Self::Axe                               => 15,
+            Self::Brawl                             => 25,
+            Self::Chainsaw                          => 10,
+            Self::Flail                             => 10,
+            Self::Garrote                           => 15,
+            Self::Spear                             => 20,
+            Self::Sword                             => 20,
+            Self::Whip                              =>  5,
+            Self::Custom1 { base_value, .. }
+            | Self::Custom2 { base_value, .. }
+            | Self::Custom3 { base_value, .. }
+            | Self::Custom4 { base_value, .. }      => *base_value,
+        }
+    }
+
+    pub fn label(&self, lang: Lang) -> Option<&str> {
+        match (self, lang) {
+            (Self::None,     _)        => None,
+            (Self::Axe,      Lang::Ja) => Some("斧"),
+            (Self::Axe,      Lang::En) => Some("Axe"),
+            (Self::Brawl,    Lang::Ja) => Some("格闘"),
+            (Self::Brawl,    Lang::En) => Some("Brawl"),
+            (Self::Chainsaw, Lang::Ja) => Some("チェーンソー"),
+            (Self::Chainsaw, Lang::En) => Some("Chainsaw"),
+            (Self::Flail,    Lang::Ja) => Some("フレイル"),
+            (Self::Flail,    Lang::En) => Some("Flail"),
+            (Self::Garrote,  Lang::Ja) => Some("絞殺ひも"),
+            (Self::Garrote,  Lang::En) => Some("Garrote"),
+            (Self::Spear,    Lang::Ja) => Some("槍"),
+            (Self::Spear,    Lang::En) => Some("Spear"),
+            (Self::Sword,    Lang::Ja) => Some("刀剣"),
+            (Self::Sword,    Lang::En) => Some("Sword"),
+            (Self::Whip,     Lang::Ja) => Some("鞭"),
+            (Self::Whip,     Lang::En) => Some("Whip"),
+            (Self::Custom1 { name, .. } | Self::Custom2 { name, .. }
+            | Self::Custom3 { name, .. } | Self::Custom4 { name, .. }, _) => Some(name.as_str()),
+        }
+    }
+}
+
+// --- 射撃 専門分野 (Firearms Specialization) --- p.64
+#[derive(Clone)]
+pub enum FirearmsSpec {
+    None,
+    Bow,           // 弓                   15%
+    Handgun,       // 拳銃                 20%
+    HeavyWeapons,  // 重火器               10%
+    MachineGun,    // 機関銃               10%
+    RifleShotgun,  // ライフル/ショットガン  25%
+    SubmachineGun, // サブマシンガン         15%
+    Custom1 { name: String, base_value: u16 },
+    Custom2 { name: String, base_value: u16 },
+    Custom3 { name: String, base_value: u16 },
+    Custom4 { name: String, base_value: u16 },
+}
+
+impl FirearmsSpec {
+    pub fn list() -> &'static [Self] {
+        &[Self::Bow, Self::Handgun, Self::HeavyWeapons,
+          Self::MachineGun, Self::RifleShotgun, Self::SubmachineGun]
+    }
+
+    pub fn id(&self, base: u32) -> u32 {
+        base + match self {
+            Self::None           => unreachable!(),
+            Self::Bow            => 0,
+            Self::Handgun        => 1,
+            Self::HeavyWeapons   => 2,
+            Self::MachineGun     => 3,
+            Self::RifleShotgun   => 4,
+            Self::SubmachineGun  => 5,
+            Self::Custom1 { .. } => 6,
+            Self::Custom2 { .. } => 7,
+            Self::Custom3 { .. } => 8,
+            Self::Custom4 { .. } => 9,
+        }
+    }
+
+    pub fn base_value(&self) -> u16 {
+        match self {
+            Self::None                              =>  0,
+            Self::Bow                               => 15,
+            Self::Handgun                           => 20,
+            Self::HeavyWeapons                      => 10,
+            Self::MachineGun                        => 10,
+            Self::RifleShotgun                      => 25,
+            Self::SubmachineGun                     => 15,
+            Self::Custom1 { base_value, .. }
+            | Self::Custom2 { base_value, .. }
+            | Self::Custom3 { base_value, .. }
+            | Self::Custom4 { base_value, .. }      => *base_value,
+        }
+    }
+
+    pub fn label(&self, lang: Lang) -> Option<&str> {
+        match (self, lang) {
+            (Self::None,          _)        => None,
+            (Self::Bow,           Lang::Ja) => Some("弓"),
+            (Self::Bow,           Lang::En) => Some("Bow"),
+            (Self::Handgun,       Lang::Ja) => Some("拳銃"),
+            (Self::Handgun,       Lang::En) => Some("Handgun"),
+            (Self::HeavyWeapons,  Lang::Ja) => Some("重火器"),
+            (Self::HeavyWeapons,  Lang::En) => Some("Heavy Weapons"),
+            (Self::MachineGun,    Lang::Ja) => Some("機関銃"),
+            (Self::MachineGun,    Lang::En) => Some("Machine Gun"),
+            (Self::RifleShotgun,  Lang::Ja) => Some("ライフル/ショットガン"),
+            (Self::RifleShotgun,  Lang::En) => Some("Rifle/Shotgun"),
+            (Self::SubmachineGun, Lang::Ja) => Some("サブマシンガン"),
+            (Self::SubmachineGun, Lang::En) => Some("Submachine Gun"),
+            (Self::Custom1 { name, .. } | Self::Custom2 { name, .. }
+            | Self::Custom3 { name, .. } | Self::Custom4 { name, .. }, _) => Some(name.as_str()),
+        }
+    }
+}
+
+// --- ほかの言語 専門分野 (Language Other Specialization) ---
+#[derive(Clone)]
+pub enum LanguageSpec {
+    Custom1(String), Custom2(String), Custom3(String), Custom4(String),
+}
+
+impl LanguageSpec {
+    pub fn id(&self, base: u32) -> u32 {
+        base + match self {
+            Self::Custom1(_) => 0,
+            Self::Custom2(_) => 1,
+            Self::Custom3(_) => 2,
+            Self::Custom4(_) => 3,
+        }
+    }
+
+    pub fn label(&self, _lang: Lang) -> &str {
+        match self {
+            Self::Custom1(s) | Self::Custom2(s)
+            | Self::Custom3(s) | Self::Custom4(s) => s.as_str(),
+        }
+    }
+}
+
+// --- 操縦 専門分野 (Pilot Specialization) --- p.67
+#[derive(Clone)]
+pub enum PilotSpec {
+    None,
+    // --- 両時代共通 ---
+    Boat,       // ボート
+    SteamShip,  // 汽船
+    Sailboat,   // 帆船
+    CivilProp,  // 民間プロペラ機
+    // --- 1920s のみ ---
+    Balloon,    // 気球
+    Dirigible,  // 飛行船
+    // --- Modern (1990s) のみ ---
+    CivilJet,   // 民間ジェット機
+    Airliner,   // 定期旅客機
+    JetFighter, // ジェット戦闘機
+    Helicopter, // ヘリコプター
+    Custom1(String), Custom2(String), Custom3(String), Custom4(String),
+}
+
+impl PilotSpec {
+    pub fn list() -> &'static [Self] {
+        &[Self::Boat, Self::SteamShip, Self::Sailboat, Self::CivilProp,
+          Self::Balloon, Self::Dirigible, Self::CivilJet, Self::Airliner,
+          Self::JetFighter, Self::Helicopter]
+    }
+
+    pub fn id(&self, base: u32) -> u32 {
+        base + match self {
+            Self::None       => unreachable!(),
+            Self::Boat       =>  0,
+            Self::SteamShip  =>  1,
+            Self::Sailboat   =>  2,
+            Self::CivilProp  =>  3,
+            Self::Balloon    =>  4,
+            Self::Dirigible  =>  5,
+            Self::CivilJet   =>  6,
+            Self::Airliner   =>  7,
+            Self::JetFighter =>  8,
+            Self::Helicopter =>  9,
+            Self::Custom1(_) => 10,
+            Self::Custom2(_) => 11,
+            Self::Custom3(_) => 12,
+            Self::Custom4(_) => 13,
+        }
+    }
+
+    pub fn base_value(&self) -> u16 { 1 }
+
+    pub fn label(&self, lang: Lang) -> Option<&str> {
+        match (self, lang) {
+            (Self::None,       _)        => None,
+            // --- 両時代共通 ---
+            (Self::Boat,       Lang::Ja) => Some("ボート"),
+            (Self::Boat,       Lang::En) => Some("Boat"),
+            (Self::SteamShip,  Lang::Ja) => Some("汽船"),
+            (Self::SteamShip,  Lang::En) => Some("Steam Ship"),
+            (Self::Sailboat,   Lang::Ja) => Some("帆船"),
+            (Self::Sailboat,   Lang::En) => Some("Sailboat"),
+            (Self::CivilProp,  Lang::Ja) => Some("民間プロペラ機"),
+            (Self::CivilProp,  Lang::En) => Some("Civil Prop"),
+            // --- 1920s のみ ---
+            (Self::Balloon,    Lang::Ja) => Some("気球"),
+            (Self::Balloon,    Lang::En) => Some("Balloon"),
+            (Self::Dirigible,  Lang::Ja) => Some("飛行船"),
+            (Self::Dirigible,  Lang::En) => Some("Dirigible"),
+            // --- Modern (1990s) のみ ---
+            (Self::CivilJet,   Lang::Ja) => Some("民間ジェット機"),
+            (Self::CivilJet,   Lang::En) => Some("Civil Jet"),
+            (Self::Airliner,   Lang::Ja) => Some("旅客機"),
+            (Self::Airliner,   Lang::En) => Some("Airliner"),
+            (Self::JetFighter, Lang::Ja) => Some("ジェット戦闘機"),
+            (Self::JetFighter, Lang::En) => Some("Jet Fighter"),
+            (Self::Helicopter, Lang::Ja) => Some("ヘリコプター"),
+            (Self::Helicopter, Lang::En) => Some("Helicopter"),
+            (Self::Custom1(s) | Self::Custom2(s)
+            | Self::Custom3(s) | Self::Custom4(s), _) => Some(s.as_str()),
+        }
+    }
+}
+
+// --- 科学 専門分野 (Science Specialization) --- p.59
+#[derive(Clone)]
+pub enum ScienceSpec {
+    None,
+    Astronomy,    // 天文学
+    Biology,      // 生物学
+    Botany,       // 植物学
+    Chemistry,    // 化学
+    Cryptography, // 暗号学
+    Engineering,  // 工学
+    Forensics,    // 法医学
+    Geology,      // 地質学
+    Mathematics,  // 数学
+    Meteorology,  // 気象学
+    Pharmacy,     // 薬学
+    Physics,      // 物理学
+    Zoology,      // 動物学
+    Custom1(String), Custom2(String), Custom3(String), Custom4(String),
+}
+
+
+impl ScienceSpec {
+    pub fn list() -> &'static [Self] {
+        &[Self::Astronomy, Self::Biology, Self::Botany, Self::Chemistry,
+          Self::Cryptography, Self::Engineering, Self::Forensics, Self::Geology,
+          Self::Mathematics, Self::Meteorology, Self::Pharmacy, Self::Physics,
+          Self::Zoology]
+    }
+
+    pub fn id(&self, base: u32) -> u32 {
+        base + match self {
+            Self::None         => unreachable!(),
+            Self::Astronomy    =>  0,
+            Self::Biology      =>  1,
+            Self::Botany       =>  2,
+            Self::Chemistry    =>  3,
+            Self::Cryptography =>  4,
+            Self::Engineering  =>  5,
+            Self::Forensics    =>  6,
+            Self::Geology      =>  7,
+            Self::Mathematics  =>  8,
+            Self::Meteorology  =>  9,
+            Self::Pharmacy     => 10,
+            Self::Physics      => 11,
+            Self::Zoology      => 12,
+            Self::Custom1(_)   => 13,
+            Self::Custom2(_)   => 14,
+            Self::Custom3(_)   => 15,
+            Self::Custom4(_)   => 16,
+        }
+    }
+
+    pub fn base_value(&self) -> u16 { 1 }
+
+    pub fn label(&self, lang: Lang) -> Option<&str> {
+        match (self, lang) {
+            (Self::None,         _)        => None,
+            (Self::Astronomy,    Lang::Ja) => Some("天文学"),
+            (Self::Astronomy,    Lang::En) => Some("Astronomy"),
+            (Self::Biology,      Lang::Ja) => Some("生物学"),
+            (Self::Biology,      Lang::En) => Some("Biology"),
+            (Self::Botany,       Lang::Ja) => Some("植物学"),
+            (Self::Botany,       Lang::En) => Some("Botany"),
+            (Self::Chemistry,    Lang::Ja) => Some("化学"),
+            (Self::Chemistry,    Lang::En) => Some("Chemistry"),
+            (Self::Cryptography, Lang::Ja) => Some("暗号学"),
+            (Self::Cryptography, Lang::En) => Some("Cryptography"),
+            (Self::Engineering,  Lang::Ja) => Some("工学"),
+            (Self::Engineering,  Lang::En) => Some("Engineering"),
+            (Self::Forensics,    Lang::Ja) => Some("法医学"),
+            (Self::Forensics,    Lang::En) => Some("Forensics"),
+            (Self::Geology,      Lang::Ja) => Some("地質学"),
+            (Self::Geology,      Lang::En) => Some("Geology"),
+            (Self::Mathematics,  Lang::Ja) => Some("数学"),
+            (Self::Mathematics,  Lang::En) => Some("Mathematics"),
+            (Self::Meteorology,  Lang::Ja) => Some("気象学"),
+            (Self::Meteorology,  Lang::En) => Some("Meteorology"),
+            (Self::Pharmacy,     Lang::Ja) => Some("薬学"),
+            (Self::Pharmacy,     Lang::En) => Some("Pharmacy"),
+            (Self::Physics,      Lang::Ja) => Some("物理学"),
+            (Self::Physics,      Lang::En) => Some("Physics"),
+            (Self::Zoology,      Lang::Ja) => Some("動物学"),
+            (Self::Zoology,      Lang::En) => Some("Zoology"),
+            (Self::Custom1(s) | Self::Custom2(s)
+            | Self::Custom3(s) | Self::Custom4(s), _) => Some(s.as_str()),
+        }
+    }
+}
+
+// --- サバイバル 専門分野 (Survival Specialization) --- p.63
+#[derive(Clone)]
+pub enum SurvivalSpec {
+    None,
+    Arctic,
+    Desert,
+    Sea,
+    Custom1(String), Custom2(String), Custom3(String), Custom4(String),
+}
+
+impl SurvivalSpec {
+    pub fn list() -> &'static [Self] {
+        &[Self::Arctic, Self::Desert, Self::Sea]
+    }
+
+    pub fn id(&self, base: u32) -> u32 {
+        base + match self {
+            Self::None       => unreachable!(),
+            Self::Arctic     => 0,
+            Self::Desert     => 1,
+            Self::Sea        => 2,
+            Self::Custom1(_) => 3,
+            Self::Custom2(_) => 4,
+            Self::Custom3(_) => 5,
+            Self::Custom4(_) => 6,
+        }
+    }
+
+    pub fn base_value(&self) -> u16 { 10 }
+
+    pub fn label(&self, lang: Lang) -> Option<&str> {
+        match (self, lang) {
+            (Self::None,     _)        => None,
+            (Self::Arctic,   Lang::Ja) => Some("極地"),
+            (Self::Arctic,   Lang::En) => Some("Arctic"),
+            (Self::Desert,   Lang::Ja) => Some("砂漠"),
+            (Self::Desert,   Lang::En) => Some("Desert"),
+            (Self::Sea,      Lang::Ja) => Some("海"),
+            (Self::Sea,      Lang::En) => Some("Sea"),
+            (Self::Custom1(s) | Self::Custom2(s)
+            | Self::Custom3(s) | Self::Custom4(s), _) => Some(s.as_str()),
+        }
+    }
+}
+
 // --- 信用 (Credit Rating) ---
 #[derive(Clone, Copy)]
 pub struct CreditRating;
@@ -661,499 +1151,6 @@ impl Skill {
     }
 }
 
-// --- 芸術/製作 専門分野 (Art/Craft Specialization)  --- p.62
-#[derive(Clone)]
-pub enum ArtCraftSpec {
-    None,
-    Acting,       // 演劇
-    Barber,       // 理容
-    Calligraphy,  // 書道
-    Carpentry,    // 大工仕事
-    Cobbling,     // 靴製造
-    Cook,         // 料理
-    Dancing,      // 踊り
-    FineArt,      // 絵画
-    Forgery,      // 文書偽造
-    Photography,  // 写真術
-    Pottery,      // 陶芸
-    Sculpting,    // 彫刻
-    Writing,      // 執筆
-    Custom1(String), Custom2(String), Custom3(String), Custom4(String),
-}
-
-
-impl ArtCraftSpec {
-    pub fn list() -> &'static [Self] {
-        &[
-            Self::Acting, Self::Barber, Self::Calligraphy, Self::Carpentry,
-            Self::Cobbling, Self::Cook, Self::Dancing, Self::FineArt,
-            Self::Forgery, Self::Photography, Self::Pottery, Self::Sculpting,
-            Self::Writing,
-        ]
-    }
-
-    pub fn id(&self, base: u32) -> u32 {
-        base + match self {
-            Self::None        => unreachable!(),
-            Self::Acting      =>  0,
-            Self::Barber      =>  1,
-            Self::Calligraphy =>  2,
-            Self::Carpentry   =>  3,
-            Self::Cobbling    =>  4,
-            Self::Cook        =>  5,
-            Self::Dancing     =>  6,
-            Self::FineArt     =>  7,
-            Self::Forgery     =>  8,
-            Self::Photography =>  9,
-            Self::Pottery     => 10,
-            Self::Sculpting   => 11,
-            Self::Writing     => 12,
-            Self::Custom1(_)  => 13,
-            Self::Custom2(_)  => 14,
-            Self::Custom3(_)  => 15,
-            Self::Custom4(_)  => 16,
-        }
-    }
-
-    pub fn base_value(&self) -> u16 { 5 }
-
-    pub fn label(&self, lang: Lang) -> Option<&str> {
-        match (self, lang) {
-            (Self::None,        _)        => None,
-            (Self::Acting,      Lang::Ja) => Some("演劇"),
-            (Self::Acting,      Lang::En) => Some("Acting"),
-            (Self::Barber,      Lang::Ja) => Some("理容"),
-            (Self::Barber,      Lang::En) => Some("Barber"),
-            (Self::Calligraphy, Lang::Ja) => Some("書道"),
-            (Self::Calligraphy, Lang::En) => Some("Calligraphy"),
-            (Self::Carpentry,   Lang::Ja) => Some("大工仕事"),
-            (Self::Carpentry,   Lang::En) => Some("Carpentry"),
-            (Self::Cobbling,    Lang::Ja) => Some("靴製造"),
-            (Self::Cobbling,    Lang::En) => Some("Cobbling"),
-            (Self::Cook,        Lang::Ja) => Some("料理"),
-            (Self::Cook,        Lang::En) => Some("Cook"),
-            (Self::Dancing,     Lang::Ja) => Some("踊り"),
-            (Self::Dancing,     Lang::En) => Some("Dancing"),
-            (Self::FineArt,     Lang::Ja) => Some("絵画"),
-            (Self::FineArt,     Lang::En) => Some("Fine Art"),
-            (Self::Forgery,     Lang::Ja) => Some("文書偽造"),
-            (Self::Forgery,     Lang::En) => Some("Forgery"),
-            (Self::Photography, Lang::Ja) => Some("写真術"),
-            (Self::Photography, Lang::En) => Some("Photography"),
-            (Self::Pottery,     Lang::Ja) => Some("陶芸"),
-            (Self::Pottery,     Lang::En) => Some("Pottery"),
-            (Self::Sculpting,   Lang::Ja) => Some("彫刻"),
-            (Self::Sculpting,   Lang::En) => Some("Sculpting"),
-            (Self::Writing,     Lang::Ja) => Some("執筆"),
-            (Self::Writing,     Lang::En) => Some("Writing"),
-            (Self::Custom1(s) | Self::Custom2(s) | Self::Custom3(s) | Self::Custom4(s), _) => Some(s.as_str()),
-        }
-    }
-}
-
-// --- 近接戦闘 専門分野 (Fighting Specialization) --- p.61
-#[derive(Clone)]
-pub enum FightingSpec {
-    None,
-    Axe,          // 斧          15%
-    Brawl,        // 格闘        25%
-    Chainsaw,     // チェーンソー  10%
-    Flail,        // フレイル     10%
-    Garrote,      // 絞殺ひも     15%
-    Spear,        // 槍          20%
-    Sword,        // 刀剣        20%
-    Whip,         // 鞭          05%
-    Custom1 { name: String, base_value: u16 },
-    Custom2 { name: String, base_value: u16 },
-    Custom3 { name: String, base_value: u16 },
-    Custom4 { name: String, base_value: u16 },
-}
-
-
-impl FightingSpec {
-    pub fn list() -> &'static [Self] {
-        &[Self::Axe, Self::Brawl, Self::Chainsaw, Self::Flail,
-          Self::Garrote, Self::Spear, Self::Sword, Self::Whip]
-    }
-
-    pub fn id(&self, base: u32) -> u32 {
-        base + match self {
-            Self::None           => unreachable!(),
-            Self::Axe            => 0,
-            Self::Brawl          => 1,
-            Self::Chainsaw       => 2,
-            Self::Flail          => 3,
-            Self::Garrote        => 4,
-            Self::Spear          => 5,
-            Self::Sword          => 6,
-            Self::Whip           => 7,
-            Self::Custom1 { .. } => 8,
-            Self::Custom2 { .. } => 9,
-            Self::Custom3 { .. } => 10,
-            Self::Custom4 { .. } => 11,
-        }
-    }
-
-    pub fn base_value(&self) -> u16 {
-        match self {
-            Self::None                              =>  0,
-            Self::Axe                               => 15,
-            Self::Brawl                             => 25,
-            Self::Chainsaw                          => 10,
-            Self::Flail                             => 10,
-            Self::Garrote                           => 15,
-            Self::Spear                             => 20,
-            Self::Sword                             => 20,
-            Self::Whip                              =>  5,
-            Self::Custom1 { base_value, .. }
-            | Self::Custom2 { base_value, .. }
-            | Self::Custom3 { base_value, .. }
-            | Self::Custom4 { base_value, .. }      => *base_value,
-        }
-    }
-
-    pub fn label(&self, lang: Lang) -> Option<&str> {
-        match (self, lang) {
-            (Self::None,     _)        => None,
-            (Self::Axe,      Lang::Ja) => Some("斧"),
-            (Self::Axe,      Lang::En) => Some("Axe"),
-            (Self::Brawl,    Lang::Ja) => Some("格闘"),
-            (Self::Brawl,    Lang::En) => Some("Brawl"),
-            (Self::Chainsaw, Lang::Ja) => Some("チェーンソー"),
-            (Self::Chainsaw, Lang::En) => Some("Chainsaw"),
-            (Self::Flail,    Lang::Ja) => Some("フレイル"),
-            (Self::Flail,    Lang::En) => Some("Flail"),
-            (Self::Garrote,  Lang::Ja) => Some("絞殺ひも"),
-            (Self::Garrote,  Lang::En) => Some("Garrote"),
-            (Self::Spear,    Lang::Ja) => Some("槍"),
-            (Self::Spear,    Lang::En) => Some("Spear"),
-            (Self::Sword,    Lang::Ja) => Some("刀剣"),
-            (Self::Sword,    Lang::En) => Some("Sword"),
-            (Self::Whip,     Lang::Ja) => Some("鞭"),
-            (Self::Whip,     Lang::En) => Some("Whip"),
-            (Self::Custom1 { name, .. } | Self::Custom2 { name, .. }
-            | Self::Custom3 { name, .. } | Self::Custom4 { name, .. }, _) => Some(name.as_str()),
-        }
-    }
-}
-
-// --- 射撃 専門分野 (Firearms Specialization) --- p.64
-#[derive(Clone)]
-pub enum FirearmsSpec {
-    None,
-    Bow,           // 弓                   15%
-    Handgun,       // 拳銃                 20%
-    HeavyWeapons,  // 重火器               10%
-    MachineGun,    // 機関銃               10%
-    RifleShotgun,  // ライフル/ショットガン  25%
-    SubmachineGun, // サブマシンガン         15%
-    Custom1 { name: String, base_value: u16 },
-    Custom2 { name: String, base_value: u16 },
-    Custom3 { name: String, base_value: u16 },
-    Custom4 { name: String, base_value: u16 },
-}
-
-
-impl FirearmsSpec {
-    pub fn list() -> &'static [Self] {
-        &[Self::Bow, Self::Handgun, Self::HeavyWeapons,
-          Self::MachineGun, Self::RifleShotgun, Self::SubmachineGun]
-    }
-
-    pub fn id(&self, base: u32) -> u32 {
-        base + match self {
-            Self::None           => unreachable!(),
-            Self::Bow            => 0,
-            Self::Handgun        => 1,
-            Self::HeavyWeapons   => 2,
-            Self::MachineGun     => 3,
-            Self::RifleShotgun   => 4,
-            Self::SubmachineGun  => 5,
-            Self::Custom1 { .. } => 6,
-            Self::Custom2 { .. } => 7,
-            Self::Custom3 { .. } => 8,
-            Self::Custom4 { .. } => 9,
-        }
-    }
-
-    pub fn base_value(&self) -> u16 {
-        match self {
-            Self::None                              =>  0,
-            Self::Bow                               => 15,
-            Self::Handgun                           => 20,
-            Self::HeavyWeapons                      => 10,
-            Self::MachineGun                        => 10,
-            Self::RifleShotgun                      => 25,
-            Self::SubmachineGun                     => 15,
-            Self::Custom1 { base_value, .. }
-            | Self::Custom2 { base_value, .. }
-            | Self::Custom3 { base_value, .. }
-            | Self::Custom4 { base_value, .. }      => *base_value,
-        }
-    }
-
-    pub fn label(&self, lang: Lang) -> Option<&str> {
-        match (self, lang) {
-            (Self::None,          _)        => None,
-            (Self::Bow,           Lang::Ja) => Some("弓"),
-            (Self::Bow,           Lang::En) => Some("Bow"),
-            (Self::Handgun,       Lang::Ja) => Some("拳銃"),
-            (Self::Handgun,       Lang::En) => Some("Handgun"),
-            (Self::HeavyWeapons,  Lang::Ja) => Some("重火器"),
-            (Self::HeavyWeapons,  Lang::En) => Some("Heavy Weapons"),
-            (Self::MachineGun,    Lang::Ja) => Some("機関銃"),
-            (Self::MachineGun,    Lang::En) => Some("Machine Gun"),
-            (Self::RifleShotgun,  Lang::Ja) => Some("ライフル/ショットガン"),
-            (Self::RifleShotgun,  Lang::En) => Some("Rifle/Shotgun"),
-            (Self::SubmachineGun, Lang::Ja) => Some("サブマシンガン"),
-            (Self::SubmachineGun, Lang::En) => Some("Submachine Gun"),
-            (Self::Custom1 { name, .. } | Self::Custom2 { name, .. }
-            | Self::Custom3 { name, .. } | Self::Custom4 { name, .. }, _) => Some(name.as_str()),
-        }
-    }
-}
-
-// --- ほかの言語 専門分野 (Language Other Specialization) ---
-#[derive(Clone)]
-pub enum LanguageSpec {
-    Custom1(String), Custom2(String), Custom3(String), Custom4(String),
-}
-
-impl LanguageSpec {
-    pub fn id(&self, base: u32) -> u32 {
-        base + match self {
-            Self::Custom1(_) => 0,
-            Self::Custom2(_) => 1,
-            Self::Custom3(_) => 2,
-            Self::Custom4(_) => 3,
-        }
-    }
-
-    pub fn label(&self, _lang: Lang) -> &str {
-        match self {
-            Self::Custom1(s) | Self::Custom2(s)
-            | Self::Custom3(s) | Self::Custom4(s) => s.as_str(),
-        }
-    }
-}
-
-// --- 操縦 専門分野 (Pilot Specialization) --- p.67
-#[derive(Clone)]
-pub enum PilotSpec {
-    None,
-    // --- 両時代共通 ---
-    Boat,       // ボート
-    SteamShip,  // 汽船
-    Sailboat,   // 帆船
-    CivilProp,  // 民間プロペラ機
-    // --- 1920s のみ ---
-    Balloon,    // 気球
-    Dirigible,  // 飛行船
-    // --- Modern (1990s) のみ ---
-    CivilJet,   // 民間ジェット機
-    Airliner,   // 定期旅客機
-    JetFighter, // ジェット戦闘機
-    Helicopter, // ヘリコプター
-    Custom1(String), Custom2(String), Custom3(String), Custom4(String),
-}
-
-
-impl PilotSpec {
-    pub fn list() -> &'static [Self] {
-        &[Self::Boat, Self::SteamShip, Self::Sailboat, Self::CivilProp,
-          Self::Balloon, Self::Dirigible, Self::CivilJet, Self::Airliner,
-          Self::JetFighter, Self::Helicopter]
-    }
-
-    pub fn id(&self, base: u32) -> u32 {
-        base + match self {
-            Self::None       => unreachable!(),
-            Self::Boat       =>  0,
-            Self::SteamShip  =>  1,
-            Self::Sailboat   =>  2,
-            Self::CivilProp  =>  3,
-            Self::Balloon    =>  4,
-            Self::Dirigible  =>  5,
-            Self::CivilJet   =>  6,
-            Self::Airliner   =>  7,
-            Self::JetFighter =>  8,
-            Self::Helicopter =>  9,
-            Self::Custom1(_) => 10,
-            Self::Custom2(_) => 11,
-            Self::Custom3(_) => 12,
-            Self::Custom4(_) => 13,
-        }
-    }
-
-    pub fn base_value(&self) -> u16 { 1 }
-
-    pub fn label(&self, lang: Lang) -> Option<&str> {
-        match (self, lang) {
-            (Self::None,       _)        => None,
-            // --- 両時代共通 ---
-            (Self::Boat,       Lang::Ja) => Some("ボート"),
-            (Self::Boat,       Lang::En) => Some("Boat"),
-            (Self::SteamShip,  Lang::Ja) => Some("汽船"),
-            (Self::SteamShip,  Lang::En) => Some("Steam Ship"),
-            (Self::Sailboat,   Lang::Ja) => Some("帆船"),
-            (Self::Sailboat,   Lang::En) => Some("Sailboat"),
-            (Self::CivilProp,  Lang::Ja) => Some("民間プロペラ機"),
-            (Self::CivilProp,  Lang::En) => Some("Civil Prop"),
-            // --- 1920s のみ ---
-            (Self::Balloon,    Lang::Ja) => Some("気球"),
-            (Self::Balloon,    Lang::En) => Some("Balloon"),
-            (Self::Dirigible,  Lang::Ja) => Some("飛行船"),
-            (Self::Dirigible,  Lang::En) => Some("Dirigible"),
-            // --- Modern (1990s) のみ ---
-            (Self::CivilJet,   Lang::Ja) => Some("民間ジェット機"),
-            (Self::CivilJet,   Lang::En) => Some("Civil Jet"),
-            (Self::Airliner,   Lang::Ja) => Some("旅客機"),
-            (Self::Airliner,   Lang::En) => Some("Airliner"),
-            (Self::JetFighter, Lang::Ja) => Some("ジェット戦闘機"),
-            (Self::JetFighter, Lang::En) => Some("Jet Fighter"),
-            (Self::Helicopter, Lang::Ja) => Some("ヘリコプター"),
-            (Self::Helicopter, Lang::En) => Some("Helicopter"),
-            (Self::Custom1(s) | Self::Custom2(s)
-            | Self::Custom3(s) | Self::Custom4(s), _) => Some(s.as_str()),
-        }
-    }
-}
-
-// --- 科学 専門分野 (Science Specialization) --- p.59
-#[derive(Clone)]
-pub enum ScienceSpec {
-    None,
-    Astronomy,    // 天文学
-    Biology,      // 生物学
-    Botany,       // 植物学
-    Chemistry,    // 化学
-    Cryptography, // 暗号学
-    Engineering,  // 工学
-    Forensics,    // 法医学
-    Geology,      // 地質学
-    Mathematics,  // 数学
-    Meteorology,  // 気象学
-    Pharmacy,     // 薬学
-    Physics,      // 物理学
-    Zoology,      // 動物学
-    Custom1(String), Custom2(String), Custom3(String), Custom4(String),
-}
-
-
-impl ScienceSpec {
-    pub fn list() -> &'static [Self] {
-        &[Self::Astronomy, Self::Biology, Self::Botany, Self::Chemistry,
-          Self::Cryptography, Self::Engineering, Self::Forensics, Self::Geology,
-          Self::Mathematics, Self::Meteorology, Self::Pharmacy, Self::Physics,
-          Self::Zoology]
-    }
-
-    pub fn id(&self, base: u32) -> u32 {
-        base + match self {
-            Self::None         => unreachable!(),
-            Self::Astronomy    =>  0,
-            Self::Biology      =>  1,
-            Self::Botany       =>  2,
-            Self::Chemistry    =>  3,
-            Self::Cryptography =>  4,
-            Self::Engineering  =>  5,
-            Self::Forensics    =>  6,
-            Self::Geology      =>  7,
-            Self::Mathematics  =>  8,
-            Self::Meteorology  =>  9,
-            Self::Pharmacy     => 10,
-            Self::Physics      => 11,
-            Self::Zoology      => 12,
-            Self::Custom1(_)   => 13,
-            Self::Custom2(_)   => 14,
-            Self::Custom3(_)   => 15,
-            Self::Custom4(_)   => 16,
-        }
-    }
-
-    pub fn base_value(&self) -> u16 { 1 }
-
-    pub fn label(&self, lang: Lang) -> Option<&str> {
-        match (self, lang) {
-            (Self::None,         _)        => None,
-            (Self::Astronomy,    Lang::Ja) => Some("天文学"),
-            (Self::Astronomy,    Lang::En) => Some("Astronomy"),
-            (Self::Biology,      Lang::Ja) => Some("生物学"),
-            (Self::Biology,      Lang::En) => Some("Biology"),
-            (Self::Botany,       Lang::Ja) => Some("植物学"),
-            (Self::Botany,       Lang::En) => Some("Botany"),
-            (Self::Chemistry,    Lang::Ja) => Some("化学"),
-            (Self::Chemistry,    Lang::En) => Some("Chemistry"),
-            (Self::Cryptography, Lang::Ja) => Some("暗号学"),
-            (Self::Cryptography, Lang::En) => Some("Cryptography"),
-            (Self::Engineering,  Lang::Ja) => Some("工学"),
-            (Self::Engineering,  Lang::En) => Some("Engineering"),
-            (Self::Forensics,    Lang::Ja) => Some("法医学"),
-            (Self::Forensics,    Lang::En) => Some("Forensics"),
-            (Self::Geology,      Lang::Ja) => Some("地質学"),
-            (Self::Geology,      Lang::En) => Some("Geology"),
-            (Self::Mathematics,  Lang::Ja) => Some("数学"),
-            (Self::Mathematics,  Lang::En) => Some("Mathematics"),
-            (Self::Meteorology,  Lang::Ja) => Some("気象学"),
-            (Self::Meteorology,  Lang::En) => Some("Meteorology"),
-            (Self::Pharmacy,     Lang::Ja) => Some("薬学"),
-            (Self::Pharmacy,     Lang::En) => Some("Pharmacy"),
-            (Self::Physics,      Lang::Ja) => Some("物理学"),
-            (Self::Physics,      Lang::En) => Some("Physics"),
-            (Self::Zoology,      Lang::Ja) => Some("動物学"),
-            (Self::Zoology,      Lang::En) => Some("Zoology"),
-            (Self::Custom1(s) | Self::Custom2(s)
-            | Self::Custom3(s) | Self::Custom4(s), _) => Some(s.as_str()),
-        }
-    }
-}
-
-// --- サバイバル 専門分野 (Survival Specialization) --- p.63
-#[derive(Clone)]
-pub enum SurvivalSpec {
-    None,
-    Arctic,
-    Desert,
-    Sea,
-    Custom1(String), Custom2(String), Custom3(String), Custom4(String),
-}
-
-
-impl SurvivalSpec {
-    pub fn list() -> &'static [Self] {
-        &[Self::Arctic, Self::Desert, Self::Sea]
-    }
-
-    pub fn id(&self, base: u32) -> u32 {
-        base + match self {
-            Self::None       => unreachable!(),
-            Self::Arctic     => 0,
-            Self::Desert     => 1,
-            Self::Sea        => 2,
-            Self::Custom1(_) => 3,
-            Self::Custom2(_) => 4,
-            Self::Custom3(_) => 5,
-            Self::Custom4(_) => 6,
-        }
-    }
-
-    pub fn base_value(&self) -> u16 { 10 }
-
-    pub fn label(&self, lang: Lang) -> Option<&str> {
-        match (self, lang) {
-            (Self::None,     _)        => None,
-            (Self::Arctic,   Lang::Ja) => Some("極地"),
-            (Self::Arctic,   Lang::En) => Some("Arctic"),
-            (Self::Desert,   Lang::Ja) => Some("砂漠"),
-            (Self::Desert,   Lang::En) => Some("Desert"),
-            (Self::Sea,      Lang::Ja) => Some("海"),
-            (Self::Sea,      Lang::En) => Some("Sea"),
-            (Self::Custom1(s) | Self::Custom2(s)
-            | Self::Custom3(s) | Self::Custom4(s), _) => Some(s.as_str()),
-        }
-    }
-}
-
 // ============================================================
 // --- ダイスロール (Dice Roll) ---
 // ============================================================
@@ -1166,79 +1163,422 @@ type Dice = (u8, u8); // (count, sides)
 // --- 装備 (Equipment) ---
 // ============================================================
 
-// --- 武器行 (Weapon) ---
-pub struct Weapon {
-    pub name:               String,
-    pub spec:               WeaponSpec,
-    pub damage:             String,          // e.g. "1D4+DB"
-    pub range:              Option<String>,  // 射撃武器のみ
-    pub attacks_per_round:  u8,
-    pub ammunition:         Option<u16>,     // 射撃武器のみ
-    pub malfunction:        Option<u16>,     // 射撃武器のみ
-}
-
-// --- 定義済み武器 (WeaponSpec) ---
-// JSON の "weapon" フィールド値と対応する。
-// Fighting (Sword) のようにスキル参照のみのケースは SkillRef で表す。
 pub enum Weapon {
-    ClubLarge,      // Club, large   1D8+DB
-    KnifeMedium,    // Knife, Medium 1D6+DB  (貫通)
-    // スキル参照（ダメージはスキル側に依存）
-    FightingSword,  // Fighting (Sword)
-    // 自由記述
+    // --- 近接・投擲武器 ---
+    BowAndArrows,           // Bow and Arrows      1D6+half DB      (貫通)
+    BrassKnuckles,          // Brass Knuckles      1D3+1+DB
+    Bullwhip,               // Bullwhip            1D3+half DB
+    BurningTorch,           // Burning Torch       1D6+burn
+    Blackjack,              // Blackjack           1D8+DB
+    ClubLarge,              // Club, Large         1D8+DB
+    ClubSmall,              // Club, Small         1D6+DB
+    Crossbow,               // Crossbow            1D8+2            (貫通)
+    Garrote,                // Garrote             1D6+DB           (貫通)
+    HatchetSickle,          // Hatchet/Sickle      1D6+1+DB         (貫通)
+    KnifeLarge,             // Knife, Large        1D8+DB           (貫通)
+    KnifeMedium,            // Knife, Medium       1D4+2+DB         (貫通)
+    KnifeSmall,             // Knife, Small        1D4+DB           (貫通)
+    Nunchaku,               // Nunchaku            1D8+DB
+    RockThrown,             // Rock, Thrown        1D4+half DB
+    Shuriken,               // Shuriken            1D3+half DB      (貫通)
+    Spear,                  // Spear               1D8+1            (貫通)
+    SpearThrown,            // Spear, Thrown       1D8+half DB      (貫通)
+    // mdにないもの（チェーンソー、マセスプレー、スタンガン、刀剣類、戦闘用ブーメラン、木斧）は別途追加予定
+    // --- 拳銃 (Handguns) ---
+    Auto22Short,            // .22 Short Automatic 1D6
+    Derringer25,            // .25 Derringer       1D6
+    Revolver32,             // .32 Revolver        1D8
+    Automatic32,            // .32 Automatic       1D8
+    LugerP08,               // Model P08 Luger     1D10
+    Revolver45,             // .45 Revolver        1D10+2
+    Automatic45,            // .45 Automatic       1D10+2
+    // --- ライフル (Rifles) ---
+    BoltAction22,           // .22 Bolt-Action     1D6+1
+    LeverAction30,          // .30 Lever-Action    2D6
+    MartiniHenry45,         // .45 Martini-Henry   1D8+1D6+3
+    MoranAirRifle,          // Col. Moran's Air    2D6+1
+    LeeEnfield303,          // .303 Lee-Enfield    2D6+4
+    BoltAction3006,         // .30-06 Bolt-Action  2D6+4
+    ElephantGun,            // Elephant Gun        3D6+4
+    // --- ショットガン (Shotguns) ---
+    Shotgun20Gauge,         // 20-gauge (2B)        2D6/1D6/1D3
+    Shotgun16Gauge,         // 16-gauge (2B)        2D6+2/1D6+1/1D4
+    Shotgun12Gauge,         // 12-gauge (2B)        4D6/2D6/1D6
+    Shotgun12GaugeSemiAuto, // 12-gauge semi-auto   4D6/2D6/1D6
+    Shotgun12GaugeSawedOff, // 12-gauge sawed off   4D6/1D6
+    // --- 短機関銃 (SMG) ---
+    BergmannMP18,           // Bergmann MP18        1D10
+    Thompson,               // Thompson             1D10+2
+    // --- 機関銃 (MG) ---
+    BrowningAutoRifle,      // Browning Auto Rifle  2D6+4
+    BrowningM1917,          // .30 Browning M1917   2D6+4
+    BrenGun,                // Bren Gun             2D6+4
+    LewisGun,               // Mark I Lewis Gun     2D6+4
+    Vickers303,             // Vickers .303         2D6+4
     Custom(String),
 }
 
 impl Weapon {
+    pub fn name() {
+        // later todo
+    }
+
     pub fn label(&self, lang: Lang) -> &str {
         match (self, lang) {
-            "Bow and Arrows"
-            "弓と矢",
-            "ブラスナックル",
-            "むち",
-            "燃えているたいまつ",
-            "チェーンソー",
-            "ブラックジャック",
-            (Self::ClubLarge,    Lang::En) => "Club, Large",
-            (Self::ClubLarge,    Lang::Ja) => "大きい棍棒",
-            "小さい棍棒",
-            "クロスボウ",
-            "絞殺ひも",
-            "手斧/小鎌",
-            "大型ナイフ",
-            (Self::KnifeMedium,  Lang::En) => "Knife, Medium",
-            (Self::KnifeMedium,  Lang::Ja) => "中型ナイフ",
-            "小型ナイフ",
-            "催眠スプレー",
-            "ヌンチャク",
-            "投石",
-            "手裏剣",
-            "騎兵槍",
-            "投げ槍",
-            "重い刀剣",
-            "中型の刀剣",
-            "軽い刀剣",
-            "スタンガン(接触型)",
-            "スタンガン(射出型)",
-            "戦闘用ブーメラン",
-            "木斧",
-            (Self::FightingSword,Lang::En) => "Fighting (Sword)",
-            (Self::FightingSword,Lang::Ja) => "近接戦闘（刀剣）",
-            (Self::Custom(s),    _)        => s.as_str(),
+            (Self::BowAndArrows,           Lang::En) => "Bow and Arrows",
+            (Self::BowAndArrows,           Lang::Ja) => "弓と矢",
+            (Self::BrassKnuckles,          Lang::En) => "Brass Knuckles",
+            (Self::BrassKnuckles,          Lang::Ja) => "ブラスナックル",
+            (Self::Bullwhip,               Lang::En) => "Bullwhip",
+            (Self::Bullwhip,               Lang::Ja) => "むち",
+            (Self::BurningTorch,           Lang::En) => "Burning Torch",
+            (Self::BurningTorch,           Lang::Ja) => "燃えているたいまつ",
+            (Self::Blackjack,              Lang::En) => "Blackjack",
+            (Self::Blackjack,              Lang::Ja) => "ブラックジャック",
+            (Self::ClubLarge,              Lang::En) => "Club, Large",
+            (Self::ClubLarge,              Lang::Ja) => "大きい棍棒",
+            (Self::ClubSmall,              Lang::En) => "Club, Small",
+            (Self::ClubSmall,              Lang::Ja) => "小さい棍棒",
+            (Self::Crossbow,               Lang::En) => "Crossbow",
+            (Self::Crossbow,               Lang::Ja) => "クロスボウ",
+            (Self::Garrote,                Lang::En) => "Garrote",
+            (Self::Garrote,                Lang::Ja) => "絞殺ひも",
+            (Self::HatchetSickle,          Lang::En) => "Hatchet/Sickle",
+            (Self::HatchetSickle,          Lang::Ja) => "手斧/小鎌",
+            (Self::KnifeLarge,             Lang::En) => "Knife, Large",
+            (Self::KnifeLarge,             Lang::Ja) => "大型ナイフ",
+            (Self::KnifeMedium,            Lang::En) => "Knife, Medium",
+            (Self::KnifeMedium,            Lang::Ja) => "中型ナイフ",
+            (Self::KnifeSmall,             Lang::En) => "Knife, Small",
+            (Self::KnifeSmall,             Lang::Ja) => "小型ナイフ",
+            (Self::Nunchaku,               Lang::En) => "Nunchaku",
+            (Self::Nunchaku,               Lang::Ja) => "ヌンチャク",
+            (Self::RockThrown,             Lang::En) => "Rock, Thrown",
+            (Self::RockThrown,             Lang::Ja) => "投石",
+            (Self::Shuriken,               Lang::En) => "Shuriken",
+            (Self::Shuriken,               Lang::Ja) => "手裏剣",
+            (Self::Spear,                  Lang::En) => "Spear",
+            (Self::Spear,                  Lang::Ja) => "騎兵槍",
+            (Self::SpearThrown,            Lang::En) => "Spear, Thrown",
+            (Self::SpearThrown,            Lang::Ja) => "投げ槍",
+            (Self::Auto22Short,            Lang::En) => ".22 Short Automatic",
+            (Self::Auto22Short,            Lang::Ja) => ".22ショートオートマチック",
+            (Self::Derringer25,            Lang::En) => ".25 Derringer",
+            (Self::Derringer25,            Lang::Ja) => ".25デリンジャー",
+            (Self::Revolver32,             Lang::En) => ".32 Revolver",
+            (Self::Revolver32,             Lang::Ja) => ".32リボルバー",
+            (Self::Automatic32,            Lang::En) => ".32 Automatic",
+            (Self::Automatic32,            Lang::Ja) => ".32オートマチック",
+            (Self::LugerP08,               Lang::En) => "Model P08 Luger",
+            (Self::LugerP08,               Lang::Ja) => "P08ルガー",
+            (Self::Revolver45,             Lang::En) => ".45 Revolver",
+            (Self::Revolver45,             Lang::Ja) => ".45リボルバー",
+            (Self::Automatic45,            Lang::En) => ".45 Automatic",
+            (Self::Automatic45,            Lang::Ja) => ".45オートマチック",
+            (Self::BoltAction22,           Lang::En) => ".22 Bolt-Action Rifle",
+            (Self::BoltAction22,           Lang::Ja) => ".22ボルトアクションライフル",
+            (Self::LeverAction30,          Lang::En) => ".30 Lever-Action Carbine",
+            (Self::LeverAction30,          Lang::Ja) => ".30レバーアクションカービン",
+            (Self::MartiniHenry45,         Lang::En) => ".45 Martini-Henry Rifle",
+            (Self::MartiniHenry45,         Lang::Ja) => ".45マルティニ・ヘンリー",
+            (Self::MoranAirRifle,          Lang::En) => "Col. Moran's Air Rifle",
+            (Self::MoranAirRifle,          Lang::Ja) => "モラン大佐の空気銃",
+            (Self::LeeEnfield303,          Lang::En) => ".303 Lee-Enfield",
+            (Self::LeeEnfield303,          Lang::Ja) => ".303リー・エンフィールド",
+            (Self::BoltAction3006,         Lang::En) => ".30-06 Bolt-Action Rifle",
+            (Self::BoltAction3006,         Lang::Ja) => ".30-06ボルトアクションライフル",
+            (Self::ElephantGun,            Lang::En) => "Elephant Gun",
+            (Self::ElephantGun,            Lang::Ja) => "エレファントガン",
+            (Self::Shotgun20Gauge,         Lang::En) => "20-gauge Shotgun",
+            (Self::Shotgun20Gauge,         Lang::Ja) => "20ゲージショットガン",
+            (Self::Shotgun16Gauge,         Lang::En) => "16-gauge Shotgun",
+            (Self::Shotgun16Gauge,         Lang::Ja) => "16ゲージショットガン",
+            (Self::Shotgun12Gauge,         Lang::En) => "12-gauge Shotgun",
+            (Self::Shotgun12Gauge,         Lang::Ja) => "12ゲージショットガン",
+            (Self::Shotgun12GaugeSemiAuto, Lang::En) => "12-gauge Shotgun (semi-auto)",
+            (Self::Shotgun12GaugeSemiAuto, Lang::Ja) => "12ゲージショットガン(半自動)",
+            (Self::Shotgun12GaugeSawedOff, Lang::En) => "12-gauge Shotgun (sawed off)",
+            (Self::Shotgun12GaugeSawedOff, Lang::Ja) => "12ゲージショットガン(短銃身)",
+            (Self::BergmannMP18,           Lang::En) => "Bergmann MP18",
+            (Self::BergmannMP18,           Lang::Ja) => "ベルグマンMP18",
+            (Self::Thompson,               Lang::En) => "Thompson",
+            (Self::Thompson,               Lang::Ja) => "トンプソン",
+            (Self::BrowningAutoRifle,      Lang::En) => "Browning Automatic Rifle M1918",
+            (Self::BrowningAutoRifle,      Lang::Ja) => "ブローニング自動小銃M1918",
+            (Self::BrowningM1917,          Lang::En) => ".30 Browning M1917A1",
+            (Self::BrowningM1917,          Lang::Ja) => ".30ブローニングM1917A1",
+            (Self::BrenGun,                Lang::En) => "Bren Gun",
+            (Self::BrenGun,                Lang::Ja) => "ブレンガン",
+            (Self::LewisGun,               Lang::En) => "Mark I Lewis Gun",
+            (Self::LewisGun,               Lang::Ja) => "ルイス軽機関銃Mk.I",
+            (Self::Vickers303,             Lang::En) => "Vickers .303 Machine Gun",
+            (Self::Vickers303,             Lang::Ja) => "ヴィッカース.303機関銃",
+            (Self::Custom(_),              _        ) => "Custom",
         }
     }
 
-    pub fn skill() -> &Skill {
-        
+    pub fn skill(&self) -> Skill {
+        match self {
+            Self::BowAndArrows                          => Skill::Firearms(FirearmsSpec::Bow),
+            Self::BrassKnuckles                         => Skill::Fighting(FightingSpec::Brawl),
+            Self::Bullwhip                              => Skill::Fighting(FightingSpec::Whip),
+            Self::BurningTorch                          => Skill::Fighting(FightingSpec::Brawl),
+            Self::Blackjack                             => Skill::Fighting(FightingSpec::Brawl),
+            Self::ClubLarge                             => Skill::Fighting(FightingSpec::Brawl),
+            Self::ClubSmall                             => Skill::Fighting(FightingSpec::Brawl),
+            Self::Crossbow                              => Skill::Firearms(FirearmsSpec::Bow),
+            Self::Garrote                               => Skill::Fighting(FightingSpec::Garrote),
+            Self::HatchetSickle                         => Skill::Fighting(FightingSpec::Axe),
+            Self::KnifeLarge                            => Skill::Fighting(FightingSpec::Brawl),
+            Self::KnifeMedium                           => Skill::Fighting(FightingSpec::Brawl),
+            Self::KnifeSmall                            => Skill::Fighting(FightingSpec::Brawl),
+            Self::Nunchaku                              => Skill::Fighting(FightingSpec::Flail),
+            Self::RockThrown                            => Skill::Throw,
+            Self::Shuriken                              => Skill::Throw,
+            Self::Spear                                 => Skill::Fighting(FightingSpec::Spear),
+            Self::SpearThrown                           => Skill::Throw,
+            Self::Auto22Short                           => Skill::Firearms(FirearmsSpec::Handgun),
+            Self::Derringer25                           => Skill::Firearms(FirearmsSpec::Handgun),
+            Self::Revolver32                            => Skill::Firearms(FirearmsSpec::Handgun),
+            Self::Automatic32                           => Skill::Firearms(FirearmsSpec::Handgun),
+            Self::LugerP08                              => Skill::Firearms(FirearmsSpec::Handgun),
+            Self::Revolver45                            => Skill::Firearms(FirearmsSpec::Handgun),
+            Self::Automatic45                           => Skill::Firearms(FirearmsSpec::Handgun),
+            Self::BoltAction22                          => Skill::Firearms(FirearmsSpec::Rifle),
+            Self::LeverAction30                         => Skill::Firearms(FirearmsSpec::Rifle),
+            Self::MartiniHenry45                        => Skill::Firearms(FirearmsSpec::Rifle),
+            Self::MoranAirRifle                         => Skill::Firearms(FirearmsSpec::Rifle),
+            Self::LeeEnfield303                         => Skill::Firearms(FirearmsSpec::Rifle),
+            Self::BoltAction3006                        => Skill::Firearms(FirearmsSpec::Rifle),
+            Self::ElephantGun                           => Skill::Firearms(FirearmsSpec::Rifle),
+            Self::Shotgun20Gauge                        => Skill::Firearms(FirearmsSpec::Shotgun),
+            Self::Shotgun16Gauge                        => Skill::Firearms(FirearmsSpec::Shotgun),
+            Self::Shotgun12Gauge                        => Skill::Firearms(FirearmsSpec::Shotgun),
+            Self::Shotgun12GaugeSemiAuto                => Skill::Firearms(FirearmsSpec::Shotgun),
+            Self::Shotgun12GaugeSawedOff                => Skill::Firearms(FirearmsSpec::Shotgun),
+            Self::BergmannMP18                          => Skill::Firearms(FirearmsSpec::Smg),
+            Self::Thompson                              => Skill::Firearms(FirearmsSpec::Smg),
+            Self::BrowningAutoRifle                     => Skill::Firearms(FirearmsSpec::Mg),
+            Self::BrowningM1917                         => Skill::Firearms(FirearmsSpec::Mg),
+            Self::BrenGun                               => Skill::Firearms(FirearmsSpec::Mg),
+            Self::LewisGun                              => Skill::Firearms(FirearmsSpec::Mg),
+            Self::Vickers303                            => Skill::Firearms(FirearmsSpec::Mg),
+            Self::Custom(_)                             => Skill::Fighting(FightingSpec::Brawl),
+        }
     }
 
-    /// 基本ダメージ式。スキル参照型は None（呼び出し側でスキルから取得）。
-    pub fn damage(&self) -> Option<&'static str> {
+    pub fn range(&self, lang: Lang) -> (u8, &str) { // integer, unit
+
+    }
+
+    /// 基本ダメージ式
+    pub fn damage(&self) ->  {
         match self {
-            Self::ClubLarge     => Some("1D8+DB"),
-            Self::KnifeMedium   => Some("1D6+DB"),
-            Self::FightingSword => None,
-            Self::Custom(_)     => None,
+            Self::BowAndArrows          => Dice(1,6)+HalfDamageBonus,
+            Self::BrassKnuckles         => Dice(1,3)+1+DamageBonus,
+            Self::Bullwhip              => Dice(1,3)+HalfDamageBonus,
+            Self::BurningTorch          => Dice(1,6), // +burn は別途処理
+            Self::Blackjack             => Dice(1,8)+DamageBonus,
+            Self::ClubLarge             => Dice(1,8)+DamageBonus,
+            Self::ClubSmall             => Dice(1,6)+DamageBonus,
+            Self::Crossbow              => Dice(1,8)+2,
+            Self::Garrote               => Dice(1,6)+DamageBonus,
+            Self::HatchetSickle         => Dice(1,6)+1+DamageBonus,
+            Self::KnifeLarge            => Dice(1,8)+DamageBonus,
+            Self::KnifeMedium           => Dice(1,4)+2+DamageBonus,
+            Self::KnifeSmall            => Dice(1,4)+DamageBonus,
+            Self::Nunchaku              => Dice(1,8)+DamageBonus,
+            Self::RockThrown            => Dice(1,4)+HalfDamageBonus,
+            Self::Shuriken              => Dice(1,3)+HalfDamageBonus,
+            Self::Spear                 => Dice(1,8)+1,
+            Self::SpearThrown           => Dice(1,8)+HalfDamageBonus,
+            Self::Auto22Short           => Dice(1,6),
+            Self::Derringer25           => Dice(1,6),
+            Self::Revolver32            => Dice(1,8),
+            Self::Automatic32           => Dice(1,8),
+            Self::LugerP08              => Dice(1,10),
+            Self::Revolver45            => Dice(1,10)+2,
+            Self::Automatic45           => Dice(1,10)+2,
+            Self::BoltAction22          => Dice(1,6)+1,
+            Self::LeverAction30         => Dice(2,6),
+            Self::MartiniHenry45        => Dice(1,8)+Dice(1,6)+3,
+            Self::MoranAirRifle         => Dice(2,6)+1,
+            Self::LeeEnfield303         => Dice(2,6)+4,
+            Self::BoltAction3006        => Dice(2,6)+4,
+            Self::ElephantGun           => Dice(3,6)+4,
+            Self::Shotgun20Gauge        => Dice(2,6), // /1D6/1D3 距離段階別
+            Self::Shotgun16Gauge        => Dice(2,6)+2,
+            Self::Shotgun12Gauge        => Dice(4,6),
+            Self::Shotgun12GaugeSemiAuto => Dice(4,6),
+            Self::Shotgun12GaugeSawedOff => Dice(4,6),
+            Self::BergmannMP18          => Dice(1,10),
+            Self::Thompson              => Dice(1,10)+2,
+            Self::BrowningAutoRifle     => Dice(2,6)+4,
+            Self::BrowningM1917         => Dice(2,6)+4,
+            Self::BrenGun               => Dice(2,6)+4,
+            Self::LewisGun              => Dice(2,6)+4,
+            Self::Vickers303            => Dice(2,6)+4,
+            Self::Custom(_)             => None,
+        }
+    }
+
+    pub fn is_impalable(&self) -> bool {
+        match self {
+            Self::BowAndArrows   => true,
+            Self::Crossbow       => true,
+            Self::Garrote        => true,
+            Self::HatchetSickle  => true,
+            Self::KnifeLarge     => true,
+            Self::KnifeMedium    => true,
+            Self::KnifeSmall     => true,
+            Self::Shuriken       => true,
+            Self::Spear          => true,
+            Self::SpearThrown    => true,
+            Self::Auto22Short           => true,
+            Self::Derringer25           => true,
+            Self::Revolver32            => true,
+            Self::Automatic32           => true,
+            Self::LugerP08              => true,
+            Self::Revolver45            => true,
+            Self::Automatic45           => true,
+            Self::BoltAction22          => true,
+            Self::LeverAction30         => true,
+            Self::MartiniHenry45        => true,
+            Self::MoranAirRifle         => true,
+            Self::LeeEnfield303         => true,
+            Self::BoltAction3006        => true,
+            Self::ElephantGun           => true,
+            Self::BergmannMP18          => true,
+            Self::Thompson              => true,
+            Self::BrowningAutoRifle     => true,
+            Self::BrowningM1917         => true,
+            Self::BrenGun               => true,
+            Self::LewisGun              => true,
+            Self::Vickers303            => true,
+            _ => false,
+        }
+    }
+
+    /// ラウンドあたり攻撃回数。銃器の括弧内は速射(quick draw)
+    pub fn attacks_per_round(&self) -> u8 {
+        match self {
+            Self::BowAndArrows           => 1,
+            Self::BrassKnuckles          => 1,
+            Self::Bullwhip               => 1,
+            Self::BurningTorch           => 1,
+            Self::Blackjack              => 1,
+            Self::ClubLarge              => 1,
+            Self::ClubSmall              => 1,
+            Self::Crossbow               => 1, // 実際は1/2ラウンド
+            Self::Garrote                => 1,
+            Self::HatchetSickle          => 1,
+            Self::KnifeLarge             => 1,
+            Self::KnifeMedium            => 1,
+            Self::KnifeSmall             => 1,
+            Self::Nunchaku               => 1,
+            Self::RockThrown             => 1,
+            Self::Shuriken               => 2,
+            Self::Spear                  => 1,
+            Self::SpearThrown            => 1,
+            Self::Auto22Short            => 1,
+            Self::Derringer25            => 1,
+            Self::Revolver32             => 1,
+            Self::Automatic32            => 1,
+            Self::LugerP08               => 1,
+            Self::Revolver45             => 1,
+            Self::Automatic45            => 1,
+            Self::BoltAction22           => 1,
+            Self::LeverAction30          => 1,
+            Self::MartiniHenry45         => 1,
+            Self::MoranAirRifle          => 1,
+            Self::LeeEnfield303          => 1,
+            Self::BoltAction3006         => 1,
+            Self::ElephantGun            => 1,
+            Self::Shotgun20Gauge         => 1,
+            Self::Shotgun16Gauge         => 1,
+            Self::Shotgun12Gauge         => 1,
+            Self::Shotgun12GaugeSemiAuto => 1,
+            Self::Shotgun12GaugeSawedOff => 1,
+            Self::BergmannMP18           => 1,
+            Self::Thompson               => 1,
+            Self::BrowningAutoRifle      => 1,
+            Self::BrowningM1917          => 1, // フルオート
+            Self::BrenGun                => 1,
+            Self::LewisGun               => 1, // フルオート
+            Self::Vickers303             => 1, // フルオート
+            Self::Custom(_)              => 1,
+        }
+    }
+
+    /// 装填数 (magazine)。近接武器は None
+    pub fn ammunition(&self) -> Option<u8> {
+        match self {
+            Self::BowAndArrows           => Some(1),
+            Self::Crossbow               => Some(1),
+            Self::Shuriken               => Some(1), // one use
+            Self::Auto22Short            => Some(6),
+            Self::Derringer25            => Some(1),
+            Self::Revolver32             => Some(6),
+            Self::Automatic32            => Some(8),
+            Self::LugerP08               => Some(8),
+            Self::Revolver45             => Some(6),
+            Self::Automatic45            => Some(7),
+            Self::BoltAction22           => Some(6),
+            Self::LeverAction30          => Some(6),
+            Self::MartiniHenry45         => Some(1),
+            Self::MoranAirRifle          => Some(1),
+            Self::LeeEnfield303          => Some(10),
+            Self::BoltAction3006         => Some(5),
+            Self::ElephantGun            => Some(2),
+            Self::Shotgun20Gauge         => Some(2),
+            Self::Shotgun16Gauge         => Some(2),
+            Self::Shotgun12Gauge         => Some(2),
+            Self::Shotgun12GaugeSemiAuto => Some(5),
+            Self::Shotgun12GaugeSawedOff => Some(2),
+            Self::BergmannMP18           => Some(32), // 20/30/32
+            Self::Thompson               => Some(30), // 20/30/50
+            Self::BrowningAutoRifle      => Some(20),
+            Self::BrowningM1917          => Some(250),
+            Self::BrenGun                => Some(30), // 30/100
+            Self::LewisGun               => Some(47), // 47/97
+            Self::Vickers303             => Some(250),
+            _ => None,
+        }
+    }
+
+    /// 故障値 (malfunction number)。故障なしは None
+    pub fn malfunction(&self) -> Option<u8> {
+        match self {
+            Self::BowAndArrows           => Some(97),
+            Self::Crossbow               => Some(96),
+            Self::Shuriken               => Some(100),
+            Self::Auto22Short            => Some(100),
+            Self::Derringer25            => Some(100),
+            Self::Revolver32             => Some(100),
+            Self::Automatic32            => Some(99),
+            Self::LugerP08               => Some(99),
+            Self::Revolver45             => Some(100),
+            Self::Automatic45            => Some(100),
+            Self::BoltAction22           => Some(99),
+            Self::LeverAction30          => Some(98),
+            Self::MartiniHenry45         => Some(100),
+            Self::MoranAirRifle          => Some(88),
+            Self::LeeEnfield303          => Some(100),
+            Self::BoltAction3006         => Some(100),
+            Self::ElephantGun            => Some(100),
+            Self::Shotgun20Gauge         => Some(100),
+            Self::Shotgun16Gauge         => Some(100),
+            Self::Shotgun12Gauge         => Some(100),
+            Self::Shotgun12GaugeSemiAuto => Some(100),
+            Self::Shotgun12GaugeSawedOff => Some(100),
+            Self::BergmannMP18           => Some(96),
+            Self::Thompson               => Some(96),
+            Self::BrowningAutoRifle      => Some(100),
+            Self::BrowningM1917          => Some(96),
+            Self::BrenGun                => Some(96),
+            Self::LewisGun               => Some(96),
+            Self::Vickers303             => None, // N/A
+            _ => None,
         }
     }
 }

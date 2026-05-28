@@ -1,0 +1,115 @@
+<!--
+  color-picker.html
+  すべてのDOM操作はworker.js → execute({ op, id, attr, value }) 経由。
+  このHTMLはIDを固定して持つだけ。イベントはdispatch()経由でWorkerへ。
+-->
+<div class="cp-root">
+
+  <!-- プレビュー（背景色・HEX入力） -->
+  <div class="cp-preview" id="cp-preview">
+    <!--
+      HEXバリデーションはHTML側で完結:
+        pattern="#[0-9A-Fa-f]{6}" → ブラウザがinvalidをブロック
+        inputイベントで7文字かつ valid のときだけWorkerへ送信
+    -->
+    <input
+      type="text"
+      id="cp-hex-input"
+      class="cp-hex-input"
+      value="#6366F1"
+      maxlength="7"
+      spellcheck="false"
+      pattern="#[0-9A-Fa-f]{6}"
+    >
+  </div>
+
+  <!-- HSL スライダー -->
+  <div class="cp-panel">
+    <div class="cp-panel-label">HSL</div>
+    <div class="cp-slider-group">
+
+      <div class="cp-slider-row">
+        <span class="cp-slider-ch" style="color:#f7a26a">H</span>
+        <input type="range" id="cp-h-slider" min="0" max="360" value="239">
+        <span class="cp-val" id="cp-h-val">239°</span>
+      </div>
+
+      <div class="cp-slider-row">
+        <span class="cp-slider-ch" style="color:#a2f7b0">S</span>
+        <input type="range" id="cp-s-slider" min="0" max="100" value="84">
+        <span class="cp-val" id="cp-s-val">84%</span>
+      </div>
+
+      <div class="cp-slider-row">
+        <span class="cp-slider-ch" style="color:#f7f7a2">L</span>
+        <input type="range" id="cp-l-slider" min="0" max="100" value="67">
+        <span class="cp-val" id="cp-l-val">67%</span>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- パレット（固定7個） -->
+  <div class="cp-panel">
+    <div class="cp-panel-label">Palette</div>
+    <div class="cp-swatches">
+      <button class="cp-swatch" id="cp-swatch-0" data-hex="">
+        <span class="cp-swatch-tip" id="cp-swatch-tip-0"></span>
+      </button>
+      <button class="cp-swatch" id="cp-swatch-1" data-hex="">
+        <span class="cp-swatch-tip" id="cp-swatch-tip-1"></span>
+      </button>
+      <button class="cp-swatch" id="cp-swatch-2" data-hex="">
+        <span class="cp-swatch-tip" id="cp-swatch-tip-2"></span>
+      </button>
+      <button class="cp-swatch" id="cp-swatch-3" data-hex="">
+        <span class="cp-swatch-tip" id="cp-swatch-tip-3"></span>
+      </button>
+      <button class="cp-swatch" id="cp-swatch-4" data-hex="">
+        <span class="cp-swatch-tip" id="cp-swatch-tip-4"></span>
+      </button>
+      <button class="cp-swatch" id="cp-swatch-5" data-hex="">
+        <span class="cp-swatch-tip" id="cp-swatch-tip-5"></span>
+      </button>
+      <button class="cp-swatch" id="cp-swatch-6" data-hex="">
+        <span class="cp-swatch-tip" id="cp-swatch-tip-6"></span>
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<!--
+  ╔══════════════════════════════════════════════════════════╗
+  ║  カレンダーアプリ側の main.js に追加するイベント配線    ║
+  ║  既存の dispatch() / worker / execute() をそのまま使用  ║
+  ╚══════════════════════════════════════════════════════════╝
+
+  既存の bind() に以下を追加:
+
+  // ── スライダー（inputイベント → workerへvalue付きで送信）──
+  ['cp-h-slider','cp-s-slider','cp-l-slider'].forEach(id => {
+    document.getElementById(id)?.addEventListener('input', (e) => {
+      worker.postMessage({
+        type: 'event',
+        payload: {
+          event_type: 0,          // inputはEVENT_TYPEに無いので0でOK
+          target_id:  e.target.id,
+          value:      +e.target.value,
+          ctrl: 0, meta: 0,
+        },
+      });
+    });
+  });
+
+  // ── HEX入力（7文字 & patternマッチ時のみ送信）────────────
+  document.getElementById('cp-hex-input')?.addEventListener('input', (e) => {
+    const v = e.target.value;
+    if (v.length === 7 && e.target.validity.valid) {
+      worker.postMessage({ type: 'hex_input', payload: { value: v } });
+    }
+  });
+
+  // ── swatchクリックは既存の click dispatch() で自動ルーティング ──
+  // cp-swatch-0 〜 cp-swatch-6 のclickは worker.js 内で swatchIndex() が処理
+-->
