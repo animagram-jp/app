@@ -80,13 +80,6 @@
 </div>
 
 <!--
-  ╔══════════════════════════════════════════════════════════╗
-  ║  カレンダーアプリ側の main.js に追加するイベント配線    ║
-  ║  既存の dispatch() / worker / execute() をそのまま使用  ║
-  ╚══════════════════════════════════════════════════════════╝
-
-  既存の bind() に以下を追加:
-
   // ── スライダー（inputイベント → workerへvalue付きで送信）──
   ['cp-h-slider','cp-s-slider','cp-l-slider'].forEach(id => {
     document.getElementById(id)?.addEventListener('input', (e) => {

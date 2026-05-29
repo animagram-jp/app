@@ -4,12 +4,10 @@ use crate::list::ListError;
 use crate::data_struct::DataStruct;
 
 // ============================================================
-// --- ダイスロール (Dice Roll) ---
+// --- ダイス (Dice) ---
 // ============================================================
 
-use rand::{rng, RngExt};
-
-type Dice = (u8, u8); // (count, sides)
+type Dice = (i8, u8); // (count, sides)
 
 // ============================================================
 // --- キャラクター (Character) ---
@@ -314,26 +312,23 @@ pub enum ArtCraftSpec {
     Barber,       // 理容
     Calligraphy,  // 書道
     Carpentry,    // 大工仕事
-    Cobbling,     // 靴製造
     Cook,         // 料理
-    Dancing,      // 踊り
+    Dancing,      // ダンス
     FineArt,      // 絵画
     Forgery,      // 文書偽造
+    Writing,      // 執筆
     Photography,  // 写真術
     Pottery,      // 陶芸
     Sculpting,    // 彫刻
-    Writing,      // 執筆
     Custom1(String), Custom2(String), Custom3(String), Custom4(String),
 }
-
 
 impl ArtCraftSpec {
     pub fn list() -> &'static [Self] {
         &[
-            Self::Acting, Self::Barber, Self::Calligraphy, Self::Carpentry,
+            Self::Acting, Self::Barber, Self::Calligraphy, Self::Writing, Self::Carpentry,
             Self::Cobbling, Self::Cook, Self::Dancing, Self::FineArt,
             Self::Forgery, Self::Photography, Self::Pottery, Self::Sculpting,
-            Self::Writing,
         ]
     }
 
@@ -343,8 +338,8 @@ impl ArtCraftSpec {
             Self::Acting      =>  0,
             Self::Barber      =>  1,
             Self::Calligraphy =>  2,
-            Self::Carpentry   =>  3,
-            Self::Cobbling    =>  4,
+            Self::Writing     =>  3,
+            Self::Carpentry   =>  4,
             Self::Cook        =>  5,
             Self::Dancing     =>  6,
             Self::FineArt     =>  7,
@@ -352,11 +347,10 @@ impl ArtCraftSpec {
             Self::Photography =>  9,
             Self::Pottery     => 10,
             Self::Sculpting   => 11,
-            Self::Writing     => 12,
-            Self::Custom1(_)  => 13,
-            Self::Custom2(_)  => 14,
-            Self::Custom3(_)  => 15,
-            Self::Custom4(_)  => 16,
+            Self::Custom1(_)  => 12,
+            Self::Custom2(_)  => 13,
+            Self::Custom3(_)  => 14,
+            Self::Custom4(_)  => 15,
         }
     }
 
@@ -373,15 +367,15 @@ impl ArtCraftSpec {
             (Self::Calligraphy, Lang::En) => Some("Calligraphy"),
             (Self::Carpentry,   Lang::Ja) => Some("大工仕事"),
             (Self::Carpentry,   Lang::En) => Some("Carpentry"),
-            (Self::Cobbling,    Lang::Ja) => Some("靴製造"),
-            (Self::Cobbling,    Lang::En) => Some("Cobbling"),
             (Self::Cook,        Lang::Ja) => Some("料理"),
             (Self::Cook,        Lang::En) => Some("Cook"),
-            (Self::Dancing,     Lang::Ja) => Some("踊り"),
+            (Self::Dancing,     Lang::Ja) => Some("ダンス"),
             (Self::Dancing,     Lang::En) => Some("Dancing"),
             (Self::FineArt,     Lang::Ja) => Some("絵画"),
             (Self::FineArt,     Lang::En) => Some("Fine Art"),
             (Self::Forgery,     Lang::Ja) => Some("文書偽造"),
+            (Self::Writing,     Lang::Ja) => Some("執筆"),
+            (Self::Writing,     Lang::En) => Some("Writing"),
             (Self::Forgery,     Lang::En) => Some("Forgery"),
             (Self::Photography, Lang::Ja) => Some("写真術"),
             (Self::Photography, Lang::En) => Some("Photography"),
@@ -389,8 +383,6 @@ impl ArtCraftSpec {
             (Self::Pottery,     Lang::En) => Some("Pottery"),
             (Self::Sculpting,   Lang::Ja) => Some("彫刻"),
             (Self::Sculpting,   Lang::En) => Some("Sculpting"),
-            (Self::Writing,     Lang::Ja) => Some("執筆"),
-            (Self::Writing,     Lang::En) => Some("Writing"),
             (Self::Custom1(s) | Self::Custom2(s) | Self::Custom3(s) | Self::Custom4(s), _) => Some(s.as_str()),
         }
     }
