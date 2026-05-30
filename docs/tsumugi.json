@@ -3,14 +3,13 @@
     "created_at": "2024-02-07",
     "updated_at": "2026-04-18",
     "Profile": {
-        "Name":       "サンプル",
-        "Alias":      "さんぷる",
+        "Name":       "死生 紡",
+        "Alias":      "しせい つむぎ",
         "Age":        20,
         "Occupation": "Professor",
         "Title":      "舞台役者",
-        "Birthplace": null,
-        "Residence":  null,
-        "Pronoun":    null
+        "Birthplace": "日本",
+        "Residence":  "日本"
     },
     "Characteristic": {
         "STR":  [90,   0, 0],
@@ -90,7 +89,13 @@
         },
         {
             "name":   "大太刀",
+            "weapon": "日本刀",
             "skill":  "Fighting (Sword)",
+            "damage": [[1, 10, 1],"DB"],
+            "number_of_attacks": 1,
+            "range": null,
+            "ammunition":  null,
+            "mulfunction": null,
             "text":   "アーティファクト。自宅に所有している。"
         },
         {

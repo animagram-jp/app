@@ -7,7 +7,23 @@ use crate::data_struct::DataStruct;
 // --- ダイス (Dice) ---
 // ============================================================
 
-type Dice = (i8, u8); // (count, sides)
+type Dice = (i8, u8, i8); // (count, sides, modifier)
+
+pub mod dice {
+    fn display((count, sides, modifier): Dice) -> String {
+        let dice = if count == 0 || sides == 0 {
+            String::new()
+        } else {
+            format!("{count}D{sides}")
+        };
+        let modifier_str = match modifier {
+            0 => String::new(),
+            m if m > 0 => format!("+{m}"),
+            m => format!("{m}"),
+        };
+        format!("{dice}{modifier_str}")
+    }
+}
 
 // ============================================================
 // --- キャラクター (Character) ---
@@ -58,6 +74,24 @@ impl Character {
 // ============================================================
 // --- プロフィール (Name, Birthppalce, Pronoun, Occupation, Residence, Age) ---
 // ============================================================
+
+enum Age {
+
+}
+
+impl Age {
+    fn categorize(age: u8) -> Self {
+        match age {
+            15..=19 => Self::Teen,
+            20..=39 => Self::Young,
+            40..=49 => Self::Middle,
+            50..=59 => Self::Senior,
+            60..=69 => Self::Elderly,
+            70..=79 => Self::Old,
+            _       => Self::Ancient,
+        }
+    }
+}
 
 #[derive(Clone, Copy)]
 pub enum Profile {
@@ -1838,18 +1872,20 @@ impl Memo {
 }
 
 // ============================================================
-// --- 導出値・判定カテゴリ (Derived) ---
+// --- その他の属性 (Other Attribute) ---
 // ============================================================
 
 pub enum Derived {
-    HitPoints,
-    MagicPoints,
+    HitPoints(u8),   // u8
+    MagicPoints(u8), // u8
     Build(i8),
     DamageBonus(i8),
-    MoveRate,
-    Sanity,
-    OccupationSkillPoints,
-    InterestSkillPoints,
+    MoveRate(u8),
+    Sanity(u8),
+    OccupationSkillPoints(u16),
+    InterestSkillPoints(u16),
+    StandardOfLiving(StandardOfLiving),
+    AgeCategory(AgeCategory),
 }
 
 impl Derived {
@@ -1885,100 +1921,60 @@ impl Derived {
         }
     }
 
-    /// STR + SIZ から Build(i8) を導出する。
-    pub fn derive(str: u16, siz: u16) -> Self {
-        let value = match str as i32 + siz as i32 {
-              2..= 64 => -2,
-             65..= 84 => -1,
-             85..=124 =>  0,
-            125..=164 =>  1,
-            165..=204 =>  2,
-            205..=284 =>  3,
-            285..=364 =>  4,
-            _         =>  5,
-        };
-        Self::Build(value)
-    }
-
-    /// i8 → 1バイト (as u8)
-    pub fn encode(value: i8) -> Vec<u8> {
-        vec![value as u8]
-    }
-
-    /// 1バイト → i8
-    pub fn decode(bytes: &[u8]) -> i8 {
-        bytes.first().copied().map(|b| b as i8).unwrap_or(0)
-    }
-
-    /// Build(i8) の符号付き表示文字列。DamageBonus(i8) はそのまま委譲。
-    pub fn display(value: i8) -> &'static str {
-        match value {
-            i8::MIN..=-2 => "-2",
-            -1           => "-1",
-             0           =>  "0",
-             1           => "+1",
-             2           => "+2",
-             3           => "+3",
-             4           => "+4",
-            _            => "+5",
+    pub fn display(&self) -> String {
+        match Self {
+            Self::Build(i) => i.as_str
+            Self::DamageBonus(i) => dice::display(i)
         }
     }
 
-    /// Build の i8 値から対応するダメージボーナス表記を返す。
-    /// DamageBonus(i8) は Build(i8) と 1対1 なので同値を渡す。
-    pub fn damage_bonus_display(build: i8) -> &'static str {
-        match build {
-            i8::MIN..=-2 => "-2",
-            -1           => "-1",
-             0           =>  "0",
-             1           => "+1D4",
-             2           => "+1D6",
-             3           => "+2D6",
-             4           => "+3D6",
-            _            => "+4D6",
-        }
-    }
-
-    pub fn compute(&self, data_struct: &DataStruct) -> Result<Vec<u8>, ListError> {
+    pub fn derive(&self, character: &DataStruct) -> Option<[u8]> {
         match self {
             Self::HitPoints => {
-                let constitution = data_struct.get(&Character::Characteristic(Characteristic::Constitution))?;
-                let size         = data_struct.get(&Character::Characteristic(Characteristic::Size))?;
-                let val = (constitution.iter().map(|&b| b as u16).sum::<u16>() + size.iter().map(|&b| b as u16).sum::<u16>()) / 10;
-                Ok(val.to_le_bytes().to_vec())
+                let constitution = Characteristic::Constitution::value(character.get(Characteristic::Constitution::id()));
+                let size         = Characteristic::Size::value(character.get(Characteristic::Size::id()));
+                let val = (constitution + size) / 10;
+                Some(val.to_le_bytes())
             }
             Self::MagicPoints => {
-                let power = data_struct.get(&Character::Characteristic(Characteristic::Power))?;
-                let val = power.iter().map(|&b| b as u16).sum::<u16>() / 5;
-                Ok(val.to_le_bytes().to_vec())
+                let power = Characteristic::Power::value(character.get(Characteristic::Power::id()));
+                let val = power / 5;
+                Some(val.to_le_bytes())
             }
-            Self::Build(_) => {
-                let str = data_struct.get(&Character::Characteristic(Characteristic::Strength))?;
-                let siz = data_struct.get(&Character::Characteristic(Characteristic::Size))?;
-                let str_val = str.iter().map(|&b| b as u16).sum::<u16>();
-                let siz_val = siz.iter().map(|&b| b as u16).sum::<u16>();
-                let build = Self::derive(str_val, siz_val);
-                if let Self::Build(v) = build {
-                    Ok(Self::encode(v))
-                } else {
-                    Ok(Self::encode(0))
-                }
+            Self::Build(_) => { // p.31
+                let strength = Characteristic::Strength::value(character.get(Characteristic::Strength::id()));
+                let size     = Characteristic::Size::value(character.get(Characteristic::Size::id()));
+                let build    = match strength as i32 + size as i32 {
+                    2..= 64 => -2,
+                   65..= 84 => -1,
+                   85..=124 =>  0,
+                  125..=164 =>  1,
+                  165..=204 =>  2,
+                  205..=284 =>  3,
+                  285..=364 =>  4,
+                  365..=444 =>  5,
+                  445..=524 =>  6,
+                  // 525..=605 => 7 / +1D6 で80単位で移行も段階変化。
+              }
+              Some(build.to_le_bytes())
             }
-            Self::DamageBonus(_) => {
-                // Build と同値なので Build の計算結果をそのまま委譲
-                let str = data_struct.get(&Character::Characteristic(Characteristic::Strength))?;
-                let siz = data_struct.get(&Character::Characteristic(Characteristic::Size))?;
-                let str_val = str.iter().map(|&b| b as u16).sum::<u16>();
-                let siz_val = siz.iter().map(|&b| b as u16).sum::<u16>();
-                let build = Self::derive(str_val, siz_val);
-                if let Self::Build(v) = build {
-                    Ok(Self::encode(v))
-                } else {
-                    Ok(Self::encode(0))
+            Self::DamageBonus(i) => { // p.31
+                match i {
+                    -2 => Dice(0, 0, -2),
+                    -1 => Dice(0, 0, -1),
+                     0 => Dice(0, 0,  0),
+                     1 => Dice(1, 4,  0),
+                     2 => DIce(1, 6,  0),
+                     3 => Dice(2, 6,  0),
+                     4 => Dice(3, 6,  0),
+                     5 => Dice(4, 6,  0),
+                     6 => Dice(5, 6,  0),
+                     7..=i8.max => Dice(i-2, 6, 0)
+                     _ => 0 // todo
                 }
             }
             Self::MoveRate => {
-                // todo: 移動率計算 (STR/DEX/SIZ比較)
+                todo!("移動率計算 (STR/DEX/SIZ比較), age40代で-1,50代で-2,60代で-3,70代で-4,80代で-5")
                 Ok(vec![0])
             }
             Self::Sanity => {
@@ -1986,11 +1982,17 @@ impl Derived {
                 Ok(power.to_vec())
             }
             _ => Ok(vec![]),
+            Self::StandardOfLiving => {
+                match character.get(Skill::CreditRating) {
+                    0        => Self::Pauper,
+                    1..= 9   => Self::Poor,
+                   10..= 49  => Self::Average,
+                   50..= 89  => Self::Wealthy,
+                   90..= 98  => Self::Rich,
+                   _         => Self::SuperRich,
+                }
+            }
         }
-    }
-
-    pub fn update(&self) {
-        // todo: Derivedを一括再計算する
     }
 }
 
@@ -2007,15 +2009,10 @@ pub enum StandardOfLiving {
 impl StandardOfLiving {
     pub fn from_cr(cr: u16) -> Self {
         match cr {
-             0        => Self::Pauper,
-             1..= 9   => Self::Poor,
-            10..= 49  => Self::Average,
-            50..= 89  => Self::Wealthy,
-            90..= 98  => Self::Rich,
-            _         => Self::SuperRich,
+
         }
     }
-    pub fn label(self, lang: Lang) -> &'static str {
+    pub fn display(self, lang: Lang) -> &'static str {
         match (self, lang) {
             (Self::Pauper,    Lang::Ja) => "無一文",
             (Self::Pauper,    Lang::En) => "Pauper",
@@ -2114,7 +2111,7 @@ impl AgeCategory {
         matches!(self, Self::Teen)
     }
 
-    pub fn label(&self, lang: Lang) -> &'static str {
+    pub fn display(&self, lang: Lang) -> &'static str {
         match (self, lang) {
             (Self::Teen,    Lang::Ja) => "10代 (15-19)",
             (Self::Teen,    Lang::En) => "Teen (15-19)",

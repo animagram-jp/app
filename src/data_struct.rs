@@ -13,8 +13,10 @@ trait Field {
     pub fn id(&self, child: &Field) -> u32 {
     }
     pub fn encode(&self, value: T) -> &[u8] {
+        vec![value as u8]
     }
     pub fn decode(&self, value: &[u8]) -> T {
+        bytes.first().copied().map(|b| b as i8).unwrap_or(0)
     }
     pub fn display(&self, lang: Lang) -> String { // -> &'static str / &str / String
     }
