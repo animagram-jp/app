@@ -32,7 +32,7 @@ pub mod dice {
 pub enum Character {
     Profile,
     Characteristic,
-    Derived,
+    OtherAttribute,
     Skill,
     Possession,
     Backstory,
@@ -46,8 +46,8 @@ impl Character {
             (Self::Profile,        Lang::Ja) => "プロフィール",
             (Self::Characteristic, Lang::En) => "Characteristics",
             (Self::Characteristic, Lang::Ja) => "能力値",
-            (Self::Derived,        Lang::En) => "Other Attributes",
-            (Self::Derived,        Lang::Ja) => "ほかの属性",
+            (Self::OtherAttribute, Lang::En) => "Other Attributes",
+            (Self::OtherAttribute, Lang::Ja) => "ほかの属性",
             (Self::Skill,          Lang::En) => "Skill",
             (Self::Skill,          Lang::Ja) => "技能",
             (Self::Equipment,      Lang::En) => "Possession",
@@ -60,13 +60,13 @@ impl Character {
     }
     pub const fn id(&self) -> u32 {
         match self {
-            Self::Profile           =>  10,  //  10- 15 (6件)
-            Self::Characteristic    =>  20,  //  20- 28 (9件)
-            Self::Derived           =>  30,  //  30- 37 (8件)
-            Self::Skill             =>  40,  //  40- 86 (47件)
-            Self::Equipment         =>  90,  //  90-... (拡張余地)
-            Self::Backstory         => 100,  // 100-109 (10件)
-            Self::Memo              => 110,  // 110      (1件)
+            Self::Profile        =>  10,  //  10- 15 (6件)
+            Self::Characteristic =>  20,  //  20- 28 (9件)
+            Self::OtherAttribute =>  30,  //  30- 37 (8件)
+            Self::Skill          =>  40,  //  40- 86 (47件)
+            Self::Equipment      =>  90,  //  90-... (拡張余地)
+            Self::Backstory      => 100,  // 100-109 (10件)
+            Self::Memo           => 110,  // 110      (1件)
         }
     }
 }
@@ -74,24 +74,6 @@ impl Character {
 // ============================================================
 // --- プロフィール (Name, Birthppalce, Pronoun, Occupation, Residence, Age) ---
 // ============================================================
-
-enum Age {
-
-}
-
-impl Age {
-    fn categorize(age: u8) -> Self {
-        match age {
-            15..=19 => Self::Teen,
-            20..=39 => Self::Young,
-            40..=49 => Self::Middle,
-            50..=59 => Self::Senior,
-            60..=69 => Self::Elderly,
-            70..=79 => Self::Old,
-            _       => Self::Ancient,
-        }
-    }
-}
 
 #[derive(Clone, Copy)]
 pub enum Profile {
@@ -1875,7 +1857,7 @@ impl Memo {
 // --- その他の属性 (Other Attribute) ---
 // ============================================================
 
-pub enum Derived {
+pub enum OtherAttribute {
     HitPoints(u8),   // u8
     MagicPoints(u8), // u8
     Build(i8),
@@ -1888,9 +1870,9 @@ pub enum Derived {
     AgeCategory(AgeCategory),
 }
 
-impl Derived {
+impl OtherAttribute {
     pub fn id(&self) -> u32 {
-        Character::Derived.id() + match self {
+        Character::OtherAttribute.id() + match self {
             Self::HitPoints             => 0,
             Self::MagicPoints           => 1,
             Self::Build(_)              => 2,
@@ -1923,12 +1905,13 @@ impl Derived {
 
     pub fn display(&self) -> String {
         match Self {
-            Self::Build(i) => i.as_str
-            Self::DamageBonus(i) => dice::display(i)
+            Self::Build(i) => i.as_str,
+            Self::DamageBonus(i) => dice::display(i),
+            _ => String::new(),
         }
     }
 
-    pub fn derive(&self, character: &DataStruct) -> Option<[u8]> {
+    pub fn derive(&self, character: &DataStruct) -> Self {
         match self {
             Self::HitPoints => {
                 let constitution = Characteristic::Constitution::value(character.get(Characteristic::Constitution::id()));
@@ -1974,7 +1957,16 @@ impl Derived {
                 }
             }
             Self::MoveRate => {
-                todo!("移動率計算 (STR/DEX/SIZ比較), age40代で-1,50代で-2,60代で-3,70代で-4,80代で-5")
+                todo!("移動率計算 (STR/DEX/SIZ比較して7,8,9), age40代で-1,50代で-2,60代で-3,70代で-4,80代で-5")
+                match self {
+                    Self::Teen    => 0,
+                    Self::Young   => 0,
+                    Self::Middle  => -1,
+                    Self::Senior  => -2,
+                    Self::Elderly => -3,
+                    Self::Old     => -4,
+                    Self::Ancient => -5,
+                }
                 Ok(vec![0])
             }
             Self::Sanity => {
@@ -1998,20 +1990,15 @@ impl Derived {
 
 // --- 生活水準 (Standard of Living) ---
 pub enum StandardOfLiving {
-    Pauper,    // 無一文  (CR: 0     )
-    Poor,      // 貧乏    (CR: 1-  9 )
-    Average,   // 平均    (CR: 10- 49)
-    Wealthy,   // 裕福    (CR: 50- 89)
-    Rich,      // 富豪    (CR: 90- 98)
-    SuperRich, // 大富豪  (CR: 99    )
+    Pauper,
+    Poor,
+    Average,
+    Wealthy,
+    Rich,
+    SuperRich,
 }
 
 impl StandardOfLiving {
-    pub fn from_cr(cr: u16) -> Self {
-        match cr {
-
-        }
-    }
     pub fn display(self, lang: Lang) -> &'static str {
         match (self, lang) {
             (Self::Pauper,    Lang::Ja) => "無一文",
@@ -2029,6 +2016,7 @@ impl StandardOfLiving {
         }
     }
 }
+
 
 // --- 年齢カテゴリ (AgeCategory) ---
 enum AgeCategory {
@@ -2051,19 +2039,6 @@ impl AgeCategory {
             60..=69 => Self::Elderly,
             70..=79 => Self::Old,
             _       => Self::Ancient,
-        }
-    }
-
-    // Move Rate への減算値
-    pub fn move_rate_penalty(&self) -> u8 {
-        match self {
-            Self::Teen    => 0,
-            Self::Young   => 0,
-            Self::Middle  => 1,
-            Self::Senior  => 2,
-            Self::Elderly => 3,
-            Self::Old     => 4,
-            Self::Ancient => 5,
         }
     }
 
