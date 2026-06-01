@@ -22,6 +22,16 @@
         "EDU":  [90,   0, 0],
         "LUCK": [60,  12, 0]
     },
+    "OtherAttribute": {
+        "HitPoint": 13,
+        "MagicPoint": 10,
+        "Sanity": 69,
+        "Build": 2,
+        "DamageBonus": "1D6",
+        "MoveRate": 7,
+        "OccupationSkillPoints": 360,
+        "InterestSkillPoints": 180
+    },
     "Skill": {
         "Accounting":                  [ 5,  0,  0,   0],
         "Anthropology":                [ 1,  0,  0,   0],

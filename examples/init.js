@@ -31,7 +31,7 @@ function start() {
 }
 
 // ============================================================
-// receive canvas commands and excute
+// receive and excute canvas commands
 // ============================================================
 
 // CanvasCmd: { operation: u8, id: string, attribute?: string, value?: string }
@@ -72,7 +72,7 @@ function applyClass(el, value) {
 // send event
 // ============================================================
 
-function dispatch(e) {
+function send(e) {
   worker.postMessage({ type: "event", payload: {
     event_type: e.type,
     target_id:  e.target.id ?? "",
@@ -88,7 +88,6 @@ function bind() {
   const EVENTS = ["click", "keydown", "input", "change", "submit", "focusout",
                   "pointerdown", "pointerup", "pointermove", "pointercancel"];
   for (const type of EVENTS) {
-    document.addEventListener(type, dispatch);
+    document.addEventListener(type, send);
   }
 }
-

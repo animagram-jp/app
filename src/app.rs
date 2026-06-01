@@ -46,7 +46,7 @@ impl App {
         app
     }
 
-    pub fn event(&mut self, payload: JsValue) -> JsValue {
+    pub fn handle(&mut self, payload: JsValue) -> JsValue {
         let canvas_event = CanvasEvent::decode(&payload);
         self.pointer_state = self.pointer_state.update(
             &canvas_event.event_type,

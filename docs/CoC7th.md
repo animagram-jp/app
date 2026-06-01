@@ -1,6 +1,6 @@
 // This file includes untranslated text (ja).
 
-# CoC7th 
+# CoC7th
 
 Softwear for playing Call of Cthulhu 7th Edition
 
@@ -112,3 +112,7 @@ This is a note by Andyou written through confirming rulebook.
 - 1. KPは対象が攻撃を予期できるか、技能ロールできる。
 - 2. 予期できなかった場合、攻撃の技能ロールがファンブルしない限り成功する。
 - 3. 奇襲は行動順を意志を持った順に修正する意図がある。つまり、同ラウンドに奇襲を受けた側が行動することは構わないと考えられる。
+
+## Reference
+
+- https://basicroleplaying.org/topic/8902-armor-rules-clarification-coc-7th-ed/

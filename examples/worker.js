@@ -16,7 +16,7 @@ self.addEventListener("message", async (e) => {
 
   if (!app || type !== "event") return;
 
-  const cmds = app.event(payload);
+  const cmds = app.handle(payload);
   if (cmds?.length) self.postMessage({ type: "execute", payload: Array.from(cmds) });
 });
 
