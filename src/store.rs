@@ -349,4 +349,31 @@ mod tests {
         assert_eq!(memory[&1], b"aaa");
         assert!(!memory.contains_key(&2));
     }
+
+    #[test]
+    fn build_memory_truncated_record() {
+        let mut log = make_log(&[LogRecord::set(1, b"aaa".to_vec())]);
+        // 2レコード目をヘッダー途中で切る
+        log.extend_from_slice(&[0u8; 5]);
+        let memory = build_memory(&log);
+        assert_eq!(memory[&1], b"aaa");
+    }
+
+    // ── compact round-trip ────────────────────────────────────
+
+    #[test]
+    fn compact_bytes_round_trip() {
+        // compact が出力する bytes を build_memory に通して全エントリが復元できることを確認
+        let mut memory: BTreeMap<u32, Vec<u8>> = BTreeMap::new();
+        memory.insert(1, b"aaa".to_vec());
+        memory.insert(2, b"bbb".to_vec());
+        memory.insert(3, b"ccc".to_vec());
+
+        let snap: Vec<u8> = memory.iter()
+            .flat_map(|(&id, data)| LogRecord::set(id, data.clone()).to_bytes())
+            .collect();
+
+        let restored = build_memory(&snap);
+        assert_eq!(restored, memory);
+    }
 }
