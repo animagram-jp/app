@@ -12,6 +12,7 @@ type DamageBonus = (i8, u8, i8); // (count, sides, modifier)
 
 pub mod dice {
     use super::Dice;
+    use rand::RngExt as _;
 
     pub fn display(dice: &[Dice]) -> String {
         let s = dice.iter().map(|&(count, sides, modifier)| {
@@ -32,8 +33,12 @@ pub mod dice {
 
     pub fn roll(dice: &[Dice]) -> i32 {
         dice.iter().map(|&(count, sides, modifier)| {
-            let rolled = if count > 0 && sides > 0 {
-                crate::n_d_n(count as u32, sides as u32) as i32
+            let rolled = if count != 0 && sides > 0 {
+                let mut rng = rand::rng();
+                let sum: i32 = (0..count.unsigned_abs())
+                    .map(|_| rng.random_range(1..=sides as i32))
+                    .sum();
+                if count < 0 { -sum } else { sum }
             } else {
                 0
             };
@@ -130,6 +135,11 @@ impl Profile {
             (Self::Age, Lang::Ja) => "年齢",
         }
     }
+
+    pub fn encode(&self, name: &str, alias: Option(&str)) -> &[u8] {
+
+    }
+
     pub fn list() -> &'static [Profile] {
         &[
             Self::Name,
