@@ -87,22 +87,27 @@ impl LogRecord {
     }
 }
 
-fn build_memory(log: &[u8]) -> BTreeMap<u32, Vec<u8>> {
-    let mut memory: BTreeMap<u32, Option<Vec<u8>>> = BTreeMap::new();
+fn apply_log(memory: &mut BTreeMap<u32, Vec<u8>>, log: &[u8]) {
     let mut shift = 0;
     while shift < log.len() {
         match LogRecord::from_bytes(&log[shift..]) {
             Some((record, consumed)) => {
                 match record.operation {
-                    Operation::Set    => { memory.insert(record.id, Some(record.data)); }
-                    Operation::Delete => { memory.insert(record.id, None); }
+                    Operation::Set    => { memory.insert(record.id, record.data); }
+                    Operation::Delete => { memory.remove(&record.id); }
                 }
                 shift += consumed;
             }
             None => break, // corrupt or truncated record — stop here
         }
     }
-    memory.into_iter().filter_map(|(id, value)| value.map(|data| (id, data))).collect()
+}
+
+fn build_memory(snap: &[u8], log: &[u8]) -> BTreeMap<u32, Vec<u8>> {
+    let mut memory = BTreeMap::new();
+    apply_log(&mut memory, snap);
+    apply_log(&mut memory, log);
+    memory
 }
 
 // ============================================================
@@ -139,14 +144,9 @@ impl DiskStore {
         let snap = open(dir, &format!("{}.snap", filename), &options).await?;
         let log  = open(dir, &format!("{}.log",  filename), &options).await?;
 
-        let log_bytes = read_all(&log);
-        let memory = if log_bytes.is_empty() {
-            // logが空ならsnapからmemoryを復元（compact直後の状態）
-            let snap_bytes = read_all(&snap);
-            build_memory(&snap_bytes)
-        } else {
-            build_memory(&log_bytes)
-        };
+        let snap_bytes = read_all(&snap);
+        let log_bytes  = read_all(&log);
+        let memory = build_memory(&snap_bytes, &log_bytes);
         let next_id = memory.keys().copied().max().unwrap_or(0);
 
         Ok(Self { snap, log, memory, next_id, unsaved: BTreeSet::new() })
@@ -323,7 +323,7 @@ mod tests {
             LogRecord::set(2, b"bbb".to_vec()),
             LogRecord::delete(1),
         ]);
-        let memory = build_memory(&log);
+        let memory = build_memory(&[], &log);
         assert!(!memory.contains_key(&1));
         assert_eq!(memory[&2], b"bbb");
     }
@@ -334,7 +334,7 @@ mod tests {
             LogRecord::set(1, b"old".to_vec()),
             LogRecord::set(1, b"new".to_vec()),
         ]);
-        let memory = build_memory(&log);
+        let memory = build_memory(&[], &log);
         assert_eq!(memory[&1], b"new");
     }
 
@@ -345,7 +345,7 @@ mod tests {
             LogRecord::set(2, b"bbb".to_vec()),
         ]);
         *log.last_mut().unwrap() ^= 0xFF;
-        let memory = build_memory(&log);
+        let memory = build_memory(&[], &log);
         assert_eq!(memory[&1], b"aaa");
         assert!(!memory.contains_key(&2));
     }
@@ -355,15 +355,33 @@ mod tests {
         let mut log = make_log(&[LogRecord::set(1, b"aaa".to_vec())]);
         // 2レコード目をヘッダー途中で切る
         log.extend_from_slice(&[0u8; 5]);
-        let memory = build_memory(&log);
+        let memory = build_memory(&[], &log);
         assert_eq!(memory[&1], b"aaa");
+    }
+
+    #[test]
+    fn build_memory_log_overlays_snap() {
+        // snap以降のlogがsnapの値を正しく上書き・削除することを確認
+        let snap = make_log(&[
+            LogRecord::set(1, b"snap_aaa".to_vec()),
+            LogRecord::set(2, b"snap_bbb".to_vec()),
+        ]);
+        let log = make_log(&[
+            LogRecord::set(1, b"log_aaa".to_vec()),  // 上書き
+            LogRecord::delete(2),                     // 削除
+            LogRecord::set(3, b"log_ccc".to_vec()),   // 新規
+        ]);
+        let memory = build_memory(&snap, &log);
+        assert_eq!(memory[&1], b"log_aaa");
+        assert!(!memory.contains_key(&2));
+        assert_eq!(memory[&3], b"log_ccc");
     }
 
     // ── compact round-trip ────────────────────────────────────
 
     #[test]
     fn compact_bytes_round_trip() {
-        // compact が出力する bytes を build_memory に通して全エントリが復元できることを確認
+        // compact が出力する bytes を snap として build_memory に通して全エントリが復元できることを確認
         let mut memory: BTreeMap<u32, Vec<u8>> = BTreeMap::new();
         memory.insert(1, b"aaa".to_vec());
         memory.insert(2, b"bbb".to_vec());
@@ -373,7 +391,7 @@ mod tests {
             .flat_map(|(&id, data)| LogRecord::set(id, data.clone()).to_bytes())
             .collect();
 
-        let restored = build_memory(&snap);
+        let restored = build_memory(&snap, &[]);
         assert_eq!(restored, memory);
     }
 }
