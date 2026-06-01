@@ -8,6 +8,7 @@ use crate::data_struct::DataStruct;
 // ============================================================
 
 type Dice = (i8, u8, i8); // (count, sides, modifier)
+type DamageBonus = (i8, u8, i8); // (count, sides, modifier)
 
 pub mod dice {
     use super::Dice;
@@ -271,24 +272,28 @@ impl Characteristic {
         }
     }
 
-    /// [base, delta, bonus] → 12バイト (各4バイト LE i32)
-    pub fn encode(vals: [i32; 3]) -> Vec<u8> {
-        vals.iter().flat_map(|v| v.to_le_bytes()).collect()
+    /// [initial: u16 LE][change: i16 LE][modifier: i16 LE] → 6バイト
+    pub fn encode(initial: u16, change: i16, modifier: i16) -> Vec<u8> {
+        let mut b = Vec::with_capacity(6);
+        b.extend_from_slice(&initial.to_le_bytes());
+        b.extend_from_slice(&change.to_le_bytes());
+        b.extend_from_slice(&modifier.to_le_bytes());
+        b
     }
 
-    /// 12バイト → [base, delta, bonus]
-    pub fn decode(bytes: &[u8]) -> [i32; 3] {
-        from_fn(|i| {
-            let s = i * 4;
-            bytes.get(s..s + 4)
-                .and_then(|b| b.try_into().ok())
-                .map(i32::from_le_bytes)
-                .unwrap_or(0)
-        })
+    /// 6バイト → (initial, change, modifier)
+    pub fn decode(bytes: &[u8]) -> (u16, i16, i16) {
+        let initial  = bytes.get(0..2).and_then(|b| b.try_into().ok()).map(u16::from_le_bytes).unwrap_or(0);
+        let change   = bytes.get(2..4).and_then(|b| b.try_into().ok()).map(i16::from_le_bytes).unwrap_or(0);
+        let modifier = bytes.get(4..6).and_then(|b| b.try_into().ok()).map(i16::from_le_bytes).unwrap_or(0);
+        (initial, change, modifier)
     }
 
-    pub fn sum(base: i32, delta: i32, bonus: i32) -> i32 {
-        (base + delta + bonus).max(1)
+    pub fn value(&self, data: &DataStruct) -> i32 {
+        let (initial, change, modifier) = data.get(self.id())
+            .map(|b| Self::decode(b))
+            .unwrap_or((0, 0, 0));
+        (initial as i32 + change as i32 + modifier as i32).max(1)
     }
 
     pub fn label(&self, lang: Lang) -> &str {
@@ -359,7 +364,7 @@ impl ArtCraftSpec {
     pub fn list() -> &'static [Self] {
         &[
             Self::Acting, Self::Barber, Self::Calligraphy, Self::Writing, Self::Carpentry,
-            Self::Cobbling, Self::Cook, Self::Dancing, Self::FineArt,
+            Self::Cook, Self::Dancing, Self::FineArt,
             Self::Forgery, Self::Photography, Self::Pottery, Self::Sculpting,
         ]
     }
@@ -999,28 +1004,41 @@ impl Skill {
         }
     }
 
-    /// [occ: u16 LE][int: u16 LE][bonus: i32 LE][spec_len: u16 LE][spec: utf8...]
-    pub fn encode(occ: u16, int: u16, bonus: i32, spec: Option<&str>) -> Vec<u8> {
-        let spec_bytes = spec.unwrap_or("").as_bytes();
-        let mut b = Vec::with_capacity(10 + spec_bytes.len());
-        b.extend_from_slice(&occ.to_le_bytes());
-        b.extend_from_slice(&int.to_le_bytes());
-        b.extend_from_slice(&bonus.to_le_bytes());
-        b.extend_from_slice(&(spec_bytes.len() as u16).to_le_bytes());
-        b.extend_from_slice(spec_bytes);
+    /// [specialization: u8][initial: u8][occupation: u16 LE][interest: u16 LE][change: i16 LE][modifier: i16 LE][input_len: u16 LE][input: utf8...]
+    pub fn encode(specialization: u8, initial: u8, occupation: u16, interest: u16, change: i16, modifier: i16, input: Option<&str>) -> Vec<u8> {
+        let input_bytes = input.unwrap_or("").as_bytes();
+        let mut b = Vec::with_capacity(10 + input_bytes.len());
+        b.push(specialization);
+        b.push(initial);
+        b.extend_from_slice(&occupation.to_le_bytes());
+        b.extend_from_slice(&interest.to_le_bytes());
+        b.extend_from_slice(&change.to_le_bytes());
+        b.extend_from_slice(&modifier.to_le_bytes());
+        b.extend_from_slice(&(input_bytes.len() as u16).to_le_bytes());
+        b.extend_from_slice(input_bytes);
         b
     }
 
-    /// → (occ, int, bonus, spec)
-    pub fn decode(bytes: &[u8]) -> (u16, u16, i32, String) {
-        let occ   = bytes.get(0..2).and_then(|b| b.try_into().ok()).map(u16::from_le_bytes).unwrap_or(0);
-        let int   = bytes.get(2..4).and_then(|b| b.try_into().ok()).map(u16::from_le_bytes).unwrap_or(0);
-        let bonus = bytes.get(4..8).and_then(|b| b.try_into().ok()).map(i32::from_le_bytes).unwrap_or(0);
-        let spec_len = bytes.get(8..10).and_then(|b| b.try_into().ok()).map(u16::from_le_bytes).unwrap_or(0) as usize;
-        let spec = bytes.get(10..10 + spec_len)
+    /// → (specialization, initial, occupation, interest, change, modifier, input)
+    pub fn decode(bytes: &[u8]) -> (u8, u8, u16, u16, i16, i16, String) {
+        let specialization = bytes.first().copied().unwrap_or(0);
+        let initial        = bytes.get(1).copied().unwrap_or(0);
+        let occupation     = bytes.get(2..4).and_then(|b| b.try_into().ok()).map(u16::from_le_bytes).unwrap_or(0);
+        let interest       = bytes.get(4..6).and_then(|b| b.try_into().ok()).map(u16::from_le_bytes).unwrap_or(0);
+        let change         = bytes.get(6..8).and_then(|b| b.try_into().ok()).map(i16::from_le_bytes).unwrap_or(0);
+        let modifier       = bytes.get(8..10).and_then(|b| b.try_into().ok()).map(i16::from_le_bytes).unwrap_or(0);
+        let input_len      = bytes.get(10..12).and_then(|b| b.try_into().ok()).map(u16::from_le_bytes).unwrap_or(0) as usize;
+        let input          = bytes.get(12..12 + input_len)
             .map(|b| String::from_utf8_lossy(b).into_owned())
             .unwrap_or_default();
-        (occ, int, bonus, spec)
+        (specialization, initial, occupation, interest, change, modifier, input)
+    }
+
+    pub fn value(&self, data: &DataStruct) -> i32 {
+        let (_, _, occupation, interest, change, modifier, _) = data.get(self.id())
+            .map(|b| Self::decode(b))
+            .unwrap_or((0, 0, 0, 0, 0, 0, String::new()));
+        (self.base_value() as i32 + occupation as i32 + interest as i32 + change as i32 + modifier as i32).max(1)
     }
 
     pub fn base_value(&self) -> u16 {
@@ -1265,7 +1283,7 @@ impl Weapon {
     //         (Self::Malfunction,     Lang::Ja) => "故障",
     //     }
     // }
-    
+
     pub fn display(&self, lang: Lang) -> &str {
         match (self, lang) {
             (Self::BowAndArrows,           Lang::En) => "Bow and Arrows",
@@ -1703,7 +1721,7 @@ impl Wealth {
 
 // --- 所持品カテゴリ (Possession) ---
 pub enum Possession {
-    Weapon(Weapon), 
+    Weapon(Weapon),
     Armor(Armor),
     GearItem(String),
     Wealth(Wealth),
@@ -1874,14 +1892,14 @@ impl Memo {
 // ============================================================
 
 pub enum OtherAttribute {
-    HitPoints(u8),   // u8
-    MagicPoints(u8), // u8
-    Build(i8),
-    DamageBonus(i8),
-    MoveRate(u8),
-    Sanity(u8),
-    OccupationSkillPoints(u16),
-    InterestSkillPoints(u16),
+    HitPoints,
+    MagicPoints,
+    Build,
+    DamageBonus,
+    MoveRate,
+    Sanity,
+    OccupationSkillPoints,
+    InterestSkillPoints,
     StandardOfLiving(StandardOfLiving),
     AgeCategory(AgeCategory),
 }
@@ -1891,8 +1909,8 @@ impl OtherAttribute {
         Character::OtherAttribute.id() + match self {
             Self::HitPoints             => 0,
             Self::MagicPoints           => 1,
-            Self::Build(_)              => 2,
-            Self::DamageBonus(_)        => 3,
+            Self::Build                 => 2,
+            Self::DamageBonus           => 3,
             Self::MoveRate              => 4,
             Self::Sanity                => 5,
             Self::OccupationSkillPoints => 6,
@@ -1904,10 +1922,10 @@ impl OtherAttribute {
         match (self, lang) {
             (Self::HitPoints,                    _) => "HP",
             (Self::MagicPoints,                  _) => "MP",
-            (Self::Build(_),              Lang::En) => "Build",
-            (Self::Build(_),              Lang::Ja) => "ビルド",
-            (Self::DamageBonus(_),        Lang::En) => "Damage Bonus",
-            (Self::DamageBonus(_),        Lang::Ja) => "ダメージボーナス",
+            (Self::Build,                 Lang::En) => "Build",
+            (Self::Build,                 Lang::Ja) => "ビルド",
+            (Self::DamageBonus,           Lang::En) => "Damage Bonus",
+            (Self::DamageBonus,           Lang::Ja) => "ダメージボーナス",
             (Self::MoveRate,              Lang::En) => "Move Rate",
             (Self::MoveRate,              Lang::Ja) => "移動率 (MOV)",
             (Self::Sanity,                Lang::En) => "Sanity",
@@ -1919,31 +1937,47 @@ impl OtherAttribute {
         }
     }
 
-    pub fn display(&self) -> String {
-        match Self {
-            Self::Build(i) => i.as_str,
-            Self::DamageBonus(i) => dice::display(i),
+    pub fn display(&self, data: &DataStruct) -> String {
+        match self {
+            Self::Build => {
+                let build = data.get(self.id())
+                    .and_then(|b| b.first())
+                    .map(|&b| b as i8)
+                    .unwrap_or(0);
+                build.to_string()
+            }
+            Self::DamageBonus => {
+                let db: DamageBonus = data.get(self.id())
+                    .map(|b| {
+                        let count    = b.first().copied().map(|v| v as i8).unwrap_or(0);
+                        let sides    = b.get(1).copied().unwrap_or(0);
+                        let modifier = b.get(2).copied().map(|v| v as i8).unwrap_or(0);
+                        (count, sides, modifier)
+                    })
+                    .unwrap_or((0, 0, 0));
+                dice::display(&[db])
+            }
             _ => String::new(),
         }
     }
 
-    pub fn derive(&self, character: &DataStruct) -> Self {
+    pub fn derive(&self, character: &DataStruct) -> Vec<u8> {
         match self {
             Self::HitPoints => {
-                let constitution = Characteristic::Constitution::value(character.get(Characteristic::Constitution::id()));
-                let size         = Characteristic::Size::value(character.get(Characteristic::Size::id()));
-                let val = (constitution + size) / 10;
-                Some(val.to_le_bytes())
+                let constitution = Characteristic::Constitution.value(character);
+                let size         = Characteristic::Size.value(character);
+                let val          = ((constitution + size) / 10) as u8;
+                vec![val]
             }
             Self::MagicPoints => {
-                let power = Characteristic::Power::value(character.get(Characteristic::Power::id()));
-                let val = power / 5;
-                Some(val.to_le_bytes())
+                let power = Characteristic::Power.value(character);
+                let val   = (power / 5) as u8;
+                vec![val]
             }
-            Self::Build(_) => { // p.31
-                let strength = Characteristic::Strength::value(character.get(Characteristic::Strength::id()));
-                let size     = Characteristic::Size::value(character.get(Characteristic::Size::id()));
-                let build    = match strength as i32 + size as i32 {
+            Self::Build => { // p.31
+                let strength = Characteristic::Strength.value(character);
+                let size     = Characteristic::Size.value(character);
+                let build: i8 = match strength + size {
                     2..= 64 => -2,
                    65..= 84 => -1,
                    85..=124 =>  0,
@@ -1954,52 +1988,55 @@ impl OtherAttribute {
                   365..=444 =>  5,
                   445..=524 =>  6,
                   // 525..=605 => 7 / +1D6 で80単位で移行も段階変化。
-              }
-              Some(build.to_le_bytes())
+                  _         =>  6,
+                };
+                vec![build as u8]
             }
-            Self::DamageBonus(i) => { // p.31
-                match i {
-                    -2 => Dice(0, 0, -2),
-                    -1 => Dice(0, 0, -1),
-                     0 => Dice(0, 0,  0),
-                     1 => Dice(1, 4,  0),
-                     2 => DIce(1, 6,  0),
-                     3 => Dice(2, 6,  0),
-                     4 => Dice(3, 6,  0),
-                     5 => Dice(4, 6,  0),
-                     6 => Dice(5, 6,  0),
-                     7..=i8.max => Dice(i-2, 6, 0)
-                     _ => 0 // todo
-                }
+            Self::DamageBonus => { // p.31
+                let build = character.get(Self::Build.id())
+                    .and_then(|b| b.first())
+                    .map(|&b| b as i8)
+                    .unwrap_or(0);
+                let (count, sides, modifier): DamageBonus = match build {
+                    i8::MIN..=-2 => (0, 0, -2),
+                                -1 => (0, 0, -1),
+                                 0 => (0, 0,  0),
+                                 1 => (1, 4,  0),
+                                 2 => (1, 6,  0),
+                                 3 => (2, 6,  0),
+                                 4 => (3, 6,  0),
+                                 5 => (4, 6,  0),
+                                 6 => (5, 6,  0),
+                                 n => (n - 2, 6, 0),
+                };
+                vec![count as u8, sides, modifier as u8]
             }
             Self::MoveRate => {
-                todo!("移動率計算 (STR/DEX/SIZ比較して7,8,9), age40代で-1,50代で-2,60代で-3,70代で-4,80代で-5")
-                match self {
-                    Self::Teen    => 0,
-                    Self::Young   => 0,
-                    Self::Middle  => -1,
-                    Self::Senior  => -2,
-                    Self::Elderly => -3,
-                    Self::Old     => -4,
-                    Self::Ancient => -5,
-                }
-                Ok(vec![0])
+                let str = Characteristic::Strength.value(character);
+                let dex = Characteristic::Dexterity.value(character);
+                let siz = Characteristic::Size.value(character);
+                let base: i32 = if str > siz && dex > siz { 9 }
+                           else if str < siz && dex < siz  { 7 }
+                           else                             { 8 };
+                let age = character.get(Profile::Age.id())
+                    .and_then(|b| b.first())
+                    .copied()
+                    .unwrap_or(0);
+                let age_penalty: i32 = match age {
+                    40..=49 => 1,
+                    50..=59 => 2,
+                    60..=69 => 3,
+                    70..=79 => 4,
+                    80..    => 5,
+                    _       => 0,
+                };
+                vec![(base - age_penalty).max(0) as u8]
             }
             Self::Sanity => {
-                let power = data_struct.get(&Character::Characteristic(Characteristic::Power))?;
-                Ok(power.to_vec())
+                let power = Characteristic::Power.value(character);
+                vec![power as u8]
             }
-            _ => Ok(vec![]),
-            Self::StandardOfLiving => {
-                match character.get(Skill::CreditRating) {
-                    0        => Self::Pauper,
-                    1..= 9   => Self::Poor,
-                   10..= 49  => Self::Average,
-                   50..= 89  => Self::Wealthy,
-                   90..= 98  => Self::Rich,
-                   _         => Self::SuperRich,
-                }
-            }
+            _ => vec![],
         }
     }
 }

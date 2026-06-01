@@ -9,7 +9,7 @@ pub mod timestamp;
 pub mod temporal;
 pub mod js_client;
 pub mod store;
-// pub mod data_struct;
+pub mod data_struct;
 // pub mod app;
 // pub mod character;
 // pub mod roll;

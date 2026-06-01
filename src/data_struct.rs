@@ -1,26 +1,26 @@
 use core::mem::size_of;
 use alloc::collections::BTreeMap;
 use crate::list::{List, VariableList, SetOutcome, ListError, VariableListError};
-use crate::timestamp;
+use crate::timestamp::{self, Timezone};
 
 const ID_IDENTITY:   u32 = 1;
 const ID_CREATED_AT: u32 = 2;
 const ID_UPDATED_AT: u32 = 3;
 
-trait Field {
-    pub fn label(&self, lang: Lang) -> &'static str { 
-    }
-    pub fn id(&self, child: &Field) -> u32 {
-    }
-    pub fn encode(&self, value: T) -> &[u8] {
-        vec![value as u8]
-    }
-    pub fn decode(&self, value: &[u8]) -> T {
-        bytes.first().copied().map(|b| b as i8).unwrap_or(0)
-    }
-    pub fn display(&self, lang: Lang) -> String { // -> &'static str / &str / String
-    }
-}
+// trait DataModelSchemaField {
+//     pub fn label(&self, lang: Lang) -> &'static str {
+//     }
+//     pub fn id(&self, child: &Field) -> u32 {
+//     }
+//     pub fn encode(&self, value: T) -> &[u8] {
+//         vec![value as u8]
+//     }
+//     pub fn decode(&self, value: &[u8]) -> T {
+//         bytes.first().copied().map(|b| b as i8).unwrap_or(0)
+//     }
+//     pub fn display(&self, lang: Lang) -> String { // -> &'static str / &str / String
+//     }
+// }
 
 #[derive(Clone)]
 pub struct DataStruct {
@@ -31,7 +31,7 @@ pub struct DataStruct {
 
 impl DataStruct {
     pub fn new(id: u32, time: f64, schema_size: u32) -> Self {
-        let t = timestamp::from_ut(time);
+        let t = timestamp::from_ut(time, true, &Timezone::AsiaTokyo);
         let mut ds = Self {
             schema_size,
             index:  List::new(),
@@ -84,7 +84,7 @@ impl DataStruct {
         };
         if schema_id != ID_UPDATED_AT {
             if let Some(t) = time {
-                let ts = timestamp::from_ut(t);
+                let ts = timestamp::from_ut(t, true, &Timezone::AsiaTokyo);
                 self.set(ID_UPDATED_AT, &ts.to_le_bytes(), None)?;
             }
         }
@@ -143,4 +143,3 @@ impl DataStruct {
         }
     }
 }
-

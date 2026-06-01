@@ -12,22 +12,19 @@ use web_sys::{
 
 /// Append-only WAL backed by OPFS (.snap / .log file pair)
 ///
-/// .snap: clean snapshot (rewritten on compact)
-/// .log:  append-only diff (set / delete operations)
+/// .snap: clean snapshot (rewritten on compact, read-only between compacts)
+/// .log:  append-only, holds the actual data
 ///
-/// Log record format (17 bytes, fixed):
-/// [op: 1][id: 4 BE][offset: 4 BE][len: 4 BE][checksum: 4 BE]
+/// Log record format (variable length):
+/// [op: 1][id: 4 LE][len: 4 LE][data: len][checksum: 4 LE]
 ///
 /// op: 0 = set, 1 = delete
-/// set:    offset = byte position in .snap, len = byte length of the value
-/// delete: id only (offset / len = 0)
-/// checksum: Fletcher32 of the first 13 bytes
+/// delete: len = 0, no data bytes
+/// checksum: Fletcher32 of [op:1][id:4][len:4][data:len]
 
 // ============================================================
 // Log record
 // ============================================================
-
-const LOG_RECORD_SIZE: usize = 17;
 
 fn fletcher32(data: &[u8]) -> u32 {
     let mut s1: u32 = 0;
@@ -39,66 +36,70 @@ fn fletcher32(data: &[u8]) -> u32 {
     (s2 << 16) | s1
 }
 
-#[derive(Clone, Copy, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug)]
 enum Op { Set, Delete }
 
 struct LogRecord {
-    op:     Op,
-    id:     u32,
-    offset: u32,
-    len:    u32,
+    op:   Op,
+    id:   u32,
+    data: alloc::vec::Vec<u8>,
 }
 
 impl LogRecord {
-    fn set(id: u32, offset: u32, len: u32) -> Self {
-        Self { op: Op::Set, id, offset, len }
+    fn set(id: u32, data: alloc::vec::Vec<u8>) -> Self {
+        Self { op: Op::Set, id, data }
     }
     fn delete(id: u32) -> Self {
-        Self { op: Op::Delete, id, offset: 0, len: 0 }
+        Self { op: Op::Delete, id, data: alloc::vec::Vec::new() }
     }
-    fn to_bytes(&self) -> [u8; LOG_RECORD_SIZE] {
-        let mut buf = [0u8; LOG_RECORD_SIZE];
-        buf[0] = match self.op { Op::Set => 0, Op::Delete => 1 };
-        buf[1..5].copy_from_slice(&self.id.to_be_bytes());
-        buf[5..9].copy_from_slice(&self.offset.to_be_bytes());
-        buf[9..13].copy_from_slice(&self.len.to_be_bytes());
-        let checksum = fletcher32(&buf[..13]);
-        buf[13..17].copy_from_slice(&checksum.to_be_bytes());
-        buf
+
+    fn to_bytes(&self) -> alloc::vec::Vec<u8> {
+        let len = self.data.len() as u32;
+        let mut header = [0u8; 9];
+        header[0] = match self.op { Op::Set => 0, Op::Delete => 1 };
+        header[1..5].copy_from_slice(&self.id.to_le_bytes());
+        header[5..9].copy_from_slice(&len.to_le_bytes());
+        let checksum = fletcher32(&header).wrapping_add(fletcher32(&self.data));
+        let mut out = alloc::vec::Vec::with_capacity(9 + self.data.len() + 4);
+        out.extend_from_slice(&header);
+        out.extend_from_slice(&self.data);
+        out.extend_from_slice(&checksum.to_le_bytes());
+        out
     }
-    fn from_bytes(buf: &[u8; LOG_RECORD_SIZE]) -> Option<Self> {
-        let expected = fletcher32(&buf[..13]);
-        let stored   = u32::from_be_bytes(buf[13..17].try_into().unwrap());
-        if expected != stored { return None; }
+
+    /// buf の先頭から1レコードを読み、(record, consumed_bytes) を返す。
+    /// checksumが不正 or バッファ不足なら None。
+    fn from_bytes(buf: &[u8]) -> Option<(Self, usize)> {
+        if buf.len() < 9 { return None; }
         let op = match buf[0] { 0 => Op::Set, 1 => Op::Delete, _ => return None };
-        let id     = u32::from_be_bytes(buf[1..5].try_into().unwrap());
-        let offset = u32::from_be_bytes(buf[5..9].try_into().unwrap());
-        let len    = u32::from_be_bytes(buf[9..13].try_into().unwrap());
-        Some(Self { op, id, offset, len })
+        let id  = u32::from_le_bytes(buf[1..5].try_into().unwrap());
+        let len = u32::from_le_bytes(buf[5..9].try_into().unwrap()) as usize;
+        let total = 9 + len + 4;
+        if buf.len() < total { return None; }
+        let data     = buf[9..9 + len].to_vec();
+        let expected = fletcher32(&buf[..9]).wrapping_add(fletcher32(&data));
+        let stored   = u32::from_le_bytes(buf[9 + len..total].try_into().unwrap());
+        if expected != stored { return None; }
+        Some((Self { op, id, data }, total))
     }
 }
 
-fn build_index(snap_len: usize, log: &[u8]) -> BTreeMap<u32, (u32, u32)> {
-    let mut index: BTreeMap<u32, Option<(u32, u32)>> = BTreeMap::new();
-    for r in log.chunks_exact(LOG_RECORD_SIZE)
-                .filter_map(|c| LogRecord::from_bytes(c.try_into().unwrap()))
-    {
-        match r.op {
-            Op::Set => {
-                if r.offset as usize + r.len as usize <= snap_len {
-                    index.insert(r.id, Some((r.offset, r.len)));
+fn build_memory(log: &[u8]) -> BTreeMap<u32, alloc::vec::Vec<u8>> {
+    let mut memory: BTreeMap<u32, Option<alloc::vec::Vec<u8>>> = BTreeMap::new();
+    let mut pos = 0;
+    while pos < log.len() {
+        match LogRecord::from_bytes(&log[pos..]) {
+            Some((r, consumed)) => {
+                match r.op {
+                    Op::Set    => { memory.insert(r.id, Some(r.data)); }
+                    Op::Delete => { memory.insert(r.id, None); }
                 }
+                pos += consumed;
             }
-            Op::Delete => { index.insert(r.id, None); }
+            None => break, // corrupt or truncated record — stop here
         }
     }
-    index.into_iter().filter_map(|(id, v)| v.map(|e| (id, e))).collect()
-}
-
-fn compact_snap(snap: &[u8], index: &BTreeMap<u32, (u32, u32)>) -> Vec<u8> {
-    index.values()
-        .flat_map(|&(offset, len)| snap[offset as usize..offset as usize + len as usize].iter().copied())
-        .collect()
+    memory.into_iter().filter_map(|(id, v)| v.map(|d| (id, d))).collect()
 }
 
 // ============================================================
@@ -106,13 +107,11 @@ fn compact_snap(snap: &[u8], index: &BTreeMap<u32, (u32, u32)>) -> Vec<u8> {
 // ============================================================
 
 pub struct WalStore {
-    filename: String,
-    snap:     FileSystemSyncAccessHandle,
-    log:      FileSystemSyncAccessHandle,
-    index:    BTreeMap<u32, (u32, u32)>,  // id → (offset, len) in snap
-    next_id:  u32,
-    memory:   BTreeMap<u32, Vec<u8>>,
-    unsaved:  BTreeSet<u32>,
+    snap:    FileSystemSyncAccessHandle,
+    log:     FileSystemSyncAccessHandle,
+    memory:  BTreeMap<u32, alloc::vec::Vec<u8>>,
+    next_id: u32,
+    unsaved: BTreeSet<u32>,
 }
 
 unsafe impl Send for WalStore {}
@@ -137,20 +136,17 @@ impl WalStore {
         let snap = open_handle(dir, &format!("{}.snap", filename), &opts).await?;
         let log  = open_handle(dir, &format!("{}.log",  filename), &opts).await?;
 
-        let snap_bytes = read_all(&snap);
-        let log_bytes  = read_all(&log);
-        let index = build_index(snap_bytes.len(), &log_bytes);
-        let next_id = index.keys().copied().max().unwrap_or(0);
+        let log_bytes = read_all(&log);
+        let memory = if log_bytes.is_empty() {
+            // logが空ならsnapからmemoryを復元（compact直後の状態）
+            let snap_bytes = read_all(&snap);
+            build_memory(&snap_bytes)
+        } else {
+            build_memory(&log_bytes)
+        };
+        let next_id = memory.keys().copied().max().unwrap_or(0);
 
-        let memory = index.iter()
-            .filter_map(|(&id, &(offset, len))| {
-                let mut buf = vec![0u8; len as usize];
-                snap.read_with_u8_array_and_options(&mut buf, &at(offset)).ok()?;
-                Some((id, buf))
-            })
-            .collect();
-
-        Ok(Self { filename: filename.to_string(), snap, log, index, next_id, memory, unsaved: BTreeSet::new() })
+        Ok(Self { snap, log, memory, next_id, unsaved: BTreeSet::new() })
     }
 
     /// 新しい id を発行する。
@@ -159,31 +155,23 @@ impl WalStore {
         self.next_id
     }
 
-    /// id に対応する値を返す。見つからなければ None。
-    pub fn get(&self, id: u32) -> Option<&Vec<u8>> {
+    /// id に対応する値を返す。
+    pub fn get(&self, id: u32) -> Option<&alloc::vec::Vec<u8>> {
         self.memory.get(&id)
     }
 
-    /// 全エントリを (id, bytes) のイテレータで返す。
-    pub fn get_all(&self) -> impl Iterator<Item = (&u32, &Vec<u8>)> {
-        self.memory.iter()
-    }
-
-    /// memory上のbytesを更新し、unsavedに積む。
-    pub fn set(&mut self, id: u32, bytes: Vec<u8>) {
+    /// memory を更新し unsaved に積む。
+    pub fn set(&mut self, id: u32, bytes: alloc::vec::Vec<u8>) {
         self.memory.insert(id, bytes);
         self.unsaved.insert(id);
     }
 
-    /// unsavedのidをdiskに書き込む。
+    /// unsaved を log に書き出す。
     pub fn save(&mut self) -> Option<()> {
         for id in self.unsaved.iter().copied().collect::<alloc::vec::Vec<_>>() {
             if let Some(bytes) = self.memory.get(&id) {
-                let bytes = bytes.clone();
-                let offset = self.snap.get_size().ok()? as u32;
-                append(&self.snap, &bytes)?;
-                append(&self.log, &LogRecord::set(id, offset, bytes.len() as u32).to_bytes())?;
-                self.index.insert(id, (offset, bytes.len() as u32));
+                let rec = LogRecord::set(id, bytes.clone()).to_bytes();
+                append(&self.log, &rec)?;
                 if id > self.next_id { self.next_id = id; }
             }
         }
@@ -194,25 +182,23 @@ impl WalStore {
     /// id を削除する。
     pub fn delete(&mut self, id: u32) -> Option<()> {
         append(&self.log, &LogRecord::delete(id).to_bytes())?;
-        self.index.remove(&id);
         self.memory.remove(&id);
         self.unsaved.remove(&id);
         Some(())
     }
 
-    /// .snap を書き直し .log をクリアする。
+    /// log を replay して snap を再構築し、log をクリアする。
     pub fn compact(&mut self) -> Option<()> {
-        let snap_bytes = read_all(&self.snap);
-        let new_snap   = compact_snap(&snap_bytes, &self.index);
+        let new_snap: alloc::vec::Vec<u8> = self.memory.iter()
+            .flat_map(|(&id, data)| {
+                LogRecord::set(id, data.clone()).to_bytes()
+            })
+            .collect();
 
         self.snap.truncate_with_u32(0).ok()?;
         append(&self.snap, &new_snap)?;
         self.log.truncate_with_u32(0).ok()?;
         self.log.flush().ok()?;
-
-        // compactでoffsetが変わるのでindexを再構築
-        let log_bytes = read_all(&self.log);
-        self.index = build_index(new_snap.len(), &log_bytes);
         Some(())
     }
 }
@@ -225,9 +211,9 @@ fn at(pos: u32) -> FileSystemReadWriteOptions {
     o
 }
 
-fn read_all(h: &FileSystemSyncAccessHandle) -> Vec<u8> {
+fn read_all(h: &FileSystemSyncAccessHandle) -> alloc::vec::Vec<u8> {
     let size = h.get_size().unwrap_or(0.0) as usize;
-    if size == 0 { return vec![]; }
+    if size == 0 { return alloc::vec![]; }
     let mut buf = vec![0u8; size];
     let _ = h.read_with_u8_array_and_options(&mut buf, &at(0));
     buf
@@ -238,6 +224,26 @@ fn append(h: &FileSystemSyncAccessHandle, data: &[u8]) -> Option<()> {
     h.write_with_u8_array_and_options(&mut data.to_vec(), &at(pos)).ok()?;
     h.flush().ok()?;
     Some(())
+}
+
+async fn open_handle(
+    dir: &FileSystemDirectoryHandle,
+    filename: &str,
+    opts: &FileSystemGetFileOptions,
+) -> Result<FileSystemSyncAccessHandle, String> {
+    let file_handle = JsFuture::from(dir.get_file_handle_with_options(filename, opts))
+        .await
+        .map_err(|e| format!("getFileHandle {}: {:?}", filename, e))?;
+
+    let handle = JsFuture::from(
+        file_handle
+            .unchecked_ref::<FileSystemFileHandle>()
+            .create_sync_access_handle()
+    )
+    .await
+    .map_err(|e| format!("createSyncAccessHandle {}: {:?}", filename, e))?;
+
+    Ok(handle.unchecked_into())
 }
 
 #[cfg(test)]
@@ -260,132 +266,92 @@ mod tests {
 
     #[test]
     fn log_record_set_roundtrip() {
-        let r = LogRecord::set(42, 100, 32);
+        let data = b"hello".to_vec();
+        let r = LogRecord::set(42, data.clone());
         let bytes = r.to_bytes();
-        let decoded = LogRecord::from_bytes(&bytes).unwrap();
-        assert_eq!(decoded.op,     Op::Set);
-        assert_eq!(decoded.id,     42);
-        assert_eq!(decoded.offset, 100);
-        assert_eq!(decoded.len,    32);
+        let (decoded, consumed) = LogRecord::from_bytes(&bytes).unwrap();
+        assert_eq!(decoded.op,   Op::Set);
+        assert_eq!(decoded.id,   42);
+        assert_eq!(decoded.data, data);
+        assert_eq!(consumed,     bytes.len());
     }
 
     #[test]
     fn log_record_delete_roundtrip() {
         let r = LogRecord::delete(7);
         let bytes = r.to_bytes();
-        let decoded = LogRecord::from_bytes(&bytes).unwrap();
-        assert_eq!(decoded.op, Op::Delete);
-        assert_eq!(decoded.id, 7);
-        assert_eq!(decoded.offset, 0);
-        assert_eq!(decoded.len,    0);
+        let (decoded, consumed) = LogRecord::from_bytes(&bytes).unwrap();
+        assert_eq!(decoded.op,   Op::Delete);
+        assert_eq!(decoded.id,   7);
+        assert!(decoded.data.is_empty());
+        assert_eq!(consumed, bytes.len());
     }
 
     #[test]
     fn log_record_from_bytes_rejects_bad_checksum() {
-        let mut bytes = LogRecord::set(1, 0, 4).to_bytes();
-        bytes[16] ^= 0xFF; // checksum破壊
+        let mut bytes = LogRecord::set(1, b"data".to_vec()).to_bytes();
+        *bytes.last_mut().unwrap() ^= 0xFF;
         assert!(LogRecord::from_bytes(&bytes).is_none());
     }
 
     #[test]
     fn log_record_from_bytes_rejects_unknown_op() {
-        let mut bytes = LogRecord::set(1, 0, 4).to_bytes();
-        bytes[0] = 2; // op = 2 は未定義
-        // チェックサムも再計算して op だけ不正にする
-        let cs = fletcher32(&bytes[..13]);
-        bytes[13..17].copy_from_slice(&cs.to_be_bytes());
+        let mut bytes = LogRecord::set(1, b"data".to_vec()).to_bytes();
+        bytes[0] = 2;
+        // checksumを再計算してopだけ不正にする
+        let len = u32::from_le_bytes(bytes[5..9].try_into().unwrap()) as usize;
+        let cs = fletcher32(&bytes[..9]).wrapping_add(fletcher32(&bytes[9..9+len]));
+        let end = bytes.len();
+        bytes[end-4..].copy_from_slice(&cs.to_le_bytes());
         assert!(LogRecord::from_bytes(&bytes).is_none());
     }
 
-    // ── build_index ───────────────────────────────────────────
+    #[test]
+    fn log_record_from_bytes_short_buffer() {
+        let bytes = LogRecord::set(1, b"data".to_vec()).to_bytes();
+        assert!(LogRecord::from_bytes(&bytes[..bytes.len() - 1]).is_none());
+    }
 
-    fn make_log(records: &[LogRecord]) -> Vec<u8> {
+    // ── build_memory ─────────────────────────────────────────
+
+    fn make_log(records: &[LogRecord]) -> alloc::vec::Vec<u8> {
         records.iter().flat_map(|r| r.to_bytes()).collect()
     }
 
     #[test]
-    fn build_index_set_and_delete() {
-        let snap_len = 100;
+    fn build_memory_set_and_delete() {
         let log = make_log(&[
-            LogRecord::set(1, 0,  10),
-            LogRecord::set(2, 10, 20),
+            LogRecord::set(1, b"aaa".to_vec()),
+            LogRecord::set(2, b"bbb".to_vec()),
             LogRecord::delete(1),
         ]);
-        let index = build_index(snap_len, &log);
-        assert!(!index.contains_key(&1));       // delete済み
-        assert_eq!(index[&2], (10, 20));
+        let mem = build_memory(&log);
+        assert!(!mem.contains_key(&1));
+        assert_eq!(mem[&2], b"bbb");
     }
 
     #[test]
-    fn build_index_overwrite() {
-        let snap_len = 100;
+    fn build_memory_overwrite() {
         let log = make_log(&[
-            LogRecord::set(1, 0, 10),
-            LogRecord::set(1, 50, 5), // 上書き
+            LogRecord::set(1, b"old".to_vec()),
+            LogRecord::set(1, b"new".to_vec()),
         ]);
-        let index = build_index(snap_len, &log);
-        assert_eq!(index[&1], (50, 5));
+        let mem = build_memory(&log);
+        assert_eq!(mem[&1], b"new");
     }
 
     #[test]
-    fn build_index_ignores_out_of_bounds() {
-        // offset + len > snap_len は無視、== snap_len は通る
-        let snap_len = 10;
-        let log = make_log(&[
-            LogRecord::set(1, 5, 10), // 5+10=15 > 10: 無視
-            LogRecord::set(2, 0, 10), // 0+10=10 == 10: 通る
+    fn build_memory_stops_at_corrupt_record() {
+        let mut log = make_log(&[
+            LogRecord::set(1, b"aaa".to_vec()),
+            LogRecord::set(2, b"bbb".to_vec()),
         ]);
-        let index = build_index(snap_len, &log);
-        assert!(!index.contains_key(&1));
-        assert_eq!(index[&2], (0, 10));
+        // 2レコード目のchecksum破壊
+        let first_len = LogRecord::set(1, b"aaa".to_vec()).to_bytes().len();
+        *log.last_mut().unwrap() ^= 0xFF;
+        let mem = build_memory(&log);
+        assert_eq!(mem[&1], b"aaa");  // 1レコード目は通る
+        assert!(!mem.contains_key(&2)); // 2レコード目で停止
+        let _ = first_len;
     }
-
-    #[test]
-    fn build_index_ignores_corrupt_record() {
-        let snap_len = 100;
-        let mut log = make_log(&[LogRecord::set(1, 0, 10)]);
-        log[16] ^= 0xFF; // checksum破壊
-        let index = build_index(snap_len, &log);
-        assert!(index.is_empty());
-    }
-
-    // ── compact_snap ─────────────────────────────────────────
-
-    #[test]
-    fn compact_snap_extracts_entries() {
-        // snap上の配置はCCC(0-2), BBB(3-5)だがid順(1→2)で出力される
-        let snap = b"CCCBBB";
-        let mut index = BTreeMap::new();
-        index.insert(1u32, (3u32, 3u32)); // id=1 → "BBB"
-        index.insert(2u32, (0u32, 3u32)); // id=2 → "CCC"
-        let out = compact_snap(snap, &index);
-        assert_eq!(out, b"BBBCCC"); // id昇順
-    }
-
-    #[test]
-    fn compact_snap_empty_index() {
-        let snap = b"AAABBB";
-        let index = BTreeMap::new();
-        assert!(compact_snap(snap, &index).is_empty());
-    }
-}
-
-async fn open_handle(
-    dir: &FileSystemDirectoryHandle,
-    filename: &str,
-    opts: &FileSystemGetFileOptions,
-) -> Result<FileSystemSyncAccessHandle, String> {
-    let file_handle = JsFuture::from(dir.get_file_handle_with_options(filename, opts))
-        .await
-        .map_err(|e| format!("getFileHandle {}: {:?}", filename, e))?;
-
-    let handle = JsFuture::from(
-        file_handle
-            .unchecked_ref::<FileSystemFileHandle>()
-            .create_sync_access_handle()
-    )
-    .await
-    .map_err(|e| format!("createSyncAccessHandle {}: {:?}", filename, e))?;
-
-    Ok(handle.unchecked_into())
 }
