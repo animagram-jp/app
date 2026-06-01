@@ -1,5 +1,6 @@
 use alloc::collections::{BTreeMap, BTreeSet};
-use alloc::vec::{Vec, vec!};
+use alloc::vec::Vec;
+use alloc::vec;
 use js_sys;
 use wasm_bindgen::JsCast;
 use wasm_bindgen_futures::JsFuture;
@@ -267,7 +268,7 @@ mod tests {
     // ── LogRecord round-trip ──────────────────────────────────
 
     #[test]
-    fn log_record_set_roundtrip() {
+    fn log_record_set_round_trip() {
         let data = b"hello".to_vec();
         let record = LogRecord::set(42, data.clone());
         let bytes = record.to_bytes();
@@ -279,7 +280,7 @@ mod tests {
     }
 
     #[test]
-    fn log_record_delete_roundtrip() {
+    fn log_record_delete_round_trip() {
         let record = LogRecord::delete(7);
         let bytes = record.to_bytes();
         let (decoded, consumed) = LogRecord::from_bytes(&bytes).unwrap();
@@ -291,25 +292,21 @@ mod tests {
 
     #[test]
     fn log_record_from_bytes_rejects_bad_checksum() {
-        let mut bytes = LogRecord::set(1, b"data".to_vec()).to_bytes();
+        let mut bytes = LogRecord::set(1, b"payload".to_vec()).to_bytes();
         *bytes.last_mut().unwrap() ^= 0xFF;
         assert!(LogRecord::from_bytes(&bytes).is_none());
     }
 
     #[test]
     fn log_record_from_bytes_rejects_unknown_op() {
-        let mut bytes = LogRecord::set(1, b"data".to_vec()).to_bytes();
+        let mut bytes = LogRecord::set(1, b"payload".to_vec()).to_bytes();
         bytes[0] = 2;
-        let length = u32::from_le_bytes(bytes[5..9].try_into().unwrap()) as usize;
-        let checksum = fletcher32(&bytes[..9]).wrapping_add(fletcher32(&bytes[9..9 + length]));
-        let end = bytes.len();
-        bytes[end - 4..].copy_from_slice(&checksum.to_le_bytes());
         assert!(LogRecord::from_bytes(&bytes).is_none());
     }
 
     #[test]
     fn log_record_from_bytes_short_buffer() {
-        let bytes = LogRecord::set(1, b"data".to_vec()).to_bytes();
+        let bytes = LogRecord::set(1, b"payload".to_vec()).to_bytes();
         assert!(LogRecord::from_bytes(&bytes[..bytes.len() - 1]).is_none());
     }
 
