@@ -1,7 +1,7 @@
 use arbitrary_int::u2;
 use crate::Lang;
 use crate::js_client::{CanvasCmd, Operation, EventType, Gesture, dom::{Id, Tag}, CanvasEvent};
-use crate::store::WalStore;
+use crate::store::DiskStore;
 use crate::data_struct::DataStruct;
 use crate::character::{
     Character, Profile, Characteristic, Skill,
@@ -74,15 +74,15 @@ pub fn output_commands(canvas_state: &CanvasState){
 const CHARACTER_SCHEMA_NAME: &str = "characters";
 
 pub struct Coc7th {
-    characters: WalStore,
+    characters: DiskStore,
     log_stack:  Vec<Log>,
 }
 
 impl Coc7th {
     pub async fn ready() -> Self {
         Self {
-            characters: WalStore::open(CHARACTER_SCHEMA_NAME).await
-                .unwrap_or_else(|e| panic!("WalStore::open failed: {}", e)),
+            characters: DiskStore::new(CHARACTER_SCHEMA_NAME).await
+                .unwrap_or_else(|e| panic!("DiskStore::new failed: {}", e)),
             log_stack: Vec::new(),
         }
     }
