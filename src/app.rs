@@ -60,8 +60,8 @@ impl App {
                 _ => self.events.push(Event::Canvas(canvas_event)),
             },
         }
-        while let Some(ev) = self.events.pop() { // 必要そうならtimeoutやlimitを設ける
-            let cmds = self.dispatch(ev);
+        while let Some(event) = self.events.pop() { // 必要そうならtimeoutやlimitを設ける
+            let cmds = self.dispatch(event);
             self.cmds.extend(cmds);
         }
         let out = to_value(&self.cmds).unwrap_or(JsValue::NULL);
@@ -69,8 +69,8 @@ impl App {
         out
     }
 
-    fn dispatch(&mut self, ev: Event) -> Vec<CanvasCmd> {
-        match ev {
+    fn dispatch(&mut self, event: Event) -> Vec<CanvasCmd> {
+        match event {
             Event::Ready => {
                 // event::initial_draw(&mut self.canvas_state, &self.handler)
             }
