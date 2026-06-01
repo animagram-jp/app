@@ -9,9 +9,9 @@ Apps from animagram, made by Andyou.
 
 ## Version
 
-| App     | Version | Status    | Date       | Description |
-|---------|---------|-----------|------------|-------------|
-| CoC 7th | 0.1.0   | Scheduled | 2026-05-31 | 1st release |
+| App     | Version  | Status    | Date       | Description |
+|---------|----------|-----------|------------|-------------|
+| CoC 7th | 2026.6.0 | Scheduled | 2026-06-30 | 1st release |
 
 ---
 
@@ -25,7 +25,7 @@ An online tool dedicated to Call of Cthulhu TRPG 7th Edition. Supports character
 
 ## Ja
 
-### CoC 7th
+### CoC 7th (開発中)
 
 新クトゥルフ神話TRPG 7版に特化した、オンラインツールです。
 キャラクターシートの編集や、セッション時のダイスロール、セッション後のログや集計が可能です。

@@ -10,18 +10,34 @@ use crate::data_struct::DataStruct;
 type Dice = (i8, u8, i8); // (count, sides, modifier)
 
 pub mod dice {
-    fn display((count, sides, modifier): Dice) -> String {
-        let dice = if count == 0 || sides == 0 {
-            String::new()
-        } else {
-            format!("{count}D{sides}")
-        };
-        let modifier_str = match modifier {
-            0 => String::new(),
-            m if m > 0 => format!("+{m}"),
-            m => format!("{m}"),
-        };
-        format!("{dice}{modifier_str}")
+    use super::Dice;
+
+    pub fn display(dice: &[Dice]) -> String {
+        let s = dice.iter().map(|&(count, sides, modifier)| {
+            let dice_str = if count == 0 || sides == 0 {
+                String::new()
+            } else {
+                format!("{count}D{sides}")
+            };
+            let modifier_str = match modifier {
+                0 => String::new(),
+                m if m > 0 => format!("+{m}"),
+                m => format!("{m}"),
+            };
+            format!("{dice_str}{modifier_str}")
+        }).collect::<String>();
+        s.trim_start_matches('+').to_string()
+    }
+
+    pub fn roll(dice: &[Dice]) -> i32 {
+        dice.iter().map(|&(count, sides, modifier)| {
+            let rolled = if count > 0 && sides > 0 {
+                crate::n_d_n(count as u32, sides as u32) as i32
+            } else {
+                0
+            };
+            rolled + modifier as i32
+        }).sum()
     }
 }
 
