@@ -5,18 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Call of Cthulhu 7th</title>
     <link rel="stylesheet" href="css/config.css">
-    <link rel="stylesheet" href="css/button.css">    
+    <link rel="stylesheet" href="css/button.css">
+    <link rel="stylesheet" href="css/divider.css">
+    <link rel="stylesheet" href="css/list-box.css">    
     <link rel="stylesheet" href="css/style.css">
     <script type="module" src="init.js"></script>
   </head>
 
   <body>
     <header>
-      <button id="body_header_select" aria-label="lanuage selector">
-        <option id="body_header_select_option-1" value="1" aria-label="Japanese lanuage option"></option>
-        <option id="body_header_select_option-2" value="2" aria-label="English lanuage option"></option>
-      </button>
-      <select id="body_header_button-1" aria-label="cancel dialogs" class="hidden">×</select>
+      <ul id="body_header_ul" popover="auto" role="listbox" aria-labelledby="body_header_button-1" class="list-box">
+        <li role="presentation">Select Language</li>
+        <li role="option" aria-selected="true"><button lang="en" value="1">English (US)</button></li>
+        <li role="option"><button lang="ja" value="2">日本語</button></li></ul>
+      <button id="body_header_button-1" type="button" popovertarget="body_header_ul" aria-haspopup="listbox" aria-expanded="false" aria-controls="body_header_ul" class="list-box-trigger"></button>
+      <button id="body_header_button-2" data-type="outline" data-size="sm" aria-label="switch modal" class="dads-button">✏️</button>
     </header>
     <main>
       <header>
