@@ -1,0 +1,78 @@
+.dads-textarea {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  border: 1px solid var(--color-neutral-solid-gray-600);
+  background-color: var(--color-neutral-white);
+  padding: calc(16 / 16 * 1rem);
+  border-radius: calc(8 / 16 * 1rem);
+  color: var(--color-neutral-solid-gray-900);
+  font-weight: normal;
+  font-size: calc(16 / 16 * 1rem);
+  line-height: 1.7;
+  font-family: var(--font-family-sans);
+  letter-spacing: 0.02em;
+  resize: vertical;
+}
+
+.dads-textarea:read-only:not(:disabled) {
+  border-style: dashed;
+}
+
+.dads-textarea:focus-visible {
+  outline: calc(4 / 16 * 1rem) solid var(--color-neutral-black);
+  outline-offset: calc(2 / 16 * 1rem);
+  box-shadow: 0 0 0 calc(2 / 16 * 1rem) var(--color-primitive-yellow-300);
+}
+
+@media (hover: hover) {
+  .dads-textarea:not(:read-only):hover {
+    border-color: var(--color-neutral-black);
+  }
+}
+
+.dads-textarea:is(:user-invalid, [aria-invalid="true"]) {
+  border-color: var(--color-semantic-error-1);
+}
+
+@media (hover: hover) {
+  .dads-textarea:is(:user-invalid, [aria-invalid="true"]):hover {
+    border-color: var(--color-primitive-red-1000);
+  }
+}
+
+.dads-textarea:is(:disabled, [aria-disabled="true"]),
+.dads-textarea:is(:disabled, [aria-disabled="true"]):hover {
+  border-color: var(--color-neutral-solid-gray-300);
+  background-color: var(--color-neutral-solid-gray-50);
+  color: var(--color-neutral-solid-gray-420);
+  resize: none;
+}
+
+@media (forced-colors: active) {
+  .dads-textarea[aria-disabled="true"],
+  .dads-textarea[aria-disabled="true"]:hover {
+    border-color: GrayText;
+    color: GrayText;
+  }
+}
+
+.dads-textarea-error {
+  margin: calc(8 / 16 * 1rem) 0 0 0;
+  display: block;
+  color: var(--color-semantic-error-1);
+}
+
+.dads-textarea-counter {
+  display: block;
+  margin-top: calc(8 / 16 * 1rem);
+  color: var(--color-neutral-solid-gray-600);
+  font-size: calc(16 / 16 * 1rem);
+  line-height: 1;
+  letter-spacing: 0.02em;
+}
+
+.dads-textarea-counter[data-exceeded] {
+  color: var(--color-semantic-error-1);
+}

@@ -4,12 +4,11 @@
   --button-active-color: var(--color-primitive-blue-1200);
   --button-outline-hover-bg-color: var(--color-primitive-blue-200);
   --button-outline-active-bg-color: var(--color-primitive-blue-300);
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   column-gap: calc(4 / 16 * 1rem);
   box-sizing: border-box;
-  width: fit-content;
   max-width: 100%;
   font-weight: bold;
   font-size: calc(16 / 16 * 1rem);

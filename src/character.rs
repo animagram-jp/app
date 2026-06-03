@@ -264,7 +264,6 @@ pub enum Characteristic {
     Intelligence,
     Power,
     Education,
-    Luck,
 }
 
 impl Characteristic {
@@ -278,7 +277,6 @@ impl Characteristic {
             Self::Intelligence => 5,
             Self::Power        => 6,
             Self::Education    => 7,
-            Self::Luck         => 8,
         }
     }
 
@@ -316,8 +314,6 @@ impl Characteristic {
             (Self::Intelligence, _) => "INT",
             (Self::Power,        _) => "POW",
             (Self::Education,    _) => "EDU",
-            (Self::Luck,  Lang::Ja) => "幸運",
-            (Self::Luck,  Lang::En) => "Luck",
         }
     }
 
@@ -331,7 +327,6 @@ impl Characteristic {
             Self::Intelligence,
             Self::Power,
             Self::Education,
-            Self::Luck,
         ]
     }
 
@@ -346,10 +341,287 @@ impl Characteristic {
     }
 }
 
+
+// ============================================================
+// --- その他の属性 (Other Attribute) ---
+// ============================================================
+
+pub enum OtherAttribute {
+    HitPoints,
+    MagicPoints,
+    Luck,
+    Sanity,
+    Build,
+    DamageBonus,
+    MoveRate,
+    OccupationSkillPoints,
+    InterestSkillPoints,
+}
+
+impl OtherAttribute {
+    pub fn id(&self) -> u32 {
+        Character::OtherAttribute.id() + match self {
+            Self::HitPoints             => 0,
+            Self::MagicPoints           => 1,
+            Self::Luck                  => 2,
+            Self::Sanity                => 3,
+            Self::Build                 => 4,
+            Self::DamageBonus           => 5,
+            Self::MoveRate              => 6,
+            Self::OccupationSkillPoints => 7,
+            Self::InterestSkillPoints   => 8,
+        }
+    }
+
+    pub fn label(&self, lang: Lang) -> &'static str {
+        match (self, lang) {
+            (Self::HitPoints,                    _) => "HP",
+            (Self::MagicPoints,                  _) => "MP",
+            (Self::Luck,                  Lang::En) => "Luck",
+            (Self::Luck,                  Lang::Ja) => "幸運",
+            (Self::Sanity,                Lang::En) => "Sanity",
+            (Self::Sanity,                Lang::Ja) => "正気度",
+            (Self::Build,                 Lang::En) => "Build",
+            (Self::Build,                 Lang::Ja) => "ビルド",
+            (Self::DamageBonus,           Lang::En) => "Damage Bonus",
+            (Self::DamageBonus,           Lang::Ja) => "ダメージボーナス",
+            (Self::MoveRate,              Lang::En) => "Move Rate",
+            (Self::MoveRate,              Lang::Ja) => "移動率 (MOV)",
+            (Self::OccupationSkillPoints, Lang::En) => "Occupation Skill Points",
+            (Self::OccupationSkillPoints, Lang::Ja) => "職業技能ポイント",
+            (Self::InterestSkillPoints,   Lang::En) => "Interest Skill Points",
+            (Self::InterestSkillPoints,   Lang::Ja) => "興味技能ポイント",
+        }
+    }
+
+    pub fn display(&self, data: &DataStruct) -> String {
+        match self {
+            Self::Build => {
+                let build = data.get(self.id())
+                    .and_then(|b| b.first())
+                    .map(|&b| b as i8)
+                    .unwrap_or(0);
+                build.to_string()
+            }
+            Self::DamageBonus => {
+                let db: DamageBonus = data.get(self.id())
+                    .map(|b| {
+                        let count    = b.first().copied().map(|v| v as i8).unwrap_or(0);
+                        let sides    = b.get(1).copied().unwrap_or(0);
+                        let modifier = b.get(2).copied().map(|v| v as i8).unwrap_or(0);
+                        (count, sides, modifier)
+                    })
+                    .unwrap_or((0, 0, 0));
+                dice::display(&[db])
+            }
+            _ => String::new(),
+        }
+    }
+
+    pub fn derive(&self, character: &DataStruct) -> Vec<u8> {
+        match self {
+            Self::HitPoints => {
+                let constitution = Characteristic::Constitution.value(character);
+                let size         = Characteristic::Size.value(character);
+                let val          = ((constitution + size) / 10) as u8;
+                vec![val]
+            }
+            Self::MagicPoints => {
+                let power = Characteristic::Power.value(character);
+                let val   = (power / 5) as u8;
+                vec![val]
+            }
+            Self::Sanity => {
+                let power = Characteristic::Power.value(character);
+                vec![power as u8]
+            }
+            Self::Build => { // p.31
+                let strength = Characteristic::Strength.value(character);
+                let size     = Characteristic::Size.value(character);
+                let build: i8 = match strength + size {
+                    2..= 64 => -2,
+                   65..= 84 => -1,
+                   85..=124 =>  0,
+                  125..=164 =>  1,
+                  165..=204 =>  2,
+                  205..=284 =>  3,
+                  285..=364 =>  4,
+                  365..=444 =>  5,
+                  445..=524 =>  6,
+                  // 525..=605 => 7 / +1D6 で80単位で移行も段階変化。
+                  _         =>  6,
+                };
+                vec![build as u8]
+            }
+            Self::DamageBonus => { // p.31
+                let build = character.get(Self::Build.id())
+                    .and_then(|b| b.first())
+                    .map(|&b| b as i8)
+                    .unwrap_or(0);
+                let (count, sides, modifier): DamageBonus = match build {
+                    i8::MIN..=-2 => (0, 0, -2),
+                                -1 => (0, 0, -1),
+                                 0 => (0, 0,  0),
+                                 1 => (1, 4,  0),
+                                 2 => (1, 6,  0),
+                                 3 => (2, 6,  0),
+                                 4 => (3, 6,  0),
+                                 5 => (4, 6,  0),
+                                 6 => (5, 6,  0),
+                                 n => (n - 2, 6, 0),
+                };
+                vec![count as u8, sides, modifier as u8]
+            }
+            Self::MoveRate => {
+                let str = Characteristic::Strength.value(character);
+                let dex = Characteristic::Dexterity.value(character);
+                let siz = Characteristic::Size.value(character);
+                let base: i32 = if str > siz && dex > siz { 9 }
+                           else if str < siz && dex < siz  { 7 }
+                           else                             { 8 };
+                let age = character.get(Profile::Age.id())
+                    .and_then(|b| b.first())
+                    .copied()
+                    .unwrap_or(0);
+                let age_penalty: i32 = match age {
+                    40..=49 => 1,
+                    50..=59 => 2,
+                    60..=69 => 3,
+                    70..=79 => 4,
+                    80..    => 5,
+                    _       => 0,
+                };
+                vec![(base - age_penalty).max(0) as u8]
+            }
+            _ => vec![],
+        }
+    }
+}
+
+// ============================================================
+// --- Derived ---
+// ============================================================
+
+// --- 生活水準 (Standard of Living) ---
+pub enum StandardOfLiving {
+    Pauper,
+    Poor,
+    Average,
+    Wealthy,
+    Rich,
+    SuperRich,
+}
+
+impl StandardOfLiving {
+    pub fn display(self, lang: Lang) -> &'static str {
+        match (self, lang) {
+            (Self::Pauper,    Lang::Ja) => "無一文",
+            (Self::Pauper,    Lang::En) => "Pauper",
+            (Self::Poor,      Lang::Ja) => "貧乏",
+            (Self::Poor,      Lang::En) => "Poor",
+            (Self::Average,   Lang::Ja) => "平均",
+            (Self::Average,   Lang::En) => "Average",
+            (Self::Wealthy,   Lang::Ja) => "裕福",
+            (Self::Wealthy,   Lang::En) => "Wealthy",
+            (Self::Rich,      Lang::Ja) => "富豪",
+            (Self::Rich,      Lang::En) => "Rich",
+            (Self::SuperRich, Lang::Ja) => "大富豪",
+            (Self::SuperRich, Lang::En) => "Super Rich",
+        }
+    }
+}
+
+// --- 年齢カテゴリ (AgeCategory) ---
+enum AgeCategory {
+    Teen,    // 15-19: STR/SIZ合計-5、EDU-5、幸運再ロール（高い方）
+    Young,   // 20-39: EDU改善1回、修正なし
+    Middle,  // 40-49: EDU改善2回、STR/CON/DEX合計-5、 APP-5、 MOV-1
+    Senior,  // 50-59: EDU改善3回、STR/CON/DEX合計-10、APP-10、MOV-2
+    Elderly, // 60-69: EDU改善4回、STR/CON/DEX合計-20、APP-15、MOV-3
+    Old,     // 70-79: EDU改善4回、STR/CON/DEX合計-40、APP-20、MOV-4
+    Ancient, // 80+  : EDU改善4回、STR/CON/DEX合計-80、APP-25、MOV-5
+}
+
+impl AgeCategory {
+    pub fn from_age(age: u8) -> Self {
+        match age {
+            15..=19 => Self::Teen,
+            20..=39 => Self::Young,
+            40..=49 => Self::Middle,
+            50..=59 => Self::Senior,
+            60..=69 => Self::Elderly,
+            70..=79 => Self::Old,
+            _       => Self::Ancient,
+        }
+    }
+
+    // STR/CON/DEX から合計で差し引く点数（Teen は STR/SIZ から差し引く）
+    pub fn phys_deduction(&self) -> u8 {
+        match self {
+            Self::Teen    =>  5, // STR+SIZ から差し引く（Teen 専用ルール）
+            Self::Young   =>  0,
+            Self::Middle  =>  5,
+            Self::Senior  => 10,
+            Self::Elderly => 20,
+            Self::Old     => 40,
+            Self::Ancient => 80,
+        }
+    }
+
+    // APP からの固定減算値
+    pub fn app_deduction(&self) -> u8 {
+        match self {
+            Self::Teen    =>  0,
+            Self::Young   =>  0,
+            Self::Middle  =>  5,
+            Self::Senior  => 10,
+            Self::Elderly => 15,
+            Self::Old     => 20,
+            Self::Ancient => 25,
+        }
+    }
+
+    // EDU 改善チェック回数（成功すれば EDU +1D10、上限 99）
+    pub fn edu_improvement_checks(&self) -> u8 {
+        match self {
+            Self::Teen    => 0,
+            Self::Young   => 1,
+            Self::Middle  => 2,
+            Self::Senior  => 3,
+            Self::Elderly => 4,
+            Self::Old     => 4,
+            Self::Ancient => 4,
+        }
+    }
+
+    // Teen のみ特殊ルール（STR/SIZ差し引き・EDU-5・幸運再ロール）
+    pub fn is_teen(&self) -> bool {
+        matches!(self, Self::Teen)
+    }
+
+    pub fn display(&self, lang: Lang) -> &'static str {
+        match (self, lang) {
+            (Self::Teen,    Lang::Ja) => "10代 (15-19)",
+            (Self::Teen,    Lang::En) => "Teen (15-19)",
+            (Self::Young,   Lang::Ja) => "若年 (20-39)",
+            (Self::Young,   Lang::En) => "Young Adult (20-39)",
+            (Self::Middle,  Lang::Ja) => "中年 (40-49)",
+            (Self::Middle,  Lang::En) => "Middle-Aged (40-49)",
+            (Self::Senior,  Lang::Ja) => "熟年 (50-59)",
+            (Self::Senior,  Lang::En) => "Senior (50-59)",
+            (Self::Elderly, Lang::Ja) => "老年 (60-69)",
+            (Self::Elderly, Lang::En) => "Elderly (60-69)",
+            (Self::Old,     Lang::Ja) => "高齢 (70-79)",
+            (Self::Old,     Lang::En) => "Old (70-79)",
+            (Self::Ancient, Lang::Ja) => "超高齢 (80+)",
+            (Self::Ancient, Lang::En) => "Very Old (80+)",
+        }
+    }
+}
+
 // ============================================================
 // --- スキル (Skill) ---
 // ============================================================
-
 
 // --- 芸術/製作 専門分野 (Art/Craft Specialization)  --- p.62
 #[derive(Clone)]
@@ -835,17 +1107,6 @@ impl SurvivalSpec {
     }
 }
 
-// --- 信用 (Credit Rating) ---
-#[derive(Clone, Copy)]
-pub struct CreditRating;
-
-impl CreditRating {
-    pub fn standard_of_living(&self, value: u16) -> StandardOfLiving {
-        StandardOfLiving::from_cr(value)
-    }
-}
-
-/// 各Spec enumのCustomスロット数。追加ルールブック対応時にここだけ変える。
 pub const SPEC_CUSTOM_SLOTS: usize = 4;
 
 // --- スキル (Skill) --- p.54
@@ -859,7 +1120,7 @@ pub enum Skill {
     Charm,
     Climb,
     ComputerUse,
-    CreditRating(CreditRating),
+    CreditRating,
     CthulhuMythos,
     Disguise,
     Dodge,
@@ -915,7 +1176,7 @@ impl Skill {
             Self::Charm,
             Self::Climb,
             Self::ComputerUse,
-            Self::CreditRating(CreditRating),
+            Self::CreditRating,
             Self::CthulhuMythos,
             Self::Disguise,
             Self::Dodge,
@@ -977,7 +1238,7 @@ impl Skill {
             Self::Charm               => base + 104,
             Self::Climb               => base + 105,
             Self::ComputerUse         => base + 106,
-            Self::CreditRating(_)     => base + 107,
+            Self::CreditRating        => base + 107,
             Self::CthulhuMythos       => base + 108,
             Self::Disguise            => base + 109,
             Self::Dodge               => base + 110,
@@ -1894,277 +2155,5 @@ impl Memo {
     pub fn display(bytes: &[u8]) -> String {
         let (_, body) = Self::decode(bytes);
         body
-    }
-}
-
-// ============================================================
-// --- その他の属性 (Other Attribute) ---
-// ============================================================
-
-pub enum OtherAttribute {
-    HitPoints,
-    MagicPoints,
-    Build,
-    DamageBonus,
-    MoveRate,
-    Sanity,
-    OccupationSkillPoints,
-    InterestSkillPoints,
-    StandardOfLiving(StandardOfLiving),
-    AgeCategory(AgeCategory),
-}
-
-impl OtherAttribute {
-    pub fn id(&self) -> u32 {
-        Character::OtherAttribute.id() + match self {
-            Self::HitPoints             => 0,
-            Self::MagicPoints           => 1,
-            Self::Build                 => 2,
-            Self::DamageBonus           => 3,
-            Self::MoveRate              => 4,
-            Self::Sanity                => 5,
-            Self::OccupationSkillPoints => 6,
-            Self::InterestSkillPoints   => 7,
-        }
-    }
-
-    pub fn label(&self, lang: Lang) -> &'static str {
-        match (self, lang) {
-            (Self::HitPoints,                    _) => "HP",
-            (Self::MagicPoints,                  _) => "MP",
-            (Self::Build,                 Lang::En) => "Build",
-            (Self::Build,                 Lang::Ja) => "ビルド",
-            (Self::DamageBonus,           Lang::En) => "Damage Bonus",
-            (Self::DamageBonus,           Lang::Ja) => "ダメージボーナス",
-            (Self::MoveRate,              Lang::En) => "Move Rate",
-            (Self::MoveRate,              Lang::Ja) => "移動率 (MOV)",
-            (Self::Sanity,                Lang::En) => "Sanity",
-            (Self::Sanity,                Lang::Ja) => "正気度",
-            (Self::OccupationSkillPoints, Lang::En) => "Occupation Skill Points",
-            (Self::OccupationSkillPoints, Lang::Ja) => "職業技能ポイント",
-            (Self::InterestSkillPoints,   Lang::En) => "Interest Skill Points",
-            (Self::InterestSkillPoints,   Lang::Ja) => "興味技能ポイント",
-        }
-    }
-
-    pub fn display(&self, data: &DataStruct) -> String {
-        match self {
-            Self::Build => {
-                let build = data.get(self.id())
-                    .and_then(|b| b.first())
-                    .map(|&b| b as i8)
-                    .unwrap_or(0);
-                build.to_string()
-            }
-            Self::DamageBonus => {
-                let db: DamageBonus = data.get(self.id())
-                    .map(|b| {
-                        let count    = b.first().copied().map(|v| v as i8).unwrap_or(0);
-                        let sides    = b.get(1).copied().unwrap_or(0);
-                        let modifier = b.get(2).copied().map(|v| v as i8).unwrap_or(0);
-                        (count, sides, modifier)
-                    })
-                    .unwrap_or((0, 0, 0));
-                dice::display(&[db])
-            }
-            _ => String::new(),
-        }
-    }
-
-    pub fn derive(&self, character: &DataStruct) -> Vec<u8> {
-        match self {
-            Self::HitPoints => {
-                let constitution = Characteristic::Constitution.value(character);
-                let size         = Characteristic::Size.value(character);
-                let val          = ((constitution + size) / 10) as u8;
-                vec![val]
-            }
-            Self::MagicPoints => {
-                let power = Characteristic::Power.value(character);
-                let val   = (power / 5) as u8;
-                vec![val]
-            }
-            Self::Build => { // p.31
-                let strength = Characteristic::Strength.value(character);
-                let size     = Characteristic::Size.value(character);
-                let build: i8 = match strength + size {
-                    2..= 64 => -2,
-                   65..= 84 => -1,
-                   85..=124 =>  0,
-                  125..=164 =>  1,
-                  165..=204 =>  2,
-                  205..=284 =>  3,
-                  285..=364 =>  4,
-                  365..=444 =>  5,
-                  445..=524 =>  6,
-                  // 525..=605 => 7 / +1D6 で80単位で移行も段階変化。
-                  _         =>  6,
-                };
-                vec![build as u8]
-            }
-            Self::DamageBonus => { // p.31
-                let build = character.get(Self::Build.id())
-                    .and_then(|b| b.first())
-                    .map(|&b| b as i8)
-                    .unwrap_or(0);
-                let (count, sides, modifier): DamageBonus = match build {
-                    i8::MIN..=-2 => (0, 0, -2),
-                                -1 => (0, 0, -1),
-                                 0 => (0, 0,  0),
-                                 1 => (1, 4,  0),
-                                 2 => (1, 6,  0),
-                                 3 => (2, 6,  0),
-                                 4 => (3, 6,  0),
-                                 5 => (4, 6,  0),
-                                 6 => (5, 6,  0),
-                                 n => (n - 2, 6, 0),
-                };
-                vec![count as u8, sides, modifier as u8]
-            }
-            Self::MoveRate => {
-                let str = Characteristic::Strength.value(character);
-                let dex = Characteristic::Dexterity.value(character);
-                let siz = Characteristic::Size.value(character);
-                let base: i32 = if str > siz && dex > siz { 9 }
-                           else if str < siz && dex < siz  { 7 }
-                           else                             { 8 };
-                let age = character.get(Profile::Age.id())
-                    .and_then(|b| b.first())
-                    .copied()
-                    .unwrap_or(0);
-                let age_penalty: i32 = match age {
-                    40..=49 => 1,
-                    50..=59 => 2,
-                    60..=69 => 3,
-                    70..=79 => 4,
-                    80..    => 5,
-                    _       => 0,
-                };
-                vec![(base - age_penalty).max(0) as u8]
-            }
-            Self::Sanity => {
-                let power = Characteristic::Power.value(character);
-                vec![power as u8]
-            }
-            _ => vec![],
-        }
-    }
-}
-
-// --- 生活水準 (Standard of Living) ---
-pub enum StandardOfLiving {
-    Pauper,
-    Poor,
-    Average,
-    Wealthy,
-    Rich,
-    SuperRich,
-}
-
-impl StandardOfLiving {
-    pub fn display(self, lang: Lang) -> &'static str {
-        match (self, lang) {
-            (Self::Pauper,    Lang::Ja) => "無一文",
-            (Self::Pauper,    Lang::En) => "Pauper",
-            (Self::Poor,      Lang::Ja) => "貧乏",
-            (Self::Poor,      Lang::En) => "Poor",
-            (Self::Average,   Lang::Ja) => "平均",
-            (Self::Average,   Lang::En) => "Average",
-            (Self::Wealthy,   Lang::Ja) => "裕福",
-            (Self::Wealthy,   Lang::En) => "Wealthy",
-            (Self::Rich,      Lang::Ja) => "富豪",
-            (Self::Rich,      Lang::En) => "Rich",
-            (Self::SuperRich, Lang::Ja) => "大富豪",
-            (Self::SuperRich, Lang::En) => "Super Rich",
-        }
-    }
-}
-
-
-// --- 年齢カテゴリ (AgeCategory) ---
-enum AgeCategory {
-    Teen,    // 15-19: STR/SIZ合計-5、EDU-5、幸運再ロール（高い方）
-    Young,   // 20-39: EDU改善1回、修正なし
-    Middle,  // 40-49: EDU改善2回、STR/CON/DEX合計-5、 APP-5、 MOV-1
-    Senior,  // 50-59: EDU改善3回、STR/CON/DEX合計-10、APP-10、MOV-2
-    Elderly, // 60-69: EDU改善4回、STR/CON/DEX合計-20、APP-15、MOV-3
-    Old,     // 70-79: EDU改善4回、STR/CON/DEX合計-40、APP-20、MOV-4
-    Ancient, // 80+  : EDU改善4回、STR/CON/DEX合計-80、APP-25、MOV-5
-}
-
-impl AgeCategory {
-    pub fn from_age(age: u8) -> Self {
-        match age {
-            15..=19 => Self::Teen,
-            20..=39 => Self::Young,
-            40..=49 => Self::Middle,
-            50..=59 => Self::Senior,
-            60..=69 => Self::Elderly,
-            70..=79 => Self::Old,
-            _       => Self::Ancient,
-        }
-    }
-
-    // STR/CON/DEX から合計で差し引く点数（Teen は STR/SIZ から差し引く）
-    pub fn phys_deduction(&self) -> u8 {
-        match self {
-            Self::Teen    =>  5, // STR+SIZ から差し引く（Teen 専用ルール）
-            Self::Young   =>  0,
-            Self::Middle  =>  5,
-            Self::Senior  => 10,
-            Self::Elderly => 20,
-            Self::Old     => 40,
-            Self::Ancient => 80,
-        }
-    }
-
-    // APP からの固定減算値
-    pub fn app_deduction(&self) -> u8 {
-        match self {
-            Self::Teen    =>  0,
-            Self::Young   =>  0,
-            Self::Middle  =>  5,
-            Self::Senior  => 10,
-            Self::Elderly => 15,
-            Self::Old     => 20,
-            Self::Ancient => 25,
-        }
-    }
-
-    // EDU 改善チェック回数（成功すれば EDU +1D10、上限 99）
-    pub fn edu_improvement_checks(&self) -> u8 {
-        match self {
-            Self::Teen    => 0,
-            Self::Young   => 1,
-            Self::Middle  => 2,
-            Self::Senior  => 3,
-            Self::Elderly => 4,
-            Self::Old     => 4,
-            Self::Ancient => 4,
-        }
-    }
-
-    // Teen のみ特殊ルール（STR/SIZ差し引き・EDU-5・幸運再ロール）
-    pub fn is_teen(&self) -> bool {
-        matches!(self, Self::Teen)
-    }
-
-    pub fn display(&self, lang: Lang) -> &'static str {
-        match (self, lang) {
-            (Self::Teen,    Lang::Ja) => "10代 (15-19)",
-            (Self::Teen,    Lang::En) => "Teen (15-19)",
-            (Self::Young,   Lang::Ja) => "若年 (20-39)",
-            (Self::Young,   Lang::En) => "Young Adult (20-39)",
-            (Self::Middle,  Lang::Ja) => "中年 (40-49)",
-            (Self::Middle,  Lang::En) => "Middle-Aged (40-49)",
-            (Self::Senior,  Lang::Ja) => "熟年 (50-59)",
-            (Self::Senior,  Lang::En) => "Senior (50-59)",
-            (Self::Elderly, Lang::Ja) => "老年 (60-69)",
-            (Self::Elderly, Lang::En) => "Elderly (60-69)",
-            (Self::Old,     Lang::Ja) => "高齢 (70-79)",
-            (Self::Old,     Lang::En) => "Old (70-79)",
-            (Self::Ancient, Lang::Ja) => "超高齢 (80+)",
-            (Self::Ancient, Lang::En) => "Very Old (80+)",
-        }
     }
 }
