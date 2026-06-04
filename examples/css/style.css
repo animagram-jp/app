@@ -1,7 +1,7 @@
 body {
   height: 100%;
   background: var(--color-neutral-solid-gray-50);
-  font-size: 16px;  
+  font-size: 16px;
 }
 
 body > header {
@@ -79,6 +79,22 @@ article.warning { background: var(--color-semantic-warning-yellow-2); }
 
 /* --- CoC7th (html記述順) ─── */
 
+#header_button-1 {
+  anchor-name: --header_button-1;
+}
+
+#header_ul {
+  position-anchor: --header_button-1;
+}
+
+#main_header_button {
+  anchor-name: --main_header_button;
+}
+
+#main_header_ul {
+  position-anchor: --main_header_button;
+}
+
 #main_overlay_focus {
   position: absolute;
   opacity: 0;
@@ -94,7 +110,85 @@ dialog > * {
 
 dialog table {
   width: 100%;
-  table-layout: fixed; /* ← これが重要 */
+  table-layout: fixed;
+}
+
+#modal_fieldset-1 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+#modal_fieldset-1_label-2, #modal_fieldset-1_label-6 {
+  color: transparent;
+}
+
+#modal_fieldset-1_label-2 input, #modal_fieldset-1_label-6 input {
+  color: revert;
+}
+
+
+.dads-input-text {
+  width: calc(15ic + 2rem);
+}
+
+/* fieldset-3 skill speciality list-boxes */
+
+#modal_fieldset-3_table_tbody_tr-5_button {
+  anchor-name: --modal_fieldset-3_table_tbody_tr-5_button;
+}
+#modal_fieldset-3_table_tbody_tr-5_ul {
+  position-anchor: --modal_fieldset-3_table_tbody_tr-5_button;
+}
+
+#modal_fieldset-3_table_tbody_tr-6_button {
+  anchor-name: --modal_fieldset-3_table_tbody_tr-6_button;
+}
+#modal_fieldset-3_table_tbody_tr-6_ul {
+  position-anchor: --modal_fieldset-3_table_tbody_tr-6_button;
+}
+
+#modal_fieldset-3_table_tbody_tr-23_button {
+  anchor-name: --modal_fieldset-3_table_tbody_tr-23_button;
+}
+#modal_fieldset-3_table_tbody_tr-23_ul {
+  position-anchor: --modal_fieldset-3_table_tbody_tr-23_button;
+}
+
+#modal_fieldset-3_table_tbody_tr-24_button {
+  anchor-name: --modal_fieldset-3_table_tbody_tr-24_button;
+}
+#modal_fieldset-3_table_tbody_tr-24_ul {
+  position-anchor: --modal_fieldset-3_table_tbody_tr-24_button;
+}
+
+#modal_fieldset-3_table_tbody_tr-25_button {
+  anchor-name: --modal_fieldset-3_table_tbody_tr-25_button;
+}
+#modal_fieldset-3_table_tbody_tr-25_ul {
+  position-anchor: --modal_fieldset-3_table_tbody_tr-25_button;
+}
+
+#modal_fieldset-3_table_tbody_tr-42_button {
+  anchor-name: --modal_fieldset-3_table_tbody_tr-42_button;
+}
+#modal_fieldset-3_table_tbody_tr-42_ul {
+  position-anchor: --modal_fieldset-3_table_tbody_tr-42_button;
+}
+
+#modal_fieldset-3_table_tbody_tr-46_button {
+  anchor-name: --modal_fieldset-3_table_tbody_tr-46_button;
+}
+#modal_fieldset-3_table_tbody_tr-46_ul {
+  position-anchor: --modal_fieldset-3_table_tbody_tr-46_button;
+}
+
+#modal_fieldset-3_table_tbody_tr-50_button {
+  anchor-name: --modal_fieldset-3_table_tbody_tr-50_button;
+}
+#modal_fieldset-3_table_tbody_tr-50_ul {
+  position-anchor: --modal_fieldset-3_table_tbody_tr-50_button;
 }
 
 #modal_fieldset-4 label,
