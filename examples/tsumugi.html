@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Call of Cthulhu 7th — 死生 紡</title>
+    <link rel="stylesheet" href="css/config.css">
+    <link rel="stylesheet" href="css/button.css">
+    <link rel="stylesheet" href="css/divider.css">
+    <link rel="stylesheet" href="css/field-label.css">
+    <link rel="stylesheet" href="css/list-box.css">
+    <link rel="stylesheet" href="css/textarea.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <header>
+        <ul id="header_ul" popover="auto" role="listbox" aria-labelledby="header_button-1" class="list-box">
+            <li role="presentation">Select Language</li>
+            <li role="option"><button lang="en" value="1">English (US)</button></li>
+            <li role="option"><button lang="ja" value="2">日本語</button></li></ul>
+        <button id="header_button-1" type="button" popovertarget="header_ul" aria-haspopup="listbox" aria-expanded="false" aria-controls="header_ul" class="list-box-trigger">日本語</button>
+        <button id="header_button-2" aria-label="switch modal" class="dads-button" data-size="sm" data-type="outline">✏️</button></header>
+    <main>
+        <header>
+            <ul id="main_header_ul" popover="auto" role="listbox" aria-labelledby="main_header_button" class="list-box">
+                <li role="presentation">Select Character</li>
+                <li role="option"><button value="1">死生 紡</button></li>
+                <li role="option" class="hidden"><button value="2"></button></li>
+                <li role="option" class="hidden"><button value="3"></button></li>
+                <li role="option" class="hidden"><button value="4"></button></li></ul>
+            <button id="main_header_button-1" type="button" popovertarget="main_header_ul" aria-haspopup="listbox" aria-expanded="false" aria-controls="main_header_ul" class="list-box-trigger">死生 紡</button></header>
+        <div>
+            <!-- ===== Character View ===== -->
+            <section id="main_div_section-1" aria-label="Character View">
+                <!-- 管理データ -->
+                <section id="main_div_section-1_section-1" aria-label="Management Data">
+                    <span aria-label="Identity">
+                        <span>ID</span>
+                        <span>11</span></span>
+                    <span aria-label="Created At">
+                        <span>作成日</span>
+                        <span>2024-02-07</span></span>
+                    <span aria-label="Updated At">
+                        <span>更新日</span>
+                        <span>2026-04-18</span></span></section>
+
+                <!-- プロフィール -->
+                <section id="main_div_section-1_section-2" aria-label="Character Profile">
+                    <span aria-label="Name">
+                        <span>名前</span>
+                        <span>死生 紡（しせい つむぎ）</span></span>
+                    <span aria-label="Age">
+                        <span>年齢</span>
+                        <span>20</span></span>
+                    <span aria-label="Occupation">
+                        <span>職業</span>
+                        <span>教授（舞台役者）</span></span>
+                    <span aria-label="Birthplace">
+                        <span>出身</span>
+                        <span>日本</span></span>
+                    <span aria-label="Residence">
+                        <span>住所</span>
+                        <span>日本</span></span></section>
+
+                <!-- 能力値 -->
+                <section id="main_div_section-1_section-3" aria-label="Characteristics">
+                    <span aria-label="STR">
+                        <span>STR</span>
+                        <span>90</span></span>
+                    <span aria-label="CON">
+                        <span>CON</span>
+                        <span>60</span></span>
+                    <span aria-label="SIZ">
+                        <span>SIZ</span>
+                        <span>75</span></span>
+                    <span aria-label="DEX">
+                        <span>DEX</span>
+                        <span>60</span></span>
+                    <span aria-label="APP">
+                        <span>APP</span>
+                        <span>60</span></span>
+                    <span aria-label="INT">
+                        <span>INT</span>
+                        <span>90</span></span>
+                    <span aria-label="POW">
+                        <span>POW</span>
+                        <span>50</span></span>
+                    <span aria-label="EDU">
+                        <span>EDU</span>
+                        <span>90</span></span></section>
+
+                <!-- その他の属性 -->
+                <section id="main_div_section-1_section-4" aria-label="Other Attributes">
+                    <span aria-label="HP">
+                        <span>HP</span>
+                        <span>13</span></span>
+                    <span aria-label="MP">
+                        <span>MP</span>
+                        <span>10</span></span>
+                    <span aria-label="Luck">
+                        <span>幸運</span>
+                        <span>72</span></span>
+                    <span aria-label="Sanity">
+                        <span>正気度</span>
+                        <span>67</span></span>
+                    <span aria-label="Build">
+                        <span>ビルド</span>
+                        <span>2</span></span>
+                    <span aria-label="Damage Bonus">
+                        <span>ダメージボーナス</span>
+                        <span>1D6</span></span>
+                    <span aria-label="Move Rate">
+                        <span>移動率 (MOV)</span>
+                        <span>7</span></span>
+                    <span aria-label="Occupation Skill Points">
+                        <span>職業技能ポイント</span>
+                        <span>360</span></span>
+                    <span aria-label="Interest Skill Points">
+                        <span>興味技能ポイント</span>
+                        <span>180</span></span></section>
+
+                <!-- 技能 — 合計値のみ表示 -->
+                <section id="main_div_section-1_section-5" aria-label="Skills">
+                    <span>
+                        <span>芸術/製作（演劇）</span>
+                        <span>99</span></span>
+                    <span>
+                        <span>芸術/製作（ダンス）</span>
+                        <span>55</span></span>
+                    <span>
+                        <span>芸術/製作（花札）</span>
+                        <span>15</span></span>
+                    <span>
+                        <span>芸術/製作（百人一首）</span>
+                        <span>20</span></span>
+                    <span>
+                        <span>芸術/製作（愛）</span>
+                        <span>106</span></span>
+                    <span>
+                        <span>芸術/製作（音楽）</span>
+                        <span>25</span></span>
+                    <span>
+                        <span>芸術/製作（声楽）</span>
+                        <span>56</span></span>
+                    <span>
+                        <span>魅惑</span>
+                        <span>75</span></span>
+                    <span>
+                        <span>信用</span>
+                        <span>55</span></span>
+                    <span>
+                        <span>クトゥルフ神話</span>
+                        <span>30</span></span>
+                    <span>
+                        <span>回避</span>
+                        <span>80</span></span>
+                    <span>
+                        <span>近接戦闘（格闘）</span>
+                        <span>90</span></span>
+                    <span>
+                        <span>近接戦闘（刀剣）</span>
+                        <span>85</span></span>
+                    <span>
+                        <span>射撃（拳銃）</span>
+                        <span>20</span></span>
+                    <span>
+                        <span>応急手当</span>
+                        <span>80</span></span>
+                    <span>
+                        <span>ほかの言語（English）</span>
+                        <span>50</span></span>
+                    <span>
+                        <span>母国語</span>
+                        <span>95</span></span>
+                    <span>
+                        <span>図書館</span>
+                        <span>75</span></span>
+                    <span>
+                        <span>聞き耳</span>
+                        <span>75</span></span>
+                    <span>
+                        <span>オカルト</span>
+                        <span>66</span></span>
+                    <span>
+                        <span>操縦（ボート）</span>
+                        <span>15</span></span>
+                    <span>
+                        <span>心理学</span>
+                        <span>78</span></span>
+                    <span>
+                        <span>乗馬</span>
+                        <span>44</span></span>
+                    <span>
+                        <span>科学（天文学）</span>
+                        <span>80</span></span>
+                    <span>
+                        <span>目星</span>
+                        <span>75</span></span>
+                    <span>
+                        <span>隠密</span>
+                        <span>75</span></span></section>
+
+                <!-- 所持品 -->
+                <section id="main_div_section-1_section-6" aria-label="Possessions">
+                    <article>
+                        <span aria-label="Name">仕込み傘</span>
+                        <span>武器: Club, large</span>
+                        <span>重りを仕込んだ傘。不自然なシーンでない限り、外出時に携帯している。</span></article>
+                    <article>
+                        <span aria-label="Name">短剣</span>
+                        <span>武器: Knife, Medium</span>
+                        <span>アーティファクト。身体検査が予想されるシーンでない限り、外出時に携帯して隠し持っている。</span></article>
+                    <article>
+                        <span aria-label="Name">大太刀</span>
+                        <span>武器: 日本刀</span>
+                        <span>技能: 近接戦闘（刀剣）　ダメージ: 1D10+1+DB　攻撃回数: 1</span>
+                        <span>アーティファクト。自宅に所有している。</span></article>
+                    <article>
+                        <span aria-label="Name">白いレザーパーカー</span>
+                        <span>防具: 厚い皮のジャケット</span>
+                        <span>夏期など有用性が予想されないシーンでない限り、外出時に着用または携帯している。</span></article>
+                    <article>
+                        <span aria-label="Name">軍用ボディ・アーマー</span>
+                        <span>防具: 軍用ボディ・アーマー</span>
+                        <span>SIZ75向けの1着を自宅に所有している。SIZ: 180/270/600向けの特殊サイズ3着を知人が管理している。</span></article>
+                    <article>
+                        <span aria-label="Name">着替え・化粧品</span>
+                        <span>男装用・女装用・隠密用の3組</span></article>
+                    <article>
+                        <span aria-label="Name">携帯食</span>
+                        <span>カロリーメイト 3箱</span></article>
+                    <article>
+                        <span aria-label="Name">飲料水</span>
+                        <span>0.5L 1〜2本</span></article>
+                    <article>
+                        <span aria-label="Name">折り畳み傘</span>
+                        <span>晴雨兼用 1本</span></article>
+                    <article>
+                        <span aria-label="Name">貴重品</span>
+                        <span>財布・スマートフォン 1組を含む</span></article>
+                    <article>
+                        <span aria-label="Name">ランプ・小型望遠鏡</span>
+                        <span>天体観測用 1組。望遠鏡は両親に買ってもらった高価な超小型品。</span></article>
+                    <article>
+                        <span aria-label="Name">救急箱</span>
+                        <span>外傷用と一般薬の詰め合わせ</span></article>
+                    <article>
+                        <span aria-label="Name">銃砲刀剣類登録証</span>
+                        <span>1枚。ジップロックに封入。申し訳程度の職質対策。</span></article></section>
+
+                <!-- バックストーリー -->
+                <section id="main_div_section-1_section-7" aria-label="Backstory">
+                    <dl aria-label="Personal Description">
+                        <dt>外見・人物像</dt>
+                        <dd>敢えて普段から平凡な印象を維持している。昼間は男（女）装・夜間は女（男）装している。似合ってる</dd></dl>
+                    <dl aria-label="Ideology &amp; Beliefs">
+                        <dt>思想・信条</dt>
+                        <dd>生命を愛している。
+
+ある人にとって、彼の一番のお気に入りの創作物の登場人物と、地球の裏側の存在も知らぬ実在の人物と、どちらが「生きている」だろうか？その人を中心とした宇宙の中で、何が「生きている」のかは、その人自身に委ねられている。
+生命一つ一つが、それぞれの宇宙の中心に立って、それぞれに色々な物に光を投げかける様を見ていると、それはあまりに眩しく、生命というものの素晴らしさを感じさせる。誰かや何か、生命を持つものが生きるさまが、紡の心に感動や愛、大きな感情のうねりをもたらし、それは彼の行動に繋がる。</dd></dl>
+                    <dl aria-label="Significant People">
+                        <dt>重要な人物</dt>
+                        <dd>- 真幌場 夢、徒花 れいじ
+- 波風 百合花, 沖田 満, 禰 鸑水（ねじめ ぎょくすい）, 犬伏 灯火, 松本 ミシェル 利蘭, 天宮 結, 音無 蕾, 歩島 或九郎, 百木 明菜, 黒瀬 騒, 旋風 緑, 見舞 旨味, 聖野 明人, 化野多実, 佐々木 志穂, 間宮 朔, 泉 流唯, 星光 刹那, 大竹 美湖, 荒蛇 怜, 夜伴 麗, 蓮宮 壱織, 持田 カズキ, 藤原 瑠奈, 大河内 克己（40歳時点で故人）, 深坂 六華, 双葉 碧, 北堀 葵, 今雅 ヌエル, 小昏 澪桜, 藤堂 夢月, 轡田 行也, 冷泉 紗羅, 和田 明弘, 賀上夜 香々美, 天堂 希望
+- エヴァ, マキア, 飛魚 ミハネ, 溝口 みのり, トイレンジ, 不破 芽露, 小鳥 思音（故人）, アカサ, ショーニン, コク・ハク, アルバ, イトー, メグリ・シロタエ, ローズマリー, カエデ, 香川 薫（故人）, 谷坂 京香, 鐘石 二拍郎, カナタ, 十成 灯, 春宮 晴明, 蓬莱 夜泉, 和神 命, 荒神 弥彦, 如月 結衣, カオナシ, 西行寺 薫, 榎木 ユウマ, 和奏, 百島 花香, 黒崎 レイ, ネザル, 叶 星, 頼堂 周, 星影 青夜, サザナミ, シラサギ, イルカ, カゲロウ, ホタル, ヒメ, 星見 かなた（故人）, 鷲足 隆司, 鯖田 蟹太郎, 真賀 仁徒, 牧野 慶子, 新空 美琴, ストーム, 木山 千愛, リード, 小平 健, 塩田 加恋, 浦方 つとむ, 椿 陽葵, 如月 結衣, 安座間 透, 藤堂 恵理, 槌谷 旭桧, 和泉 辰寿, 門奈氏 芥, 猫明寺 つき, 猫明寺アオイ, ヨウ, ユーリ, シスター・ローレル, 設楽 蒼天, 設楽 暁, ジャスミン・カンパネッラ（時鐘 茉莉花）, 馬 琳雪, 雨仁原 唯逸, 紲 つむぐ, 佐宇名 整, 吉永 あらた, 安楽亭 のれん, 甘瓜 ジャック, 木津 海松, 津上 心志, 来栖 理焚, 猫明寺 てる, 漆原 ともり, 菊浦暎士, 藤嶋 アシェル, ネヴァヤ, Willow Sternberg, 倉科 奏, 村崎 学, 濱石 行紘, 扇寿 祈, 水瀬 カノ, 茜 慧名, 案内人さん, オカミ, 篠塚 絃, 潮田 麻衣
+- 父, 母, 死生 織（故人）, 夢海月, 猫柳 ゆかり（故人）, 猫柳 陰, 猫柳 生, 猫柳 一, 猫柳 無名, Nana Roadstar, 聖羅</dd></dl>
+                    <dl aria-label="Meaningful Location">
+                        <dt>思い出の場所</dt>
+                        <dd>己が立っていることに納得した、全ての舞台</dd></dl>
+                    <dl aria-label="Treasured Possessions">
+                        <dt>大切な品</dt>
+                        <dd>- ホロスコープ
+  かつて 星見 かなた が、とある事件解決の打ち上げで、バーで紡のために占いをしてくれた時のもの。
+- 黄色いレインコート
+  ある事件の中で見送った友人のもの。着古して、補修の跡が無数にある。
+- DX日輪刀 (デラックスにちりんとう)
+  ジャスミン・カンパネッラ（時鐘 茉莉花）に借りたもの。戦闘の時の効果音にしてくれと頼まれている。再会した時に返す予定。</dd></dl>
+                    <dl aria-label="Trait">
+                        <dt>特技・癖</dt>
+                        <dd>油断していると、思っていることの多くが口からだだ洩れである。舞台上では、プロ意識がそれを防いでいる。</dd></dl>
+                    <dl aria-label="Phobias &amp; Manias">
+                        <dt>恐怖症・マニア</dt>
+                        <dd>不平不満マニア（治療済み）
+暗闇恐怖症（治療済み）
+血液恐怖症（治療済み）
+他人の死を看取る（治療済み）
+母親の涙が怖い。あと、饅頭怖い。お化け屋敷も怖い。幽霊も怖い</dd></dl>
+                    <dl aria-label="Arcane Tomes &amp; Spells">
+                        <dt>魔道書・呪文</dt>
+                        <dd>猫柳家覚書: 猫柳 陰が死生 紡の協力を得て纏めた呪文書。猫柳家とシュブ＝二グラスの血縁について、および「ナーク＝ティトの障壁の創造」、「ゴルゴロスの肉体歪曲」、「旧き印」、「黒い仔山羊の召喚」、「黒い仔山羊の従属」、「ビヤーキーの召喚」、「ビヤーキーの従属」、「ニョグダの退散」、「黄金の蜂蜜酒の製造」、「ルルイエの霧の創造」、「刀身を清める」、「生贄用のダガーに魔力を付与する」、「肉体の保護」、「復活」、「恐怖の注入」、「門の発見」、「ニャルラトテップとの接触」、「暗黒の呪い」、「グリッサンドの歌」、「水晶の世界」、「魂盗っ人」、「動物に命令する」、「記憶を曇らせる」、「夢からの退散」の詳細が記述されている</dd></dl>
+                    <dl aria-label="Encounters with Strange Entities">
+                        <dt>異形との遭遇</dt>
+                        <dd>ツァトゥグアの無形の落とし子、グラーキの従者、深きもの、深きものの交雑種、地獄の植物、ティンダロスの交雑種、聖なる光、食屍鬼、シャッガイからの昆虫、外なる神の従者、ショゴス・ロード、黒い仔山羊、飛行するポリプ、アトラック＝ナチャの娘、ダゴン、ハイドラ、ノフ＝ケー、クトーニアン、駆り立てる恐怖、夜鬼、ショゴス、チャコタ、イスの偉大なる種族、すべてのサメの父、ズーグ、ガグ、ムーン＝ビースト、ビヤーキー、レンの蜘蛛、異次元からの来訪者（デシュ）、吸血鬼、蛇人間、狼人間、ノーデンス、ヒュプノス、バルグの火虫、スナウター、ジウルーン、夜なるもの（SAN-5）、妖精、ゴブリン、ログビス、チョウドラゴン、ニョグダの落とし子、クアチル・ウタウス（SAN-5）、バロンサムディ（SAN-3）、ルリム＝シャイコース（SAN-4）、ザイクロトルからの怪物、イェーキュブの住民、ジュク＝シャブ、シャンタク鳥（SAN-5）</dd></dl></section></section>
+
+            <!-- ===== Chat Log ===== -->
+            <section id="main_div_section-2" aria-label="Chat Log">
+                <ol>
+                    <li>
+                        <span>GM</span>
+                        <p>ようこそ、探索者の皆さん。</p></li>
+                    <li>
+                        <span>死生 紡</span>
+                        <p>（ふむ、状況を確認しよう）</p></li></ol></section>
+
+            <!-- ===== Input Message ===== -->
+            <section id="main_div_section-3" aria-label="Input Message">
+                <textarea id="main_div_section-3_textarea" name="main_section-3_textarea" rows="2" placeholder="/" class="dads-textarea"></textarea>
+                <button id="main_div_section-3_button" type="submit" class="dads-button" data-type="solid-fill" data-size="sm">↑</button></section>
+
+            <!-- ===== Overlay dialog ===== -->
+            <dialog id="main_div_modal" aria-label="overlay">
+                <h5 id="main_div_dialog_h5">近接戦闘（格闘）</h5>
+                <ul role="menu" id="main_div_dialog_ul" class="list-box">
+                    <li role="menuitem" tabindex="0">ロール</li>
+                    <li role="menuitem" tabindex="0">ハードロール（半分）</li>
+                    <li role="menuitem" tabindex="0">イクストリームロール（1/5）</li>
+                    <li role="menuitem" tabindex="0" class="hidden"></li>
+                    <li role="menuitem" tabindex="0" class="hidden"></li>
+                    <li role="menuitem" tabindex="0" class="hidden"></li>
+                    <li role="menuitem" tabindex="0" class="hidden"></li>
+                    <li role="menuitem" tabindex="0" class="hidden"></li>
+                    <li role="menuitem" tabindex="0" class="hidden"></li>
+                    <li role="menuitem" tabindex="0" class="hidden"></li></ul>
+                <form id="main_div_modal_form">
+                    <button type="button" id="main_div_dialog_form_button-1">↓</button>
+                    <button type="button" id="main_div_dialog_form_button-2">↑</button>
+                    <input type="number" id="main_div_dialog_form_input" value="90">
+                    <button id="main_div_dialog_form_button-3">→</button></form></dialog></div></main>
+
+    <dialog id="drawer" class="hidden"></dialog>
+
+    <!-- ===== Character Edit Modal ===== -->
+    <dialog id="modal" aria-label="Character Edit Modal">
+        <header>
+            <button id="modal_header_button" type="submit" form="form" class="dads-button" data-type="solid-fill" data-size="sm">💾</button>
+        </header>
+
+        <!-- fieldset-1: プロフィール -->
+        <fieldset id="modal_fieldset-1" aria-label="character profile edit fieldset">
+            <legend>
+                <h5 id="modal_fieldset-1_legend_h5">プロフィール</h5>
+            </legend>
+            <table>
+                <tbody>
+                    <tr id="modal_fieldset-1_table_tr-1">
+                        <th>名前</th>
+                        <td><input id="modal_fieldset-1_table_tr-1_input" type="text"
+                                name="modal_fieldset-1_table_tr-1_input" placeholder="死生 紡（しせい つむぎ）"></td>
+                    </tr>
+                    <tr id="modal_fieldset-1_table_tr-2">
+                        <th>出身</th>
+                        <td><input id="modal_fieldset-1_table_tr-2_input" type="text"
+                                name="modal_fieldset-1_table_tr-2_input" placeholder="日本"></td>
+                    </tr>
+                    <tr id="modal_fieldset-1_table_tr-3">
+                        <th>性別</th>
+                        <td><input id="modal_fieldset-1_table_tr-3_input" type="text"
+                                name="modal_fieldset-1_table_tr-3_input" placeholder="（未設定）"></td>
+                    </tr>
+                    <tr id="modal_fieldset-1_table_tr-4">
+                        <th>職業</th>
+                        <td><input id="modal_fieldset-1_table_tr-4_input" type="text"
+                                name="modal_fieldset-1_table_tr-4_input" placeholder="教授（舞台役者）"></td>
+                    </tr>
+                    <tr id="modal_fieldset-1_table_tr-5">
+                        <th>住所</th>
+                        <td><input id="modal_fieldset-1_table_tr-5_input" type="text"
+                                name="modal_fieldset-1_table_tr-5_input" placeholder="日本"></td>
+                    </tr>
+                    <tr id="modal_fieldset-1_table_tr-6">
+                        <th>年齢</th>
+                        <td><input id="modal_fieldset-1_table_tr-6_input" type="number" min="15" max="99"
+                                name="modal_fieldset-1_table_tr-6_input" placeholder="20"></td>
+                    </tr>
+                </tbody>
+            </table>
+        </fieldset>
+
+        <!-- fieldset-2: 能力値 (label / 初期値 / 変動値 / 修正値 / 合計 / 🎲) -->
+        <fieldset id="modal_fieldset-2" aria-label="characteristic edit fieldset">
+            <legend>
+                <h5 id="modal_fieldset-2_legend_h5">能力値</h5>
+                <button id="modal_fieldset-2_legend_button" type="button" class="dads-button" data-type="outline"
+                    data-size="xs">🎲</button>
+            </legend>
+            <table>
+                <thead>
+                    <tr>
+                        <th></th>
+                        <th>初期値</th>
+                        <th>変動値</th>
+                        <th>修正値</th>
+                        <th>合計</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr id="modal_fieldset-2_table_tr-1">
+                        <th>STR</th>
+                        <td><input type="number" min="0" max="9999" placeholder="90"></td>
+                        <td><input type="number" min="-9999" max="9999" placeholder="0"></td>
+                        <td><input type="number" min="-9999" max="9999" placeholder="0"></td>
+                        <td><span>90</span></td>
+                        <td><button type="button" class="dads-button" data-type="outline" data-size="xs">🎲</button></td>
+                    </tr>
+                    <tr id="modal_fieldset-2_table_tr-2">
+                        <th>CON</th>
+                        <td><input type="number" min="0" max="9999" placeholder="55"></td>
+                        <td><input type="number" min="-9999" max="9999" placeholder="5"></td>
+                        <td><input type="number" min="-9999" max="9999" placeholder="0"></td>
+                        <td><span>60</span></td>
+                        <td><button type="button" class="dads-button" data-type="outline" data-size="xs">🎲</button></td>
+                    </tr>
+                    <tr id="modal_fieldset-2_table_tr-3">
+                        <th>SIZ</th>
+                        <td><input type="number" min="0" max="9999" placeholder="75"></td>
+                        <td><input type="number" min="-9999" max="9999" placeholder="0"></td>
+                        <td><input type="number" min="-9999" max="9999" placeholder="0"></td>
+                        <td><span>75</span></td>
+                        <td><button type="button" class="dads-button" data-type="outline" data-size="xs">🎲</button></td>
+                    </tr>
+                    <tr id="modal_fieldset-2_table_tr-4">
+                        <th>DEX</th>
+                        <td><input type="number" min="0" max="9999" placeholder="60"></td>
+                        <td><input type="number" min="-9999" max="9999" placeholder="0"></td>
+                        <td><input type="number" min="-9999" max="9999" placeholder="0"></td>
+                        <td><span>60</span></td>
+                        <td><button type="button" class="dads-button" data-type="outline" data-size="xs">🎲</button></td>
+                    </tr>
+                    <tr id="modal_fieldset-2_table_tr-5">
+                        <th>APP</th>
+                        <td><input type="number" min="0" max="9999" placeholder="60"></td>
+                        <td><input type="number" min="-9999" max="9999" placeholder="0"></td>
+                        <td><input type="number" min="-9999" max="9999" placeholder="0"></td>
+                        <td><span>60</span></td>
+                        <td><button type="button" class="dads-button" data-type="outline" data-size="xs">🎲</button></td>
+                    </tr>
+                    <tr id="modal_fieldset-2_table_tr-6">
+                        <th>INT</th>
+                        <td><input type="number" min="0" max="9999" placeholder="90"></td>
+                        <td><input type="number" min="-9999" max="9999" placeholder="0"></td>
+                        <td><input type="number" min="-9999" max="9999" placeholder="0"></td>
+                        <td><span>90</span></td>
+                        <td><button type="button" class="dads-button" data-type="outline" data-size="xs">🎲</button></td>
+                    </tr>
+                    <tr id="modal_fieldset-2_table_tr-7">
+                        <th>POW</th>
+                        <td><input type="number" min="0" max="9999" placeholder="60"></td>
+                        <td><input type="number" min="-9999" max="9999" placeholder="-10"></td>
+                        <td><input type="number" min="-9999" max="9999" placeholder="0"></td>
+                        <td><span>50</span></td>
+                        <td><button type="button" class="dads-button" data-type="outline" data-size="xs">🎲</button></td>
+                    </tr>
+                    <tr id="modal_fieldset-2_table_tr-8">
+                        <th>EDU</th>
+                        <td><input type="number" min="0" max="9999" placeholder="90"></td>
+                        <td><input type="number" min="-9999" max="9999" placeholder="0"></td>
+                        <td><input type="number" min="-9999" max="9999" placeholder="0"></td>
+                        <td><span>90</span></td>
+                        <td><button type="button" class="dads-button" data-type="outline" data-size="xs">🎲</button></td>
+                    </tr>
+                    <tr id="modal_fieldset-2_table_tr-9">
+                        <th>幸運</th>
+                        <td><input type="number" min="0" max="9999" placeholder="60"></td>
+                        <td><input type="number" min="-9999" max="9999" placeholder="12"></td>
+                        <td><input type="number" min="-9999" max="9999" placeholder="0"></td>
+                        <td><span>72</span></td>
+                        <td><button type="button" class="dads-button" data-type="outline" data-size="xs">🎲</button></td>
+                    </tr>
+                </tbody>
+            </table>
+        </fieldset>
+
+        <!-- fieldset-3: 技能 (label / speciality / base / occupation pt / interest pt / modifier / sum) -->
+        <fieldset id="modal_fieldset-3" aria-label="character skill fieldset">
+            <legend>技能</legend>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>技能</th>
+                        <th>専門分野</th>
+                        <th>基本値</th>
+                        <th>職業PT</th>
+                        <th>興味PT</th>
+                        <th>修正値</th>
+                        <th>合計</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- tr-1: 経理 -->
+                    <tr id="modal_fieldset-3_table_tbody_tr-1">
+                        <th>経理</th>
+                        <td></td>
+                        <td>5</td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="-1000" max="1000" placeholder="0"></td>
+                        <td>5</td>
+                    </tr>
+                    <!-- tr-2: 人類学 -->
+                    <tr id="modal_fieldset-3_table_tbody_tr-2">
+                        <th>人類学</th>
+                        <td></td>
+                        <td>1</td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="-1000" max="1000" placeholder="0"></td>
+                        <td>1</td>
+                    </tr>
+                    <!-- tr-3: 考古学 -->
+                    <tr id="modal_fieldset-3_table_tbody_tr-3">
+                        <th>考古学</th>
+                        <td></td>
+                        <td>1</td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="-1000" max="1000" placeholder="0"></td>
+                        <td>1</td>
+                    </tr>
+                    <!-- tr-4: 鑑定 -->
+                    <tr id="modal_fieldset-3_table_tbody_tr-4">
+                        <th>鑑定</th>
+                        <td></td>
+                        <td>5</td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="-1000" max="1000" placeholder="0"></td>
+                        <td>5</td>
+                    </tr>
+                    <!-- tr-5: 芸術/製作 — Acting代表、他はmodifierで管理 -->
+                    <tr id="modal_fieldset-3_table_tbody_tr-5">
+                        <th>芸術/製作</th>
+                        <td><select>
+                            <option>演劇</option>
+                            <option>ダンス</option>
+                            <option>音楽</option>
+                            <option>声楽</option>
+                        </select></td>
+                        <td>5</td>
+                        <td><input type="number" min="0" max="1000" placeholder="91"></td>
+                        <td><input type="number" min="0" max="1000" placeholder="3"></td>
+                        <td><input type="number" min="-1000" max="1000" placeholder="0"></td>
+                        <td>99</td>
+                    </tr>
+                    <!-- tr-6: 魅惑 -->
+                    <tr id="modal_fieldset-3_table_tbody_tr-6">
+                        <th>魅惑</th>
+                        <td></td>
+                        <td>15</td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="0" max="1000" placeholder="30"></td>
+                        <td><input type="number" min="-1000" max="1000" placeholder="30"></td>
+                        <td>75</td>
+                    </tr>
+                    <!-- tr-7: 登攀 -->
+                    <tr id="modal_fieldset-3_table_tbody_tr-7">
+                        <th>登攀</th>
+                        <td></td>
+                        <td>20</td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="-1000" max="1000" placeholder="0"></td>
+                        <td>20</td>
+                    </tr>
+                    <!-- tr-8: コンピューター -->
+                    <tr id="modal_fieldset-3_table_tbody_tr-8">
+                        <th>コンピューター</th>
+                        <td></td>
+                        <td>5</td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="-1000" max="1000" placeholder="0"></td>
+                        <td>5</td>
+                    </tr>
+                    <!-- tr-9: 信用 -->
+                    <tr id="modal_fieldset-3_table_tbody_tr-9">
+                        <th>信用</th>
+                        <td></td>
+                        <td>0</td>
+                        <td><input type="number" min="0" max="1000" placeholder="20"></td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="-1000" max="1000" placeholder="35"></td>
+                        <td>55</td>
+                    </tr>
+                    <!-- tr-10: クトゥルフ神話 -->
+                    <tr id="modal_fieldset-3_table_tbody_tr-10">
+                        <th>クトゥルフ神話</th>
+                        <td></td>
+                        <td>0</td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="-1000" max="1000" placeholder="30"></td>
+                        <td>30</td>
+                    </tr>
+                    <!-- tr-11: 変装 -->
+                    <tr id="modal_fieldset-3_table_tbody_tr-11">
+                        <th>変装</th>
+                        <td></td>
+                        <td>5</td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="-1000" max="1000" placeholder="0"></td>
+                        <td>5</td>
+                    </tr>
+                    <!-- tr-12: 回避 (base=DEX/2=30) -->
+                    <tr id="modal_fieldset-3_table_tbody_tr-12">
+                        <th>回避</th>
+                        <td></td>
+                        <td>30</td>
+                        <td><input type="number" min="0" max="1000" placeholder="50"></td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="-1000" max="1000" placeholder="0"></td>
+                        <td>80</td>
+                    </tr>
+                    <!-- tr-13: 運転（自動車） -->
+                    <tr id="modal_fieldset-3_table_tbody_tr-13">
+                        <th>運転（自動車）</th>
+                        <td></td>
+                        <td>20</td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="-1000" max="1000" placeholder="0"></td>
+                        <td>20</td>
+                    </tr>
+                    <!-- tr-14: 電気修理 -->
+                    <tr id="modal_fieldset-3_table_tbody_tr-14">
+                        <th>電気修理</th>
+                        <td></td>
+                        <td>10</td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="-1000" max="1000" placeholder="0"></td>
+                        <td>10</td>
+                    </tr>
+                    <!-- tr-15: 電子工学 -->
+                    <tr id="modal_fieldset-3_table_tbody_tr-15">
+                        <th>電子工学</th>
+                        <td></td>
+                        <td>1</td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="-1000" max="1000" placeholder="0"></td>
+                        <td>1</td>
+                    </tr>
+                    <!-- tr-16: 言いくるめ -->
+                    <tr id="modal_fieldset-3_table_tbody_tr-16">
+                        <th>言いくるめ</th>
+                        <td></td>
+                        <td>5</td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="-1000" max="1000" placeholder="0"></td>
+                        <td>5</td>
+                    </tr>
+                    <!-- tr-17: 近接戦闘 — Brawl代表 -->
+                    <tr id="modal_fieldset-3_table_tbody_tr-17">
+                        <th>近接戦闘</th>
+                        <td><select>
+                            <option>格闘</option>
+                            <option>刀剣</option>
+                        </select></td>
+                        <td>25</td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="0" max="1000" placeholder="60"></td>
+                        <td><input type="number" min="-1000" max="1000" placeholder="5"></td>
+                        <td>90</td>
+                    </tr>
+                    <!-- tr-18: 射撃 — Handgun -->
+                    <tr id="modal_fieldset-3_table_tbody_tr-18">
+                        <th>射撃</th>
+                        <td><select>
+                            <option>拳銃</option>
+                        </select></td>
+                        <td>20</td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="-1000" max="1000" placeholder="0"></td>
+                        <td>20</td>
+                    </tr>
+                    <!-- tr-19: 応急手当 -->
+                    <tr id="modal_fieldset-3_table_tbody_tr-19">
+                        <th>応急手当</th>
+                        <td></td>
+                        <td>30</td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="0" max="1000" placeholder="8"></td>
+                        <td><input type="number" min="-1000" max="1000" placeholder="42"></td>
+                        <td>80</td>
+                    </tr>
+                    <!-- tr-20: 歴史 -->
+                    <tr id="modal_fieldset-3_table_tbody_tr-20">
+                        <th>歴史</th>
+                        <td></td>
+                        <td>5</td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="-1000" max="1000" placeholder="0"></td>
+                        <td>5</td>
+                    </tr>
+                    <!-- tr-21: 威圧 -->
+                    <tr id="modal_fieldset-3_table_tbody_tr-21">
+                        <th>威圧</th>
+                        <td></td>
+                        <td>15</td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="-1000" max="1000" placeholder="0"></td>
+                        <td>15</td>
+                    </tr>
+                    <!-- tr-22: 跳躍 -->
+                    <tr id="modal_fieldset-3_table_tbody_tr-22">
+                        <th>跳躍</th>
+                        <td></td>
+                        <td>20</td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="-1000" max="1000" placeholder="0"></td>
+                        <td>20</td>
+                    </tr>
+                    <!-- tr-23: ほかの言語 — English -->
+                    <tr id="modal_fieldset-3_table_tbody_tr-23">
+                        <th>ほかの言語</th>
+                        <td><input type="text" placeholder="English"></td>
+                        <td>1</td>
+                        <td><input type="number" min="0" max="1000" placeholder="49"></td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="-1000" max="1000" placeholder="0"></td>
+                        <td>50</td>
+                    </tr>
+                    <!-- tr-24: 母国語 (base=EDU=90) -->
+                    <tr id="modal_fieldset-3_table_tbody_tr-24">
+                        <th>母国語</th>
+                        <td></td>
+                        <td>90</td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="-1000" max="1000" placeholder="5"></td>
+                        <td>95</td>
+                    </tr>
+                    <!-- tr-25: 法律 -->
+                    <tr id="modal_fieldset-3_table_tbody_tr-25">
+                        <th>法律</th>
+                        <td></td>
+                        <td>5</td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="-1000" max="1000" placeholder="0"></td>
+                        <td>5</td>
+                    </tr>
+                    <!-- tr-26: 図書館 -->
+                    <tr id="modal_fieldset-3_table_tbody_tr-26">
+                        <th>図書館</th>
+                        <td></td>
+                        <td>20</td>
+                        <td><input type="number" min="0" max="1000" placeholder="50"></td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="-1000" max="1000" placeholder="5"></td>
+                        <td>75</td>
+                    </tr>
+                    <!-- tr-27: 聞き耳 -->
+                    <tr id="modal_fieldset-3_table_tbody_tr-27">
+                        <th>聞き耳</th>
+                        <td></td>
+                        <td>20</td>
+                        <td><input type="number" min="0" max="1000" placeholder="50"></td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="-1000" max="1000" placeholder="5"></td>
+                        <td>75</td>
+                    </tr>
+                    <!-- tr-28: 鍵開け -->
+                    <tr id="modal_fieldset-3_table_tbody_tr-28">
+                        <th>鍵開け</th>
+                        <td></td>
+                        <td>1</td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="-1000" max="1000" placeholder="0"></td>
+                        <td>1</td>
+                    </tr>
+                    <!-- tr-29: 機械修理 -->
+                    <tr id="modal_fieldset-3_table_tbody_tr-29">
+                        <th>機械修理</th>
+                        <td></td>
+                        <td>10</td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="-1000" max="1000" placeholder="0"></td>
+                        <td>10</td>
+                    </tr>
+                    <!-- tr-30: 医学 -->
+                    <tr id="modal_fieldset-3_table_tbody_tr-30">
+                        <th>医学</th>
+                        <td></td>
+                        <td>1</td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="-1000" max="1000" placeholder="0"></td>
+                        <td>1</td>
+                    </tr>
+                    <!-- tr-31: 自然 -->
+                    <tr id="modal_fieldset-3_table_tbody_tr-31">
+                        <th>自然</th>
+                        <td></td>
+                        <td>10</td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="-1000" max="1000" placeholder="0"></td>
+                        <td>10</td>
+                    </tr>
+                    <!-- tr-32: ナビゲート -->
+                    <tr id="modal_fieldset-3_table_tbody_tr-32">
+                        <th>ナビゲート</th>
+                        <td></td>
+                        <td>10</td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="-1000" max="1000" placeholder="0"></td>
+                        <td>10</td>
+                    </tr>
+                    <!-- tr-33: オカルト -->
+                    <tr id="modal_fieldset-3_table_tbody_tr-33">
+                        <th>オカルト</th>
+                        <td></td>
+                        <td>5</td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="-1000" max="1000" placeholder="61"></td>
+                        <td>66</td>
+                    </tr>
+                    <!-- tr-34: 説得 -->
+                    <tr id="modal_fieldset-3_table_tbody_tr-34">
+                        <th>説得</th>
+                        <td></td>
+                        <td>10</td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="-1000" max="1000" placeholder="0"></td>
+                        <td>10</td>
+                    </tr>
+                    <!-- tr-35: 操縦 — Boat -->
+                    <tr id="modal_fieldset-3_table_tbody_tr-35">
+                        <th>操縦</th>
+                        <td><select>
+                            <option>ボート</option>
+                        </select></td>
+                        <td>1</td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="-1000" max="1000" placeholder="14"></td>
+                        <td>15</td>
+                    </tr>
+                    <!-- tr-36: 精神分析 -->
+                    <tr id="modal_fieldset-3_table_tbody_tr-36">
+                        <th>精神分析</th>
+                        <td></td>
+                        <td>1</td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="-1000" max="1000" placeholder="0"></td>
+                        <td>1</td>
+                    </tr>
+                    <!-- tr-37: 心理学 -->
+                    <tr id="modal_fieldset-3_table_tbody_tr-37">
+                        <th>心理学</th>
+                        <td></td>
+                        <td>10</td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="-1000" max="1000" placeholder="68"></td>
+                        <td>78</td>
+                    </tr>
+                    <!-- tr-38: 乗馬 -->
+                    <tr id="modal_fieldset-3_table_tbody_tr-38">
+                        <th>乗馬</th>
+                        <td></td>
+                        <td>5</td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="-1000" max="1000" placeholder="39"></td>
+                        <td>44</td>
+                    </tr>
+                    <!-- tr-39: 科学 — Astronomy -->
+                    <tr id="modal_fieldset-3_table_tbody_tr-39">
+                        <th>科学</th>
+                        <td><select>
+                            <option>天文学</option>
+                        </select></td>
+                        <td>1</td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="0" max="1000" placeholder="79"></td>
+                        <td><input type="number" min="-1000" max="1000" placeholder="0"></td>
+                        <td>80</td>
+                    </tr>
+                    <!-- tr-40: 手さばき -->
+                    <tr id="modal_fieldset-3_table_tbody_tr-40">
+                        <th>手さばき</th>
+                        <td></td>
+                        <td>10</td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="-1000" max="1000" placeholder="0"></td>
+                        <td>10</td>
+                    </tr>
+                    <!-- tr-41: 目星 -->
+                    <tr id="modal_fieldset-3_table_tbody_tr-41">
+                        <th>目星</th>
+                        <td></td>
+                        <td>25</td>
+                        <td><input type="number" min="0" max="1000" placeholder="50"></td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="-1000" max="1000" placeholder="0"></td>
+                        <td>75</td>
+                    </tr>
+                    <!-- tr-42: 隠密 -->
+                    <tr id="modal_fieldset-3_table_tbody_tr-42">
+                        <th>隠密</th>
+                        <td></td>
+                        <td>20</td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="-1000" max="1000" placeholder="55"></td>
+                        <td>75</td>
+                    </tr>
+                    <!-- tr-43: サバイバル -->
+                    <tr id="modal_fieldset-3_table_tbody_tr-43">
+                        <th>サバイバル</th>
+                        <td><select>
+                            <option>（選択）</option>
+                            <option>極地</option>
+                            <option>砂漠</option>
+                            <option>海</option>
+                        </select></td>
+                        <td>10</td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="-1000" max="1000" placeholder="0"></td>
+                        <td>10</td>
+                    </tr>
+                    <!-- tr-44: 水泳 -->
+                    <tr id="modal_fieldset-3_table_tbody_tr-44">
+                        <th>水泳</th>
+                        <td></td>
+                        <td>20</td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="-1000" max="1000" placeholder="0"></td>
+                        <td>20</td>
+                    </tr>
+                    <!-- tr-45: 投擲 -->
+                    <tr id="modal_fieldset-3_table_tbody_tr-45">
+                        <th>投擲</th>
+                        <td></td>
+                        <td>20</td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="-1000" max="1000" placeholder="0"></td>
+                        <td>20</td>
+                    </tr>
+                    <!-- tr-46: 追跡 -->
+                    <tr id="modal_fieldset-3_table_tbody_tr-46">
+                        <th>追跡</th>
+                        <td></td>
+                        <td>10</td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="-1000" max="1000" placeholder="0"></td>
+                        <td>10</td>
+                    </tr>
+                    <!-- tr-47: カスタム（自由記入） -->
+                    <tr id="modal_fieldset-3_table_tbody_tr-47">
+                        <th><input type="text" placeholder="技能名"></th>
+                        <td><input type="text" placeholder="専門分野"></td>
+                        <td><input type="number" min="0" max="100" placeholder="0"></td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="-1000" max="1000" placeholder="0"></td>
+                        <td></td>
+                    </tr>
+                    <tr class="hidden" id="modal_fieldset-3_table_tbody_tr-48">
+                        <th><input type="text" placeholder="技能名"></th>
+                        <td><input type="text" placeholder="専門分野"></td>
+                        <td><input type="number" min="0" max="100" placeholder="0"></td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="-1000" max="1000" placeholder="0"></td>
+                        <td></td>
+                    </tr>
+                </tbody>
+            </table>
+        </fieldset>
+
+        <!-- fieldset-4: バックストーリー -->
+        <fieldset id="modal_fieldset-4" aria-label="character backstory editor">
+            <label for="modal_fieldset-4_textarea-1">外見・人物像</label>
+            <textarea id="modal_fieldset-4_textarea-1" placeholder="敢えて普段から平凡な印象を維持している。昼間は男（女）装・夜間は女（男）装している。似合ってる"></textarea>
+            <label for="modal_fieldset-4_textarea-2">思想・信条</label>
+            <textarea id="modal_fieldset-4_textarea-2" placeholder="生命を愛している。…"></textarea>
+            <label for="modal_fieldset-4_textarea-3">重要な人物</label>
+            <textarea id="modal_fieldset-4_textarea-3" placeholder="真幌場 夢、徒花 れいじ…"></textarea>
+            <label for="modal_fieldset-4_textarea-4">思い出の場所</label>
+            <textarea id="modal_fieldset-4_textarea-4" placeholder="己が立っていることに納得した、全ての舞台"></textarea>
+            <label for="modal_fieldset-4_textarea-5">大切な品</label>
+            <textarea id="modal_fieldset-4_textarea-5" placeholder="ホロスコープ、黄色いレインコート、DX日輪刀…"></textarea>
+            <label for="modal_fieldset-4_textarea-6">特技・癖</label>
+            <textarea id="modal_fieldset-4_textarea-6" placeholder="油断していると、思っていることの多くが口からだだ洩れである。"></textarea>
+            <label for="modal_fieldset-4_textarea-7">恐怖症・マニア</label>
+            <textarea id="modal_fieldset-4_textarea-7" placeholder="不平不満マニア（治療済み）、暗闇恐怖症（治療済み）…"></textarea>
+            <label for="modal_fieldset-4_textarea-8">魔道書・呪文</label>
+            <textarea id="modal_fieldset-4_textarea-8" placeholder="猫柳家覚書…"></textarea>
+            <label for="modal_fieldset-4_textarea-9">異形との遭遇</label>
+            <textarea id="modal_fieldset-4_textarea-9" placeholder="ツァトゥグアの無形の落とし子、グラーキの従者…"></textarea>
+        </fieldset>
+    </dialog>
+    <form id="form" method="dialog"></form>
+    <output id="output" aria-label="toast">
+        <article id="output_article-1"><span id="output_article-1_span"></span>
+            <p id="output_article-1_p"></p>
+        </article>
+        <article id="output_article-2"><span id="output_article-2_span"></span>
+            <p id="output_article-2_p"></p>
+        </article>
+    </output>
+</body>
+</html>
