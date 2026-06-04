@@ -194,20 +194,11 @@
 html {
   scrollbar-gutter: stable;
   font-family: var(--font-family-sans);
-  height: 100%;
-  font-size: 16px;
 }
 
 html:has(:modal) {
   overflow: clip;
   scrollbar-gutter: auto;
-}
-
-body {
-  height: 100%;
-  margin: 0;
-  background: var(--color-neutral-solid-gray-50);
-  overflow: hidden;
 }
 
 body:has(:modal) {

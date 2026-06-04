@@ -1,19 +1,24 @@
-main {
-  height: 100dvh;
-  padding: 0.5rem;
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+body {
+  height: 100%;
+  background: var(--color-neutral-solid-gray-50);
+  font-size: 16px;  
+}
+
+body > header {
+  anchor-name: --header;
 }
 
 dialog:modal {
+  top: 20px;
+  left: 0;
   width: 100%;
-  max-width: 45rem;
-  max-height: 90dvh;
-  overflow-x: clip;
-  overflow-y: auto;
+  max-width: 60rem;
+  height: 90%;
   box-sizing: border-box;
+  position-anchor: --header;
+  margin-top: anchor-size(--header height);
+  margin-left: auto;
+  margin-right: auto;
 }
 
 input, textarea {
@@ -22,21 +27,16 @@ input, textarea {
 }
 
 output {
-  position: fixed;
   bottom: 1.5rem;
   right: 1.5rem;
   display: flex;
   flex-direction: column-reverse;
-  /* 新着が下、上方向にqueue */
-  gap: .5rem;
   border: none;
-  /* outputのブラウザデフォルトを上書き */
 }
+
 output article {
   display: flex;
   align-items: baseline;
-  gap: .5rem;
-  padding: .625rem .875rem;
   border-radius: .375rem;
   min-width: 14rem;
   max-width: 22rem;
@@ -47,32 +47,37 @@ output article {
   cursor: pointer;
   user-select: none;
   opacity: 0;
-  /* enter前: 右にずれて透明 */
   translate: 1.5rem 0;
   transition: opacity .2s ease, translate .2s ease;
   pointer-events: none;
 }
+
 output article.show {
   opacity: 1;
   translate: 0 0;
   pointer-events: auto;
 }
+
 output article.hide {
   opacity: 0;
   translate: 1.5rem 0;
   transition-duration: .15s;
   pointer-events: none;
 }
-output article span { /* icon */
+
+output article span { /* toast icon */
   font-weight: 700;
   font-size: .8125rem;
   flex-shrink: 0;
   padding: 0 .125rem;
   opacity: .7;
 }
+
 article.info { background: var(--color-neutral-solid-gray-300); }
 article.success { background: var(--color-semantic-success-1); }
 article.warning { background: var(--color-semantic-warning-yellow-2); }
+
+/* --- CoC7th (html記述順) ─── */
 
 #main_overlay_focus {
   position: absolute;
@@ -82,21 +87,6 @@ article.warning { background: var(--color-semantic-warning-yellow-2); }
   height:0;
 }
 
-/* ───── select: キャラ一覧 ───── */
-#main_div_section-1_section-1_select {
-  width: 100%;
-}
-
-/* ───── fieldset-3 専門分野 select/input ───── */
-#modal [id$="_td-1_select"],
-#modal [id$="_td-1_input"] {
-  max-width: 5rem;
-}
-
-/* ───── fieldset-4: バックストーリー ───── */
-#modal_fieldset-4 article {
-  display: block;
-}
 #modal_fieldset-4 label,
 #modal_fieldset-4 textarea {
   display: inline-block;
@@ -105,26 +95,5 @@ article.warning { background: var(--color-semantic-warning-yellow-2); }
 
 /* ───── media query (wider window) ───── */
 @media (width >= 40rem) {
-  main {
-    padding: 1rem;
-    gap: 0.75rem;
-  }
-  main>header {
-    gap: 1rem;
-    margin-bottom: 1rem;
-  }
-  main>header h1 {
-    font-size: 1.25rem;
-  }
-  td {
-    padding: 0.375rem;
-  }
-  td>time {
-    font-size: 1.2rem;
-    margin-bottom: 0.1rem;
-  }
-  td>article {
-    font-size: 0.7rem;
-    padding: 1px 4px;
-  }
+
 }
