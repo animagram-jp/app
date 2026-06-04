@@ -22,8 +22,8 @@ cssと作成作業を分離する。一部の開閉要素を特定タグで表�
 
 - 視覚効果: `<main>`,`<dialog id="drawer">`,`<dialog id="modal">`,`<form>`,`<toast>` (いずれも、1画面でbody直下に単一要素とする)
 - 集合要素: `<header>`,`<footer>`,`<section>`,`<article>`,`<fieldset>`,`<table>`
-- 段落要素: `display: block`
-- 同列要素: `display: inline-block`, `display: inline`
+- 段落要素: `display: block`,
+- 同列要素: `display: inline-block`, `display: inline`, `display: table-cell`
 
 htmlの制約として、同列要素の中に段落要素を格納する、すなわち集合要素を持つべき時、タグを子に分離する必要がある。この時も、セマンティクスを最もよく表すタグを選択する。
 
