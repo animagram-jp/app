@@ -98,6 +98,42 @@ Development Check - 上達チェック
 - 各技能の専門分野(自由記入)の発行は最大4つ。 // 要緩和
 - 技能の完全自由欄も最大4つ。 // 要緩和
 
+### キャラクターシート
+
+#### 表示最大数
+
+キャラクターシート1枚の中で、各フィールドの表示上限数。tsumugiサンプルを基準に。
+
+| フィールド | たたき台 | 備考 |
+|---|---|---|
+| Skill エントリ数 | 60 | tsumugiは26技能。Art/Craft等の専門分化が重なると増える |
+| Art/Craft等の専門分野サブスキル数 | 10 | tsumugiは7種 (Acting/Dance/Hanafuda/...) |
+| Language (Other) のエントリ数 | 10 | tsumugiは1種 (English) |
+| Fighting のエントリ数 | 8 | tsumugiは2種 (Brawl/Sword) |
+| Firearms のエントリ数 | 8 | tsumugiは1種 (Handgun) |
+| Pilot のエントリ数 | 6 | tsumugiは1種 (Boat) |
+| Science のエントリ数 | 8 | tsumugiは1種 (Astronomy) |
+| 完全自由技能欄のエントリ数 | 8 | 現Limitationでは4。緩和検討中 |
+| Possessions エントリ数 | 30 | tsumugiは13点。武器・防具・その他混在 |
+| Possessions 1件あたりのdamageダイスリスト数 | 4 | tsumugiは [[1,10,1],"DB"] で2要素 |
+| SignificantPeople の人名リスト文字数 | 2000 | tsumugiは約1700文字。長大なリスト |
+| EncountersWithStrangeEntities の文字数 | 3000 | tsumugiは最長フィールド。遭遇ログが蓄積する |
+| ArcaneTomesAndSpells 呪文リスト数 | 40 | tsumugiは24種。セッション重ねると増える |
+| Backstory 各テキストフィールド文字数 | 1000 | IdeologyAndBeliefsなど |
+| PhobiasAndManias エントリ数 | 10 | tsumugiは5件 |
+
+#### 保存最大数
+
+アプリ全体・ユーザー単位での保存上限数。
+
+| フィールド | たたき台 | 備考 |
+|---|---|---|
+| キャラクターシート総保存数 | 20 | 1ユーザーが複数キャラを管理する想定 |
+| 1セッションあたりのキャラクター数 | 10 | PL人数 + NPC想定。KP運用含む |
+| Roll::Stack の保持数 | 100 | 1セッション内のロール履歴。古いものから破棄 |
+| SkillのDevelopment Check済みフラグ保持数 | 60 | Skill表示最大数と同値 |
+| キャラクターのバックアップ(スナップショット)数 | 5 | セッション毎の成長前後比較用 |
+
 ---
 
 ## Note
