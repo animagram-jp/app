@@ -120,6 +120,21 @@ dialog table {
   gap: 0.5rem;
 }
 
+#modal_fieldset-2 input[type="number"] {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: textfield;
+}
+
+#modal_fieldset-2 .dads-button {
+  padding: calc(12 / 16 * 1rem) calc(8 / 16 * 1rem);
+  font-size: calc(16 / 16 * 1rem);
+  line-height: 1.7;
+  min-width: unset;
+  min-height: unset;
+  border-radius: calc(4 / 16 * 1rem);
+}
+
 #modal_fieldset-1_label-2, #modal_fieldset-1_label-6 {
   color: transparent;
 }
