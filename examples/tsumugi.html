@@ -531,20 +531,93 @@
                         <td><input type="number" min="-1000" max="1000" placeholder="0"></td>
                         <td>5</td>
                     </tr>
-                    <!-- tr-5: 芸術/製作 — Acting代表、他はmodifierで管理 -->
-                    <tr id="modal_fieldset-3_table_tbody_tr-5">
+                    <!-- tr-5a: 芸術/製作（演劇） — rs: Acting -->
+                    <tr id="modal_fieldset-3_table_tbody_tr-5a">
                         <th>芸術/製作</th>
                         <td><select>
                             <option>演劇</option>
                             <option>ダンス</option>
-                            <option>音楽</option>
-                            <option>声楽</option>
+                            <option>料理</option>
+                            <option>書道</option>
+                            <option>執筆</option>
+                            <option>絵画</option>
+                            <option>文書偽造</option>
+                            <option>写真術</option>
                         </select></td>
                         <td>5</td>
                         <td><input type="number" min="0" max="1000" placeholder="91"></td>
                         <td><input type="number" min="0" max="1000" placeholder="3"></td>
                         <td><input type="number" min="-1000" max="1000" placeholder="0"></td>
                         <td>99</td>
+                    </tr>
+                    <!-- tr-5b: 芸術/製作（ダンス） — rs: Dancing -->
+                    <tr id="modal_fieldset-3_table_tbody_tr-5b">
+                        <th>芸術/製作</th>
+                        <td><select>
+                            <option>ダンス</option>
+                            <option>演劇</option>
+                            <option>料理</option>
+                            <option>書道</option>
+                            <option>執筆</option>
+                            <option>絵画</option>
+                            <option>文書偽造</option>
+                            <option>写真術</option>
+                        </select></td>
+                        <td>5</td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="-1000" max="1000" placeholder="50"></td>
+                        <td>55</td>
+                    </tr>
+                    <!-- tr-5c: 芸術/製作（花札） — rs にない専門分野: input -->
+                    <tr id="modal_fieldset-3_table_tbody_tr-5c">
+                        <th>芸術/製作</th>
+                        <td><input type="text" placeholder="花札"></td>
+                        <td>5</td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="-1000" max="1000" placeholder="10"></td>
+                        <td>15</td>
+                    </tr>
+                    <!-- tr-5d: 芸術/製作（百人一首） — rs にない専門分野: input -->
+                    <tr id="modal_fieldset-3_table_tbody_tr-5d">
+                        <th>芸術/製作</th>
+                        <td><input type="text" placeholder="百人一首"></td>
+                        <td>5</td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="-1000" max="1000" placeholder="15"></td>
+                        <td>20</td>
+                    </tr>
+                    <!-- tr-5e: 芸術/製作（愛） — rs にない専門分野: input -->
+                    <tr id="modal_fieldset-3_table_tbody_tr-5e">
+                        <th>芸術/製作</th>
+                        <td><input type="text" placeholder="愛"></td>
+                        <td>5</td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="-1000" max="1000" placeholder="101"></td>
+                        <td>106</td>
+                    </tr>
+                    <!-- tr-5f: 芸術/製作（音楽） — rs にない専門分野: input -->
+                    <tr id="modal_fieldset-3_table_tbody_tr-5f">
+                        <th>芸術/製作</th>
+                        <td><input type="text" placeholder="音楽"></td>
+                        <td>5</td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="-1000" max="1000" placeholder="20"></td>
+                        <td>25</td>
+                    </tr>
+                    <!-- tr-5g: 芸術/製作（声楽） — rs にない専門分野: input -->
+                    <tr id="modal_fieldset-3_table_tbody_tr-5g">
+                        <th>芸術/製作</th>
+                        <td><input type="text" placeholder="声楽"></td>
+                        <td>5</td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="-1000" max="1000" placeholder="51"></td>
+                        <td>56</td>
                     </tr>
                     <!-- tr-6: 魅惑 -->
                     <tr id="modal_fieldset-3_table_tbody_tr-6">
@@ -656,12 +729,18 @@
                         <td><input type="number" min="-1000" max="1000" placeholder="0"></td>
                         <td>5</td>
                     </tr>
-                    <!-- tr-17: 近接戦闘 — Brawl代表 -->
-                    <tr id="modal_fieldset-3_table_tbody_tr-17">
+                    <!-- tr-17a: 近接戦闘（格闘） — rs: Brawl -->
+                    <tr id="modal_fieldset-3_table_tbody_tr-17a">
                         <th>近接戦闘</th>
                         <td><select>
                             <option>格闘</option>
+                            <option>斧</option>
+                            <option>チェーンソー</option>
+                            <option>フレイル</option>
+                            <option>絞殺ひも</option>
+                            <option>槍</option>
                             <option>刀剣</option>
+                            <option>鞭</option>
                         </select></td>
                         <td>25</td>
                         <td><input type="number" min="0" max="1000" placeholder="0"></td>
@@ -669,11 +748,35 @@
                         <td><input type="number" min="-1000" max="1000" placeholder="5"></td>
                         <td>90</td>
                     </tr>
+                    <!-- tr-17b: 近接戦闘（刀剣） — rs: Sword -->
+                    <tr id="modal_fieldset-3_table_tbody_tr-17b">
+                        <th>近接戦闘</th>
+                        <td><select>
+                            <option>刀剣</option>
+                            <option>斧</option>
+                            <option>格闘</option>
+                            <option>チェーンソー</option>
+                            <option>フレイル</option>
+                            <option>絞殺ひも</option>
+                            <option>槍</option>
+                            <option>鞭</option>
+                        </select></td>
+                        <td>20</td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="0" max="1000" placeholder="0"></td>
+                        <td><input type="number" min="-1000" max="1000" placeholder="65"></td>
+                        <td>85</td>
+                    </tr>
                     <!-- tr-18: 射撃 — Handgun -->
                     <tr id="modal_fieldset-3_table_tbody_tr-18">
                         <th>射撃</th>
                         <td><select>
                             <option>拳銃</option>
+                            <option>弓</option>
+                            <option>重火器</option>
+                            <option>機関銃</option>
+                            <option>ライフル/ショットガン</option>
+                            <option>サブマシンガン</option>
                         </select></td>
                         <td>20</td>
                         <td><input type="number" min="0" max="1000" placeholder="0"></td>
@@ -846,6 +949,15 @@
                         <th>操縦</th>
                         <td><select>
                             <option>ボート</option>
+                            <option>汽船</option>
+                            <option>帆船</option>
+                            <option>民間プロペラ機</option>
+                            <option>気球</option>
+                            <option>飛行船</option>
+                            <option>民間ジェット機</option>
+                            <option>旅客機</option>
+                            <option>ジェット戦闘機</option>
+                            <option>ヘリコプター</option>
                         </select></td>
                         <td>1</td>
                         <td><input type="number" min="0" max="1000" placeholder="0"></td>
@@ -888,6 +1000,18 @@
                         <th>科学</th>
                         <td><select>
                             <option>天文学</option>
+                            <option>生物学</option>
+                            <option>植物学</option>
+                            <option>化学</option>
+                            <option>暗号学</option>
+                            <option>工学</option>
+                            <option>法医学</option>
+                            <option>地質学</option>
+                            <option>数学</option>
+                            <option>気象学</option>
+                            <option>薬学</option>
+                            <option>物理学</option>
+                            <option>動物学</option>
                         </select></td>
                         <td>1</td>
                         <td><input type="number" min="0" max="1000" placeholder="0"></td>
@@ -995,27 +1119,46 @@
 
         <!-- fieldset-4: バックストーリー -->
         <fieldset id="modal_fieldset-4" aria-label="character backstory editor">
-            <label for="modal_fieldset-4_textarea-1">外見・人物像</label>
-            <textarea id="modal_fieldset-4_textarea-1" placeholder="敢えて普段から平凡な印象を維持している。昼間は男（女）装・夜間は女（男）装している。似合ってる"></textarea>
-            <label for="modal_fieldset-4_textarea-2">思想・信条</label>
-            <textarea id="modal_fieldset-4_textarea-2" placeholder="生命を愛している。…"></textarea>
-            <label for="modal_fieldset-4_textarea-3">重要な人物</label>
-            <textarea id="modal_fieldset-4_textarea-3" placeholder="真幌場 夢、徒花 れいじ…"></textarea>
-            <label for="modal_fieldset-4_textarea-4">思い出の場所</label>
-            <textarea id="modal_fieldset-4_textarea-4" placeholder="己が立っていることに納得した、全ての舞台"></textarea>
-            <label for="modal_fieldset-4_textarea-5">大切な品</label>
-            <textarea id="modal_fieldset-4_textarea-5" placeholder="ホロスコープ、黄色いレインコート、DX日輪刀…"></textarea>
-            <label for="modal_fieldset-4_textarea-6">特技・癖</label>
-            <textarea id="modal_fieldset-4_textarea-6" placeholder="油断していると、思っていることの多くが口からだだ洩れである。"></textarea>
-            <label for="modal_fieldset-4_textarea-7">恐怖症・マニア</label>
-            <textarea id="modal_fieldset-4_textarea-7" placeholder="不平不満マニア（治療済み）、暗闇恐怖症（治療済み）…"></textarea>
-            <label for="modal_fieldset-4_textarea-8">魔道書・呪文</label>
-            <textarea id="modal_fieldset-4_textarea-8" placeholder="猫柳家覚書…"></textarea>
-            <label for="modal_fieldset-4_textarea-9">異形との遭遇</label>
-            <textarea id="modal_fieldset-4_textarea-9" placeholder="ツァトゥグアの無形の落とし子、グラーキの従者…"></textarea>
+            <article>
+                <label for="modal_fieldset-4_textarea-1">外見・人物像</label>
+                <textarea id="modal_fieldset-4_textarea-1" placeholder="敢えて普段から平凡な印象を維持している。昼間は男（女）装・夜間は女（男）装している。似合ってる"></textarea>
+            </article>
+            <article>
+                <label for="modal_fieldset-4_textarea-2">思想・信条</label>
+                <textarea id="modal_fieldset-4_textarea-2" placeholder="生命を愛している。…"></textarea>
+            </article>
+            <article>
+                <label for="modal_fieldset-4_textarea-3">重要な人物</label>
+                <textarea id="modal_fieldset-4_textarea-3" placeholder="真幌場 夢、徒花 れいじ…"></textarea>
+            </article>
+            <article>
+                <label for="modal_fieldset-4_textarea-4">思い出の場所</label>
+                <textarea id="modal_fieldset-4_textarea-4" placeholder="己が立っていることに納得した、全ての舞台"></textarea>
+            </article>
+            <article>
+                <label for="modal_fieldset-4_textarea-5">大切な品</label>
+                <textarea id="modal_fieldset-4_textarea-5" placeholder="ホロスコープ、黄色いレインコート、DX日輪刀…"></textarea>
+            </article>
+            <article>
+                <label for="modal_fieldset-4_textarea-6">特技・癖</label>
+                <textarea id="modal_fieldset-4_textarea-6" placeholder="油断していると、思っていることの多くが口からだだ洩れである。"></textarea>
+            </article>
+            <article>
+                <label for="modal_fieldset-4_textarea-7">恐怖症・マニア</label>
+                <textarea id="modal_fieldset-4_textarea-7" placeholder="不平不満マニア（治療済み）、暗闇恐怖症（治療済み）…"></textarea>
+            </article>
+            <article>
+                <label for="modal_fieldset-4_textarea-8">魔道書・呪文</label>
+                <textarea id="modal_fieldset-4_textarea-8" placeholder="猫柳家覚書…"></textarea>
+            </article>
+            <article>
+                <label for="modal_fieldset-4_textarea-9">異形との遭遇</label>
+                <textarea id="modal_fieldset-4_textarea-9" placeholder="ツァトゥグアの無形の落とし子、グラーキの従者…"></textarea>
+            </article>
         </fieldset>
     </dialog>
     <form id="form" method="dialog"></form>
+    <script src="tsumugi.js"></script>
     <output id="output" aria-label="toast">
         <article id="output_article-1"><span id="output_article-1_span"></span>
             <p id="output_article-1_p"></p>

@@ -93,6 +93,16 @@ article.warning { background: var(--color-semantic-warning-yellow-2); }
   max-width: 5rem;
 }
 
+/* ───── fieldset-4: バックストーリー ───── */
+#modal_fieldset-4 article {
+  display: block;
+}
+#modal_fieldset-4 label,
+#modal_fieldset-4 textarea {
+  display: inline-block;
+  vertical-align: top;
+}
+
 /* ───── media query (wider window) ───── */
 @media (width >= 40rem) {
   main {
