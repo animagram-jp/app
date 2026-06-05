@@ -13,15 +13,15 @@
   letter-spacing: 0.02em;
 }
 
-.dads-input-text[data-size="sm"] {
+.dads-input-text[dads-size="sm"] {
   height: 2.5rem;
 }
 
-.dads-input-text[data-size="md"] {
+.dads-input-text[dads-size="md"] {
   height: 3rem;
 }
 
-.dads-input-text[data-size="lg"] {
+.dads-input-text[dads-size="lg"] {
   height: 3.5rem;
 }
 
