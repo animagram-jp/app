@@ -21,6 +21,7 @@
   --_padding-block: calc(10 / 16 * 1rem);
 }
 
+.dads-radio:not([dads-size]),
 .dads-radio[dads-size="md"] {
   --_gap: calc(8 / 16 * 1rem);
   --_radio-size: calc(32 / 16 * 1rem);

@@ -21,6 +21,7 @@
   line-height: 1.5;
 }
 
+.dads-textarea:not([dads-size]),
 .dads-textarea[dads-size="md"] {
   font-size: var(--dads-size-md-font-size);
   line-height: 1.6;

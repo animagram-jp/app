@@ -19,6 +19,7 @@
   height: var(--dads-size-sm-height);
 }
 
+.dads-input-number:not([dads-size]),
 .dads-input-number[dads-size="md"] {
   height: var(--dads-size-md-height);
 }

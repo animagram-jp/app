@@ -21,6 +21,7 @@
   height: var(--dads-size-sm-height);
 }
 
+.dads-select:not([dads-size]),
 .dads-select[dads-size="md"] {
   height: var(--dads-size-md-height);
 }

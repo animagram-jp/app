@@ -26,7 +26,7 @@
             <li role="option"><button lang="en" value="1">English (US)</button></li>
             <li role="option"><button lang="ja" value="2">日本語</button></li></ul>
         <button id="header_button-1" type="button" popovertarget="header_ul" aria-haspopup="listbox" aria-expanded="false" aria-controls="header_ul" class="list-box-trigger">日本語</button>
-        <button id="header_button-2" aria-label="switch modal" class="dads-button" data-size="sm" data-type="outline">✏️</button></header>
+        <button id="header_button-2" aria-label="switch modal" class="dads-button" dads-size="sm" dads-type="outline">✏️</button></header>
     <main>
         <header>
             <ul id="main_header_ul" popover="auto" role="listbox" aria-labelledby="main_header_button" class="list-box">
@@ -313,7 +313,7 @@
             <!-- ===== Input Message ===== -->
             <section id="main_div_section-3" aria-label="Input Message">
                 <textarea id="main_div_section-3_textarea" name="main_section-3_textarea" rows="2" placeholder="/" class="dads-textarea"></textarea>
-                <button id="main_div_section-3_button" type="submit" class="dads-button" data-type="solid-fill" data-size="sm">↑</button></section>
+                <button id="main_div_section-3_button" type="submit" class="dads-button" dads-type="solid-fill" dads-size="sm">↑</button></section>
 
             <!-- ===== Overlay dialog ===== -->
             <dialog id="main_div_modal" aria-label="overlay">
@@ -340,7 +340,7 @@
     <!-- ===== Character Edit Modal ===== -->
     <dialog id="modal" aria-label="Character Edit Modal">
         <header>
-            <button id="modal_header_button" type="submit" form="form" class="dads-button" data-type="solid-fill" data-size="sm">💾</button>
+            <button id="modal_header_button" type="submit" form="form" class="dads-button" dads-type="solid-fill">💾</button>
         </header>
 
         <!-- fieldset-1: プロフィール -->
@@ -380,8 +380,8 @@
         <!-- fieldset-2: 能力値 (label / 初期値 / 変動値 / 修正値 / 合計 / 🎲) -->
         <fieldset id="modal_fieldset-2" aria-label="characteristic edit fieldset">
             <legend><h5>能力値</h5></legend>
-            <button id="modal_fieldset-2_legend_button" type="button" data-type="outline" data-size="xs" class="dads-button">🎲</button>
-            <table class="dads-table">
+            <button id="modal_fieldset-2_legend_button" type="button" dads-type="outline" class="dads-button dice">🎲</button>
+            <table class="dads-table" dads-type="dense">
                 <thead>
                     <tr>
                         <th></th>
@@ -399,7 +399,7 @@
                         <td><input type="number" min="-9999" max="9999" placeholder="0" class="dads-input-text"></td>
                         <td><input type="number" min="-9999" max="9999" placeholder="0" class="dads-input-text"></td>
                         <td><span>90</span></td>
-                        <td><button type="button" data-type="outline" data-size="xs" class="dads-button">🎲</button></td>
+                        <td><button type="button" dads-type="outline" class="dads-button dice">🎲</button></td>
                     </tr>
                     <tr id="modal_fieldset-2_table_tr-2">
                         <th>CON</th>
@@ -407,7 +407,7 @@
                         <td><input type="number" min="-9999" max="9999" placeholder="5" class="dads-input-text"></td>
                         <td><input type="number" min="-9999" max="9999" placeholder="0" class="dads-input-text"></td>
                         <td><span>60</span></td>
-                        <td><button type="button" data-type="outline" data-size="xs" class="dads-button">🎲</button></td>
+                        <td><button type="button" dads-type="outline" class="dads-button dice">🎲</button></td>
                     </tr>
                     <tr id="modal_fieldset-2_table_tr-3">
                         <th>SIZ</th>
@@ -415,7 +415,7 @@
                         <td><input type="number" min="-9999" max="9999" placeholder="0" class="dads-input-text"></td>
                         <td><input type="number" min="-9999" max="9999" placeholder="0" class="dads-input-text"></td>
                         <td><span>75</span></td>
-                        <td><button type="button" data-type="outline" data-size="xs" class="dads-button">🎲</button></td>
+                        <td><button type="button" dads-type="outline" class="dads-button dice">🎲</button></td>
                     </tr>
                     <tr id="modal_fieldset-2_table_tr-4">
                         <th>DEX</th>
@@ -423,7 +423,7 @@
                         <td><input type="number" min="-9999" max="9999" placeholder="0" class="dads-input-text"></td>
                         <td><input type="number" min="-9999" max="9999" placeholder="0" class="dads-input-text"></td>
                         <td><span>60</span></td>
-                        <td><button type="button" data-type="outline" data-size="xs" class="dads-button">🎲</button></td>
+                        <td><button type="button" dads-type="outline" class="dads-button dice">🎲</button></td>
                     </tr>
                     <tr id="modal_fieldset-2_table_tr-5">
                         <th>APP</th>
@@ -431,7 +431,7 @@
                         <td><input type="number" min="-9999" max="9999" placeholder="0" class="dads-input-text"></td>
                         <td><input type="number" min="-9999" max="9999" placeholder="0" class="dads-input-text"></td>
                         <td><span>60</span></td>
-                        <td><button type="button" data-type="outline" data-size="xs" class="dads-button">🎲</button></td>
+                        <td><button type="button" dads-type="outline" class="dads-button dice">🎲</button></td>
                     </tr>
                     <tr id="modal_fieldset-2_table_tr-6">
                         <th>INT</th>
@@ -439,7 +439,7 @@
                         <td><input type="number" min="-9999" max="9999" placeholder="0" class="dads-input-text"></td>
                         <td><input type="number" min="-9999" max="9999" placeholder="0" class="dads-input-text"></td>
                         <td><span>90</span></td>
-                        <td><button type="button" data-type="outline" data-size="xs" class="dads-button">🎲</button></td>
+                        <td><button type="button" dads-type="outline" class="dads-button dice">🎲</button></td>
                     </tr>
                     <tr id="modal_fieldset-2_table_tr-7">
                         <th>POW</th>
@@ -447,7 +447,7 @@
                         <td><input type="number" min="-9999" max="9999" placeholder="-10" class="dads-input-text"></td>
                         <td><input type="number" min="-9999" max="9999" placeholder="0" class="dads-input-text"></td>
                         <td><span>50</span></td>
-                        <td><button type="button" data-type="outline" data-size="xs" class="dads-button">🎲</button></td>
+                        <td><button type="button" dads-type="outline" class="dads-button dice">🎲</button></td>
                     </tr>
                     <tr id="modal_fieldset-2_table_tr-8">
                         <th>EDU</th>
@@ -455,7 +455,7 @@
                         <td><input type="number" min="-9999" max="9999" placeholder="0" class="dads-input-text"></td>
                         <td><input type="number" min="-9999" max="9999" placeholder="0" class="dads-input-text"></td>
                         <td><span>90</span></td>
-                        <td><button type="button" data-type="outline" data-size="xs" class="dads-button">🎲</button></td>
+                        <td><button type="button" dads-type="outline" class="dads-button dice">🎲</button></td>
                     </tr>
                     <tr id="modal_fieldset-2_table_tr-9">
                         <th>幸運</th>
@@ -463,7 +463,7 @@
                         <td><input type="number" min="-9999" max="9999" placeholder="12" class="dads-input-text"></td>
                         <td><input type="number" min="-9999" max="9999" placeholder="0" class="dads-input-text"></td>
                         <td><span>72</span></td>
-                        <td><button type="button" data-type="outline" data-size="xs" class="dads-button">🎲</button></td>
+                        <td><button type="button" dads-type="outline" class="dads-button dice">🎲</button></td>
                     </tr>
                 </tbody>
             </table>
@@ -473,7 +473,7 @@
         <fieldset id="modal_fieldset-3" aria-label="character skill fieldset">
             <legend>技能</legend>
 
-            <table class="dads-table">
+            <table class="dads-table" dads-type="dense">
                 <thead>
                     <tr>
                         <th>技能</th>

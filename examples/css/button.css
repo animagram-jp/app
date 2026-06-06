@@ -24,54 +24,54 @@
   cursor: default;
 }
 
-.dads-button[data-type="solid-fill"] {
+.dads-button[dads-type="solid-fill"] {
   border: 4px double transparent;
   background-color: var(--button-color);
   color: var(--color-neutral-white);
 }
 
 @media (hover: hover) {
-  .dads-button[data-type="solid-fill"]:hover {
+  .dads-button[dads-type="solid-fill"]:hover {
     background-color: var(--button-hover-color);
     text-decoration: underline;
     text-decoration-thickness: calc(1 / 16 * 1rem);
   }
 }
 
-.dads-button[data-type="solid-fill"]:active {
+.dads-button[dads-type="solid-fill"]:active {
   background-color: var(--button-active-color);
   text-decoration: underline;
 }
 
-.dads-button[data-type="solid-fill"]:focus-visible {
+.dads-button[dads-type="solid-fill"]:focus-visible {
   outline: calc(4 / 16 * 1rem) solid var(--color-neutral-black);
   outline-offset: calc(2 / 16 * 1rem);
   box-shadow: 0 0 0 calc(2 / 16 * 1rem) var(--color-primitive-yellow-300);
 }
 
-.dads-button[data-type="solid-fill"]:disabled,
-.dads-button[data-type="solid-fill"][aria-disabled="true"] {
+.dads-button[dads-type="solid-fill"]:disabled,
+.dads-button[dads-type="solid-fill"][aria-disabled="true"] {
   background-color: var(--color-neutral-solid-gray-300);
   color: var(--color-neutral-solid-gray-50);
   text-decoration: none;
 }
 
 @media (forced-colors: active) {
-  .dads-button[data-type="solid-fill"]:disabled,
-  .dads-button[data-type="solid-fill"][aria-disabled="true"] {
+  .dads-button[dads-type="solid-fill"]:disabled,
+  .dads-button[dads-type="solid-fill"][aria-disabled="true"] {
     border-color: GrayText;
     color: GrayText;
   }
 }
 
-.dads-button[data-type="outline"] {
+.dads-button[dads-type="outline"] {
   border: 1px solid currentcolor;
   background-color: var(--color-neutral-white);
   color: var(--button-color);
 }
 
 @media (hover: hover) {
-  .dads-button[data-type="outline"]:hover {
+  .dads-button[dads-type="outline"]:hover {
     background-color: var(--button-outline-hover-bg-color);
     color: var(--button-hover-color);
     text-decoration: underline;
@@ -79,34 +79,34 @@
   }
 }
 
-.dads-button[data-type="outline"]:active {
+.dads-button[dads-type="outline"]:active {
   background-color: var(--button-outline-active-bg-color);
   color: var(--button-active-color);
   text-decoration: underline;
 }
 
-.dads-button[data-type="outline"]:focus-visible {
+.dads-button[dads-type="outline"]:focus-visible {
   outline: calc(4 / 16 * 1rem) solid var(--color-neutral-black);
   outline-offset: calc(2 / 16 * 1rem);
   box-shadow: 0 0 0 calc(2 / 16 * 1rem) var(--color-primitive-yellow-300);
 }
 
-.dads-button[data-type="outline"]:disabled,
-.dads-button[data-type="outline"][aria-disabled="true"] {
+.dads-button[dads-type="outline"]:disabled,
+.dads-button[dads-type="outline"][aria-disabled="true"] {
   background-color: var(--color-neutral-white);
   color: var(--color-neutral-solid-gray-300);
   text-decoration: none;
 }
 
 @media (forced-colors: active) {
-  .dads-button[data-type="outline"]:disabled,
-  .dads-button[data-type="outline"][aria-disabled="true"] {
+  .dads-button[dads-type="outline"]:disabled,
+  .dads-button[dads-type="outline"][aria-disabled="true"] {
     border-color: GrayText;
     color: GrayText;
   }
 }
 
-.dads-button[data-type="text"] {
+.dads-button[dads-type="text"] {
   border: 0;
   background-color: transparent;
   color: var(--button-color);
@@ -114,35 +114,35 @@
 }
 
 @media (hover: hover) {
-  .dads-button[data-type="text"]:hover {
+  .dads-button[dads-type="text"]:hover {
     background-color: var(--color-primitive-blue-50);
     color: var(--button-hover-color);
     text-decoration-thickness: calc(3 / 16 * 1rem);
   }
 }
 
-.dads-button[data-type="text"]:active {
+.dads-button[dads-type="text"]:active {
   background-color: var(--color-primitive-blue-100);
   color: var(--button-active-color);
 }
 
-.dads-button[data-type="text"]:focus-visible {
+.dads-button[dads-type="text"]:focus-visible {
   outline: calc(4 / 16 * 1rem) solid var(--color-neutral-black);
   outline-offset: calc(2 / 16 * 1rem);
   background-color: var(--color-primitive-yellow-300);
   box-shadow: 0 0 0 calc(2 / 16 * 1rem) var(--color-primitive-yellow-300);
 }
 
-.dads-button[data-type="text"]:disabled,
-.dads-button[data-type="text"][aria-disabled="true"] {
+.dads-button[dads-type="text"]:disabled,
+.dads-button[dads-type="text"][aria-disabled="true"] {
   background-color: transparent;
   color: var(--color-neutral-solid-gray-300);
   text-decoration-thickness: revert;
 }
 
 @media (forced-colors: active) {
-  .dads-button[data-type="text"]:disabled,
-  .dads-button[data-type="text"][aria-disabled="true"] {
+  .dads-button[dads-type="text"]:disabled,
+  .dads-button[dads-type="text"][aria-disabled="true"] {
     color: GrayText;
   }
 }
@@ -154,6 +154,7 @@
   padding: calc(12 / 16 * 1rem) calc(16 / 16 * 1rem);
 }
 
+.dads-button:not([dads-size]),
 .dads-button[dads-size="md"] {
   min-width: calc(96 / 16 * 1rem);
   min-height: var(--dads-size-md-height);
