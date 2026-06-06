@@ -21,11 +21,13 @@
 
 <body>
     <header>
+        <h1>CoC7th</h1>
+        <p>Call of Cthulhu 7th edition playing engine</p>
         <ul id="header_ul" popover="auto" role="listbox" aria-labelledby="header_button-1" class="list-box">
             <li role="presentation">Select Language</li>
             <li role="option"><button lang="en" value="1">English (US)</button></li>
             <li role="option"><button lang="ja" value="2">日本語</button></li></ul>
-        <button id="header_button-1" type="button" popovertarget="header_ul" aria-haspopup="listbox" aria-expanded="false" aria-controls="header_ul" class="list-box-trigger">日本語</button>
+        <button id="header_button-1" type="button" popovertarget="header_ul" aria-haspopup="listbox" aria-expanded="false" aria-controls="header_ul" class="list-box-trigger"><span>🌐</span>日本語</button>
         <button id="header_button-2" aria-label="switch modal" class="dads-button" dads-size="sm" dads-type="outline">✏️</button></header>
     <main>
         <header>
@@ -35,11 +37,11 @@
                 <li role="option" class="hidden"><button value="2"></button></li>
                 <li role="option" class="hidden"><button value="3"></button></li>
                 <li role="option" class="hidden"><button value="4"></button></li></ul>
-            <button id="main_header_button-1" type="button" popovertarget="main_header_ul" aria-haspopup="listbox" aria-expanded="false" aria-controls="main_header_ul" class="list-box-trigger">死生 紡</button></header>
+            <button id="main_header_button-1" type="button" popovertarget="main_header_ul" aria-haspopup="listbox" aria-expanded="false" aria-controls="main_header_ul" class="list-box-trigger"><span>✓</span>死生 紡</button></header>
         <div>
             <!-- ===== Character View ===== -->
             <section id="main_div_section-1" aria-label="Character View">
-                <!-- 管理データ -->
+                <h2>キャラクターシート</h2>
                 <section id="main_div_section-1_section-1" aria-label="Management Data">
                     <span aria-label="Identity">
                         <span>ID</span>
@@ -52,27 +54,24 @@
                         <span>2026-04-18</span></span></section>
 
                 <!-- プロフィール -->
-                <h5 id="main_div_section-1_section-2_h5">プロフィール</h5>
-                <section id="main_div_section-1_section-2" aria-label="Character Profile" aria-labelledby="main_div_section-1_section-2_h5">
-                    <span aria-label="Name">
-                        <span>名前</span>
-                        <span>死生 紡（しせい つむぎ）</span></span>
-                    <span aria-label="Age">
-                        <span>年齢</span>
-                        <span>20</span></span>
-                    <span aria-label="Occupation">
-                        <span>職業</span>
-                        <span>教授（舞台役者）</span></span>
-                    <span aria-label="Birthplace">
-                        <span>出身</span>
-                        <span>日本</span></span>
-                    <span aria-label="Residence">
-                        <span>住所</span>
-                        <span>日本</span></span></section>
+                <h3 id="main_div_section-1_section-2_h3">プロフィール</h3>
+                <section id="main_div_section-1_section-2" aria-label="Character Profile" aria-labelledby="main_div_section-1_section-2_h3">
+                    <label for="main_div_section-1_section-2_name"><span>名前</span></label>
+                    <span id="main_div_section-1_section-2_name">死生 紡（しせい つむぎ）</span>
+                    <label for="main_div_section-1_section-2_birthplace"><span>出身</span></label>
+                    <span id="main_div_section-1_section-2_birthplace">日本</span>
+                    <label for="main_div_section-1_section-2_gender"><span>性別</span></label>
+                    <span id="main_div_section-1_section-2_gender">（未設定）</span>
+                    <label for="main_div_section-1_section-2_occupation"><span>職業</span></label>
+                    <span id="main_div_section-1_section-2_occupation">教授（舞台役者）</span>
+                    <label for="main_div_section-1_section-2_residence"><span>住所</span></label>
+                    <span id="main_div_section-1_section-2_residence">日本</span>
+                    <label for="main_div_section-1_section-2_age"><span>年齢</span></label>
+                    <span id="main_div_section-1_section-2_age">20</span></section>
 
                 <!-- 能力値 -->
-                <h5 id="main_div_section-1_section-3_h5">能力値</h5>
-                <section id="main_div_section-1_section-3" aria-label="Characteristics" aria-labelledby="main_div_section-1_section-3_h5">
+                <h3 id="main_div_section-1_section-3_h3">能力値</h3>
+                <section id="main_div_section-1_section-3" aria-label="Characteristics" aria-labelledby="main_div_section-1_section-3_h3">
                     <span aria-label="STR">
                         <span>STR</span>
                         <span>90</span></span>
@@ -99,8 +98,8 @@
                         <span>90</span></span></section>
 
                 <!-- その他の属性 -->
-                <h5 id="main_div_section-1_section-4_h5">その他の属性</h5>
-                <section id="main_div_section-1_section-4" aria-label="Other Attributes" aria-labelledby="main_div_section-1_section-4_h5">
+                <h3 id="main_div_section-1_section-4_h3">その他の属性</h3>
+                <section id="main_div_section-1_section-4" aria-label="Other Attributes" aria-labelledby="main_div_section-1_section-4_h3">
                     <span aria-label="HP">
                         <span>HP</span>
                         <span>13</span></span>
@@ -320,7 +319,7 @@
 
             <!-- ===== Overlay dialog ===== -->
             <dialog id="main_div_modal" aria-label="overlay">
-                <h5 id="main_div_dialog_h5">近接戦闘（格闘）</h5>
+                <h3 id="main_div_dialog_h3">近接戦闘（格闘）</h3>
                 <ul role="menu" id="main_div_dialog_ul" class="list-box">
                     <li role="menuitem" tabindex="0">ロール</li>
                     <li role="menuitem" tabindex="0">ハードロール（半分）</li>
@@ -349,7 +348,7 @@
         <!-- fieldset-1: プロフィール -->
         <fieldset id="modal_fieldset-1" aria-label="character profile edit fieldset">
             <legend>
-                <h5 id="modal_fieldset-1_legend_h5">プロフィール</h5></legend>
+                <h3 id="modal_fieldset-1_legend_h3">プロフィール</h3></legend>
             <label id="modal_fieldset-1_label-1" class="dads-field-label">名前
                 <input id="modal_fieldset-1_label-1_input" type="text" name="modal_fieldset-1_label-1_input-1" placeholder="死生 紡" class="dads-input">
             </label>
@@ -372,17 +371,16 @@
                 <input id="modal_fieldset-1_label-7_input" type="text" name="modal_fieldset-1_label-5_input" placeholder="日本" class="dads-input">
             </label>
             <label id="modal_fieldset-1_label-8" class="dads-field-label">年齢
-                <span class="dads-input-number">
-                    <button type="button">▼</button>
-                    <input id="modal_fieldset-1_label-8_input" type="number" min="15" max="99" name="modal_fieldset-1_label-6_input" placeholder="20">
-                    <button type="button">▲</button>
-                </span>
-            </label>
+            <span class="dads-input-number">
+                <button type="button">▼</button>
+                <input id="modal_fieldset-1_input-age" type="number" min="15" max="99" name="modal_fieldset-1_input-age" placeholder="20">
+                <button type="button">▲</button>
+            </span>
         </fieldset>
 
         <!-- fieldset-2: 能力値 (label / 初期値 / 変動値 / 修正値 / 合計 / 🎲) -->
         <fieldset id="modal_fieldset-2" aria-label="characteristic edit fieldset">
-            <legend><h5>能力値</h5></legend>
+            <legend><h3>能力値</h3></legend>
             <button id="modal_fieldset-2_legend_button" type="button" dads-type="outline" class="dads-button dice">🎲</button>
             <table class="dads-table" dads-type="dense">
                 <thead>

@@ -1,6 +1,7 @@
 body {
+  --color-body-background: var(--color-nutural-white);
   height: 100%;
-  background: var(--color-neutral-solid-gray-50);
+  background: var(--color-body-background);
   font-size: 16px;
 }
 
@@ -19,6 +20,7 @@ dialog:modal {
   margin-top: anchor-size(--header height);
   margin-left: auto;
   margin-right: auto;
+  background-color: var(--color-body-background);
 }
 
 input, textarea {
@@ -97,6 +99,12 @@ article.warning { background: var(--color-semantic-warning-yellow-2); }
 
 .dads-button.dice {
   min-width: auto;
+}
+
+#main_div_section-1 {
+  border: 1px solid var(--color-neutral-solid-gray-300);
+  margin-top: 0.5rem;
+  padding: 0.5rem;
 }
 
 #main_overlay_focus {
