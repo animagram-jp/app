@@ -1,5 +1,6 @@
 body {
-  --color-body-background: var(--color-nutural-white);
+  --color-body-background: var(--color-neutral-white);
+  margin-top: 0;
   height: 100%;
   background: var(--color-body-background);
   font-size: 16px;
@@ -10,17 +11,17 @@ body > header {
 }
 
 dialog:modal {
-  top: 20px;
+  position-anchor: --header;
+  top: anchor(--header bottom);
   left: 0;
   width: 100%;
   max-width: 60rem;
   height: 90%;
-  box-sizing: border-box;
-  position-anchor: --header;
-  margin-top: anchor-size(--header height);
+  margin-top: 0;
   margin-left: auto;
   margin-right: auto;
   background-color: var(--color-body-background);
+  padding: 0;
 }
 
 input, textarea {
@@ -85,23 +86,29 @@ article.warning { background: var(--color-semantic-warning-yellow-2); }
   anchor-name: --header_button-1;
 }
 
-#header_ul {
+#header_ul-1 {
   position-anchor: --header_button-1;
 }
 
-#main_header_button {
-  anchor-name: --main_header_button;
+#header_button-2 {
+  anchor-name: --header_button-2;
 }
 
-#main_header_ul {
-  position-anchor: --main_header_button;
+#header_ul-2 {
+  position-anchor: --header_button-2;
 }
 
 .dads-button.dice {
   min-width: auto;
 }
 
-#main_div_section-1 {
+.list-box-trigger > span {
+  display: inline-block;
+  width: 1em;
+  margin-inline-end: calc(8 / 16 * 1rem);
+}
+
+#main_section-1 {
   border: 1px solid var(--color-neutral-solid-gray-300);
   margin-top: 0.5rem;
   padding: 0.5rem;
@@ -223,17 +230,17 @@ dialog table {
 
 /* ───── main: Character View ───── */
 
-#main_div_section-1_section-2,
-#main_div_section-1_section-3,
-#main_div_section-1_section-4 {
+#main_section-1_section-2,
+#main_section-1_section-3,
+#main_section-1_section-4 {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
 }
 
-#main_div_section-1_section-2 > span,
-#main_div_section-1_section-3 > span,
-#main_div_section-1_section-4 > span {
+#main_section-1_section-2 > span,
+#main_section-1_section-3 > span,
+#main_section-1_section-4 > span {
   display: inline-flex;
   align-items: baseline;
   gap: 0.375rem;

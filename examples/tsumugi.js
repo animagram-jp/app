@@ -1,5 +1,5 @@
 const modal = document.getElementById('modal');
-const openBtn = document.getElementById('header_button-2');
+const openBtn = document.getElementById('header_button-3');
 
 openBtn.addEventListener('click', () => {
   modal.showModal();
