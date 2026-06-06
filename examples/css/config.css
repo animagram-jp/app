@@ -1,3 +1,17 @@
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-weight: 400;
+  font-style: normal;
+  src: url("../font/IBMPlexSans-Regular.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-weight: 600;
+  font-style: normal;
+  src: url("../font/IBMPlexSans-SemiBold.woff2") format("woff2");
+}
+
 :root {
   --color-primitive-blue-50: #e8f1fe;
   --color-primitive-blue-100: #d9e6ff;

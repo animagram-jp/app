@@ -17,11 +17,11 @@ dialog:modal {
   width: 100%;
   max-width: 60rem;
   height: 90%;
-  margin-top: 0;
-  margin-left: auto;
-  margin-right: auto;
+  margin-top: 0 auto;
   background-color: var(--color-body-background);
   padding: 0;
+  padding-bottom: 1rem;
+  overflow: auto;
 }
 
 input, textarea {
@@ -82,6 +82,10 @@ article.warning { background: var(--color-semantic-warning-yellow-2); }
 
 /* --- CoC7th (html記述順) ─── */
 
+#header_hgroup > * {
+  display: inline-block;
+}
+
 #header_button-1 {
   anchor-name: --header_button-1;
 }
@@ -108,7 +112,7 @@ article.warning { background: var(--color-semantic-warning-yellow-2); }
   margin-inline-end: calc(8 / 16 * 1rem);
 }
 
-#main_section-1 {
+main > section {
   border: 1px solid var(--color-neutral-solid-gray-300);
   margin-top: 0.5rem;
   padding: 0.5rem;
@@ -125,6 +129,7 @@ article.warning { background: var(--color-semantic-warning-yellow-2); }
 dialog > * {
   max-width: 100%;
   box-sizing: border-box;
+  padding: 0;
 }
 
 dialog table {
