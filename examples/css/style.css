@@ -117,6 +117,15 @@ dialog table {
   table-layout: fixed;
 }
 
+#modal_fieldset-2 td:nth-child(2),
+#modal_fieldset-2 td:nth-child(3),
+#modal_fieldset-2 td:nth-child(4),
+#modal_fieldset-2 td:nth-child(5),
+#modal_fieldset-3 td:nth-child(3),
+#modal_fieldset-3 td:nth-child(7) {
+  text-align: right;
+}
+
 #modal_fieldset-1 {
   display: flex;
   flex-wrap: wrap;
@@ -136,7 +145,7 @@ dialog table {
   width: calc(17rem);
 }
 
-.dads-input-text {
+#modal_fieldset-1 .dads-input {
   width: calc(17rem);
 }
 
@@ -202,6 +211,24 @@ dialog table {
 #modal_fieldset-4 textarea {
   display: inline-block;
   vertical-align: top;
+}
+
+/* ───── main: Character View ───── */
+
+#main_div_section-1_section-2,
+#main_div_section-1_section-3,
+#main_div_section-1_section-4 {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+#main_div_section-1_section-2 > span,
+#main_div_section-1_section-3 > span,
+#main_div_section-1_section-4 > span {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.375rem;
 }
 
 /* ───── media query (wider window) ───── */

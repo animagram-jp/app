@@ -1,3 +1,84 @@
+.dads-input {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: textfield;
+  box-sizing: border-box;
+  width: 12rem;
+  max-width: 100%;
+  border: 1px solid var(--color-neutral-solid-gray-600);
+  background-color: var(--color-neutral-white);
+  padding: calc(12 / 16 * 1rem) calc(16 / 16 * 1rem);
+  border-radius: calc(8 / 16 * 1rem);
+  color: var(--color-neutral-solid-gray-900);
+  font-weight: normal;
+  font-size: var(--dads-size-md-font-size);
+  line-height: 1.7;
+  font-family: var(--font-family-sans);
+  letter-spacing: 0.02em;
+}
+
+.dads-input[dads-size="sm"] {
+  height: var(--dads-size-sm-height);
+}
+
+.dads-input:not([dads-size]),
+.dads-input[dads-size="md"] {
+  height: var(--dads-size-md-height);
+}
+
+.dads-input[dads-size="lg"] {
+  height: var(--dads-size-lg-height);
+}
+
+.dads-input:read-only:not(:disabled) {
+  border-style: dashed;
+}
+
+.dads-input:focus-visible {
+  outline: calc(4 / 16 * 1rem) solid var(--color-neutral-black);
+  outline-offset: calc(2 / 16 * 1rem);
+  box-shadow: 0 0 0 calc(2 / 16 * 1rem) var(--color-primitive-yellow-300);
+}
+
+@media (hover: hover) {
+  .dads-input:not(:read-only):hover {
+    border-color: var(--color-neutral-black);
+  }
+}
+
+.dads-input:is(:user-invalid, [aria-invalid="true"]) {
+  border-color: var(--color-semantic-error-1);
+}
+
+@media (hover: hover) {
+  .dads-input:is(:user-invalid, [aria-invalid="true"]):hover {
+    border-color: var(--color-primitive-red-1000);
+  }
+}
+
+.dads-input:is(:disabled, [aria-disabled="true"]),
+.dads-input:is(:disabled, [aria-disabled="true"]):hover {
+  border-color: var(--color-neutral-solid-gray-300);
+  background-color: var(--color-neutral-solid-gray-50);
+  color: var(--color-neutral-solid-gray-420);
+}
+
+@media (forced-colors: active) {
+  .dads-input[aria-disabled="true"],
+  .dads-input[aria-disabled="true"]:hover {
+    border-color: GrayText;
+    color: GrayText;
+  }
+}
+
+.dads-input__error {
+  margin: calc(8 / 16 * 1rem) 0 0 0;
+  display: block;
+  color: var(--color-semantic-error-1);
+}
+
+/* input-number */
+
 .dads-input-number {
   display: inline-flex;
   align-items: stretch;
