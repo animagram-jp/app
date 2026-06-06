@@ -1,5 +1,6 @@
 .dads-input-text {
   box-sizing: border-box;
+  width: 12rem;
   max-width: 100%;
   border: 1px solid var(--color-neutral-solid-gray-600);
   background-color: var(--color-neutral-white);
@@ -7,22 +8,22 @@
   border-radius: calc(8 / 16 * 1rem);
   color: var(--color-neutral-solid-gray-900);
   font-weight: normal;
-  font-size: calc(16 / 16 * 1rem);
+  font-size: var(--dads-size-md-font-size);
   line-height: 1.7;
   font-family: var(--font-family-sans);
   letter-spacing: 0.02em;
 }
 
 .dads-input-text[dads-size="sm"] {
-  height: 2.5rem;
+  height: var(--dads-size-sm-height);
 }
 
 .dads-input-text[dads-size="md"] {
-  height: 3rem;
+  height: var(--dads-size-md-height);
 }
 
 .dads-input-text[dads-size="lg"] {
-  height: 3.5rem;
+  height: var(--dads-size-lg-height);
 }
 
 .dads-input-text:read-only:not(:disabled) {

@@ -1,0 +1,95 @@
+.dads-select {
+  vertical-align: middle;
+  box-sizing: border-box;
+  border-radius: calc(8 / 16 * 1rem);
+  border: 1px solid var(--color-neutral-solid-gray-600);
+  background-color: var(--color-neutral-white);
+  background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M12 17L3 8L4 7L12 15L20 7L21 8L12 17Z' fill='%23333333'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right calc(16 / 16 * 1rem) center;
+  background-size: calc(16 / 16 * 1rem);
+  padding-right: calc(40 / 16 * 1rem);
+  padding-left: calc(16 / 16 * 1rem);
+  color: var(--color-neutral-solid-gray-800);
+  font: inherit;
+  line-height: 1;
+  letter-spacing: inherit;
+  appearance: none;
+}
+
+.dads-select[dads-size="sm"] {
+  height: var(--dads-size-sm-height);
+}
+
+.dads-select[dads-size="md"] {
+  height: var(--dads-size-md-height);
+}
+
+.dads-select[dads-size="lg"] {
+  height: var(--dads-size-lg-height);
+}
+
+.dads-select:focus-visible {
+  outline: calc(4 / 16 * 1rem) solid var(--color-neutral-black);
+  outline-offset: calc(2 / 16 * 1rem);
+  box-shadow: 0 0 0 calc(2 / 16 * 1rem) var(--color-primitive-yellow-300);
+}
+
+@media (hover: hover) {
+  .dads-select:hover {
+    border-color: var(--color-neutral-black);
+  }
+}
+
+.dads-select:is(:user-invalid, [aria-invalid="true"]) {
+  border-color: var(--color-semantic-error-1);
+}
+
+@media (hover: hover) {
+  .dads-select:is(:user-invalid, [aria-invalid="true"]):hover {
+    border-color: var(--color-primitive-red-1000);
+  }
+}
+
+.dads-select:is(:disabled, [aria-disabled="true"]),
+.dads-select:is(:disabled, [aria-disabled="true"]):hover {
+  border: 1px solid var(--color-neutral-solid-gray-300);
+  background-color: var(--color-neutral-solid-gray-50);
+  background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M12 17L3 8L4 7L12 15L20 7L21 8L12 17Z' fill='%23949494'/></svg>");
+  color: var(--color-neutral-solid-gray-420);
+}
+
+@media (forced-colors: active) {
+  .dads-select {
+    color: ButtonText;
+    border-color: ButtonText;
+    background-image: none;
+  }
+
+  .dads-select:is(:disabled, [aria-disabled="true"]),
+  .dads-select:is(:disabled, [aria-disabled="true"]):hover {
+    border-color: GrayText;
+    color: GrayText;
+    background-image: none;
+  }
+}
+
+.dads-select:open {
+  background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M12 7L21 16L20 17L12 9L4 17L3 16L12 7Z' fill='%23333333'/></svg>");
+}
+
+.dads-select[multiple] {
+  appearance: auto;
+  background-image: none;
+  padding: calc(4 / 16 * 1rem) 0;
+  height: auto;
+}
+
+.dads-select[multiple] option {
+  padding: calc(6 / 16 * 1rem) calc(16 / 16 * 1rem);
+  border-radius: calc(4 / 16 * 1rem);
+}
+
+.dads-select[multiple] option:checked {
+  background: var(--color-primitive-blue-100) linear-gradient(0deg, var(--color-primitive-blue-100), var(--color-primitive-blue-100));
+}

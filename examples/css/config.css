@@ -186,6 +186,26 @@
   --font-family-mono: "Fira Code", "Noto Sans Mono", monospace;
 }
 
+:root {
+  --dads-size-xs-height: 1.75rem;
+  --dads-size-xs-padding-block: 0.125rem;
+  --dads-size-xs-padding-inline: 0.5rem;
+  --dads-size-xs-font-size: 0.875rem;
+
+  --dads-size-sm-height: 2.5rem;
+  --dads-size-sm-font-size: 1rem;
+
+  --dads-size-md-height: 3rem;
+  --dads-size-md-font-size: 1rem;
+
+  --dads-size-lg-height: 3.5rem;
+  --dads-size-lg-font-size: 1rem;
+}
+
+*, ::before, ::after {
+  box-sizing: border-box;
+}
+
 [hidden],
 .hidden {
   display: none !important;
