@@ -133,7 +133,8 @@ main > section,
 
 #main_section-1_section-2,
 #main_section-1_section-3,
-#main_section-1_section-4 {
+#main_section-1_section-4,
+#main_section-1_section-5 {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
@@ -141,7 +142,8 @@ main > section,
 
 #main_section-1_section-2 > span,
 #main_section-1_section-3 > span,
-#main_section-1_section-4 > span {
+#main_section-1_section-4 > span
+#main_section-1_section-5 > span {
   display: inline-flex;
   align-items: baseline;
   gap: 0.375rem;
