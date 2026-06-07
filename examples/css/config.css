@@ -7,7 +7,7 @@
 
 @font-face {
   font-family: "IBM Plex Sans";
-  font-weight: 600;
+  font-weight: bold;
   font-style: normal;
   src: url("../font/IBMPlexSans-SemiBold.woff2") format("woff2");
 }

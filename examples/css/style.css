@@ -8,6 +8,7 @@ body {
 
 body > header {
   anchor-name: --header;
+  padding-top: 0.5rem;
 }
 
 dialog:modal {
@@ -17,7 +18,7 @@ dialog:modal {
   width: 100%;
   max-width: 60rem;
   height: 90%;
-  margin-top: 0 auto;
+  margin-top: 0.5rem;
   background-color: var(--color-body-background);
   padding: 0;
   padding-bottom: 1rem;
@@ -112,7 +113,8 @@ article.warning { background: var(--color-semantic-warning-yellow-2); }
   margin-inline-end: calc(8 / 16 * 1rem);
 }
 
-main > section {
+main > section,
+#modal > fieldset {
   border: 1px solid var(--color-neutral-solid-gray-300);
   margin-top: 0.5rem;
   padding: 0.5rem;
@@ -144,6 +146,34 @@ dialog table {
 #modal_fieldset-3 td:nth-child(3),
 #modal_fieldset-3 td:nth-child(7) {
   text-align: right;
+}
+
+#modal_header_button {
+  --button-color: var(--color-primitive-green-600);
+  --button-hover-color: var(--color-primitive-green-700);
+  --button-active-color: var(--color-primitive-green-900);
+  --button-outline-hover-bg-color: var(--color-primitive-green-200);
+  --button-outline-active-bg-color: var(--color-primitive-green-300);
+  position: relative;
+  color: transparent;
+}
+
+#modal_header_button::before {
+  content: "✓";
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.4em;
+  height: 1.4em;
+  margin: auto;
+  border-radius: 50%;
+  background-color: transparent;
+  border: 1.5px solid var(--color-neutral-white);
+  color: var(--color-neutral-white);
+  font-size: 0.9em;
+  line-height: 1;
 }
 
 #modal_fieldset-1 {

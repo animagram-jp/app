@@ -1,26 +1,39 @@
 .list-box-trigger {
   anchor-name: --list-box-trigger;
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
   box-sizing: border-box;
-  min-height: calc(44 / 16 * 1rem);
-  padding: calc(4 / 16 * 1rem) calc(40 / 16 * 1rem) calc(4 / 16 * 1rem) calc(16 / 16 * 1rem);
+  height: var(--dads-size-md-height);
+  padding-inline-start: calc(16 / 16 * 1rem);
+  padding-inline-end: calc(40 / 16 * 1rem);
   border-radius: calc(8 / 16 * 1rem);
-  border: 1px solid var(--color-neutral-solid-gray-420);
+  border: 1px solid var(--color-neutral-solid-gray-600);
   background-color: transparent;
   background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M12 17L3 8L4 7L12 15L20 7L21 8L12 17Z' fill='%23333333'/></svg>");
   background-repeat: no-repeat;
   background-position: right calc(16 / 16 * 1rem) center;
   background-size: calc(16 / 16 * 1rem);
   color: var(--color-neutral-solid-gray-900);
-  font-weight: normal;
-  font-size: calc(16 / 16 * 1rem);
-  line-height: 1.2;
+  font: inherit;
+  line-height: 1;
   letter-spacing: 0.02em;
   cursor: pointer;
 }
 
-.list-box:popover-open ~ .list-box-trigger,
-:has(> .list-box:popover-open) .list-box-trigger {
+.list-box-trigger[dads-size="sm"] {
+  height: var(--dads-size-sm-height);
+}
+
+.list-box-trigger:not([dads-size]),
+.list-box-trigger[dads-size="md"] {
+  height: var(--dads-size-md-height);
+}
+
+.list-box-trigger[dads-size="lg"] {
+  height: var(--dads-size-lg-height);
+}
+
+.list-box:popover-open + .list-box-trigger {
   background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M12 7L21 16L20 17L12 9L4 17L3 16L12 7Z' fill='%23333333'/></svg>");
 }
 
@@ -57,8 +70,8 @@
   list-style-type: none;
   color: var(--color-neutral-solid-gray-900);
   font-weight: normal;
-  font-size: calc(16 / 16 * 1rem);
-  line-height: 1.2;
+  font-size: var(--dads-size-md-font-size);
+  line-height: 1;
   letter-spacing: 0.02em;
 }
 
