@@ -1,3 +1,7 @@
+*, ::before, ::after {
+  line-height: 1.5;
+}
+
 body {
   --color-body-background: var(--color-neutral-white);
   margin-top: 0;
@@ -147,6 +151,31 @@ main > section,
   display: inline-flex;
   align-items: baseline;
   gap: 0.375rem;
+}
+
+#main_section-1_section-6 > article {
+  --color-layer-1: var(--color-neutral-white);
+  --color-layer-2: var(--color-neutral-solid-gray-50);
+  --color-layer-3: var(--color-neutral-solid-gray-100);
+  --line-height-1: 0.2rem;
+  --line-height-2: 0.1rem;
+  --line-height-3: 0rem;
+  padding-top: 0.3rem;
+  background-color: var(--color-layer-1);
+}
+
+#main_section-1_section-6 > article > span:not(:first-child) {
+  display: inline-block;
+  background-color: var(--color-layer-2);
+  padding-top: 0.3rem;
+  vertical-align: bottom;
+}
+
+#main_section-1_section-6 > article > span > span:last-child {
+  display: inline-block;
+  background-color: var(--color-layer-3);
+  padding-top: 0;
+  vertical-align: bottom;
 }
 
 #main_overlay_focus {
