@@ -38,8 +38,8 @@
         <button id="header_button-2" type="button" popovertarget="header_ul-2" aria-haspopup="listbox" aria-expanded="false" aria-controls="header_ul-2" class="list-box-trigger"><span>✓</span>死生 紡</button>
         <button id="header_button-3" aria-label="switch modal" class="dads-button" dads-type="outline">✏️</button></header>
     <main>
-        <section id="main_section-1" aria-label="Character View">
-            <h2 id="main_section-1_h2" class="heading">キャラクターシート</h2>
+        <h2 id="main_h2" class="heading">キャラクターシート</h2>
+        <section id="main_section-1" aria-label="Character View" aria-labelledby="main_h2">
             <section id="main_section-1_section-1" aria-label="Management Data">
                 <span aria-label="Identity">
                     <span>ID</span>
@@ -53,7 +53,7 @@
 
             <!-- プロフィール -->
             <h3 id="main_section-1_h3-1" class="heading">プロフィール</h3>
-            <section id="main_section-1_section-2" aria-label="Character Profile" aria-labelledby="main_section-1_section-2_h3">
+            <section id="main_section-1_section-2" aria-labelledby="main_section-1_h3-1">
                 <label id="main_section-1_section-2_label-1" for="main_section-1_section-2_span-1"><span>名前</span></label>
                 <span id="main_section-1_section-2_span-1">死生 紡（しせい つむぎ）</span>
                 <label id="main_section-1_section-2_label-2" for="main_section-1_section-2_span-2"><span>出身</span></label>
@@ -69,7 +69,7 @@
 
             <!-- 能力値 -->
             <h3 id="main_section-1_h3-2" class="heading">能力値</h3>
-            <section id="main_section-1_section-3" aria-label="Characteristics" aria-labelledby="main_section-1_section-3_h3">
+            <section id="main_section-1_section-3" aria-labelledby="main_section-1_h3-2">
                 <span aria-label="STR">
                     <span>STR</span>
                     <span>90</span></span>
@@ -96,7 +96,7 @@
                     <span>90</span></span></section>
 
             <h3 id="main_section-1_h3-3" class="heading">その他の属性</h3>
-            <section id="main_section-1_section-4" aria-label="Other Attributes" aria-labelledby="main_section-1_section-4_h3">
+            <section id="main_section-1_section-4" aria-labelledby="main_section-1_h3-3">
                 <span aria-label="HP">
                     <span>HP</span>
                     <span>13</span></span>
@@ -343,9 +343,8 @@
         </header>
 
         <!-- fieldset-1: プロフィール -->
-        <fieldset id="modal_fieldset-1" aria-label="character profile edit fieldset">
-            <legend>
-                <h3 id="modal_fieldset-1_legend_h3">プロフィール</h3></legend>
+        <h3 id="modal_fieldset-1_h3" class="heading">プロフィール</h3>
+        <fieldset id="modal_fieldset-1" aria-labelledby="modal_fieldset-1_h3">
             <label id="modal_fieldset-1_label-1" class="dads-field-label">名前
                 <input id="modal_fieldset-1_label-1_input" type="text" name="modal_fieldset-1_label-1_input-1" placeholder="死生 紡" class="dads-input">
             </label>
@@ -376,8 +375,8 @@
         </fieldset>
 
         <!-- fieldset-2: 能力値 (label / 初期値 / 変動値 / 修正値 / 合計 / 🎲) -->
-        <fieldset id="modal_fieldset-2" aria-label="characteristic edit fieldset">
-            <legend><h3>能力値</h3></legend>
+        <h3 id="modal_fieldset-2_h3" class="heading">能力値</h3>
+        <fieldset id="modal_fieldset-2" aria-labelledby="modal_fieldset-2_h3">
             <button id="modal_fieldset-2_legend_button" type="button" dads-type="outline" class="dads-button dice">🎲</button>
             <table class="dads-table" dads-type="dense">
                 <thead>
@@ -458,8 +457,8 @@
         </fieldset>
 
         <!-- fieldset-3: 技能 (label / speciality / base / occupation pt / interest pt / modifier / sum) -->
-        <fieldset id="modal_fieldset-3" aria-label="character skill fieldset">
-            <legend>技能</legend>
+        <h3 id="modal_fieldset-3_h3" class="heading">技能</h3>
+        <fieldset id="modal_fieldset-3" aria-labelledby="modal_fieldset-3_h3">
 
             <table class="dads-table" dads-type="dense">
                 <thead>
@@ -1109,7 +1108,8 @@
         </fieldset>
 
         <!-- fieldset-4: バックストーリー -->
-        <fieldset id="modal_fieldset-4" aria-label="character backstory editor">
+        <h3 id="modal_fieldset-4_h3" class="heading">バックストーリー</h3>
+        <fieldset id="modal_fieldset-4" aria-labelledby="modal_fieldset-4_h3">
             <article>
                 <label for="modal_fieldset-4_textarea-1" class="dads-field-label">外見・人物像</label>
                 <textarea id="modal_fieldset-4_textarea-1" placeholder="敢えて普段から平凡な印象を維持している。昼間は男（女）装・夜間は女（男）装している。似合ってる" class="dads-textarea"></textarea>
