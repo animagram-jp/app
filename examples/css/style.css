@@ -1,291 +1,315 @@
-*, ::before, ::after {
-  line-height: 1.5;
+*,
+::before,
+::after {
+    line-height: 1.5;
 }
 
 body {
-  --color-body-background: var(--color-neutral-white);
-  margin-top: 0;
-  height: 100%;
-  background: var(--color-body-background);
-  font-size: 16px;
+    --color-body-background: var(--color-neutral-white);
+    margin-top: 0;
+    height: 100%;
+    background: var(--color-body-background);
+    font-size: 16px;
 }
 
-body > header {
-  anchor-name: --header;
-  padding-top: 0.5rem;
+body>header {
+    anchor-name: --header;
+    padding-top: 0.5rem;
 }
 
-dialog > * {
-  max-width: 100%;
-  box-sizing: border-box;
-  padding: 0;
+body>header,
+main {
+    max-width: 60rem;
+    margin: 0 auto;
+}
+
+dialog>* {
+    max-width: 100%;
+    box-sizing: border-box;
+    padding: 0;
 }
 
 dialog table {
-  width: 100%;
-  table-layout: fixed;
+    width: 100%;
+    table-layout: fixed;
 }
 
 dialog:modal {
-  position-anchor: --header;
-  top: calc(anchor(--header bottom) + 0.5rem);
-  left: 0;
-  margin: 0 auto;
-  height: calc(100dvh - 112px - 0.5rem);
-  width: 100%;
-  max-width: 60rem;
-  margin-top: 0;
-  margin-bottom: 0;
-  background-color: var(--color-body-background);
-  padding: 0;
-  padding-bottom: 1rem;
-  overflow: auto;
-  border: 1px solid currentcolor;
-  border-radius: calc(8 / 16 * 1rem);
+    position-anchor: --header;
+    top: calc(anchor(--header bottom) + 0.5rem);
+    left: 0;
+    margin: 0 auto;
+    height: calc(100dvh - 112px - 0.5rem);
+    width: 100%;
+    max-width: 60rem;
+    margin-top: 0;
+    margin-bottom: 0;
+    background-color: var(--color-body-background);
+    padding: 0;
+    padding-bottom: 1rem;
+    overflow: auto;
+    border: 1px solid currentcolor;
+    border-radius: calc(8 / 16 * 1rem);
 }
 
 .dads-h {
-  padding-top: 0.5rem;
+    padding-top: 0.5rem;
 }
 
-input, textarea {
-  font-family: inherit;
-  font-size: inherit;
+input,
+textarea {
+    font-family: inherit;
+    font-size: inherit;
 }
 
 output {
-  bottom: 1.5rem;
-  right: 1.5rem;
-  display: flex;
-  flex-direction: column-reverse;
-  border: none;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    display: flex;
+    flex-direction: column-reverse;
+    border: none;
 }
 
 output article {
-  display: flex;
-  align-items: baseline;
-  border-radius: .375rem;
-  min-width: 14rem;
-  max-width: 22rem;
-  background: #1c1c1c;
-  color: #f5f5f5;
-  font-size: .875rem;
-  line-height: 1.45;
-  cursor: pointer;
-  user-select: none;
-  opacity: 0;
-  translate: 1.5rem 0;
-  transition: opacity .2s ease, translate .2s ease;
-  pointer-events: none;
+    display: flex;
+    align-items: baseline;
+    border-radius: .375rem;
+    min-width: 14rem;
+    max-width: 22rem;
+    background: #1c1c1c;
+    color: #f5f5f5;
+    font-size: .875rem;
+    line-height: 1.45;
+    cursor: pointer;
+    user-select: none;
+    opacity: 0;
+    translate: 1.5rem 0;
+    transition: opacity .2s ease, translate .2s ease;
+    pointer-events: none;
 }
 
 output article.show {
-  opacity: 1;
-  translate: 0 0;
-  pointer-events: auto;
+    opacity: 1;
+    translate: 0 0;
+    pointer-events: auto;
 }
 
 output article.hide {
-  opacity: 0;
-  translate: 1.5rem 0;
-  transition-duration: .15s;
-  pointer-events: none;
+    opacity: 0;
+    translate: 1.5rem 0;
+    transition-duration: .15s;
+    pointer-events: none;
 }
 
-output article span { /* toast icon */
-  font-weight: 700;
-  font-size: .8125rem;
-  flex-shrink: 0;
-  padding: 0 .125rem;
-  opacity: .7;
+output article span {
+    /* toast icon */
+    font-weight: 700;
+    font-size: .8125rem;
+    flex-shrink: 0;
+    padding: 0 .125rem;
+    opacity: .7;
 }
 
-article.info { background: var(--color-neutral-solid-gray-300); }
-article.success { background: var(--color-semantic-success-1); }
-article.warning { background: var(--color-semantic-warning-yellow-2); }
+article.info {
+    background: var(--color-neutral-solid-gray-300);
+}
+
+article.success {
+    background: var(--color-semantic-success-1);
+}
+
+article.warning {
+    background: var(--color-semantic-warning-yellow-2);
+}
 
 /* --- CoC7th (html記述順) ─── */
 
 #header_hgroup {
-  display: flex;
-  align-items: flex-end;
-  gap: 0.5rem;
+    display: flex;
+    align-items: flex-end;
+    gap: 0.5rem;
 }
 
-#header_hgroup > p {
-  display: inline-block;
-  white-space: pre-wrap;
-  margin: 0;
-  font-size: 0.9rem;
-  line-height: 1.5;
-  padding-bottom: calc((1.5 - 1) / 2 * (2rem - 0.9rem));
+#header_hgroup>p {
+    display: inline-block;
+    white-space: pre-wrap;
+    margin: 0;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    padding-bottom: calc((1.5 - 1) / 2 * (2rem - 0.9rem));
 }
 
-#header_hgroup > * {
-  display: inline-flex;
+#header_hgroup>* {
+    display: inline-flex;
 }
 
-#header_hgroup > * {
-  display: inline-flex;
+#header_hgroup>* {
+    display: inline-flex;
 }
 
 #header_button-1 {
-  anchor-name: --header_button-1;
+    anchor-name: --header_button-1;
 }
 
 #header_ul-1 {
-  position-anchor: --header_button-1;
+    position-anchor: --header_button-1;
 }
 
 #header_button-2 {
-  anchor-name: --header_button-2;
+    anchor-name: --header_button-2;
 }
 
 #header_ul-2 {
-  position-anchor: --header_button-2;
+    position-anchor: --header_button-2;
 }
 
 .dads-button.dice {
-  min-width: auto;
+    min-width: auto;
 }
 
-.list-box-trigger > span {
-  display: inline-block;
-  width: 1em;
-  margin-inline-end: calc(8 / 16 * 1rem);
+.list-box-trigger>span {
+    display: inline-block;
+    width: 1em;
+    margin-inline-end: calc(8 / 16 * 1rem);
 }
 
-main > section,
-#modal > fieldset {
-  border: 1px solid var(--color-neutral-solid-gray-300);
-  margin: 0.25rem 0 0;
-  padding: 0.5rem;
+main>section,
+#modal>fieldset {
+    border: 1px solid var(--color-neutral-solid-gray-300);
+    margin: 0.25rem 0 0;
+    padding: 0.5rem;
 }
 
-#modal > fieldset {
-  padding-left: 0;
+#modal>fieldset {
+    padding-left: 0;
 }
 
 #main_section-1_section-2,
 #main_section-1_section-3,
 #main_section-1_section-4,
 #main_section-1_section-5 {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
 }
 
-#main_section-1_section-2 > span,
-#main_section-1_section-3 > span,
-#main_section-1_section-4 > span
-#main_section-1_section-5 > span {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 0.375rem;
+#main_section-1_section-2>span,
+#main_section-1_section-3>span,
+#main_section-1_section-4>span #main_section-1_section-5>span {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.375rem;
 }
 
-#main_section-1_section-6 > article {
-  --color-layer-1: var(--color-neutral-white);
-  --color-layer-2: var(--color-neutral-solid-gray-50);
-  --color-layer-3: var(--color-neutral-solid-gray-100);
-  --line-height-1: 0.2rem;
-  --line-height-2: 0.1rem;
-  --line-height-3: 0rem;
-  padding-top: 0.3rem;
-  background-color: var(--color-layer-1);
+#main_section-1_section-6>article {
+    --color-layer-1: var(--color-neutral-white);
+    --color-layer-2: var(--color-neutral-solid-gray-50);
+    --color-layer-3: var(--color-neutral-solid-gray-100);
+    --line-height-1: 0.2rem;
+    --line-height-2: 0.1rem;
+    --line-height-3: 0rem;
+    padding-top: 0.3rem;
+    background-color: var(--color-layer-1);
 }
 
-#main_section-1_section-6 > article > span:not(:first-child) {
-  display: inline-block;
-  background-color: var(--color-layer-2);
-  padding-top: 0.3rem;
-  vertical-align: bottom;
+#main_section-1_section-6>article>span:not(:first-child) {
+    display: inline-block;
+    background-color: var(--color-layer-2);
+    padding-top: 0.3rem;
+    vertical-align: bottom;
 }
 
-#main_section-1_section-6 > article > span > span:last-child {
-  display: inline-block;
-  background-color: var(--color-layer-3);
-  padding-top: 0;
-  vertical-align: bottom;
+#main_section-1_section-6>article>span>span:last-child {
+    display: inline-block;
+    background-color: var(--color-layer-3);
+    padding-top: 0;
+    vertical-align: bottom;
 }
 
 #main_section-3 {
-  display: flex;
-  align-items: flex-end;
-  gap: 0.3rem;
+    display: flex;
+    align-items: flex-end;
+    gap: 0.3rem;
 }
 
 #main_overlay_focus {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
-  width: 0;
-  height:0;
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+    width: 0;
+    height: 0;
 }
 
-#modal > header {
-  padding: 0.5rem;
-  padding-bottom: 0;
-  text-align: right;
+#modal>header {
+    padding: 0.5rem;
+    padding-bottom: 0;
+    text-align: right;
 }
 
 #modal_header_button {
-  --button-color: var(--color-primitive-green-600);
-  --button-hover-color: var(--color-primitive-green-700);
-  --button-active-color: var(--color-primitive-green-900);
-  --button-outline-hover-bg-color: var(--color-primitive-green-200);
-  --button-outline-active-bg-color: var(--color-primitive-green-300);
-  position: relative;
-  color: transparent;
+    --button-color: var(--color-primitive-green-600);
+    --button-hover-color: var(--color-primitive-green-700);
+    --button-active-color: var(--color-primitive-green-900);
+    --button-outline-hover-bg-color: var(--color-primitive-green-200);
+    --button-outline-active-bg-color: var(--color-primitive-green-300);
+    position: relative;
+    color: transparent;
 }
 
 #modal_header_button::before {
-  content: "✓";
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.4em;
-  height: 1.4em;
-  margin: auto;
-  border-radius: 50%;
-  background-color: transparent;
-  border: 1.5px solid var(--color-neutral-white);
-  color: var(--color-neutral-white);
-  font-size: 0.9em;
-  line-height: 1;
+    content: "✓";
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.4em;
+    height: 1.4em;
+    margin: auto;
+    border-radius: 50%;
+    background-color: transparent;
+    border: 1.5px solid var(--color-neutral-white);
+    color: var(--color-neutral-white);
+    font-size: 0.9em;
+    line-height: 1;
 }
 
 #modal_fieldset-1 {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.5rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.5rem;
 }
 
-#modal_fieldset-1_label-2, #modal_fieldset-1_label-6 {
-  color: transparent;
+#modal_fieldset-1_label-2,
+#modal_fieldset-1_label-6 {
+    color: transparent;
 }
 
-#modal_fieldset-1_label-2 input, #modal_fieldset-1_label-6 input {
-  color: revert;
+#modal_fieldset-1_label-2 input,
+#modal_fieldset-1_label-6 input {
+    color: revert;
 }
 
 #modal_fieldset-1 :is(input, .dads-input, .dads-input-number) {
-  width: 17rem;
+    width: 17rem;
+}
+
+#modal_fieldset-2 input,
+#modal_fieldset-3 input {
+    width: 5rem;
 }
 
 #modal_fieldset-2_button {
-  padding-left: 1rem;
+    padding-left: 1rem;
 }
 
 #modal_fieldset-2 table {
-  margin-top: 0.5rem;
+    margin-top: 0.5rem;
 }
 
 #modal_fieldset-2 th {
-  text-align: center;
+    text-align: center;
 }
 
 #modal_fieldset-2 td:nth-child(2),
@@ -294,85 +318,114 @@ main > section,
 #modal_fieldset-2 td:nth-child(5),
 #modal_fieldset-3 td:nth-child(3),
 #modal_fieldset-3 td:nth-child(7) {
-  text-align: right;
+    text-align: right;
+}
+
+#modal_fieldset-2 td:nth-child(2),
+#modal_fieldset-2 td:nth-child(3),
+#modal_fieldset-2 td:nth-child(4),
+#modal_fieldset-2 td:nth-child(5),
+#modal_fieldset-3 td:nth-child(3),
+#modal_fieldset-3 td:nth-child(7) {
+    text-align: right;
 }
 
 #modal_fieldset-3_table_tbody_tr-5_button {
-  anchor-name: --modal_fieldset-3_table_tbody_tr-5_button;
+    anchor-name: --modal_fieldset-3_table_tbody_tr-5_button;
 }
+
 #modal_fieldset-3_table_tbody_tr-5_ul {
-  position-anchor: --modal_fieldset-3_table_tbody_tr-5_button;
+    position-anchor: --modal_fieldset-3_table_tbody_tr-5_button;
 }
 
 #modal_fieldset-3_table_tbody_tr-6_button {
-  anchor-name: --modal_fieldset-3_table_tbody_tr-6_button;
+    anchor-name: --modal_fieldset-3_table_tbody_tr-6_button;
 }
+
 #modal_fieldset-3_table_tbody_tr-6_ul {
-  position-anchor: --modal_fieldset-3_table_tbody_tr-6_button;
+    position-anchor: --modal_fieldset-3_table_tbody_tr-6_button;
 }
 
 #modal_fieldset-3_table_tbody_tr-23_button {
-  anchor-name: --modal_fieldset-3_table_tbody_tr-23_button;
+    anchor-name: --modal_fieldset-3_table_tbody_tr-23_button;
 }
+
 #modal_fieldset-3_table_tbody_tr-23_ul {
-  position-anchor: --modal_fieldset-3_table_tbody_tr-23_button;
+    position-anchor: --modal_fieldset-3_table_tbody_tr-23_button;
 }
 
 #modal_fieldset-3_table_tbody_tr-24_button {
-  anchor-name: --modal_fieldset-3_table_tbody_tr-24_button;
+    anchor-name: --modal_fieldset-3_table_tbody_tr-24_button;
 }
+
 #modal_fieldset-3_table_tbody_tr-24_ul {
-  position-anchor: --modal_fieldset-3_table_tbody_tr-24_button;
+    position-anchor: --modal_fieldset-3_table_tbody_tr-24_button;
 }
 
 #modal_fieldset-3_table_tbody_tr-25_button {
-  anchor-name: --modal_fieldset-3_table_tbody_tr-25_button;
+    anchor-name: --modal_fieldset-3_table_tbody_tr-25_button;
 }
+
 #modal_fieldset-3_table_tbody_tr-25_ul {
-  position-anchor: --modal_fieldset-3_table_tbody_tr-25_button;
+    position-anchor: --modal_fieldset-3_table_tbody_tr-25_button;
 }
 
 #modal_fieldset-3_table_tbody_tr-42_button {
-  anchor-name: --modal_fieldset-3_table_tbody_tr-42_button;
+    anchor-name: --modal_fieldset-3_table_tbody_tr-42_button;
 }
+
 #modal_fieldset-3_table_tbody_tr-42_ul {
-  position-anchor: --modal_fieldset-3_table_tbody_tr-42_button;
+    position-anchor: --modal_fieldset-3_table_tbody_tr-42_button;
 }
 
 #modal_fieldset-3_table_tbody_tr-46_button {
-  anchor-name: --modal_fieldset-3_table_tbody_tr-46_button;
+    anchor-name: --modal_fieldset-3_table_tbody_tr-46_button;
 }
+
 #modal_fieldset-3_table_tbody_tr-46_ul {
-  position-anchor: --modal_fieldset-3_table_tbody_tr-46_button;
+    position-anchor: --modal_fieldset-3_table_tbody_tr-46_button;
 }
 
 #modal_fieldset-3_table_tbody_tr-50_button {
-  anchor-name: --modal_fieldset-3_table_tbody_tr-50_button;
+    anchor-name: --modal_fieldset-3_table_tbody_tr-50_button;
 }
+
 #modal_fieldset-3_table_tbody_tr-50_ul {
-  position-anchor: --modal_fieldset-3_table_tbody_tr-50_button;
+    position-anchor: --modal_fieldset-3_table_tbody_tr-50_button;
 }
 
 #modal_fieldset-3_table_tbody_tr-55_button {
-  anchor-name: --modal_fieldset-3_table_tbody_tr-55_button;
-  padding-inline-start: 0;
+    anchor-name: --modal_fieldset-3_table_tbody_tr-55_button;
+    padding-inline-start: 0;
 }
+
 #modal_fieldset-3_table_tbody_tr-55_ul {
-  position-anchor: --modal_fieldset-3_table_tbody_tr-55_button;
+    position-anchor: --modal_fieldset-3_table_tbody_tr-55_button;
 }
+
 #modal_fieldset-3_table_tbody_tr-55_button .dads-input {
-  width: 6rem;
+    width: 6rem;
 }
 
 #modal_fieldset-4 label,
 #modal_fieldset-4 textarea {
-  display: inline-block;
-  vertical-align: top;
+    display: inline-block;
+    vertical-align: top;
 }
 
 /* ───── media query (wider window) ───── */
-@media (width >= 40rem) {
-  dialog:modal {
-    padding: 0 0.5rem;
-  }
+@media (width >=40rem) {
+    dialog:modal {
+        padding: 0 0.5rem;
+    }
+
+    #modal_fieldset-2_button {
+        display: block;
+    }
+
+    #modal_fieldset-2_table-1,
+    #modal_fieldset-2_table-2 {
+        display: inline-block;
+        width: 45%;
+    }
 }
