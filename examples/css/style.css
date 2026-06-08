@@ -353,6 +353,17 @@ main > section,
   position-anchor: --modal_fieldset-3_table_tbody_tr-50_button;
 }
 
+#modal_fieldset-3_table_tbody_tr-55_button {
+  anchor-name: --modal_fieldset-3_table_tbody_tr-55_button;
+  padding-inline-start: 0;
+}
+#modal_fieldset-3_table_tbody_tr-55_ul {
+  position-anchor: --modal_fieldset-3_table_tbody_tr-55_button;
+}
+#modal_fieldset-3_table_tbody_tr-55_button .dads-input {
+  width: 6rem;
+}
+
 #modal_fieldset-4 label,
 #modal_fieldset-4 textarea {
   display: inline-block;
