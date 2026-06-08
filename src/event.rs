@@ -34,7 +34,7 @@ impl CanvasState {
         Self {
             dialog:     Dialog::default(),
             lang:       Lang::Ja,
-            editing:    DataStruct::new(),
+            editing:    DataStruct::new(0, 0.0, 256),
             last_toast: u2::new(1),
         }
     }
@@ -44,25 +44,16 @@ impl CanvasState {
 // global pub fn
 // ============================================================
 
-pub fn initial_draw(handler: &Coc7th) -> Vec<CanvasCmd> {
-    //
+pub fn initial_draw(_handler: &Coc7th) -> Vec<CanvasCmd> {
+    todo!()
 }
 
 pub fn handle_gesture(gesture: Gesture, state: &mut CanvasState, handler: &mut Coc7th) -> Vec<CanvasCmd> {
     todo!("ジェスチャー処理")
 }
 
-pub fn output_commands(canvas_state: &CanvasState){
-    match (canvas_state.dialog, canvas_state.lang, canvas_state.editing) {
-        (Dialog::None, _, None)  =>
-        (Dialog::Modal, _, None) =>
-        (_, _, ) => {}
-    }
-        
-    for 
-        id = map_id(parent: )
-            => cmds.push(CanvasCmd::new(Operation::SetText, id, None, ));
-    cmds
+pub fn output_commands(_canvas_state: &CanvasState) {
+    todo!()
 }
 
 
@@ -72,6 +63,8 @@ pub fn output_commands(canvas_state: &CanvasState){
 // ============================================================
 
 const CHARACTER_SCHEMA_NAME: &str = "characters";
+
+pub struct Log;
 
 pub struct Coc7th {
     characters: DiskStore,
@@ -113,12 +106,13 @@ fn map_id(item: &Character, parent: &Id, n: u32) -> Vec<Id> {
     match parent {
         p if p == &Id::new(&[(Tag::Main, None)]) => {
             let section_n = match item {
-                Character::Profile(_)        => 1,
-                Character::Characteristic(_) => 2,
-                Character::Skill(_)          => 3,
-                Character::Derived(_)        => todo!(),
-                Character::Equipment(_)      => todo!(),
-                Character::Backstory(_)      => todo!(),
+                Character::Profile        => 1,
+                Character::Characteristic => 2,
+                Character::Skill          => 3,
+                Character::Possession     => todo!(),
+                Character::Backstory      => todo!(),
+                Character::Memo           => todo!(),
+                Character::OtherAttribute => todo!(),
             };
             let base: Vec<(Tag, Option<u32>)> = vec![
                 (Tag::Main,    None),
@@ -134,12 +128,13 @@ fn map_id(item: &Character, parent: &Id, n: u32) -> Vec<Id> {
         }
         p if p == &Id::new(&[(Tag::Modal, None)]) => {
             let fieldset_n = match item {
-                Character::Profile(_)        => 1,
-                Character::Characteristic(_) => 2,
-                Character::Skill(_)          => 3,
-                Character::Derived(_)        => 4,
-                Character::Equipment(_)      => 5,
-                Character::Backstory(_)      => 6,
+                Character::Profile        => 1,
+                Character::Characteristic => 2,
+                Character::Skill          => 3,
+                Character::OtherAttribute => 4,
+                Character::Possession     => 5,
+                Character::Backstory      => 6,
+                Character::Memo           => 7,
             };
             let tr: Vec<(Tag, Option<u32>)> = vec![
                 (Tag::Modal,    None),
@@ -149,12 +144,12 @@ fn map_id(item: &Character, parent: &Id, n: u32) -> Vec<Id> {
             ];
             let s = tr.as_slice();
             match item {
-                Character::Profile(_) => vec![
+                Character::Profile => vec![
                     // [0] th, [1] input
                     Id::new(&[s, &[(Tag::Th,    None   )]].concat()),
                     Id::new(&[s, &[(Tag::Input, None   )]].concat()),
                 ],
-                Character::Characteristic(_) => vec![
+                Character::Characteristic => vec![
                     // [0] th, [1] input-1(初期値), [2] input-2(変動), [3] input-3(補正), [4] span(合計)
                     Id::new(&[s, &[(Tag::Th,    None   )]].concat()),
                     Id::new(&[s, &[(Tag::Input, Some(1))]].concat()),
@@ -162,7 +157,7 @@ fn map_id(item: &Character, parent: &Id, n: u32) -> Vec<Id> {
                     Id::new(&[s, &[(Tag::Input, Some(3))]].concat()),
                     Id::new(&[s, &[(Tag::Span,  None   )]].concat()),
                 ],
-                Character::Skill(_) => vec![
+                Character::Skill => vec![
                     // [0] th, [1] span-1(base), [2] input-1(職業), [3] input-2(興味), [4] input-3(補正), [5] span-2(合計), [6] td-1_select
                     Id::new(&[s, &[(Tag::Th,     None   )]].concat()),
                     Id::new(&[s, &[(Tag::Span,   Some(1))]].concat()),
@@ -184,34 +179,29 @@ fn map_id(item: &Character, parent: &Id, n: u32) -> Vec<Id> {
 // ============================================================
 
 // Characteristic: input-1(初期値) + input-2(変動値) + input-3(補正値) → span(合計) をリアルタイム更新
-pub fn on_characteristic_input(row: usize, base: i32, delta: i32, bonus: i32) -> Vec<CanvasCmd> {
-    let total = (base + delta + bonus).max(1);
-    // todo
-    cmds
+pub fn on_characteristic_input(_row: usize, base: i32, delta: i32, bonus: i32) -> Vec<CanvasCmd> {
+    let _total = (base + delta + bonus).max(1);
+    todo!()
 }
 
 // Skill: 専門分野(td-1_input)が変わったら th のテキストを更新する
-pub fn on_skill_spec_input(row: usize, skill: &Skill, spec: &str) -> Vec<CanvasCmd> {
-    // todo
-    cmds
+pub fn on_skill_spec_input(_row: usize, _skill: &Skill, _spec: &str) -> Vec<CanvasCmd> {
+    todo!()
 }
 
 // Skill: 職業pt(input-1) か 興味pt(input-2) か 補正値(input-3) が変わったら合計spanを更新する
-pub fn on_skill_input(row: usize, base: u16, occ_pt: u16, int_pt: u16, bonus: i32) -> Vec<CanvasCmd> {
-    // todo
-    cmds
+pub fn on_skill_input(_row: usize, _base: u16, _occ_pt: u16, _int_pt: u16, _bonus: i32) -> Vec<CanvasCmd> {
+    todo!()
 }
 
 // fieldset-2 の1行: ロール値をキャッシュに書き込み、input-1とspanをSetValue/SetTextで更新
-pub fn roll_characteristic(row: usize, char_data: &mut DataStruct) -> Vec<CanvasCmd> {
-    // todo
-    cmds
+pub fn roll_characteristic(_row: usize, _char_data: &mut DataStruct) -> Vec<CanvasCmd> {
+    todo!()
 }
 
 // legend button: 全Characteristicを一括ロール
-pub fn roll_all_characteristics(char_data: &mut DataStruct) -> Vec<CanvasCmd> {
-    // todo
-    cmds
+pub fn roll_all_characteristics(_char_data: &mut DataStruct) -> Vec<CanvasCmd> {
+    todo!()
 }
 
 pub fn restore_modal(ds: &DataStruct) -> Vec<CanvasCmd> {
@@ -231,7 +221,8 @@ pub fn update_character_view(ds: &DataStruct) -> Vec<CanvasCmd> {
     cmds
 }
 
-pub fn update_select(list: &[(u32, String)], selected_id: Option<u32>) -> Vec<CanvasCmd> {
+pub fn update_select(_list: &[(u32, String)], _selected_id: Option<u32>) -> Vec<CanvasCmd> {
+    todo!()
 }
 
 pub fn reset_modal() -> Vec<CanvasCmd> {

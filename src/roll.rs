@@ -1,5 +1,5 @@
 use crate::{Lang, n_d_n, percent_roll};
-use crate::character::{Skill, Characteristic};
+use crate::character::{self, Skill, Characteristic};
 
 // ============================================================
 // todo: 未定義型のスタブ（各型が確定次第、対応モジュールに移動する）
@@ -8,6 +8,7 @@ use crate::character::{Skill, Characteristic};
 pub type Count = u16;
 pub type Side  = u16;
 
+pub type Dice = character::Dice;
 pub struct DiceModifier(pub i16);
 pub struct Skills<T>(pub Vec<T>);
 pub struct Characteristics<T>(pub Vec<T>);
@@ -54,7 +55,8 @@ pub enum BulletSetCap { Auto, Specified(u32) }
 // ============================================================
 
 pub enum Roll {
-    DiceRoll(Count,Side,Count,Side,DiceModifier),
+    /// 任意ダイス式ロール。dice_terms は character::Dice = (count, sides, modifier) のリスト。
+    DiceRoll(Vec<Dice>),
     SkillRoll(Skills<Skill>, Option<SuccessLevel>, Option<i16>), // option(i16)とは補正値(+-i)のこと
     CharacteristicRoll(Characteristics<Characteristic>, Option<SuccessLevel>, SkillModifier),
     SanityRoll(),
@@ -71,8 +73,8 @@ pub enum Roll {
 impl Roll {
     pub fn label(self, lang: Lang) -> &'static str {
         match (self, lang) {
-            (Self::DiceRoll(..),           Lang::En) => "Dice Roll (nDn +-n)",
-            (Self::DiceRoll(..),           Lang::Ja) => "ダイスロール (nDn +-n)",
+            (Self::DiceRoll(_),            Lang::En) => "Dice Roll (nDn +-n)",
+            (Self::DiceRoll(_),            Lang::Ja) => "ダイスロール (nDn +-n)",
             (Self::SkillRoll(..),          Lang::En) => "Skill Roll",
             (Self::SkillRoll(..),          Lang::Ja) => "技能ロール",
             (Self::CharacteristicRoll(..), Lang::En) => "Characteristic Roll",
@@ -258,14 +260,13 @@ impl SkillRoll {
 
 pub struct DiceRoll {
     roll_select:   Roll,
-    select: Vec<DiceRollSelect>,
-    bonus_dice: i32,
-    level: Level,
+    select:        Vec<DiceRollSelect>,
+    bonus_dice:    i32,
+    level:         Level,
     target_select: (crate::character::Characteristic, crate::character::Skill),
-    input_counts: u16,
-    input_sides: [u32; 10],
-    input_modifier: i16,
-    result: RollResult,
+    /// ダイス項目リスト。character::Dice = (count: i8, sides: u8, modifier: i8)
+    dice_terms:    Vec<Dice>,
+    result:        RollResult,
 }
 
 // ============================================================

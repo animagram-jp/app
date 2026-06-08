@@ -7,8 +7,8 @@ use crate::data_struct::DataStruct;
 // --- ダイス (Dice) ---
 // ============================================================
 
-type Dice = (i8, u8, i8); // (count, sides, modifier)
-type DamageBonus = (i8, u8, i8); // (count, sides, modifier)
+pub type Dice = (i8, u8, i8); // (count, sides, modifier)
+type DamageBonusTuple = (i8, u8, i8); // (count, sides, modifier)
 
 pub mod dice {
     use super::Dice;
@@ -72,8 +72,8 @@ impl Character {
             (Self::OtherAttribute, Lang::Ja) => "ほかの属性",
             (Self::Skill,          Lang::En) => "Skill",
             (Self::Skill,          Lang::Ja) => "技能",
-            (Self::Equipment,      Lang::En) => "Possession",
-            (Self::Equipment,      Lang::Ja) => "所持品",
+            (Self::Possession,      Lang::En) => "Possession",
+            (Self::Possession,      Lang::Ja) => "所持品",
             (Self::Backstory,      Lang::En) => "Backstory",
             (Self::Backstory,      Lang::Ja) => "バックストーリー",
             (Self::Memo,           Lang::En) => "My Story",
@@ -86,7 +86,7 @@ impl Character {
             Self::Characteristic =>  20,  //  20- 28 (9件)
             Self::OtherAttribute =>  30,  //  30- 37 (8件)
             Self::Skill          =>  40,  //  40- 86 (47件)
-            Self::Equipment      =>  90,  //  90-... (拡張余地)
+            Self::Possession     =>  90,  //  90-... (拡張余地)
             Self::Backstory      => 100,  // 100-109 (10件)
             Self::Memo           => 110,  // 110      (1件)
         }
@@ -136,8 +136,8 @@ impl Profile {
         }
     }
 
-    pub fn encode(&self, name: &str, alias: Option(&str)) -> &[u8] {
-
+    pub fn encode(_name: &str, _alias: Option<&str>) -> Vec<u8> {
+        todo!()
     }
 
     pub fn list() -> &'static [Profile] {
@@ -397,14 +397,14 @@ impl OtherAttribute {
     pub fn display(&self, data: &DataStruct) -> String {
         match self {
             Self::Build => {
-                let build = data.get(self.id())
+                let build = data.get(self.id()).ok()
                     .and_then(|b| b.first())
                     .map(|&b| b as i8)
                     .unwrap_or(0);
                 build.to_string()
             }
             Self::DamageBonus => {
-                let db: DamageBonus = data.get(self.id())
+                let db: DamageBonusTuple = data.get(self.id())
                     .map(|b| {
                         let count    = b.first().copied().map(|v| v as i8).unwrap_or(0);
                         let sides    = b.get(1).copied().unwrap_or(0);
@@ -435,7 +435,7 @@ impl OtherAttribute {
                 let power = Characteristic::Power.value(character);
                 vec![power as u8]
             }
-            Self::Build => { // p.31
+            Self::Build => {
                 let strength = Characteristic::Strength.value(character);
                 let size     = Characteristic::Size.value(character);
                 let build: i8 = match strength + size {
@@ -453,12 +453,12 @@ impl OtherAttribute {
                 };
                 vec![build as u8]
             }
-            Self::DamageBonus => { // p.31
-                let build = character.get(Self::Build.id())
+            Self::DamageBonus => {
+                let build = character.get(Self::Build.id()).ok()
                     .and_then(|b| b.first())
                     .map(|&b| b as i8)
                     .unwrap_or(0);
-                let (count, sides, modifier): DamageBonus = match build {
+                let (count, sides, modifier): DamageBonusTuple = match build {
                     i8::MIN..=-2 => (0, 0, -2),
                                 -1 => (0, 0, -1),
                                  0 => (0, 0,  0),
@@ -479,7 +479,7 @@ impl OtherAttribute {
                 let base: i32 = if str > siz && dex > siz { 9 }
                            else if str < siz && dex < siz  { 7 }
                            else                             { 8 };
-                let age = character.get(Profile::Age.id())
+                let age = character.get(Profile::Age.id()).ok()
                     .and_then(|b| b.first())
                     .copied()
                     .unwrap_or(0);
@@ -1322,7 +1322,7 @@ impl Skill {
             Self::Charm                => 15,
             Self::Climb                => 20,
             Self::ComputerUse          =>  5,
-            Self::CreditRating(_)      =>  0,
+            Self::CreditRating         =>  0,
             Self::CthulhuMythos        =>  0,
             Self::Disguise             =>  5,
             Self::Dodge                =>  0, // derived: DEX / 2
@@ -1396,8 +1396,8 @@ impl Skill {
             (Self::Climb,                Lang::En) => "Climb".into(),
             (Self::ComputerUse,          Lang::Ja) => "コンピューター".into(),
             (Self::ComputerUse,          Lang::En) => "Computer Use".into(),
-            (Self::CreditRating(_),      Lang::Ja) => "信用".into(),
-            (Self::CreditRating(_),      Lang::En) => "Credit Rating".into(),
+            (Self::CreditRating,         Lang::Ja) => "信用".into(),
+            (Self::CreditRating,         Lang::En) => "Credit Rating".into(),
             (Self::CthulhuMythos,        Lang::Ja) => "クトゥルフ神話".into(),
             (Self::CthulhuMythos,        Lang::En) => "Cthulhu Mythos".into(),
             (Self::Disguise,             Lang::Ja) => "変装".into(),
@@ -1422,7 +1422,7 @@ impl Skill {
             (Self::Intimidate,           Lang::En) => "Intimidate".into(),
             (Self::Jump,                 Lang::Ja) => "跳躍".into(),
             (Self::Jump,                 Lang::En) => "Jump".into(),
-            (Self::LanguageOther(spec),  _)        => match spec.label(lang) { Some(s) => format!("ほかの言語 ({s})"), None => "ほかの言語".into() },
+            (Self::LanguageOther(spec),  _)        => { let s = spec.label(lang); if s.is_empty() { "ほかの言語".into() } else { format!("ほかの言語 ({s})") } },
             (Self::LanguageOwn,          Lang::Ja) => "母国語".into(),
             (Self::LanguageOwn,          Lang::En) => "Language (Own)".into(),
             (Self::Law,                  Lang::Ja) => "法律".into(),
@@ -1699,57 +1699,60 @@ impl Weapon {
         }
     }
 
-    pub fn range(&self, lang: Lang) -> (u8, &str) { // integer, unit
-
+    pub fn range(&self, _lang: Lang) -> (u8, &str) { // integer, unit
+        todo!()
     }
 
-    /// 基本ダメージ式
-    pub fn damage(&self) ->  {
+    /// 基本ダメージ式。`(dice_terms, db_multiplier)` を返す。
+    /// `db_multiplier`: 0=なし, 1=DB全量, 2=DB半分(端数切り捨て)。
+    /// ダメージボーナスの実値は呼び出し側が `OtherAttribute::DamageBonus` から取得して加算する。
+    /// `Custom` は固定式が不明なため `None` を返す。
+    pub fn damage(&self) -> Option<(&'static [Dice], u8)> {
         match self {
-            Self::BowAndArrows          => Dice(1,6)+HalfDamageBonus,
-            Self::BrassKnuckles         => Dice(1,3)+1+DamageBonus,
-            Self::Bullwhip              => Dice(1,3)+HalfDamageBonus,
-            Self::BurningTorch          => Dice(1,6), // +burn は別途処理
-            Self::Blackjack             => Dice(1,8)+DamageBonus,
-            Self::ClubLarge             => Dice(1,8)+DamageBonus,
-            Self::ClubSmall             => Dice(1,6)+DamageBonus,
-            Self::Crossbow              => Dice(1,8)+2,
-            Self::Garrote               => Dice(1,6)+DamageBonus,
-            Self::HatchetSickle         => Dice(1,6)+1+DamageBonus,
-            Self::KnifeLarge            => Dice(1,8)+DamageBonus,
-            Self::KnifeMedium           => Dice(1,4)+2+DamageBonus,
-            Self::KnifeSmall            => Dice(1,4)+DamageBonus,
-            Self::Nunchaku              => Dice(1,8)+DamageBonus,
-            Self::RockThrown            => Dice(1,4)+HalfDamageBonus,
-            Self::Shuriken              => Dice(1,3)+HalfDamageBonus,
-            Self::Spear                 => Dice(1,8)+1,
-            Self::SpearThrown           => Dice(1,8)+HalfDamageBonus,
-            Self::Auto22Short           => Dice(1,6),
-            Self::Derringer25           => Dice(1,6),
-            Self::Revolver32            => Dice(1,8),
-            Self::Automatic32           => Dice(1,8),
-            Self::LugerP08              => Dice(1,10),
-            Self::Revolver45            => Dice(1,10)+2,
-            Self::Automatic45           => Dice(1,10)+2,
-            Self::BoltAction22          => Dice(1,6)+1,
-            Self::LeverAction30         => Dice(2,6),
-            Self::MartiniHenry45        => Dice(1,8)+Dice(1,6)+3,
-            Self::MoranAirRifle         => Dice(2,6)+1,
-            Self::LeeEnfield303         => Dice(2,6)+4,
-            Self::BoltAction3006        => Dice(2,6)+4,
-            Self::ElephantGun           => Dice(3,6)+4,
-            Self::Shotgun20Gauge        => Dice(2,6), // /1D6/1D3 距離段階別
-            Self::Shotgun16Gauge        => Dice(2,6)+2,
-            Self::Shotgun12Gauge        => Dice(4,6),
-            Self::Shotgun12GaugeSemiAuto => Dice(4,6),
-            Self::Shotgun12GaugeSawedOff => Dice(4,6),
-            Self::BergmannMP18          => Dice(1,10),
-            Self::Thompson              => Dice(1,10)+2,
-            Self::BrowningAutoRifle     => Dice(2,6)+4,
-            Self::BrowningM1917         => Dice(2,6)+4,
-            Self::BrenGun               => Dice(2,6)+4,
-            Self::LewisGun              => Dice(2,6)+4,
-            Self::Vickers303            => Dice(2,6)+4,
+            Self::BowAndArrows          => Some((&[(1,6,0)],              2)),
+            Self::BrassKnuckles         => Some((&[(1,3,1)],              1)),
+            Self::Bullwhip              => Some((&[(1,3,0)],              2)),
+            Self::BurningTorch          => Some((&[(1,6,0)],              0)), // +burn は別途処理
+            Self::Blackjack             => Some((&[(1,8,0)],              1)),
+            Self::ClubLarge             => Some((&[(1,8,0)],              1)),
+            Self::ClubSmall             => Some((&[(1,6,0)],              1)),
+            Self::Crossbow              => Some((&[(1,8,2)],              0)),
+            Self::Garrote               => Some((&[(1,6,0)],              1)),
+            Self::HatchetSickle         => Some((&[(1,6,1)],              1)),
+            Self::KnifeLarge            => Some((&[(1,8,0)],              1)),
+            Self::KnifeMedium           => Some((&[(1,4,2)],              1)),
+            Self::KnifeSmall            => Some((&[(1,4,0)],              1)),
+            Self::Nunchaku              => Some((&[(1,8,0)],              1)),
+            Self::RockThrown            => Some((&[(1,4,0)],              2)),
+            Self::Shuriken              => Some((&[(1,3,0)],              2)),
+            Self::Spear                 => Some((&[(1,8,1)],              0)),
+            Self::SpearThrown           => Some((&[(1,8,0)],              2)),
+            Self::Auto22Short           => Some((&[(1,6,0)],              0)),
+            Self::Derringer25           => Some((&[(1,6,0)],              0)),
+            Self::Revolver32            => Some((&[(1,8,0)],              0)),
+            Self::Automatic32           => Some((&[(1,8,0)],              0)),
+            Self::LugerP08              => Some((&[(1,10,0)],             0)),
+            Self::Revolver45            => Some((&[(1,10,2)],             0)),
+            Self::Automatic45           => Some((&[(1,10,2)],             0)),
+            Self::BoltAction22          => Some((&[(1,6,1)],              0)),
+            Self::LeverAction30         => Some((&[(2,6,0)],              0)),
+            Self::MartiniHenry45        => Some((&[(1,8,0),(1,6,3)],      0)),
+            Self::MoranAirRifle         => Some((&[(2,6,1)],              0)),
+            Self::LeeEnfield303         => Some((&[(2,6,4)],              0)),
+            Self::BoltAction3006        => Some((&[(2,6,4)],              0)),
+            Self::ElephantGun           => Some((&[(3,6,4)],              0)),
+            Self::Shotgun20Gauge        => Some((&[(2,6,0)],              0)), // /1D6/1D3 距離段階別
+            Self::Shotgun16Gauge        => Some((&[(2,6,2)],              0)),
+            Self::Shotgun12Gauge        => Some((&[(4,6,0)],              0)),
+            Self::Shotgun12GaugeSemiAuto => Some((&[(4,6,0)],             0)),
+            Self::Shotgun12GaugeSawedOff => Some((&[(4,6,0)],             0)),
+            Self::BergmannMP18          => Some((&[(1,10,0)],             0)),
+            Self::Thompson              => Some((&[(1,10,2)],             0)),
+            Self::BrowningAutoRifle     => Some((&[(2,6,4)],              0)),
+            Self::BrowningM1917         => Some((&[(2,6,4)],              0)),
+            Self::BrenGun               => Some((&[(2,6,4)],              0)),
+            Self::LewisGun              => Some((&[(2,6,4)],              0)),
+            Self::Vickers303            => Some((&[(2,6,4)],              0)),
             Self::Custom(_)             => None,
         }
     }
@@ -1978,15 +1981,14 @@ pub struct Wealth {
 }
 
 impl Wealth {
-    pub fn label(&self, lang: Lang) -> &'static str {
-        match (self, lang) {
-            (Self::SpendingLevel, Lang::En) => "Spending Level",
-            (Self::SpendingLevel, Lang::Ja) => "支出レベル",
-            (Self::Cash,          Lang::En) => "Cash",
-            (Self::Cash,          Lang::Ja) => "現金",
-            (Self::Assets,        Lang::En) => "Assets",
-            (Self::Assets,        Lang::Ja) => "資産",
-        }
+    pub fn label_spending_level(lang: Lang) -> &'static str {
+        match lang { Lang::En => "Spending Level", Lang::Ja => "支出レベル" }
+    }
+    pub fn label_cash(lang: Lang) -> &'static str {
+        match lang { Lang::En => "Cash", Lang::Ja => "現金" }
+    }
+    pub fn label_assets(lang: Lang) -> &'static str {
+        match lang { Lang::En => "Assets", Lang::Ja => "資産" }
     }
 }
 
@@ -2000,7 +2002,7 @@ pub enum Possession {
 
 impl Possession {
     pub fn id(&self) -> u32 {
-        Character::Equipment.id() + match self {
+        Character::Possession.id() + match self {
             Self::Weapon(_)   => 0,
             Self::Armor(_)    => 1,
             Self::GearItem(_) => 2,
