@@ -276,6 +276,10 @@ main > section,
   width: 17rem;
 }
 
+#modal_fieldset-2_button {
+  padding-left: 1rem;
+}
+
 #modal_fieldset-2 table {
   margin-top: 0.5rem;
 }
@@ -357,5 +361,7 @@ main > section,
 
 /* ───── media query (wider window) ───── */
 @media (width >= 40rem) {
-
+  dialog:modal {
+    padding: 0 0.5rem;
+  }
 }
