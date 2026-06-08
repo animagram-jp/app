@@ -428,7 +428,7 @@
         <h2 id="main_h2-3" class="dads-h" dads-size="24">チャットボックス</h2>
         <section id="main_section-3" aria-label="Input Message" aria-labelledby="main-h2-3">
             <textarea id="main_section-3_textarea" name="main_section-3_textarea" rows="2" placeholder="/" class="dads-textarea"></textarea>
-            <button id="main_section-3_button" type="submit" class="dads-button" dads-type="solid-fill" dads-size="sm">↑</button></section>
+            <button id="main_section-3_button" type="submit" class="dads-button" dads-type="fill" dads-size="sm">↑</button></section>
 
         <!-- ===== Overlay dialog ===== -->
         <dialog id="main_modal" aria-label="overlay">
@@ -456,7 +456,7 @@
     <!-- ===== Character Edit Modal ===== -->
     <dialog id="modal" aria-label="Character Edit Modal">
         <header>
-            <button id="modal_header_button" type="submit" form="form" class="dads-button" dads-type="solid-fill">✓</button></header>
+            <button id="modal_header_button" type="submit" form="form" class="dads-button" dads-type="fill">✓</button></header>
 
 
         <!-- fieldset-1: プロフィール -->
@@ -495,7 +495,7 @@
         <h3 id="modal_fieldset-2_h3" class="dads-h" dads-size="18">能力値</h3>
         <fieldset id="modal_fieldset-2" aria-labelledby="modal_fieldset-2_h3">
             <button id="modal_fieldset-2_button" type="button" dads-type="outline" class="dads-button dice">🎲</button>
-            <table class="dads-table" dads-type="dense">
+            <table class="dads-table" dads-type="dense" dads-stripe>
                 <thead>
                     <tr>
                         <th></th>
@@ -591,7 +591,7 @@
         <h3 id="modal_fieldset-3_h3" class="dads-h" dads-size="18">技能</h3>
         <fieldset id="modal_fieldset-3" aria-labelledby="modal_fieldset-3_h3">
 
-            <table class="dads-table" dads-type="dense">
+            <table class="dads-table" dads-type="dense" dads-stripe>
                 <thead>
                     <tr>
                         <th></th>
@@ -1286,7 +1286,9 @@
                                 <li role="option">
                                     <button>物理学</button></li>
                                 <li role="option">
-                                    <button>動物学</button></li></ul>
+                                    <button>動物学</button></li>
+                                <li role="option">
+                                    <button>✏️</button></li></ul>
                             <button id="modal_fieldset-3_table_tbody_tr-46_button" type="button" popovertarget="modal_fieldset-3_table_tbody_tr-46_ul" aria-haspopup="listbox" aria-expanded="false" aria-controls="modal_fieldset-3_table_tbody_tr-46_ul" class="list-box-trigger">天文学</button></td>
                         <td>1</td>
                         <td>
@@ -1424,7 +1426,7 @@
                         <td>
                             <input type="number" min="-1000" max="1000" placeholder="0" class="dads-input" dads-size="sm"></td>
                         <td></td></tr></tbody></table></fieldset>
-
+                          
         <!-- fieldset-4: バックストーリー -->
         <h3 id="modal_fieldset-4_h3" class="dads-h" dads-size="18">バックストーリー</h3>
         <fieldset id="modal_fieldset-4" aria-labelledby="modal_fieldset-4_h3">
