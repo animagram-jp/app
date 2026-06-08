@@ -74,12 +74,6 @@
   }
 }
 
-.dads-textarea-error {
-  margin: calc(8 / 16 * 1rem) 0 0 0;
-  display: block;
-  color: var(--color-semantic-error-1);
-}
-
 .dads-textarea-counter {
   display: block;
   margin-top: calc(8 / 16 * 1rem);

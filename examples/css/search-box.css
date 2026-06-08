@@ -1,0 +1,199 @@
+/* ---------------------------------------------------------------- */
+/* dads-search-box                                                  */
+/* label wrapper that positions the search icon over dads-input     */
+/* ---------------------------------------------------------------- */
+
+label.dads-search-box {
+  position: relative;
+  display: inline-flex;
+  flex-grow: 1;
+}
+
+label.dads-search-box > svg {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(16 / 16 * 1rem);
+  z-index: 1;
+  margin: auto 0;
+  width: calc(24 / 16 * 1rem);
+  height: calc(24 / 16 * 1rem);
+  color: var(--color-neutral-solid-gray-600);
+  pointer-events: none;
+}
+
+@media (forced-colors: active) {
+  label.dads-search-box > svg {
+    color: CanvasText;
+  }
+}
+
+label.dads-search-box > .dads-input {
+  flex-grow: 1;
+  width: 8rem;
+  padding-left: calc(48 / 16 * 1rem);
+}
+
+/* when preceded by dads-search-box-scope, remove left rounding and collapse border */
+.dads-search-box-scope + label.dads-search-box > .dads-input {
+  margin-left: calc(-1 / 16 * 1rem);
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+/* ---------------------------------------------------------------- */
+/* dads-search-box-scope                                            */
+/* label wrapper for the scope select preceding dads-search-box     */
+/* ---------------------------------------------------------------- */
+
+label.dads-search-box-scope {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  color: var(--color-neutral-solid-gray-900);
+  font-weight: normal;
+  font-size: var(--dads-size-md-font-size);
+  line-height: 1;
+  font-family: var(--font-family-sans);
+  letter-spacing: 0.02em;
+}
+
+label.dads-search-box-scope > span {
+  position: absolute;
+  top: calc(50% - 1.25rem);
+  left: calc(17 / 16 * 1rem);
+  color: var(--color-neutral-solid-gray-700);
+  pointer-events: none;
+  z-index: 2;
+}
+
+label.dads-search-box-scope > select {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  box-sizing: border-box;
+  width: calc(160 / 16 * 1rem);
+  border-radius: calc(8 / 16 * 1rem) 0 0 calc(8 / 16 * 1rem);
+  border: 1px solid var(--color-neutral-solid-gray-600);
+  background-color: var(--color-neutral-solid-gray-50);
+  padding-top: calc(20 / 16 * 1rem);
+  padding-right: calc(40 / 16 * 1rem);
+  padding-bottom: 0;
+  padding-left: calc(16 / 16 * 1rem);
+  color: var(--color-neutral-solid-gray-900);
+  font: inherit;
+  font-size: calc(17 / 16 * 1rem);
+  line-height: 1;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+label.dads-search-box-scope[dads-size="sm"] > select {
+  height: var(--dads-size-sm-height);
+}
+
+label.dads-search-box-scope:not([dads-size]) > select,
+label.dads-search-box-scope[dads-size="md"] > select {
+  height: var(--dads-size-md-height);
+}
+
+label.dads-search-box-scope[dads-size="lg"] > select {
+  height: var(--dads-size-lg-height);
+}
+
+@supports (appearance: base-select) {
+  label.dads-search-box-scope > select {
+    appearance: base-select;
+  }
+
+  label.dads-search-box-scope > select::picker-icon {
+    display: none;
+  }
+
+  label.dads-search-box-scope > select::picker(select) {
+    appearance: base-select;
+    border: 1px solid var(--color-neutral-solid-gray-420);
+    box-shadow: var(--elevation-1);
+    padding: calc(16 / 16 * 1rem) 0;
+  }
+}
+
+label.dads-search-box-scope > svg {
+  position: absolute;
+  top: 0;
+  right: calc(16 / 16 * 1rem);
+  bottom: 0;
+  z-index: 1;
+  margin: auto 0;
+  display: flex;
+  align-items: center;
+  width: calc(16 / 16 * 1rem);
+  height: calc(16 / 16 * 1rem);
+  pointer-events: none;
+}
+
+label.dads-search-box-scope > select:focus-visible {
+  position: relative;
+  z-index: 1;
+  outline: calc(4 / 16 * 1rem) solid var(--color-neutral-black);
+  outline-offset: calc(2 / 16 * 1rem);
+  box-shadow: 0 0 0 calc(2 / 16 * 1rem) var(--color-primitive-yellow-300);
+}
+
+@media (hover: hover) {
+  label.dads-search-box-scope > select:hover {
+    border-color: var(--color-neutral-black);
+  }
+}
+
+label.dads-search-box-scope option {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  min-height: calc(44 / 16 * 1rem);
+  padding: calc(10 / 16 * 1rem) calc(16 / 16 * 1rem);
+  color: var(--color-neutral-solid-gray-900);
+}
+
+label.dads-search-box-scope option::checkmark {
+  display: none;
+}
+
+@media (hover: hover) {
+  label.dads-search-box-scope option:hover {
+    background-color: var(--color-neutral-solid-gray-50);
+    text-decoration: underline;
+    text-decoration-thickness: calc(1 / 16 * 1rem);
+    text-underline-offset: calc(3 / 16 * 1rem);
+  }
+}
+
+label.dads-search-box-scope option:checked {
+  font-weight: bold;
+  background-color: var(--color-primitive-blue-100);
+  color: var(--color-primitive-blue-1000);
+}
+
+@media (hover: hover) {
+  label.dads-search-box-scope option:checked:hover {
+    background-color: var(--color-primitive-blue-50);
+    color: var(--color-primitive-blue-900);
+  }
+}
+
+label.dads-search-box-scope option:focus-visible {
+  border-radius: 0;
+  outline: calc(4 / 16 * 1rem) solid var(--color-neutral-black);
+  outline-offset: calc(-4 / 16 * 1rem);
+  box-shadow: none;
+}
+
+label.dads-search-box-scope option:not(:checked):focus-visible {
+  background-color: var(--color-primitive-yellow-300);
+}
+
+label.dads-search-box-scope option:checked:focus-visible {
+  box-shadow: inset 0 0 0 calc(6 / 16 * 1rem) var(--color-primitive-yellow-300);
+}

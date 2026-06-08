@@ -71,10 +71,10 @@
   }
 }
 
-.dads-input__error {
-  margin: calc(8 / 16 * 1rem) 0 0 0;
-  display: block;
-  color: var(--color-semantic-error-1);
+/* search type */
+
+.dads-input[type="search"]::-webkit-search-cancel-button {
+  display: none;
 }
 
 /* input-number */

@@ -16,7 +16,7 @@
   font-size: calc(16 / 16 * 1rem);
 }
 
-.dads-field-requirement[data-required="true"] {
+.dads-field-requirement[dads-required] {
   color: var(--color-semantic-error-1);
 }
 

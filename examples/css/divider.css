@@ -17,11 +17,11 @@
   border-top-color: var(--color-neutral-black);
 }
 
-.dads-divider[data-style="solid"] {
+.dads-divider[dads-type="solid"] {
   border-top-style: solid;
 }
 
-.dads-divider[data-style="dashed"] {
+.dads-divider[dads-type="dashed"] {
   border-top-style: dashed;
 }
 

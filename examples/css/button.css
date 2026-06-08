@@ -24,41 +24,41 @@
   cursor: default;
 }
 
-.dads-button[dads-type="solid-fill"] {
+.dads-button[dads-type="fill"] {
   border: 4px double transparent;
   background-color: var(--button-color);
   color: var(--color-neutral-white);
 }
 
 @media (hover: hover) {
-  .dads-button[dads-type="solid-fill"]:hover {
+  .dads-button[dads-type="fill"]:hover {
     background-color: var(--button-hover-color);
     text-decoration: underline;
     text-decoration-thickness: calc(1 / 16 * 1rem);
   }
 }
 
-.dads-button[dads-type="solid-fill"]:active {
+.dads-button[dads-type="fill"]:active {
   background-color: var(--button-active-color);
   text-decoration: underline;
 }
 
-.dads-button[dads-type="solid-fill"]:focus-visible {
+.dads-button[dads-type="fill"]:focus-visible {
   outline: calc(4 / 16 * 1rem) solid var(--color-neutral-black);
   outline-offset: calc(2 / 16 * 1rem);
   box-shadow: 0 0 0 calc(2 / 16 * 1rem) var(--color-primitive-yellow-300);
 }
 
-.dads-button[dads-type="solid-fill"]:disabled,
-.dads-button[dads-type="solid-fill"][aria-disabled="true"] {
+.dads-button[dads-type="fill"]:disabled,
+.dads-button[dads-type="fill"][aria-disabled="true"] {
   background-color: var(--color-neutral-solid-gray-300);
   color: var(--color-neutral-solid-gray-50);
   text-decoration: none;
 }
 
 @media (forced-colors: active) {
-  .dads-button[dads-type="solid-fill"]:disabled,
-  .dads-button[dads-type="solid-fill"][aria-disabled="true"] {
+  .dads-button[dads-type="fill"]:disabled,
+  .dads-button[dads-type="fill"][aria-disabled="true"] {
     border-color: GrayText;
     color: GrayText;
   }
@@ -148,7 +148,6 @@
 }
 
 .dads-button[dads-size="lg"] {
-  min-width: calc(136 / 16 * 1rem);
   min-height: var(--dads-size-lg-height);
   border-radius: calc(8 / 16 * 1rem);
   padding: calc(12 / 16 * 1rem) calc(16 / 16 * 1rem);
@@ -156,7 +155,6 @@
 
 .dads-button:not([dads-size]),
 .dads-button[dads-size="md"] {
-  min-width: calc(96 / 16 * 1rem);
   min-height: var(--dads-size-md-height);
   border-radius: calc(8 / 16 * 1rem);
   padding: calc(8 / 16 * 1rem) calc(16 / 16 * 1rem);
@@ -164,7 +162,6 @@
 
 .dads-button[dads-size="sm"] {
   position: relative;
-  min-width: calc(80 / 16 * 1rem);
   min-height: var(--dads-size-sm-height);
   border-radius: calc(6 / 16 * 1rem);
   padding: calc(2 / 16 * 1rem) calc(12 / 16 * 1rem);
@@ -180,7 +177,6 @@
 
 .dads-button[dads-size="xs"] {
   position: relative;
-  min-width: calc(72 / 16 * 1rem);
   min-height: var(--dads-size-xs-height);
   border-radius: calc(4 / 16 * 1rem);
   padding: var(--dads-size-xs-padding-block) var(--dads-size-xs-padding-inline);
