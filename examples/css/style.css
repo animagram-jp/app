@@ -297,7 +297,7 @@ main>section,
 
 #modal_fieldset-2 input,
 #modal_fieldset-3 input {
-    width: 5rem;
+    width: 4rem;
 }
 
 #modal_fieldset-2_button {
@@ -308,7 +308,8 @@ main>section,
     margin-top: 0.5rem;
 }
 
-#modal_fieldset-2 th {
+#modal_fieldset-2 th,
+#modal_fieldset-3 th {
     text-align: center;
 }
 
@@ -321,13 +322,36 @@ main>section,
     text-align: right;
 }
 
-#modal_fieldset-2 td:nth-child(2),
-#modal_fieldset-2 td:nth-child(3),
-#modal_fieldset-2 td:nth-child(4),
+#modal_fieldset-2 th:nth-child(5),
+#modal_fieldset-3 th:nth-child(3),
+#modal_fieldset-3 th:nth-child(7),
 #modal_fieldset-2 td:nth-child(5),
 #modal_fieldset-3 td:nth-child(3),
 #modal_fieldset-3 td:nth-child(7) {
-    text-align: right;
+    width: 3rem;
+}
+
+@media (width >=40rem) {
+    #modal_fieldset-2 th:nth-child(4),
+    #modal_fieldset-3 th:nth-child(3),
+    #modal_fieldset-3 th:nth-child(7),
+    #modal_fieldset-2 td:nth-child(4),
+    #modal_fieldset-3 td:nth-child(3),
+    #modal_fieldset-3 td:nth-child(7) {
+        width: 4rem;
+    }
+}
+
+#modal_fieldset-3 th:nth-child(2),
+#modal_fieldset-3 td:nth-child(2) {
+    width: 7rem;
+}
+
+@media (width >=40rem) {
+    #modal_fieldset-3 th:nth-child(2),
+    #modal_fieldset-3 td:nth-child(2) {
+        width: auto;
+    }
 }
 
 #modal_fieldset-3_table_tbody_tr-5_button {
@@ -376,6 +400,29 @@ main>section,
 
 #modal_fieldset-3_table_tbody_tr-42_ul {
     position-anchor: --modal_fieldset-3_table_tbody_tr-42_button;
+}
+
+#modal_fieldset-3 td:nth-child(2) {
+    font-size: 0;
+}
+
+#modal_fieldset-3 td:nth-child(2) * {
+    font-size: 1rem;
+}
+
+#modal_fieldset-3_table_tbody_tr-46_td-1_input:not(.hidden) {
+    display: revert;
+    border-right: none;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    vertical-align: middle;
+}
+
+#modal_fieldset-3_table_tbody_tr-46_td-1:has(#modal_fieldset-3_table_tbody_tr-46_td-1_input:not(.hidden)) #modal_fieldset-3_table_tbody_tr-46_button {
+    font-size: 0;
+    padding-left: 0;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
 }
 
 #modal_fieldset-3_table_tbody_tr-46_button {
