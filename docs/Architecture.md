@@ -91,7 +91,7 @@ html:
   body:
     main:     # 主に閲覧機能
       header:
-      div:    # または、特定のsemantic tag。
+      section-n: # または、semantic tag。
       footer:
     drawer:   # 画面遷移時のメニュー表示。手動ではなくappが開閉する。<dialog id="drawer">
     modal:    # 編集機能・要アテンション時 <dialog id="modal"> showModal()
