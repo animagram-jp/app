@@ -145,6 +145,12 @@ fn map_id(item: &Character, parent: &Id, n: u32) -> Vec<Id> {
 // action
 // ============================================================
 
+pub fn open_modal() -> Vec<Command> {
+    let mut commands = Vec::new();
+    // todo
+    commands
+}
+
 // Characteristic: input-1(初期値) + input-2(変動値) + input-3(補正値) → span(合計) をリアルタイム更新
 pub fn on_characteristic_input(_row: usize, base: i32, delta: i32, bonus: i32) -> Vec<Command> {
     let _total = (base + delta + bonus).max(1);
@@ -161,13 +167,8 @@ pub fn on_skill_input(_row: usize, _base: u16, _occ_pt: u16, _int_pt: u16, _bonu
     todo!()
 }
 
-// fieldset-2 の1行: ロール値をキャッシュに書き込み、input-1とspanをSetValue/SetTextで更新
-pub fn roll_characteristic(_row: usize, _char_data: &mut DataStruct) -> Vec<Command> {
-    todo!()
-}
-
-// legend button: 全Characteristicを一括ロール
-pub fn roll_all_characteristics(_char_data: &mut DataStruct) -> Vec<Command> {
+// modal header button: 全Characteristicを一括ロール
+pub fn roll_characteristics(_char_data: &mut DataStruct) -> Vec<Command> {
     todo!()
 }
 
@@ -177,11 +178,7 @@ pub fn restore_modal(ds: &DataStruct) -> Vec<Command> {
     commands
 }
 
-pub fn open_modal() -> Vec<Command> {
-    let mut commands = Vec::new();
-    // todo
-    commands
-}
+
 
 pub fn update_character_view(ds: &DataStruct) -> Vec<Command> {
     let mut commands = Vec::new();
