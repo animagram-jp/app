@@ -205,20 +205,20 @@ pub fn roll_all_characteristics(_char_data: &mut DataStruct) -> Vec<CanvasCmd> {
 }
 
 pub fn restore_modal(ds: &DataStruct) -> Vec<CanvasCmd> {
-    let mut cmds = Vec::new();
+    let mut commands = Vec::new();
     // todo
-    cmds
+    commands
 }
 
 pub fn open_modal() -> Vec<CanvasCmd> {
-    let mut cmds = Vec::new();
+    let mut commands = Vec::new();
     // todo
-    cmds
+    commands
 }
 
 pub fn update_character_view(ds: &DataStruct) -> Vec<CanvasCmd> {
-    let mut cmds = Vec::new();
-    cmds
+    let mut commands = Vec::new();
+    commands
 }
 
 pub fn update_select(_list: &[(u32, String)], _selected_id: Option<u32>) -> Vec<CanvasCmd> {
@@ -226,8 +226,8 @@ pub fn update_select(_list: &[(u32, String)], _selected_id: Option<u32>) -> Vec<
 }
 
 pub fn reset_modal() -> Vec<CanvasCmd> {
-    let mut cmds = Vec::new();
-    cmds
+    let mut commands = Vec::new();
+    commands
 }
 
 // ============================================================
@@ -264,7 +264,7 @@ impl Toast {
         }
     }
 
-    pub fn cmds(&self, state: &mut CanvasState) -> Vec<CanvasCmd> {
+    pub fn commands(&self, state: &mut CanvasState) -> Vec<CanvasCmd> {
         let n = if state.last_toast == u2::new(1) { u2::new(2) } else { u2::new(1) };
         state.last_toast = n;
         let article = Id::new(&[(Tag::Output, None), (Tag::Article, Some(n.value() as u32))]);

@@ -9,15 +9,15 @@ self.addEventListener("message", async (e) => {
 
     app = await App.init(payload.screen_width, payload.pointer_coarse);
     self.postMessage({ type: "ready" });
-    const init_cmds = app.event({});
-    if (init_cmds?.length) self.postMessage({ type: "execute", payload: Array.from(init_cmds) });
+    const init_commands = app.process({});
+    if (init_commands?.length) self.postMessage({ type: "execute", payload: Array.from(init_commands) });
     return;
   }
 
   if (!app || type !== "event") return;
 
-  const cmds = app.handle(payload);
-  if (cmds?.length) self.postMessage({ type: "execute", payload: Array.from(cmds) });
+  const commands = app.process(payload);
+  if (commands?.length) self.postMessage({ type: "execute", payload: Array.from(commands) });
 });
 
 self.addEventListener("error", (e) => {

@@ -185,7 +185,7 @@ use list::{
 #### app.rs
 
 - initとeventの公開apiを持つ、Appインスタンス。
-- eventsとcmdsの2つのキューを持ち、event.rsのハンドラーへevents消費を移譲ループする。
+- eventsとcommandsの2つのキューを持ち、event.rsのハンドラーへevents消費を移譲ループする。
 
 #### その他
 

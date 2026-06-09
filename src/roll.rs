@@ -1,5 +1,34 @@
-use crate::{Lang, n_d_n, percent_roll};
+use rand::{rng, RngExt};
+use crate::Lang;
 use crate::character::{self, Skill, Characteristic};
+
+// ============================================================
+// Percent Roll (1d100 + Bonus/Penalty Dice)
+// ============================================================
+
+pub fn percent_roll(bonus: i32) -> (u32, Vec<u32>) {
+    let mut rng = rng();
+    let roll_tens = |r: &mut _| {
+        let d: u32 = RngExt::random_range(r, 1..=10u32);
+        if d == 10 { 0 } else { d * 10 }
+    };
+    let ones: u32 = {
+        let d: u32 = rng.random_range(1..=10u32);
+        if d == 10 { 0 } else { d }
+    };
+    let count = (bonus.unsigned_abs() + 1) as usize;
+    let tens_list: Vec<u32> = (0..count).map(|_| roll_tens(&mut rng)).collect();
+    let dice_list: Vec<u32> = tens_list
+        .iter()
+        .map(|&t| { let v = t + ones; if v == 0 { 100 } else { v } })
+        .collect();
+    let total = if bonus >= 0 {
+        *dice_list.iter().min().unwrap()
+    } else {
+        *dice_list.iter().max().unwrap()
+    };
+    (total, dice_list)
+}
 
 // ============================================================
 // todo: 未定義型のスタブ（各型が確定次第、対応モジュールに移動する）
@@ -275,7 +304,7 @@ pub struct DiceRoll {
 
 // 1回の1d100を2技能値に対してそれぞれ判定する
 pub fn combined_roll(target: (u32, u32)) -> RollResult {
-    let total = n_d_n(1, 100);
+    let total = percent_roll(0);
     let judges = vec![
         RollJudge::judge(total, target.0, None),
         RollJudge::judge(total, target.1, None),

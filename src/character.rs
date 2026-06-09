@@ -1,5 +1,5 @@
 use core::array::from_fn;
-use crate::{n_d_n, Lang};
+use crate::Lang;
 use crate::list::ListError;
 use crate::data_struct::DataStruct;
 
@@ -334,9 +334,8 @@ impl Characteristic {
         // SIZ / INT / EDU は (2d6+6)×5、それ以外は 3d6×5
         match self {
             Self::Size | Self::Intelligence | Self::Education =>
-                (n_d_n(2, 6) + 6) as u16 * 5,
-            _ =>
-                n_d_n(3, 6) as u16 * 5,
+                dice::Roll((2, 6, 6)) as u16 * 5,
+            _ => dice::Roll((3, 6, 0)) as u16 * 5,
         }
     }
 }

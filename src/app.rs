@@ -25,7 +25,7 @@ pub struct App {
     canvas_state:  CanvasState,
     handler:       Coc7th,
     events:        Vec<Event>,
-    cmds:          Vec<CanvasCmd>,
+    commands:      Vec<CanvasCmd>,
 }
 
 #[wasm_bindgen]
@@ -39,14 +39,14 @@ impl App {
             canvas_state:  CanvasState::new(),
             handler:       Coc7th::ready().await,
             events:        Vec::new(),
-            cmds:          Vec::new(),
+            commands:          Vec::new(),
         };
 
         app.events.push(Event::Ready);
         app
     }
 
-    pub fn handle(&mut self, payload: JsValue) -> JsValue {
+    pub fn process(&mut self, payload: JsValue) -> JsValue {
         let canvas_event = CanvasEvent::decode(&payload);
         self.pointer_state = self.pointer_state.update(
             &canvas_event.event_type,
@@ -61,11 +61,11 @@ impl App {
             },
         }
         while let Some(event) = self.events.pop() { // 必要そうならtimeoutやlimitを設ける
-            let cmds = self.dispatch(event);
-            self.cmds.extend(cmds);
+            let commands = self.dispatch(event);
+            self.commands.extend(commands);
         }
-        let out = to_value(&self.cmds).unwrap_or(JsValue::NULL);
-        self.cmds.clear();
+        let out = to_value(&self.commands).unwrap_or(JsValue::NULL);
+        self.commands.clear();
         out
     }
 
