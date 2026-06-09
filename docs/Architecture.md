@@ -6,6 +6,10 @@ Gui application system for editing and reading structured data.
 
 ---
 
+## Rule
+
+- [common for projects](https://github.com/animagram-jp/.github/blob/main/Rule.md)
+
 ## Commands
 
 ```bash
