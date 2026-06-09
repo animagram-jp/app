@@ -295,8 +295,8 @@ main>section,
     width: 17rem;
 }
 
-#modal_fieldset-2 input,
-#modal_fieldset-3 input {
+#modal_fieldset-2 input[type="number"],
+#modal_fieldset-3 input[type="number"] {
     width: 4rem;
 }
 
@@ -309,7 +309,11 @@ main>section,
 }
 
 #modal_fieldset-2 th,
-#modal_fieldset-3 th {
+#modal_fieldset-3 th,
+#modal_fieldset-3 td:nth-child(2),
+#modal_fieldset-3 td:nth-child(4),
+#modal_fieldset-3 td:nth-child(5),
+#modal_fieldset-3 td:nth-child(6) {
     text-align: center;
 }
 
@@ -410,15 +414,16 @@ main>section,
     font-size: 1rem;
 }
 
-#modal_fieldset-3_table_tbody_tr-46_td-1_input:not(.hidden) {
+#modal_fieldset-3 td:nth-child(2):has(.list-box-trigger) .dads-input:not(.hidden) {
     display: revert;
     border-right: none;
     border-top-right-radius: 0;
     border-bottom-right-radius: 0;
     vertical-align: middle;
+    width: 4rem;
 }
 
-#modal_fieldset-3_table_tbody_tr-46_td-1:has(#modal_fieldset-3_table_tbody_tr-46_td-1_input:not(.hidden)) #modal_fieldset-3_table_tbody_tr-46_button {
+#modal_fieldset-3 td:nth-child(2):has(.dads-input:not(.hidden)) .list-box-trigger {
     font-size: 0;
     padding-left: 0;
     border-top-left-radius: 0;
