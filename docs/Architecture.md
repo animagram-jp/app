@@ -131,7 +131,7 @@ html:
 
 ```rust
 use js_client::{
-    Operation, CanvasCmd,
+    Operation, Command,
     get_js_str, get_js_u32, get_js_f64, get_js_field,
     EventType, KeyName,
     Device, Gesture, PointerState,
@@ -184,8 +184,8 @@ use list::{
 
 #### app.rs
 
-- initとeventの公開apiを持つ、Appインスタンス。
-- eventsとcommandsの2つのキューを持ち、event.rsのハンドラーへevents消費を移譲ループする。
+- initとprocessの公開apiを持つ、Appインスタンス。
+- eventsとcommandsの2つのキューを持ち、event::Handler.processへevents消費を移譲ループする。
 
 #### その他
 

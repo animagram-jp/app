@@ -1,6 +1,6 @@
 use arbitrary_int::u2;
 use crate::Lang;
-use crate::js_client::{CanvasCmd, Operation, EventType, Gesture, dom::{Id, Tag}, CanvasEvent};
+use crate::js_client::{Command, Operation, EventType, Gesture, dom::{Id, Tag}, CanvasEvent};
 use crate::store::DiskStore;
 use crate::data_struct::DataStruct;
 use crate::character::{
@@ -9,110 +9,77 @@ use crate::character::{
 };
 
 // ============================================================
-// canvas state
+// Event Handler
 // ============================================================
 
-#[derive(Clone, Copy, PartialEq, Default)]
 pub enum Dialog {
-    #[default]
     None,
-    Modal,
-    Drawer,
-    Select { step: u8, index: usize }, // dialog id="main_div_modal" aria-label="overlay" のセレクトUI表示状態
-    Input  { step: u8, value: u32 },   // dialog id="main_div_modal" aria-label="overlay" の入力UI表示状態
+    Modal,  // #modal
+    Drawer, // #drawer
+    Select { step: u8, index: u32 }, // #main_modal セレクトUI表示状態
+    Input  { step: u8, value: u32 },   // #main_modal 入力UI表示状態
 }
-
-pub struct CanvasState { // dialog + lang + editing + dom map(static)  -> canvas commands
-    pub dialog:      Dialog,
-    pub lang:        Lang,
-    pub editing:     DataStruct,
-    pub last_toast:  u2,
-}
-
-impl CanvasState {
-    pub fn new() -> Self {
-        Self {
-            dialog:     Dialog::default(),
-            lang:       Lang::Ja,
-            editing:    DataStruct::new(0, 0.0, 256),
-            last_toast: u2::new(1),
-        }
-    }
-}
-
-// ============================================================
-// global pub fn
-// ============================================================
-
-pub fn initial_draw(_handler: &Coc7th) -> Vec<CanvasCmd> {
-    todo!()
-}
-
-pub fn handle_gesture(gesture: Gesture, state: &mut CanvasState, handler: &mut Coc7th) -> Vec<CanvasCmd> {
-    todo!("ジェスチャー処理")
-}
-
-pub fn output_commands(_canvas_state: &CanvasState) {
-    todo!()
-}
-
-
-
-// ============================================================
-// event handlers
-// ============================================================
 
 const CHARACTER_SCHEMA_NAME: &str = "characters";
 
 pub struct Log;
 
 pub struct Coc7th {
+    dialog:     Dialog,
+    lang:       Lang,
+    last_toast: u2,
+    character:  DataStruct,
     characters: DiskStore,
-    log_stack:  Vec<Log>,
+    logs:       Vec<Log>,
 }
 
 impl Coc7th {
     pub async fn ready() -> Self {
         Self {
+            dialog:     Dialog::None,
+            lang:       Lang::Ja,
+            last_toast: u2::new(1), // todo! 正しいか要確認
+            character:  DataStruct::new(0, 0.0, 256),
             characters: DiskStore::new(CHARACTER_SCHEMA_NAME).await
                 .unwrap_or_else(|e| panic!("DiskStore::new failed: {}", e)),
-            log_stack: Vec::new(),
+            logs: Vec::new(),
         }
     }
-}
-
-// ============================================================
-// handle event
-// ============================================================
-
-pub fn handle(state: &mut CanvasState, ev: &CanvasEvent, handler: &mut Coc7th) -> Vec<CanvasCmd> {
-    match (&ev.event_type, state.dialog) {
-        (EventType::Click,   Dialog::None)  => todo!("normal click"),
-        (EventType::Click,   Dialog::Modal) => todo!("dialog click"),
-        (EventType::KeyDown, _)             => todo!("keydown"),
-        (EventType::Input,   _)             => todo!("input"),
-        (EventType::Change,  _)             => todo!("change"),
-        (EventType::Blur,    _)             => todo!("blur"),
-        (EventType::Submit,  _)             => todo!("submit"),
-        _                                   => vec![],
+    pub fn initial_draw() -> Vec<Command> {
+        todo!()
+    }
+    pub fn process(&mut self, event: &CanvasEvent) -> Vec<Command> {
+        match (&event.event_type, self.dialog) {
+            (EventType::Click,   Dialog::None)  => todo!("normal click"),
+            (EventType::Click,   Dialog::Modal) => todo!("dialog click"),
+            (EventType::KeyDown, _)             => todo!("keydown"),
+            (EventType::Input,   _)             => todo!("input"),
+            (EventType::Change,  _)             => todo!("change"),
+            (EventType::Blur,    _)             => todo!("blur"),
+            (EventType::Submit,  _)             => todo!("submit"),
+            _                                   => vec![],
+        }
+    }
+    pub fn process_gesture(gesture: Gesture) -> Vec<Command> {
+        todo!()
     }
 }
 
 // ============================================================
-// map item to Id
+// map item to dom::Id
 // ============================================================
 
 fn map_id(item: &Character, parent: &Id, n: u32) -> Vec<Id> {
     match parent {
         p if p == &Id::new(&[(Tag::Main, None)]) => {
             let section_n = match item {
-                Character::Profile        => 1,
-                Character::Characteristic => 2,
-                Character::Skill          => 3,
-                Character::Possession     => todo!(),
-                Character::Backstory      => todo!(),
-                Character::Memo           => todo!(),
-                Character::OtherAttribute => todo!(),
+                Character::Profile        => 2,
+                Character::Characteristic => 3,
+                Character::OtherAttribute => 4,
+                Character::Skill          => 5,
+                Character::Possession     => 6,
+                Character::Backstory      => 7,
+                Character::Memo           => 8,
             };
             let base: Vec<(Tag, Option<u32>)> = vec![
                 (Tag::Main,    None),
@@ -179,53 +146,53 @@ fn map_id(item: &Character, parent: &Id, n: u32) -> Vec<Id> {
 // ============================================================
 
 // Characteristic: input-1(初期値) + input-2(変動値) + input-3(補正値) → span(合計) をリアルタイム更新
-pub fn on_characteristic_input(_row: usize, base: i32, delta: i32, bonus: i32) -> Vec<CanvasCmd> {
+pub fn on_characteristic_input(_row: usize, base: i32, delta: i32, bonus: i32) -> Vec<Command> {
     let _total = (base + delta + bonus).max(1);
     todo!()
 }
 
 // Skill: 専門分野(td-1_input)が変わったら th のテキストを更新する
-pub fn on_skill_spec_input(_row: usize, _skill: &Skill, _spec: &str) -> Vec<CanvasCmd> {
+pub fn on_skill_spec_input(_row: usize, _skill: &Skill, _spec: &str) -> Vec<Command> {
     todo!()
 }
 
 // Skill: 職業pt(input-1) か 興味pt(input-2) か 補正値(input-3) が変わったら合計spanを更新する
-pub fn on_skill_input(_row: usize, _base: u16, _occ_pt: u16, _int_pt: u16, _bonus: i32) -> Vec<CanvasCmd> {
+pub fn on_skill_input(_row: usize, _base: u16, _occ_pt: u16, _int_pt: u16, _bonus: i32) -> Vec<Command> {
     todo!()
 }
 
 // fieldset-2 の1行: ロール値をキャッシュに書き込み、input-1とspanをSetValue/SetTextで更新
-pub fn roll_characteristic(_row: usize, _char_data: &mut DataStruct) -> Vec<CanvasCmd> {
+pub fn roll_characteristic(_row: usize, _char_data: &mut DataStruct) -> Vec<Command> {
     todo!()
 }
 
 // legend button: 全Characteristicを一括ロール
-pub fn roll_all_characteristics(_char_data: &mut DataStruct) -> Vec<CanvasCmd> {
+pub fn roll_all_characteristics(_char_data: &mut DataStruct) -> Vec<Command> {
     todo!()
 }
 
-pub fn restore_modal(ds: &DataStruct) -> Vec<CanvasCmd> {
+pub fn restore_modal(ds: &DataStruct) -> Vec<Command> {
     let mut commands = Vec::new();
     // todo
     commands
 }
 
-pub fn open_modal() -> Vec<CanvasCmd> {
+pub fn open_modal() -> Vec<Command> {
     let mut commands = Vec::new();
     // todo
     commands
 }
 
-pub fn update_character_view(ds: &DataStruct) -> Vec<CanvasCmd> {
+pub fn update_character_view(ds: &DataStruct) -> Vec<Command> {
     let mut commands = Vec::new();
     commands
 }
 
-pub fn update_select(_list: &[(u32, String)], _selected_id: Option<u32>) -> Vec<CanvasCmd> {
+pub fn update_select(_list: &[(u32, String)], _selected_id: Option<u32>) -> Vec<Command> {
     todo!()
 }
 
-pub fn reset_modal() -> Vec<CanvasCmd> {
+pub fn reset_modal() -> Vec<Command> {
     let mut commands = Vec::new();
     commands
 }
@@ -264,17 +231,17 @@ impl Toast {
         }
     }
 
-    pub fn commands(&self, state: &mut CanvasState) -> Vec<CanvasCmd> {
+    pub fn commands(&self) -> Vec<Command> {
         let n = if state.last_toast == u2::new(1) { u2::new(2) } else { u2::new(1) };
         state.last_toast = n;
         let article = Id::new(&[(Tag::Output, None), (Tag::Article, Some(n.value() as u32))]);
         let span    = Id::new(&[(Tag::Output, None), (Tag::Article, Some(n.value() as u32)), (Tag::Span, None)]);
         let p       = Id::new(&[(Tag::Output, None), (Tag::Article, Some(n.value() as u32)), (Tag::P,    None)]);
         vec![
-            CanvasCmd::new(Operation::SetText,  &span.encode(),    None, Some(self.icon())),
-            CanvasCmd::new(Operation::SetText,  &p.encode(),       None, Some(self.label(state.lang))),
-            CanvasCmd::new(Operation::AddClass, &article.encode(), None, Some(self.css_class())),
-            CanvasCmd::new(Operation::JsClass,  &article.encode(), None, Some("show")),
+            Command::new(Operation::SetText,  &span.encode(),    None, Some(self.icon())),
+            Command::new(Operation::SetText,  &p.encode(),       None, Some(self.label(state.lang))),
+            Command::new(Operation::AddClass, &article.encode(), None, Some(self.css_class())),
+            Command::new(Operation::JsClass,  &article.encode(), None, Some("show")),
         ]
     }
 }

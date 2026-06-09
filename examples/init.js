@@ -34,7 +34,7 @@ function start() {
 // receive and excute canvas commands
 // ============================================================
 
-// CanvasCmd: { operation: u8, id: string, attribute?: string, value?: string }
+// Command: { operation: u8, id: string, attribute?: string, value?: string }
 function execute({ operation, id, attribute, value }) {
   const el = document.getElementById(id);
   if (!el) return;

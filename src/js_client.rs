@@ -37,7 +37,7 @@ impl Operation {
 }
 
 #[derive(Serialize)]
-pub struct CanvasCmd {
+pub struct Command {
     operation: u8,
     id:        String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -46,7 +46,7 @@ pub struct CanvasCmd {
     value:     Option<String>,
 }
 
-impl CanvasCmd {
+impl Command {
     pub fn new(operation: Operation, id: &str, attribute: Option<&str>, value: Option<&str>) -> Self {
         Self {
             operation: operation.as_u8(),
@@ -293,10 +293,9 @@ pub mod dom {
         Head,
         Main,
         Drawer,   // <dialog id="drawer">
-        Modal,    // <dialog id="modal">
+        Modal,    // <dialog id="modal">, <dialog id="main_modal">
         Form,
         Header,
-        Div,
         Fieldset,
         Footer,
         Section,
@@ -306,8 +305,7 @@ pub mod dom {
         Button,
         Input,
         Select,
-        H4, H5,
-        Legend,
+        H1, H2, H3,
         P,
         Table, Thead, Tbody, Tr, Th, Td,
         Output, Article,
@@ -323,7 +321,6 @@ pub mod dom {
                 "modal"    => Self::Modal,
                 "form"     => Self::Form,
                 "header"   => Self::Header,
-                "div"      => Self::Div,
                 "fieldset" => Self::Fieldset,
                 "footer"   => Self::Footer,
                 "section"  => Self::Section,
@@ -335,8 +332,9 @@ pub mod dom {
                 "button"   => Self::Button,
                 "input"    => Self::Input,
                 "select"   => Self::Select,
-                "h4"       => Self::H4,
-                "h5"       => Self::H5,
+                "h1"       => Self::H1
+                "h2"       => Self::H2,
+                "h3"       => Self::H3,
                 "legend"   => Self::Legend,
                 "p"        => Self::P,
                 "table"    => Self::Table,
@@ -359,7 +357,6 @@ pub mod dom {
                 Self::Modal    => "modal",
                 Self::Form     => "form",
                 Self::Header   => "header",
-                Self::Div      => "div",
                 Self::Fieldset => "fieldset",
                 Self::Footer   => "footer",
                 Self::Section  => "section",
@@ -371,9 +368,9 @@ pub mod dom {
                 Self::Button   => "button",
                 Self::Input    => "input",
                 Self::Select   => "select",
-                Self::H4       => "h4",
-                Self::H5       => "h5",
-                Self::Legend   => "legend",
+                Self::H1       => "h1"
+                Self::H2       => "h2",
+                Self::H3       => "h3",
                 Self::P        => "p",
                 Self::Table    => "table",
                 Self::Thead    => "thead",

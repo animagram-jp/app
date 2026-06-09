@@ -1,8 +1,8 @@
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsValue;
 use serde_wasm_bindgen::to_value;
-use crate::js_client::{CanvasCmd, get_js_str, get_js_f64, EventType, Device, detect_device, Gesture, PointerState, detect_gesture, dom, CanvasEvent};
-use crate::event::{CanvasState, Coc7th};
+use crate::js_client::{Command, get_js_str, get_js_f64, EventType, Device, detect_device, Gesture, PointerState, detect_gesture, dom, CanvasEvent};
+use crate::event::Coc7th;
 
 // ============================================================
 // Event
@@ -22,10 +22,9 @@ pub enum Event {
 pub struct App {
     device:        Device,
     pointer_state: PointerState,
-    canvas_state:  CanvasState,
-    handler:       Coc7th,
     events:        Vec<Event>,
-    commands:      Vec<CanvasCmd>,
+    commands:      Vec<Command>,
+    handler:       Coc7th,
 }
 
 #[wasm_bindgen]
@@ -36,10 +35,9 @@ impl App {
         let mut app = App {
             device,
             pointer_state: PointerState::default(),
-            canvas_state:  CanvasState::new(),
-            handler:       Coc7th::ready().await,
             events:        Vec::new(),
-            commands:          Vec::new(),
+            commands:      Vec::new(),
+            handler:       Coc7th::ready().await,
         };
 
         app.events.push(Event::Ready);
@@ -69,16 +67,16 @@ impl App {
         out
     }
 
-    fn dispatch(&mut self, event: Event) -> Vec<CanvasCmd> {
+    fn dispatch(&mut self, event: Event) -> Vec<Command> {
         match event {
             Event::Ready => {
-                // event::initial_draw(&mut self.canvas_state, &self.handler)
+                self.handler.initial_draw()
             }
             Event::Canvas(canvas_event) => {
-                event::handle(&mut self.canvas_state, &canvas_event, &mut self.handler)
+                self.handler.process(canvas_event)
             }
             Event::Gesture(gesture) => {
-                event::handle_gesture(gesture, &mut self.canvas_state, &mut self.handler)
+                self.handler.process_gesture(gesture)
             }
         }
     }
