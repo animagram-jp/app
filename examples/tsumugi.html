@@ -23,7 +23,7 @@
         <hgroup id="header_hgroup">
             <h1 class="dads-h" dads-size="32">CoC7th</h1>
             <p>Call of Cthulhu 7th edition playing engine</p></hgroup>
-        <ul id="header_ul-1" popover="auto" role="listbox" aria-labelledby="header_button-1" class="list-box">
+        <ul id="header_ul-1" popover="auto" role="listbox" class="list-box" aria-labelledby="header_button-1">
             <li role="presentation">Select Language</li>
             <li role="option">
                 <button lang="en" value="1">English (US)</button></li>
@@ -31,7 +31,7 @@
                 <button lang="ja" value="2">日本語</button></li></ul>
         <button id="header_button-1" type="button" popovertarget="header_ul-1" aria-haspopup="listbox" aria-expanded="false" aria-controls="header_ul-1" class="list-box-trigger">
             <span>🌐</span>日本語</button>
-        <ul id="header_ul-2" popover="auto" role="listbox" aria-labelledby="main_header_button" class="list-box">
+        <ul id="header_ul-2" popover="auto" role="listbox" class="list-box" aria-labelledby="header_button-2">
             <li role="presentation">Select Character</li>
             <li role="option">
                 <button value="1">死生 紡</button></li>
@@ -43,7 +43,7 @@
                 <button value="4"></button></li></ul>
         <button id="header_button-2" type="button" popovertarget="header_ul-2" aria-haspopup="listbox" aria-expanded="false" aria-controls="header_ul-2" class="list-box-trigger">
             <span>✓</span>死生 紡</button>
-        <button id="header_button-3" aria-label="switch modal" class="dads-button" dads-type="outline">✏️</button></header>
+        <button id="header_button-3" type="button" aria-label="switch modal" class="dads-button" dads-type="outline">✏️</button></header>
     <main>
         <h2 id="main_h2-1" class="dads-h" dads-size="24">キャラクターシート</h2>
         <section id="main_section-1" aria-label="Character View" aria-labelledby="main_h2-1">
@@ -61,10 +61,10 @@
 
             <h3 id="main_section-1_h3-1" class="dads-h" dads-size="18">プロフィール</h3>
             <section id="main_section-1_section-2" aria-labelledby="main_section-1_h3-1">
-                <span>
+                <span id="main_section-1_section-2_span-1">
                     <span>名前</span>
                     <span id="main_section-1_section-2_span-1_span-2">死生 紡（しせい つむぎ）</span></span>
-                <span>
+                <span id="main_section-1_section-2_span-2">
                     <span>出身</span>
                     <span id="main_section-1_section-2_span-2_span-2">日本</span></span>
                 <span>
@@ -378,7 +378,7 @@
                         <span>1枚。ジップロックに封入。申し訳程度の職質対策。</span>
                     </span></article></section>
 
-            <h3 id="main_section-1_h3-5" class="dads-h" dads-size="18">バックストーリー</h3>
+            <h3 id="main_section-1_h3-6" class="dads-h" dads-size="18">バックストーリー</h3>
             <section id="main_section-1_section-7" aria-label="Backstory">
                 <dl class="dads-description-list">
                     <dt>外見・人物像</dt>
@@ -415,8 +415,8 @@
                     <dt>異形との遭遇</dt>
                     <dd>ツァトゥグアの無形の落とし子、グラーキの従者、深きもの、深きものの交雑種、地獄の植物、ティンダロスの交雑種、聖なる光、食屍鬼、シャッガイからの昆虫、外なる神の従者、ショゴス・ロード、黒い仔山羊、飛行するポリプ、アトラック＝ナチャの娘、ダゴン、ハイドラ、ノフ＝ケー、クトーニアン、駆り立てる恐怖、夜鬼、ショゴス、チャコタ、イスの偉大なる種族、すべてのサメの父、ズーグ、ガグ、ムーン＝ビースト、ビヤーキー、レンの蜘蛛、異次元からの来訪者（デシュ）、吸血鬼、蛇人間、狼人間、ノーデンス、ヒュプノス、バルグの火虫、スナウター、ジウルーン、夜なるもの（SAN-5）、妖精、ゴブリン、ログビス、チョウドラゴン、ニョグダの落とし子、クアチル・ウタウス（SAN-5）、バロンサムディ（SAN-3）、ルリム＝シャイコース（SAN-4）、ザイクロトルからの怪物、イェーキュブの住民、ジュク＝シャブ、シャンタク鳥（SAN-5）</dd></dl></section>
 
-            <h3 id="main_section-1_h3-8" class="dads-h" dads-size="18">メモ</h3>
-            <section id="main_section-1_section-8" aria-label="Memo" aria-labelledby="main_section-1_h3-8">
+            <h3 id="main_section-1_h3-7" class="dads-h" dads-size="18">メモ</h3>
+            <section id="main_section-1_section-8" aria-label="Memo" aria-labelledby="main_section-1_h3-7">
                 <dl class="dads-description-list">
                     <dt>性格</dt>
                     <dd>のほほんとした両親は彼に一切の期待を持たず、とにかく受容の心で育てた
@@ -442,8 +442,8 @@
 
         <!-- ===== Overlay dialog ===== -->
         <dialog id="main_modal" aria-label="overlay">
-            <h3 id="main_dialog_h3" class="dads-h" dads-size="18">近接戦闘（格闘）</h3>
-            <ul role="menu" id="main_dialog_ul" class="list-box">
+            <h3 id="main_modal_h3" class="dads-h" dads-size="18">近接戦闘（格闘）</h3>
+            <ul id="main_modal_ul" role="menu" class="list-box">
                 <li role="menuitem" tabindex="0">ロール</li>
                 <li role="menuitem" tabindex="0">ハードロール（半分）</li>
                 <li role="menuitem" tabindex="0">イクストリームロール（1/5）</li>
@@ -455,8 +455,8 @@
                 <li role="menuitem" tabindex="0" class="hidden"></li>
                 <li role="menuitem" tabindex="0" class="hidden"></li></ul>
             <form id="main_modal_form">
-                <input type="text" inputmode="numeric" id="main_dialog_form_input" value="90" class="dads-input-number">
-                <button id="main_dialog_form_button-3" class="dads-button">→</button></form>
+                <input id="main_modal_form_input" type="text" inputmode="numeric" value="90" class="dads-input-number">
+                <button id="main_modal_form_button" type="button" class="dads-button">→</button></form>
         </dialog></main>
 
     <dialog id="drawer" class="hidden"></dialog>
@@ -464,7 +464,7 @@
     <!-- ===== Character Edit Modal ===== -->
     <dialog id="modal" aria-label="Character Edit Modal">
         <header id="modal_header">
-            <button id="modal_header_button-1" type="button" dads-type="outline" class="dads-button dice">🎲</button>
+            <button id="modal_header_button-1" type="button" class="dads-button dice" dads-type="outline">🎲</button>
             <button id="modal_header_button-2" type="submit" form="form" class="dads-button" dads-type="fill">✓</button>
         </header>
 
@@ -496,7 +496,7 @@
                 <span>年齢</span>
             <span class="dads-input-number">
                 <button type="button" aria-label="減らす">−</button>
-                <input id="modal_fieldset-1_input-age" type="text" inputmode="numeric" min="15" max="99" name="modal_fieldset-1_input-age" placeholder="20">
+                <input id="modal_fieldset-1_label-8_span_input" type="text" inputmode="numeric" min="15" max="99" name="modal_fieldset-1_label-8_span_input" placeholder="20">
                 <button type="button" aria-label="増やす">+</button>
             </span></fieldset>
 
