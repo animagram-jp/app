@@ -458,8 +458,11 @@
                     <button></button></li>
                 <li role="option" class="hidden">
                     <button></button></li></ul>
-            <input id="main_modal_form_input" type="text" inputmode="numeric" value="90" form="main_form" class="dads-input-number">
-            <button id="main_modal_form_button" type="submit" form="main_form" class="dads-button">→</button></dialog></main>
+            <span id="main_modal_span" class="dads-input-number">
+                <button id="main_modal_span_button-1" type="button" aria-label="減らす">−</button>
+                <input id="main_modal_span_input" type="text" inputmode="numeric" value="90" form="main_form">
+                <button id="main_modal_span_button-2" type="button" aria-label="増やす">+</button></span>
+            <button id="main_modal_button" type="submit" form="main_form" class="dads-button">→</button></dialog></main>
 
     <dialog id="drawer" class="hidden"></dialog>
 
