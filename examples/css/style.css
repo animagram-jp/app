@@ -240,13 +240,18 @@ main>section,
     height: 0;
 }
 
-#modal>header {
+#modal_header {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
     padding: 0.5rem;
-    padding-bottom: 0;
-    text-align: right;
+    background-color: var(--color-body-background);
 }
 
-#modal_header_button {
+#modal_header_button-2 {
     --button-color: var(--color-primitive-green-600);
     --button-hover-color: var(--color-primitive-green-700);
     --button-active-color: var(--color-primitive-green-900);
@@ -256,7 +261,7 @@ main>section,
     color: transparent;
 }
 
-#modal_header_button::before {
+#modal_header_button-2::before {
     content: "✓";
     position: absolute;
     inset: 0;
@@ -300,7 +305,7 @@ main>section,
     width: 4rem;
 }
 
-#modal_fieldset-2_button {
+#modal_header_button-1 {
     padding-left: 1rem;
 }
 
@@ -471,7 +476,7 @@ main>section,
         padding: 0 0.5rem;
     }
 
-    #modal_fieldset-2_button {
+    #modal_header_button-1 {
         display: block;
     }
 

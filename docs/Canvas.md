@@ -48,4 +48,5 @@ html:
 
 ## 注意事項
 
-idはアプリの操作用識別子として予約されているため、スタイリングに利用しない。
+idはbody以降の親tagと、同層同tagの連番から機械的に決定する。tagでの記述順は、
+tag名, id, html standard attribute, aria-label, class, class unique attribute。

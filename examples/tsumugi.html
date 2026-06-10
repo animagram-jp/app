@@ -463,9 +463,10 @@
 
     <!-- ===== Character Edit Modal ===== -->
     <dialog id="modal" aria-label="Character Edit Modal">
-        <header>
-            <button id="modal_header_button" type="submit" form="form" class="dads-button" dads-type="fill">✓</button></header>
-
+        <header id="modal_header">
+            <button id="modal_header_button-1" type="button" dads-type="outline" class="dads-button dice">🎲</button>
+            <button id="modal_header_button-2" type="submit" form="form" class="dads-button" dads-type="fill">✓</button>
+        </header>
 
         <!-- fieldset-1: プロフィール -->
         <h3 id="modal_h3-1" class="dads-h" dads-size="18">プロフィール</h3>
@@ -502,7 +503,6 @@
         <!-- fieldset-2: 能力値 (label / 初期値 / 変動値 / 修正値 / 合計) -->
         <h3 id="modal_h3-2" class="dads-h" dads-size="18">能力値</h3>
         <fieldset id="modal_fieldset-2" aria-labelledby="modal_h3-2">
-            <button id="modal_fieldset-2_button" type="button" dads-type="outline" class="dads-button dice">🎲</button>
             <table id="modal_fieldset-2_table-1" class="dads-table" dads-type="dense" dads-stripe>
                 <thead>
                     <tr>
