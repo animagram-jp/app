@@ -304,7 +304,7 @@ pub struct DiceRoll {
 
 // 1回の1d100を2技能値に対してそれぞれ判定する
 pub fn combined_roll(target: (u32, u32)) -> RollResult {
-    let total = percent_roll(0);
+    let (total, _) = percent_roll(0);
     let judges = vec![
         RollJudge::judge(total, target.0, None),
         RollJudge::judge(total, target.1, None),

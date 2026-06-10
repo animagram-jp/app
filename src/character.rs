@@ -334,8 +334,8 @@ impl Characteristic {
         // SIZ / INT / EDU は (2d6+6)×5、それ以外は 3d6×5
         match self {
             Self::Size | Self::Intelligence | Self::Education =>
-                dice::Roll((2, 6, 6)) as u16 * 5,
-            _ => dice::Roll((3, 6, 0)) as u16 * 5,
+                dice::roll(&[(2, 6, 6)]) as u16 * 5,
+            _ => dice::roll(&[(3, 6, 0)]) as u16 * 5,
         }
     }
 }

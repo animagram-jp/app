@@ -12,6 +12,7 @@ use crate::character::{
 // Event Handler
 // ============================================================
 
+#[derive(Clone, Copy)]
 pub enum Dialog {
     None,
     Modal,  // #modal
@@ -46,7 +47,7 @@ impl Coc7th {
         }
     }
     pub fn initial_draw() -> Vec<Command> {
-        todo!()
+        Vec::new()
     }
     pub fn process(&mut self, event: &CanvasEvent) -> Vec<Command> {
         match (&event.event_type, self.dialog) {
@@ -83,7 +84,6 @@ fn map_id(item: &Character, parent: &Id, n: u32) -> Vec<Id> {
             };
             let base: Vec<(Tag, Option<u32>)> = vec![
                 (Tag::Main,    None),
-                (Tag::Div,     None),
                 (Tag::Section, Some(1)),
                 (Tag::Section, Some(section_n)),
                 (Tag::Span,    Some(n)),
@@ -228,7 +228,7 @@ impl Toast {
         }
     }
 
-    pub fn commands(&self) -> Vec<Command> {
+    pub fn commands(&self, state: &mut Coc7th) -> Vec<Command> {
         let n = if state.last_toast == u2::new(1) { u2::new(2) } else { u2::new(1) };
         state.last_toast = n;
         let article = Id::new(&[(Tag::Output, None), (Tag::Article, Some(n.value() as u32))]);
