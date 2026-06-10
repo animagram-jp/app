@@ -109,10 +109,9 @@
   height: var(--dads-size-lg-height);
 }
 
-.dads-input-number input[type="number"] {
+.dads-input-number input[type="text"] {
   appearance: none;
   -webkit-appearance: none;
-  -moz-appearance: textfield;
   box-sizing: border-box;
   border: none;
   background: transparent;
@@ -125,7 +124,7 @@
   text-align: center;
 }
 
-.dads-input-number input[type="number"]:focus-visible {
+.dads-input-number input[type="text"]:focus-visible {
   outline: none;
 }
 
@@ -146,7 +145,16 @@
   background-color: var(--color-neutral-white);
   color: var(--color-neutral-solid-gray-900);
   cursor: pointer;
-  font-size: .75rem;
+  font-size: .875rem;
+  font-weight: bold;
+}
+
+.dads-input-number[dads-size="sm"] button {
+  width: 1.5rem;
+}
+
+.dads-input-number[dads-size="lg"] button {
+  width: 2.5rem;
 }
 
 .dads-input-number button:first-child {
