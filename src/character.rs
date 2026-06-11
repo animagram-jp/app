@@ -70,13 +70,13 @@ impl Character {
             (Self::Characteristic, Lang::Ja) => "能力値",
             (Self::OtherAttribute, Lang::En) => "Other Attributes",
             (Self::OtherAttribute, Lang::Ja) => "ほかの属性",
-            (Self::Skill,          Lang::En) => "Skill",
+            (Self::Skill,          Lang::En) => "Skills",
             (Self::Skill,          Lang::Ja) => "技能",
-            (Self::Possession,      Lang::En) => "Possession",
-            (Self::Possession,      Lang::Ja) => "所持品",
+            (Self::Possession,      Lang::En) => "Gear & Possessions",
+            (Self::Possession,      Lang::Ja) => "装備と所持品",
             (Self::Backstory,      Lang::En) => "Backstory",
             (Self::Backstory,      Lang::Ja) => "バックストーリー",
-            (Self::Memo,           Lang::En) => "My Story",
+            (Self::Memo,           Lang::En) => "Memo",
             (Self::Memo,           Lang::Ja) => "メモ",
         }
     }
@@ -342,7 +342,7 @@ impl Characteristic {
 
 
 // ============================================================
-// --- その他の属性 (Other Attribute) ---
+// --- ほかの属性 (Other Attribute) ---
 // ============================================================
 
 pub enum OtherAttribute {
