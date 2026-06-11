@@ -31,6 +31,7 @@ log = { version = "0.4", default-features = false, optional = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { version = "0.4", features = ["wasm_js"] }
+dlmalloc  = { version = "0.2", features = ["global"] }
 
 [features]
 default    = []

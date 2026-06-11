@@ -16,8 +16,10 @@ pub mod event;
 // Global Allocator
 // ============================================================
 
+#[cfg(target_arch = "wasm32")]
 use dlmalloc::GlobalDlmalloc;
 
+#[cfg(target_arch = "wasm32")]
 #[global_allocator]
 static ALLOCATOR: GlobalDlmalloc = GlobalDlmalloc;
 

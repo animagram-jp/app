@@ -51,7 +51,19 @@ impl Coc7th {
     }
     pub fn process(&mut self, event: &CanvasEvent) -> Vec<Command> {
         match (&event.event_type, self.dialog) {
-            (EventType::Click,   Dialog::None)  => todo!("normal click"),
+            (EventType::Click, Dialog::None) => {
+                match event.id.last_tag() {
+                    // header_button-3: モーダルを開く
+                    Some(Tag::Button) if event.id == Id::new(&[
+                        (Tag::Header, None),
+                        (Tag::Button, Some(3)),
+                    ]) => {
+                        self.dialog = Dialog::Modal;
+                        open_modal()
+                    }
+                    _ => vec![],
+                }
+            }
             (EventType::Click,   Dialog::Modal) => todo!("dialog click"),
             (EventType::KeyDown, _)             => todo!("keydown"),
             (EventType::Input,   _)             => todo!("input"),
@@ -98,10 +110,10 @@ fn map_id(item: &Character, parent: &Id, n: u32) -> Vec<Id> {
                 Character::Profile        => 1,
                 Character::Characteristic => 2,
                 Character::Skill          => 3,
-                Character::OtherAttribute => 4,
-                Character::Possession     => 5,
-                Character::Backstory      => 6,
-                Character::Memo           => 7,
+                Character::Backstory      => 4,
+                Character::Memo           => 5,
+                Character::OtherAttribute => todo!("OtherAttributeのfieldsetはmodalに未実装"),
+                Character::Possession     => todo!("Possessionのfieldsetはmodalに未実装"),
             };
             let tr: Vec<(Tag, Option<u32>)> = vec![
                 (Tag::Modal,    None),
@@ -147,8 +159,15 @@ fn map_id(item: &Character, parent: &Id, n: u32) -> Vec<Id> {
 
 pub fn open_modal() -> Vec<Command> {
     let mut commands = Vec::new();
-    // todo
-    commands
+
+    // #modal を showModal() で開く
+    let modal = Id::new(&[(Tag::Modal, None)]);
+    commands.push(Command::new(Operation::OpenModal, &modal.encode(), None, None));
+
+    // todo!: キャラクターデータをmodalの各inputへ注入するCommandの生成が必要。
+    // DataStruct から Profile / Characteristic / Skill 等の値を取り出し、
+    // map_id() で対応する input の Id を引いて Operation::SetValue で注入する。
+    todo!()
 }
 
 // Characteristic: input-1(初期値) + input-2(変動値) + input-3(補正値) → span(合計) をリアルタイム更新
