@@ -22,7 +22,7 @@ wasm-pack build --target web --out-dir examples/app --out-name app
 
 - OPFS files are in
    - `C:\Users\<User>\AppData\Roaming\Mozilla\Firefox\Profiles\<Profile>\storage\default\`.
-   - `C:\Users\<User>\AppData\Local\Google\Chrome\User Data\Default\Storage\ext`
+   - `C:\Users\<User>\AppData\Local\Google\Chrome\User Data\Default\Storage\ext\`
 
 ---
 
