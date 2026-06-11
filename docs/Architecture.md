@@ -34,7 +34,7 @@ wasm-pack build --target web --out-dir examples/app --out-name app
 └──┬───┘
    ▼
 ┌────────────────────────┐
-│ terminal (browser)     │
+│ browser                │
 │┌──────────────────────┐│
 ││ canvas (html,css,js) ││
 │└──────────────────────┘│
@@ -54,7 +54,7 @@ wasm-pack build --target web --out-dir examples/app --out-name app
  └──────┬──────┘  │ - background data sync
         ▼         ▼
 ┌────────────────────────┐
-│ fixture (linux)        │
+│ server                 │
 │┌──────────────────────┐│
 ││ nginx (http)         ││
 │└──────────────────────┘│
