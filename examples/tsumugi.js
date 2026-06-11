@@ -6,8 +6,5 @@ openBtn.addEventListener('click', () => {
 });
 
 modal.addEventListener('click', (e) => {
-  const rect = modal.getBoundingClientRect();
-  if (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom) {
-    modal.close();
-  }
+  if (e.target === modal) modal.close();
 });
