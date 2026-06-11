@@ -89,6 +89,9 @@ wasm-pack build --target web --out-dir examples/app --out-name app
 - 開発者向けのコメントが不要になるように、全ての要素にaria-labelを付ける:
   - h1など1body1つのタグ・並列数の多い要素は省略可。
   - 命名は「その要素がアプリドメイン上何であるか」を単一の説明で表す。
+- formatting rule:
+    - Do not insert a line break before a closing tag.
+    - Insert a line break before the start of every tag.
 
 ```yaml
 # htmlの基本構造
