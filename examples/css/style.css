@@ -34,24 +34,6 @@ dialog table {
     table-layout: fixed;
 }
 
-dialog:modal {
-    position-anchor: --header;
-    top: calc(anchor(--header bottom) + 0.5rem);
-    left: 0;
-    margin: 0 auto;
-    height: calc(100dvh - 112px - 0.5rem);
-    width: 100%;
-    max-width: 60rem;
-    margin-top: 0;
-    margin-bottom: 0;
-    background-color: var(--color-body-background);
-    padding: 0;
-    padding-bottom: 1rem;
-    overflow: auto;
-    border: 1px solid currentcolor;
-    border-radius: calc(8 / 16 * 1rem);
-}
-
 .dads-h {
     padding-top: 0.5rem;
 }
@@ -180,10 +162,6 @@ main>section,
     padding: 0.5rem;
 }
 
-#modal>fieldset {
-    padding-left: 0;
-}
-
 #main_section-1_section-2,
 #main_section-1_section-3,
 #main_section-1_section-4,
@@ -232,7 +210,7 @@ main>section,
     gap: 0.3rem;
 }
 
-#main_overlay_focus {
+#main_modal {
     position: absolute;
     opacity: 0;
     pointer-events: none;
@@ -240,15 +218,41 @@ main>section,
     height: 0;
 }
 
-#modal_header {
-    position: sticky;
-    top: 0;
-    z-index: 1;
+#modal {
+    position: relative;
     display: flex;
-    justify-content: flex-end;
-    gap: 0.5rem;
-    padding: 0.5rem;
+    position-anchor: --header;
+    top: calc(anchor(--header bottom) + 0.5rem);
+    left: 0;
+    margin: 0 auto;
+    height: calc(100dvh - 112px - 0.5rem);
+    width: 100%;
+    max-width: 60rem;
+    margin-top: 0;
+    margin-bottom: 0;
     background-color: var(--color-body-background);
+    padding: 0;
+    padding-bottom: 1rem;
+    overflow: visible;
+    border: 1px solid currentcolor;
+    border-radius: calc(8 / 16 * 1rem);
+}
+
+@media (width >=40rem) {
+    #modal {
+        padding: 0 0.5rem;
+    }
+}
+
+#modal_header {
+    position: absolute;
+    top: -4rem;
+    right: 0.5rem;
+    background: transparent;
+}
+
+#modal_header button {
+    display: inline-block;
 }
 
 #modal_header_button-2 {
@@ -279,6 +283,15 @@ main>section,
     line-height: 1;
 }
 
+#modal_section {
+    overflow: auto;
+    flex: 1;
+}
+
+#modal fieldset {
+    padding-left: 0;
+}
+
 #modal_fieldset-1 {
     display: flex;
     flex-wrap: wrap;
@@ -300,18 +313,23 @@ main>section,
     width: 17rem;
 }
 
+#modal_fieldset-2 table {
+    margin-top: 0.5rem;
+}
+
+@media (width >=40rem) {
+    #modal_fieldset-2_table-1,
+    #modal_fieldset-2_table-2 {
+        display: inline-table;
+        width: calc(50% - 0.5rem);
+    }
+}
+
 #modal_fieldset-2 input[type="number"],
 #modal_fieldset-3 input[type="number"] {
     width: 4rem;
 }
 
-#modal_header_button-1 {
-    padding-left: 1rem;
-}
-
-#modal_fieldset-2 table {
-    margin-top: 0.5rem;
-}
 
 #modal_fieldset-2 th,
 #modal_fieldset-3 th,
@@ -468,21 +486,4 @@ main>section,
 #modal_fieldset-4 textarea {
     display: inline-block;
     vertical-align: top;
-}
-
-/* ───── media query (wider window) ───── */
-@media (width >=40rem) {
-    dialog:modal {
-        padding: 0 0.5rem;
-    }
-
-    #modal_header_button-1 {
-        display: block;
-    }
-
-    #modal_fieldset-2_table-1,
-    #modal_fieldset-2_table-2 {
-        display: inline-block;
-        width: 45%;
-    }
 }

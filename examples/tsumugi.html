@@ -4,7 +4,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Call of Cthulhu 7th — 死生 紡</title>
+    <meta name="author" content="Andyou">
+    <meta name="description" content="Gui application system for editing and reading structured data.">
+    <title>CoC7th Playing Engine — 死生 紡</title>
+    <link rel="icon" href="icon.png" type="image/x-icon">
     <link rel="stylesheet" href="css/config.css">
     <link rel="stylesheet" href="css/button.css">
     <link rel="stylesheet" href="css/divider.css">
@@ -462,16 +465,17 @@
                 <button id="main_modal_span_button-1" type="button" aria-label="減らす">−</button>
                 <input id="main_modal_span_input" type="text" inputmode="numeric" value="90" form="main_form">
                 <button id="main_modal_span_button-2" type="button" aria-label="増やす">+</button></span>
-            <button id="main_modal_button" type="submit" form="main_form" class="dads-button">→</button></dialog></main>
+            <button id="main_modal_button" type="submit" form="main_form" class="dads-button">→</button></dialog>
+        <form id="main_form" method="dialog"></form></main>
 
     <dialog id="drawer" class="hidden"></dialog>
 
-    <!-- ===== Character Edit Modal ===== -->
-    <dialog id="modal" aria-label="Character Edit Modal">
+    <dialog id="modal">
         <header id="modal_header">
             <button id="modal_header_button-1" type="button" class="dads-button dice" dads-type="outline">🎲</button>
             <button id="modal_header_button-2" type="submit" form="form" class="dads-button" dads-type="fill">✓</button></header>
 
+        <section id="modal_section">
         <!-- fieldset-1: プロフィール -->
         <h3 id="modal_h3-1" class="dads-h" dads-size="18">プロフィール</h3>
         <fieldset id="modal_fieldset-1" aria-labelledby="modal_h3-1">
@@ -1573,9 +1577,8 @@
             <article>
                 <label id="modal_fieldset-5_label-1" class="dads-field-label">
                     <input id="modal_fieldset-5_label-1_input" type="text" name="modal_fieldset-5_article-1_label_input" class="dads-input" placeholder="タイトル"></label>
-                <textarea id="modal_fieldset-5_textarea-1" name="modal_fieldset-5_textarea-1" class="dads-textarea"></textarea></article></fieldset></dialog>
+                <textarea id="modal_fieldset-5_textarea-1" name="modal_fieldset-5_textarea-1" class="dads-textarea"></textarea></article></fieldset></section></dialog>
 
-    <form id="main_form"></form>
     <form id="form" method="dialog"></form>
     <script src="tsumugi.js"></script>
     <output id="output" aria-label="toast">

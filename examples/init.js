@@ -31,7 +31,7 @@ function start() {
 }
 
 // ============================================================
-// receive and excute canvas commands
+// receive and excute commands
 // ============================================================
 
 // Command: { operation: u8, id: string, attribute?: string, value?: string }
