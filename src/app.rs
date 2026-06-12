@@ -70,13 +70,13 @@ impl App {
     fn dispatch(&mut self, event: Event) -> Vec<Command> {
         match event {
             Event::Ready => {
-                self.handler.initial_draw()
+                Coc7th::initial_draw()
             }
             Event::Canvas(canvas_event) => {
-                self.handler.process(canvas_event)
+                self.handler.process(&canvas_event)
             }
             Event::Gesture(gesture) => {
-                self.handler.process_gesture(gesture)
+                Coc7th::process_gesture(&gesture)
             }
         }
     }

@@ -1335,7 +1335,7 @@ impl Skill {
             Self::History              =>  5,
             Self::Intimidate           => 15,
             Self::Jump                 => 20,
-            Self::LanguageOther(spec)  =>  1,
+            Self::LanguageOther(_)     =>  1,
             Self::LanguageOwn          =>  0, // derived: EDU
             Self::Law                  =>  5,
             Self::LibraryUse           => 20,

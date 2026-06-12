@@ -73,7 +73,7 @@ impl Coc7th {
             _                                   => vec![],
         }
     }
-    pub fn process_gesture(gesture: Gesture) -> Vec<Command> {
+    pub fn process_gesture(gesture: &Gesture) -> Vec<Command> {
         todo!()
     }
 }

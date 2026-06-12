@@ -292,152 +292,154 @@ main>section,
     padding-left: 0;
 }
 
-#modal_fieldset-1 {
+#modal_section_fieldset-1,
+#modal_section_fieldset-3 {
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
     gap: 0.5rem;
 }
 
-#modal_fieldset-1_label-2,
-#modal_fieldset-1_label-6 {
+#modal_section_fieldset-1_label-2,
+#modal_section_fieldset-1_label-6 {
     color: transparent;
 }
 
-#modal_fieldset-1_label-2 input,
-#modal_fieldset-1_label-6 input {
+#modal_section_fieldset-1_label-2 input,
+#modal_section_fieldset-1_label-6 input {
     color: revert;
 }
 
-#modal_fieldset-1 :is(input, .dads-input, .dads-input-number) {
+#modal_section_fieldset-1 :is(input, .dads-input, .dads-input-number),
+#modal_section_fieldset-3 .dads-input {
     width: 17rem;
 }
 
-#modal_fieldset-2 table {
+#modal_section_fieldset-2 table {
     margin-top: 0.5rem;
 }
 
 @media (width >=40rem) {
-    #modal_fieldset-2_table-1,
-    #modal_fieldset-2_table-2 {
+    #modal_section_fieldset-2_table-1,
+    #modal_section_fieldset-2_table-2 {
         display: inline-table;
         width: calc(50% - 0.5rem);
     }
 }
 
-#modal_fieldset-2 input[type="number"],
-#modal_fieldset-3 input[type="number"] {
+#modal_section_fieldset-2 input[type="number"],
+#modal_section_fieldset-3 input[type="number"] {
     width: 4rem;
 }
 
 
-#modal_fieldset-2 th,
-#modal_fieldset-3 th,
-#modal_fieldset-3 td:nth-child(2),
-#modal_fieldset-3 td:nth-child(4),
-#modal_fieldset-3 td:nth-child(5),
-#modal_fieldset-3 td:nth-child(6) {
+#modal_section_fieldset-2 th,
+#modal_section_fieldset-3 th,
+#modal_section_fieldset-3 td:nth-child(2),
+#modal_section_fieldset-3 td:nth-child(4),
+#modal_section_fieldset-3 td:nth-child(5),
+#modal_section_fieldset-3 td:nth-child(6) {
     text-align: center;
 }
 
-#modal_fieldset-2 td:nth-child(2),
-#modal_fieldset-2 td:nth-child(3),
-#modal_fieldset-2 td:nth-child(4),
-#modal_fieldset-2 td:nth-child(5),
-#modal_fieldset-3 td:nth-child(3),
-#modal_fieldset-3 td:nth-child(7) {
+#modal_section_fieldset-2 td:nth-child(2),
+#modal_section_fieldset-2 td:nth-child(3),
+#modal_section_fieldset-2 td:nth-child(4),
+#modal_section_fieldset-2 td:nth-child(5),
+#modal_section_fieldset-3 td:nth-child(3),
+#modal_section_fieldset-3 td:nth-child(7) {
     text-align: right;
 }
 
-#modal_fieldset-2 th:nth-child(5),
-#modal_fieldset-3 th:nth-child(3),
-#modal_fieldset-3 th:nth-child(7),
-#modal_fieldset-2 td:nth-child(5),
-#modal_fieldset-3 td:nth-child(3),
-#modal_fieldset-3 td:nth-child(7) {
+#modal_section_fieldset-2 th:nth-child(5),
+#modal_section_fieldset-3 th:nth-child(3),
+#modal_section_fieldset-3 th:nth-child(7),
+#modal_section_fieldset-2 td:nth-child(5),
+#modal_section_fieldset-3 td:nth-child(3),
+#modal_section_fieldset-3 td:nth-child(7) {
     width: 3rem;
 }
 
 @media (width >=40rem) {
-    #modal_fieldset-2 th:nth-child(4),
-    #modal_fieldset-3 th:nth-child(3),
-    #modal_fieldset-3 th:nth-child(7),
-    #modal_fieldset-2 td:nth-child(4),
-    #modal_fieldset-3 td:nth-child(3),
-    #modal_fieldset-3 td:nth-child(7) {
+    #modal_section_fieldset-2 th:nth-child(4),
+    #modal_section_fieldset-3 th:nth-child(3),
+    #modal_section_fieldset-3 th:nth-child(7),
+    #modal_section_fieldset-2 td:nth-child(4),
+    #modal_section_fieldset-3 td:nth-child(3),
+    #modal_section_fieldset-3 td:nth-child(7) {
         width: 4rem;
     }
 }
 
-#modal_fieldset-3 th:nth-child(2),
-#modal_fieldset-3 td:nth-child(2) {
+#modal_section_fieldset-3 th:nth-child(2),
+#modal_section_fieldset-3 td:nth-child(2) {
     width: 7rem;
 }
 
 @media (width >=40rem) {
-    #modal_fieldset-3 th:nth-child(2),
-    #modal_fieldset-3 td:nth-child(2) {
+    #modal_section_fieldset-3 th:nth-child(2),
+    #modal_section_fieldset-3 td:nth-child(2) {
         width: auto;
     }
 }
 
-#modal_fieldset-3_table_tbody_tr-5_td-1_button {
+#modal_section_fieldset-3_table_tbody_tr-5_td-1_button {
     anchor-name: --modal_fieldset-3_table_tbody_tr-5_td-1_button;
 }
 
-#modal_fieldset-3_table_tbody_tr-5_td-1_ul {
+#modal_section_fieldset-3_table_tbody_tr-5_td-1_ul {
     position-anchor: --modal_fieldset-3_table_tbody_tr-5_td-1_button;
 }
 
-#modal_fieldset-3_table_tbody_tr-6_td-1_button {
+#modal_section_fieldset-3_table_tbody_tr-6_td-1_button {
     anchor-name: --modal_fieldset-3_table_tbody_tr-6_td-1_button;
 }
 
-#modal_fieldset-3_table_tbody_tr-6_td-1_ul {
+#modal_section_fieldset-3_table_tbody_tr-6_td-1_ul {
     position-anchor: --modal_fieldset-3_table_tbody_tr-6_td-1_button;
 }
 
-#modal_fieldset-3_table_tbody_tr-23_td-1_button {
+#modal_section_fieldset-3_table_tbody_tr-23_td-1_button {
     anchor-name: --modal_fieldset-3_table_tbody_tr-23_td-1_button;
 }
 
-#modal_fieldset-3_table_tbody_tr-23_td-1_ul {
+#modal_section_fieldset-3_table_tbody_tr-23_td-1_ul {
     position-anchor: --modal_fieldset-3_table_tbody_tr-23_td-1_button;
 }
 
-#modal_fieldset-3_table_tbody_tr-24_td-1_button {
+#modal_section_fieldset-3_table_tbody_tr-24_td-1_button {
     anchor-name: --modal_fieldset-3_table_tbody_tr-24_td-1_button;
 }
 
-#modal_fieldset-3_table_tbody_tr-24_td-1_ul {
+#modal_section_fieldset-3_table_tbody_tr-24_td-1_ul {
     position-anchor: --modal_fieldset-3_table_tbody_tr-24_td-1_button;
 }
 
-#modal_fieldset-3_table_tbody_tr-25_td-1_button {
+#modal_section_fieldset-3_table_tbody_tr-25_td-1_button {
     anchor-name: --modal_fieldset-3_table_tbody_tr-25_td-1_button;
 }
 
-#modal_fieldset-3_table_tbody_tr-25_td-1_ul {
+#modal_section_fieldset-3_table_tbody_tr-25_td-1_ul {
     position-anchor: --modal_fieldset-3_table_tbody_tr-25_td-1_button;
 }
 
-#modal_fieldset-3_table_tbody_tr-42_td-1_button {
+#modal_section_fieldset-3_table_tbody_tr-42_td-1_button {
     anchor-name: --modal_fieldset-3_table_tbody_tr-42_td-1_button;
 }
 
-#modal_fieldset-3_table_tbody_tr-42_td-1_ul {
+#modal_section_fieldset-3_table_tbody_tr-42_td-1_ul {
     position-anchor: --modal_fieldset-3_table_tbody_tr-42_td-1_button;
 }
 
-#modal_fieldset-3 td:nth-child(2) {
+#modal_section_fieldset-3 td:nth-child(2) {
     font-size: 0;
 }
 
-#modal_fieldset-3 td:nth-child(2) * {
+#modal_section_fieldset-3 td:nth-child(2) * {
     font-size: 1rem;
 }
 
-#modal_fieldset-3 td:nth-child(2):has(.list-box-trigger) .dads-input:not(.hidden) {
+#modal_section_fieldset-3 td:nth-child(2):has(.list-box-trigger) .dads-input:not(.hidden) {
     display: revert;
     border-right: none;
     border-top-right-radius: 0;
@@ -446,44 +448,44 @@ main>section,
     width: 4rem;
 }
 
-#modal_fieldset-3 td:nth-child(2):has(.dads-input:not(.hidden)) .list-box-trigger {
+#modal_section_fieldset-3 td:nth-child(2):has(.dads-input:not(.hidden)) .list-box-trigger {
     font-size: 0;
     padding-left: 0;
     border-top-left-radius: 0;
     border-bottom-left-radius: 0;
 }
 
-#modal_fieldset-3_table_tbody_tr-46_td-1_button {
+#modal_section_fieldset-3_table_tbody_tr-46_td-1_button {
     anchor-name: --modal_fieldset-3_table_tbody_tr-46_td-1_button;
 }
 
-#modal_fieldset-3_table_tbody_tr-46_td-1_ul {
+#modal_section_fieldset-3_table_tbody_tr-46_td-1_ul {
     position-anchor: --modal_fieldset-3_table_tbody_tr-46_td-1_button;
 }
 
-#modal_fieldset-3_table_tbody_tr-50_td-1_button {
+#modal_section_fieldset-3_table_tbody_tr-50_td-1_button {
     anchor-name: --modal_fieldset-3_table_tbody_tr-50_td-1_button;
 }
 
-#modal_fieldset-3_table_tbody_tr-50_td-1_ul {
+#modal_section_fieldset-3_table_tbody_tr-50_td-1_ul {
     position-anchor: --modal_fieldset-3_table_tbody_tr-50_td-1_button;
 }
 
-#modal_fieldset-3_table_tbody_tr-55_td-1_button {
+#modal_section_fieldset-3_table_tbody_tr-55_td-1_button {
     anchor-name: --modal_fieldset-3_table_tbody_tr-55_td-1_button;
     padding-inline-start: 0;
 }
 
-#modal_fieldset-3_table_tbody_tr-55_td-1_ul {
+#modal_section_fieldset-3_table_tbody_tr-55_td-1_ul {
     position-anchor: --modal_fieldset-3_table_tbody_tr-55_td-1_button;
 }
 
-#modal_fieldset-3_table_tbody_tr-55_td-1_button .dads-input {
+#modal_section_fieldset-3_table_tbody_tr-55_td-1_button .dads-input {
     width: 6rem;
 }
 
-#modal_fieldset-4 label,
-#modal_fieldset-4 textarea {
+#modal_section_fieldset-4 label,
+#modal_section_fieldset-4 textarea {
     display: inline-block;
     vertical-align: top;
 }
