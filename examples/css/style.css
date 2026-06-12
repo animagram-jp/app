@@ -150,10 +150,9 @@ article.warning {
 }
 
 main>section,
-#modal>fieldset {
+#modal:modal fieldset {
     border: 1px solid var(--color-neutral-solid-gray-300);
     margin: 0.25rem 0 0;
-    padding: 0.5rem;
 }
 
 #main_section-1_section-2,
@@ -283,7 +282,8 @@ main>section,
 }
 
 #modal fieldset {
-    padding-left: 0.25rem;
+    padding-left: 0;
+    padding-right: 0.125rem;
 }
 
 #modal_section_fieldset-1,
@@ -326,26 +326,6 @@ main>section,
     width: 4rem;
 }
 
-#modal_section_fieldset-4 th:nth-child(3),
-#modal_section_fieldset-4 th:nth-child(7),
-#modal_section_fieldset-4 td:nth-child(3),
-#modal_section_fieldset-4 td:nth-child(7) {
-    width: 2.5rem;
-}
-
-#modal_section_fieldset-4 th:nth-child(4),
-#modal_section_fieldset-4 th:nth-child(5),
-#modal_section_fieldset-4 th:nth-child(6),
-#modal_section_fieldset-4 td:nth-child(4),
-#modal_section_fieldset-4 td:nth-child(5),
-#modal_section_fieldset-4 td:nth-child(6) {
-    width: 3rem;
-}
-
-#modal_section_fieldset-4 input[inputmode="numeric"] {
-    padding: 0.5rem;
-}
-
 #modal_section_fieldset-2 th,
 #modal_section_fieldset-4 th,
 #modal_section_fieldset-4 td:nth-child(2),
@@ -369,6 +349,13 @@ main>section,
     width: 100%;
 }
 
+#modal_section_fieldset-4 th:nth-child(3),
+#modal_section_fieldset-4 th:nth-child(7),
+#modal_section_fieldset-4 td:nth-child(3),
+#modal_section_fieldset-4 td:nth-child(7) {
+    width: 2.5rem;
+}
+
 @media (width >=40rem) {
     #modal_section_fieldset-4 th:nth-child(3),
     #modal_section_fieldset-4 th:nth-child(7),
@@ -376,6 +363,19 @@ main>section,
     #modal_section_fieldset-4 td:nth-child(7) {
         width: 4rem;
     }
+}
+
+#modal_section_fieldset-4 th:nth-child(4),
+#modal_section_fieldset-4 th:nth-child(5),
+#modal_section_fieldset-4 th:nth-child(6),
+#modal_section_fieldset-4 td:nth-child(4),
+#modal_section_fieldset-4 td:nth-child(5),
+#modal_section_fieldset-4 td:nth-child(6) {
+    width: 3rem;
+}
+
+#modal_section_fieldset-4 input[inputmode="numeric"] {
+    padding: 0.5rem;
 }
 
 #modal_section_fieldset-4_table_tbody_tr-5_td-1_button {
@@ -475,7 +475,7 @@ main>section,
     position-anchor: --modal_fieldset-4_table_tbody_tr-55_td-1_button;
 }
 
-#modal_section_fieldset-4_table_tbody_tr-55_td-1_button .dads-input {
+#modal_section_fieldset-4_table_tbody_tr-55 .dads-input {
     width: 6rem;
 }
 
