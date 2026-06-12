@@ -26,7 +26,7 @@ wasm-pack build --target web --out-dir examples/app --out-name app
 
 ## Debug
 
-- for iPhone: `https://animagram-jp.github.io/app/?=eruda`
+- for iPhone: [url with eruda](https://animagram-jp.github.io/app/?eruda)
 
 ---
 
