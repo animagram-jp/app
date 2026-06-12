@@ -17,6 +17,11 @@ cssと作成作業を分離する。一部の開閉要素を特定タグで表�
 - html作成時の責務を2つに限定する。
     - 1. 要件から導出される、ディスプレイ表示するべきデータモデルを網羅し、ハードウェアの物理特性と人類の生物特性から、適切な最大インスタンスフィールド数を決定して、列指向のグリッドレイアウトに静的に配置場所を決定する。描画状況の取得が二度手間になるので、`display: grid`などの自動配置は利用を避ける。
     - 2. 要素に対し、適切なタグを選択することで、ブラウザなどの支援機能を受けやすくする。`hidden`,`.hidden`,`display:`等のレイアウトプロパティを定義・適用する。
+- idはbody以降の親tagと、同層同tagの連番から機械的に決定する。
+- 各element内の記述順は、tag名, id, html standard attribute, aria-label, class, class unique attribute。
+- formatting rule:
+    - Do not insert a line break before a closing tag.
+    - Insert a line break before the start of every tag.
 
 ### タグの決定
 
@@ -36,17 +41,12 @@ htmlの制約として、同列要素の中に段落要素を格納する、す�
 html:
   head:
   body:
-    main:     # 主に閲覧機能
+    main:      # 主に閲覧機能
       header:
-      div:    # または、特定のsemantic tag。
+      section: # または、その他のsemantic tag。
       footer:
-    drawer:   # 画面遷移時のメニュー表示。手動ではなくappが開閉する。<dialog id="drawer">
-    modal:    # 編集機能・要アテンション時 <dialog id="modal"> showModal()
-    form:     # <form id="form" method="dialog"></form> のみの1行要素
-    toast:    # <output>: info~warningまでの重要度をポップアップ通知する。
+    drawer:    # 画面遷移時のメニュー表示。手動ではなくappが開閉する。<dialog id="drawer">
+    modal:     # 編集機能・要アテンション時 <dialog id="modal"> showModal()
+    form:      # <form id="form" method="dialog"></form> のみの1行要素
+    toast:     # <output>: info~warningまでの重要度をポップアップ通知する。
 ```
-
-## 注意事項
-
-idはbody以降の親tagと、同層同tagの連番から機械的に決定する。tagでの記述順は、
-tag名, id, html standard attribute, aria-label, class, class unique attribute。

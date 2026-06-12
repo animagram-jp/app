@@ -77,21 +77,8 @@ wasm-pack build --target web --out-dir examples/app --out-name app
 - index.htmlの1ファイル完結。
 - FOUC防止のため、body atrributeにhiddenを書く。
 - 初期表示しないelement以外、.hiddenクラスを追加しておく。
-- text content: 一切変化しないテキストは書き込むが、言語切り替えも必要なので、原則書かない。
+- text content: 一切変化しないテキストは書き込むが、言語切り替えが必要なので、原則書かない。
 - 動的に増えるelement: 最大数を決めて、-1,-2,...をidの末尾に付けてhtmlに書き込んでおく。
-- divはmainの構成要素{header, div, footer}として定義する。汎用tagとしての利用を禁止する。
-- semantic tagを使用する:
-  - htmlにあるべき基本構造は定まっている。以下yamlを参照のこと。
-  - 基本構造外のタグ決定の第一判断箇所は、「この要素は子の中で唯一か? そうでなければ縦積み(block)か横流し(inline)か?」
-  - 子の中で唯一: <header>`,`<footer>`
-  - 複数の変数を縦に並べる(block): `<p>`,`<section>`,`<article>`,`<header>`,`<footer>`,`<address>`, etc.
-  - 同一行の中に複数変数を並べる(inline): `<span>`,`<time>`,`<a>`, etc.
-- 開発者向けのコメントが不要になるように、全ての要素にaria-labelを付ける:
-  - h1など1body1つのタグ・並列数の多い要素は省略可。
-  - 命名は「その要素がアプリドメイン上何であるか」を単一の説明で表す。
-- formatting rule:
-    - Do not insert a line break before a closing tag.
-    - Insert a line break before the start of every tag.
 
 ```yaml
 # htmlの基本構造
@@ -112,7 +99,7 @@ html:
 
 - config.css(変数定義), style.css, idや構造に依存のない外部css。
 - style.cssにて[hidden], .hidden {display: none !important;} を定義する。
-- 各セレクタはtagのパイプまたはaria-labelで指定する。classで指定しない。
+- 各セレクタはtagのパイプまたはidで指定する。classで指定しない。
 
 ### javascript
 
