@@ -2039,6 +2039,7 @@ pub enum Backstory {
     MeaningfulLocation,
     TreasuredPossession,
     Trait,
+    InjuresAndScars,
     PhobiasAndManias,
     ArcaneTomesAndSpells,
     EncountersWithStrangeEntities,
@@ -2054,10 +2055,11 @@ impl Backstory {
             Self::MeaningfulLocation            => 4,
             Self::TreasuredPossession          => 5,
             Self::Trait                         => 6,
+            Self::InjuresAndScars               => 7,
             // todo
-            Self::PhobiasAndManias              => 7,
-            Self::ArcaneTomesAndSpells          => 8,
-            Self::EncountersWithStrangeEntities => 9,
+            Self::PhobiasAndManias              => 8,
+            Self::ArcaneTomesAndSpells          => 9,
+            Self::EncountersWithStrangeEntities => 10,
         }
     }
 
