@@ -33,7 +33,7 @@ jobs:
         run: cargo test
 
       - name: wasm-pack build
-        run: wasm-pack build --target web --out-dir examples/dice-engine --out-name app
+        run: wasm-pack build --target web --out-dir examples/app --out-name app
 
       - name: Setup Pages
         uses: actions/configure-pages@v6
