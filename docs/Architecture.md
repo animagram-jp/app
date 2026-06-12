@@ -24,6 +24,10 @@ wasm-pack build --target web --out-dir examples/app --out-name app
    - `C:\Users\<User>\AppData\Roaming\Mozilla\Firefox\Profiles\<Profile>\storage\default\`.
    - `C:\Users\<User>\AppData\Local\Google\Chrome\User Data\Default\Storage\ext\`
 
+## Debug
+
+- for iPhone: `https://animagram-jp.github.io/app/?=eruda`
+
 ---
 
 ## System diagram

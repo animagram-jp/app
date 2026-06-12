@@ -1,3 +1,11 @@
+const params = new URLSearchParams(location.search);
+if (params.has("eruda")) {
+    const s = document.createElement("script");
+    s.src = "https://cdn.jsdelivr.net/npm/eruda";
+    s.onload = () => eruda.init();
+    document.body.appendChild(s);
+}
+
 let worker = start();
 
 function start() {
