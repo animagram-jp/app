@@ -182,8 +182,8 @@
 }
 
 :root {
-  --font-family-sans: "IBM Plex Sans", "BIZ UDGothic", "Hiragino Sans", sans-serif;
-  --font-family-mono: "Fira Code", "Noto Sans Mono", monospace;
+  --font-family-sans: "IBM Plex Sans", "Noto Sans JP", "Hiragino Sans", sans-serif;
+  --font-family-mono: "Fira Code", "Noto Sans Mono", "Noto Sans JP", monospace;
 }
 
 :root {
