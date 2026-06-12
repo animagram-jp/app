@@ -64,7 +64,14 @@ impl Coc7th {
                     _ => vec![],
                 }
             }
-            (EventType::Click,   Dialog::Modal) => todo!("dialog click"),
+            (EventType::Click, Dialog::Modal) => {
+                if event.id == Id::new(&[(Tag::Modal, None)]) {
+                    self.dialog = Dialog::None;
+                    close_modal()
+                } else {
+                    vec![]
+                }
+            }
             (EventType::KeyDown, _)             => todo!("keydown"),
             (EventType::Input,   _)             => todo!("input"),
             (EventType::Change,  _)             => todo!("change"),
@@ -157,17 +164,18 @@ fn map_id(item: &Character, parent: &Id, n: u32) -> Vec<Id> {
 // action
 // ============================================================
 
+pub fn close_modal() -> Vec<Command> {
+    let modal = Id::new(&[(Tag::Modal, None)]);
+    vec![Command::new(Operation::CloseModal, &modal.encode(), None, None)]
+}
+
 pub fn open_modal() -> Vec<Command> {
     let mut commands = Vec::new();
 
-    // #modal を showModal() で開く
     let modal = Id::new(&[(Tag::Modal, None)]);
     commands.push(Command::new(Operation::OpenModal, &modal.encode(), None, None));
 
-    // todo!: キャラクターデータをmodalの各inputへ注入するCommandの生成が必要。
-    // DataStruct から Profile / Characteristic / Skill 等の値を取り出し、
-    // map_id() で対応する input の Id を引いて Operation::SetValue で注入する。
-    todo!()
+    commands
 }
 
 // Characteristic: input-1(初期値) + input-2(変動値) + input-3(補正値) → span(合計) をリアルタイム更新
