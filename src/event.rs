@@ -46,6 +46,10 @@ impl Coc7th {
             logs: Vec::new(),
         }
     }
+    pub fn close(&self) {
+        self.characters.close();
+    }
+
     pub fn initial_draw() -> Vec<Command> {
         Vec::new()
     }

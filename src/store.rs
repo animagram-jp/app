@@ -190,6 +190,12 @@ impl DiskStore {
         Some(())
     }
 
+    /// SyncAccessHandle を閉じる。Worker 終了前に呼ぶ。
+    pub fn close(&self) {
+        let _ = self.snap.close();
+        let _ = self.log.close();
+    }
+
     /// log を replay して snap を再構築し、log をクリアする。
     pub fn compact(&mut self) -> Option<()> {
         let new_snap: Vec<u8> = self.memory.iter()

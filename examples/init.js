@@ -84,7 +84,7 @@ function applyClass(el, value) {
 // send event
 // ============================================================
 
-const ROOTS = ["header", "main", "form", "output"]
+const ROOTS = ["header", "main", "modal", "form", "output"]
   .map(id => document.getElementById(id));
 
 function send(e) {
@@ -106,4 +106,7 @@ function bind() {
   for (const type of EVENTS) {
     document.addEventListener(type, send);
   }
+  window.addEventListener("pagehide", (e) => {
+    if (!e.persisted) worker.postMessage({ type: "close" });
+  });
 }

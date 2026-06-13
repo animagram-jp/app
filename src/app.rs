@@ -44,6 +44,10 @@ impl App {
         app
     }
 
+    pub fn close(&self) {
+        self.handler.close();
+    }
+
     pub fn process(&mut self, payload: JsValue) -> JsValue {
         let canvas_event = CanvasEvent::decode(&payload);
         self.pointer_state = self.pointer_state.update(

@@ -14,7 +14,11 @@ self.addEventListener("message", async (e) => {
     return;
   }
 
-  if (!app || type !== "event") return;
+  if (!app) return;
+
+  if (type === "close") { app.close(); self.close(); return; }
+
+  if (type !== "event") return;
 
   const commands = app.process(payload);
   if (commands?.length) self.postMessage({ type: "execute", payload: Array.from(commands) });
