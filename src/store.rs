@@ -122,9 +122,6 @@ pub struct DiskStore {
     unsaved: BTreeSet<u32>,
 }
 
-unsafe impl Send for DiskStore {}
-unsafe impl Sync for DiskStore {}
-
 impl DiskStore {
     /// OPFS から filename.snap / filename.log を開き、RAMインデックスを構築する。
     /// Worker の init フェーズで await する。
