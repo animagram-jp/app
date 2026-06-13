@@ -23,7 +23,7 @@
     <script src="init.js" type="module"></script></head>
 
 <body>
-    <header>
+    <header id="header">
         <hgroup id="header_hgroup">
             <h1 class="dads-h" dads-size="32">CoC7th</h1>
             <p>Call of Cthulhu 7th edition playing engine</p></hgroup>
@@ -48,7 +48,7 @@
         <button id="header_button-2" type="button" popovertarget="header_ul-2" aria-haspopup="listbox" aria-expanded="false" aria-controls="header_ul-2" class="list-box-trigger">
             <span>✓</span>死生 紡</button>
         <button id="header_button-3" type="button" aria-label="switch modal" class="dads-button" dads-type="outline">✏️</button></header>
-    <main>
+    <main id="main">
         <h2 id="main_h2-1" class="dads-h" dads-size="24">キャラクターシート</h2>
         <button id="main_button" type="button" aria-label="delete character sheet" class="dads-button" dads-type="outline">◌</button>
         <section id="main_section-1" aria-label="Character View" aria-labelledby="main_h2-1">
@@ -452,8 +452,6 @@
                 <button id="main_modal_span_button-2" type="button">+</button></span>
             <button id="main_modal_button" type="submit" form="main_form" class="dads-button">→</button></dialog>
         <form id="main_form" method="dialog"></form></main>
-
-    <dialog id="drawer" class="hidden"></dialog>
 
     <dialog id="modal">
         <header id="modal_header">

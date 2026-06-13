@@ -14,7 +14,7 @@ function start() {
   w.addEventListener("message", (e) => {
     const { type, payload } = e.data;
     if (type === "execute") { payload.forEach(execute); }
-    if (type === "error")   { restart(e.data.message); }
+    if (type === "error")   { worker.terminate(); worker = start(); }
   });
 
   w.addEventListener("error", (e) => {
@@ -31,9 +31,13 @@ function start() {
     },
   });
 
-  w.addEventListener("message", (e) => {
-    if (e.data.type === "ready") bind();
-  }, { once: true });
+  let bound = false;
+  w.addEventListener("message", function onReady(e) {
+    if (e.data.type !== "ready" || bound) return;
+    bound = true;
+    w.removeEventListener("message", onReady);
+    bind();
+  });
 
   return w;
 }
@@ -49,7 +53,7 @@ function execute({ operation, id, attribute, value }) {
   switch (operation) {
     case 1: el.textContent = value ?? ""; break;
     case 2: el.value = value ?? ""; break;
-    case 3: el.toggleAttribute(attribute, value); break;
+    case 3: el.toggleAttribute(attribute, value === "true"); break;
     case 4: el.classList.add(value); break;
     case 5: el.classList.remove(value); break;
     case 6: el.focus(); break;
@@ -80,7 +84,11 @@ function applyClass(el, value) {
 // send event
 // ============================================================
 
+const ROOTS = ["header", "main", "form", "output"]
+  .map(id => document.getElementById(id));
+
 function send(e) {
+  if (!ROOTS.some(r => r && r.contains(e.target))) return;
   worker.postMessage({ type: "event", payload: {
     event_type: e.type,
     target_id:  e.target.id ?? "",
