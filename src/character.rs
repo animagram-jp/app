@@ -420,21 +420,223 @@ impl Characteristic {
 // --- Other Attributes
 // ============================================================
 
-pub struct Luck;
+pub struct HitPoints; // HitPoints: u8 | CON, SIZ -> u8
 
-impl Luck {
-    use super::Dice;
+impl HitPoints {
+    pub fn id() -> u32 { OtherAttribute::HitPoints.id() }
 
-    pub fn roll() -> u8 {
-        dice::roll(&[3, 6, 0]) *5 // todo! u8
+    pub fn read(instance: &DataStruct) -> u8 {
+        instance.get(Self::id()).ok()
+            .and_then(|b| b.first().copied())
+            .unwrap_or(0)
+    }
+
+    pub fn write<'a>(instance: &'a mut DataStruct, value: u8) -> &'a mut DataStruct {
+        let _ = instance.set(Self::id(), &[value], None);
+        instance
+    }
+
+    pub fn derive(instance: &DataStruct) -> u8 {
+        let constitution = Characteristic::Constitution.sum(instance);
+        let size         = Characteristic::Size.sum(instance);
+        ((constitution + size) / 10) as u8
     }
 }
 
-pub struct Sanity;
+pub struct MagicPoints; // MagicPoints: u8 | POW -> u8
+
+impl MagicPoints {
+    pub fn id() -> u32 { OtherAttribute::MagicPoints.id() }
+
+    pub fn read(instance: &DataStruct) -> u8 {
+        instance.get(Self::id()).ok()
+            .and_then(|b| b.first().copied())
+            .unwrap_or(0)
+    }
+
+    pub fn write<'a>(instance: &'a mut DataStruct, value: u8) -> &'a mut DataStruct {
+        let _ = instance.set(Self::id(), &[value], None);
+        instance
+    }
+
+    pub fn derive(instance: &DataStruct) -> u8 {
+        (Characteristic::Power.sum(instance) / 5) as u8
+    }
+}
+
+pub struct Luck; // Luck: u8 | -> u8
+
+impl Luck {
+
+    pub fn read(instance: &DataStruct) -> u8 {
+        instance.get(OtherAttribute::Luck.id()).ok()
+            .and_then(|b| b.first().copied())
+            .unwrap_or(0)
+    }
+
+    pub fn write<'a>(instance: &'a mut DataStruct, value: u8) -> &'a mut DataStruct {
+        let _ = instance.set(OtherAttribute::Luck.id(), &[value], None);
+        instance
+    }
+
+    pub fn roll() -> u8 {
+        use super::dice;
+        (dice::roll(&[(3, 6, 0)]) * 5) as u8
+    }
+}
+
+pub struct Sanity; // Sanity: u8 | POW -> u8
 
 impl Sanity {
-    pub fn roll() -> u8 {
-        dice::roll(&[3, 6, 0]) *5
+    pub fn read(instance: &DataStruct) -> u8 {
+        instance.get(OtherAttribute::Sanity.id()).ok()
+            .and_then(|b| b.first().copied())
+            .unwrap_or(0)
+    }
+
+    pub fn write<'a>(instance: &'a mut DataStruct, value: u8) -> &'a mut DataStruct {
+        let _ = instance.set(OtherAttribute::Sanity.id(), &[value], None);
+        instance
+    }
+
+    pub fn derive(instance: &DataStruct) -> u8 {
+        Characteristic::Power.read(instance).0 as u8 // todo 99以上は99へ変換
+    }
+}
+
+pub struct Build; // Build: i8 | STR, SIZ -> i8
+
+impl Build {
+
+    pub fn read(instance: &DataStruct) -> i8 {
+        instance.get(OtherAttribute::Build.id()).ok()
+            .and_then(|b| b.first().copied())
+            .map(|b| b as i8)
+            .unwrap_or(0)
+    }
+
+    pub fn write<'a>(instance: &'a mut DataStruct, value: i8) -> &'a mut DataStruct {
+        let _ = instance.set(Self::id(), &[value as u8], None);
+        instance
+    }
+
+    pub fn derive(instance: &DataStruct) -> i8 {
+        let strength = Characteristic::Strength.sum(instance);
+        let size     = Characteristic::Size.sum(instance);
+        match strength + size {
+             2..= 64 => -2,
+            65..= 84 => -1,
+            85..=124 =>  0,
+           125..=164 =>  1,
+           165..=204 =>  2,
+           205..=284 =>  3,
+           285..=364 =>  4,
+           365..=444 =>  5,
+           445..=524 =>  6,
+            n        => (7 + (n - 525) / 80) as i8,
+        }
+    }
+}
+
+pub struct DamageBonus; // DamageBonus: DamageBonusTuple | Build -> DamageBonusTuple
+
+impl DamageBonus {
+
+    pub fn display(instance: &DataStruct) -> String {
+        dice::display(&[Self::read(instance)])
+    }
+
+    pub fn derive(instance: &DataStruct) -> DamageBonusTuple {
+        match Build::read(instance) {
+            i8::MIN..=-2 => (0, 0, -2),
+                      -1 => (0, 0, -1),
+                       0 => (0, 0,  0),
+                       1 => (1, 4,  0),
+                       2 => (1, 6,  0),
+                       3 => (2, 6,  0),
+                       4 => (3, 6,  0),
+                       5 => (4, 6,  0),
+                       6 => (5, 6,  0),
+                       n => (n - 2, 6, 0),
+        }
+    }
+}
+
+pub struct MoveRate; // MoveRate: u8 | STR, DEX, SIZ, Age -> u8
+
+impl MoveRate {
+
+    pub fn read(instance: &DataStruct) -> u8 {
+        instance.get(OtherAttribute::MoveRate.id()).ok()
+            .and_then(|b| b.first().copied())
+            .unwrap_or(0)
+    }
+
+    pub fn write<'a>(instance: &'a mut DataStruct, value: u8) -> &'a mut DataStruct {
+        let _ = instance.set(OtherAttribute::MoveRate.id(), &[value], None);
+        instance
+    }
+
+    pub fn derive(instance: &DataStruct) -> u8 {
+        let str = Characteristic::Strength.sum(instance);
+        let dex = Characteristic::Dexterity.sum(instance);
+        let siz = Characteristic::Size.sum(instance);
+        let base: i32 = if str > siz && dex > siz { 9 }
+                   else if str < siz && dex < siz  { 7 }
+                   else                             { 8 };
+        let age_penalty: i32 = match Age::read(instance) {
+            40..=49 => 1,
+            50..=59 => 2,
+            60..=69 => 3,
+            70..=79 => 4,
+            80..    => 5,
+            _       => 0,
+        };
+        (base - age_penalty).max(0) as u8
+    }
+}
+
+pub struct OccupationSkillPoints; // OccupationSkillPoints: u32 | (Characteristic, Characteristic), Profile -> u32
+
+impl OccupationSkillPoints {
+
+    pub fn read(instance: &DataStruct) -> u32 {
+        instance.get(OtherAttribute::OccupationSkillPoints.id()).ok()
+            .and_then(|b| b.get(0..4)?.try_into().ok())
+            .map(u32::from_le_bytes)
+            .unwrap_or(0)
+    }
+
+    pub fn write<'a>(instance: &'a mut DataStruct, value: u32) -> &'a mut DataStruct {
+        let _ = instance.set(OtherAttribute::OccupationSkillPoints.id(), &value.to_le_bytes(), None);
+        instance
+    }
+
+    pub fn derive(instance: &DataStruct) -> u32 {
+        // 職業によって使う能力値の組み合わせが異なる
+        todo!()
+    }
+}
+
+pub struct InterestSkillPoints; // InterestSkillPoints: u32 | INT, Profile -> u32
+
+impl InterestSkillPoints {
+    pub fn id() -> u32 { OtherAttribute::InterestSkillPoints.id() }
+
+    pub fn read(instance: &DataStruct) -> u32 {
+        instance.get(Self::id()).ok()
+            .and_then(|b| b.get(0..4)?.try_into().ok())
+            .map(u32::from_le_bytes)
+            .unwrap_or(0)
+    }
+
+    pub fn write<'a>(instance: &'a mut DataStruct, value: u32) -> &'a mut DataStruct {
+        let _ = instance.set(Self::id(), &value.to_le_bytes(), None);
+        instance
+    }
+
+    pub fn derive(instance: &DataStruct) -> u32 {
+        (Characteristic::Intelligence.sum(instance) * 2) as u32
     }
 }
 
