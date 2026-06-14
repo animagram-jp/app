@@ -597,8 +597,8 @@ impl MoveRate {
         let dex = Characteristic::Dexterity.sum(instance);
         let siz = Characteristic::Size.sum(instance);
         let base: i32 = if str > siz && dex > siz { 9 }
-                   else if str < siz && dex < siz  { 7 }
-                   else                             { 8 };
+                   else if str < siz && dex < siz { 7 }
+                   else                           { 8 };
         let age_penalty: i32 = match Age::read(instance) {
             40..=49 => 1,
             50..=59 => 2,
@@ -705,104 +705,6 @@ impl OtherAttribute {
         }
     }
 
-    pub fn display(&self, data: &DataStruct) -> String {
-        match self {
-            Self::Build => {
-                let build = data.get(self.id()).ok()
-                    .and_then(|b| b.first())
-                    .map(|&b| b as i8)
-                    .unwrap_or(0);
-                build.to_string()
-            }
-            Self::DamageBonus => {
-                let db: DamageBonusTuple = data.get(self.id())
-                    .map(|b| {
-                        let count    = b.first().copied().map(|v| v as i8).unwrap_or(0);
-                        let sides    = b.get(1).copied().unwrap_or(0);
-                        let modifier = b.get(2).copied().map(|v| v as i8).unwrap_or(0);
-                        (count, sides, modifier)
-                    })
-                    .unwrap_or((0, 0, 0));
-                dice::display(&[db])
-            }
-            _ => String::new(),
-        }
-    }
-
-    pub fn derive(&self, character: &DataStruct) -> Vec<u8> {
-        match self {
-            Self::HitPoints => {
-                let constitution = Characteristic::Constitution.sum(character);
-                let size         = Characteristic::Size.sum(character);
-                let val          = ((constitution + size) / 10) as u8;
-                vec![val]
-            }
-            Self::MagicPoints => {
-                let power = Characteristic::Power.sum(character);
-                let val   = (power / 5) as u8;
-                vec![val]
-            }
-            Self::Sanity => {
-                let power = Characteristic::Power.sum(character);
-                vec![power as u8]
-            }
-            Self::Build => {
-                let strength = Characteristic::Strength.sum(character);
-                let size     = Characteristic::Size.sum(character);
-                let build: i8 = match strength + size {
-                    2..= 64 => -2,
-                   65..= 84 => -1,
-                   85..=124 =>  0,
-                  125..=164 =>  1,
-                  165..=204 =>  2,
-                  205..=284 =>  3,
-                  285..=364 =>  4,
-                  365..=444 =>  5,
-                  445..=524 =>  6,
-                  n         => (7 + (n - 525) / 80) as i8,
-                };
-                vec![build as u8]
-            }
-            Self::DamageBonus => {
-                let build = character.get(Self::Build.id()).ok()
-                    .and_then(|b| b.first())
-                    .map(|&b| b as i8)
-                    .unwrap_or(0);
-                let (count, sides, modifier): DamageBonusTuple = match build {
-                    i8::MIN..=-2 => (0, 0, -2),
-                                -1 => (0, 0, -1),
-                                 0 => (0, 0,  0),
-                                 1 => (1, 4,  0),
-                                 2 => (1, 6,  0),
-                                 3 => (2, 6,  0),
-                                 4 => (3, 6,  0),
-                                 5 => (4, 6,  0),
-                                 6 => (5, 6,  0),
-                                 n => (n - 2, 6, 0),
-                };
-                vec![count as u8, sides, modifier as u8]
-            }
-            Self::MoveRate => {
-                let str = Characteristic::Strength.sum(character);
-                let dex = Characteristic::Dexterity.sum(character);
-                let siz = Characteristic::Size.sum(character);
-                let base: i32 = if str > siz && dex > siz { 9 }
-                           else if str < siz && dex < siz  { 7 }
-                           else                             { 8 };
-                let age = Age::read(character);
-                let age_penalty: i32 = match age {
-                    40..=49 => 1,
-                    50..=59 => 2,
-                    60..=69 => 3,
-                    70..=79 => 4,
-                    80..    => 5,
-                    _       => 0,
-                };
-                vec![(base - age_penalty).max(0) as u8]
-            }
-            _ => vec![],
-        }
-    }
 }
 
 // ============================================================
