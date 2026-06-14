@@ -420,6 +420,24 @@ impl Characteristic {
 // --- Other Attributes
 // ============================================================
 
+pub struct Luck;
+
+impl Luck {
+    use super::Dice;
+
+    pub fn roll() -> u8 {
+        dice::roll(&[3, 6, 0]) *5 // todo! u8
+    }
+}
+
+pub struct Sanity;
+
+impl Sanity {
+    pub fn roll() -> u8 {
+        dice::roll(&[3, 6, 0]) *5
+    }
+}
+
 pub enum OtherAttribute {
     HitPoints,   // derived from Characteristic (u8)
     MagicPoints, // derived from Characteristic (u8)
