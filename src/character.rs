@@ -646,38 +646,27 @@ impl OccupationSkillPoints {
     }
 }
 
-pub struct InterestSkillPoints; // InterestSkillPoints: u32 | INT, Profile -> u32
+pub struct InterestSkillPoints; // InterestSkillPoints: u16 | INT -> (u16, u16)
 
 impl InterestSkillPoints {
-    pub fn id() -> u32 { OtherAttribute::InterestSkillPoints.id() }
-
-    pub fn read(instance: &DataStruct) -> u32 {
-        instance.get(Self::id()).ok()
-            .and_then(|b| b.get(0..4)?.try_into().ok())
-            .map(u32::from_le_bytes)
-            .unwrap_or(0)
-    }
-
-    pub fn write<'a>(instance: &'a mut DataStruct, value: u32) -> &'a mut DataStruct {
-        let _ = instance.set(Self::id(), &value.to_le_bytes(), None);
-        instance
-    }
-
-    pub fn derive(instance: &DataStruct) -> u32 {
-        (Characteristic::Intelligence.sum(instance) * 2) as u32
+    pub fn derive(instance: &DataStruct) -> (u16, u16) {
+        let used = 0u16; // todo: 割り振り済みポイント: Skill::sum().0で計算
+        let (initial, _, modifier) = Characteristic::Intelligence.read(instance);
+        let total = ((initial as i32 + modifier as i32) * 2).max(0) as u16;
+        (used, total)
     }
 }
 
 pub enum OtherAttribute {
-    HitPoints,   // derived from Characteristic (u8)
-    MagicPoints, // derived from Characteristic (u8)
-    Luck,        // u8
-    Sanity,      // u8 (initial derived from Characteristic)
-    Build,       // derived from Characteristic (i8)
-    DamageBonus, // derived from Characteristic (Dice)
-    MoveRate,    // (u8, modifier: i8) (each initial derived from Characteristic, Profile)
-    OccupationSkillPoints, // (Characteristic, Characteristic) (default derived from Characteristic, Profile)
-    InterestSkillPoints,   // (Characteristic, Characteristic) (default derived from Characteristic, Profile)
+    HitPoints,             // CON, SIZ -> u8
+    MagicPoints,           // POW -> u8
+    Luck,                  // u8
+    Sanity,                // u8 | POW -> u8
+    Build,                 // STR, SIZ -> i8
+    DamageBonus,           // Build -> DamageBonusTuple
+    MoveRate,              // u8 | STR, DEX, SIZ, Age -> u8
+    OccupationSkillPoints, // (Characteristic, Characteristic) | (Characteristic, Characteristic) -> (u16, u16)
+    InterestSkillPoints,   // INT -> (u16, u16)
 }
 
 impl OtherAttribute {
