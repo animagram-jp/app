@@ -136,57 +136,6 @@ impl Name {
     }
 }
 
-#[derive(Clone, Copy)]
-pub enum Profile {
-    Name,
-    Birthpalce,
-    Pronoun,
-    Occupation, // 「職業」(id) + 「肩書 title」(id+1) の2スロット。Occupation struct が管理予定。
-    Residence,
-    Age,
-}
-
-impl Profile {
-    pub fn ids(&self) -> &'static [u32] {
-        match self {
-            Self::Name       => &[11, 12],
-            Self::Birthpalce => &[13],
-            Self::Pronoun    => &[14],
-            Self::Occupation => &[15, 16],
-            Self::Residence  => &[17],
-            Self::Age        => &[18],
-        }
-    }
-
-    pub fn label(&self, lang: Lang) -> &'static str {
-        match (self, lang) {
-            (Self::Name, Lang::En) => "Name",
-            (Self::Name, Lang::Ja) => "名前",
-            (Self::Birthpalce, Lang::En) => "Birthplace",
-            (Self::Birthpalce, Lang::Ja) => "出身",
-            (Self::Pronoun, Lang::En) => "Pronoun",
-            (Self::Pronoun, Lang::Ja) => "性別",
-            (Self::Occupation, Lang::En) => "Occupation",
-            (Self::Occupation, Lang::Ja) => "職業",
-            (Self::Residence, Lang::En) => "Residence",
-            (Self::Residence, Lang::Ja) => "住所",
-            (Self::Age, Lang::En) => "Age",
-            (Self::Age, Lang::Ja) => "年齢",
-        }
-    }
-
-    pub fn list() -> &'static [Profile] {
-        &[
-            Self::Name,
-            Self::Birthpalce,
-            Self::Pronoun,
-            Self::Occupation,
-            Self::Residence,
-            Self::Age,
-        ]
-    }
-}
-
 // --- 職業 (Occupation) --- p.38
 pub enum Occupation {
     Activist,
@@ -217,11 +166,11 @@ pub enum Occupation {
     Professor,
     Soldier,
     TribeMember,
-    Custom(String),
+    Others,
 }
 
 impl Occupation {
-    pub fn label(&self, lang: Lang) -> &str {
+    pub fn display(&self, lang: Lang) -> &str {
         match (self, lang) {
             (Self::Activist,           Lang::En) => "Activist",
             (Self::Activist,           Lang::Ja) => "活動家",
@@ -279,8 +228,59 @@ impl Occupation {
             (Self::Soldier,            Lang::Ja) => "兵士",
             (Self::TribeMember,        Lang::En) => "Tribe Member",
             (Self::TribeMember,        Lang::Ja) => "トライブ・メンバー",
-            (Self::Custom(s),          _)        => s.as_str(),
+            (Self::Custom,          _)        => s.as_str(),
         }
+    }
+}
+
+#[derive(Clone, Copy)]
+pub enum Profile {
+    Name,
+    Birthpalce,
+    Pronoun,
+    Occupation, // 「職業」(id) + 「肩書 title」(id+1) の2スロット。Occupation struct が管理予定。
+    Residence,
+    Age,
+}
+
+impl Profile {
+    pub fn ids(&self) -> &'static [u32] {
+        match self {
+            Self::Name       => &[11, 12],
+            Self::Birthpalce => &[13],
+            Self::Pronoun    => &[14],
+            Self::Occupation => &[15, 16],
+            Self::Residence  => &[17],
+            Self::Age        => &[18],
+        }
+    }
+
+    pub fn label(&self, lang: Lang) -> &'static str {
+        match (self, lang) {
+            (Self::Name, Lang::En) => "Name",
+            (Self::Name, Lang::Ja) => "名前",
+            (Self::Birthpalce, Lang::En) => "Birthplace",
+            (Self::Birthpalce, Lang::Ja) => "出身",
+            (Self::Pronoun, Lang::En) => "Pronoun",
+            (Self::Pronoun, Lang::Ja) => "性別",
+            (Self::Occupation, Lang::En) => "Occupation",
+            (Self::Occupation, Lang::Ja) => "職業",
+            (Self::Residence, Lang::En) => "Residence",
+            (Self::Residence, Lang::Ja) => "住所",
+            (Self::Age, Lang::En) => "Age",
+            (Self::Age, Lang::Ja) => "年齢",
+        }
+    }
+
+    pub fn list() -> &'static [Profile] {
+        &[
+            Self::Name,
+            Self::Birthpalce,
+            Self::Pronoun,
+            Self::Occupation,
+            Self::Residence,
+            Self::Age,
+        ]
     }
 }
 
