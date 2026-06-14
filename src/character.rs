@@ -4,7 +4,7 @@ use crate::list::ListError;
 use crate::data_struct::DataStruct;
 
 // ============================================================
-// --- ダイス (Dice) ---
+// --- Dice ---
 // ============================================================
 
 pub type Dice = (i8, u8, i8); // (count, sides, modifier)
@@ -131,8 +131,7 @@ impl Name {
     }
 }
 
-// --- 職業 (Occupation) --- p.38
-pub struct Occupation; // Occupation {name: str} ({title: str})
+pub struct Occupation; // Occupation {name: str} ({title: str}) // p.38
 
 impl Occupation {
 
@@ -321,12 +320,11 @@ impl Profile {
 }
 
 // ============================================================
-// --- 能力値 (Characteristic) ---
+// Characteristics (Strength, Constitution, Size, Dexterity, Appearance, Intelligence, Power, Education)
 // ============================================================
 
-// --- 能力値 (Characteristic) --- p.28
 #[derive(Clone, Copy)]
-pub enum Characteristic { // Characteristic {initial: u16, change: i16, modifier: i16}
+pub enum Characteristic { // Characteristic {initial: u16, change: i16, modifier: i16} // p.28
     Strength,
     Constitution,
     Size,
@@ -365,26 +363,34 @@ impl Characteristic {
         }
     }
 
-    pub fn encode(initial: u16, change: i16, modifier: i16) -> Vec<u8> {
+    pub fn read(&self, instance: &DataStruct) -> (u16, i16, i16) {
+        instance.get(self.id()).ok()
+            .map(|b| {
+                let initial  = b.get(0..2).and_then(|x| x.try_into().ok()).map(u16::from_le_bytes).unwrap_or(0);
+                let change   = b.get(2..4).and_then(|x| x.try_into().ok()).map(i16::from_le_bytes).unwrap_or(0);
+                let modifier = b.get(4..6).and_then(|x| x.try_into().ok()).map(i16::from_le_bytes).unwrap_or(0);
+                (initial, change, modifier)
+            })
+            .unwrap_or((0, 0, 0))
+    }
+
+    pub fn write<'a>(&self, instance: &'a mut DataStruct, value: (u16, i16, i16)) -> &'a mut DataStruct {
         let mut b = Vec::with_capacity(6);
-        b.extend_from_slice(&initial.to_le_bytes());
-        b.extend_from_slice(&change.to_le_bytes());
-        b.extend_from_slice(&modifier.to_le_bytes());
-        b
+        b.extend_from_slice(&value.0.to_le_bytes());
+        b.extend_from_slice(&value.1.to_le_bytes());
+        b.extend_from_slice(&value.2.to_le_bytes());
+        let _ = instance.set(self.id(), &b, None);
+        instance
     }
 
-    pub fn decode(bytes: &[u8]) -> (u16, i16, i16) {
-        let initial  = bytes.get(0..2).and_then(|b| b.try_into().ok()).map(u16::from_le_bytes).unwrap_or(0);
-        let change   = bytes.get(2..4).and_then(|b| b.try_into().ok()).map(i16::from_le_bytes).unwrap_or(0);
-        let modifier = bytes.get(4..6).and_then(|b| b.try_into().ok()).map(i16::from_le_bytes).unwrap_or(0);
-        (initial, change, modifier)
-    }
-
-    pub fn sum(&self, data: &DataStruct) -> i32 {
-        let (initial, change, modifier) = data.get(self.id())
-            .map(|b| Self::decode(b))
-            .unwrap_or((0, 0, 0));
+    pub fn sum(&self, instance: &DataStruct) -> i32 {
+        let (initial, change, modifier) = self.read(instance);
         (initial as i32 + change as i32 + modifier as i32).max(1)
+    }
+
+    pub fn target(&self, instance: &DataStruct) -> (i32, i32, i32) {
+        let sum = self.sum(instance);
+        (sum, (sum as f64 * 0.5) as i32, (sum as f64 * 0.2) as i32)
     }
 
     pub fn list() -> &'static [Characteristic] {
@@ -400,7 +406,7 @@ impl Characteristic {
         ]
     }
 
-    pub fn generate(&self) -> u16 {
+    pub fn roll_initial(&self) -> u16 {
         // SIZ / INT / EDU は (2d6+6)×5、それ以外は 3d6×5
         match self {
             Self::Size | Self::Intelligence | Self::Education =>
@@ -410,9 +416,8 @@ impl Characteristic {
     }
 }
 
-
 // ============================================================
-// --- ほかの属性 (Other Attribute) ---
+// --- Other Attributes (Hit Points, Magic Points, Luck, Sanity, Build, Damage Bonus, Move Rate, )
 // ============================================================
 
 pub enum OtherAttribute {
@@ -490,23 +495,23 @@ impl OtherAttribute {
     pub fn derive(&self, character: &DataStruct) -> Vec<u8> {
         match self {
             Self::HitPoints => {
-                let constitution = Characteristic::Constitution.value(character);
-                let size         = Characteristic::Size.value(character);
+                let constitution = Characteristic::Constitution.sum(character);
+                let size         = Characteristic::Size.sum(character);
                 let val          = ((constitution + size) / 10) as u8;
                 vec![val]
             }
             Self::MagicPoints => {
-                let power = Characteristic::Power.value(character);
+                let power = Characteristic::Power.sum(character);
                 let val   = (power / 5) as u8;
                 vec![val]
             }
             Self::Sanity => {
-                let power = Characteristic::Power.value(character);
+                let power = Characteristic::Power.sum(character);
                 vec![power as u8]
             }
             Self::Build => {
-                let strength = Characteristic::Strength.value(character);
-                let size     = Characteristic::Size.value(character);
+                let strength = Characteristic::Strength.sum(character);
+                let size     = Characteristic::Size.sum(character);
                 let build: i8 = match strength + size {
                     2..= 64 => -2,
                    65..= 84 => -1,
@@ -542,9 +547,9 @@ impl OtherAttribute {
                 vec![count as u8, sides, modifier as u8]
             }
             Self::MoveRate => {
-                let str = Characteristic::Strength.value(character);
-                let dex = Characteristic::Dexterity.value(character);
-                let siz = Characteristic::Size.value(character);
+                let str = Characteristic::Strength.sum(character);
+                let dex = Characteristic::Dexterity.sum(character);
+                let siz = Characteristic::Size.sum(character);
                 let base: i32 = if str > siz && dex > siz { 9 }
                            else if str < siz && dex < siz  { 7 }
                            else                             { 8 };
