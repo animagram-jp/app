@@ -48,7 +48,7 @@ pub mod dice {
 }
 
 // ============================================================
-// --- キャラクター (Character) ---
+// Character (Profile, Characteristic, Other Attribute, Skill, Posession, Backstory, Memo)
 // ============================================================
 
 pub enum Character {
@@ -62,6 +62,7 @@ pub enum Character {
 }
 
 impl Character {
+
     pub fn label(&self, lang: Lang) -> &'static str {
         match (self, lang) {
             (Self::Profile,        Lang::En) => "Profile",
@@ -82,7 +83,7 @@ impl Character {
     }
     pub const fn id(&self) -> u32 {
         match self {
-            Self::Profile        =>  10,  //  10- 15 (6件)
+            Self::Profile        =>  10,  //  10- 17 (8件)
             Self::Characteristic =>  20,  //  20- 28 (9件)
             Self::OtherAttribute =>  30,  //  30- 37 (8件)
             Self::Skill          =>  40,  //  40- 86 (47件)
@@ -94,12 +95,13 @@ impl Character {
 }
 
 // ============================================================
-// --- プロフィール (Name, Birthppalce, Pronoun, Occupation, Residence, Age) ---
+// Profile (Name, Birthppalce, Pronoun, Occupation, Residence, Age)
 // ============================================================
 
 pub struct Name; // Name {name: str} ({complement: str})
 
 impl Name {
+
     pub fn display(instance: &DataStruct) -> String {
         let (name, complement) = Self::read(instance);
         match complement {
@@ -133,6 +135,7 @@ impl Name {
 pub struct Occupation; // Occupation {name: str} ({title: str})
 
 impl Occupation {
+
     pub fn display(instance: &DataStruct) -> String {
         let (name, title) = Self::read(instance);
         match title {
@@ -183,6 +186,88 @@ impl Occupation {
     }
 }
 
+
+pub struct Birthplace; // Birthplace: str
+
+impl Birthplace {
+
+    pub fn display(instance: &DataStruct) -> String {
+        Self::read(instance)
+    }
+
+    pub fn read(instance: &DataStruct) -> String {
+        instance.get(Profile::Birthpalce.ids()[0]).ok()
+            .map(|b| String::from_utf8_lossy(b).into_owned())
+            .unwrap_or_default()
+    }
+
+    pub fn write<'a>(instance: &'a mut DataStruct, value: &str) -> &'a mut DataStruct {
+        let _ = instance.set(Profile::Birthpalce.ids()[0], value.as_bytes(), None);
+        instance
+    }
+}
+
+pub struct Pronoun; // Pronoun: str
+
+impl Pronoun {
+
+    pub fn display(instance: &DataStruct) -> String {
+        Self::read(instance)
+    }
+
+    pub fn read(instance: &DataStruct) -> String {
+        instance.get(Profile::Pronoun.ids()[0]).ok()
+            .map(|b| String::from_utf8_lossy(b).into_owned())
+            .unwrap_or_default()
+    }
+
+    pub fn write<'a>(instance: &'a mut DataStruct, value: &str) -> &'a mut DataStruct {
+        let _ = instance.set(Profile::Pronoun.ids()[0], value.as_bytes(), None);
+        instance
+    }
+}
+
+pub struct Residence; // Residence: str
+
+impl Residence {
+
+    pub fn display(instance: &DataStruct) -> String {
+        Self::read(instance)
+    }
+
+    pub fn read(instance: &DataStruct) -> String {
+        instance.get(Profile::Residence.ids()[0]).ok()
+            .map(|b| String::from_utf8_lossy(b).into_owned())
+            .unwrap_or_default()
+    }
+
+    pub fn write<'a>(instance: &'a mut DataStruct, value: &str) -> &'a mut DataStruct {
+        let _ = instance.set(Profile::Residence.ids()[0], value.as_bytes(), None);
+        instance
+    }
+}
+
+pub struct Age; // Age: u16
+
+impl Age {
+
+    pub fn display(instance: &DataStruct) -> String {
+        Self::read(instance).to_string()
+    }
+
+    pub fn read(instance: &DataStruct) -> u16 {
+        instance.get(Profile::Age.ids()[0]).ok()
+            .and_then(|b| b.get(0..2)?.try_into().ok())
+            .map(u16::from_le_bytes)
+            .unwrap_or(0)
+    }
+
+    pub fn write<'a>(instance: &'a mut DataStruct, value: u16) -> &'a mut DataStruct {
+        let _ = instance.set(Profile::Age.ids()[0], &value.to_le_bytes(), None);
+        instance
+    }
+}
+
 #[derive(Clone, Copy)]
 pub enum Profile {
     Name,
@@ -194,6 +279,7 @@ pub enum Profile {
 }
 
 impl Profile {
+
     pub fn ids(&self) -> &'static [u32] {
         match self {
             Self::Name       => &[11, 12],
@@ -240,7 +326,7 @@ impl Profile {
 
 // --- 能力値 (Characteristic) --- p.28
 #[derive(Clone, Copy)]
-pub enum Characteristic {
+pub enum Characteristic { // Characteristic {initial: u16, change: i16, modifier: i16}
     Strength,
     Constitution,
     Size,
@@ -252,6 +338,20 @@ pub enum Characteristic {
 }
 
 impl Characteristic {
+
+    pub fn label(&self, lang: Lang) -> &str {
+        match (self, lang) {
+            (Self::Strength,     _) => "STR",
+            (Self::Constitution, _) => "CON",
+            (Self::Size,         _) => "SIZ",
+            (Self::Dexterity,    _) => "DEX",
+            (Self::Appearance,   _) => "APP",
+            (Self::Intelligence, _) => "INT",
+            (Self::Power,        _) => "POW",
+            (Self::Education,    _) => "EDU",
+        }
+    }
+
     pub fn id(&self) -> u32 {
         Character::Characteristic.id() + match self {
             Self::Strength     => 0,
@@ -265,7 +365,6 @@ impl Characteristic {
         }
     }
 
-    /// [initial: u16 LE][change: i16 LE][modifier: i16 LE] → 6バイト
     pub fn encode(initial: u16, change: i16, modifier: i16) -> Vec<u8> {
         let mut b = Vec::with_capacity(6);
         b.extend_from_slice(&initial.to_le_bytes());
@@ -274,7 +373,6 @@ impl Characteristic {
         b
     }
 
-    /// 6バイト → (initial, change, modifier)
     pub fn decode(bytes: &[u8]) -> (u16, i16, i16) {
         let initial  = bytes.get(0..2).and_then(|b| b.try_into().ok()).map(u16::from_le_bytes).unwrap_or(0);
         let change   = bytes.get(2..4).and_then(|b| b.try_into().ok()).map(i16::from_le_bytes).unwrap_or(0);
@@ -282,24 +380,11 @@ impl Characteristic {
         (initial, change, modifier)
     }
 
-    pub fn value(&self, data: &DataStruct) -> i32 {
+    pub fn sum(&self, data: &DataStruct) -> i32 {
         let (initial, change, modifier) = data.get(self.id())
             .map(|b| Self::decode(b))
             .unwrap_or((0, 0, 0));
         (initial as i32 + change as i32 + modifier as i32).max(1)
-    }
-
-    pub fn label(&self, lang: Lang) -> &str {
-        match (self, lang) {
-            (Self::Strength,     _) => "STR",
-            (Self::Constitution, _) => "CON",
-            (Self::Size,         _) => "SIZ",
-            (Self::Dexterity,    _) => "DEX",
-            (Self::Appearance,   _) => "APP",
-            (Self::Intelligence, _) => "INT",
-            (Self::Power,        _) => "POW",
-            (Self::Education,    _) => "EDU",
-        }
     }
 
     pub fn list() -> &'static [Characteristic] {
@@ -463,10 +548,7 @@ impl OtherAttribute {
                 let base: i32 = if str > siz && dex > siz { 9 }
                            else if str < siz && dex < siz  { 7 }
                            else                             { 8 };
-                let age = character.get(Profile::Age.ids()[0]).ok()
-                    .and_then(|b| b.first())
-                    .copied()
-                    .unwrap_or(0);
+                let age = Age::read(character);
                 let age_penalty: i32 = match age {
                     40..=49 => 1,
                     50..=59 => 2,
@@ -527,7 +609,7 @@ enum AgeCategory {
 }
 
 impl AgeCategory {
-    pub fn from_age(age: u8) -> Self {
+    pub fn from_age(age: u16) -> Self {
         match age {
             15..=19 => Self::Teen,
             20..=39 => Self::Young,
