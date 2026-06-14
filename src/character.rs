@@ -711,10 +711,9 @@ impl OtherAttribute {
 // --- スキル (Skill) ---
 // ============================================================
 
-// --- 芸術/製作 専門分野 (Art/Craft Specialization)  --- p.62
+// --- 芸術/製作 専門分野 (Art/Craft Specialization)  // p.62 モリダンス等は長いので除外
 #[derive(Clone)]
 pub enum ArtCraftSpec {
-    None,
     Acting,       // 演劇
     Barber,       // 理容
     Calligraphy,  // 書道
@@ -727,10 +726,19 @@ pub enum ArtCraftSpec {
     Photography,  // 写真術
     Pottery,      // 陶芸
     Sculpting,    // 彫刻
-    Custom1(String), Custom2(String), Custom3(String), Custom4(String),
+    Custom,       // 手入力
 }
 
 impl ArtCraftSpec {
+    pub fn new(character: 'a &mut DataStruct, value: &str) -> 'a &mut DataStruct {
+        custom_ids = character.get(ArtCraft::Custom::id()).into_vec<u32>;
+        new_id = bigger one of ids and  ArtCraftSpec::id(a in ArtCraftSpec::list());
+        custom_ids.extend(new_id)
+        _ = character.set(ArtCraft::Custom::id(), custom_ids); // TODO: Create CharacterError::Skill::ArtCraft
+        _ = character.set(new_id, value);
+        character
+    }
+
     pub fn list() -> &'static [Self] {
         &[
             Self::Acting, Self::Barber, Self::Calligraphy, Self::Writing, Self::Carpentry,
@@ -740,32 +748,25 @@ impl ArtCraftSpec {
     }
 
     pub fn id(&self, base: u32) -> u32 {
-        base + match self {
-            Self::None        => unreachable!(),
-            Self::Acting      =>  0,
-            Self::Barber      =>  1,
-            Self::Calligraphy =>  2,
-            Self::Writing     =>  3,
-            Self::Carpentry   =>  4,
-            Self::Cook        =>  5,
-            Self::Dancing     =>  6,
-            Self::FineArt     =>  7,
-            Self::Forgery     =>  8,
-            Self::Photography =>  9,
-            Self::Pottery     => 10,
-            Self::Sculpting   => 11,
-            Self::Custom1(_)  => 12,
-            Self::Custom2(_)  => 13,
-            Self::Custom3(_)  => 14,
-            Self::Custom4(_)  => 15,
+        match self {
+            Self::Acting      => base +  0,
+            Self::Barber      => base +  1,
+            Self::Calligraphy => base +  2,
+            Self::Writing     => base +  3,
+            Self::Carpentry   => base +  4,
+            Self::Cook        => base +  5,
+            Self::Dancing     => base +  6,
+            Self::FineArt     => base +  7,
+            Self::Forgery     => base +  8,
+            Self::Photography => base +  9,
+            Self::Pottery     => base + 10,
+            Self::Sculpting   => base + 11,
+            Self::Custom      => base + 12, // value: Vec<id: u32>
         }
     }
 
-    pub fn base_value(&self) -> u16 { 5 }
-
-    pub fn label(&self, lang: Lang) -> Option<&str> {
+    pub fn read(&self, lang: Lang) -> Option<&str> {
         match (self, lang) {
-            (Self::None,        _)        => None,
             (Self::Acting,      Lang::Ja) => Some("演劇"),
             (Self::Acting,      Lang::En) => Some("Acting"),
             (Self::Barber,      Lang::Ja) => Some("理容"),
@@ -1204,7 +1205,7 @@ pub enum Skill {
     Anthropology,
     Archaeology,
     Appraise,
-    ArtCraft(ArtCraftSpec),
+    ArtCraft,
     Charm,
     Climb,
     ComputerUse,
@@ -1216,13 +1217,13 @@ pub enum Skill {
     ElecRepair,
     Electronics,
     FastTalk,
-    Fighting(FightingSpec),
-    Firearms(FirearmsSpec),
+    Fighting,
+    Firearms,
     FirstAid,
     History,
     Intimidate,
     Jump,
-    LanguageOther(LanguageSpec),
+    LanguageOther,
     LanguageOwn,
     Law,
     LibraryUse,
@@ -1234,21 +1235,19 @@ pub enum Skill {
     Navigate,
     Occult,
     Persuade,
-    Pilot(PilotSpec),
+    Pilot,
     Psychoanalysis,
     Psychology,
     Ride,
-    Science(ScienceSpec),
+    Science,
     SleightOfHand,
     SpotHidden,
     Stealth,
-    Survival(SurvivalSpec),
+    Survival,
     Swim,
     Throw,
     Track,
-    // 技能名+専門分野 完全自由記入（キャラシ空白欄に対応）
-    // slot: 0..SPEC_CUSTOM_SLOTS-1
-    Custom { slot: usize, name: String, spec: Option<String> },
+    Custom, // slot: usize, name: String, spec: Option<String>
 }
 
 impl Skill {
@@ -1260,7 +1259,7 @@ impl Skill {
             Self::Anthropology,
             Self::Archaeology,
             Self::Appraise,
-            Self::ArtCraft(ArtCraftSpec::None),
+            Self::ArtCraft,
             Self::Charm,
             Self::Climb,
             Self::ComputerUse,
@@ -1272,13 +1271,13 @@ impl Skill {
             Self::ElecRepair,
             Self::Electronics,
             Self::FastTalk,
-            Self::Fighting(FightingSpec::None),
-            Self::Firearms(FirearmsSpec::None),
+            Self::Fighting,
+            Self::Firearms,
             Self::FirstAid,
             Self::History,
             Self::Intimidate,
             Self::Jump,
-            Self::LanguageOther(LanguageSpec::Custom1(String::new())), // 全部自由記入
+            Self::LanguageOther,
             Self::LanguageOwn,
             Self::Law,
             Self::LibraryUse,
@@ -1290,39 +1289,37 @@ impl Skill {
             Self::Navigate,
             Self::Occult,
             Self::Persuade,
-            Self::Pilot(PilotSpec::None),
+            Self::Pilot,
             Self::Psychoanalysis,
             Self::Psychology,
             Self::Ride,
-            Self::Science(ScienceSpec::None),
+            Self::Science,
             Self::SleightOfHand,
             Self::SpotHidden,
             Self::Stealth,
-            Self::Survival(SurvivalSpec::None),
+            Self::Survival,
             Self::Swim,
             Self::Throw,
             Self::Track,
-            Self::Custom { slot: 0, name: String::new(), spec: None },
+            Self::Custom,
         ]
     }
 
     pub fn id(&self) -> u32 {
-        // spec有り: Specにオフセットを伝播してSpec内でIDを確定する
-        // spec無し: base+100 以降に配置（Specオフセット域 0..100 と衝突しない）
+        // ルールブック記載specialization id帯、custom id帯と衝突しないように基準idを割り振る
         let base = Character::Skill.id();
         match self {
-            Self::ArtCraft(spec)      => spec.id(base +   0),  //   0.. 16 (幅17)
             Self::Fighting(spec)      => spec.id(base +  17),  //  17.. 28 (幅12)
             Self::Firearms(spec)      => spec.id(base +  29),  //  29.. 38 (幅10)
             Self::LanguageOther(spec) => spec.id(base +  39),  //  39.. 42 (幅4)
             Self::Pilot(spec)         => spec.id(base +  43),  //  43.. 56 (幅14)
             Self::Science(spec)       => spec.id(base +  57),  //  57.. 73 (幅17)
             Self::Survival(spec)      => spec.id(base +  74),  //  74.. 80 (幅7)
-            // spec無しスキル: 100 以降
             Self::Accounting          => base + 100,
             Self::Anthropology        => base + 101,
             Self::Archaeology         => base + 102,
             Self::Appraise            => base + 103,
+            Self::ArtCraft            => base +   0,  // 0.. 16 (幅17)
             Self::Charm               => base + 104,
             Self::Climb               => base + 105,
             Self::ComputerUse         => base + 106,
@@ -1358,8 +1355,7 @@ impl Skill {
             Self::Swim                => base + 136,
             Self::Throw               => base + 137,
             Self::Track               => base + 138,
-            // Custom: 140.. (SPEC_CUSTOM_SLOTS 個)
-            Self::Custom { slot, .. } => base + 140 + *slot as u32,
+            Self::Custom              => base + 140,
         }
     }
 
@@ -1406,7 +1402,7 @@ impl Skill {
             Self::Anthropology         =>  1,
             Self::Archaeology          =>  1,
             Self::Appraise             =>  5,
-            Self::ArtCraft(spec)       => spec.base_value(),
+            Self::ArtCraft             =>  5,
             Self::Charm                => 15,
             Self::Climb                => 20,
             Self::ComputerUse          =>  5,
