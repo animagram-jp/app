@@ -231,6 +231,34 @@ impl Occupation {
             (Self::Custom,          _)        => s.as_str(),
         }
     }
+
+    pub fn display(instance: &DataStruct) -> String {
+        let (name, complement) = Self::read(instance);
+        match complement {
+            Some(a) if !a.is_empty() => format!("{name} ({a})"),
+            _ => name,
+        }
+    }
+
+    pub fn read(instance: &DataStruct) -> (String, Option<String>) {
+        let ids = Profile::Name.ids();
+        let name = instance.get(ids[0]).ok()
+            .map(|b| String::from_utf8_lossy(b).into_owned())
+            .unwrap_or_default();
+        let complement = instance.get(ids[1]).ok()
+            .map(|b| String::from_utf8_lossy(b).into_owned());
+        (name, complement)
+    }
+
+    pub fn write<'a>(instance: &'a mut DataStruct, value: (&str, Option<&str>)) -> &'a mut DataStruct {
+        let ids = Profile::Name.ids();
+        let _ = instance.set(ids[0], value.0.as_bytes(), None);
+        match value.1 {
+            Some(complement) => { let _ = instance.set(ids[1], complement.as_bytes(), None); }
+            None        => { let _ = instance.delete(ids[1]); }
+        }
+        instance
+    }
 }
 
 #[derive(Clone, Copy)]
