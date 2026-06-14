@@ -100,13 +100,6 @@ impl Character {
 pub struct Name; // Name {name: str} ({complement: str})
 
 impl Name {
-    pub fn label(lang: Lang) -> &'static str {
-        match lang {
-            Lang::En => "Name",
-            Lang::Ja => "名前",
-        }
-    }
-
     pub fn display(instance: &DataStruct) -> String {
         let (name, complement) = Self::read(instance);
         match complement {
@@ -195,7 +188,7 @@ pub enum Profile {
     Name,
     Birthpalce,
     Pronoun,
-    Occupation, // 「職業」(id) + 「肩書 title」(id+1) の2スロット。Occupation struct が管理予定。
+    Occupation,
     Residence,
     Age,
 }
@@ -212,7 +205,7 @@ impl Profile {
         }
     }
 
-    pub fn label(&self, lang: Lang) -> &'static str {
+    pub fn display(&self, lang: Lang) -> &'static str {
         match (self, lang) {
             (Self::Name, Lang::En) => "Name",
             (Self::Name, Lang::Ja) => "名前",
