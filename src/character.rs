@@ -97,25 +97,64 @@ impl Character {
 // --- プロフィール (Name, Birthppalce, Pronoun, Occupation, Residence, Age) ---
 // ============================================================
 
+pub struct Name;
+
+impl Name {
+    pub fn label(lang: Lang) -> &'static str {
+        match lang {
+            Lang::En => "Name",
+            Lang::Ja => "名前",
+        }
+    }
+
+    pub fn display(instance: &DataStruct) -> String {
+        let (name, complement) = Self::read(instance);
+        match complement {
+            Some(a) if !a.is_empty() => format!("{name} ({a})"),
+            _ => name,
+        }
+    }
+
+    pub fn read(instance: &DataStruct) -> (String, Option<String>) {
+        let ids = Profile::Name.ids();
+        let name = instance.get(ids[0]).ok()
+            .map(|b| String::from_utf8_lossy(b).into_owned())
+            .unwrap_or_default();
+        let complement = instance.get(ids[1]).ok()
+            .map(|b| String::from_utf8_lossy(b).into_owned());
+        (name, complement)
+    }
+
+    pub fn write<'a>(instance: &'a mut DataStruct, value: (&str, Option<&str>)) -> &'a mut DataStruct {
+        let ids = Profile::Name.ids();
+        let _ = instance.set(ids[0], value.0.as_bytes(), None);
+        match value.1 {
+            Some(complement) => { let _ = instance.set(ids[1], complement.as_bytes(), None); }
+            None        => { let _ = instance.delete(ids[1]); }
+        }
+        instance
+    }
+}
+
 #[derive(Clone, Copy)]
 pub enum Profile {
-    Name, // todo: 「名前」と「Option(呼び方)」の二値構成に拡充。labelは format!"{} ({})"。※Option=noneなら()も出さない
+    Name,
     Birthpalce,
     Pronoun,
-    Occupation, // todo: 「ルール上の職業」と「Option(肩書 title)」の二値構成に拡充。 labelは format!"{} ({})"。
+    Occupation, // 「職業」(id) + 「肩書 title」(id+1) の2スロット。Occupation struct が管理予定。
     Residence,
     Age,
 }
 
 impl Profile {
-    pub fn id(&self) -> u32 {
-        Character::Profile.id() + match self {
-            Self::Name       => 0,
-            Self::Birthpalce => 1,
-            Self::Pronoun    => 2,
-            Self::Occupation => 3,
-            Self::Residence  => 4,
-            Self::Age        => 5,
+    pub fn ids(&self) -> &'static [u32] {
+        match self {
+            Self::Name       => &[11, 12],
+            Self::Birthpalce => &[13],
+            Self::Pronoun    => &[14],
+            Self::Occupation => &[15, 16],
+            Self::Residence  => &[17],
+            Self::Age        => &[18],
         }
     }
 
@@ -134,10 +173,6 @@ impl Profile {
             (Self::Age, Lang::En) => "Age",
             (Self::Age, Lang::Ja) => "年齢",
         }
-    }
-
-    pub fn encode(_name: &str, _alias: Option<&str>) -> Vec<u8> {
-        todo!()
     }
 
     pub fn list() -> &'static [Profile] {
@@ -478,7 +513,7 @@ impl OtherAttribute {
                 let base: i32 = if str > siz && dex > siz { 9 }
                            else if str < siz && dex < siz  { 7 }
                            else                             { 8 };
-                let age = character.get(Profile::Age.id()).ok()
+                let age = character.get(Profile::Age.ids()[0]).ok()
                     .and_then(|b| b.first())
                     .copied()
                     .unwrap_or(0);
