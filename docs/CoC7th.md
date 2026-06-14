@@ -149,6 +149,14 @@ This is a note by Andyou written through confirming rulebook.
 - 2. 予期できなかった場合、攻撃の技能ロールがファンブルしない限り成功する。
 - 3. 奇襲は行動順を意志を持った順に修正する意図がある。つまり、同ラウンドに奇襲を受けた側が行動することは構わないと考えられる。
 
-## Reference
+### Armor Reference
 
 - https://basicroleplaying.org/topic/8902-armor-rules-clarification-coc-7th-ed/
+
+### 職業技能ポイント・個人的な興味ポイント
+
+キャラクター作成後のポイント(合計)の再計算は行わない。直接の公式見解は無いが、関連ルールの方向性・妥当性の観点から判断した。
+
+- 新クトゥルフ神話TRPGルールブック 第2刷 p.31
+- https://cthulhuwiki.chaosium.com/investigators/step-three-occupation-and-skills.html#sample-investigator-occupations
+- https://basicroleplaying.org/topic/9511-age-bonus-penalties/

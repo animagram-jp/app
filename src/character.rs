@@ -363,6 +363,21 @@ impl Characteristic {
         }
     }
 
+    pub fn from_id(id: u8) -> Option<Self> {
+        let offset = id as u32 - Character::Characteristic.id();
+        match offset {
+            0 => Some(Self::Strength),
+            1 => Some(Self::Constitution),
+            2 => Some(Self::Size),
+            3 => Some(Self::Dexterity),
+            4 => Some(Self::Appearance),
+            5 => Some(Self::Intelligence),
+            6 => Some(Self::Power),
+            7 => Some(Self::Education),
+            _ => None,
+        }
+    }
+
     pub fn read(&self, instance: &DataStruct) -> (u16, i16, i16) {
         instance.get(self.id()).ok()
             .map(|b| {
@@ -596,25 +611,38 @@ impl MoveRate {
     }
 }
 
-pub struct OccupationSkillPoints; // OccupationSkillPoints: u32 | (Characteristic, Characteristic), Profile -> u32
+pub struct OccupationSkillPoints; // OccupationSkillPoints: (Characteristic, Characteristic) | (Characteristic, Characteristic), Profile -> (u16, u16)
 
 impl OccupationSkillPoints {
 
-    pub fn read(instance: &DataStruct) -> u32 {
-        instance.get(OtherAttribute::OccupationSkillPoints.id()).ok()
-            .and_then(|b| b.get(0..4)?.try_into().ok())
-            .map(u32::from_le_bytes)
-            .unwrap_or(0)
+    pub fn read(instance: &DataStruct) -> Option<(Characteristic, Characteristic)> {
+        let b = instance.get(OtherAttribute::OccupationSkillPoints.id()).ok()?;
+        let c1 = Characteristic::from_id(*b.first()?)?;
+        let c2 = Characteristic::from_id(*b.get(1)?)?;
+        Some((c1, c2))
     }
 
-    pub fn write<'a>(instance: &'a mut DataStruct, value: u32) -> &'a mut DataStruct {
-        let _ = instance.set(OtherAttribute::OccupationSkillPoints.id(), &value.to_le_bytes(), None);
+    pub fn write<'a>(instance: &'a mut DataStruct, value: (Characteristic, Characteristic)) -> &'a mut DataStruct {
+        let _ = instance.set(OtherAttribute::OccupationSkillPoints.id(), &[value.0.id() as u8, value.1.id() as u8], None);
         instance
     }
 
-    pub fn derive(instance: &DataStruct) -> u32 {
-        // 職業によって使う能力値の組み合わせが異なる
-        todo!()
+    pub fn label(instance: &DataStruct, lang: Lang) -> String {
+        let Some((c1, c2)) = Self::read(instance) else { return String::new(); };
+        if c1.id() == c2.id() {
+            format!("{}×4", c1.label(lang))
+        } else {
+            format!("{}×2+{}×2", c1.label(lang), c2.label(lang))
+        }
+    }
+
+    pub fn derive(instance: &DataStruct) -> (u16, u16) {
+        let Some((c1, c2)) = Self::read(instance) else { return (0, 0); };
+        let used = 0u16; // todo: 割り振り済みポイント: Skill::sum().0で計算
+        let (c1_initial, _, c1_modifier) = c1.read(instance);
+        let (c2_initial, _, c2_modifier) = c2.read(instance);
+        let total = (c1_initial as i32 + c1_modifier as i32 + c2_initial as i32 + c2_modifier as i32) * 2;
+        (used, total.max(0) as u16)
     }
 }
 
