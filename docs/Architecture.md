@@ -52,18 +52,18 @@ wasm-pack build --target web --out-dir examples/app --out-name app
 ││ pwa (service worker) ││
 │└──────────────────────┘│
 └────────────────────────┘
-        ▲         ▲
- ┌──────┴──────┐  │ network functions:
- │ https proxy │  │ - realtime device-to-device
- └──────┬──────┘  │ - background data sync
-        ▼         ▼
+    ▲      ▲
+ ┌──┴────┐ │ http request / web socket:
+ │ proxy │ │ - realtime device-to-device
+ └──┬────┘ │ - background data sync
+    ▼      ▼
 ┌────────────────────────┐
 │ server                 │
 │┌──────────────────────┐│
 ││ nginx (http)         ││
 │└──────────────────────┘│
 │┌──────────────────────┐│
-││ signaling (stun,turn)││
+││ signaling, stun,turn ││
 │└──────────────────────┘│
 │┌──────────────────────┐│
 ││ app (rust)           ││
