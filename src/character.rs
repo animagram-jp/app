@@ -417,19 +417,19 @@ impl Characteristic {
 }
 
 // ============================================================
-// --- Other Attributes (Hit Points, Magic Points, Luck, Sanity, Build, Damage Bonus, Move Rate, )
+// --- Other Attributes
 // ============================================================
 
 pub enum OtherAttribute {
-    HitPoints,
-    MagicPoints,
-    Luck,
-    Sanity,
-    Build,
-    DamageBonus,
-    MoveRate,
-    OccupationSkillPoints,
-    InterestSkillPoints,
+    HitPoints,   // derived from Characteristic (u8)
+    MagicPoints, // derived from Characteristic (u8)
+    Luck,        // u8
+    Sanity,      // u8 (initial derived from Characteristic)
+    Build,       // derived from Characteristic (i8)
+    DamageBonus, // derived from Characteristic (Dice)
+    MoveRate,    // (u8, modifier: i8) (each initial derived from Characteristic, Profile)
+    OccupationSkillPoints, // (Characteristic, Characteristic) (default derived from Characteristic, Profile)
+    InterestSkillPoints,   // (Characteristic, Characteristic) (default derived from Characteristic, Profile)
 }
 
 impl OtherAttribute {
@@ -522,8 +522,7 @@ impl OtherAttribute {
                   285..=364 =>  4,
                   365..=444 =>  5,
                   445..=524 =>  6,
-                  // 525..=605 => 7 / +1D6 で80単位で移行も段階変化。
-                  _         =>  6,
+                  n         => (7 + (n - 525) / 80) as i8,
                 };
                 vec![build as u8]
             }
