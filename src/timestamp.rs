@@ -178,7 +178,7 @@ pub fn new(
     ts
 }
 
-pub fn label(ts: u64) -> String {
+pub fn display(ts: u64) -> String {
     let year:   u64 = YEAR.get(ts);
     let month:  u64 = MONTH.get(ts);
     let day:    u64 = DAY.get(ts);

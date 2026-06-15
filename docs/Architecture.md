@@ -112,7 +112,7 @@ html:
 
 - config.css(変数定義), style.css, idや構造に依存のない外部css。
 - style.cssにて[hidden], .hidden {display: none !important;} を定義する。
-- 各セレクタはtagのパイプまたはidで指定する。classで指定しない。
+- tagまたはidのリレーションでセレクタを定義する。セレクタ指定のためにclassを新設してはいけない。
 
 ### javascript
 
@@ -157,7 +157,7 @@ use js_client::{
 ```rust
 use list::{
     List::{new, get, set, delete},
-    VariableList::{new, new_from_bytes, get, set, delete},
+    VariableList::{new, new_from_bytes, get, get_from_bytes, set, delete},
 };
 ```
 
@@ -177,19 +177,44 @@ use store::{wal, DiskStore};
 
 #### timestamp.rs
 
+```rust
+use timestamp::{
+    Field, YEAR, MONTH, DAY, HOUR, MINUTE, SECOND, DECISECOND, IS_UTC, TIMEZONE, Timezone,
+    from_ut, new, display, unpack, pack, 
+    add_years, sub_years, add_months, sub_months, add_days, sub_days, 
+    add_hours, sub_hours, add_minutes, sub_minutes
+};
+```
+
 - TZ, decisecondsまでとカレンダー加減算に対応した、u64 timestampモジュール。
 
 #### data_struct.rs
+
+```rust
+use data_struct::{DataStruct::{new, get_from_bytes, get, set, delete, compact, to_bytes, from_bytes}};
+```
 
 - データモデル固有のフィールド数(schema_size)固定Listと可変部VariableListによるデータインスタンス操作モジュール。
 - フィールド1にid(u32), 2にcreated_at(timestamp), 3にupdated_at(timestamp)を確定し、4~を開放。
 
 #### model.rs (character.rs)
 
+```rust
+use character::{
+    Dice, dice::{display, roll}, 
+    Character, Profile, Characteristic, Skill, 
+    ArtCraftSpec, FightingSpec, FirearmsSpec, PilotSpec, ScienceSpec, SurvivalSpec
+};
+```
+
 - ドメイン固有のデータモデルの全フィールドとロジックを、各自公開されたenumのネスト群で表現したモジュール。
 - 関数はitemのドメイン意味(表示)を定義する`label`, 一意なschema_idを発行する`id`, バイト列とdomからの流入(u32,str,f64)を相互変換する`read` / `write`, 値の表示を導出する`display`などを各enum itemに対して定義する。
 
 #### event.rs
+
+```rust
+use event::{Dialog, Coc7th, Toast};
+```
 
 - canvasを操作する、ドメイン固有のstate定義とhandler。
 - handlerは、DataStructと、フィールド4~schema_sizeまでの操作ロジックを定義するmodelを束ねて操作を行う。
@@ -197,11 +222,15 @@ use store::{wal, DiskStore};
 
 #### app.rs
 
+```rust
+use app::{Event, App::{init, close, process, dispatch}};
+```
+
 - initとprocessの公開apiを持つ、Appインスタンス。
 - eventsとcommandsの2つのキューを持ち、event::Handler.processへevents消費を移譲ループする。
 
 #### その他
 
 - roll.rs: model.rsの形に整形する前のダイスロールモジュール。lib.rsの関連fnの収容・character.rsとの相互参照のモジュール化対応必要。
-- upx.rs: block element内のabsolute座標をpxグリッドで計算するモジュール。開発途中
+- ugrid.rs: カレンダー画面など、block element内のabsolute座標をpxグリッドで計算するモジュール。開発途中
 - temporal.rs: カレンダー機能に向けた時間表現モジュール。timestamp.rsに依存。開発途中。
