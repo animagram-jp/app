@@ -429,13 +429,12 @@ pub fn sub_hours(timestamps: &[u64], n: i64) -> Vec<u64> {
         while remaining > hour {
             remaining -= hour + 1;
             hour = 23;
-            let mut sub = 1i64;
-            while sub >= day {
-                sub -= day;
+            if day == 1 {
                 if month == 1 { month = 12; year -= 1; } else { month -= 1; }
                 day = days_in_month(year, month);
+            } else {
+                day -= 1;
             }
-            day -= sub;
         }
         hour -= remaining;
         pack(year, month, day, hour, minute, second, decisecond, is_utc, tz)
