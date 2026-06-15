@@ -111,10 +111,10 @@ fn build_memory(snap: &[u8], log: &[u8]) -> BTreeMap<u32, Vec<u8>> {
 }
 
 // ============================================================
-// DiskStore — OPFS I/O + RAM index (dedicated worker only)
+// FileStore — OPFS I/O + RAM index (dedicated worker only)
 // ============================================================
 
-pub struct DiskStore {
+pub struct FileStore {
     snap:    FileSystemSyncAccessHandle,
     log:     FileSystemSyncAccessHandle,
     memory:  BTreeMap<u32, Vec<u8>>,
@@ -122,7 +122,7 @@ pub struct DiskStore {
     unsaved: BTreeSet<u32>,
 }
 
-impl DiskStore {
+impl FileStore {
     /// OPFS から filename.snap / filename.log を開き、RAMインデックスを構築する。
     /// Worker の init フェーズで await する。
     pub async fn new(filename: &str) -> Result<Self, String> {

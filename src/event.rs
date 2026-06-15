@@ -1,7 +1,7 @@
 use arbitrary_int::u2;
 use crate::Lang;
 use crate::js_client::{Command, Operation, EventType, Gesture, dom::{Id, Tag}, CanvasEvent};
-use crate::store::DiskStore;
+use crate::store::FileStore;
 use crate::data_struct::DataStruct;
 use crate::character::{
     Character, Profile, Characteristic, Skill,
@@ -30,7 +30,7 @@ pub struct Coc7th {
     lang:       Lang,
     last_toast: u2,
     character:  DataStruct,
-    characters: DiskStore,
+    characters: FileStore,
     logs:       Vec<Log>,
 }
 
@@ -41,8 +41,8 @@ impl Coc7th {
             lang:       Lang::Ja,
             last_toast: u2::new(1), // todo! 正しいか要確認
             character:  DataStruct::new(0, 0.0, 256),
-            characters: DiskStore::new(CHARACTER_SCHEMA_NAME).await
-                .unwrap_or_else(|e| panic!("DiskStore::new failed: {}", e)),
+            characters: FileStore::new(CHARACTER_SCHEMA_NAME).await
+                .unwrap_or_else(|e| panic!("FileStore::new failed: {}", e)),
             logs: Vec::new(),
         }
     }

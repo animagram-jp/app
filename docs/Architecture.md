@@ -162,12 +162,12 @@ use list::{
 ```
 
 - 可変長論理バイト列の宣言と、固定長要素列操作Listと可変長(バイト倍数)要素列操作VariabeList。
-- DiskStoreのプールメモリの読み取りに対応して、バイト列読み取り関数new_from_bytesとget_from_bytesも公開。
+- FileStoreのプールメモリの読み取りに対応して、バイト列読み取り関数new_from_bytesとget_from_bytesも公開。
 
 #### store.rs
 
 ```rust
-use store::{wal, DiskStore};
+use store::{wal, FileStore};
 ```
 
 - ローカルストア(Walとopfs)操作を発行するモジュール。
@@ -209,6 +209,7 @@ use character::{
 
 - ドメイン固有のデータモデルの全フィールドとロジックを、各自公開されたenumのネスト群で表現したモジュール。
 - 関数はitemのドメイン意味(表示)を定義する`label`, 一意なschema_idを発行する`id`, バイト列とdomからの流入(u32,str,f64)を相互変換する`read` / `write`, 値の表示を導出する`display`などを各enum itemに対して定義する。
+- `display`: モデル
 
 #### event.rs
 
