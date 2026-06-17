@@ -713,7 +713,7 @@ impl OtherAttribute {
 
 // --- 芸術/製作 専門分野 (Art/Craft Specialization)  // p.62 モリダンス等は長いので除外
 #[derive(Clone)]
-pub enum ArtCraftSpec {
+pub enum ArtCraftPreset {
     Acting,       // 演劇
     Barber,       // 理容
     Calligraphy,  // 書道
@@ -726,7 +726,30 @@ pub enum ArtCraftSpec {
     Photography,  // 写真術
     Pottery,      // 陶芸
     Sculpting,    // 彫刻
-    Custom,       // 手入力
+}
+
+impl fn id(&self) -> u32 {
+    match self {
+        Self::Acting      =>  1,
+        Self::Barber      =>  2,
+        Self::Calligraphy =>  3,
+        Self::Writing     =>  4,
+        Self::Carpentry   =>  5,
+        Self::Cook        =>  6,
+        Self::Dancing     =>  7,
+        Self::FineArt     =>  8,
+        Self::Forgery     =>  9,
+        Self::Photography => 10,
+        Self::Pottery     => 11,
+        Self::Sculpting   => 12,
+        Self::Custom      => 13, // value: Vec<id: u32>
+    }
+}
+
+pub fn struct ArtCraft;
+
+impl ArtCraft {
+    pub fn read()
 }
 
 impl ArtCraftSpec {

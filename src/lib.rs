@@ -28,12 +28,13 @@ static ALLOCATOR: GlobalDlmalloc = GlobalDlmalloc;
 // ============================================================
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Lang { En, Ja }
+pub enum Lang {En(En), Ja}
+pub enum En {Us}
 
 impl Lang {
     fn label(self) -> &'static str {
         match self {
-            Self::En => "en-US",
+            Self::En(En::Us) => "en-US",
             Self::Ja => "ja",
         }
     }
