@@ -40,7 +40,7 @@ wasm-pack build --target web --out-dir examples/app --out-name app
 ┌────────────────────────┐
 │ browser                │
 │┌──────┐┌──────┐┌──────┐│
-││ dom  ││ opfs ││ pwa  ││ 
+││ dom  ││ opfs ││ sw   ││ 
 │└──────┘└──────┘└──────┘│
 │┌──────────────────────┐│
 ││ app (wasm)           ││
