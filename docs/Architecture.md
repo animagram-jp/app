@@ -54,10 +54,7 @@ wasm-pack build --target web --out-dir examples/app --out-name app
 ┌────────────────────────┐
 │ server                 │
 │┌──────────────────────┐│
-││ nginx (http)         ││
-│└──────────────────────┘│
-│┌──────────────────────┐│
-││ signaling, stun,turn ││
+││ nginx (external port)││
 │└──────────────────────┘│
 │┌──────────────────────┐│
 ││ app (rust)           ││
