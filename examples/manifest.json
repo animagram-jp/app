@@ -1,15 +1,15 @@
 {
   "id": "/",
-  "name": "calendar",
-  "short_name": "calendar",
-  "description": "web calendar application",
+  "name": "app",
+  "short_name": "app",
+  "description": "Gui application system for editing and reading structured data.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f2f2f2",
-  "theme_color": "#b3b3b3",
+  "theme_color": "#5B2F91",
   "icons": [
     {
-      "src": "icon.png",
+      "src": "animagram.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"

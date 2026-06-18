@@ -18,7 +18,7 @@
 
 ```rust
 
-pub enum Lang { En(En), Ja};
+pub enum Lang {En(En), Ja};
 pub enum En {Us, Uk};
 
 // "domain"という例示用ドメイン
