@@ -8,6 +8,16 @@ Softwear for playing Call of Cthulhu 7th Edition
 2. 現在本repoに統合済みのwebカレンダー開発中に、時間軸を基盤にしたデータモデル編集ソフトウェアって、1つで良くない? と感じ、データモデル設計を汎用化するにあたって、TRPGは良い実践例になるという判断で行っています。
 3. この他、インディーズRPGクリエイター向けに、キャラクターデータモデルの設計機能へ展開することも検討しています。
 
+## Notice
+
+```
+"Call of Cthulhu" is a trademark of Chaosium Inc. 
+This project is an independent, unofficial work and is not affiliated with, endorsed by, or sponsored by Chaosium Inc.
+『クトゥルフ神話TRPG』は Chaosium Inc. の著作物です。
+『新クトゥルフ神話TRPG』は、株式会社アークライトによる翻案のもと株式会社KADOKAWAが発行しています。
+本機能は同作のプレイを支援する非公式のオンラインツールであり、上記各社及びChaosium Inc.による公認・提携・後援を受けたものではありません。
+```
+
 ## Requirement
 
 1. CoC TRPG 7th Editionをオンラインで遊ぶ時、1: 背景やキャラクター画像の共有 2: 通話 3 チャットやキャラクターなど、数値とテキストデータの編集・共有閲覧 が必要。このうち1,2は運用コストがかかるので、既存サービスに任せ、先ずは3を網羅する。
