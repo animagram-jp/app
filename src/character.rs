@@ -711,9 +711,8 @@ impl OtherAttribute {
 // --- スキル (Skill) ---
 // ============================================================
 
-// --- 芸術/製作 専門分野 (Art/Craft Specialization)  // p.62 モリダンス等は長いので除外
-#[derive(Clone)]
-pub enum ArtCraftPreset {
+// 芸術/製作 (専門分野) Art/Craft (Specialization) // p.62 モリダンス等は長いので除外
+enum Artcraft {
     Acting,       // 演劇
     Barber,       // 理容
     Calligraphy,  // 書道
@@ -722,38 +721,66 @@ pub enum ArtCraftPreset {
     Dancing,      // ダンス
     FineArt,      // 絵画
     Forgery,      // 文書偽造
-    Writing,      // 執筆
     Photography,  // 写真術
     Pottery,      // 陶芸
     Sculpting,    // 彫刻
+    Writing,      // 執筆
+    Custom(u32)
 }
-
-impl fn id(&self) -> u32 {
-    match self {
-        Self::Acting      =>  1,
-        Self::Barber      =>  2,
-        Self::Calligraphy =>  3,
-        Self::Writing     =>  4,
-        Self::Carpentry   =>  5,
-        Self::Cook        =>  6,
-        Self::Dancing     =>  7,
-        Self::FineArt     =>  8,
-        Self::Forgery     =>  9,
-        Self::Photography => 10,
-        Self::Pottery     => 11,
-        Self::Sculpting   => 12,
-        Self::Custom      => 13, // value: Vec<id: u32>
-    }
-}
-
-pub fn struct ArtCraft;
 
 impl ArtCraft {
-    pub fn read()
-}
 
-impl ArtCraftSpec {
-    pub fn new(character: 'a &mut DataStruct, value: &str) -> 'a &mut DataStruct {
+    pub fn id(&self, character: &DataStruct) -> u32 {
+        match self {
+            Self::Acting      =>  1,
+            Self::Barber      =>  2,
+            Self::Calligraphy =>  3,
+            Self::Carpentry   =>  4,
+            Self::Cook        =>  5,
+            Self::Dancing     =>  6,
+            Self::FineArt     =>  7,
+            Self::Forgery     =>  8,
+            Self::Photography =>  9,
+            Self::Pottery     => 10,
+            Self::Sculpting   => 11,
+            Self::Writing     => 12,
+            Self::Custom(0)   => 13,
+            Self::Custom(i)   => character.get(ArtCraft::Custom(0)::id()).i
+        }
+    }
+
+    pub fn read(&self, lang: Lang) -> &str {
+        match (self, lang) {
+            (Self::Acting,      Lang::En) => Some("Acting"),
+            (Self::Acting,      Lang::Ja) => Some("演劇"),
+            (Self::Barber,      Lang::En) => Some("Barber"),
+            (Self::Barber,      Lang::Ja) => Some("理容"),
+            (Self::Calligraphy, Lang::En) => Some("Calligraphy"),
+            (Self::Calligraphy, Lang::Ja) => Some("書道"),
+            (Self::Carpentry,   Lang::En) => Some("Carpentry"),
+            (Self::Carpentry,   Lang::Ja) => Some("大工仕事"),
+            (Self::Cook,        Lang::En) => Some("Cook"),
+            (Self::Cook,        Lang::Ja) => Some("料理"),
+            (Self::Dancing,     Lang::En) => Some("Dancing"),
+            (Self::Dancing,     Lang::Ja) => Some("ダンス"),
+            (Self::FineArt,     Lang::En) => Some("Fine Art"),
+            (Self::FineArt,     Lang::Ja) => Some("絵画"),
+            (Self::Forgery,     Lang::En) => Some("Forgery"),
+            (Self::Forgery,     Lang::Ja) => Some("文書偽造"),
+            (Self::Photography, Lang::En) => Some("Photography"),
+            (Self::Photography, Lang::Ja) => Some("写真術"),
+            (Self::Pottery,     Lang::En) => Some("Pottery"),
+            (Self::Pottery,     Lang::Ja) => Some("陶芸"),
+            (Self::Sculpting,   Lang::En) => Some("Sculpting"),
+            (Self::Sculpting,   Lang::Ja) => Some("彫刻"),
+            (Self::Writing,     Lang::En) => Some("Writing"),
+            (Self::Writing,     Lang::Ja) => Some("執筆"),
+            (Self::Custom(0),   _) => CharacterError::Skill::ArtCraft("Custom(0) is not to read()"),
+            (Self::Custom(i),   _)        => character.get(ArtCraft::Custom(i)::id(character)),
+        }
+    }
+
+    pub fn write(character: 'a &mut DataStruct, value: ) -> {
         custom_ids = character.get(ArtCraft::Custom::id()).into_vec<u32>;
         new_id = bigger one of ids and  ArtCraftSpec::id(a in ArtCraftSpec::list());
         custom_ids.extend(new_id)
@@ -764,58 +791,8 @@ impl ArtCraftSpec {
 
     pub fn list() -> &'static [Self] {
         &[
-            Self::Acting, Self::Barber, Self::Calligraphy, Self::Writing, Self::Carpentry,
-            Self::Cook, Self::Dancing, Self::FineArt,
-            Self::Forgery, Self::Photography, Self::Pottery, Self::Sculpting,
+            Self::Acting, Self::Barber, Self::Calligraphy, Self::Carpentry, Self::Cook, Self::Dancing, Self::FineArt, Self::Forgery, Self::Photography, Self::Pottery, Self::Sculpting, Self::Writing, 
         ]
-    }
-
-    pub fn id(&self, base: u32) -> u32 {
-        match self {
-            Self::Acting      => base +  0,
-            Self::Barber      => base +  1,
-            Self::Calligraphy => base +  2,
-            Self::Writing     => base +  3,
-            Self::Carpentry   => base +  4,
-            Self::Cook        => base +  5,
-            Self::Dancing     => base +  6,
-            Self::FineArt     => base +  7,
-            Self::Forgery     => base +  8,
-            Self::Photography => base +  9,
-            Self::Pottery     => base + 10,
-            Self::Sculpting   => base + 11,
-            Self::Custom      => base + 12, // value: Vec<id: u32>
-        }
-    }
-
-    pub fn read(&self, lang: Lang) -> Option<&str> {
-        match (self, lang) {
-            (Self::Acting,      Lang::Ja) => Some("演劇"),
-            (Self::Acting,      Lang::En) => Some("Acting"),
-            (Self::Barber,      Lang::Ja) => Some("理容"),
-            (Self::Barber,      Lang::En) => Some("Barber"),
-            (Self::Calligraphy, Lang::Ja) => Some("書道"),
-            (Self::Calligraphy, Lang::En) => Some("Calligraphy"),
-            (Self::Carpentry,   Lang::Ja) => Some("大工仕事"),
-            (Self::Carpentry,   Lang::En) => Some("Carpentry"),
-            (Self::Cook,        Lang::Ja) => Some("料理"),
-            (Self::Cook,        Lang::En) => Some("Cook"),
-            (Self::Dancing,     Lang::Ja) => Some("ダンス"),
-            (Self::Dancing,     Lang::En) => Some("Dancing"),
-            (Self::FineArt,     Lang::Ja) => Some("絵画"),
-            (Self::FineArt,     Lang::En) => Some("Fine Art"),
-            (Self::Forgery,     Lang::Ja) => Some("文書偽造"),
-            (Self::Writing,     Lang::Ja) => Some("執筆"),
-            (Self::Writing,     Lang::En) => Some("Writing"),
-            (Self::Forgery,     Lang::En) => Some("Forgery"),
-            (Self::Photography, Lang::Ja) => Some("写真術"),
-            (Self::Photography, Lang::En) => Some("Photography"),
-            (Self::Pottery,     Lang::Ja) => Some("陶芸"),
-            (Self::Pottery,     Lang::En) => Some("Pottery"),
-            (Self::Sculpting,   Lang::Ja) => Some("彫刻"),
-            (Self::Sculpting,   Lang::En) => Some("Sculpting"),
-            (Self::Custom1(s) | Self::Custom2(s) | Self::Custom3(s) | Self::Custom4(s), _) => Some(s.as_str()),
-        }
     }
 }
 

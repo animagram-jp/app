@@ -40,17 +40,31 @@ wasm-pack build --target web --out-dir examples/app --out-name app
 ┌────────────────────────┐
 │ browser                │
 │┌──────┐┌──────┐┌──────┐│
-││ dom  ││ opfs ││ sw   ││ 
+││ dom  ││ opfs ││ pwa  ││
 │└──────┘└──────┘└──────┘│
 │┌──────────────────────┐│
-││ app (wasm)           ││
+││ app (web worker)     ││
 │└──────────────────────┘│
-└────────────────────────┘
-    ▲      ▲
- ┌──┴────┐ │ http request / web socket:
- │ proxy │ │ - realtime device-to-device
- └──┬────┘ │ - background data sync
-    ▼      ▼
+│  ▲                  │▲ │
+│  │ post/onMessage   ││ │
+│  ▼                  ││ │
+│┌──────────────────┐ ││ │
+││ extension worker │ ││ │
+│└──────────────────┘ ││ │
+└─ ▲ ──────────────── ││─┘
+   │                  ││
+   │ native messaging ││websocket
+   ▼                  ││
+┌───────────────┐     ││
+│ native worker │     ││
+│ (host api)    │     ││
+└──┬────────────┘     ││
+   │ http request     ││
+   │     ┌──────┬─────┤│
+   │     ▼stun  ▼turn ││▼http
+   │ ┌──────┐┌──────┐ ││
+   │ │ stun ││ turn │ ││
+   ▼ └──────┘└──────┘ ▼▼
 ┌────────────────────────┐
 │ server                 │
 │┌──────────────────────┐│
@@ -60,7 +74,7 @@ wasm-pack build --target web --out-dir examples/app --out-name app
 ││ app (rust)           ││
 │└──────────────────────┘│
 │┌──────────────────────┐│
-││ filesystem           ││
+││ vfs                  ││
 │└──────────────────────┘│
 └────────────────────────┘
 ```
@@ -85,7 +99,7 @@ wasm-pack build --target web --out-dir examples/app --out-name app
       - 同列要素: `display: inline-block`, `display: inline`, `display: table-cell`
       - htmlの制約として、同列要素の中に段落要素を格納する、すなわち集合要素を持つべき時、タグを子に分離する必要がある。この時も、セマンティクスを最もよく表すタグを選択する。
 - idはbody以降の親tag・その連番と、同層同tagの連番から機械的に決定される。
-- 各element内の記述順は、tag名, id, html standard attribute, aria-label, class, class unique attribute。
+- 各element内の記述順は、`<tagname, id, html standard attribute, aria-label, class, class unique attribute>`。
 - formatting rule:
     - Do not insert a line break before a closing tag.
     - Insert a line break before the start of every tag.
@@ -188,7 +202,7 @@ use timestamp::{
 #### data_struct.rs
 
 ```rust
-use data_struct::{DataStruct::{new, get_from_bytes, get, set, delete, compact, to_bytes, from_bytes}};
+use data_struct::DataStruct::{new, get_from_bytes, get, set, delete, compact, to_bytes, from_bytes};
 ```
 
 - データモデル固有のフィールド数(schema_size)固定Listと可変部VariableListによるデータインスタンス操作モジュール。
@@ -200,7 +214,7 @@ use data_struct::{DataStruct::{new, get_from_bytes, get, set, delete, compact, t
 use character::{
     Dice, dice::{display, roll}, 
     Character, Profile, Characteristic, Skill, 
-    ArtCraftSpec, FightingSpec, FirearmsSpec, PilotSpec, ScienceSpec, SurvivalSpec
+    ArtCraft, FightingSpec, FirearmsSpec, PilotSpec, ScienceSpec, SurvivalSpec
 };
 ```
 
@@ -230,5 +244,5 @@ use app::{Event, App::{init, close, process, dispatch}};
 #### その他
 
 - roll.rs: model.rsの形に整形する前のダイスロールモジュール。lib.rsの関連fnの収容・character.rsとの相互参照のモジュール化対応必要。
-- ugrid.rs: カレンダー画面など、block element内のabsolute座標をpxグリッドで計算するモジュール。開発途中
+- ugrid.rs: Region operating functions with two (base and derived) Cartesian coordinate. It's under development now.
 - temporal.rs: カレンダー機能に向けた時間表現モジュール。timestamp.rsに依存。開発途中。
