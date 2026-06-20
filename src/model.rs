@@ -117,9 +117,9 @@ impl Profile {
             Self::Name       => &[BASE + 0, BASE + 1],
             Self::Birthpalce => &[13],
             Self::Pronoun    => &[14],
-            Self::Occupation => &[15, 16],
-            Self::Residence  => &[17],
-            Self::Age        => &[18],
+            Self::Occupation => &[15, 16, 17, 18],
+            Self::Residence  => &[18],
+            Self::Age        => &[19],
         }
     }
 
@@ -130,13 +130,13 @@ impl Profile {
             (Self::Birthpalce, Lang::En(_)) => "Birthplace",
             (Self::Birthpalce, Lang::Ja)    => "出身",
             (Self::Pronoun, Lang::En(_)) => "Pronoun",
-            (Self::Pronoun, Lang::Ja) => "性別",
+            (Self::Pronoun, Lang::Ja)    => "性別",
             (Self::Occupation, Lang::En(_)) => "Occupation",
-            (Self::Occupation, Lang::Ja) => "職業",
+            (Self::Occupation, Lang::Ja)    => "職業",
             (Self::Residence, Lang::En(_)) => "Residence",
-            (Self::Residence, Lang::Ja) => "住所",
+            (Self::Residence, Lang::Ja)    => "住所",
             (Self::Age, Lang::En(_)) => "Age",
-            (Self::Age, Lang::Ja) => "年齢",
+            (Self::Age, Lang::Ja)    => "年齢",
         }
     }
 
@@ -184,9 +184,10 @@ impl Name {
     }
 }
 
-pub enum Occupation{ // p.38
-    Activist,
-    Antiquarian,
+#[repr(u8)]
+pub enum DefinedOccupation { // p.38
+    Activist = 1,
+    Antiquarian = 2,
     Artist,
     Athlete,
     Author,
@@ -213,8 +214,10 @@ pub enum Occupation{ // p.38
     Professor,
     Soldier,
     TribeMember,
-    Custom(u8),
+    Custom,
 }
+
+pub struct Occupation; // enum_id: u8, custom_id: u8, custom_str: len, occupation_skill_points: (u4, u4)
 
 impl Occupation {
 

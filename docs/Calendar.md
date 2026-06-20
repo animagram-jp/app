@@ -46,7 +46,6 @@ settings field仕様:
 - tag.color: input[color] — RGB 24bit
 
 [system]
-- FileSystemSyncAccessHandleでkill耐性を得るため、append-only log fileを作成し、handle.write(&entry_bytes);handle.flush();する。再起動時にsnap fileを作成し、logをクリアする
 - エンドポイントはfixtureとterminalで対称な/sync/negotiateと/sync/transferを持つ。
 
 ```bash

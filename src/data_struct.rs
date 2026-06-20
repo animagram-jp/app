@@ -1,26 +1,11 @@
-use core::mem::size_of;
-use alloc::collections::BTreeMap;
+use core::{primitive::{u8, u32, f64}, mem::size_of};
+use alloc::{collections::BTreeMap, vec::Vec};
 use crate::list::{List, VariableList, SetOutcome, ListError, VariableListError};
 use crate::timestamp::{self, Timezone};
 
 const ID_IDENTITY:   u32 = 1;
 const ID_CREATED_AT: u32 = 2;
 const ID_UPDATED_AT: u32 = 3;
-
-// trait DataModelSchemaField {
-//     pub fn label(&self, lang: Lang) -> &'static str {
-//     }
-//     pub fn id(&self, child: &Field) -> u32 {
-//     }
-//     pub fn encode(&self, value: T) -> &[u8] {
-//         vec![value as u8]
-//     }
-//     pub fn decode(&self, value: &[u8]) -> T {
-//         bytes.first().copied().map(|b| b as i8).unwrap_or(0)
-//     }
-//     pub fn display(&self, lang: Lang) -> String { // -> &'static str / &str / String
-//     }
-// }
 
 #[derive(Clone)]
 pub struct DataStruct {
@@ -32,15 +17,15 @@ pub struct DataStruct {
 impl DataStruct {
     pub fn new(id: u32, time: f64, schema_size: u32) -> Self {
         let t = timestamp::from_ut(time, true, &Timezone::AsiaTokyo);
-        let mut ds = Self {
+        let mut data_struct = Self {
             schema_size,
             index:  List::new(),
             values: VariableList::new(),
         };
-        let _ = ds.set(ID_IDENTITY,   &id.to_le_bytes(), None);
-        let _ = ds.set(ID_CREATED_AT, &t.to_le_bytes(), None);
-        let _ = ds.set(ID_UPDATED_AT, &t.to_le_bytes(), None);
-        ds
+        let _ = data_struct.set(ID_IDENTITY,   &id.to_le_bytes(), None);
+        let _ = data_struct.set(ID_CREATED_AT, &t.to_le_bytes(), None);
+        let _ = data_struct.set(ID_UPDATED_AT, &t.to_le_bytes(), None);
+        data_struct
     }
 
     /// Zero-alloc get over a serialized instance byte slice (layout is the same as to_bytes).
@@ -48,7 +33,7 @@ impl DataStruct {
         let index_len = (self.schema_size as usize + 1) * 4;
         let offset = schema_id as usize * 4;
         let variable_id = u32::from_le_bytes(
-            instance.get(offset..offset + 4).ok_or(ListError::OutOfBounds)?.try_into().unwrap()
+            instance.get(offset..offset + 4).ok_or(ListError::OutOfBoundata_struct)?.try_into().unwrap()
         );
         if variable_id == 0 { return Err(ListError::NotExist); }
         let slice_at       = u32::from_le_bytes(instance[index_len..index_len+4].try_into().unwrap()) as usize;
@@ -60,7 +45,7 @@ impl DataStruct {
         let s = usize::from_ne_bytes(vl_index[index_s..index_s + sz].try_into().unwrap());
         let e = usize::from_ne_bytes(vl_index[index_s + sz..index_s + sz * 2].try_into().unwrap());
         if s == 0 && e == 0 { return Err(ListError::NotExist); }
-        instance.get(vl_data_start + s..vl_data_start + e).ok_or(ListError::OutOfBounds)
+        instance.get(vl_data_start + s..vl_data_start + e).ok_or(ListError::OutOfBoundata_struct)
     }
 
     pub fn get(&self, schema_id: u32) -> Result<&[u8], ListError> {
@@ -76,7 +61,7 @@ impl DataStruct {
             Err(_) => {
                 let new_id = match self.values.set(&0, value, false, false)? {
                     SetOutcome::Created(id) => id,
-                    SetOutcome::Updated(_)  => return Err(ListError::OutOfBounds),
+                    SetOutcome::Updated(_)  => return Err(ListError::OutOfBoundata_struct),
                 };
                 self.index.set(&schema_id, new_id, false, true)?;
                 SetOutcome::Created(new_id)

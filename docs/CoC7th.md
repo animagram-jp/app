@@ -114,10 +114,10 @@ Development Check - 上達チェック
 
 キャラクターシート1枚の中で、各フィールドの表示上限数。tsumugiサンプルを基準に。
 
-| フィールド | たたき台 | 備考 |
+| フィールド | たたき台 | 型 | 備考 |
 |---|---|---|
-| Skill エントリ数 | 60 | tsumugiは26技能。Art/Craft等の専門分化が重なると増える |
-| Art/Craft等の専門分野サブスキル数 | 10 | tsumugiは7種 (Acting/Dance/Hanafuda/...) |
+| Skill エントリ数 | 60 |  | tsumugiは26技能。Art/Craft等の専門分化が重なると増える |
+| Art/Craft等の専門分野サブスキル数 | 10 | | tsumugiは7種 (Acting/Dance/Hanafuda/...) |
 | Language (Other) のエントリ数 | 10 | tsumugiは1種 (English) |
 | Fighting のエントリ数 | 8 | tsumugiは2種 (Brawl/Sword) |
 | Firearms のエントリ数 | 8 | tsumugiは1種 (Handgun) |
@@ -131,6 +131,8 @@ Development Check - 上達チェック
 | ArcaneTomesAndSpells 呪文リスト数 | 40 | tsumugiは24種。セッション重ねると増える |
 | Backstory 各テキストフィールド文字数 | 1000 | IdeologyAndBeliefsなど |
 | PhobiasAndManias エントリ数 | 10 | tsumugiは5件 |
+| Memo エントリ数 |  | u8 | |
+| Memo 文字数 | |  | |
 
 #### 保存最大数
 
