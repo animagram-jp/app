@@ -61,7 +61,7 @@ wasm-pack build --target web --out-dir examples/app --out-name app
 └──┬────────────┘     ││
    │ http request     ││
    │     ┌──────┬─────┤│
-   │     ▼stun  ▼turn ││▼http
+   │     ▼stun  ▼turn │←:http
    │ ┌──────┐┌──────┐ ││
    │ │ stun ││ turn │ ││
    ▼ └──────┘└──────┘ ▼▼
@@ -128,20 +128,32 @@ html:
 ### javascript
 
 - アプリに依らず、同内容の4ファイルで構成する:
-  - htmlにmoduleとして呼ばれるinit.js
-  - メインと非同期なスレッドでappを実行するためのworker.js
+  - htmlにmoduleとして呼ばれるメインスレッドinit.js
+  - メインと非同期なdedicated web workerスレッドでappを実行するためのworker.js
   - wasm-packで自動生成されるapp.js (app_bg.wasmを実行)
   - pwaのservice workerを起動するためのsw.js
 - init.js: workerに適宜eventをpostMessageで渡す。また、excute()でappからの指示を実行する。
-  - excute(operation: u8, element_id: str, attribute: str, value: str) {}
-    - Element.getElementId(element_id).textContent = value;
-    - Element.getElementId(element_id).value = value;
-    - Element.getElementId(element_id).toggleAttribute(attribute, value);
-    - Element.getElementId(element_id).classList.add(value);
-    - Element.getElementId(element_id).classList.remove(value);
-    - Element.getElementId(element_id).showModal(); # modal専用
-    - Element.getElementId(element_id).close();     # modal専用
-    - applyClass(element_id, value); # rAFやsetTimeoutなど、非同期処理のみ
+
+```js
+// init.js
+// Command: { operation: u8, id: string, attribute?: string, value?: string }
+function execute({ operation, id, attribute, value }) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  switch (operation) {
+    case 1: el.textContent = value ?? ""; break;
+    case 2: el.value = value ?? ""; break;
+    case 3: el.toggleAttribute(attribute, value === "true"); break;
+    case 4: el.classList.add(value); break;
+    case 5: el.classList.remove(value); break;
+    case 6: el.focus(); break;
+    case 7: el.showModal(); break;
+    case 8: el.close(); break;
+    case 9: applyClass(el, value); break;
+    case 10: el.innerHTML = value ?? ""; break;
+  }
+}
+```
 
 ### wasm
 
