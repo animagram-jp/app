@@ -66,31 +66,31 @@ impl Character {
 
     pub fn display(&self, lang: Lang) -> &'static str {
         match (self, lang) {
-            (Self::Profile, Lang::En(_)) => "Profile",
-            (Self::Profile, Lang::Ja)    => "プロフィール",
+            (Self::Profile, Lang::En(_))        => "Profile",
+            (Self::Profile, Lang::Ja)           => "プロフィール",
             (Self::Characteristic, Lang::En(_)) => "Characteristics",
-            (Self::Characteristic, Lang::Ja) => "能力値",
+            (Self::Characteristic, Lang::Ja)    => "能力値",
             (Self::OtherAttribute, Lang::En(_)) => "Other Attributes",
-            (Self::OtherAttribute, Lang::Ja) => "ほかの属性",
-            (Self::Skill,          Lang::En(_)) => "Skills",
-            (Self::Skill,          Lang::Ja) => "技能",
-            (Self::Possession,     Lang::En(_)) => "Gear & Possessions",
-            (Self::Possession,     Lang::Ja) => "装備と所持品",
-            (Self::Backstory,      Lang::En(_)) => "Backstory",
-            (Self::Backstory,      Lang::Ja) => "バックストーリー",
-            (Self::Memo,           Lang::En(_)) => "Memo",
-            (Self::Memo,           Lang::Ja) => "メモ",
+            (Self::OtherAttribute, Lang::Ja)    => "ほかの属性",
+            (Self::Skill, Lang::En(_))          => "Skills",
+            (Self::Skill, Lang::Ja)             => "技能",
+            (Self::Possession, Lang::En(_))     => "Gear & Possessions",
+            (Self::Possession, Lang::Ja)        => "装備と所持品",
+            (Self::Backstory, Lang::En(_))      => "Backstory",
+            (Self::Backstory, Lang::Ja)         => "バックストーリー",
+            (Self::Memo, Lang::En(_))           => "Memo",
+            (Self::Memo, Lang::Ja)              => "メモ",
         }
     }
     pub const fn id(&self) -> u32 {
         match self {
-            Self::Profile        =>  10,  //  10- 17 (8件)
-            Self::Characteristic =>  20,  //  20- 28 (9件)
-            Self::OtherAttribute =>  30,  //  30- 37 (8件)
-            Self::Skill          =>  40,  //  40- 86 (47件)
-            Self::Possession     =>  90,  //  90-... (拡張余地)
-            Self::Backstory      => 100,  // 100-109 (10件)
-            Self::Memo           => 110,  // 110      (1件)
+            Self::Profile        =>  10, //  10- 17 (8件)
+            Self::Characteristic =>  20, //  20- 28 (9件)
+            Self::OtherAttribute =>  30, //  30- 37 (8件)
+            Self::Skill          =>  40, //  40- 86 (47件)
+            Self::Possession     =>  90, //  90-... (拡張余地)
+            Self::Backstory      => 100, // 100-109 (10件)
+            Self::Memo           => 110, // 110      (1件)
         }
     }
 }
@@ -112,8 +112,9 @@ pub enum Profile {
 impl Profile {
 
     pub fn ids(&self) -> &'static [u32] {
+        const BASE = Character::Profile::id();
         match self {
-            Self::Name       => &[11, 12],
+            Self::Name       => &[BASE + 0, BASE + 1],
             Self::Birthpalce => &[13],
             Self::Pronoun    => &[14],
             Self::Occupation => &[15, 16],
@@ -175,9 +176,9 @@ impl Name {
         instance
     }
 
-    pub fn display(name: String, complement: Option<String>) -> String {
+    pub fn display(name: &String, complement: &Option<String>) -> String {
         match complement {
-            Some(a) if !a.is_empty() => format!("{name} ({a})"),
+            Some(c) if !c.is_empty() => format!("{name} ({c})"),
             _ => name,
         }
     }
@@ -237,8 +238,7 @@ impl Occupation {
         instance
     }
 
-    pub fn display(instance: &DataStruct) -> String {
-        let (name, title) = Self::read(instance);
+    pub fn display(name: &String, title: &Option<String>) -> String {
         match title {
             Some(t) if !t.is_empty() => format!("{name} ({t})"),
             _ => name,
@@ -1117,13 +1117,13 @@ enum ArtCraft {
 
 impl ArtCraft {
 
-    const CUSTOM_LIST_ID: u32 = 13;
-
     pub fn id(&self, character: &DataStruct) -> Option<u32> {
+        const base = Skill::ArtCraft::id();
+        const 
         match self {
-            Self::Acting      => Some( 1),
-            Self::Barber      => Some( 2),
-            Self::Calligraphy => Some( 3),
+            Self::Acting      => Some(base + 1),
+            Self::Barber      => Some(base + 2),
+            Self::Calligraphy => Some(base + 3),
             Self::Carpentry   => Some( 4),
             Self::Cook        => Some( 5),
             Self::Dancing     => Some( 6),
@@ -1133,9 +1133,9 @@ impl ArtCraft {
             Self::Pottery     => Some(10),
             Self::Sculpting   => Some(11),
             Self::Writing     => Some(12),
-            Self::Custom(0)   => Some(Self::CUSTOM_LIST_ID),
+            Self::Custom(0)   => Some(base +13),
             Self::Custom(i)   => {
-                let bytes = character.get(Self::CUSTOM_LIST_ID).ok()?;
+                let bytes = character.get(base + 13).ok()?;
                 let idx = (*i as usize).checked_sub(1)?;
                 bytes.get(idx * 4..idx * 4 + 4)
                     .and_then(|b| b.try_into().ok())

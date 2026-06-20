@@ -16,7 +16,7 @@ use web_sys::{
 /// Append-only WAL backed by OPFS (.snap / .log file pair)
 ///
 /// .snap: clean snapshot (rewritten on compact, read-only between compacts)
-/// .log:  append-only, holds the actual data
+/// .log:  append-only, holds the actual data diffs after last compact
 ///
 /// Log record format (variable length):
 /// [op: 1][id: 4 LE][len: 4 LE][data: len][checksum: 4 LE]
