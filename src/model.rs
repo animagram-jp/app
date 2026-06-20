@@ -738,8 +738,365 @@ impl OtherAttribute {
 }
 
 // ============================================================
-// --- スキル (Skill) ---
+// Skill, ArtCraft, Fighting, Firearms, LanguageOther, p.54
 // ============================================================
+
+/// p.54
+#[derive(Clone)]
+pub enum Skill {
+    Accounting,
+    Anthropology,
+    Archaeology,
+    Appraise,
+    ArtCraft,
+    Charm,
+    Climb,
+    ComputerUse,
+    CreditRating,
+    CthulhuMythos,
+    Disguise,
+    Dodge,
+    DriveAuto,
+    ElecRepair,
+    Electronics,
+    FastTalk,
+    Fighting,
+    Firearms,
+    FirstAid,
+    History,
+    Intimidate,
+    Jump,
+    LanguageOther,
+    LanguageOwn,
+    Law,
+    LibraryUse,
+    Listen,
+    Locksmith,
+    MechRepair,
+    Medicine,
+    NaturalWorld,
+    Navigate,
+    Occult,
+    Persuade,
+    Pilot,
+    Psychoanalysis,
+    Psychology,
+    Ride,
+    Science,
+    SleightOfHand,
+    SpotHidden,
+    Stealth,
+    Survival,
+    Swim,
+    Throw,
+    Track,
+    Custom, // 変動id帯予約用item
+}
+
+impl Skill {
+    pub fn list() -> &'static [Skill] {
+        &[
+            Self::Accounting,
+            Self::Anthropology,
+            Self::Archaeology,
+            Self::Appraise,
+            Self::ArtCraft,
+            Self::Charm,
+            Self::Climb,
+            Self::ComputerUse,
+            Self::CreditRating,
+            Self::CthulhuMythos,
+            Self::Disguise,
+            Self::Dodge,
+            Self::DriveAuto,
+            Self::ElecRepair,
+            Self::Electronics,
+            Self::FastTalk,
+            Self::Fighting,
+            Self::Firearms,
+            Self::FirstAid,
+            Self::History,
+            Self::Intimidate,
+            Self::Jump,
+            Self::LanguageOther,
+            Self::LanguageOwn,
+            Self::Law,
+            Self::LibraryUse,
+            Self::Listen,
+            Self::Locksmith,
+            Self::MechRepair,
+            Self::Medicine,
+            Self::NaturalWorld,
+            Self::Navigate,
+            Self::Occult,
+            Self::Persuade,
+            Self::Pilot,
+            Self::Psychoanalysis,
+            Self::Psychology,
+            Self::Ride,
+            Self::Science,
+            Self::SleightOfHand,
+            Self::SpotHidden,
+            Self::Stealth,
+            Self::Survival,
+            Self::Swim,
+            Self::Throw,
+            Self::Track,
+            Self::Custom,
+        ]
+    }
+
+    pub fn id(&self) -> u32 {
+        // ルールブック記載specialization id帯、custom id帯と衝突しないように基準idを割り振る
+        let base = Character::Skill.id();
+        match self {
+            Self::Fighting      => base +0,  //  17.. 28 (幅12)
+            Self::Firearms      => base +1,  //  29.. 38 (幅10)
+            Self::LanguageOther => base +2,  //  39.. 42 (幅4)
+            Self::Pilot         => base,  //  43.. 56 (幅14)
+            Self::Science       => spec.id(base +  57),  //  57.. 73 (幅17)
+            Self::Survival      => spec.id(base +  74),  //  74.. 80 (幅7)
+            Self::Accounting          => base + 100,
+            Self::Anthropology        => base + 101,
+            Self::Archaeology         => base + 102,
+            Self::Appraise            => base + 103,
+            Self::ArtCraft            => base +   0,  // 0.. 16 (幅17)
+            Self::Charm               => base + 104,
+            Self::Climb               => base + 105,
+            Self::ComputerUse         => base + 106,
+            Self::CreditRating        => base + 107,
+            Self::CthulhuMythos       => base + 108,
+            Self::Disguise            => base + 109,
+            Self::Dodge               => base + 110,
+            Self::DriveAuto           => base + 111,
+            Self::ElecRepair          => base + 112,
+            Self::Electronics         => base + 113,
+            Self::FastTalk            => base + 114,
+            
+            Self::FirstAid            => base + 115,
+            Self::History             => base + 116,
+            Self::Intimidate          => base + 117,
+            Self::Jump                => base + 118,
+            Self::LanguageOwn         => base + 119,
+            Self::Law                 => base + 120,
+            Self::LibraryUse          => base + 121,
+            Self::Listen              => base + 122,
+            Self::Locksmith           => base + 123,
+            Self::MechRepair          => base + 124,
+            Self::Medicine            => base + 125,
+            Self::NaturalWorld        => base + 126,
+            Self::Navigate            => base + 127,
+            Self::Occult              => base + 128,
+            Self::Persuade            => base + 129,
+            Self::Psychoanalysis      => base + 130,
+            Self::Psychology          => base + 131,
+            Self::Ride                => base + 132,
+            Self::SleightOfHand       => base + 133,
+            Self::SpotHidden          => base + 134,
+            Self::Stealth             => base + 135,
+            Self::Swim                => base + 136,
+            Self::Throw               => base + 137,
+            Self::Track               => base + 138,
+            Self::Custom              => base + 140,
+        }
+    }
+
+    /// [specialization: u8][initial: u8][occupation: u16 LE][interest: u16 LE][change: i16 LE][modifier: i16 LE][input_len: u16 LE][input: utf8...]
+    pub fn encode(specialization: u8, initial: u8, occupation: u16, interest: u16, change: i16, modifier: i16, input: Option<&str>) -> Vec<u8> {
+        let input_bytes = input.unwrap_or("").as_bytes();
+        let mut b = Vec::with_capacity(10 + input_bytes.len());
+        b.push(specialization);
+        b.push(initial);
+        b.extend_from_slice(&occupation.to_le_bytes());
+        b.extend_from_slice(&interest.to_le_bytes());
+        b.extend_from_slice(&change.to_le_bytes());
+        b.extend_from_slice(&modifier.to_le_bytes());
+        b.extend_from_slice(&(input_bytes.len() as u16).to_le_bytes());
+        b.extend_from_slice(input_bytes);
+        b
+    }
+
+    /// → (specialization, initial, occupation, interest, change, modifier, input)
+    pub fn decode(bytes: &[u8]) -> (u8, u8, u16, u16, i16, i16, String) {
+        let specialization = bytes.first().copied().unwrap_or(0);
+        let initial        = bytes.get(1).copied().unwrap_or(0);
+        let occupation     = bytes.get(2..4).and_then(|b| b.try_into().ok()).map(u16::from_le_bytes).unwrap_or(0);
+        let interest       = bytes.get(4..6).and_then(|b| b.try_into().ok()).map(u16::from_le_bytes).unwrap_or(0);
+        let change         = bytes.get(6..8).and_then(|b| b.try_into().ok()).map(i16::from_le_bytes).unwrap_or(0);
+        let modifier       = bytes.get(8..10).and_then(|b| b.try_into().ok()).map(i16::from_le_bytes).unwrap_or(0);
+        let input_len      = bytes.get(10..12).and_then(|b| b.try_into().ok()).map(u16::from_le_bytes).unwrap_or(0) as usize;
+        let input          = bytes.get(12..12 + input_len)
+            .map(|b| String::from_utf8_lossy(b).into_owned())
+            .unwrap_or_default();
+        (specialization, initial, occupation, interest, change, modifier, input)
+    }
+
+    pub fn value(&self, data: &DataStruct) -> i32 {
+        let (_, _, occupation, interest, change, modifier, _) = data.get(self.id())
+            .map(|b| Self::decode(b))
+            .unwrap_or((0, 0, 0, 0, 0, 0, String::new()));
+        (self.base_value() as i32 + occupation as i32 + interest as i32 + change as i32 + modifier as i32).max(1)
+    }
+
+    pub fn base_value(&self) -> u16 {
+        match self {
+            Self::Accounting           =>  5,
+            Self::Anthropology         =>  1,
+            Self::Archaeology          =>  1,
+            Self::Appraise             =>  5,
+            Self::ArtCraft             =>  5,
+            Self::Charm                => 15,
+            Self::Climb                => 20,
+            Self::ComputerUse          =>  5,
+            Self::CreditRating         =>  0,
+            Self::CthulhuMythos        =>  0,
+            Self::Disguise             =>  5,
+            Self::Dodge                =>  0, // derived: DEX / 2
+            Self::DriveAuto            => 20,
+            Self::ElecRepair           => 10,
+            Self::Electronics          =>  1,
+            Self::FastTalk             =>  5,
+            Self::Fighting       => spec.base_value(),
+            Self::Firearms       => spec.base_value(),
+            Self::FirstAid             => 30,
+            Self::History              =>  5,
+            Self::Intimidate           => 15,
+            Self::Jump                 => 20,
+            Self::LanguageOther(_)     =>  1,
+            Self::LanguageOwn          =>  0, // derived: EDU
+            Self::Law                  =>  5,
+            Self::LibraryUse           => 20,
+            Self::Listen               => 20,
+            Self::Locksmith            =>  1,
+            Self::MechRepair           => 10,
+            Self::Medicine             =>  1,
+            Self::NaturalWorld         => 10,
+            Self::Navigate             => 10,
+            Self::Occult               =>  5,
+            Self::Persuade             => 10,
+            Self::Pilot          => spec.base_value(),
+            Self::Psychoanalysis       =>  1,
+            Self::Psychology           => 10,
+            Self::Ride                 =>  5,
+            Self::Science        => spec.base_value(),
+            Self::SleightOfHand        => 10,
+            Self::SpotHidden           => 25,
+            Self::Stealth              => 20,
+            Self::Survival       => spec.base_value(),
+            Self::Swim                 => 20,
+            Self::Throw                => 20,
+            Self::Track                => 10,
+            Self::Custom { .. }        =>  0,
+        }
+    }
+
+    pub fn sum(&self, occ: u16, int: u16, bonus: i32) -> i32 {
+        self.base_value() as i32 + occ as i32 + int as i32 + bonus
+    }
+
+    // Characteristic依存で初期値が決まるスキルについて、依存先を返す。
+    // 呼び出し側がCharacteristic値を取得し、スキルのbase_valueを上書きする責務を持つ。
+    // Dodge: DEX/2、LanguageOwn: EDU そのまま。
+    pub fn characteristic_base(&self) -> Option<(Characteristic, fn(u16) -> u16)> {
+        match self {
+            Self::Dodge     => Some((Characteristic::Dexterity, |dex| dex / 2)),
+            Self::LanguageOwn => Some((Characteristic::Education, |edu| edu)),
+            _ => None,
+        }
+    }
+
+    pub fn label(&self, lang: Lang) -> String {
+        match (self, lang) {
+            (Self::Accounting,           Lang::Ja) => "経理".into(),
+            (Self::Accounting,           Lang::En(_)) => "Accounting".into(),
+            (Self::Anthropology,         Lang::Ja) => "人類学".into(),
+            (Self::Anthropology,         Lang::En(_)) => "Anthropology".into(),
+            (Self::Archaeology,          Lang::Ja) => "考古学".into(),
+            (Self::Archaeology,          Lang::En(_)) => "Archaeology".into(),
+            (Self::Appraise,             Lang::Ja) => "鑑定".into(),
+            (Self::Appraise,             Lang::En(_)) => "Appraise".into(),
+            (Self::ArtCraft,       _)        => match spec.label(lang) { Some(s) => format!("芸術/製作 ({s})"), None => "芸術/製作".into() },
+            (Self::Charm,                Lang::Ja) => "魅惑".into(),
+            (Self::Charm,                Lang::En(_)) => "Charm".into(),
+            (Self::Climb,                Lang::Ja) => "登攀".into(),
+            (Self::Climb,                Lang::En(_)) => "Climb".into(),
+            (Self::ComputerUse,          Lang::Ja) => "コンピューター".into(),
+            (Self::ComputerUse,          Lang::En(_)) => "Computer Use".into(),
+            (Self::CreditRating,         Lang::Ja) => "信用".into(),
+            (Self::CreditRating,         Lang::En(_)) => "Credit Rating".into(),
+            (Self::CthulhuMythos,        Lang::Ja) => "クトゥルフ神話".into(),
+            (Self::CthulhuMythos,        Lang::En(_)) => "Cthulhu Mythos".into(),
+            (Self::Disguise,             Lang::Ja) => "変装".into(),
+            (Self::Disguise,             Lang::En(_)) => "Disguise".into(),
+            (Self::Dodge,                Lang::Ja) => "回避".into(),
+            (Self::Dodge,                Lang::En(_)) => "Dodge".into(),
+            (Self::DriveAuto,            Lang::Ja) => "運転（自動車）".into(),
+            (Self::DriveAuto,            Lang::En(_)) => "Drive Auto".into(),
+            (Self::ElecRepair,           Lang::Ja) => "電気修理".into(),
+            (Self::ElecRepair,           Lang::En(_)) => "Elec. Repair".into(),
+            (Self::Electronics,          Lang::Ja) => "電子工学".into(),
+            (Self::Electronics,          Lang::En(_)) => "Electronics".into(),
+            (Self::FastTalk,             Lang::Ja) => "言いくるめ".into(),
+            (Self::FastTalk,             Lang::En(_)) => "Fast Talk".into(),
+            (Self::Fighting,       _)        => match spec.label(lang) { Some(s) => format!("近接戦闘 ({s})"), None => "近接戦闘".into() },
+            (Self::Firearms,       _)        => match spec.label(lang) { Some(s) => format!("射撃 ({s})"),    None => "射撃".into() },
+            (Self::FirstAid,             Lang::Ja) => "応急手当".into(),
+            (Self::FirstAid,             Lang::En(_)) => "First Aid".into(),
+            (Self::History,              Lang::Ja) => "歴史".into(),
+            (Self::History,              Lang::En(_)) => "History".into(),
+            (Self::Intimidate,           Lang::Ja) => "威圧".into(),
+            (Self::Intimidate,           Lang::En(_)) => "Intimidate".into(),
+            (Self::Jump,                 Lang::Ja) => "跳躍".into(),
+            (Self::Jump,                 Lang::En(_)) => "Jump".into(),
+            (Self::LanguageOther,  _)        => { let s = spec.label(lang); if s.is_empty() { "ほかの言語".into() } else { format!("ほかの言語 ({s})") } },
+            (Self::LanguageOwn,          Lang::Ja) => "母国語".into(),
+            (Self::LanguageOwn,          Lang::En(_)) => "Language (Own)".into(),
+            (Self::Law,                  Lang::Ja) => "法律".into(),
+            (Self::Law,                  Lang::En(_)) => "Law".into(),
+            (Self::LibraryUse,           Lang::Ja) => "図書館".into(),
+            (Self::LibraryUse,           Lang::En(_)) => "Library Use".into(),
+            (Self::Listen,               Lang::Ja) => "聞き耳".into(),
+            (Self::Listen,               Lang::En(_)) => "Listen".into(),
+            (Self::Locksmith,            Lang::Ja) => "鍵開け".into(),
+            (Self::Locksmith,            Lang::En(_)) => "Locksmith".into(),
+            (Self::MechRepair,           Lang::Ja) => "機械修理".into(),
+            (Self::MechRepair,           Lang::En(_)) => "Mech. Repair".into(),
+            (Self::Medicine,             Lang::Ja) => "医学".into(),
+            (Self::Medicine,             Lang::En(_)) => "Medicine".into(),
+            (Self::NaturalWorld,         Lang::Ja) => "自然".into(),
+            (Self::NaturalWorld,         Lang::En(_)) => "Natural World".into(),
+            (Self::Navigate,             Lang::Ja) => "ナビゲート".into(),
+            (Self::Navigate,             Lang::En(_)) => "Navigate".into(),
+            (Self::Occult,               Lang::Ja) => "オカルト".into(),
+            (Self::Occult,               Lang::En(_)) => "Occult".into(),
+            (Self::Persuade,             Lang::Ja) => "説得".into(),
+            (Self::Persuade,             Lang::En(_)) => "Persuade".into(),
+            (Self::Pilot,          _)        => match spec.label(lang) { Some(s) => format!("操縦 ({s})"),      None => "操縦".into() },
+            (Self::Psychoanalysis,       Lang::Ja) => "精神分析".into(),
+            (Self::Psychoanalysis,       Lang::En(_)) => "Psychoanalysis".into(),
+            (Self::Psychology,           Lang::Ja) => "心理学".into(),
+            (Self::Psychology,           Lang::En(_)) => "Psychology".into(),
+            (Self::Ride,                 Lang::Ja) => "乗馬".into(),
+            (Self::Ride,                 Lang::En(_)) => "Ride".into(),
+            (Self::Science,        _)        => match spec.label(lang) { Some(s) => format!("科学 ({s})"),       None => "科学".into() },
+            (Self::SleightOfHand,        Lang::Ja) => "手さばき".into(),
+            (Self::SleightOfHand,        Lang::En(_)) => "Sleight of Hand".into(),
+            (Self::SpotHidden,           Lang::Ja) => "目星".into(),
+            (Self::SpotHidden,           Lang::En(_)) => "Spot Hidden".into(),
+            (Self::Stealth,              Lang::Ja) => "隠密".into(),
+            (Self::Stealth,              Lang::En(_)) => "Stealth".into(),
+            (Self::Survival,       _)        => match spec.label(lang) { Some(s) => format!("サバイバル ({s})"), None => "サバイバル".into() },
+            (Self::Swim,                 Lang::Ja) => "水泳".into(),
+            (Self::Swim,                 Lang::En(_)) => "Swim".into(),
+            (Self::Throw,                Lang::Ja) => "投擲".into(),
+            (Self::Throw,                Lang::En(_)) => "Throw".into(),
+            (Self::Track,                Lang::Ja) => "追跡".into(),
+            (Self::Track,                Lang::En(_)) => "Track".into(),
+            (Self::Custom { name, spec: Some(s), .. }, _) => format!("{} ({})", name, s),
+            (Self::Custom { name, spec: None,    .. }, _) => name.clone(),
+        }
+    }
+}
 
 /// 芸術/製作 (専門分野) Art/Craft (Specialization) // p.62 モリダンス等は長いので除外
 enum ArtCraft {
@@ -755,27 +1112,35 @@ enum ArtCraft {
     Pottery,      // 陶芸
     Sculpting,    // 彫刻
     Writing,      // 執筆
-    Custom(u32),
+    Custom(u8),
 }
 
 impl ArtCraft {
 
-    pub fn id(&self, character: &DataStruct) -> u32 {
+    const CUSTOM_LIST_ID: u32 = 13;
+
+    pub fn id(&self, character: &DataStruct) -> Option<u32> {
         match self {
-            Self::Acting      =>  1,
-            Self::Barber      =>  2,
-            Self::Calligraphy =>  3,
-            Self::Carpentry   =>  4,
-            Self::Cook        =>  5,
-            Self::Dancing     =>  6,
-            Self::FineArt     =>  7,
-            Self::Forgery     =>  8,
-            Self::Photography =>  9,
-            Self::Pottery     => 10,
-            Self::Sculpting   => 11,
-            Self::Writing     => 12,
-            Self::Custom(0)   => 13,
-            Self::Custom(i)   => character.get(ArtCraft::Custom(0)::id()).i,
+            Self::Acting      => Some( 1),
+            Self::Barber      => Some( 2),
+            Self::Calligraphy => Some( 3),
+            Self::Carpentry   => Some( 4),
+            Self::Cook        => Some( 5),
+            Self::Dancing     => Some( 6),
+            Self::FineArt     => Some( 7),
+            Self::Forgery     => Some( 8),
+            Self::Photography => Some( 9),
+            Self::Pottery     => Some(10),
+            Self::Sculpting   => Some(11),
+            Self::Writing     => Some(12),
+            Self::Custom(0)   => Some(Self::CUSTOM_LIST_ID),
+            Self::Custom(i)   => {
+                let bytes = character.get(Self::CUSTOM_LIST_ID).ok()?;
+                let idx = (*i as usize).checked_sub(1)?;
+                bytes.get(idx * 4..idx * 4 + 4)
+                    .and_then(|b| b.try_into().ok())
+                    .map(u32::from_le_bytes)
+            }
         }
     }
 
@@ -810,13 +1175,25 @@ impl ArtCraft {
         }
     }
 
-    pub fn write(character: 'a &mut DataStruct, value: ) -> {
-        custom_ids = character.get(ArtCraft::Custom::id()).into_vec<u32>;
-        new_id = bigger one of ids and  ArtCraftSpec::id(a in ArtCraftSpec::list());
-        custom_ids.extend(new_id)
-        _ = character.set(ArtCraft::Custom::id(), custom_ids); // TODO: Create CharacterError::Skill::ArtCraft
-        _ = character.set(new_id, value);
-        character
+    /// カスタム専門分野を新規登録し、そのschema_idを返す。
+    /// Custom(0) スロットにidリスト（u32 LE配列）を保持し、末尾に追記する。
+    pub fn write_custom<'a>(character: &'a mut DataStruct, value: &[u8]) -> Option<u32> {
+        let mut ids: Vec<u32> = character.get(Self::CUSTOM_LIST_ID).ok()
+            .map(|b| b.chunks_exact(4)
+                .filter_map(|c| c.try_into().ok().map(u32::from_le_bytes))
+                .collect())
+            .unwrap_or_default();
+
+        let builtin_max: u32 = 12;
+        let list_id: u32     = Self::CUSTOM_LIST_ID;
+        let existing_max = ids.iter().copied().max().unwrap_or(list_id);
+        let new_id = existing_max.max(builtin_max).max(list_id) + 1;
+
+        ids.push(new_id);
+        let list_bytes: Vec<u8> = ids.iter().flat_map(|id| id.to_le_bytes()).collect();
+        character.set(Self::CUSTOM_LIST_ID, &list_bytes, None).ok()?;
+        character.set(new_id, value, None).ok()?;
+        Some(new_id)
     }
 
     pub fn list() -> &'static [Self] {
@@ -837,7 +1214,7 @@ pub enum Fighting {
     Spear,        // 槍          20%
     Sword,        // 刀剣        20%
     Whip,         // 鞭          05%
-    Custom(u32),
+    Custom(u8),
 }
 
 impl Fighting {
@@ -912,7 +1289,7 @@ pub enum Firearms {
     MachineGun,    // マシンガン, 10%
     RifleShotgun,  // ライフル/ショットガン  25%
     SubmachineGun, // サブマシンガン         15%
-    Custom(u32),
+    Custom(u8),
 }
 
 impl Firearms {
@@ -1195,366 +1572,6 @@ impl Survival {
             (Self::Sea,      Lang::En(_)) => "Sea"),
             (Self::Custom1(s) | Self::Custom2(s)
             | Self::Custom3(s) | Self::Custom4(s), _) => s.as_str()),
-        }
-    }
-}
-
-pub const SPEC_CUSTOM_SLOTS: usize = 4;
-
-// --- スキル (Skill) --- p.54
-#[derive(Clone)]
-pub enum Skill {
-    Accounting,
-    Anthropology,
-    Archaeology,
-    Appraise,
-    ArtCraft,
-    Charm,
-    Climb,
-    ComputerUse,
-    CreditRating,
-    CthulhuMythos,
-    Disguise,
-    Dodge,
-    DriveAuto,
-    ElecRepair,
-    Electronics,
-    FastTalk,
-    Fighting,
-    Firearms,
-    FirstAid,
-    History,
-    Intimidate,
-    Jump,
-    LanguageOther,
-    LanguageOwn,
-    Law,
-    LibraryUse,
-    Listen,
-    Locksmith,
-    MechRepair,
-    Medicine,
-    NaturalWorld,
-    Navigate,
-    Occult,
-    Persuade,
-    Pilot,
-    Psychoanalysis,
-    Psychology,
-    Ride,
-    Science,
-    SleightOfHand,
-    SpotHidden,
-    Stealth,
-    Survival,
-    Swim,
-    Throw,
-    Track,
-    Custom, // slot: usize, name: String, spec: Option<String>
-}
-
-impl Skill {
-    /// UIのrow管理用。spec持ちは代表1エントリ、Customスロットは1エントリ。
-    /// IDマッピングには Skill::id() / SpecEnum::id() を直接使う。
-    pub fn list() -> Vec<Skill> {
-        vec![
-            Self::Accounting,
-            Self::Anthropology,
-            Self::Archaeology,
-            Self::Appraise,
-            Self::ArtCraft,
-            Self::Charm,
-            Self::Climb,
-            Self::ComputerUse,
-            Self::CreditRating,
-            Self::CthulhuMythos,
-            Self::Disguise,
-            Self::Dodge,
-            Self::DriveAuto,
-            Self::ElecRepair,
-            Self::Electronics,
-            Self::FastTalk,
-            Self::Fighting,
-            Self::Firearms,
-            Self::FirstAid,
-            Self::History,
-            Self::Intimidate,
-            Self::Jump,
-            Self::LanguageOther,
-            Self::LanguageOwn,
-            Self::Law,
-            Self::LibraryUse,
-            Self::Listen,
-            Self::Locksmith,
-            Self::MechRepair,
-            Self::Medicine,
-            Self::NaturalWorld,
-            Self::Navigate,
-            Self::Occult,
-            Self::Persuade,
-            Self::Pilot,
-            Self::Psychoanalysis,
-            Self::Psychology,
-            Self::Ride,
-            Self::Science,
-            Self::SleightOfHand,
-            Self::SpotHidden,
-            Self::Stealth,
-            Self::Survival,
-            Self::Swim,
-            Self::Throw,
-            Self::Track,
-            Self::Custom,
-        ]
-    }
-
-    pub fn id(&self) -> u32 {
-        // ルールブック記載specialization id帯、custom id帯と衝突しないように基準idを割り振る
-        let base = Character::Skill.id();
-        match self {
-            Self::Fighting(spec)      => spec.id(base +  17),  //  17.. 28 (幅12)
-            Self::Firearms(spec)      => spec.id(base +  29),  //  29.. 38 (幅10)
-            Self::LanguageOther(spec) => spec.id(base +  39),  //  39.. 42 (幅4)
-            Self::Pilot(spec)         => spec.id(base +  43),  //  43.. 56 (幅14)
-            Self::Science(spec)       => spec.id(base +  57),  //  57.. 73 (幅17)
-            Self::Survival(spec)      => spec.id(base +  74),  //  74.. 80 (幅7)
-            Self::Accounting          => base + 100,
-            Self::Anthropology        => base + 101,
-            Self::Archaeology         => base + 102,
-            Self::Appraise            => base + 103,
-            Self::ArtCraft            => base +   0,  // 0.. 16 (幅17)
-            Self::Charm               => base + 104,
-            Self::Climb               => base + 105,
-            Self::ComputerUse         => base + 106,
-            Self::CreditRating        => base + 107,
-            Self::CthulhuMythos       => base + 108,
-            Self::Disguise            => base + 109,
-            Self::Dodge               => base + 110,
-            Self::DriveAuto           => base + 111,
-            Self::ElecRepair          => base + 112,
-            Self::Electronics         => base + 113,
-            Self::FastTalk            => base + 114,
-            Self::FirstAid            => base + 115,
-            Self::History             => base + 116,
-            Self::Intimidate          => base + 117,
-            Self::Jump                => base + 118,
-            Self::LanguageOwn         => base + 119,
-            Self::Law                 => base + 120,
-            Self::LibraryUse          => base + 121,
-            Self::Listen              => base + 122,
-            Self::Locksmith           => base + 123,
-            Self::MechRepair          => base + 124,
-            Self::Medicine            => base + 125,
-            Self::NaturalWorld        => base + 126,
-            Self::Navigate            => base + 127,
-            Self::Occult              => base + 128,
-            Self::Persuade            => base + 129,
-            Self::Psychoanalysis      => base + 130,
-            Self::Psychology          => base + 131,
-            Self::Ride                => base + 132,
-            Self::SleightOfHand       => base + 133,
-            Self::SpotHidden          => base + 134,
-            Self::Stealth             => base + 135,
-            Self::Swim                => base + 136,
-            Self::Throw               => base + 137,
-            Self::Track               => base + 138,
-            Self::Custom              => base + 140,
-        }
-    }
-
-    /// [specialization: u8][initial: u8][occupation: u16 LE][interest: u16 LE][change: i16 LE][modifier: i16 LE][input_len: u16 LE][input: utf8...]
-    pub fn encode(specialization: u8, initial: u8, occupation: u16, interest: u16, change: i16, modifier: i16, input: Option<&str>) -> Vec<u8> {
-        let input_bytes = input.unwrap_or("").as_bytes();
-        let mut b = Vec::with_capacity(10 + input_bytes.len());
-        b.push(specialization);
-        b.push(initial);
-        b.extend_from_slice(&occupation.to_le_bytes());
-        b.extend_from_slice(&interest.to_le_bytes());
-        b.extend_from_slice(&change.to_le_bytes());
-        b.extend_from_slice(&modifier.to_le_bytes());
-        b.extend_from_slice(&(input_bytes.len() as u16).to_le_bytes());
-        b.extend_from_slice(input_bytes);
-        b
-    }
-
-    /// → (specialization, initial, occupation, interest, change, modifier, input)
-    pub fn decode(bytes: &[u8]) -> (u8, u8, u16, u16, i16, i16, String) {
-        let specialization = bytes.first().copied().unwrap_or(0);
-        let initial        = bytes.get(1).copied().unwrap_or(0);
-        let occupation     = bytes.get(2..4).and_then(|b| b.try_into().ok()).map(u16::from_le_bytes).unwrap_or(0);
-        let interest       = bytes.get(4..6).and_then(|b| b.try_into().ok()).map(u16::from_le_bytes).unwrap_or(0);
-        let change         = bytes.get(6..8).and_then(|b| b.try_into().ok()).map(i16::from_le_bytes).unwrap_or(0);
-        let modifier       = bytes.get(8..10).and_then(|b| b.try_into().ok()).map(i16::from_le_bytes).unwrap_or(0);
-        let input_len      = bytes.get(10..12).and_then(|b| b.try_into().ok()).map(u16::from_le_bytes).unwrap_or(0) as usize;
-        let input          = bytes.get(12..12 + input_len)
-            .map(|b| String::from_utf8_lossy(b).into_owned())
-            .unwrap_or_default();
-        (specialization, initial, occupation, interest, change, modifier, input)
-    }
-
-    pub fn value(&self, data: &DataStruct) -> i32 {
-        let (_, _, occupation, interest, change, modifier, _) = data.get(self.id())
-            .map(|b| Self::decode(b))
-            .unwrap_or((0, 0, 0, 0, 0, 0, String::new()));
-        (self.base_value() as i32 + occupation as i32 + interest as i32 + change as i32 + modifier as i32).max(1)
-    }
-
-    pub fn base_value(&self) -> u16 {
-        match self {
-            Self::Accounting           =>  5,
-            Self::Anthropology         =>  1,
-            Self::Archaeology          =>  1,
-            Self::Appraise             =>  5,
-            Self::ArtCraft             =>  5,
-            Self::Charm                => 15,
-            Self::Climb                => 20,
-            Self::ComputerUse          =>  5,
-            Self::CreditRating         =>  0,
-            Self::CthulhuMythos        =>  0,
-            Self::Disguise             =>  5,
-            Self::Dodge                =>  0, // derived: DEX / 2
-            Self::DriveAuto            => 20,
-            Self::ElecRepair           => 10,
-            Self::Electronics          =>  1,
-            Self::FastTalk             =>  5,
-            Self::Fighting(spec)       => spec.base_value(),
-            Self::Firearms(spec)       => spec.base_value(),
-            Self::FirstAid             => 30,
-            Self::History              =>  5,
-            Self::Intimidate           => 15,
-            Self::Jump                 => 20,
-            Self::LanguageOther(_)     =>  1,
-            Self::LanguageOwn          =>  0, // derived: EDU
-            Self::Law                  =>  5,
-            Self::LibraryUse           => 20,
-            Self::Listen               => 20,
-            Self::Locksmith            =>  1,
-            Self::MechRepair           => 10,
-            Self::Medicine             =>  1,
-            Self::NaturalWorld         => 10,
-            Self::Navigate             => 10,
-            Self::Occult               =>  5,
-            Self::Persuade             => 10,
-            Self::Pilot(spec)          => spec.base_value(),
-            Self::Psychoanalysis       =>  1,
-            Self::Psychology           => 10,
-            Self::Ride                 =>  5,
-            Self::Science(spec)        => spec.base_value(),
-            Self::SleightOfHand        => 10,
-            Self::SpotHidden           => 25,
-            Self::Stealth              => 20,
-            Self::Survival(spec)       => spec.base_value(),
-            Self::Swim                 => 20,
-            Self::Throw                => 20,
-            Self::Track                => 10,
-            Self::Custom { .. }        =>  0,
-        }
-    }
-
-    pub fn sum(&self, occ: u16, int: u16, bonus: i32) -> i32 {
-        self.base_value() as i32 + occ as i32 + int as i32 + bonus
-    }
-
-    // Characteristic依存で初期値が決まるスキルについて、依存先を返す。
-    // 呼び出し側がCharacteristic値を取得し、スキルのbase_valueを上書きする責務を持つ。
-    // Dodge: DEX/2、LanguageOwn: EDU そのまま。
-    pub fn characteristic_base(&self) -> Option<(Characteristic, fn(u16) -> u16)> {
-        match self {
-            Self::Dodge     => Some((Characteristic::Dexterity, |dex| dex / 2)),
-            Self::LanguageOwn => Some((Characteristic::Education, |edu| edu)),
-            _ => None,
-        }
-    }
-
-    pub fn label(&self, lang: Lang) -> String {
-        match (self, lang) {
-            (Self::Accounting,           Lang::Ja) => "経理".into(),
-            (Self::Accounting,           Lang::En(_)) => "Accounting".into(),
-            (Self::Anthropology,         Lang::Ja) => "人類学".into(),
-            (Self::Anthropology,         Lang::En(_)) => "Anthropology".into(),
-            (Self::Archaeology,          Lang::Ja) => "考古学".into(),
-            (Self::Archaeology,          Lang::En(_)) => "Archaeology".into(),
-            (Self::Appraise,             Lang::Ja) => "鑑定".into(),
-            (Self::Appraise,             Lang::En(_)) => "Appraise".into(),
-            (Self::ArtCraft(spec),       _)        => match spec.label(lang) { Some(s) => format!("芸術/製作 ({s})"), None => "芸術/製作".into() },
-            (Self::Charm,                Lang::Ja) => "魅惑".into(),
-            (Self::Charm,                Lang::En(_)) => "Charm".into(),
-            (Self::Climb,                Lang::Ja) => "登攀".into(),
-            (Self::Climb,                Lang::En(_)) => "Climb".into(),
-            (Self::ComputerUse,          Lang::Ja) => "コンピューター".into(),
-            (Self::ComputerUse,          Lang::En(_)) => "Computer Use".into(),
-            (Self::CreditRating,         Lang::Ja) => "信用".into(),
-            (Self::CreditRating,         Lang::En(_)) => "Credit Rating".into(),
-            (Self::CthulhuMythos,        Lang::Ja) => "クトゥルフ神話".into(),
-            (Self::CthulhuMythos,        Lang::En(_)) => "Cthulhu Mythos".into(),
-            (Self::Disguise,             Lang::Ja) => "変装".into(),
-            (Self::Disguise,             Lang::En(_)) => "Disguise".into(),
-            (Self::Dodge,                Lang::Ja) => "回避".into(),
-            (Self::Dodge,                Lang::En(_)) => "Dodge".into(),
-            (Self::DriveAuto,            Lang::Ja) => "運転（自動車）".into(),
-            (Self::DriveAuto,            Lang::En(_)) => "Drive Auto".into(),
-            (Self::ElecRepair,           Lang::Ja) => "電気修理".into(),
-            (Self::ElecRepair,           Lang::En(_)) => "Elec. Repair".into(),
-            (Self::Electronics,          Lang::Ja) => "電子工学".into(),
-            (Self::Electronics,          Lang::En(_)) => "Electronics".into(),
-            (Self::FastTalk,             Lang::Ja) => "言いくるめ".into(),
-            (Self::FastTalk,             Lang::En(_)) => "Fast Talk".into(),
-            (Self::Fighting(spec),       _)        => match spec.label(lang) { Some(s) => format!("近接戦闘 ({s})"), None => "近接戦闘".into() },
-            (Self::Firearms(spec),       _)        => match spec.label(lang) { Some(s) => format!("射撃 ({s})"),    None => "射撃".into() },
-            (Self::FirstAid,             Lang::Ja) => "応急手当".into(),
-            (Self::FirstAid,             Lang::En(_)) => "First Aid".into(),
-            (Self::History,              Lang::Ja) => "歴史".into(),
-            (Self::History,              Lang::En(_)) => "History".into(),
-            (Self::Intimidate,           Lang::Ja) => "威圧".into(),
-            (Self::Intimidate,           Lang::En(_)) => "Intimidate".into(),
-            (Self::Jump,                 Lang::Ja) => "跳躍".into(),
-            (Self::Jump,                 Lang::En(_)) => "Jump".into(),
-            (Self::LanguageOther(spec),  _)        => { let s = spec.label(lang); if s.is_empty() { "ほかの言語".into() } else { format!("ほかの言語 ({s})") } },
-            (Self::LanguageOwn,          Lang::Ja) => "母国語".into(),
-            (Self::LanguageOwn,          Lang::En(_)) => "Language (Own)".into(),
-            (Self::Law,                  Lang::Ja) => "法律".into(),
-            (Self::Law,                  Lang::En(_)) => "Law".into(),
-            (Self::LibraryUse,           Lang::Ja) => "図書館".into(),
-            (Self::LibraryUse,           Lang::En(_)) => "Library Use".into(),
-            (Self::Listen,               Lang::Ja) => "聞き耳".into(),
-            (Self::Listen,               Lang::En(_)) => "Listen".into(),
-            (Self::Locksmith,            Lang::Ja) => "鍵開け".into(),
-            (Self::Locksmith,            Lang::En(_)) => "Locksmith".into(),
-            (Self::MechRepair,           Lang::Ja) => "機械修理".into(),
-            (Self::MechRepair,           Lang::En(_)) => "Mech. Repair".into(),
-            (Self::Medicine,             Lang::Ja) => "医学".into(),
-            (Self::Medicine,             Lang::En(_)) => "Medicine".into(),
-            (Self::NaturalWorld,         Lang::Ja) => "自然".into(),
-            (Self::NaturalWorld,         Lang::En(_)) => "Natural World".into(),
-            (Self::Navigate,             Lang::Ja) => "ナビゲート".into(),
-            (Self::Navigate,             Lang::En(_)) => "Navigate".into(),
-            (Self::Occult,               Lang::Ja) => "オカルト".into(),
-            (Self::Occult,               Lang::En(_)) => "Occult".into(),
-            (Self::Persuade,             Lang::Ja) => "説得".into(),
-            (Self::Persuade,             Lang::En(_)) => "Persuade".into(),
-            (Self::Pilot(spec),          _)        => match spec.label(lang) { Some(s) => format!("操縦 ({s})"),      None => "操縦".into() },
-            (Self::Psychoanalysis,       Lang::Ja) => "精神分析".into(),
-            (Self::Psychoanalysis,       Lang::En(_)) => "Psychoanalysis".into(),
-            (Self::Psychology,           Lang::Ja) => "心理学".into(),
-            (Self::Psychology,           Lang::En(_)) => "Psychology".into(),
-            (Self::Ride,                 Lang::Ja) => "乗馬".into(),
-            (Self::Ride,                 Lang::En(_)) => "Ride".into(),
-            (Self::Science(spec),        _)        => match spec.label(lang) { Some(s) => format!("科学 ({s})"),       None => "科学".into() },
-            (Self::SleightOfHand,        Lang::Ja) => "手さばき".into(),
-            (Self::SleightOfHand,        Lang::En(_)) => "Sleight of Hand".into(),
-            (Self::SpotHidden,           Lang::Ja) => "目星".into(),
-            (Self::SpotHidden,           Lang::En(_)) => "Spot Hidden".into(),
-            (Self::Stealth,              Lang::Ja) => "隠密".into(),
-            (Self::Stealth,              Lang::En(_)) => "Stealth".into(),
-            (Self::Survival(spec),       _)        => match spec.label(lang) { Some(s) => format!("サバイバル ({s})"), None => "サバイバル".into() },
-            (Self::Swim,                 Lang::Ja) => "水泳".into(),
-            (Self::Swim,                 Lang::En(_)) => "Swim".into(),
-            (Self::Throw,                Lang::Ja) => "投擲".into(),
-            (Self::Throw,                Lang::En(_)) => "Throw".into(),
-            (Self::Track,                Lang::Ja) => "追跡".into(),
-            (Self::Track,                Lang::En(_)) => "Track".into(),
-            (Self::Custom { name, spec: Some(s), .. }, _) => format!("{} ({})", name, s),
-            (Self::Custom { name, spec: None,    .. }, _) => name.clone(),
         }
     }
 }
