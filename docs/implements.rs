@@ -3,7 +3,7 @@ use std::sync::Mutex;
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::collections::BTreeMap;
 use context_engine::{Store, SetOutcome, Tree};
-use common::wal::{self, LogRecord};
+use common::store::{self, LogRecord};
 use crate::resource::{parse_records, serialize_records, Record};
 
 pub(crate) struct InMemoryStore {
@@ -94,7 +94,7 @@ impl FileStore {
     pub(crate) fn snap(&self, name: &str) -> bool {
         let snap_raw = self.read_snap(name).unwrap_or_default();
         let log_raw  = self.read_log(name).unwrap_or_default();
-        let new_snap = wal::compact(&snap_raw, &log_raw);
+        let new_snap = store::compact(&snap_raw, &log_raw);
 
         let mut pairs = self.pairs.lock().unwrap();
         let f = match pairs.get_mut(name) { Some(f) => f, None => return false };
@@ -118,7 +118,7 @@ impl Store for FileStore {
         let log_raw  = self.read_log(name).unwrap_or_default();
         let owner_id: u32 = qualifier.parse().ok()?;
 
-        let records: Vec<Record> = wal::merge(&snap_raw, &log_raw)
+        let records: Vec<Record> = store::merge(&snap_raw, &log_raw)
             .into_iter()
             .filter_map(|(offset, len)| {
                 let s = offset as usize;

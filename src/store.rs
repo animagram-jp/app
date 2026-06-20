@@ -1,3 +1,4 @@
+use core::primitive::{u8, u32};
 use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::vec::Vec;
 use alloc::vec;
@@ -13,7 +14,7 @@ use web_sys::{
     FileSystemFileHandle,
 };
 
-/// Append-only WAL backed by OPFS (.snap / .log file pair)
+/// log snap pairs operation on vfs (opfs).
 ///
 /// .snap: clean snapshot (rewritten on compact, read-only between compacts)
 /// .log:  append-only, holds the actual data diffs after last compact
@@ -26,7 +27,7 @@ use web_sys::{
 /// checksum: Fletcher32 of [op:1][id:4][len:4][data:len]
 
 // ============================================================
-// Log record
+// log snap operation
 // ============================================================
 
 fn fletcher32(data: &[u8]) -> u32 {

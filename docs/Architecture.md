@@ -190,13 +190,12 @@ use list::{
 #### store.rs
 
 ```rust
-use store::{wal, FileStore};
+use store::FileStore::{new, issue, get, set, save, delete, close, compact};
 ```
 
-- ローカルストア(Walとopfs)操作を発行するモジュール。
+- ローカルストア操作を発行するモジュール。log snapペアファイルによる回復機能をvfs(opfs)上で実行。
 - ステートにプールメモリとunsavedインデックスセットを持ち、メモリオンリーの操作関数と、ディスクへの反映関数を分離して公開。
 - 1つのインスタンスは、1つの可変長論理バイト列に対する保存単位(想定はデータモデルインスタンス1つ)に対する操作を提供する。
-- Walのlogを利用して、複数インスタンス間でトランザクション機能の追加が可能。
 
 #### timestamp.rs
 
@@ -220,19 +219,18 @@ use data_struct::DataStruct::{new, get_from_bytes, get, set, delete, compact, to
 - データモデル固有のフィールド数(schema_size)固定Listと可変部VariableListによるデータインスタンス操作モジュール。
 - フィールド1にid(u32), 2にcreated_at(timestamp), 3にupdated_at(timestamp)を確定し、4~を開放。
 
-#### model.rs (character.rs)
+#### model.rs
 
 ```rust
 use model::{
     Dice, dice::{display, roll}, 
     Character, Profile, Characteristic, Skill, 
-    ArtCraft, Fighting, Firearms, Pilot, Science, SurvivalSpec
+    ArtCraft, Fighting, Firearms, Pilot, Science, Survival,
 };
 ```
 
 - ドメイン固有のデータモデルの全フィールドとロジックを、各自公開されたenumのネスト群で表現したモジュール。
 - 関数はitemのドメイン意味(表示)を定義する`label`, 一意なschema_idを発行する`id`, バイト列とdomからの流入(u32,str,f64)を相互変換する`read` / `write`, 値の表示を導出する`display`などを各enum itemに対して定義する。
-- `display`: モデル
 
 #### event.rs
 
