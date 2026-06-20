@@ -223,10 +223,10 @@ use data_struct::DataStruct::{new, get_from_bytes, get, set, delete, compact, to
 #### model.rs (character.rs)
 
 ```rust
-use character::{
+use model::{
     Dice, dice::{display, roll}, 
     Character, Profile, Characteristic, Skill, 
-    ArtCraft, FightingSpec, FirearmsSpec, PilotSpec, ScienceSpec, SurvivalSpec
+    ArtCraft, Fighting, Firearms, Pilot, Science, SurvivalSpec
 };
 ```
 

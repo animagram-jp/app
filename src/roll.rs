@@ -56,7 +56,7 @@ pub struct SkillRollResult;
 #[derive(Debug)]
 pub enum SkillRollError { BonusDiceOutOfRange }
 
-pub enum DifficultySpec { None, Hard, Extreme, Critical }
+pub enum Difficulty { None, Hard, Extreme, Critical }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ResultLevel { Regular, Hard, Extreme, Critical, Fumble, Failure }
@@ -263,23 +263,23 @@ impl SkillRoll {
     pub fn roll(
         target: u32,
         bonus_dice: i32,
-        difficulty: DifficultySpec,
+        difficulty: Difficulty,
     ) -> Result<SkillRollResult, SkillRollError> {
         if bonus_dice.unsigned_abs() > 100 {
             return Err(SkillRollError::BonusDiceOutOfRange);
         }
 
         let effective_target: u32 = match difficulty {
-            DifficultySpec::Hard     => target / 2,
-            DifficultySpec::Extreme  => target / 5,
-            DifficultySpec::Critical => 1,
-            DifficultySpec::None     => target,
+            Difficulty::Hard     => target / 2,
+            Difficulty::Extreme  => target / 5,
+            Difficulty::Critical => 1,
+            Difficulty::None     => target,
         };
 
         let (total, _dice_candidates) = percent_roll(bonus_dice);
 
         let _level = match difficulty {
-            DifficultySpec::None => ResultLevel::from_values(total, effective_target),
+            Difficulty::None => ResultLevel::from_values(total, effective_target),
             _                    => ResultLevel::with_difficulty_level(total, effective_target),
         };
 
