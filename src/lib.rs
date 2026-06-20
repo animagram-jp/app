@@ -1,3 +1,5 @@
+#![no_implicit_prelude] // use徹底のため、一次的に追加。修正作業後、コメントアウトすること。
+
 extern crate core;
 extern crate alloc;
 extern crate std;
@@ -24,15 +26,17 @@ use dlmalloc::GlobalDlmalloc;
 static ALLOCATOR: GlobalDlmalloc = GlobalDlmalloc;
 
 // ============================================================
-// Lang
+// Lang, En
 // ============================================================
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Lang {En(En), Ja}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum En {Us}
 
 impl Lang {
-    fn label(self) -> &'static str {
+    fn display(self) -> &'static str {
         match self {
             Self::En(En::Us) => "en-US",
             Self::Ja => "ja",

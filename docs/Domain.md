@@ -27,7 +27,7 @@ mod domain {
     mod model {
         // "model"グループ単一の被定義根モデル
         pub enum Model {
-            // "model"の定義者である"predicate"例示用モデル
+            // "model"モデルの定義者である"predicate"例示用モデル
             Predicate,
             // ユーザーカスタムの実データ格納用id帯域
             Custom,
@@ -41,10 +41,10 @@ mod domain {
                 }
             }
 
-            pub fn label(&self, lang: Lang) -> & 'static str {
+            pub fn display(&self, lang: Lang) -> & 'static str {
                 match (self, lang) {
                     (Self::Predicate, _) => "predicate",
-                    (Self::Custom, _)   => "custom", // 使うのはデバッグの時だけなので、消した方が良いかも
+                    (Self::Custom, _)   =>  "custom", // 使うのはデバッグの時だけなので、消した方が良いかも
                 }
             }
         }
