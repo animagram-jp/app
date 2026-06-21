@@ -891,10 +891,9 @@ impl OtherAttribute {
 }
 
 // ============================================================
-// Skill, ArtCraft, Fighting, Firearms, LanguageOther, p.54
+// Skill, ArtCraft, Fighting, Firearms, LanguageOther, Survival p.54
 // ============================================================
 
-/// p.54
 #[derive(Clone)]
 pub enum Skill {
     Accounting,
@@ -1003,13 +1002,7 @@ impl Skill {
         // ルールブック記載specialization id帯、custom id帯と衝突しないように基準idを割り振る
         let base = Character::Skill.id();
         match self {
-            Self::Fighting      => base +0,  //  17.. 28 (幅12)
-            Self::Firearms      => base +1,  //  29.. 38 (幅10)
-            Self::LanguageOther => base +2,  //  39.. 42 (幅4)
-            Self::Pilot         => base,  //  43.. 56 (幅14)
-            Self::Science       => spec.id(base +  57),  //  57.. 73 (幅17)
-            Self::Survival      => spec.id(base +  74),  //  74.. 80 (幅7)
-            Self::Accounting          => base + 100,
+            Self::Accounting    => base + 100,
             Self::Anthropology        => base + 101,
             Self::Archaeology         => base + 102,
             Self::Appraise            => base + 103,
@@ -1025,11 +1018,13 @@ impl Skill {
             Self::ElecRepair          => base + 112,
             Self::Electronics         => base + 113,
             Self::FastTalk            => base + 114,
-            
+            Self::Fighting            => base +0,  //  17.. 28 (幅12)
+            Self::Firearms            => base +1,  //  29.. 38 (幅10)
             Self::FirstAid            => base + 115,
             Self::History             => base + 116,
             Self::Intimidate          => base + 117,
             Self::Jump                => base + 118,
+            Self::LanguageOther => base +2,  //  39.. 42 (幅4)
             Self::LanguageOwn         => base + 119,
             Self::Law                 => base + 120,
             Self::LibraryUse          => base + 121,
@@ -1041,16 +1036,19 @@ impl Skill {
             Self::Navigate            => base + 127,
             Self::Occult              => base + 128,
             Self::Persuade            => base + 129,
-            Self::Psychoanalysis      => base + 130,
-            Self::Psychology          => base + 131,
-            Self::Ride                => base + 132,
-            Self::SleightOfHand       => base + 133,
-            Self::SpotHidden          => base + 134,
-            Self::Stealth             => base + 135,
-            Self::Swim                => base + 136,
-            Self::Throw               => base + 137,
-            Self::Track               => base + 138,
-            Self::Custom              => base + 140,
+            Self::Pilot         => base +,  //  43.. 56 (幅14)
+            Self::Psychoanalysis => base + 130,
+            Self::Psychology     => base + 131,
+            Self::Ride           => base + 132,
+            Self::Science       => base +  57,  //  57.. 73 (幅17)
+            Self::SleightOfHand  => base + 133,
+            Self::SpotHidden     => base + 134,
+            Self::Stealth        => base + 135,
+            Self::Survival      => base +  74,  //  74.. 80 (幅7)
+            Self::Swim           => base + 136,
+            Self::Throw          => base + 137,
+            Self::Track          => base + 138,
+            Self::Custom         => base + 140,
         }
     }
 
