@@ -1300,44 +1300,6 @@ impl SkillTrait<S: Skill: LanguageOwn> for LanguageOwn {
     }
 }
 
-pub trait ArtAndCraftTrait<const A: ArtAndCraft> {
-    const VARIANT: ArtAndCraft = A;
-    const SKILL:   Skill       = Skill::ArtAndCraft;
-    const NAME:    &'static str = SKILL.name();
-    const BASE:    u7           = SKILL.base();
-
-    const OCCUPATION_POINTS: Field = Field {position: 32, mask: (1 <<  9) - 1}
-    const INTEREST_POINTS:   Field = Field {position: 23, mask: (1 <<  9) - 1}
-    const CHANGE:            Field = Field {position: 13, mask: (1 << 10) - 1}
-    const MODIFIER:          Field = Field {position:  3, mask: (1 << 10) - 1}
-
-    // Custom以外はconst解決、Custom(i)はcharacterを参照
-    fn id(&self, character: &DataStruct) -> u32 { A.id(character) }
-
-    // -> occupation_points, interest_points, change, modifier
-    fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
-        bytes = character.get(self.id(character));
-    }
-
-    fn write<'a>(&self, character: &'a mut DataStruct, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> &'a mut DataStruct {
-        _ = character.set(self.id(character), value: [u8; 5], None);
-        character
-    }
-
-    // -> name, specialization
-    fn display_string(&self, lang: Lang) -> (String, String) { (Self::NAME, A.read(lang).to_string()) }
-
-    // -> base, occupation_points, interest_points, change, modifier, sum
-    fn display_numeric(&self, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> (u7, u9, u9, i10, i10, i10) {
-        Self::BASE,
-        occupation_points,
-        interest_points,
-        change,
-        modifier,
-        sum = Self::BASE + occupation_points + interest_points + change + modifier,
-    }
-}
-
 /// 芸術/製作 (専門分野) Art/Craft (Specialization) // p.62 モリダンス等は長いので除外
 enum ArtAndCraft {
     Acting,       // 演劇
@@ -1355,76 +1317,53 @@ enum ArtAndCraft {
     Custom,
 }
 
-pub struct Custom(pub u8);
-
-impl ArtAndCraftTrait<{ ArtAndCraft::Custom }> for Custom {
-    fn id(&self, character: &DataStruct) -> u32 {
-        let base = Skill::ArtAndCraft.id();
-        let list_id = base + 13;
-        if self.0 == 0 {
-            return list_id;
-        }
-        let bytes = character.get(list_id).ok()?;
-        let idx = (self.0 as usize).checked_sub(1)?;
-        bytes.get(idx * 4..idx * 4 + 4)
-            .and_then(|b| b.try_into().ok())
-            .map(u32::from_le_bytes)
-    }
-
-    fn display_string(&self, character: &DataStruct, lang: Lang) -> (String, String) {
-        let name = Self::NAME.to_string();
-        let spec = character.get(self.id(character)).unwrap_or_default();
-        (name, spec)
-    }
-}
-
 impl ArtAndCraft {
 
     pub fn id(&self, character: &DataStruct) -> u32 {
         const base = Skill::ArtAndCraft::id();
         match self {
-            Self::Acting      => Some(base +  1),
-            Self::Barber      => Some(base +  2),
-            Self::Calligraphy => Some(base +  3),
-            Self::Carpentry   => Some(base +  4),
-            Self::Cook        => Some(base +  5),
-            Self::Dancing     => Some(base +  6),
-            Self::FineArt     => Some(base +  7),
-            Self::Forgery     => Some(base +  8),
-            Self::Photography => Some(base +  9),
-            Self::Pottery     => Some(base + 10),
-            Self::Sculpting   => Some(base + 11),
-            Self::Writing     => Some(base + 12),
-            Self::Custom      => Some(base + 13), // Custom(u8)のidリスト格納スロット
+            Self::Acting      => base +  1,
+            Self::Barber      => base +  2,
+            Self::Calligraphy => base +  3,
+            Self::Carpentry   => base +  4,
+            Self::Cook        => base +  5,
+            Self::Dancing     => base +  6,
+            Self::FineArt     => base +  7,
+            Self::Forgery     => base +  8,
+            Self::Photography => base +  9,
+            Self::Pottery     => base + 10,
+            Self::Sculpting   => base + 11,
+            Self::Writing     => base + 12,
+            Self::Custom      => base + 13, // Custom(u8)のidリスト格納スロット
         }
     }
 
     pub fn read(&self, lang: Lang) -> &str {
         match (self, lang) {
             (Self::Acting,      Lang::En(_)) => "Acting",
-            (Self::Acting,      Lang::Ja) => "演劇",
+            (Self::Acting,      Lang::Ja)    => "演劇",
             (Self::Barber,      Lang::En(_)) => "Barber",
-            (Self::Barber,      Lang::Ja) => "理容",
+            (Self::Barber,      Lang::Ja)    => "理容",
             (Self::Calligraphy, Lang::En(_)) => "Calligraphy",
-            (Self::Calligraphy, Lang::Ja) => "書道",
+            (Self::Calligraphy, Lang::Ja)    => "書道",
             (Self::Carpentry,   Lang::En(_)) => "Carpentry",
-            (Self::Carpentry,   Lang::Ja) => "大工仕事",
+            (Self::Carpentry,   Lang::Ja)    => "大工仕事",
             (Self::Cook,        Lang::En(_)) => "Cook",
-            (Self::Cook,        Lang::Ja) => "料理",
+            (Self::Cook,        Lang::Ja)    => "料理",
             (Self::Dancing,     Lang::En(_)) => "Dancing",
-            (Self::Dancing,     Lang::Ja) => "ダンス",
+            (Self::Dancing,     Lang::Ja)    => "ダンス",
             (Self::FineArt,     Lang::En(_)) => "Fine Art",
-            (Self::FineArt,     Lang::Ja) => "絵画",
+            (Self::FineArt,     Lang::Ja)    => "絵画",
             (Self::Forgery,     Lang::En(_)) => "Forgery",
-            (Self::Forgery,     Lang::Ja) => "文書偽造",
+            (Self::Forgery,     Lang::Ja)    => "文書偽造",
             (Self::Photography, Lang::En(_)) => "Photography",
-            (Self::Photography, Lang::Ja) => "写真術",
+            (Self::Photography, Lang::Ja)    => "写真術",
             (Self::Pottery,     Lang::En(_)) => "Pottery",
-            (Self::Pottery,     Lang::Ja) => "陶芸",
+            (Self::Pottery,     Lang::Ja)    => "陶芸",
             (Self::Sculpting,   Lang::En(_)) => "Sculpting",
-            (Self::Sculpting,   Lang::Ja) => "彫刻",
+            (Self::Sculpting,   Lang::Ja)    => "彫刻",
             (Self::Writing,     Lang::En(_)) => "Writing",
-            (Self::Writing,     Lang::Ja) => "執筆",
+            (Self::Writing,     Lang::Ja)    => "執筆",
         }
     }
 
@@ -1465,6 +1404,67 @@ impl ArtAndCraft {
             Self::Writing,
             Self::Custom,
         ]
+    }
+}
+
+pub trait ArtAndCraftTrait<const A: ArtAndCraft> {
+    const VARIANT: ArtAndCraft = A;
+    const SKILL:   Skill       = Skill::ArtAndCraft;
+    const NAME:    &'static str = SKILL.name();
+    const BASE:    u7           = SKILL.base();
+
+    const OCCUPATION_POINTS: Field = Field {position: 32, mask: (1 <<  9) - 1}
+    const INTEREST_POINTS:   Field = Field {position: 23, mask: (1 <<  9) - 1}
+    const CHANGE:            Field = Field {position: 13, mask: (1 << 10) - 1}
+    const MODIFIER:          Field = Field {position:  3, mask: (1 << 10) - 1}
+
+    // Custom以外はconst解決、Custom(i)はcharacterを参照
+    fn id(&self, character: &DataStruct) -> u32 { A.id(character) }
+
+    // -> occupation_points, interest_points, change, modifier
+    fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
+        bytes = character.get(self.id(character));
+    }
+
+    fn write<'a>(&self, character: &'a mut DataStruct, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> &'a mut DataStruct {
+        _ = character.set(self.id(character), value: [u8; 5], None);
+        character
+    }
+
+    // -> name, specialization
+    fn display_string(&self, lang: Lang) -> (String, String) { (Self::NAME, A.read(lang).to_string()) }
+
+    // -> base, occupation_points, interest_points, change, modifier, sum
+    fn display_numeric(&self, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> (u7, u9, u9, i10, i10, i10) {
+        Self::BASE,
+        occupation_points,
+        interest_points,
+        change,
+        modifier,
+        sum = Self::BASE + occupation_points + interest_points + change + modifier,
+    }
+}
+
+pub struct Custom(pub u8);
+
+impl ArtAndCraftTrait<{ ArtAndCraft::Custom }> for Custom {
+    fn id(&self, character: &DataStruct) -> u32 {
+        let base = Skill::ArtAndCraft.id();
+        let list_id = base + 13;
+        if self.0 == 0 {
+            return list_id;
+        }
+        let bytes = character.get(list_id).ok()?;
+        let idx = (self.0 as usize).checked_sub(1)?;
+        bytes.get(idx * 4..idx * 4 + 4)
+            .and_then(|b| b.try_into().ok())
+            .map(u32::from_le_bytes)
+    }
+
+    fn display_string(&self, character: &DataStruct, lang: Lang) -> (String, String) {
+        let name = Self::NAME.to_string();
+        let spec = character.get(self.id(character)).unwrap_or_default();
+        (name, spec)
     }
 }
 
