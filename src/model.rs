@@ -1236,9 +1236,41 @@ pub trait SkillTrait<const S: Skill> {
     }
 }
 
-[#derive(SkillTrait)] pub struct Accounting<S: Skill::Accounting>;
-[#derive(SkillTrait)] pub struct Anthropology<S: Skill::Anthropology>;
-todo!("他も並べる。Skill値渡しを実装する")
+pub struct Accounting;    impl SkillTrait<{ Skill::Accounting    }> for Accounting    {}
+pub struct Anthropology;  impl SkillTrait<{ Skill::Anthropology  }> for Anthropology  {}
+pub struct Appraise;      impl SkillTrait<{ Skill::Appraise      }> for Appraise      {}
+pub struct Archaeology;   impl SkillTrait<{ Skill::Archaeology   }> for Archaeology   {}
+pub struct Charm;         impl SkillTrait<{ Skill::Charm         }> for Charm         {}
+pub struct Climb;         impl SkillTrait<{ Skill::Climb         }> for Climb         {}
+pub struct ComputerUse;   impl SkillTrait<{ Skill::ComputerUse   }> for ComputerUse   {}
+pub struct Disguise;      impl SkillTrait<{ Skill::Disguise      }> for Disguise      {}
+pub struct DriveAuto;     impl SkillTrait<{ Skill::DriveAuto     }> for DriveAuto     {}
+pub struct ElectricalRepair; impl SkillTrait<{ Skill::ElectricalRepair }> for ElectricalRepair {}
+pub struct Electronics;   impl SkillTrait<{ Skill::Electronics   }> for Electronics   {}
+pub struct FastTalk;      impl SkillTrait<{ Skill::FastTalk      }> for FastTalk      {}
+pub struct FirstAid;      impl SkillTrait<{ Skill::FirstAid      }> for FirstAid      {}
+pub struct History;       impl SkillTrait<{ Skill::History       }> for History       {}
+pub struct Intimidate;    impl SkillTrait<{ Skill::Intimidate    }> for Intimidate    {}
+pub struct Jump;          impl SkillTrait<{ Skill::Jump          }> for Jump          {}
+pub struct Law;           impl SkillTrait<{ Skill::Law           }> for Law           {}
+pub struct LibraryUse;    impl SkillTrait<{ Skill::LibraryUse    }> for LibraryUse    {}
+pub struct Listen;        impl SkillTrait<{ Skill::Listen        }> for Listen        {}
+pub struct Locksmith;     impl SkillTrait<{ Skill::Locksmith     }> for Locksmith     {}
+pub struct MechanicalRepair; impl SkillTrait<{ Skill::MechanicalRepair }> for MechanicalRepair {}
+pub struct Medicine;      impl SkillTrait<{ Skill::Medicine      }> for Medicine      {}
+pub struct NaturalWorld;  impl SkillTrait<{ Skill::NaturalWorld  }> for NaturalWorld  {}
+pub struct Navigate;      impl SkillTrait<{ Skill::Navigate      }> for Navigate      {}
+pub struct Occult;        impl SkillTrait<{ Skill::Occult        }> for Occult        {}
+pub struct Persuade;      impl SkillTrait<{ Skill::Persuade      }> for Persuade      {}
+pub struct Psychoanalysis; impl SkillTrait<{ Skill::Psychoanalysis }> for Psychoanalysis {}
+pub struct Psychology;    impl SkillTrait<{ Skill::Psychology    }> for Psychology    {}
+pub struct Ride;          impl SkillTrait<{ Skill::Ride          }> for Ride          {}
+pub struct SleightOfHand; impl SkillTrait<{ Skill::SleightOfHand }> for SleightOfHand {}
+pub struct SpotHidden;    impl SkillTrait<{ Skill::SpotHidden    }> for SpotHidden    {}
+pub struct Stealth;       impl SkillTrait<{ Skill::Stealth       }> for Stealth       {}
+pub struct Swim;          impl SkillTrait<{ Skill::Swim          }> for Swim          {}
+pub struct Throw;         impl SkillTrait<{ Skill::Throw         }> for Throw         {}
+pub struct Track;         impl SkillTrait<{ Skill::Track         }> for Track         {}
 
 pub srtuct Dodge;
 impl SkillTrait<S: Skill::Dodge> for Dodge {
