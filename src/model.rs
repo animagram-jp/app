@@ -213,14 +213,76 @@ pub enum OccupationKind { // p.38
     Professor,
     Soldier,
     TribeMember,
-    Custom(Option<str>),
+    Custom(Option<String>),
 }
 
 impl OccupationKind {
-    pub fn detect(kind_id: u8, custom_name: &Option<String>) -> Self {
+    pub fn detect(kind_id: u8, custom_name: Option<String>) -> Self {
         match kind_id {
             1  => OccupationKind::Activist,
+            2  => OccupationKind::Antiquarian,
+            3  => OccupationKind::Artist,
+            4  => OccupationKind::Athlete,
+            5  => OccupationKind::Author,
+            6  => OccupationKind::Clergy,
+            7  => OccupationKind::Criminal,
+            8  => OccupationKind::Detective,
+            9  => OccupationKind::Dilettante,
+            10 => OccupationKind::Doctor,
+            11 => OccupationKind::Drifter,
+            12 => OccupationKind::Engineer,
+            13 => OccupationKind::Entertainer,
+            14 => OccupationKind::Farmer,
+            15 => OccupationKind::Hacker,
+            16 => OccupationKind::Journalist,
+            17 => OccupationKind::Lawyer,
+            18 => OccupationKind::Librarian,
+            19 => OccupationKind::MilitaryOfficer,
+            20 => OccupationKind::Missionary,
+            21 => OccupationKind::Musician,
+            22 => OccupationKind::Parapsychologist,
+            23 => OccupationKind::Pilot,
+            24 => OccupationKind::Police,
+            25 => OccupationKind::PrivateInvestigator,
+            26 => OccupationKind::Professor,
+            27 => OccupationKind::Soldier,
+            28 => OccupationKind::TribeMember,
             29 => OccupationKind::Custom(custom_name),
+            _  => OccupationKind::Custom(None),
+        }
+    }
+
+    pub fn id(&self) -> u8 {
+        match self {
+            Self::Activist            => 1,
+            Self::Antiquarian         => 2,
+            Self::Artist              => 3,
+            Self::Athlete             => 4,
+            Self::Author              => 5,
+            Self::Clergy              => 6,
+            Self::Criminal            => 7,
+            Self::Detective           => 8,
+            Self::Dilettante          => 9,
+            Self::Doctor              => 10,
+            Self::Drifter             => 11,
+            Self::Engineer            => 12,
+            Self::Entertainer         => 13,
+            Self::Farmer              => 14,
+            Self::Hacker              => 15,
+            Self::Journalist          => 16,
+            Self::Lawyer              => 17,
+            Self::Librarian           => 18,
+            Self::MilitaryOfficer     => 19,
+            Self::Missionary          => 20,
+            Self::Musician            => 21,
+            Self::Parapsychologist    => 22,
+            Self::Pilot               => 23,
+            Self::Police              => 24,
+            Self::PrivateInvestigator => 25,
+            Self::Professor           => 26,
+            Self::Soldier             => 27,
+            Self::TribeMember         => 28,
+            Self::Custom(_)           => 29,
         }
     }
 }
@@ -228,97 +290,132 @@ impl OccupationKind {
 pub struct Occupation;
 
 impl Occupation {
-    // kind_id: u8, custom_name: str, title: str
-    // kind: OccupationKind, title: Option(String) 
+    // ids[0]: kind_id (u8), ids[1]: custom_name (str), ids[2]: title (str)
     pub fn read(instance: &DataStruct) -> (OccupationKind, Option<String>) {
         let ids = Profile::Occupation.ids();
-        let (kind_id, custom_name, title) = (instance.get(ids[0]).ok(), instance.get(ids[1]).ok(), instance.get(ids[2]).ok());
-        let kind = OccupationKind::detect(kind_id, custom_name);
-        let title = instance.get(ids[1]).ok()
+        let kind_id = instance.get(ids[0]).ok()
+            .and_then(|b| b.first().copied())
+            .unwrap_or(0);
+        let custom_name = instance.get(ids[1]).ok()
             .map(|b| String::from_utf8_lossy(b).into_owned());
+        let title = instance.get(ids[2]).ok()
+            .map(|b| String::from_utf8_lossy(b).into_owned());
+        let kind = OccupationKind::detect(kind_id, custom_name);
         (kind, title)
     }
 
     pub fn write<'a>(instance: &'a mut DataStruct, value: (u8, Option<&str>, Option<&str>)) -> &'a mut DataStruct {
         let ids = Profile::Occupation.ids();
-        let _ = instance.set(ids[0], value.0.as_bytes(), None);
-        match value.1, value.2 {
+        let _ = instance.set(ids[0], &[value.0], None);
+        match value.1 {
             Some(v) => { let _ = instance.set(ids[1], v.as_bytes(), None); }
-            None        => { let _ = instance.delete(ids[1]); }
+            None    => { let _ = instance.delete(ids[1]); }
+        }
+        match value.2 {
+            Some(t) => { let _ = instance.set(ids[2], t.as_bytes(), None); }
+            None    => { let _ = instance.delete(ids[2]); }
         }
         instance
     }
 
-    pub fn display(kind: OccupationKind, title: &Option<String>, lang: Lang) -> String {
+    pub fn display(kind: &OccupationKind, title: &Option<String>, lang: Lang) -> String {
         let name = match (kind, lang) {
-            (Self::Activist,           Lang::En) => "Activist",
-            (Self::Activist,           Lang::Ja) => "活動家",
-            (Self::Antiquarian,        Lang::En) => "Antiquarian",
-            (Self::Antiquarian,        Lang::Ja) => "古物研究家",
-            (Self::Artist,             Lang::En) => "Artist",
-            (Self::Artist,             Lang::Ja) => "芸術家",
-            (Self::Athlete,            Lang::En) => "Athlete",
-            (Self::Athlete,            Lang::Ja) => "スポーツ選手",
-            (Self::Author,             Lang::En) => "Author",
-            (Self::Author,             Lang::Ja) => "作家",
-            (Self::Clergy,             Lang::En) => "Clergy",
-            (Self::Clergy,             Lang::Ja) => "聖職者",
-            (Self::Criminal,           Lang::En) => "Criminal",
-            (Self::Criminal,           Lang::Ja) => "犯罪者",
-            (Self::Detective,          Lang::En) => "Detective",
-            (Self::Detective,          Lang::Ja) => "刑事",
-            (Self::Dilettante,         Lang::En) => "Dilettante",
-            (Self::Dilettante,         Lang::Ja) => "ディレッタント",
-            (Self::Doctor,             Lang::En) => "Doctor",
-            (Self::Doctor,             Lang::Ja) => "医師",
-            (Self::Drifter,            Lang::En) => "Drifter",
-            (Self::Drifter,            Lang::Ja) => "放浪者",
-            (Self::Engineer,           Lang::En) => "Engineer",
-            (Self::Engineer,           Lang::Ja) => "技術者",
-            (Self::Entertainer,        Lang::En) => "Entertainer",
-            (Self::Entertainer,        Lang::Ja) => "エンターテイナー",
-            (Self::Farmer,             Lang::En) => "Farmer",
-            (Self::Farmer,             Lang::Ja) => "農民",
-            (Self::Hacker,             Lang::En) => "Hacker",
-            (Self::Hacker,             Lang::Ja) => "ハッカー",
-            (Self::Journalist,         Lang::En) => "Journalist",
-            (Self::Journalist,         Lang::Ja) => "ジャーナリスト",
-            (Self::Lawyer,             Lang::En) => "Lawyer",
-            (Self::Lawyer,             Lang::Ja) => "弁護士",
-            (Self::Librarian,          Lang::En) => "Librarian",
-            (Self::Librarian,          Lang::Ja) => "司書",
-            (Self::MilitaryOfficer,    Lang::En) => "Military Officer",
-            (Self::MilitaryOfficer,    Lang::Ja) => "士官",
-            (Self::Missionary,         Lang::En) => "Missionary",
-            (Self::Missionary,         Lang::Ja) => "伝道者",
-            (Self::Musician,           Lang::En) => "Musician",
-            (Self::Musician,           Lang::Ja) => "ミュージシャン",
-            (Self::Parapsychologist,   Lang::En) => "Parapsychologist",
-            (Self::Parapsychologist,   Lang::Ja) => "超心理学者",
-            (Self::Pilot,              Lang::En) => "Pilot",
-            (Self::Pilot,              Lang::Ja) => "パイロット",
-            (Self::Police,             Lang::En) => "Police",
-            (Self::Police,             Lang::Ja) => "警察官",
-            (Self::PrivateInvestigator,Lang::En) => "Private Investigator",
-            (Self::PrivateInvestigator,Lang::Ja) => "私立探偵",
-            (Self::Professor,          Lang::En) => "Professor",
-            (Self::Professor,          Lang::Ja) => "教授",
-            (Self::Soldier,            Lang::En) => "Soldier",
-            (Self::Soldier,            Lang::Ja) => "兵士",
-            (Self::TribeMember,        Lang::En) => "Tribe Member",
-            (Self::TribeMember,        Lang::Ja) => "トライブ・メンバー",
-            (Self::Custom(None),                 _) => "",
-            (Self::Custom(Some(n)),              _) => n.as_str,
-        }
+            (OccupationKind::Activist,            Lang::En(_)) => "Activist",
+            (OccupationKind::Activist,            Lang::Ja)    => "活動家",
+            (OccupationKind::Antiquarian,         Lang::En(_)) => "Antiquarian",
+            (OccupationKind::Antiquarian,         Lang::Ja)    => "古物研究家",
+            (OccupationKind::Artist,              Lang::En(_)) => "Artist",
+            (OccupationKind::Artist,              Lang::Ja)    => "芸術家",
+            (OccupationKind::Athlete,             Lang::En(_)) => "Athlete",
+            (OccupationKind::Athlete,             Lang::Ja)    => "スポーツ選手",
+            (OccupationKind::Author,              Lang::En(_)) => "Author",
+            (OccupationKind::Author,              Lang::Ja)    => "作家",
+            (OccupationKind::Clergy,              Lang::En(_)) => "Clergy",
+            (OccupationKind::Clergy,              Lang::Ja)    => "聖職者",
+            (OccupationKind::Criminal,            Lang::En(_)) => "Criminal",
+            (OccupationKind::Criminal,            Lang::Ja)    => "犯罪者",
+            (OccupationKind::Detective,           Lang::En(_)) => "Detective",
+            (OccupationKind::Detective,           Lang::Ja)    => "刑事",
+            (OccupationKind::Dilettante,          Lang::En(_)) => "Dilettante",
+            (OccupationKind::Dilettante,          Lang::Ja)    => "ディレッタント",
+            (OccupationKind::Doctor,              Lang::En(_)) => "Doctor",
+            (OccupationKind::Doctor,              Lang::Ja)    => "医師",
+            (OccupationKind::Drifter,             Lang::En(_)) => "Drifter",
+            (OccupationKind::Drifter,             Lang::Ja)    => "放浪者",
+            (OccupationKind::Engineer,            Lang::En(_)) => "Engineer",
+            (OccupationKind::Engineer,            Lang::Ja)    => "技術者",
+            (OccupationKind::Entertainer,         Lang::En(_)) => "Entertainer",
+            (OccupationKind::Entertainer,         Lang::Ja)    => "エンターテイナー",
+            (OccupationKind::Farmer,              Lang::En(_)) => "Farmer",
+            (OccupationKind::Farmer,              Lang::Ja)    => "農民",
+            (OccupationKind::Hacker,              Lang::En(_)) => "Hacker",
+            (OccupationKind::Hacker,              Lang::Ja)    => "ハッカー",
+            (OccupationKind::Journalist,          Lang::En(_)) => "Journalist",
+            (OccupationKind::Journalist,          Lang::Ja)    => "ジャーナリスト",
+            (OccupationKind::Lawyer,              Lang::En(_)) => "Lawyer",
+            (OccupationKind::Lawyer,              Lang::Ja)    => "弁護士",
+            (OccupationKind::Librarian,           Lang::En(_)) => "Librarian",
+            (OccupationKind::Librarian,           Lang::Ja)    => "司書",
+            (OccupationKind::MilitaryOfficer,     Lang::En(_)) => "Military Officer",
+            (OccupationKind::MilitaryOfficer,     Lang::Ja)    => "士官",
+            (OccupationKind::Missionary,          Lang::En(_)) => "Missionary",
+            (OccupationKind::Missionary,          Lang::Ja)    => "伝道者",
+            (OccupationKind::Musician,            Lang::En(_)) => "Musician",
+            (OccupationKind::Musician,            Lang::Ja)    => "ミュージシャン",
+            (OccupationKind::Parapsychologist,    Lang::En(_)) => "Parapsychologist",
+            (OccupationKind::Parapsychologist,    Lang::Ja)    => "超心理学者",
+            (OccupationKind::Pilot,               Lang::En(_)) => "Pilot",
+            (OccupationKind::Pilot,               Lang::Ja)    => "パイロット",
+            (OccupationKind::Police,              Lang::En(_)) => "Police",
+            (OccupationKind::Police,              Lang::Ja)    => "警察官",
+            (OccupationKind::PrivateInvestigator, Lang::En(_)) => "Private Investigator",
+            (OccupationKind::PrivateInvestigator, Lang::Ja)    => "私立探偵",
+            (OccupationKind::Professor,           Lang::En(_)) => "Professor",
+            (OccupationKind::Professor,           Lang::Ja)    => "教授",
+            (OccupationKind::Soldier,             Lang::En(_)) => "Soldier",
+            (OccupationKind::Soldier,             Lang::Ja)    => "兵士",
+            (OccupationKind::TribeMember,         Lang::En(_)) => "Tribe Member",
+            (OccupationKind::TribeMember,         Lang::Ja)    => "トライブ・メンバー",
+            (OccupationKind::Custom(Some(n)),     _)           => n.as_str(),
+            (OccupationKind::Custom(None),        _)           => "",
+        };
         match title {
             Some(t) if !t.is_empty() => format!("{name} ({t})"),
-            _ => name,
+            _ => name.to_string(),
         }
     }
 
-    pub fn list(&self) -> &[Occupation] {
-        &[
-            OccupationKind::Activist, OccupationKind::Antiquarian, OccupationKind::Custom(None),
+    pub fn list() -> alloc::vec::Vec<OccupationKind> {
+        alloc::vec![
+            OccupationKind::Activist,
+            OccupationKind::Antiquarian,
+            OccupationKind::Artist,
+            OccupationKind::Athlete,
+            OccupationKind::Author,
+            OccupationKind::Clergy,
+            OccupationKind::Criminal,
+            OccupationKind::Detective,
+            OccupationKind::Dilettante,
+            OccupationKind::Doctor,
+            OccupationKind::Drifter,
+            OccupationKind::Engineer,
+            OccupationKind::Entertainer,
+            OccupationKind::Farmer,
+            OccupationKind::Hacker,
+            OccupationKind::Journalist,
+            OccupationKind::Lawyer,
+            OccupationKind::Librarian,
+            OccupationKind::MilitaryOfficer,
+            OccupationKind::Missionary,
+            OccupationKind::Musician,
+            OccupationKind::Parapsychologist,
+            OccupationKind::Pilot,
+            OccupationKind::Police,
+            OccupationKind::PrivateInvestigator,
+            OccupationKind::Professor,
+            OccupationKind::Soldier,
+            OccupationKind::TribeMember,
+            OccupationKind::Custom(None),
         ]
     }
 }
