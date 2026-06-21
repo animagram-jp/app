@@ -33,7 +33,7 @@ impl DataStruct {
         let index_len = (self.schema_size as usize + 1) * 4;
         let offset = schema_id as usize * 4;
         let variable_id = u32::from_le_bytes(
-            instance.get(offset..offset + 4).ok_or(ListError::OutOfBoundata_struct)?.try_into().unwrap()
+            instance.get(offset..offset + 4).ok_or(ListError::OutOfBounds)?.try_into().unwrap()
         );
         if variable_id == 0 { return Err(ListError::NotExist); }
         let slice_at       = u32::from_le_bytes(instance[index_len..index_len+4].try_into().unwrap()) as usize;
@@ -45,7 +45,7 @@ impl DataStruct {
         let s = usize::from_ne_bytes(vl_index[index_s..index_s + sz].try_into().unwrap());
         let e = usize::from_ne_bytes(vl_index[index_s + sz..index_s + sz * 2].try_into().unwrap());
         if s == 0 && e == 0 { return Err(ListError::NotExist); }
-        instance.get(vl_data_start + s..vl_data_start + e).ok_or(ListError::OutOfBoundata_struct)
+        instance.get(vl_data_start + s..vl_data_start + e).ok_or(ListError::OutOfBounds)
     }
 
     pub fn get(&self, schema_id: u32) -> Result<&[u8], ListError> {
@@ -61,7 +61,7 @@ impl DataStruct {
             Err(_) => {
                 let new_id = match self.values.set(&0, value, false, false)? {
                     SetOutcome::Created(id) => id,
-                    SetOutcome::Updated(_)  => return Err(ListError::OutOfBoundata_struct),
+                    SetOutcome::Updated(_)  => return Err(ListError::OutOfBounds),
                 };
                 self.index.set(&schema_id, new_id, false, true)?;
                 SetOutcome::Created(new_id)
