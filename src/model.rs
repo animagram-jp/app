@@ -1300,33 +1300,32 @@ impl SkillTrait<S: Skill: LanguageOwn> for LanguageOwn {
     }
 }
 
-pub trait ArtAndCraftTrait {
-    const SKILL: Skill = Skill::ArtAndCraft;
-    const NAME:  &'static str = SKILL.name();
-    const BASE:  u7           = SKILL.base();
+pub trait ArtAndCraftTrait<const A: ArtAndCraft> {
+    const VARIANT: ArtAndCraft = A;
+    const SKILL:   Skill       = Skill::ArtAndCraft;
+    const NAME:    &'static str = SKILL.name();
+    const BASE:    u7           = SKILL.base();
 
-    const OCCUPATION_POINTS: Field = Field {position: 32, mask: (1 <<  9) - 1};
-    const INTEREST_POINTS:   Field = Field {position: 23, mask: (1 <<  9) - 1};
-    const CHANGE:            Field = Field {position: 13, mask: (1 << 10) - 1};
-    const MODIFIER:          Field = Field {position:  3, mask: (1 << 10) - 1};
+    const OCCUPATION_POINTS: Field = Field {position: 32, mask: (1 <<  9) - 1}
+    const INTEREST_POINTS:   Field = Field {position: 23, mask: (1 <<  9) - 1}
+    const CHANGE:            Field = Field {position: 13, mask: (1 << 10) - 1}
+    const MODIFIER:          Field = Field {position:  3, mask: (1 << 10) - 1}
 
-    // SkillTraitのconst IDと異なり、variantとcharacterによって動的に決まる
-    fn id(&self, character: &DataStruct) -> u32;
+    // Custom以外はconst解決、Custom(i)はcharacterを参照
+    fn id(&self, character: &DataStruct) -> u32 { A.id(character) }
 
     // -> occupation_points, interest_points, change, modifier
     fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
         bytes = character.get(self.id(character));
     }
 
-    fn write(&self, character: 'a &mut DataStruct, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> 'a &mut DataStruct {
+    fn write<'a>(&self, character: &'a mut DataStruct, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> &'a mut DataStruct {
         _ = character.set(self.id(character), value: [u8; 5], None);
         character
     }
 
     // -> name, specialization
-    fn display_string(&self, lang: Lang) -> (String, String) { (Self::NAME, self.specialization(lang).to_string()) }
-
-    fn specialization(&self, lang: Lang) -> &str;
+    fn display_string(&self, lang: Lang) -> (String, String) { (Self::NAME, A.read(lang).to_string()) }
 
     // -> base, occupation_points, interest_points, change, modifier, sum
     fn display_numeric(&self, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> (u7, u9, u9, i10, i10, i10) {
