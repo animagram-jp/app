@@ -1352,7 +1352,30 @@ enum ArtAndCraft {
     Pottery,      // 陶芸
     Sculpting,    // 彫刻
     Writing,      // 執筆
-    Custom(u8),
+    Custom,
+}
+
+pub struct Custom(pub u8);
+
+impl ArtAndCraftTrait<{ ArtAndCraft::Custom }> for Custom {
+    fn id(&self, character: &DataStruct) -> u32 {
+        let base = Skill::ArtAndCraft.id();
+        let list_id = base + 13;
+        if self.0 == 0 {
+            return list_id;
+        }
+        let bytes = character.get(list_id).ok()?;
+        let idx = (self.0 as usize).checked_sub(1)?;
+        bytes.get(idx * 4..idx * 4 + 4)
+            .and_then(|b| b.try_into().ok())
+            .map(u32::from_le_bytes)
+    }
+
+    fn display_string(&self, character: &DataStruct, lang: Lang) -> (String, String) {
+        let name = Self::NAME.to_string();
+        let spec = character.get(self.id(character)).unwrap_or_default();
+        (name, spec)
+    }
 }
 
 impl ArtAndCraft {
@@ -1372,45 +1395,36 @@ impl ArtAndCraft {
             Self::Pottery     => Some(base + 10),
             Self::Sculpting   => Some(base + 11),
             Self::Writing     => Some(base + 12),
-            Self::Custom(0)   => Some(base + 13),
-            Self::Custom(i)   => {
-                let bytes = character.get(base + 13).ok()?;
-                let idx = (*i as usize).checked_sub(1)?;
-                bytes.get(idx * 4..idx * 4 + 4)
-                    .and_then(|b| b.try_into().ok())
-                    .map(u32::from_le_bytes)
-            }
+            Self::Custom      => Some(base + 13), // Custom(u8)のidリスト格納スロット
         }
     }
 
     pub fn read(&self, lang: Lang) -> &str {
         match (self, lang) {
-            (Self::Acting,      Lang::En(_)) => Some("Acting"),
-            (Self::Acting,      Lang::Ja) => Some("演劇"),
-            (Self::Barber,      Lang::En(_)) => Some("Barber"),
-            (Self::Barber,      Lang::Ja) => Some("理容"),
-            (Self::Calligraphy, Lang::En(_)) => Some("Calligraphy"),
-            (Self::Calligraphy, Lang::Ja) => Some("書道"),
-            (Self::Carpentry,   Lang::En(_)) => Some("Carpentry"),
-            (Self::Carpentry,   Lang::Ja) => Some("大工仕事"),
-            (Self::Cook,        Lang::En(_)) => Some("Cook"),
-            (Self::Cook,        Lang::Ja) => Some("料理"),
-            (Self::Dancing,     Lang::En(_)) => Some("Dancing"),
-            (Self::Dancing,     Lang::Ja) => Some("ダンス"),
-            (Self::FineArt,     Lang::En(_)) => Some("Fine Art"),
-            (Self::FineArt,     Lang::Ja) => Some("絵画"),
-            (Self::Forgery,     Lang::En(_)) => Some("Forgery"),
-            (Self::Forgery,     Lang::Ja) => Some("文書偽造"),
-            (Self::Photography, Lang::En(_)) => Some("Photography"),
-            (Self::Photography, Lang::Ja) => Some("写真術"),
-            (Self::Pottery,     Lang::En(_)) => Some("Pottery"),
-            (Self::Pottery,     Lang::Ja) => Some("陶芸"),
-            (Self::Sculpting,   Lang::En(_)) => Some("Sculpting"),
-            (Self::Sculpting,   Lang::Ja) => Some("彫刻"),
-            (Self::Writing,     Lang::En(_)) => Some("Writing"),
-            (Self::Writing,     Lang::Ja) => Some("執筆"),
-            (Self::Custom(0),   _) => CharacterError::Skill::ArtAndCraft("Custom(0) is not to read()"),
-            (Self::Custom(i),   _) => character.get(ArtAndCraft::Custom(i)::id(character)),
+            (Self::Acting,      Lang::En(_)) => "Acting",
+            (Self::Acting,      Lang::Ja) => "演劇",
+            (Self::Barber,      Lang::En(_)) => "Barber",
+            (Self::Barber,      Lang::Ja) => "理容",
+            (Self::Calligraphy, Lang::En(_)) => "Calligraphy",
+            (Self::Calligraphy, Lang::Ja) => "書道",
+            (Self::Carpentry,   Lang::En(_)) => "Carpentry",
+            (Self::Carpentry,   Lang::Ja) => "大工仕事",
+            (Self::Cook,        Lang::En(_)) => "Cook",
+            (Self::Cook,        Lang::Ja) => "料理",
+            (Self::Dancing,     Lang::En(_)) => "Dancing",
+            (Self::Dancing,     Lang::Ja) => "ダンス",
+            (Self::FineArt,     Lang::En(_)) => "Fine Art",
+            (Self::FineArt,     Lang::Ja) => "絵画",
+            (Self::Forgery,     Lang::En(_)) => "Forgery",
+            (Self::Forgery,     Lang::Ja) => "文書偽造",
+            (Self::Photography, Lang::En(_)) => "Photography",
+            (Self::Photography, Lang::Ja) => "写真術",
+            (Self::Pottery,     Lang::En(_)) => "Pottery",
+            (Self::Pottery,     Lang::Ja) => "陶芸",
+            (Self::Sculpting,   Lang::En(_)) => "Sculpting",
+            (Self::Sculpting,   Lang::Ja) => "彫刻",
+            (Self::Writing,     Lang::En(_)) => "Writing",
+            (Self::Writing,     Lang::Ja) => "執筆",
         }
     }
 
@@ -1447,9 +1461,9 @@ impl ArtAndCraft {
             Self::Forgery, 
             Self::Photography, 
             Self::Pottery, 
-            Self::Sculpting, 
-            Self::Writing, 
-            Self::Custom(_),
+            Self::Sculpting,
+            Self::Writing,
+            Self::Custom,
         ]
     }
 }
