@@ -1279,7 +1279,6 @@ impl ArtAndCraft {
 
     pub fn id(&self, character: &DataStruct) -> u32 {
         const base = Skill::ArtAndCraft::id();
-        const 
         match self {
             Self::Acting      => Some(base + 1),
             Self::Barber      => Some(base + 2),
@@ -1337,7 +1336,7 @@ impl ArtAndCraft {
 
     /// カスタム専門分野を新規登録し、そのschema_idを返す。
     /// Custom(0) スロットにidリスト（u32 LE配列）を保持し、末尾に追記する。
-    pub fn write_custom<'a>(character: &'a mut DataStruct, value: &[u8]) -> Option<u32> {
+    pub fn write_custom<'a>(&self, character: &'a mut DataStruct, value: &[u8]) -> Option<u32> {
         let mut ids: Vec<u32> = character.get(Self::CUSTOM_LIST_ID).ok()
             .map(|b| b.chunks_exact(4)
                 .filter_map(|c| c.try_into().ok().map(u32::from_le_bytes))
