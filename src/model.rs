@@ -1208,10 +1208,10 @@ pub trait SkillTrait<const S: Skill> {
     const NAME: SKILL.name(); // 技能名
     const BASE: SKILL.base(); // 基本成功率
 
-    const OCCUPATION_POINTS: Field = Field<[u8; 5]> {position: 32, mask: (1 <<  9) - 1} // 0~400, u9, bit 32~40
-    const INTEREST_POINTS:   Field = Field<[u8; 5]> {position: 23, mask: (1 <<  9) - 1} // 0~400, u9, bit 23~31
-    const CHANGE:            Field = Field<[u8; 5]> {position: 13, mask: (1 << 10) - 1} // -400~400, i10, bit 13~22
-    const MODIFIER:          Field = Field<[u8; 5]> {position:  3, mask: (1 << 10) - 1} // -400~400, i10, bit 3~12
+    const OCCUPATION_POINTS: Field = Field {position: 32, mask: (1 <<  9) - 1}; // 0~400, u9, bit 32~40
+    const INTEREST_POINTS:   Field = Field {position: 23, mask: (1 <<  9) - 1}; // 0~400, u9, bit 23~31
+    const CHANGE:            Field = Field {position: 13, mask: (1 << 10) - 1}; // -400~400, i10, bit 13~22
+    const MODIFIER:          Field = Field {position:  3, mask: (1 << 10) - 1}; // -400~400, i10, bit 3~12
     // -> occupation_points, interest_points, change, modifier
     fn read(&self,character: &DataStruct) -> (u9, u9, i10, i10) {
         bytes = character.get(Self::ID);
@@ -1297,6 +1297,45 @@ impl SkillTrait<S: Skill: LanguageOwn> for LanguageOwn {
         modifier,
         sum = base + occupation_points + interest_points + change + modifier,
         )
+    }
+}
+
+pub trait ArtAndCraftTrait {
+    const SKILL: Skill = Skill::ArtAndCraft;
+    const NAME:  &'static str = SKILL.name();
+    const BASE:  u7           = SKILL.base();
+
+    const OCCUPATION_POINTS: Field = Field {position: 32, mask: (1 <<  9) - 1};
+    const INTEREST_POINTS:   Field = Field {position: 23, mask: (1 <<  9) - 1};
+    const CHANGE:            Field = Field {position: 13, mask: (1 << 10) - 1};
+    const MODIFIER:          Field = Field {position:  3, mask: (1 << 10) - 1};
+
+    // SkillTraitのconst IDと異なり、variantとcharacterによって動的に決まる
+    fn id(&self, character: &DataStruct) -> u32;
+
+    // -> occupation_points, interest_points, change, modifier
+    fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
+        bytes = character.get(self.id(character));
+    }
+
+    fn write(&self, character: 'a &mut DataStruct, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> 'a &mut DataStruct {
+        _ = character.set(self.id(character), value: [u8; 5], None);
+        character
+    }
+
+    // -> name, specialization
+    fn display_string(&self, lang: Lang) -> (String, String) { (Self::NAME, self.specialization(lang).to_string()) }
+
+    fn specialization(&self, lang: Lang) -> &str;
+
+    // -> base, occupation_points, interest_points, change, modifier, sum
+    fn display_numeric(&self, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> (u7, u9, u9, i10, i10, i10) {
+        Self::BASE,
+        occupation_points,
+        interest_points,
+        change,
+        modifier,
+        sum = Self::BASE + occupation_points + interest_points + change + modifier,
     }
 }
 
