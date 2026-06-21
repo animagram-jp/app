@@ -83,6 +83,10 @@ pub fn get_js_u32(obj: &JsValue, key: &str) -> u32 {
         .unwrap_or(0)
 }
 
+pub fn get_js_i32(obj: &JsValue, key: &str) -> i32 {
+    todo!("")
+}
+
 /// js由来の小数をf64として取得
 pub fn get_js_f64(obj: &JsValue, key: &str) -> Option<f64> {
     Reflect::get(obj, &JsValue::from_str(key))

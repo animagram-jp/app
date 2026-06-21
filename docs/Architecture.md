@@ -225,7 +225,7 @@ use data_struct::DataStruct::{new, get_from_bytes, get, set, delete, compact, to
 use model::{
     Dice, dice::{display, roll}, 
     Character, Profile, Characteristic, Skill, 
-    ArtCraft, Fighting, Firearms, Pilot, Science, Survival,
+    ArtAndCraft, Fighting, Firearms, Pilot, Science, Survival,
 };
 ```
 

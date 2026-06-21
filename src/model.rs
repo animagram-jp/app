@@ -2,6 +2,7 @@ use core::array::from_fn;
 use alloc::string::String;
 use crate::{Lang, En};
 use crate::list::ListError;
+use crate::timestamp::Field;
 use crate::data_struct::DataStruct;
 
 // ============================================================
@@ -226,7 +227,7 @@ impl OccupationKind {
             5  => OccupationKind::Author,
             6  => OccupationKind::Clergy,
             7  => OccupationKind::Criminal,
-            8  => OccupationKind::Detective,
+            8  => OccupationKind::PoliceDetective,
             9  => OccupationKind::Dilettante,
             10 => OccupationKind::Doctor,
             11 => OccupationKind::Drifter,
@@ -261,7 +262,7 @@ impl OccupationKind {
             Self::Author              => 5,
             Self::Clergy              => 6,
             Self::Criminal            => 7,
-            Self::Detective           => 8,
+            Self::PoliceDetective           => 8,
             Self::Dilettante          => 9,
             Self::Doctor              => 10,
             Self::Drifter             => 11,
@@ -334,8 +335,8 @@ impl Occupation {
             (OccupationKind::Clergy,              Lang::Ja)    => "聖職者",
             (OccupationKind::Criminal,            Lang::En(_)) => "Criminal",
             (OccupationKind::Criminal,            Lang::Ja)    => "犯罪者",
-            (OccupationKind::Detective,           Lang::En(_)) => "Detective",
-            (OccupationKind::Detective,           Lang::Ja)    => "刑事",
+            (OccupationKind::PoliceDetective,           Lang::En(_)) => "Police Detective",
+            (OccupationKind::PoliceDetective,           Lang::Ja)    => "刑事",
             (OccupationKind::Dilettante,          Lang::En(_)) => "Dilettante",
             (OccupationKind::Dilettante,          Lang::Ja)    => "ディレッタント",
             (OccupationKind::Doctor,              Lang::En(_)) => "Doctor",
@@ -394,7 +395,7 @@ impl Occupation {
             OccupationKind::Author,
             OccupationKind::Clergy,
             OccupationKind::Criminal,
-            OccupationKind::Detective,
+            OccupationKind::PoliceDetective,
             OccupationKind::Dilettante,
             OccupationKind::Doctor,
             OccupationKind::Drifter,
@@ -891,7 +892,7 @@ impl OtherAttribute {
 }
 
 // ============================================================
-// Skill, ArtCraft, Fighting, Firearms, LanguageOther, Survival p.54
+// Skill, ArtAndCraft, Fighting, Firearms, LanguageOther, Survival p.54
 // ============================================================
 
 #[derive(Clone)]
@@ -900,7 +901,7 @@ pub enum Skill {
     Anthropology,
     Archaeology,
     Appraise,
-    ArtCraft,
+    ArtAndCraft,
     Charm,
     Climb,
     ComputerUse,
@@ -909,7 +910,7 @@ pub enum Skill {
     Disguise,
     Dodge,
     DriveAuto,
-    ElecRepair,
+    ElectricalRepair,
     Electronics,
     FastTalk,
     Fighting,
@@ -924,7 +925,7 @@ pub enum Skill {
     LibraryUse,
     Listen,
     Locksmith,
-    MechRepair,
+    MechanicalRepair,
     Medicine,
     NaturalWorld,
     Navigate,
@@ -952,7 +953,7 @@ impl Skill {
             Self::Anthropology,
             Self::Archaeology,
             Self::Appraise,
-            Self::ArtCraft,
+            Self::ArtAndCraft,
             Self::Charm,
             Self::Climb,
             Self::ComputerUse,
@@ -961,7 +962,7 @@ impl Skill {
             Self::Disguise,
             Self::Dodge,
             Self::DriveAuto,
-            Self::ElecRepair,
+            Self::ElectricalRepair,
             Self::Electronics,
             Self::FastTalk,
             Self::Fighting,
@@ -976,7 +977,7 @@ impl Skill {
             Self::LibraryUse,
             Self::Listen,
             Self::Locksmith,
-            Self::MechRepair,
+            Self::MechanicalRepair,
             Self::Medicine,
             Self::NaturalWorld,
             Self::Navigate,
@@ -1006,7 +1007,7 @@ impl Skill {
             Self::Anthropology        => base + 101,
             Self::Archaeology         => base + 102,
             Self::Appraise            => base + 103,
-            Self::ArtCraft            => base +   0,  // 0.. 16 (幅17)
+            Self::ArtAndCraft         => base +   0,  // 0.. 16 (幅17)
             Self::Charm               => base + 104,
             Self::Climb               => base + 105,
             Self::ComputerUse         => base + 106,
@@ -1015,7 +1016,7 @@ impl Skill {
             Self::Disguise            => base + 109,
             Self::Dodge               => base + 110,
             Self::DriveAuto           => base + 111,
-            Self::ElecRepair          => base + 112,
+            Self::ElectricalRepair          => base + 112,
             Self::Electronics         => base + 113,
             Self::FastTalk            => base + 114,
             Self::Fighting            => base +0,  //  17.. 28 (幅12)
@@ -1030,21 +1031,21 @@ impl Skill {
             Self::LibraryUse          => base + 121,
             Self::Listen              => base + 122,
             Self::Locksmith           => base + 123,
-            Self::MechRepair          => base + 124,
+            Self::MechanicalRepair          => base + 124,
             Self::Medicine            => base + 125,
             Self::NaturalWorld        => base + 126,
             Self::Navigate            => base + 127,
             Self::Occult              => base + 128,
             Self::Persuade            => base + 129,
-            Self::Pilot         => base +,  //  43.. 56 (幅14)
+            Self::Pilot          => base +,  //  43.. 56 (幅14)
             Self::Psychoanalysis => base + 130,
             Self::Psychology     => base + 131,
             Self::Ride           => base + 132,
-            Self::Science       => base +  57,  //  57.. 73 (幅17)
+            Self::Science        => base +  57,  //  57.. 73 (幅17)
             Self::SleightOfHand  => base + 133,
             Self::SpotHidden     => base + 134,
             Self::Stealth        => base + 135,
-            Self::Survival      => base +  74,  //  74.. 80 (幅7)
+            Self::Survival       => base +  74,  //  74.. 80 (幅7)
             Self::Swim           => base + 136,
             Self::Throw          => base + 137,
             Self::Track          => base + 138,
@@ -1052,50 +1053,13 @@ impl Skill {
         }
     }
 
-    /// → (specialization, initial, occupation, interest, change, modifier, input)
-    pub fn read(bytes: &[u8]) -> (u8, u8, u16, u16, i16, i16, String) {
-        let specialization = bytes.first().copied().unwrap_or(0);
-        let initial        = bytes.get(1).copied().unwrap_or(0);
-        let occupation     = bytes.get(2..4).and_then(|b| b.try_into().ok()).map(u16::from_le_bytes).unwrap_or(0);
-        let interest       = bytes.get(4..6).and_then(|b| b.try_into().ok()).map(u16::from_le_bytes).unwrap_or(0);
-        let change         = bytes.get(6..8).and_then(|b| b.try_into().ok()).map(i16::from_le_bytes).unwrap_or(0);
-        let modifier       = bytes.get(8..10).and_then(|b| b.try_into().ok()).map(i16::from_le_bytes).unwrap_or(0);
-        let input_len      = bytes.get(10..12).and_then(|b| b.try_into().ok()).map(u16::from_le_bytes).unwrap_or(0) as usize;
-        let input          = bytes.get(12..12 + input_len)
-            .map(|b| String::from_utf8_lossy(b).into_owned())
-            .unwrap_or_default();
-        (specialization, initial, occupation, interest, change, modifier, input)
-    }
-
-    /// [specialization: u8][initial: u8][occupation: u16 LE][interest: u16 LE][change: i16 LE][modifier: i16 LE][input_len: u16 LE][input: utf8...]
-    pub fn write(specialization: u8, initial: u8, occupation: u16, interest: u16, change: i16, modifier: i16, input: Option<&str>) -> Vec<u8> {
-        let input_bytes = input.unwrap_or("").as_bytes();
-        let mut b = Vec::with_capacity(10 + input_bytes.len());
-        b.push(specialization);
-        b.push(initial);
-        b.extend_from_slice(&occupation.to_le_bytes());
-        b.extend_from_slice(&interest.to_le_bytes());
-        b.extend_from_slice(&change.to_le_bytes());
-        b.extend_from_slice(&modifier.to_le_bytes());
-        b.extend_from_slice(&(input_bytes.len() as u16).to_le_bytes());
-        b.extend_from_slice(input_bytes);
-        b
-    }
-
-    pub fn value(&self, data: &DataStruct) -> i32 {
-        let (_, _, occupation, interest, change, modifier, _) = data.get(self.id())
-            .map(|b| Self::decode(b))
-            .unwrap_or((0, 0, 0, 0, 0, 0, String::new()));
-        (self.base_value() as i32 + occupation as i32 + interest as i32 + change as i32 + modifier as i32).max(1)
-    }
-
-    pub fn base_value(&self) -> u16 {
+    pub fn base(&self) -> u16 {
         match self {
             Self::Accounting           =>  5,
             Self::Anthropology         =>  1,
             Self::Archaeology          =>  1,
             Self::Appraise             =>  5,
-            Self::ArtCraft             =>  5,
+            Self::ArtAndCraft             =>  5,
             Self::Charm                => 15,
             Self::Climb                => 20,
             Self::ComputerUse          =>  5,
@@ -1104,36 +1068,36 @@ impl Skill {
             Self::Disguise             =>  5,
             Self::Dodge                =>  0, // derived: DEX / 2
             Self::DriveAuto            => 20,
-            Self::ElecRepair           => 10,
+            Self::ElectricalRepair           => 10,
             Self::Electronics          =>  1,
             Self::FastTalk             =>  5,
-            Self::Fighting       => spec.base_value(),
-            Self::Firearms       => spec.base_value(),
+            Self::Fighting       => ,
+            Self::Firearms       => ,
             Self::FirstAid             => 30,
             Self::History              =>  5,
             Self::Intimidate           => 15,
             Self::Jump                 => 20,
-            Self::LanguageOther(_)     =>  1,
+            Self::LanguageOther     =>  1,
             Self::LanguageOwn          =>  0, // derived: EDU
             Self::Law                  =>  5,
             Self::LibraryUse           => 20,
             Self::Listen               => 20,
             Self::Locksmith            =>  1,
-            Self::MechRepair           => 10,
+            Self::MechanicalRepair           => 10,
             Self::Medicine             =>  1,
             Self::NaturalWorld         => 10,
             Self::Navigate             => 10,
             Self::Occult               =>  5,
             Self::Persuade             => 10,
-            Self::Pilot          => spec.base_value(),
+            Self::Pilot          => ,
             Self::Psychoanalysis       =>  1,
             Self::Psychology           => 10,
             Self::Ride                 =>  5,
-            Self::Science        => spec.base_value(),
+            Self::Science        => ,
             Self::SleightOfHand        => 10,
             Self::SpotHidden           => 25,
             Self::Stealth              => 20,
-            Self::Survival       => spec.base_value(),
+            Self::Survival       => ,
             Self::Swim                 => 20,
             Self::Throw                => 20,
             Self::Track                => 10,
@@ -1141,22 +1105,7 @@ impl Skill {
         }
     }
 
-    pub fn sum(&self, occ: u16, int: u16, bonus: i32) -> i32 {
-        self.base_value() as i32 + occ as i32 + int as i32 + bonus
-    }
-
-    // Characteristic依存で初期値が決まるスキルについて、依存先を返す。
-    // 呼び出し側がCharacteristic値を取得し、スキルのbase_valueを上書きする責務を持つ。
-    // Dodge: DEX/2、LanguageOwn: EDU そのまま。
-    pub fn characteristic_base(&self) -> Option<(Characteristic, fn(u16) -> u16)> {
-        match self {
-            Self::Dodge     => Some((Characteristic::Dexterity, |dex| dex / 2)),
-            Self::LanguageOwn => Some((Characteristic::Education, |edu| edu)),
-            _ => None,
-        }
-    }
-
-    pub fn label(&self, lang: Lang) -> String {
+    pub fn name(&self, lang: Lang) -> String {
         match (self, lang) {
             (Self::Accounting,           Lang::Ja) => "経理".into(),
             (Self::Accounting,           Lang::En(_)) => "Accounting".into(),
@@ -1166,7 +1115,7 @@ impl Skill {
             (Self::Archaeology,          Lang::En(_)) => "Archaeology".into(),
             (Self::Appraise,             Lang::Ja) => "鑑定".into(),
             (Self::Appraise,             Lang::En(_)) => "Appraise".into(),
-            (Self::ArtCraft,       _)        => match spec.label(lang) { Some(s) => format!("芸術/製作 ({s})"), None => "芸術/製作".into() },
+            (Self::ArtAndCraft,       _)        => match spec.label(lang) { Some(s) => format!("芸術/製作 ({s})"), None => "芸術/製作".into() },
             (Self::Charm,                Lang::Ja) => "魅惑".into(),
             (Self::Charm,                Lang::En(_)) => "Charm".into(),
             (Self::Climb,                Lang::Ja) => "登攀".into(),
@@ -1183,8 +1132,8 @@ impl Skill {
             (Self::Dodge,                Lang::En(_)) => "Dodge".into(),
             (Self::DriveAuto,            Lang::Ja) => "運転（自動車）".into(),
             (Self::DriveAuto,            Lang::En(_)) => "Drive Auto".into(),
-            (Self::ElecRepair,           Lang::Ja) => "電気修理".into(),
-            (Self::ElecRepair,           Lang::En(_)) => "Elec. Repair".into(),
+            (Self::ElectricalRepair,           Lang::Ja) => "電気修理".into(),
+            (Self::ElectricalRepair,           Lang::En(_)) => "Elec. Repair".into(),
             (Self::Electronics,          Lang::Ja) => "電子工学".into(),
             (Self::Electronics,          Lang::En(_)) => "Electronics".into(),
             (Self::FastTalk,             Lang::Ja) => "言いくるめ".into(),
@@ -1210,8 +1159,8 @@ impl Skill {
             (Self::Listen,               Lang::En(_)) => "Listen".into(),
             (Self::Locksmith,            Lang::Ja) => "鍵開け".into(),
             (Self::Locksmith,            Lang::En(_)) => "Locksmith".into(),
-            (Self::MechRepair,           Lang::Ja) => "機械修理".into(),
-            (Self::MechRepair,           Lang::En(_)) => "Mech. Repair".into(),
+            (Self::MechanicalRepair,           Lang::Ja) => "機械修理".into(),
+            (Self::MechanicalRepair,           Lang::En(_)) => "Mech. Repair".into(),
             (Self::Medicine,             Lang::Ja) => "医学".into(),
             (Self::Medicine,             Lang::En(_)) => "Medicine".into(),
             (Self::NaturalWorld,         Lang::Ja) => "自然".into(),
@@ -1249,8 +1198,64 @@ impl Skill {
     }
 }
 
+pub trait SkillTrait<const S: Skill> {
+    const SKILL: Skill = S,
+    const ID:   SKILL.id();   // characterインスタンス内id
+    const NAME: SKILL.name(); // 技能名
+    const BASE: SKILL.base(); // 基本成功率
+
+    const OCCUPATION_POINTS: Field = Field<[u8; 5]> {position: 32, mask: (1 <<  9) - 1} // 0~400, u9, bit 32~40
+    const INTEREST_POINTS:   Field = Field<[u8; 5]> {position: 23, mask: (1 <<  9) - 1} // 0~400, u9, bit 23~31
+    const CHANGE:            Field = Field<[u8; 5]> {position: 13, mask: (1 << 10) - 1} // -400~400, i10, bit 13~22
+    const MODIFIER:          Field = Field<[u8; 5]> {position:  3, mask: (1 << 10) - 1} // -400~400, i10, bit 3~12
+    // -> occupation_points, interest_points, change, modifier
+    fn read(&self,character: &DataStruct) -> (u9, u9, i10, i10) {
+        bytes = character.get(Self::ID);
+    }
+
+    fn write(&self, character: 'a &mut DataStruct, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> 'a &mut DataStruct {
+        _ = character.set(Self::ID, value: [u8:5], None);
+        character
+    }
+
+    // -> name, specialization
+    fn display_string(&self) -> (String, String) { (Self::NAME, String::new()) }
+
+    // -> base, occupation_points, interest_points, change, modifier, sum
+    fn display_numeric(&self, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> (u7, u9, u9, i10, i10, i10) {
+        Self::BASE,
+        occupation_points,
+        interest_points,
+        change,
+        modifier,
+        sum = Self::BASE + occupation_points + interest_points + change + modifier,
+    }
+}
+
+[#derive(SkillTrait)] pub struct Accounting<S: Skill::Accounting>;
+[#derive(SkillTrait)] pub struct Anthropology<S: Skill::Anthropology>;
+todo!("他も並べる。Skill値渡しを実装する")
+
+pub srtuct Dodge;
+impl SkillTrait<S: Skill::Dodge> for Dodge {
+    fn display_numeric(character: &DataStruct) -> (u7, u9, u9, i10, i10, i10) {
+        (
+        base = Characteristic::Dexterity::sum(character) / 2,
+        )
+    }
+}
+
+pub struct LanguageOwn;
+impl SkillTrait<S: Skill: LanguageOwn> for LanguageOwn {
+    fn display_numeric(character: &DataStruct) -> (u7, u9, u9, i10, i10, i10) {
+        (
+        base = Characteristic::Education::sum(character),
+        )
+    }
+}
+
 /// 芸術/製作 (専門分野) Art/Craft (Specialization) // p.62 モリダンス等は長いので除外
-enum ArtCraft {
+enum ArtAndCraft {
     Acting,       // 演劇
     Barber,       // 理容
     Calligraphy,  // 書道
@@ -1266,10 +1271,10 @@ enum ArtCraft {
     Custom(u8),
 }
 
-impl ArtCraft {
+impl ArtAndCraft {
 
     pub fn id(&self, character: &DataStruct) -> Option<u32> {
-        const base = Skill::ArtCraft::id();
+        const base = Skill::ArtAndCraft::id();
         const 
         match self {
             Self::Acting      => Some(base + 1),
@@ -1321,8 +1326,8 @@ impl ArtCraft {
             (Self::Sculpting,   Lang::Ja) => Some("彫刻"),
             (Self::Writing,     Lang::En(_)) => Some("Writing"),
             (Self::Writing,     Lang::Ja) => Some("執筆"),
-            (Self::Custom(0),   _) => CharacterError::Skill::ArtCraft("Custom(0) is not to read()"),
-            (Self::Custom(i),   _)        => character.get(ArtCraft::Custom(i)::id(character)),
+            (Self::Custom(0),   _) => CharacterError::Skill::ArtAndCraft("Custom(0) is not to read()"),
+            (Self::Custom(i),   _) => character.get(ArtAndCraft::Custom(i)::id(character)),
         }
     }
 

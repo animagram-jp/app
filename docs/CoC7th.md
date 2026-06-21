@@ -8,6 +8,10 @@ Softwear for playing Call of Cthulhu 7th Edition
 2. 現在本repoに統合済みのwebカレンダー開発中に、時間軸を基盤にしたデータモデル編集ソフトウェアって、1つで良くない? と感じ、データモデル設計を汎用化するにあたって、TRPGは良い実践例になるという判断で行っています。
 3. この他、インディーズRPGクリエイター向けに、キャラクターデータモデルの設計機能へ展開することも検討しています。
 
+## Reference
+
+- [Chaosium: official wiki](https://cthulhuwiki.chaosium.com)
+
 ## Notice
 
 ```

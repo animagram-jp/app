@@ -5,7 +5,7 @@ use crate::store::FileStore;
 use crate::data_struct::DataStruct;
 use crate::character::{
     Character, Profile, Characteristic, Skill,
-    ArtCraft, Fighting, Firearms, Pilot, Science, Survival,
+    ArtAndCraft, Fighting, Firearms, Pilot, Science, Survival,
 };
 
 // ============================================================

@@ -7,7 +7,7 @@ use arbitrary_int::traits::Integer;
 //   = 1: The value is UTC time (timezone iana id may store original zone info).
 //   = 0: The value is local time of timezone
 
-struct Field {
+pub struct Field {
     position: u32,
     mask: u64,
 }
