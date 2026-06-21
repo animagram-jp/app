@@ -1007,7 +1007,7 @@ impl Skill {
             Self::Anthropology        => base + 101,
             Self::Archaeology         => base + 102,
             Self::Appraise            => base + 103,
-            Self::ArtAndCraft         => base +   0,  // 0.. 16 (幅17)
+            Self::ArtAndCraft         => base +   0,
             Self::Charm               => base + 104,
             Self::Climb               => base + 105,
             Self::ComputerUse         => base + 106,
@@ -1019,33 +1019,33 @@ impl Skill {
             Self::ElectricalRepair          => base + 112,
             Self::Electronics         => base + 113,
             Self::FastTalk            => base + 114,
-            Self::Fighting            => base +0,  //  17.. 28 (幅12)
-            Self::Firearms            => base +1,  //  29.. 38 (幅10)
+            Self::Fighting            => base +0,
+            Self::Firearms            => base +1,
             Self::FirstAid            => base + 115,
             Self::History             => base + 116,
             Self::Intimidate          => base + 117,
             Self::Jump                => base + 118,
-            Self::LanguageOther => base +2,  //  39.. 42 (幅4)
+            Self::LanguageOther => base +2,
             Self::LanguageOwn         => base + 119,
             Self::Law                 => base + 120,
             Self::LibraryUse          => base + 121,
             Self::Listen              => base + 122,
             Self::Locksmith           => base + 123,
-            Self::MechanicalRepair          => base + 124,
+            Self::MechanicalRepair => base + 124,
             Self::Medicine            => base + 125,
             Self::NaturalWorld        => base + 126,
             Self::Navigate            => base + 127,
             Self::Occult              => base + 128,
             Self::Persuade            => base + 129,
-            Self::Pilot          => base +,  //  43.. 56 (幅14)
+            Self::Pilot          => base +,
             Self::Psychoanalysis => base + 130,
             Self::Psychology     => base + 131,
             Self::Ride           => base + 132,
-            Self::Science        => base +  57,  //  57.. 73 (幅17)
+            Self::Science        => base +  57,
             Self::SleightOfHand  => base + 133,
             Self::SpotHidden     => base + 134,
             Self::Stealth        => base + 135,
-            Self::Survival       => base +  74,  //  74.. 80 (幅7)
+            Self::Survival       => base +  74,
             Self::Swim           => base + 136,
             Self::Throw          => base + 137,
             Self::Track          => base + 138,
@@ -1053,59 +1053,57 @@ impl Skill {
         }
     }
 
+    // 固定値の基本成功率のみ
     pub fn base(&self) -> u16 {
         match self {
             Self::Accounting           =>  5,
             Self::Anthropology         =>  1,
             Self::Archaeology          =>  1,
             Self::Appraise             =>  5,
-            Self::ArtAndCraft             =>  5,
+            Self::ArtAndCraft          =>  5,
             Self::Charm                => 15,
             Self::Climb                => 20,
             Self::ComputerUse          =>  5,
             Self::CreditRating         =>  0,
             Self::CthulhuMythos        =>  0,
             Self::Disguise             =>  5,
-            Self::Dodge                =>  0, // derived: DEX / 2
             Self::DriveAuto            => 20,
-            Self::ElectricalRepair           => 10,
+            Self::ElectricalRepair => 10,
             Self::Electronics          =>  1,
             Self::FastTalk             =>  5,
-            Self::Fighting       => ,
-            Self::Firearms       => ,
             Self::FirstAid             => 30,
             Self::History              =>  5,
             Self::Intimidate           => 15,
             Self::Jump                 => 20,
-            Self::LanguageOther     =>  1,
-            Self::LanguageOwn          =>  0, // derived: EDU
+            Self::LanguageOther        =>  1,
             Self::Law                  =>  5,
             Self::LibraryUse           => 20,
             Self::Listen               => 20,
             Self::Locksmith            =>  1,
-            Self::MechanicalRepair           => 10,
+            Self::MechanicalRepair => 10,
             Self::Medicine             =>  1,
             Self::NaturalWorld         => 10,
             Self::Navigate             => 10,
             Self::Occult               =>  5,
             Self::Persuade             => 10,
-            Self::Pilot          => ,
             Self::Psychoanalysis       =>  1,
             Self::Psychology           => 10,
             Self::Ride                 =>  5,
-            Self::Science        => ,
+            Self::Science              =>  1,
             Self::SleightOfHand        => 10,
             Self::SpotHidden           => 25,
             Self::Stealth              => 20,
-            Self::Survival       => ,
+            Self::Survival             => 5,
             Self::Swim                 => 20,
             Self::Throw                => 20,
             Self::Track                => 10,
-            Self::Custom { .. }        =>  0,
+            Self::Custom       =>  0,
+            _ => 0,
         }
     }
 
-    pub fn name(&self, lang: Lang) -> String {
+    // 固定値の技能名のみ
+    pub fn name(&self, lang: Lang) -> 'static &str {
         match (self, lang) {
             (Self::Accounting,           Lang::Ja) => "経理".into(),
             (Self::Accounting,           Lang::En(_)) => "Accounting".into(),
@@ -1192,8 +1190,7 @@ impl Skill {
             (Self::Throw,                Lang::En(_)) => "Throw".into(),
             (Self::Track,                Lang::Ja) => "追跡".into(),
             (Self::Track,                Lang::En(_)) => "Track".into(),
-            (Self::Custom { name, spec: Some(s), .. }, _) => format!("{} ({})", name, s),
-            (Self::Custom { name, spec: None,    .. }, _) => name.clone(),
+            (_, _) => "",
         }
     }
 }
@@ -1273,7 +1270,7 @@ enum ArtAndCraft {
 
 impl ArtAndCraft {
 
-    pub fn id(&self, character: &DataStruct) -> Option<u32> {
+    pub fn id(&self, character: &DataStruct) -> u32 {
         const base = Skill::ArtAndCraft::id();
         const 
         match self {
