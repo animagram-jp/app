@@ -1277,6 +1277,11 @@ impl SkillTrait<S: Skill::Dodge> for Dodge {
     fn display_numeric(character: &DataStruct) -> (u7, u9, u9, i10, i10, i10) {
         (
         base = Characteristic::Dexterity::sum(character) / 2,
+        occupation_points,
+        interest_points,
+        change,
+        modifier,
+        sum = base + occupation_points + interest_points + change + modifier,
         )
     }
 }
@@ -1286,6 +1291,11 @@ impl SkillTrait<S: Skill: LanguageOwn> for LanguageOwn {
     fn display_numeric(character: &DataStruct) -> (u7, u9, u9, i10, i10, i10) {
         (
         base = Characteristic::Education::sum(character),
+        occupation_points,
+        interest_points,
+        change,
+        modifier,
+        sum = base + occupation_points + interest_points + change + modifier,
         )
     }
 }
@@ -1312,19 +1322,19 @@ impl ArtAndCraft {
     pub fn id(&self, character: &DataStruct) -> u32 {
         const base = Skill::ArtAndCraft::id();
         match self {
-            Self::Acting      => Some(base + 1),
-            Self::Barber      => Some(base + 2),
-            Self::Calligraphy => Some(base + 3),
-            Self::Carpentry   => Some( 4),
-            Self::Cook        => Some( 5),
-            Self::Dancing     => Some( 6),
-            Self::FineArt     => Some( 7),
-            Self::Forgery     => Some( 8),
-            Self::Photography => Some( 9),
-            Self::Pottery     => Some(10),
-            Self::Sculpting   => Some(11),
-            Self::Writing     => Some(12),
-            Self::Custom(0)   => Some(base +13),
+            Self::Acting      => Some(base +  1),
+            Self::Barber      => Some(base +  2),
+            Self::Calligraphy => Some(base +  3),
+            Self::Carpentry   => Some(base +  4),
+            Self::Cook        => Some(base +  5),
+            Self::Dancing     => Some(base +  6),
+            Self::FineArt     => Some(base +  7),
+            Self::Forgery     => Some(base +  8),
+            Self::Photography => Some(base +  9),
+            Self::Pottery     => Some(base + 10),
+            Self::Sculpting   => Some(base + 11),
+            Self::Writing     => Some(base + 12),
+            Self::Custom(0)   => Some(base + 13),
             Self::Custom(i)   => {
                 let bytes = character.get(base + 13).ok()?;
                 let idx = (*i as usize).checked_sub(1)?;
@@ -1389,7 +1399,19 @@ impl ArtAndCraft {
 
     pub fn list() -> &'static [Self] {
         &[
-            Self::Acting, Self::Barber, Self::Calligraphy, Self::Carpentry, Self::Cook, Self::Dancing, Self::FineArt, Self::Forgery, Self::Photography, Self::Pottery, Self::Sculpting, Self::Writing, Self::Custom(_),
+            Self::Acting, 
+            Self::Barber, 
+            Self::Calligraphy, 
+            Self::Carpentry, 
+            Self::Cook, 
+            Self::Dancing, 
+            Self::FineArt, 
+            Self::Forgery, 
+            Self::Photography, 
+            Self::Pottery, 
+            Self::Sculpting, 
+            Self::Writing, 
+            Self::Custom(_),
         ]
     }
 }
