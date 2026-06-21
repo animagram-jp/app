@@ -117,7 +117,7 @@ impl Profile {
             Self::Name       => &[BASE + 0, BASE + 1],
             Self::Birthpalce => &[13],
             Self::Pronoun    => &[14],
-            Self::Occupation => &[15, 16, 17, 18],
+            Self::Occupation => &[15, 16, 17],
             Self::Residence  => &[18],
             Self::Age        => &[19],
         }
@@ -184,10 +184,9 @@ impl Name {
     }
 }
 
-#[repr(u8)]
-pub enum DefinedOccupation { // p.38
-    Activist = 1,
-    Antiquarian = 2,
+pub enum OccupationKind { // p.38
+    Activist,
+    Antiquarian,
     Artist,
     Athlete,
     Author,
@@ -214,59 +213,113 @@ pub enum DefinedOccupation { // p.38
     Professor,
     Soldier,
     TribeMember,
-    Custom,
+    Custom(Option<str>),
 }
 
-pub struct Occupation; // enum_id: u8, custom_id: u8, custom_str: len, occupation_skill_points: (u4, u4)
+impl OccupationKind {
+    pub fn detect(kind_id: u8, custom_name: &Option<String>) -> Self {
+        match kind_id {
+            1  => OccupationKind::Activist,
+            29 => OccupationKind::Custom(custom_name),
+        }
+    }
+}
+
+pub struct Occupation;
 
 impl Occupation {
-
-    pub fn read(instance: &DataStruct) -> (String, Option<String>) { // name, title
+    // kind_id: u8, custom_name: str, title: str
+    // kind: OccupationKind, title: Option(String) 
+    pub fn read(instance: &DataStruct) -> (OccupationKind, Option<String>) {
         let ids = Profile::Occupation.ids();
-        let name = instance.get(ids[0]).ok()
-            .map(|b| String::from_utf8_lossy(b).into_owned())
-            .unwrap_or_default();
+        let (kind_id, custom_name, title) = (instance.get(ids[0]).ok(), instance.get(ids[1]).ok(), instance.get(ids[2]).ok());
+        let kind = OccupationKind::detect(kind_id, custom_name);
         let title = instance.get(ids[1]).ok()
             .map(|b| String::from_utf8_lossy(b).into_owned());
-        (name, title)
+        (kind, title)
     }
 
-    pub fn write<'a>(instance: &'a mut DataStruct, value: (&str, Option<&str>)) -> &'a mut DataStruct {
+    pub fn write<'a>(instance: &'a mut DataStruct, value: (u8, Option<&str>, Option<&str>)) -> &'a mut DataStruct {
         let ids = Profile::Occupation.ids();
         let _ = instance.set(ids[0], value.0.as_bytes(), None);
-        match value.1 {
-            Some(title) => { let _ = instance.set(ids[1], title.as_bytes(), None); }
+        match value.1, value.2 {
+            Some(v) => { let _ = instance.set(ids[1], v.as_bytes(), None); }
             None        => { let _ = instance.delete(ids[1]); }
         }
         instance
     }
 
-    pub fn display(name: &String, title: &Option<String>) -> String {
+    pub fn display(kind: OccupationKind, title: &Option<String>, lang: Lang) -> String {
+        let name = match (kind, lang) {
+            (Self::Activist,           Lang::En) => "Activist",
+            (Self::Activist,           Lang::Ja) => "活動家",
+            (Self::Antiquarian,        Lang::En) => "Antiquarian",
+            (Self::Antiquarian,        Lang::Ja) => "古物研究家",
+            (Self::Artist,             Lang::En) => "Artist",
+            (Self::Artist,             Lang::Ja) => "芸術家",
+            (Self::Athlete,            Lang::En) => "Athlete",
+            (Self::Athlete,            Lang::Ja) => "スポーツ選手",
+            (Self::Author,             Lang::En) => "Author",
+            (Self::Author,             Lang::Ja) => "作家",
+            (Self::Clergy,             Lang::En) => "Clergy",
+            (Self::Clergy,             Lang::Ja) => "聖職者",
+            (Self::Criminal,           Lang::En) => "Criminal",
+            (Self::Criminal,           Lang::Ja) => "犯罪者",
+            (Self::Detective,          Lang::En) => "Detective",
+            (Self::Detective,          Lang::Ja) => "刑事",
+            (Self::Dilettante,         Lang::En) => "Dilettante",
+            (Self::Dilettante,         Lang::Ja) => "ディレッタント",
+            (Self::Doctor,             Lang::En) => "Doctor",
+            (Self::Doctor,             Lang::Ja) => "医師",
+            (Self::Drifter,            Lang::En) => "Drifter",
+            (Self::Drifter,            Lang::Ja) => "放浪者",
+            (Self::Engineer,           Lang::En) => "Engineer",
+            (Self::Engineer,           Lang::Ja) => "技術者",
+            (Self::Entertainer,        Lang::En) => "Entertainer",
+            (Self::Entertainer,        Lang::Ja) => "エンターテイナー",
+            (Self::Farmer,             Lang::En) => "Farmer",
+            (Self::Farmer,             Lang::Ja) => "農民",
+            (Self::Hacker,             Lang::En) => "Hacker",
+            (Self::Hacker,             Lang::Ja) => "ハッカー",
+            (Self::Journalist,         Lang::En) => "Journalist",
+            (Self::Journalist,         Lang::Ja) => "ジャーナリスト",
+            (Self::Lawyer,             Lang::En) => "Lawyer",
+            (Self::Lawyer,             Lang::Ja) => "弁護士",
+            (Self::Librarian,          Lang::En) => "Librarian",
+            (Self::Librarian,          Lang::Ja) => "司書",
+            (Self::MilitaryOfficer,    Lang::En) => "Military Officer",
+            (Self::MilitaryOfficer,    Lang::Ja) => "士官",
+            (Self::Missionary,         Lang::En) => "Missionary",
+            (Self::Missionary,         Lang::Ja) => "伝道者",
+            (Self::Musician,           Lang::En) => "Musician",
+            (Self::Musician,           Lang::Ja) => "ミュージシャン",
+            (Self::Parapsychologist,   Lang::En) => "Parapsychologist",
+            (Self::Parapsychologist,   Lang::Ja) => "超心理学者",
+            (Self::Pilot,              Lang::En) => "Pilot",
+            (Self::Pilot,              Lang::Ja) => "パイロット",
+            (Self::Police,             Lang::En) => "Police",
+            (Self::Police,             Lang::Ja) => "警察官",
+            (Self::PrivateInvestigator,Lang::En) => "Private Investigator",
+            (Self::PrivateInvestigator,Lang::Ja) => "私立探偵",
+            (Self::Professor,          Lang::En) => "Professor",
+            (Self::Professor,          Lang::Ja) => "教授",
+            (Self::Soldier,            Lang::En) => "Soldier",
+            (Self::Soldier,            Lang::Ja) => "兵士",
+            (Self::TribeMember,        Lang::En) => "Tribe Member",
+            (Self::TribeMember,        Lang::Ja) => "トライブ・メンバー",
+            (Self::Custom(None),                 _) => "",
+            (Self::Custom(Some(n)),              _) => n.as_str,
+        }
         match title {
             Some(t) if !t.is_empty() => format!("{name} ({t})"),
             _ => name,
         }
     }
 
-    pub fn list(lang: Lang) -> &'static [&'static str] {
-        match lang {
-            Lang::En(_) => &[
-                "Activist", "Antiquarian", "Artist", "Athlete", "Author",
-                "Clergy", "Criminal", "Detective", "Dilettante", "Doctor",
-                "Drifter", "Engineer", "Entertainer", "Farmer", "Hacker",
-                "Journalist", "Lawyer", "Librarian", "Military Officer", "Missionary",
-                "Musician", "Parapsychologist", "Pilot", "Police", "Private Investigator",
-                "Professor", "Soldier", "Tribe Member",
-            ],
-            Lang::Ja => &[
-                "活動家", "古物研究家", "芸術家", "スポーツ選手", "作家",
-                "聖職者", "犯罪者", "刑事", "ディレッタント", "医師",
-                "放浪者", "技術者", "芸能人", "農民", "ハッカー",
-                "ジャーナリスト", "弁護士", "司書", "士官", "伝道者",
-                "音楽家", "超心理学者", "パイロット", "警察官", "私立探偵",
-                "教授", "兵士", "トライブ・メンバー",
-            ],
-        }
+    pub fn list(&self) -> &[Occupation] {
+        &[
+            OccupationKind::Activist, OccupationKind::Antiquarian, OccupationKind::Custom(None),
+        ]
     }
 }
 
