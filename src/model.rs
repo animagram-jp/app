@@ -1052,23 +1052,8 @@ impl Skill {
         }
     }
 
-    /// [specialization: u8][initial: u8][occupation: u16 LE][interest: u16 LE][change: i16 LE][modifier: i16 LE][input_len: u16 LE][input: utf8...]
-    pub fn encode(specialization: u8, initial: u8, occupation: u16, interest: u16, change: i16, modifier: i16, input: Option<&str>) -> Vec<u8> {
-        let input_bytes = input.unwrap_or("").as_bytes();
-        let mut b = Vec::with_capacity(10 + input_bytes.len());
-        b.push(specialization);
-        b.push(initial);
-        b.extend_from_slice(&occupation.to_le_bytes());
-        b.extend_from_slice(&interest.to_le_bytes());
-        b.extend_from_slice(&change.to_le_bytes());
-        b.extend_from_slice(&modifier.to_le_bytes());
-        b.extend_from_slice(&(input_bytes.len() as u16).to_le_bytes());
-        b.extend_from_slice(input_bytes);
-        b
-    }
-
     /// → (specialization, initial, occupation, interest, change, modifier, input)
-    pub fn decode(bytes: &[u8]) -> (u8, u8, u16, u16, i16, i16, String) {
+    pub fn read(bytes: &[u8]) -> (u8, u8, u16, u16, i16, i16, String) {
         let specialization = bytes.first().copied().unwrap_or(0);
         let initial        = bytes.get(1).copied().unwrap_or(0);
         let occupation     = bytes.get(2..4).and_then(|b| b.try_into().ok()).map(u16::from_le_bytes).unwrap_or(0);
@@ -1080,6 +1065,21 @@ impl Skill {
             .map(|b| String::from_utf8_lossy(b).into_owned())
             .unwrap_or_default();
         (specialization, initial, occupation, interest, change, modifier, input)
+    }
+
+    /// [specialization: u8][initial: u8][occupation: u16 LE][interest: u16 LE][change: i16 LE][modifier: i16 LE][input_len: u16 LE][input: utf8...]
+    pub fn write(specialization: u8, initial: u8, occupation: u16, interest: u16, change: i16, modifier: i16, input: Option<&str>) -> Vec<u8> {
+        let input_bytes = input.unwrap_or("").as_bytes();
+        let mut b = Vec::with_capacity(10 + input_bytes.len());
+        b.push(specialization);
+        b.push(initial);
+        b.extend_from_slice(&occupation.to_le_bytes());
+        b.extend_from_slice(&interest.to_le_bytes());
+        b.extend_from_slice(&change.to_le_bytes());
+        b.extend_from_slice(&modifier.to_le_bytes());
+        b.extend_from_slice(&(input_bytes.len() as u16).to_le_bytes());
+        b.extend_from_slice(input_bytes);
+        b
     }
 
     pub fn value(&self, data: &DataStruct) -> i32 {
