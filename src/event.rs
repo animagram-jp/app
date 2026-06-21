@@ -101,7 +101,7 @@ fn map_id(item: &Character, parent: &Id, n: u32) -> Vec<Id> {
             let section_n = match item {
                 Character::Profile        => 2,
                 Character::Characteristic => 3,
-                Character::OtherAttribute => 4,
+                Character::SecondaryAttribute => 4,
                 Character::Skill          => 5,
                 Character::Possession     => 6,
                 Character::Backstory      => 7,
@@ -125,7 +125,7 @@ fn map_id(item: &Character, parent: &Id, n: u32) -> Vec<Id> {
                 Character::Skill          => 3,
                 Character::Backstory      => 4,
                 Character::Memo           => 5,
-                Character::OtherAttribute => todo!("OtherAttributeのfieldsetはmodalに未実装"),
+                Character::SecondaryAttribute => todo!("SecondaryAttributeのfieldsetはmodalに未実装"),
                 Character::Possession     => todo!("Possessionのfieldsetはmodalに未実装"),
             };
             let tr: Vec<(Tag, Option<u32>)> = vec![

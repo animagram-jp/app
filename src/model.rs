@@ -50,13 +50,13 @@ pub mod dice {
 }
 
 // ============================================================
-// Character::{Profile, Characteristic, Other Attribute, Skill, Posession, Backstory, Memo}
+// Character::{Profile, Characteristic, Secondary Attribute, Skill, Posession, Backstory, Memo}
 // ============================================================
 
 pub enum Character {
     Profile,
     Characteristic,
-    OtherAttribute,
+    SecondaryAttribute,
     Skill,
     Possession,
     Backstory,
@@ -71,8 +71,8 @@ impl Character {
             (Self::Profile, Lang::Ja)           => "プロフィール",
             (Self::Characteristic, Lang::En(_)) => "Characteristics",
             (Self::Characteristic, Lang::Ja)    => "能力値",
-            (Self::OtherAttribute, Lang::En(_)) => "Other Attributes",
-            (Self::OtherAttribute, Lang::Ja)    => "ほかの属性",
+            (Self::SecondaryAttribute, Lang::En(_)) => "Secondary Attributes",
+            (Self::SecondaryAttribute, Lang::Ja)    => "ほかの属性",
             (Self::Skill, Lang::En(_))          => "Skills",
             (Self::Skill, Lang::Ja)             => "技能",
             (Self::Possession, Lang::En(_))     => "Gear & Possessions",
@@ -87,7 +87,7 @@ impl Character {
         match self {
             Self::Profile        =>  10, //  10- 17 (8件)
             Self::Characteristic =>  20, //  20- 28 (9件)
-            Self::OtherAttribute =>  30, //  30- 37 (8件)
+            Self::SecondaryAttribute =>  30, //  30- 37 (8件)
             Self::Skill          =>  40, //  40- 86 (47件)
             Self::Possession     =>  90, //  90-... (拡張余地)
             Self::Backstory      => 100, // 100-109 (10件)
@@ -616,13 +616,13 @@ impl Characteristic {
 }
 
 // ============================================================
-// --- Other Attributes
+// --- Secondary Attributes
 // ============================================================
 
 pub struct HitPoints; // HitPoints: u8 | CON, SIZ -> u8
 
 impl HitPoints {
-    pub fn id() -> u32 { OtherAttribute::HitPoints.id() }
+    pub fn id() -> u32 { SecondaryAttribute::HitPoints.id() }
 
     pub fn read(instance: &DataStruct) -> u8 {
         instance.get(Self::id()).ok()
@@ -645,7 +645,7 @@ impl HitPoints {
 pub struct MagicPoints; // MagicPoints: u8 | POW -> u8
 
 impl MagicPoints {
-    pub fn id() -> u32 { OtherAttribute::MagicPoints.id() }
+    pub fn id() -> u32 { SecondaryAttribute::MagicPoints.id() }
 
     pub fn read(instance: &DataStruct) -> u8 {
         instance.get(Self::id()).ok()
@@ -668,13 +668,13 @@ pub struct Luck; // Luck: u8 | -> u8
 impl Luck {
 
     pub fn read(instance: &DataStruct) -> u8 {
-        instance.get(OtherAttribute::Luck.id()).ok()
+        instance.get(SecondaryAttribute::Luck.id()).ok()
             .and_then(|b| b.first().copied())
             .unwrap_or(0)
     }
 
     pub fn write<'a>(instance: &'a mut DataStruct, value: u8) -> &'a mut DataStruct {
-        let _ = instance.set(OtherAttribute::Luck.id(), &[value], None);
+        let _ = instance.set(SecondaryAttribute::Luck.id(), &[value], None);
         instance
     }
 
@@ -688,13 +688,13 @@ pub struct Sanity; // Sanity: u8 | POW -> u8
 
 impl Sanity {
     pub fn read(instance: &DataStruct) -> u8 {
-        instance.get(OtherAttribute::Sanity.id()).ok()
+        instance.get(SecondaryAttribute::Sanity.id()).ok()
             .and_then(|b| b.first().copied())
             .unwrap_or(0)
     }
 
     pub fn write<'a>(instance: &'a mut DataStruct, value: u8) -> &'a mut DataStruct {
-        let _ = instance.set(OtherAttribute::Sanity.id(), &[value], None);
+        let _ = instance.set(SecondaryAttribute::Sanity.id(), &[value], None);
         instance
     }
 
@@ -708,7 +708,7 @@ pub struct Build; // Build: i8 | STR, SIZ -> i8
 impl Build {
 
     pub fn read(instance: &DataStruct) -> i8 {
-        instance.get(OtherAttribute::Build.id()).ok()
+        instance.get(SecondaryAttribute::Build.id()).ok()
             .and_then(|b| b.first().copied())
             .map(|b| b as i8)
             .unwrap_or(0)
@@ -766,13 +766,13 @@ pub struct MoveRate; // MoveRate: u8 | STR, DEX, SIZ, Age -> u8
 impl MoveRate {
 
     pub fn read(instance: &DataStruct) -> u8 {
-        instance.get(OtherAttribute::MoveRate.id()).ok()
+        instance.get(SecondaryAttribute::MoveRate.id()).ok()
             .and_then(|b| b.first().copied())
             .unwrap_or(0)
     }
 
     pub fn write<'a>(instance: &'a mut DataStruct, value: u8) -> &'a mut DataStruct {
-        let _ = instance.set(OtherAttribute::MoveRate.id(), &[value], None);
+        let _ = instance.set(SecondaryAttribute::MoveRate.id(), &[value], None);
         instance
     }
 
@@ -800,14 +800,14 @@ pub struct OccupationSkillPoints; // OccupationSkillPoints: (Characteristic, Cha
 impl OccupationSkillPoints {
 
     pub fn read(instance: &DataStruct) -> Option<(Characteristic, Characteristic)> {
-        let b = instance.get(OtherAttribute::OccupationSkillPoints.id()).ok()?;
+        let b = instance.get(SecondaryAttribute::OccupationSkillPoints.id()).ok()?;
         let c1 = Characteristic::from_id(*b.first()?)?;
         let c2 = Characteristic::from_id(*b.get(1)?)?;
         Some((c1, c2))
     }
 
     pub fn write<'a>(instance: &'a mut DataStruct, value: (Characteristic, Characteristic)) -> &'a mut DataStruct {
-        let _ = instance.set(OtherAttribute::OccupationSkillPoints.id(), &[value.0.id() as u8, value.1.id() as u8], None);
+        let _ = instance.set(SecondaryAttribute::OccupationSkillPoints.id(), &[value.0.id() as u8, value.1.id() as u8], None);
         instance
     }
 
@@ -841,7 +841,7 @@ impl InterestSkillPoints {
     }
 }
 
-pub enum OtherAttribute {
+pub enum SecondaryAttribute {
     HitPoints,             // CON, SIZ -> u8
     MagicPoints,           // POW -> u8
     Luck,                  // u8
@@ -853,9 +853,9 @@ pub enum OtherAttribute {
     InterestSkillPoints,   // INT -> (u16, u16)
 }
 
-impl OtherAttribute {
+impl SecondaryAttribute {
     pub fn id(&self) -> u32 {
-        Character::OtherAttribute.id() + match self {
+        Character::SecondaryAttribute.id() + match self {
             Self::HitPoints             => 0,
             Self::MagicPoints           => 1,
             Self::Luck                  => 2,
@@ -1445,12 +1445,10 @@ pub trait ArtAndCraftTrait<const A: ArtAndCraft> {
     }
 }
 
-pub struct Custom(pub u8);
-
 impl ArtAndCraftTrait<{ ArtAndCraft::Custom }> for Custom {
     fn id(&self, character: &DataStruct) -> u32 {
-        let base = Skill::ArtAndCraft.id();
-        let list_id = base + 13;
+        let offset = Skill::ArtAndCraft.id();
+        let list_id = offset + 13;
         if self.0 == 0 {
             return list_id;
         }
@@ -1468,17 +1466,19 @@ impl ArtAndCraftTrait<{ ArtAndCraft::Custom }> for Custom {
     }
 }
 
+pub struct Custom(pub u8);
+
 /// 近接戦闘 (専門分野) Fighting (Specialization) // p.61
 #[derive(Clone)]
 pub enum Fighting {
-    Axe,          // 斧          15%
-    Brawl,        // 格闘        25%
-    Chainsaw,     // チェーンソー  10%
-    Flail,        // フレイル     10%
-    Garrote,      // 絞殺ひも     15%
-    Spear,        // 槍          20%
-    Sword,        // 刀剣        20%
-    Whip,         // 鞭          05%
+    Axe,        // 斧         15%
+    Brawl,      // 格闘       25%
+    Chainsaw,   // チェーンソー 10%
+    Flail,      // フレイル    10%
+    Garrote,    // 絞殺ひも    15%
+    Spear,      // 槍         20%
+    Sword,      // 刀剣       20%
+    Whip,       // 鞭         05%
     Custom(u8),
 }
 
@@ -2073,7 +2073,7 @@ impl Weapon {
 
     /// 基本ダメージ式。`(dice_terms, db_multiplier)` を返す。
     /// `db_multiplier`: 0=なし, 1=DB全量, 2=DB半分(端数切り捨て)。
-    /// ダメージボーナスの実値は呼び出し側が `OtherAttribute::DamageBonus` から取得して加算する。
+    /// ダメージボーナスの実値は呼び出し側が `SecondaryAttribute::DamageBonus` から取得して加算する。
     /// `Custom` は固定式が不明なため `None` を返す。
     pub fn damage(&self) -> Option<(&'static [Dice], u8)> {
         match self {
