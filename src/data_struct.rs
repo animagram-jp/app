@@ -1,4 +1,4 @@
-use core::{primitive::{u8, u32, f64}, mem::size_of};
+use core::{primitive::{u8, u32, f64}, mem::size_of, option::Option::{self, Some, None}, result::Result::{self, Ok, Err}, clone::Clone};
 use alloc::{collections::BTreeMap, vec::Vec};
 use crate::list::{List, VariableList, SetOutcome, ListError, VariableListError};
 use crate::timestamp::{self, Timezone};

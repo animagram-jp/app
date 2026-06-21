@@ -1,3 +1,5 @@
+use core::{option::Option::{self, Some, None}, result::Result::{self, Ok}, marker::Copy, fmt, cmp::PartialEq, default::Default, clone::Clone, matches};
+use alloc::{vec::Vec, vec, string::String, format};
 use wasm_bindgen::JsValue;
 use js_sys::Reflect;
 use serde::Serialize;
@@ -303,6 +305,9 @@ pub fn detect_gesture(state: &PointerState, event_type: &EventType, current_time
 // dom::Id::decode()  -> Vec<dom::Segment> のパース
 
 pub mod dom {
+    use core::{option::Option::{self, Some, None}, result::Result::Ok, marker::Copy, fmt, cmp::PartialEq, clone::Clone};
+    use alloc::{vec::Vec, string::String, format};
+
     #[derive(Debug, Clone, PartialEq)]
     pub enum Tag {
         Head,

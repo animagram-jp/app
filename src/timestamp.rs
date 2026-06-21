@@ -1,3 +1,4 @@
+use alloc::{vec::Vec, string::String, format};
 use arbitrary_int::traits::Integer;
 
 // timestamp (64 bits)

@@ -1,3 +1,5 @@
+use core::{option::Option::{self, Some, None}, result::Result::{self, Ok, Err}, marker::Copy, fmt, cmp::PartialEq, clone::Clone, todo, matches};
+use alloc::{vec::Vec, vec};
 use rand::{rng, RngExt};
 use crate::Lang;
 use crate::character::{self, Skill, Characteristic};

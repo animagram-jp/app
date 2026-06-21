@@ -1,4 +1,4 @@
-#![no_implicit_prelude] // use徹底のため、一次的に追加。修正作業後、コメントアウトすること。
+// #![no_implicit_prelude] // Added temporarily to ensure explicit `use` declarations. Please comment out after finishing the modifications.
 
 extern crate core;
 extern crate alloc;
