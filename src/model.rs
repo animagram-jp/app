@@ -1694,11 +1694,10 @@ impl Science {
 // --- サバイバル 専門分野 (Survival Specialization) --- p.63
 #[derive(Clone)]
 pub enum Survival {
-    None,
     Arctic,
     Desert,
     Sea,
-    Custom1(String), Custom2(String), Custom3(String), Custom4(String),
+    Custom(u8),
 }
 
 impl Survival {
