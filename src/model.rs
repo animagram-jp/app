@@ -999,57 +999,57 @@ impl Skill {
         ]
     }
 
-    pub fn id(&self) -> u32 {
+    pub const fn id(&self) -> u32 {
         // ルールブック記載specialization id帯、custom id帯と衝突しないように基準idを割り振る
-        let base = Character::Skill.id();
+        const BASE: u32 = Character::Skill.id();
         match self {
-            Self::Accounting       => base +  0, //  1 slot
-            Self::Anthropology     => base +  1, //  1 slot
-            Self::Appraise         => base +  2, //  1 slot
-            Self::Archaeology      => base +  3, //  1 slot
-            Self::ArtAndCraft      => base +  4, // 13 slots (0..=12, Custom(0)=12)
-            Self::Charm            => base + 17,
-            Self::Climb            => base + 18,
-            Self::ComputerUse      => base + 19,
-            Self::CreditRating     => base + 20,
-            Self::CthulhuMythos    => base + 21,
-            Self::Disguise         => base + 22,
-            Self::Dodge            => base + 23,
-            Self::DriveAuto        => base + 24,
-            Self::ElectricalRepair => base + 25,
-            Self::Electronics      => base + 26,
-            Self::FastTalk         => base + 27,
-            Self::Fighting         => base + 28, //  9 slots (0..=8,  Custom(0)=8)
-            Self::Firearms         => base + 37, //  7 slots (0..=6,  Custom(0)=6)
-            Self::FirstAid         => base + 44,
-            Self::History          => base + 45,
-            Self::Intimidate       => base + 46,
-            Self::Jump             => base + 47,
-            Self::LanguageOther    => base + 48, //  1 slot  (Custom(0)=0)
-            Self::LanguageOwn      => base + 49,
-            Self::Law              => base + 50,
-            Self::LibraryUse       => base + 51,
-            Self::Listen           => base + 52,
-            Self::Locksmith        => base + 53,
-            Self::MechanicalRepair => base + 54,
-            Self::Medicine         => base + 55,
-            Self::NaturalWorld     => base + 56,
-            Self::Navigate         => base + 57,
-            Self::Occult           => base + 58,
-            Self::Persuade         => base + 59,
-            Self::Pilot            => base + 60, // 11 slots (0..=10, Custom(0)=10)
-            Self::Psychoanalysis   => base + 71,
-            Self::Psychology       => base + 72,
-            Self::Ride             => base + 73,
-            Self::Science          => base + 74, // 14 slots (0..=13, Custom(0)=13)
-            Self::SleightOfHand    => base + 88,
-            Self::SpotHidden       => base + 89,
-            Self::Stealth          => base + 90,
-            Self::Survival         => base + 91, //  4 slots (0..=3,  Custom(0)=3)
-            Self::Swim             => base + 95,
-            Self::Throw            => base + 96,
-            Self::Track            => base + 97,
-            Self::Custom           => base + 98,
+            Self::Accounting       => BASE +  0, //  1 slot
+            Self::Anthropology     => BASE +  1, //  1 slot
+            Self::Appraise         => BASE +  2, //  1 slot
+            Self::Archaeology      => BASE +  3, //  1 slot
+            Self::ArtAndCraft      => BASE +  4, // 13 slots (0..=12, Custom(0)=12)
+            Self::Charm            => BASE + 17,
+            Self::Climb            => BASE + 18,
+            Self::ComputerUse      => BASE + 19,
+            Self::CreditRating     => BASE + 20,
+            Self::CthulhuMythos    => BASE + 21,
+            Self::Disguise         => BASE + 22,
+            Self::Dodge            => BASE + 23,
+            Self::DriveAuto        => BASE + 24,
+            Self::ElectricalRepair => BASE + 25,
+            Self::Electronics      => BASE + 26,
+            Self::FastTalk         => BASE + 27,
+            Self::Fighting         => BASE + 28, //  9 slots (0..=8,  Custom(0)=8)
+            Self::Firearms         => BASE + 37, //  7 slots (0..=6,  Custom(0)=6)
+            Self::FirstAid         => BASE + 44,
+            Self::History          => BASE + 45,
+            Self::Intimidate       => BASE + 46,
+            Self::Jump             => BASE + 47,
+            Self::LanguageOther    => BASE + 48, //  1 slot  (Custom(0)=0)
+            Self::LanguageOwn      => BASE + 49,
+            Self::Law              => BASE + 50,
+            Self::LibraryUse       => BASE + 51,
+            Self::Listen           => BASE + 52,
+            Self::Locksmith        => BASE + 53,
+            Self::MechanicalRepair => BASE + 54,
+            Self::Medicine         => BASE + 55,
+            Self::NaturalWorld     => BASE + 56,
+            Self::Navigate         => BASE + 57,
+            Self::Occult           => BASE + 58,
+            Self::Persuade         => BASE + 59,
+            Self::Pilot            => BASE + 60, // 11 slots (0..=10, Custom(0)=10)
+            Self::Psychoanalysis   => BASE + 71,
+            Self::Psychology       => BASE + 72,
+            Self::Ride             => BASE + 73,
+            Self::Science          => BASE + 74, // 14 slots (0..=13, Custom(0)=13)
+            Self::SleightOfHand    => BASE + 88,
+            Self::SpotHidden       => BASE + 89,
+            Self::Stealth          => BASE + 90,
+            Self::Survival         => BASE + 91, //  4 slots (0..=3,  Custom(0)=3)
+            Self::Swim             => BASE + 95,
+            Self::Throw            => BASE + 96,
+            Self::Track            => BASE + 97,
+            Self::Custom           => BASE + 98,
         }
     }
 
