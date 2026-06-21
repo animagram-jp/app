@@ -1547,20 +1547,20 @@ impl Fighting {
 /// 射撃 (専門分野) Firearms (Specialization) // p.64
 #[derive(Clone)]
 pub enum Firearms {
-    Bow,           // 弓                   15%
-    // 火炎放射器, 10%
-    Handgun,       // 拳銃                 20%
-    HeavyWeapons,  // 重火器               10%
+    Bow,           // 弓, 15%
+    FlameThrower,  // 火炎放射器, 10%
+    Handgun,       // 拳銃, 20%
+    HeavyWeapons,  // 重火器, 10%
     MachineGun,    // マシンガン, 10%
-    RifleShotgun,  // ライフル/ショットガン  25%
-    SubmachineGun, // サブマシンガン         15%
+    RifleShotgun,  // ライフル/ショットガン, 25%
+    SubmachineGun, // サブマシンガン, 15%
     Custom(u8),
 }
 
 impl Firearms {
 
     pub fn list() -> &'static [Self] {
-        &[Self::Bow, Self::Handgun, Self::HeavyWeapons, Self::MachineGun, Self::RifleShotgun, Self::SubmachineGun]
+        &[Self::Bow, Self::FlameThrower, Self::Handgun, Self::HeavyWeapons, Self::MachineGun, Self::RifleShotgun, Self::SubmachineGun]
     }
 
     pub fn id(&self, base: u32) -> u32 {
