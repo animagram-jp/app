@@ -2,7 +2,10 @@ use core::{option::Option::{self, Some, None}, result::Result::{self, Ok, Err}, 
 use alloc::{vec::Vec, vec};
 use rand::{rng, RngExt};
 use crate::Lang;
-use crate::character::{self, Skill, Characteristic};
+use crate::model::{
+    Character, Profile, Characteristic, Skill,
+    ArtAndCraft, Fighting, Firearms, Pilot, Science, Survival,
+};
 
 // ============================================================
 // Percent Roll (1d100 + Bonus/Penalty Dice)
@@ -46,8 +49,8 @@ pub struct Characteristics<T>(pub Vec<T>);
 pub struct SkillModifier(pub i32);
 
 pub enum SkillOrCharacteristic {
-    Skill(crate::character::Skill),
-    Characteristic(crate::character::Characteristic),
+    Skill(crate::model::Skill),
+    Characteristic(crate::model::Characteristic),
 }
 
 pub enum SuccessLevel { Regular, Hard, Extreme, Critical }
@@ -294,7 +297,7 @@ pub struct DiceRoll {
     select:        Vec<DiceRollSelect>,
     bonus_dice:    i32,
     level:         Level,
-    target_select: (crate::character::Characteristic, crate::character::Skill),
+    target_select: (crate::model::Characteristic, crate::model::Skill),
     /// ダイス項目リスト。character::Dice = (count: i8, sides: u8, modifier: i8)
     dice_terms:    Vec<Dice>,
     result:        RollResult,

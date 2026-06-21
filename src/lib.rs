@@ -10,7 +10,7 @@ pub mod js_client;
 pub mod store;
 pub mod data_struct;
 pub mod app;
-pub mod character;
+pub mod model;
 pub mod roll;
 pub mod event;
 

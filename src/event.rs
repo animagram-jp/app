@@ -5,7 +5,7 @@ use crate::Lang;
 use crate::js_client::{Command, Operation, EventType, Gesture, dom::{Id, Tag}, CanvasEvent};
 use crate::store::FileStore;
 use crate::data_struct::DataStruct;
-use crate::character::{
+use crate::model::{
     Character, Profile, Characteristic, Skill,
     ArtAndCraft, Fighting, Firearms, Pilot, Science, Survival,
 };
