@@ -83,8 +83,19 @@ pub fn get_js_u32(obj: &JsValue, key: &str) -> u32 {
         .unwrap_or(0)
 }
 
+/// js由来の整数をi32として取得
 pub fn get_js_i32(obj: &JsValue, key: &str) -> i32 {
-    todo!("")
+    Reflect::get(obj, &JsValue::from_str(key))
+        .ok()
+        .and_then(|v| v.as_f64())
+        .and_then(|f| {
+            if f >= i32::MIN as f64 && f <= i32::MAX as f64 && f.fract() == 0.0 {
+                Some(f as i32)
+            } else {
+                None
+            }
+        })
+        .unwrap_or(0)
 }
 
 /// js由来の小数をf64として取得
