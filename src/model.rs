@@ -423,11 +423,6 @@ impl Occupation {
 pub struct Birthplace; // Birthplace: str
 
 impl Birthplace {
-
-    pub fn display(character: &DataStruct) -> String {
-        Self::read(character)
-    }
-
     pub fn read(character: &DataStruct) -> String {
         character.get(Profile::Birthpalce.ids()[0]).ok()
             .map(|b| String::from_utf8_lossy(b).into_owned())
@@ -443,11 +438,6 @@ impl Birthplace {
 pub struct Pronoun; // Pronoun: str
 
 impl Pronoun {
-
-    pub fn display(character: &DataStruct) -> String {
-        Self::read(character)
-    }
-
     pub fn read(character: &DataStruct) -> String {
         character.get(Profile::Pronoun.ids()[0]).ok()
             .map(|b| String::from_utf8_lossy(b).into_owned())
@@ -464,10 +454,6 @@ pub struct Residence; // Residence: str
 
 impl Residence {
 
-    pub fn display(character: &DataStruct) -> String {
-        Self::read(character)
-    }
-
     pub fn read(character: &DataStruct) -> String {
         character.get(Profile::Residence.ids()[0]).ok()
             .map(|b| String::from_utf8_lossy(b).into_owned())
@@ -483,10 +469,6 @@ impl Residence {
 pub struct Age; // Age: u16
 
 impl Age {
-
-    pub fn display(character: &DataStruct) -> String {
-        Self::read(character).to_string()
-    }
 
     pub fn read(character: &DataStruct) -> u16 {
         character.get(Profile::Age.ids()[0]).ok()
@@ -519,7 +501,7 @@ pub enum Characteristic { // Characteristic {initial: u16, change: i16, modifier
 
 impl Characteristic {
 
-    pub fn label(&self, lang: Lang) -> &str {
+    pub fn label(&self, lang: Lang) -> 'static &str {
         match (self, lang) {
             (Self::Strength,     _) => "STR",
             (Self::Constitution, _) => "CON",
@@ -532,7 +514,7 @@ impl Characteristic {
         }
     }
 
-    pub fn id(&self) -> u32 {
+    pub const fn id(&self) -> u32 {
         Character::Characteristic.id() + match self {
             Self::Strength     => 0,
             Self::Constitution => 1,
