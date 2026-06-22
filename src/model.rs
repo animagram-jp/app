@@ -1,4 +1,4 @@
-use core::array::from_fn;
+use core::{primitive::{u8, i8, i32}, array::from_fn};
 use alloc::string::String;
 use crate::{Lang, En};
 use crate::list::ListError;
@@ -85,13 +85,13 @@ impl Character {
     }
     pub const fn id(&self) -> u32 {
         match self {
-            Self::Profile        =>  10, //  10- 17 (8件)
-            Self::Characteristic =>  20, //  20- 28 (9件)
+            Self::Profile            =>  10, //  10- 17 (8件)
+            Self::Characteristic     =>  20, //  20- 28 (9件)
             Self::SecondaryAttribute =>  30, //  30- 37 (8件)
-            Self::Skill          =>  40, //  40- 86 (47件)
-            Self::Possession     =>  90, //  90-... (拡張余地)
-            Self::Backstory      => 100, // 100-109 (10件)
-            Self::Memo           => 110, // 110      (1件)
+            Self::Skill              =>  40, //  40- 86 (47件)
+            Self::Possession         =>  90, //  90-... (拡張余地)
+            Self::Backstory          => 100, // 100-109 (10件)
+            Self::Memo               => 110, // 110      (1件)
         }
     }
 }
@@ -116,11 +116,11 @@ impl Profile {
         const BASE = Character::Profile::id();
         match self {
             Self::Name       => &[BASE + 0, BASE + 1],
-            Self::Birthpalce => &[13],
-            Self::Pronoun    => &[14],
-            Self::Occupation => &[15, 16, 17],
-            Self::Residence  => &[18],
-            Self::Age        => &[19],
+            Self::Birthpalce => &[BASE + 2],
+            Self::Pronoun    => &[BASE + 3],
+            Self::Occupation => &[BASE + 4, BASE + 5,BASE + 6],
+            Self::Residence  => &[BASE + 7],
+            Self::Age        => &[BASE + 8],
         }
     }
 
@@ -172,7 +172,7 @@ impl Name {
         let _ = instance.set(ids[0], value.0.as_bytes(), None);
         match value.1 {
             Some(complement) => { let _ = instance.set(ids[1], complement.as_bytes(), None); }
-            None        => { let _ = instance.delete(ids[1]); }
+            None => { let _ = instance.delete(ids[1]); }
         }
         instance
     }
@@ -255,15 +255,15 @@ impl OccupationKind {
 
     pub fn id(&self) -> u8 {
         match self {
-            Self::Activist            => 1,
-            Self::Antiquarian         => 2,
-            Self::Artist              => 3,
-            Self::Athlete             => 4,
-            Self::Author              => 5,
-            Self::Clergy              => 6,
-            Self::Criminal            => 7,
-            Self::PoliceDetective           => 8,
-            Self::Dilettante          => 9,
+            Self::Activist            =>  1,
+            Self::Antiquarian         =>  2,
+            Self::Artist              =>  3,
+            Self::Athlete             =>  4,
+            Self::Author              =>  5,
+            Self::Clergy              =>  6,
+            Self::Criminal            =>  7,
+            Self::PoliceDetective     =>  8,
+            Self::Dilettante          =>  9,
             Self::Doctor              => 10,
             Self::Drifter             => 11,
             Self::Engineer            => 12,
@@ -335,8 +335,8 @@ impl Occupation {
             (OccupationKind::Clergy,              Lang::Ja)    => "聖職者",
             (OccupationKind::Criminal,            Lang::En(_)) => "Criminal",
             (OccupationKind::Criminal,            Lang::Ja)    => "犯罪者",
-            (OccupationKind::PoliceDetective,           Lang::En(_)) => "Police Detective",
-            (OccupationKind::PoliceDetective,           Lang::Ja)    => "刑事",
+            (OccupationKind::PoliceDetective,     Lang::En(_)) => "Police Detective",
+            (OccupationKind::PoliceDetective,     Lang::Ja)    => "刑事",
             (OccupationKind::Dilettante,          Lang::En(_)) => "Dilettante",
             (OccupationKind::Dilettante,          Lang::Ja)    => "ディレッタント",
             (OccupationKind::Doctor,              Lang::En(_)) => "Doctor",
