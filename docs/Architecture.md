@@ -235,7 +235,7 @@ use model::{
 #### event.rs
 
 ```rust
-use event::{Dialog, Coc7th, Toast};
+use event::{Dialog, Handler, Toast};
 ```
 
 - canvasを操作する、ドメイン固有のstate定義とhandler。

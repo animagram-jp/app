@@ -599,6 +599,55 @@ impl Characteristic {
 // --- Secondary Attributes
 // ============================================================
 
+pub enum SecondaryAttribute {
+    HitPoints,             // CON, SIZ -> u8
+    MagicPoints,           // POW -> u8
+    Luck,                  // u8
+    Sanity,                // u8 | POW -> u8
+    Build,                 // STR, SIZ -> i8
+    DamageBonus,           // Build -> DamageBonusTuple
+    MoveRate,              // u8 | STR, DEX, SIZ, Age -> u8
+    OccupationSkillPoints, // (Characteristic, Characteristic) | (Characteristic, Characteristic) -> (u16, u16)
+    InterestSkillPoints,   // INT -> (u16, u16)
+}
+
+impl SecondaryAttribute {
+    pub const fn id(&self) -> u32 {
+        Character::SecondaryAttribute.id() + match self {
+            Self::HitPoints             => 0,
+            Self::MagicPoints           => 1,
+            Self::Luck                  => 2,
+            Self::Sanity                => 3,
+            Self::Build                 => 4,
+            Self::DamageBonus           => 5,
+            Self::MoveRate              => 6,
+            Self::OccupationSkillPoints => 7,
+            Self::InterestSkillPoints   => 8,
+        }
+    }
+
+    pub fn label(&self, lang: Lang) -> &'static str {
+        match (self, lang) {
+            (Self::HitPoints,                    _) => "HP",
+            (Self::MagicPoints,                  _) => "MP",
+            (Self::Luck,                  Lang::En(_)) => "Luck",
+            (Self::Luck,                  Lang::Ja) => "幸運",
+            (Self::Sanity,                Lang::En(_)) => "Sanity",
+            (Self::Sanity,                Lang::Ja) => "正気度",
+            (Self::Build,                 Lang::En(_)) => "Build",
+            (Self::Build,                 Lang::Ja) => "ビルド",
+            (Self::DamageBonus,           Lang::En(_)) => "Damage Bonus",
+            (Self::DamageBonus,           Lang::Ja) => "ダメージボーナス",
+            (Self::MoveRate,              Lang::En(_)) => "Move Rate",
+            (Self::MoveRate,              Lang::Ja) => "移動率 (MOV)",
+            (Self::OccupationSkillPoints, Lang::En(_)) => "Occupation Skill Points",
+            (Self::OccupationSkillPoints, Lang::Ja) => "職業技能ポイント",
+            (Self::InterestSkillPoints,   Lang::En(_)) => "Interest Skill Points",
+            (Self::InterestSkillPoints,   Lang::Ja) => "興味技能ポイント",
+        }
+    }
+}
+
 pub struct HitPoints; // HitPoints: u8 | CON, SIZ -> u8
 
 impl HitPoints {
@@ -791,8 +840,8 @@ impl OccupationSkillPoints {
         character
     }
 
-    pub fn label(character: &DataStruct, lang: Lang) -> String {
-        let Some((c1, c2)) = Self::read(character) else { return String::new(); };
+    pub fn label(characteristic_tuple: Option<(Characteristic, Characteristic)>, lang: Lang) -> String {
+        let Some((c1, c2)) = characteristic_tuple else { return String::new(); };
         if c1.id() == c2.id() {
             format!("{}×4", c1.label(lang))
         } else {
@@ -819,56 +868,6 @@ impl InterestSkillPoints {
         let total = ((initial as i32 + modifier as i32) * 2).max(0) as u16;
         (used, total)
     }
-}
-
-pub enum SecondaryAttribute {
-    HitPoints,             // CON, SIZ -> u8
-    MagicPoints,           // POW -> u8
-    Luck,                  // u8
-    Sanity,                // u8 | POW -> u8
-    Build,                 // STR, SIZ -> i8
-    DamageBonus,           // Build -> DamageBonusTuple
-    MoveRate,              // u8 | STR, DEX, SIZ, Age -> u8
-    OccupationSkillPoints, // (Characteristic, Characteristic) | (Characteristic, Characteristic) -> (u16, u16)
-    InterestSkillPoints,   // INT -> (u16, u16)
-}
-
-impl SecondaryAttribute {
-    pub fn id(&self) -> u32 {
-        Character::SecondaryAttribute.id() + match self {
-            Self::HitPoints             => 0,
-            Self::MagicPoints           => 1,
-            Self::Luck                  => 2,
-            Self::Sanity                => 3,
-            Self::Build                 => 4,
-            Self::DamageBonus           => 5,
-            Self::MoveRate              => 6,
-            Self::OccupationSkillPoints => 7,
-            Self::InterestSkillPoints   => 8,
-        }
-    }
-
-    pub fn label(&self, lang: Lang) -> &'static str {
-        match (self, lang) {
-            (Self::HitPoints,                    _) => "HP",
-            (Self::MagicPoints,                  _) => "MP",
-            (Self::Luck,                  Lang::En(_)) => "Luck",
-            (Self::Luck,                  Lang::Ja) => "幸運",
-            (Self::Sanity,                Lang::En(_)) => "Sanity",
-            (Self::Sanity,                Lang::Ja) => "正気度",
-            (Self::Build,                 Lang::En(_)) => "Build",
-            (Self::Build,                 Lang::Ja) => "ビルド",
-            (Self::DamageBonus,           Lang::En(_)) => "Damage Bonus",
-            (Self::DamageBonus,           Lang::Ja) => "ダメージボーナス",
-            (Self::MoveRate,              Lang::En(_)) => "Move Rate",
-            (Self::MoveRate,              Lang::Ja) => "移動率 (MOV)",
-            (Self::OccupationSkillPoints, Lang::En(_)) => "Occupation Skill Points",
-            (Self::OccupationSkillPoints, Lang::Ja) => "職業技能ポイント",
-            (Self::InterestSkillPoints,   Lang::En(_)) => "Interest Skill Points",
-            (Self::InterestSkillPoints,   Lang::Ja) => "興味技能ポイント",
-        }
-    }
-
 }
 
 // ============================================================
@@ -1203,16 +1202,23 @@ pub trait SkillTrait<const S: Skill> {
     }
 
     // -> name, specialization
-    fn display_string(&self) -> (String, String) { (Self::NAME, String::new()) }
+    fn as_editable_string(&self) -> (String, String) { (Self::NAME, String::new()) }
 
     // -> base, occupation_points, interest_points, change, modifier, sum
-    fn display_numeric(&self, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> (u7, u9, u9, i10, i10, i10) {
+    fn as_editable_numeric(&self, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> (u7, u9, u9, i10, i10, i10) {
         Self::BASE,
         occupation_points,
         interest_points,
         change,
         modifier,
         sum = Self::BASE + occupation_points + interest_points + change + modifier,
+    }
+
+    fn as_immutable_string(&self) -> String {
+        match specialization {
+            Some(s) => format!("{name} ({s})"),
+            None    => format!("{name}"),
+        }
     }
 }
 
