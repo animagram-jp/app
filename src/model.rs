@@ -157,24 +157,24 @@ pub struct Name;
 
 impl Name {
 
-    pub fn read(instance: &DataStruct) -> (String, Option<String>) { // name, complement
+    pub fn read(character: &DataStruct) -> (String, Option<String>) { // name, complement
         let ids = Profile::Name.ids();
-        let name = instance.get(ids[0]).ok()
+        let name = character.get(ids[0]).ok()
             .map(|b| String::from_utf8_lossy(b).into_owned())
             .unwrap_or_default();
-        let complement = instance.get(ids[1]).ok()
+        let complement = character.get(ids[1]).ok()
             .map(|b| String::from_utf8_lossy(b).into_owned());
         (name, complement)
     }
 
-    pub fn write<'a>(instance: &'a mut DataStruct, value: (&str, Option<&str>)) -> &'a mut DataStruct {
+    pub fn write<'a>(character: &'a mut DataStruct, value: (&str, Option<&str>)) -> &'a mut DataStruct {
         let ids = Profile::Name.ids();
-        let _ = instance.set(ids[0], value.0.as_bytes(), None);
+        let _ = character.set(ids[0], value.0.as_bytes(), None);
         match value.1 {
-            Some(complement) => { let _ = instance.set(ids[1], complement.as_bytes(), None); }
-            None => { let _ = instance.delete(ids[1]); }
+            Some(complement) => { let _ = character.set(ids[1], complement.as_bytes(), None); }
+            None => { let _ = character.delete(ids[1]); }
         }
-        instance
+        character
     }
 
     pub fn display(name: &String, complement: &Option<String>) -> String {
@@ -214,11 +214,11 @@ pub enum OccupationKind { // p.38
     Professor,
     Soldier,
     TribeMember,
-    Custom(Option<String>),
+    Custom,
 }
 
 impl OccupationKind {
-    pub fn detect(kind_id: u8, custom_name: Option<String>) -> Self {
+    pub fn detect(kind_id: u8) -> Self {
         match kind_id {
             1  => OccupationKind::Activist,
             2  => OccupationKind::Antiquarian,
@@ -248,8 +248,7 @@ impl OccupationKind {
             26 => OccupationKind::Professor,
             27 => OccupationKind::Soldier,
             28 => OccupationKind::TribeMember,
-            29 => OccupationKind::Custom(custom_name),
-            _  => OccupationKind::Custom(None),
+            _  => OccupationKind::Custom,
         }
     }
 
@@ -283,7 +282,7 @@ impl OccupationKind {
             Self::Professor           => 26,
             Self::Soldier             => 27,
             Self::TribeMember         => 28,
-            Self::Custom(_)           => 29,
+            Self::Custom              => 29,
         }
     }
 }
@@ -292,34 +291,34 @@ pub struct Occupation;
 
 impl Occupation {
     // ids[0]: kind_id (u8), ids[1]: custom_name (str), ids[2]: title (str)
-    pub fn read(instance: &DataStruct) -> (OccupationKind, Option<String>) {
+    pub fn read(character: &DataStruct) -> (OccupationKind, Option<String>, Option<String>) {
         let ids = Profile::Occupation.ids();
-        let kind_id = instance.get(ids[0]).ok()
+        let kind_id = character.get(ids[0]).ok()
             .and_then(|b| b.first().copied())
             .unwrap_or(0);
-        let custom_name = instance.get(ids[1]).ok()
+        let custom_name = character.get(ids[1]).ok()
             .map(|b| String::from_utf8_lossy(b).into_owned());
-        let title = instance.get(ids[2]).ok()
+        let title = character.get(ids[2]).ok()
             .map(|b| String::from_utf8_lossy(b).into_owned());
-        let kind = OccupationKind::detect(kind_id, custom_name);
-        (kind, title)
+        let kind = OccupationKind::detect(kind_id);
+        (kind, custom_name, title)
     }
 
-    pub fn write<'a>(instance: &'a mut DataStruct, value: (u8, Option<&str>, Option<&str>)) -> &'a mut DataStruct {
+    pub fn write<'a>(character: &'a mut DataStruct, kind_id: u8, custom_name: Option<&str>, title: Option<&str>) -> &'a mut DataStruct {
         let ids = Profile::Occupation.ids();
-        let _ = instance.set(ids[0], &[value.0], None);
-        match value.1 {
-            Some(v) => { let _ = instance.set(ids[1], v.as_bytes(), None); }
-            None    => { let _ = instance.delete(ids[1]); }
+        let _ = character.set(ids[0], &[kind_id], None);
+        match custom_name {
+            Some(v) => { let _ = character.set(ids[1], v.as_bytes(), None); }
+            None    => { let _ = character.delete(ids[1]); }
         }
-        match value.2 {
-            Some(t) => { let _ = instance.set(ids[2], t.as_bytes(), None); }
-            None    => { let _ = instance.delete(ids[2]); }
+        match title {
+            Some(t) => { let _ = character.set(ids[2], t.as_bytes(), None); }
+            None    => { let _ = character.delete(ids[2]); }
         }
-        instance
+        character
     }
 
-    pub fn display(kind: &OccupationKind, title: &Option<String>, lang: Lang) -> String {
+    pub fn display(kind: &OccupationKind, custom_name: Option<&str>, title: Option<&str>, lang: Lang) -> String {
         let name = match (kind, lang) {
             (OccupationKind::Activist,            Lang::En(_)) => "Activist",
             (OccupationKind::Activist,            Lang::Ja)    => "活動家",
@@ -377,8 +376,7 @@ impl Occupation {
             (OccupationKind::Soldier,             Lang::Ja)    => "兵士",
             (OccupationKind::TribeMember,         Lang::En(_)) => "Tribe Member",
             (OccupationKind::TribeMember,         Lang::Ja)    => "トライブ・メンバー",
-            (OccupationKind::Custom(Some(n)),     _)           => n.as_str(),
-            (OccupationKind::Custom(None),        _)           => "",
+            (OccupationKind::Custom,              _)           => custom_name.unwrap_or(""),
         };
         match title {
             Some(t) if !t.is_empty() => format!("{name} ({t})"),
@@ -386,8 +384,8 @@ impl Occupation {
         }
     }
 
-    pub fn list() -> alloc::vec::Vec<OccupationKind> {
-        alloc::vec![
+    pub fn list() -> &'static [OccupationKind] {
+        &[
             OccupationKind::Activist,
             OccupationKind::Antiquarian,
             OccupationKind::Artist,
@@ -416,7 +414,7 @@ impl Occupation {
             OccupationKind::Professor,
             OccupationKind::Soldier,
             OccupationKind::TribeMember,
-            OccupationKind::Custom(None),
+            OccupationKind::Custom,
         ]
     }
 }
@@ -426,19 +424,19 @@ pub struct Birthplace; // Birthplace: str
 
 impl Birthplace {
 
-    pub fn display(instance: &DataStruct) -> String {
-        Self::read(instance)
+    pub fn display(character: &DataStruct) -> String {
+        Self::read(character)
     }
 
-    pub fn read(instance: &DataStruct) -> String {
-        instance.get(Profile::Birthpalce.ids()[0]).ok()
+    pub fn read(character: &DataStruct) -> String {
+        character.get(Profile::Birthpalce.ids()[0]).ok()
             .map(|b| String::from_utf8_lossy(b).into_owned())
             .unwrap_or_default()
     }
 
-    pub fn write<'a>(instance: &'a mut DataStruct, value: &str) -> &'a mut DataStruct {
-        let _ = instance.set(Profile::Birthpalce.ids()[0], value.as_bytes(), None);
-        instance
+    pub fn write<'a>(character: &'a mut DataStruct, value: &str) -> &'a mut DataStruct {
+        let _ = character.set(Profile::Birthpalce.ids()[0], value.as_bytes(), None);
+        character
     }
 }
 
@@ -446,19 +444,19 @@ pub struct Pronoun; // Pronoun: str
 
 impl Pronoun {
 
-    pub fn display(instance: &DataStruct) -> String {
-        Self::read(instance)
+    pub fn display(character: &DataStruct) -> String {
+        Self::read(character)
     }
 
-    pub fn read(instance: &DataStruct) -> String {
-        instance.get(Profile::Pronoun.ids()[0]).ok()
+    pub fn read(character: &DataStruct) -> String {
+        character.get(Profile::Pronoun.ids()[0]).ok()
             .map(|b| String::from_utf8_lossy(b).into_owned())
             .unwrap_or_default()
     }
 
-    pub fn write<'a>(instance: &'a mut DataStruct, value: &str) -> &'a mut DataStruct {
-        let _ = instance.set(Profile::Pronoun.ids()[0], value.as_bytes(), None);
-        instance
+    pub fn write<'a>(character: &'a mut DataStruct, value: &str) -> &'a mut DataStruct {
+        let _ = character.set(Profile::Pronoun.ids()[0], value.as_bytes(), None);
+        character
     }
 }
 
@@ -466,19 +464,19 @@ pub struct Residence; // Residence: str
 
 impl Residence {
 
-    pub fn display(instance: &DataStruct) -> String {
-        Self::read(instance)
+    pub fn display(character: &DataStruct) -> String {
+        Self::read(character)
     }
 
-    pub fn read(instance: &DataStruct) -> String {
-        instance.get(Profile::Residence.ids()[0]).ok()
+    pub fn read(character: &DataStruct) -> String {
+        character.get(Profile::Residence.ids()[0]).ok()
             .map(|b| String::from_utf8_lossy(b).into_owned())
             .unwrap_or_default()
     }
 
-    pub fn write<'a>(instance: &'a mut DataStruct, value: &str) -> &'a mut DataStruct {
-        let _ = instance.set(Profile::Residence.ids()[0], value.as_bytes(), None);
-        instance
+    pub fn write<'a>(character: &'a mut DataStruct, value: &str) -> &'a mut DataStruct {
+        let _ = character.set(Profile::Residence.ids()[0], value.as_bytes(), None);
+        character
     }
 }
 
@@ -486,20 +484,20 @@ pub struct Age; // Age: u16
 
 impl Age {
 
-    pub fn display(instance: &DataStruct) -> String {
-        Self::read(instance).to_string()
+    pub fn display(character: &DataStruct) -> String {
+        Self::read(character).to_string()
     }
 
-    pub fn read(instance: &DataStruct) -> u16 {
-        instance.get(Profile::Age.ids()[0]).ok()
+    pub fn read(character: &DataStruct) -> u16 {
+        character.get(Profile::Age.ids()[0]).ok()
             .and_then(|b| b.get(0..2)?.try_into().ok())
             .map(u16::from_le_bytes)
             .unwrap_or(0)
     }
 
-    pub fn write<'a>(instance: &'a mut DataStruct, value: u16) -> &'a mut DataStruct {
-        let _ = instance.set(Profile::Age.ids()[0], &value.to_le_bytes(), None);
-        instance
+    pub fn write<'a>(character: &'a mut DataStruct, value: u16) -> &'a mut DataStruct {
+        let _ = character.set(Profile::Age.ids()[0], &value.to_le_bytes(), None);
+        character
     }
 }
 
@@ -562,8 +560,8 @@ impl Characteristic {
         }
     }
 
-    pub fn read(&self, instance: &DataStruct) -> (u16, i16, i16) {
-        instance.get(self.id()).ok()
+    pub fn read(&self, character: &DataStruct) -> (u16, i16, i16) {
+        character.get(self.id()).ok()
             .map(|b| {
                 let initial  = b.get(0..2).and_then(|x| x.try_into().ok()).map(u16::from_le_bytes).unwrap_or(0);
                 let change   = b.get(2..4).and_then(|x| x.try_into().ok()).map(i16::from_le_bytes).unwrap_or(0);
@@ -573,22 +571,22 @@ impl Characteristic {
             .unwrap_or((0, 0, 0))
     }
 
-    pub fn write<'a>(&self, instance: &'a mut DataStruct, value: (u16, i16, i16)) -> &'a mut DataStruct {
+    pub fn write<'a>(&self, character: &'a mut DataStruct, value: (u16, i16, i16)) -> &'a mut DataStruct {
         let mut b = Vec::with_capacity(6);
         b.extend_from_slice(&value.0.to_le_bytes());
         b.extend_from_slice(&value.1.to_le_bytes());
         b.extend_from_slice(&value.2.to_le_bytes());
-        let _ = instance.set(self.id(), &b, None);
-        instance
+        let _ = character.set(self.id(), &b, None);
+        character
     }
 
-    pub fn sum(&self, instance: &DataStruct) -> i32 {
-        let (initial, change, modifier) = self.read(instance);
+    pub fn sum(&self, character: &DataStruct) -> i32 {
+        let (initial, change, modifier) = self.read(character);
         (initial as i32 + change as i32 + modifier as i32).max(1)
     }
 
-    pub fn target(&self, instance: &DataStruct) -> (i32, i32, i32) {
-        let sum = self.sum(instance);
+    pub fn target(&self, character: &DataStruct) -> (i32, i32, i32) {
+        let sum = self.sum(character);
         (sum, (sum as f64 * 0.5) as i32, (sum as f64 * 0.2) as i32)
     }
 
@@ -624,20 +622,20 @@ pub struct HitPoints; // HitPoints: u8 | CON, SIZ -> u8
 impl HitPoints {
     pub fn id() -> u32 { SecondaryAttribute::HitPoints.id() }
 
-    pub fn read(instance: &DataStruct) -> u8 {
-        instance.get(Self::id()).ok()
+    pub fn read(character: &DataStruct) -> u8 {
+        character.get(Self::id()).ok()
             .and_then(|b| b.first().copied())
             .unwrap_or(0)
     }
 
-    pub fn write<'a>(instance: &'a mut DataStruct, value: u8) -> &'a mut DataStruct {
-        let _ = instance.set(Self::id(), &[value], None);
-        instance
+    pub fn write<'a>(character: &'a mut DataStruct, value: u8) -> &'a mut DataStruct {
+        let _ = character.set(Self::id(), &[value], None);
+        character
     }
 
-    pub fn derive(instance: &DataStruct) -> u8 {
-        let constitution = Characteristic::Constitution.sum(instance);
-        let size         = Characteristic::Size.sum(instance);
+    pub fn derive(character: &DataStruct) -> u8 {
+        let constitution = Characteristic::Constitution.sum(character);
+        let size         = Characteristic::Size.sum(character);
         ((constitution + size) / 10) as u8
     }
 }
@@ -647,19 +645,19 @@ pub struct MagicPoints; // MagicPoints: u8 | POW -> u8
 impl MagicPoints {
     pub fn id() -> u32 { SecondaryAttribute::MagicPoints.id() }
 
-    pub fn read(instance: &DataStruct) -> u8 {
-        instance.get(Self::id()).ok()
+    pub fn read(character: &DataStruct) -> u8 {
+        character.get(Self::id()).ok()
             .and_then(|b| b.first().copied())
             .unwrap_or(0)
     }
 
-    pub fn write<'a>(instance: &'a mut DataStruct, value: u8) -> &'a mut DataStruct {
-        let _ = instance.set(Self::id(), &[value], None);
-        instance
+    pub fn write<'a>(character: &'a mut DataStruct, value: u8) -> &'a mut DataStruct {
+        let _ = character.set(Self::id(), &[value], None);
+        character
     }
 
-    pub fn derive(instance: &DataStruct) -> u8 {
-        (Characteristic::Power.sum(instance) / 5) as u8
+    pub fn derive(character: &DataStruct) -> u8 {
+        (Characteristic::Power.sum(character) / 5) as u8
     }
 }
 
@@ -667,15 +665,15 @@ pub struct Luck; // Luck: u8 | -> u8
 
 impl Luck {
 
-    pub fn read(instance: &DataStruct) -> u8 {
-        instance.get(SecondaryAttribute::Luck.id()).ok()
+    pub fn read(character: &DataStruct) -> u8 {
+        character.get(SecondaryAttribute::Luck.id()).ok()
             .and_then(|b| b.first().copied())
             .unwrap_or(0)
     }
 
-    pub fn write<'a>(instance: &'a mut DataStruct, value: u8) -> &'a mut DataStruct {
-        let _ = instance.set(SecondaryAttribute::Luck.id(), &[value], None);
-        instance
+    pub fn write<'a>(character: &'a mut DataStruct, value: u8) -> &'a mut DataStruct {
+        let _ = character.set(SecondaryAttribute::Luck.id(), &[value], None);
+        character
     }
 
     pub fn roll() -> u8 {
@@ -687,19 +685,19 @@ impl Luck {
 pub struct Sanity; // Sanity: u8 | POW -> u8
 
 impl Sanity {
-    pub fn read(instance: &DataStruct) -> u8 {
-        instance.get(SecondaryAttribute::Sanity.id()).ok()
+    pub fn read(character: &DataStruct) -> u8 {
+        character.get(SecondaryAttribute::Sanity.id()).ok()
             .and_then(|b| b.first().copied())
             .unwrap_or(0)
     }
 
-    pub fn write<'a>(instance: &'a mut DataStruct, value: u8) -> &'a mut DataStruct {
-        let _ = instance.set(SecondaryAttribute::Sanity.id(), &[value], None);
-        instance
+    pub fn write<'a>(character: &'a mut DataStruct, value: u8) -> &'a mut DataStruct {
+        let _ = character.set(SecondaryAttribute::Sanity.id(), &[value], None);
+        character
     }
 
-    pub fn derive(instance: &DataStruct) -> u8 {
-        Characteristic::Power.read(instance).0 as u8 // todo 99以上は99へ変換
+    pub fn derive(character: &DataStruct) -> u8 {
+        Characteristic::Power.read(character).0 as u8 // todo 99以上は99へ変換
     }
 }
 
@@ -707,21 +705,21 @@ pub struct Build; // Build: i8 | STR, SIZ -> i8
 
 impl Build {
 
-    pub fn read(instance: &DataStruct) -> i8 {
-        instance.get(SecondaryAttribute::Build.id()).ok()
+    pub fn read(character: &DataStruct) -> i8 {
+        character.get(SecondaryAttribute::Build.id()).ok()
             .and_then(|b| b.first().copied())
             .map(|b| b as i8)
             .unwrap_or(0)
     }
 
-    pub fn write<'a>(instance: &'a mut DataStruct, value: i8) -> &'a mut DataStruct {
-        let _ = instance.set(Self::id(), &[value as u8], None);
-        instance
+    pub fn write<'a>(character: &'a mut DataStruct, value: i8) -> &'a mut DataStruct {
+        let _ = character.set(Self::id(), &[value as u8], None);
+        character
     }
 
-    pub fn derive(instance: &DataStruct) -> i8 {
-        let strength = Characteristic::Strength.sum(instance);
-        let size     = Characteristic::Size.sum(instance);
+    pub fn derive(character: &DataStruct) -> i8 {
+        let strength = Characteristic::Strength.sum(character);
+        let size     = Characteristic::Size.sum(character);
         match strength + size {
              2..= 64 => -2,
             65..= 84 => -1,
@@ -741,12 +739,12 @@ pub struct DamageBonus; // DamageBonus: DamageBonusTuple | Build -> DamageBonusT
 
 impl DamageBonus {
 
-    pub fn display(instance: &DataStruct) -> String {
-        dice::display(&[Self::read(instance)])
+    pub fn display(character: &DataStruct) -> String {
+        dice::display(&[Self::read(character)])
     }
 
-    pub fn derive(instance: &DataStruct) -> DamageBonusTuple {
-        match Build::read(instance) {
+    pub fn derive(character: &DataStruct) -> DamageBonusTuple {
+        match Build::read(character) {
             i8::MIN..=-2 => (0, 0, -2),
                       -1 => (0, 0, -1),
                        0 => (0, 0,  0),
@@ -765,25 +763,25 @@ pub struct MoveRate; // MoveRate: u8 | STR, DEX, SIZ, Age -> u8
 
 impl MoveRate {
 
-    pub fn read(instance: &DataStruct) -> u8 {
-        instance.get(SecondaryAttribute::MoveRate.id()).ok()
+    pub fn read(character: &DataStruct) -> u8 {
+        character.get(SecondaryAttribute::MoveRate.id()).ok()
             .and_then(|b| b.first().copied())
             .unwrap_or(0)
     }
 
-    pub fn write<'a>(instance: &'a mut DataStruct, value: u8) -> &'a mut DataStruct {
-        let _ = instance.set(SecondaryAttribute::MoveRate.id(), &[value], None);
-        instance
+    pub fn write<'a>(character: &'a mut DataStruct, value: u8) -> &'a mut DataStruct {
+        let _ = character.set(SecondaryAttribute::MoveRate.id(), &[value], None);
+        character
     }
 
-    pub fn derive(instance: &DataStruct) -> u8 {
-        let str = Characteristic::Strength.sum(instance);
-        let dex = Characteristic::Dexterity.sum(instance);
-        let siz = Characteristic::Size.sum(instance);
+    pub fn derive(character: &DataStruct) -> u8 {
+        let str = Characteristic::Strength.sum(character);
+        let dex = Characteristic::Dexterity.sum(character);
+        let siz = Characteristic::Size.sum(character);
         let base: i32 = if str > siz && dex > siz { 9 }
                    else if str < siz && dex < siz { 7 }
                    else                           { 8 };
-        let age_penalty: i32 = match Age::read(instance) {
+        let age_penalty: i32 = match Age::read(character) {
             40..=49 => 1,
             50..=59 => 2,
             60..=69 => 3,
@@ -799,20 +797,20 @@ pub struct OccupationSkillPoints; // OccupationSkillPoints: (Characteristic, Cha
 
 impl OccupationSkillPoints {
 
-    pub fn read(instance: &DataStruct) -> Option<(Characteristic, Characteristic)> {
-        let b = instance.get(SecondaryAttribute::OccupationSkillPoints.id()).ok()?;
+    pub fn read(character: &DataStruct) -> Option<(Characteristic, Characteristic)> {
+        let b = character.get(SecondaryAttribute::OccupationSkillPoints.id()).ok()?;
         let c1 = Characteristic::from_id(*b.first()?)?;
         let c2 = Characteristic::from_id(*b.get(1)?)?;
         Some((c1, c2))
     }
 
-    pub fn write<'a>(instance: &'a mut DataStruct, value: (Characteristic, Characteristic)) -> &'a mut DataStruct {
-        let _ = instance.set(SecondaryAttribute::OccupationSkillPoints.id(), &[value.0.id() as u8, value.1.id() as u8], None);
-        instance
+    pub fn write<'a>(character: &'a mut DataStruct, value: (Characteristic, Characteristic)) -> &'a mut DataStruct {
+        let _ = character.set(SecondaryAttribute::OccupationSkillPoints.id(), &[value.0.id() as u8, value.1.id() as u8], None);
+        character
     }
 
-    pub fn label(instance: &DataStruct, lang: Lang) -> String {
-        let Some((c1, c2)) = Self::read(instance) else { return String::new(); };
+    pub fn label(character: &DataStruct, lang: Lang) -> String {
+        let Some((c1, c2)) = Self::read(character) else { return String::new(); };
         if c1.id() == c2.id() {
             format!("{}×4", c1.label(lang))
         } else {
@@ -820,11 +818,11 @@ impl OccupationSkillPoints {
         }
     }
 
-    pub fn derive(instance: &DataStruct) -> (u16, u16) {
-        let Some((c1, c2)) = Self::read(instance) else { return (0, 0); };
+    pub fn derive(character: &DataStruct) -> (u16, u16) {
+        let Some((c1, c2)) = Self::read(character) else { return (0, 0); };
         let used = 0u16; // todo: 割り振り済みポイント: Skill::sum().0で計算
-        let (c1_initial, _, c1_modifier) = c1.read(instance);
-        let (c2_initial, _, c2_modifier) = c2.read(instance);
+        let (c1_initial, _, c1_modifier) = c1.read(character);
+        let (c2_initial, _, c2_modifier) = c2.read(character);
         let total = (c1_initial as i32 + c1_modifier as i32 + c2_initial as i32 + c2_modifier as i32) * 2;
         (used, total.max(0) as u16)
     }
@@ -833,9 +831,9 @@ impl OccupationSkillPoints {
 pub struct InterestSkillPoints; // InterestSkillPoints: u16 | INT -> (u16, u16)
 
 impl InterestSkillPoints {
-    pub fn derive(instance: &DataStruct) -> (u16, u16) {
+    pub fn derive(character: &DataStruct) -> (u16, u16) {
         let used = 0u16; // todo: 割り振り済みポイント: Skill::sum().0で計算
-        let (initial, _, modifier) = Characteristic::Intelligence.read(instance);
+        let (initial, _, modifier) = Characteristic::Intelligence.read(character);
         let total = ((initial as i32 + modifier as i32) * 2).max(0) as u16;
         (used, total)
     }
