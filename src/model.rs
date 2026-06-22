@@ -65,7 +65,7 @@ pub enum Character {
 
 impl Character {
 
-    pub fn display(&self, lang: Lang) -> &'static str {
+    pub fn display(&self, lang: Lang) -> 'static &str {
         match (self, lang) {
             (Self::Profile, Lang::En(_))        => "Profile",
             (Self::Profile, Lang::Ja)           => "プロフィール",
@@ -124,7 +124,7 @@ impl Profile {
         }
     }
 
-    pub fn display(&self, lang: Lang) -> &'static str {
+    pub fn display(&self, lang: Lang) -> 'static &str {
         match (self, lang) {
             (Self::Name, Lang::En(_)) => "Name",
             (Self::Name, Lang::Ja)    => "名前",
@@ -193,7 +193,6 @@ pub enum OccupationKind { // p.38
     Author,
     Clergy,
     Criminal,
-    Detective,
     Dilettante,
     Doctor,
     Drifter,
@@ -210,6 +209,7 @@ pub enum OccupationKind { // p.38
     Parapsychologist,
     Pilot,
     Police,
+    PoliceDetective,
     PrivateInvestigator,
     Professor,
     Soldier,
@@ -227,23 +227,23 @@ impl OccupationKind {
             5  => OccupationKind::Author,
             6  => OccupationKind::Clergy,
             7  => OccupationKind::Criminal,
-            8  => OccupationKind::PoliceDetective,
-            9  => OccupationKind::Dilettante,
-            10 => OccupationKind::Doctor,
-            11 => OccupationKind::Drifter,
-            12 => OccupationKind::Engineer,
-            13 => OccupationKind::Entertainer,
-            14 => OccupationKind::Farmer,
-            15 => OccupationKind::Hacker,
-            16 => OccupationKind::Journalist,
-            17 => OccupationKind::Lawyer,
-            18 => OccupationKind::Librarian,
-            19 => OccupationKind::MilitaryOfficer,
-            20 => OccupationKind::Missionary,
-            21 => OccupationKind::Musician,
-            22 => OccupationKind::Parapsychologist,
-            23 => OccupationKind::Pilot,
-            24 => OccupationKind::Police,
+            8  => OccupationKind::Dilettante,
+            9 => OccupationKind::Doctor,
+            10 => OccupationKind::Drifter,
+            11 => OccupationKind::Engineer,
+            12 => OccupationKind::Entertainer,
+            13 => OccupationKind::Farmer,
+            14 => OccupationKind::Hacker,
+            15 => OccupationKind::Journalist,
+            16 => OccupationKind::Lawyer,
+            17 => OccupationKind::Librarian,
+            18 => OccupationKind::MilitaryOfficer,
+            19 => OccupationKind::Missionary,
+            20 => OccupationKind::Musician,
+            21 => OccupationKind::Parapsychologist,
+            22 => OccupationKind::Pilot,
+            23 => OccupationKind::Police,
+            24 => OccupationKind::PoliceDetective,
             25 => OccupationKind::PrivateInvestigator,
             26 => OccupationKind::Professor,
             27 => OccupationKind::Soldier,
@@ -261,23 +261,23 @@ impl OccupationKind {
             Self::Author              =>  5,
             Self::Clergy              =>  6,
             Self::Criminal            =>  7,
-            Self::PoliceDetective     =>  8,
-            Self::Dilettante          =>  9,
-            Self::Doctor              => 10,
-            Self::Drifter             => 11,
-            Self::Engineer            => 12,
-            Self::Entertainer         => 13,
-            Self::Farmer              => 14,
-            Self::Hacker              => 15,
-            Self::Journalist          => 16,
-            Self::Lawyer              => 17,
-            Self::Librarian           => 18,
-            Self::MilitaryOfficer     => 19,
-            Self::Missionary          => 20,
-            Self::Musician            => 21,
-            Self::Parapsychologist    => 22,
-            Self::Pilot               => 23,
-            Self::Police              => 24,
+            Self::Dilettante          =>  8,
+            Self::Doctor              =>  9,
+            Self::Drifter             => 10,
+            Self::Engineer            => 11,
+            Self::Entertainer         => 12,
+            Self::Farmer              => 13,
+            Self::Hacker              => 14,
+            Self::Journalist          => 15,
+            Self::Lawyer              => 16,
+            Self::Librarian           => 17,
+            Self::MilitaryOfficer     => 18,
+            Self::Missionary          => 19,
+            Self::Musician            => 20,
+            Self::Parapsychologist    => 21,
+            Self::Pilot               => 22,
+            Self::Police              => 23,
+            Self::PoliceDetective     => 24,
             Self::PrivateInvestigator => 25,
             Self::Professor           => 26,
             Self::Soldier             => 27,
@@ -626,7 +626,7 @@ impl SecondaryAttribute {
         }
     }
 
-    pub fn label(&self, lang: Lang) -> &'static str {
+    pub fn label(&self, lang: Lang) -> 'static &str {
         match (self, lang) {
             (Self::HitPoints,                    _) => "HP",
             (Self::MagicPoints,                  _) => "MP",
@@ -1082,7 +1082,7 @@ impl Skill {
     }
 
     // 固定値の技能名のみ
-    pub fn name(&self, lang: &Lang) -> &'static str {
+    pub fn name(&self, lang: &Lang) -> 'static &str {
         match (self, lang) {
             (Self::Accounting,       Lang::En(_)) => "Accounting",
             (Self::Accounting,       Lang::Ja)    => "経理",
@@ -1396,7 +1396,7 @@ impl ArtAndCraft {
 pub trait ArtAndCraftTrait<const A: ArtAndCraft> {
     const VARIANT: ArtAndCraft = A;
     const SKILL:   Skill       = Skill::ArtAndCraft;
-    const NAME:    &'static str = SKILL.name();
+    const NAME:    'static &str = SKILL.name();
     const BASE:    u7           = SKILL.base();
 
     const OCCUPATION_POINTS: Field = Field {position: 32, mask: (1 <<  9) - 1}
@@ -1886,7 +1886,7 @@ pub enum Weapon {
 }
 
 impl Weapon {
-    // pub fn label(&self, lang: Lang) -> &'static str {
+    // pub fn label(&self, lang: Lang) -> 'static &str {
     //     match (self, lang) {
     //         (Self::Name,            Lang::En(_)) => "Weapon",
     //         (Self::Name,            Lang::Ja) => "武器",
@@ -2335,13 +2335,13 @@ pub struct Wealth {
 }
 
 impl Wealth {
-    pub fn label_spending_level(lang: Lang) -> &'static str {
+    pub fn label_spending_level(lang: Lang) -> 'static &str {
         match lang { Lang::En(_) => "Spending Level", Lang::Ja => "支出レベル" }
     }
-    pub fn label_cash(lang: Lang) -> &'static str {
+    pub fn label_cash(lang: Lang) -> 'static &str {
         match lang { Lang::En(_) => "Cash", Lang::Ja => "現金" }
     }
-    pub fn label_assets(lang: Lang) -> &'static str {
+    pub fn label_assets(lang: Lang) -> 'static &str {
         match lang { Lang::En(_) => "Assets", Lang::Ja => "資産" }
     }
 }
@@ -2364,7 +2364,7 @@ impl Possession {
         }
     }
 
-    pub fn label(&self, lang: Lang) -> &'static str {
+    pub fn label(&self, lang: Lang) -> 'static &str {
         match (self, lang) {
             (Self::Weapon(_),   Lang::En(_)) => "Weapon",
             (Self::Weapon(_),   Lang::Ja) => "武器",
@@ -2418,7 +2418,7 @@ impl Backstory {
         }
     }
 
-    pub fn label(&self, lang: Lang) -> &'static str {
+    pub fn label(&self, lang: Lang) -> 'static &str {
         match (self, lang) {
             (Self::KeyConnection(_),              Lang::En(_)) => "Key Connection",
             (Self::KeyConnection(_),              Lang::Ja) => "キーコネクション",
