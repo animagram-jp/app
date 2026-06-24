@@ -27,7 +27,7 @@ const CHARACTER_SCHEMA_NAME: &str = "characters";
 
 pub struct Log;
 
-pub struct Coc7th {
+pub struct Handler {
     dialog:     Dialog,
     lang:       Lang,
     last_toast: u2,
@@ -36,7 +36,7 @@ pub struct Coc7th {
     logs:       Vec<Log>,
 }
 
-impl Coc7th {
+impl Handler {
     pub async fn ready() -> Self {
         Self {
             dialog:     Dialog::None,
@@ -261,7 +261,7 @@ impl Toast {
         }
     }
 
-    pub fn commands(&self, state: &mut Coc7th) -> Vec<Command> {
+    pub fn commands(&self, state: &mut Handler) -> Vec<Command> {
         let n = if state.last_toast == u2::new(1) { u2::new(2) } else { u2::new(1) };
         state.last_toast = n;
         let article = Id::new(&[(Tag::Output, None), (Tag::Article, Some(n.value() as u32))]);

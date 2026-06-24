@@ -1004,31 +1004,31 @@ impl Skill {
             Self::History          => BASE + 45,
             Self::Intimidate       => BASE + 46,
             Self::Jump             => BASE + 47,
-            Self::LanguageOther    => BASE + 48, //  1 slot  (Custom(0)=0)
-            Self::LanguageOwn      => BASE + 49,
-            Self::Law              => BASE + 50,
-            Self::LibraryUse       => BASE + 51,
-            Self::Listen           => BASE + 52,
-            Self::Locksmith        => BASE + 53,
-            Self::MechanicalRepair => BASE + 54,
-            Self::Medicine         => BASE + 55,
-            Self::NaturalWorld     => BASE + 56,
-            Self::Navigate         => BASE + 57,
-            Self::Occult           => BASE + 58,
-            Self::Persuade         => BASE + 59,
-            Self::Pilot            => BASE + 60, // 11 slots (0..=10, Custom(0)=10)
-            Self::Psychoanalysis   => BASE + 71,
-            Self::Psychology       => BASE + 72,
-            Self::Ride             => BASE + 73,
-            Self::Science          => BASE + 74, // 14 slots (0..=13, Custom(0)=13)
-            Self::SleightOfHand    => BASE + 88,
-            Self::SpotHidden       => BASE + 89,
-            Self::Stealth          => BASE + 90,
-            Self::Survival         => BASE + 91, //  4 slots (0..=3,  Custom(0)=3)
-            Self::Swim             => BASE + 95,
-            Self::Throw            => BASE + 96,
-            Self::Track            => BASE + 97,
-            Self::Custom           => BASE + 98,
+            Self::LanguageOther    => BASE + 48, // + 1 slot (name)
+            Self::LanguageOwn      => BASE + 50,
+            Self::Law              => BASE + 51,
+            Self::LibraryUse       => BASE + 52,
+            Self::Listen           => BASE + 53,
+            Self::Locksmith        => BASE + 54,
+            Self::MechanicalRepair => BASE + 55,
+            Self::Medicine         => BASE + 56,
+            Self::NaturalWorld     => BASE + 57,
+            Self::Navigate         => BASE + 58,
+            Self::Occult           => BASE + 59,
+            Self::Persuade         => BASE + 60,
+            Self::Pilot            => BASE + 61, // 11 slots (0..=10, Custom(0)=10)
+            Self::Psychoanalysis   => BASE + 72,
+            Self::Psychology       => BASE + 73,
+            Self::Ride             => BASE + 74,
+            Self::Science          => BASE + 75, // 14 slots (0..=13, Custom(0)=13)
+            Self::SleightOfHand    => BASE + 89,
+            Self::SpotHidden       => BASE + 90,
+            Self::Stealth          => BASE + 91,
+            Self::Survival         => BASE + 92, //  4 slots (0..=3,  Custom(0)=3)
+            Self::Swim             => BASE + 96,
+            Self::Throw            => BASE + 97,
+            Self::Track            => BASE + 98,
+            Self::Custom           => BASE + 99,
         }
     }
 
@@ -1394,10 +1394,10 @@ impl ArtAndCraft {
 }
 
 pub trait ArtAndCraftTrait<const A: ArtAndCraft> {
-    const VARIANT: ArtAndCraft = A;
-    const SKILL:   Skill       = Skill::ArtAndCraft;
-    const NAME:    'static &str = SKILL.name();
-    const BASE:    u7           = SKILL.base();
+    const SKILL: Skill = Skill::ArtAndCraft;
+    const SPECIFICATION: ArtAndCraft = A;
+    const NAME: 'static &str = SKILL.name();
+    const BASE: u7           = SKILL.base();
 
     const OCCUPATION_POINTS: Field = Field {position: 32, mask: (1 <<  9) - 1}
     const INTEREST_POINTS:   Field = Field {position: 23, mask: (1 <<  9) - 1}

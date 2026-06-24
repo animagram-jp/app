@@ -4,7 +4,7 @@ use wasm_bindgen::prelude::{wasm_bindgen, *};
 use wasm_bindgen::JsValue;
 use serde_wasm_bindgen::to_value;
 use crate::js_client::{Command, get_js_str, get_js_f64, EventType, Device, detect_device, Gesture, PointerState, detect_gesture, dom, CanvasEvent};
-use crate::event::Coc7th;
+use crate::event::Handler;
 
 // ============================================================
 // Event
@@ -26,7 +26,7 @@ pub struct App {
     pointer_state: PointerState,
     events:        Vec<Event>,
     commands:      Vec<Command>,
-    handler:       Coc7th,
+    handler:       Handler,
 }
 
 #[wasm_bindgen]
@@ -39,7 +39,7 @@ impl App {
             pointer_state: PointerState::default(),
             events:        Vec::new(),
             commands:      Vec::new(),
-            handler:       Coc7th::ready().await,
+            handler:       Handler::ready().await,
         };
 
         app.events.push(Event::Ready);
@@ -76,13 +76,13 @@ impl App {
     fn dispatch(&mut self, event: Event) -> Vec<Command> {
         match event {
             Event::Ready => {
-                Coc7th::initial_draw()
+                Handler::initial_draw()
             }
             Event::Canvas(canvas_event) => {
                 self.handler.process(&canvas_event)
             }
             Event::Gesture(gesture) => {
-                Coc7th::process_gesture(&gesture)
+                Handler::process_gesture(&gesture)
             }
         }
     }
