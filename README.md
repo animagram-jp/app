@@ -13,6 +13,10 @@ Apps from animagram, made by Andyou.
 |---------|----------|-----------|------------|-------------|
 | CoC 7th | 2026.6.0 | Scheduled | 2026-06-30 | 1st release |
 
+This project uses [Calendar Versioning](https://calver.org/) with the 
+scheme `YYYY.0M.MICRO` (full year, zero-padded month, and a sequential 
+micro version within each month).
+
 ---
 
 [![日本語](https://img.shields.io/badge/言語-日本語-red)](#ja)
