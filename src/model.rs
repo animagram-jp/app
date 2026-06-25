@@ -65,6 +65,18 @@ pub enum Character {
 
 impl Character {
 
+    pub const fn base_id(&self) -> u32 {
+        match self {
+            Self::Profile            =>  10, //  10- 17 (8件)
+            Self::Characteristic     =>  20, //  20- 28 (9件)
+            Self::SecondaryAttribute =>  30, //  30- 37 (8件)
+            Self::Skill              =>  40, //  40- 86 (47件)
+            Self::Possession         =>  90, //  90-... (拡張余地)
+            Self::Backstory          => 100, // 100-109 (10件)
+            Self::Memo               => 110, // 110      (1件)
+        }
+    }
+
     pub fn display(&self, lang: Lang) -> 'static &str {
         match (self, lang) {
             (Self::Profile, Lang::En(_))        => "Profile",
@@ -83,16 +95,17 @@ impl Character {
             (Self::Memo, Lang::Ja)              => "メモ",
         }
     }
-    pub const fn id(&self) -> u32 {
-        match self {
-            Self::Profile            =>  10, //  10- 17 (8件)
-            Self::Characteristic     =>  20, //  20- 28 (9件)
-            Self::SecondaryAttribute =>  30, //  30- 37 (8件)
-            Self::Skill              =>  40, //  40- 86 (47件)
-            Self::Possession         =>  90, //  90-... (拡張余地)
-            Self::Backstory          => 100, // 100-109 (10件)
-            Self::Memo               => 110, // 110      (1件)
-        }
+
+    pub fn list(&self) -> &[Character] {
+        &[
+            Self::Profile,
+            Self::Characteristic,
+            Self::SecondaryAttribute,
+            Self::Skill,
+            Self::Possession,
+            Self::Backstory,
+            Self::Memo,
+        ]
     }
 }
 
@@ -113,7 +126,7 @@ pub enum Profile {
 impl Profile {
 
     pub fn ids(&self) -> &'static [u32] {
-        const BASE = Character::Profile::id();
+        const BASE = Character::Profile::base_id();
         match self {
             Self::Name       => &[BASE + 0, BASE + 1],
             Self::Birthpalce => &[BASE + 2],
@@ -1418,7 +1431,7 @@ pub trait ArtAndCraftTrait<const A: ArtAndCraft> {
     }
 
     // -> name, specialization
-    fn display_string(&self, lang: Lang) -> (String, String) { (Self::NAME, A.read(lang).to_string()) }
+    fn as_editable_string(&self, lang: Lang) -> (String, String) { (Self::NAME, A.read(lang).to_string()) }
 
     // -> base, occupation_points, interest_points, change, modifier, sum
     fn display_numeric(&self, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> (u7, u9, u9, i10, i10, i10) {
@@ -1445,7 +1458,7 @@ impl ArtAndCraftTrait<{ ArtAndCraft::Custom }> for Custom {
             .map(u32::from_le_bytes)
     }
 
-    fn display_string(&self, character: &DataStruct, lang: Lang) -> (String, String) {
+    fn as_editable_string(&self, character: &DataStruct, lang: Lang) -> (String, String) {
         let name = Self::NAME.to_string();
         let spec = character.get(self.id(character)).unwrap_or_default();
         (name, spec)
