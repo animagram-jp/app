@@ -1478,9 +1478,22 @@ pub trait ArtAndCraftTrait<const A: ArtAndCraft> {
     }
 }
 
-pub struct Custom(pub u8);
+pub struct Acting;       impl ArtAndCraftTrait<{ ArtAndCraft::Acting      }> for Acting      {}
+pub struct Barber;       impl ArtAndCraftTrait<{ ArtAndCraft::Barber      }> for Barber      {}
+pub struct Calligraphy;  impl ArtAndCraftTrait<{ ArtAndCraft::Calligraphy }> for Calligraphy {}
+pub struct Carpentry;    impl ArtAndCraftTrait<{ ArtAndCraft::Carpentry   }> for Carpentry   {}
+pub struct Cook;         impl ArtAndCraftTrait<{ ArtAndCraft::Cook        }> for Cook        {}
+pub struct Dancing;      impl ArtAndCraftTrait<{ ArtAndCraft::Dancing     }> for Dancing     {}
+pub struct FineArt;      impl ArtAndCraftTrait<{ ArtAndCraft::FineArt     }> for FineArt     {}
+pub struct Forgery;      impl ArtAndCraftTrait<{ ArtAndCraft::Forgery     }> for Forgery     {}
+pub struct Photography;  impl ArtAndCraftTrait<{ ArtAndCraft::Photography }> for Photography {}
+pub struct Pottery;      impl ArtAndCraftTrait<{ ArtAndCraft::Pottery     }> for Pottery     {}
+pub struct Sculpting;    impl ArtAndCraftTrait<{ ArtAndCraft::Sculpting   }> for Sculpting   {}
+pub struct Writing;      impl ArtAndCraftTrait<{ ArtAndCraft::Writing     }> for Writing     {}
 
-impl ArtAndCraftTrait<{ ArtAndCraft::Custom }> for Custom {
+pub struct ArtAndCraftCustom(pub u8);
+
+impl ArtAndCraftTrait<{ ArtAndCraft::Custom }> for ArtAndCraftCustom {
     fn id(&self, character: &DataStruct) -> u32 {
         let offset = Skill::ArtAndCraft.id();
         let list_id = offset + 13;
@@ -1576,6 +1589,72 @@ impl Fighting {
     }
 }
 
+pub trait FightingTrait<const F: Fighting> {
+    const SKILL: Skill = Skill::Fighting;
+    const SPECIALIZATION: Fighting = F;
+    const BASE_ID: u32 = F.id(Skill::Fighting.base_id());
+    const BASE_PERCENT: u16 = F.base_percent();
+
+    const OCCUPATION_POINTS: Field = Field {position: 32, mask: (1 <<  9) - 1};
+    const INTEREST_POINTS:   Field = Field {position: 23, mask: (1 <<  9) - 1};
+    const CHANGE:            Field = Field {position: 13, mask: (1 << 10) - 1};
+    const MODIFIER:          Field = Field {position:  3, mask: (1 << 10) - 1};
+
+    // -> occupation_points, interest_points, change, modifier
+    fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
+        let bytes = character.get(Self::BASE_ID);
+        (
+            Self::OCCUPATION_POINTS.get(bytes) as u9,
+            Self::INTEREST_POINTS.get(bytes) as u9,
+            Self::CHANGE.get(bytes) as i10,
+            Self::MODIFIER.get(bytes) as i10,
+        )
+    }
+
+    fn write<'a>(&self, character: &'a mut DataStruct, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> &'a mut DataStruct {
+        let _ = character.set(Self::BASE_ID, &[u8; 5], None);
+        character
+    }
+
+    // -> skill_name, specialization_label
+    fn as_editable_string(&self, lang: Lang) -> (&'static str, &'static str) {
+        (Skill::Fighting.name(&lang), F.label(lang))
+    }
+
+    // -> base, occupation_points, interest_points, change, modifier, sum
+    fn display_numeric(&self, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> (u16, u9, u9, i10, i10, i10) {
+        let sum = Self::BASE_PERCENT as i32 + occupation_points as i32 + interest_points as i32 + change as i32 + modifier as i32;
+        (Self::BASE_PERCENT, occupation_points, interest_points, change, modifier, sum as i10)
+    }
+}
+
+pub struct Axe;      impl FightingTrait<{ Fighting::Axe      }> for Axe      {}
+pub struct Brawl;    impl FightingTrait<{ Fighting::Brawl    }> for Brawl    {}
+pub struct Chainsaw; impl FightingTrait<{ Fighting::Chainsaw }> for Chainsaw {}
+pub struct Flail;    impl FightingTrait<{ Fighting::Flail    }> for Flail    {}
+pub struct Garrote;  impl FightingTrait<{ Fighting::Garrote  }> for Garrote  {}
+pub struct Spear;    impl FightingTrait<{ Fighting::Spear    }> for Spear    {}
+pub struct Sword;    impl FightingTrait<{ Fighting::Sword    }> for Sword    {}
+pub struct Whip;     impl FightingTrait<{ Fighting::Whip     }> for Whip     {}
+
+pub struct FightingCustom(pub u8);
+impl FightingTrait<{ Fighting::Custom(0) }> for FightingCustom {
+    fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
+        let id = todo!("カスタムidをDataStructから動的に取得");
+        let bytes = character.get(id);
+        (
+            Self::OCCUPATION_POINTS.get(bytes) as u9,
+            Self::INTEREST_POINTS.get(bytes) as u9,
+            Self::CHANGE.get(bytes) as i10,
+            Self::MODIFIER.get(bytes) as i10,
+        )
+    }
+
+    fn as_editable_string(&self, lang: Lang) -> (&'static str, &'static str) {
+        todo!("カスタム専門分野のラベルはDataStructから動的に取得")
+    }
+}
+
 /// 射撃 (専門分野) Firearms (Specialization) // p.64
 #[derive(Clone)]
 pub enum Firearms {
@@ -1645,6 +1724,70 @@ impl Firearms {
     }
 }
 
+pub trait FirearmsTrait<const F: Firearms> {
+    const SKILL: Skill = Skill::Firearms;
+    const SPECIALIZATION: Firearms = F;
+    const BASE_ID: u32 = F.id(Skill::Firearms.base_id());
+    const BASE_PERCENT: u16 = F.base_percent();
+
+    const OCCUPATION_POINTS: Field = Field {position: 32, mask: (1 <<  9) - 1};
+    const INTEREST_POINTS:   Field = Field {position: 23, mask: (1 <<  9) - 1};
+    const CHANGE:            Field = Field {position: 13, mask: (1 << 10) - 1};
+    const MODIFIER:          Field = Field {position:  3, mask: (1 << 10) - 1};
+
+    fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
+        let bytes = character.get(Self::BASE_ID);
+        (
+            Self::OCCUPATION_POINTS.get(bytes) as u9,
+            Self::INTEREST_POINTS.get(bytes) as u9,
+            Self::CHANGE.get(bytes) as i10,
+            Self::MODIFIER.get(bytes) as i10,
+        )
+    }
+
+    fn write<'a>(&self, character: &'a mut DataStruct, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> &'a mut DataStruct {
+        let _ = character.set(Self::BASE_ID, &[u8; 5], None);
+        character
+    }
+
+    // -> skill_name, specialization_label
+    fn as_editable_string(&self, lang: Lang) -> (&'static str, &'static str) {
+        (Skill::Firearms.name(&lang), F.label(lang))
+    }
+
+    // -> base, occupation_points, interest_points, change, modifier, sum
+    fn display_numeric(&self, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> (u16, u9, u9, i10, i10, i10) {
+        let sum = Self::BASE_PERCENT as i32 + occupation_points as i32 + interest_points as i32 + change as i32 + modifier as i32;
+        (Self::BASE_PERCENT, occupation_points, interest_points, change, modifier, sum as i10)
+    }
+}
+
+pub struct FirearmsBow;          impl FirearmsTrait<{ Firearms::Bow           }> for FirearmsBow          {}
+pub struct FlameThrower;         impl FirearmsTrait<{ Firearms::FlameThrower  }> for FlameThrower         {}
+pub struct Handgun;              impl FirearmsTrait<{ Firearms::Handgun        }> for Handgun              {}
+pub struct HeavyWeapons;         impl FirearmsTrait<{ Firearms::HeavyWeapons  }> for HeavyWeapons         {}
+pub struct MachineGun;           impl FirearmsTrait<{ Firearms::MachineGun    }> for MachineGun           {}
+pub struct RifleShotgun;         impl FirearmsTrait<{ Firearms::RifleShotgun  }> for RifleShotgun         {}
+pub struct SubmachineGun;        impl FirearmsTrait<{ Firearms::SubmachineGun }> for SubmachineGun        {}
+
+pub struct FirearmsCustom(pub u8);
+impl FirearmsTrait<{ Firearms::Custom(0) }> for FirearmsCustom {
+    fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
+        let id = todo!("カスタムidをDataStructから動的に取得");
+        let bytes = character.get(id);
+        (
+            Self::OCCUPATION_POINTS.get(bytes) as u9,
+            Self::INTEREST_POINTS.get(bytes) as u9,
+            Self::CHANGE.get(bytes) as i10,
+            Self::MODIFIER.get(bytes) as i10,
+        )
+    }
+
+    fn as_editable_string(&self, lang: Lang) -> (&'static str, &'static str) {
+        todo!("カスタム専門分野のラベルはDataStructから動的に取得")
+    }
+}
+
 /// ほかの言語 (専門分野) (Language (Other) (Specialization) // p.73
 #[derive(Clone)]
 pub enum Language {
@@ -1659,11 +1802,62 @@ impl Language {
         }
     }
 
-    pub fn label(&self, _lang: Lang) -> &str {
+    pub fn label(&self, _lang: Lang) -> Option<&str> {
         match self {
-            Self::Custom(0) => ,
-            Self::Custom(i) => ,
+            Self::Custom(0) => None, // リスト格納スロット
+            Self::Custom(_) => todo!("カスタム専門分野のラベルはDataStructから動的に取得"),
         }
+    }
+}
+
+pub trait LanguageTrait<const L: Language> {
+    const SKILL: Skill = Skill::LanguageOther;
+    const SPECIALIZATION: Language = L;
+    const BASE_ID: u32 = L.id(Skill::LanguageOther.base_id());
+    const BASE_PERCENT: u16 = 1;
+
+    const OCCUPATION_POINTS: Field = Field {position: 32, mask: (1 <<  9) - 1};
+    const INTEREST_POINTS:   Field = Field {position: 23, mask: (1 <<  9) - 1};
+    const CHANGE:            Field = Field {position: 13, mask: (1 << 10) - 1};
+    const MODIFIER:          Field = Field {position:  3, mask: (1 << 10) - 1};
+
+    fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
+        let bytes = character.get(Self::BASE_ID);
+        (
+            Self::OCCUPATION_POINTS.get(bytes) as u9,
+            Self::INTEREST_POINTS.get(bytes) as u9,
+            Self::CHANGE.get(bytes) as i10,
+            Self::MODIFIER.get(bytes) as i10,
+        )
+    }
+
+    fn write<'a>(&self, character: &'a mut DataStruct, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> &'a mut DataStruct {
+        let _ = character.set(Self::BASE_ID, &[u8; 5], None);
+        character
+    }
+
+    // -> skill_name, language_name (自由記述)
+    fn as_editable_string(&self, lang: Lang) -> (&'static str, &'static str) {
+        (Skill::LanguageOther.name(&lang), todo!("言語名はDataStructから動的に取得"))
+    }
+
+    fn display_numeric(&self, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> (u16, u9, u9, i10, i10, i10) {
+        let sum = Self::BASE_PERCENT as i32 + occupation_points as i32 + interest_points as i32 + change as i32 + modifier as i32;
+        (Self::BASE_PERCENT, occupation_points, interest_points, change, modifier, sum as i10)
+    }
+}
+
+pub struct LanguageCustom(pub u8);
+impl LanguageTrait<{ Language::Custom(0) }> for LanguageCustom {
+    fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
+        let id = todo!("カスタムidをDataStructから動的に取得");
+        let bytes = character.get(id);
+        (
+            Self::OCCUPATION_POINTS.get(bytes) as u9,
+            Self::INTEREST_POINTS.get(bytes) as u9,
+            Self::CHANGE.get(bytes) as i10,
+            Self::MODIFIER.get(bytes) as i10,
+        )
     }
 }
 
@@ -1740,6 +1934,71 @@ impl Pilot {
             (Self::Custom(0),  _)           => None, // リスト格納スロット
             (Self::Custom(_),  _)           => todo!("カスタム専門分野のラベルはDataStructから動的に取得"),
         }
+    }
+}
+
+pub trait PilotTrait<const P: Pilot> {
+    const SKILL: Skill = Skill::Pilot;
+    const SPECIALIZATION: Pilot = P;
+    const BASE_ID: u32 = P.id(Skill::Pilot.base_id());
+    const BASE_PERCENT: u16 = 1;
+
+    const OCCUPATION_POINTS: Field = Field {position: 32, mask: (1 <<  9) - 1};
+    const INTEREST_POINTS:   Field = Field {position: 23, mask: (1 <<  9) - 1};
+    const CHANGE:            Field = Field {position: 13, mask: (1 << 10) - 1};
+    const MODIFIER:          Field = Field {position:  3, mask: (1 << 10) - 1};
+
+    fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
+        let bytes = character.get(Self::BASE_ID);
+        (
+            Self::OCCUPATION_POINTS.get(bytes) as u9,
+            Self::INTEREST_POINTS.get(bytes) as u9,
+            Self::CHANGE.get(bytes) as i10,
+            Self::MODIFIER.get(bytes) as i10,
+        )
+    }
+
+    fn write<'a>(&self, character: &'a mut DataStruct, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> &'a mut DataStruct {
+        let _ = character.set(Self::BASE_ID, &[u8; 5], None);
+        character
+    }
+
+    fn as_editable_string(&self, lang: Lang) -> (&'static str, Option<&'static str>) {
+        (Skill::Pilot.name(&lang), P.label(lang))
+    }
+
+    fn display_numeric(&self, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> (u16, u9, u9, i10, i10, i10) {
+        let sum = Self::BASE_PERCENT as i32 + occupation_points as i32 + interest_points as i32 + change as i32 + modifier as i32;
+        (Self::BASE_PERCENT, occupation_points, interest_points, change, modifier, sum as i10)
+    }
+}
+
+pub struct PilotBoat;       impl PilotTrait<{ Pilot::Boat       }> for PilotBoat       {}
+pub struct PilotSteamShip;  impl PilotTrait<{ Pilot::SteamShip  }> for PilotSteamShip  {}
+pub struct PilotSailboat;   impl PilotTrait<{ Pilot::Sailboat   }> for PilotSailboat   {}
+pub struct PilotCivilProp;  impl PilotTrait<{ Pilot::CivilProp  }> for PilotCivilProp  {}
+pub struct PilotBalloon;    impl PilotTrait<{ Pilot::Balloon    }> for PilotBalloon    {}
+pub struct PilotDirigible;  impl PilotTrait<{ Pilot::Dirigible  }> for PilotDirigible  {}
+pub struct PilotCivilJet;   impl PilotTrait<{ Pilot::CivilJet   }> for PilotCivilJet   {}
+pub struct PilotAirliner;   impl PilotTrait<{ Pilot::Airliner   }> for PilotAirliner   {}
+pub struct PilotJetFighter; impl PilotTrait<{ Pilot::JetFighter }> for PilotJetFighter {}
+pub struct PilotHelicopter; impl PilotTrait<{ Pilot::Helicopter }> for PilotHelicopter {}
+
+pub struct PilotCustom(pub u8);
+impl PilotTrait<{ Pilot::Custom(0) }> for PilotCustom {
+    fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
+        let id = todo!("カスタムidをDataStructから動的に取得");
+        let bytes = character.get(id);
+        (
+            Self::OCCUPATION_POINTS.get(bytes) as u9,
+            Self::INTEREST_POINTS.get(bytes) as u9,
+            Self::CHANGE.get(bytes) as i10,
+            Self::MODIFIER.get(bytes) as i10,
+        )
+    }
+
+    fn as_editable_string(&self, lang: Lang) -> (&'static str, Option<&'static str>) {
+        (Skill::Pilot.name(&lang), todo!("カスタム専門分野のラベルはDataStructから動的に取得"))
     }
 }
 
@@ -1830,6 +2089,74 @@ impl Science {
     }
 }
 
+pub trait ScienceTrait<const S: Science> {
+    const SKILL: Skill = Skill::Science;
+    const SPECIALIZATION: Science = S;
+    const BASE_ID: u32 = S.id(Skill::Science.base_id());
+    const BASE_PERCENT: u16 = 1;
+
+    const OCCUPATION_POINTS: Field = Field {position: 32, mask: (1 <<  9) - 1};
+    const INTEREST_POINTS:   Field = Field {position: 23, mask: (1 <<  9) - 1};
+    const CHANGE:            Field = Field {position: 13, mask: (1 << 10) - 1};
+    const MODIFIER:          Field = Field {position:  3, mask: (1 << 10) - 1};
+
+    fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
+        let bytes = character.get(Self::BASE_ID);
+        (
+            Self::OCCUPATION_POINTS.get(bytes) as u9,
+            Self::INTEREST_POINTS.get(bytes) as u9,
+            Self::CHANGE.get(bytes) as i10,
+            Self::MODIFIER.get(bytes) as i10,
+        )
+    }
+
+    fn write<'a>(&self, character: &'a mut DataStruct, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> &'a mut DataStruct {
+        let _ = character.set(Self::BASE_ID, &[u8; 5], None);
+        character
+    }
+
+    fn as_editable_string(&self, lang: Lang) -> (&'static str, Option<&'static str>) {
+        (Skill::Science.name(&lang), S.label(lang))
+    }
+
+    fn display_numeric(&self, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> (u16, u9, u9, i10, i10, i10) {
+        let sum = Self::BASE_PERCENT as i32 + occupation_points as i32 + interest_points as i32 + change as i32 + modifier as i32;
+        (Self::BASE_PERCENT, occupation_points, interest_points, change, modifier, sum as i10)
+    }
+}
+
+pub struct ScienceAstronomy;    impl ScienceTrait<{ Science::Astronomy    }> for ScienceAstronomy    {}
+pub struct ScienceBiology;      impl ScienceTrait<{ Science::Biology      }> for ScienceBiology      {}
+pub struct ScienceBotany;       impl ScienceTrait<{ Science::Botany       }> for ScienceBotany       {}
+pub struct ScienceChemistry;    impl ScienceTrait<{ Science::Chemistry    }> for ScienceChemistry    {}
+pub struct ScienceCryptography; impl ScienceTrait<{ Science::Cryptography }> for ScienceCryptography {}
+pub struct ScienceEngineering;  impl ScienceTrait<{ Science::Engineering  }> for ScienceEngineering  {}
+pub struct ScienceForensics;    impl ScienceTrait<{ Science::Forensics    }> for ScienceForensics    {}
+pub struct ScienceGeology;      impl ScienceTrait<{ Science::Geology      }> for ScienceGeology      {}
+pub struct ScienceMathematics;  impl ScienceTrait<{ Science::Mathematics  }> for ScienceMathematics  {}
+pub struct ScienceMeteorology;  impl ScienceTrait<{ Science::Meteorology  }> for ScienceMeteorology  {}
+pub struct SciencePharmacy;     impl ScienceTrait<{ Science::Pharmacy     }> for SciencePharmacy     {}
+pub struct SciencePhysics;      impl ScienceTrait<{ Science::Physics      }> for SciencePhysics      {}
+pub struct ScienceZoology;      impl ScienceTrait<{ Science::Zoology      }> for ScienceZoology      {}
+
+pub struct ScienceCustom(pub u8);
+impl ScienceTrait<{ Science::Custom(0) }> for ScienceCustom {
+    fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
+        let id = todo!("カスタムidをDataStructから動的に取得");
+        let bytes = character.get(id);
+        (
+            Self::OCCUPATION_POINTS.get(bytes) as u9,
+            Self::INTEREST_POINTS.get(bytes) as u9,
+            Self::CHANGE.get(bytes) as i10,
+            Self::MODIFIER.get(bytes) as i10,
+        )
+    }
+
+    fn as_editable_string(&self, lang: Lang) -> (&'static str, Option<&'static str>) {
+        (Skill::Science.name(&lang), todo!("カスタム専門分野のラベルはDataStructから動的に取得"))
+    }
+}
+
 // --- サバイバル 専門分野 (Survival Specialization) --- p.63
 #[derive(Clone)]
 pub enum Survival {
@@ -1867,6 +2194,64 @@ impl Survival {
             (Self::Custom(0), _)          => None,
             (Self::Custom(_), _)          => todo!("カスタム専門分野のラベルはDataStructから動的に取得"),
         }
+    }
+}
+
+pub trait SurvivalTrait<const S: Survival> {
+    const SKILL: Skill = Skill::Survival;
+    const SPECIALIZATION: Survival = S;
+    const BASE_ID: u32 = S.id(Skill::Survival.base_id());
+    const BASE_PERCENT: u16 = 10;
+
+    const OCCUPATION_POINTS: Field = Field {position: 32, mask: (1 <<  9) - 1};
+    const INTEREST_POINTS:   Field = Field {position: 23, mask: (1 <<  9) - 1};
+    const CHANGE:            Field = Field {position: 13, mask: (1 << 10) - 1};
+    const MODIFIER:          Field = Field {position:  3, mask: (1 << 10) - 1};
+
+    fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
+        let bytes = character.get(Self::BASE_ID);
+        (
+            Self::OCCUPATION_POINTS.get(bytes) as u9,
+            Self::INTEREST_POINTS.get(bytes) as u9,
+            Self::CHANGE.get(bytes) as i10,
+            Self::MODIFIER.get(bytes) as i10,
+        )
+    }
+
+    fn write<'a>(&self, character: &'a mut DataStruct, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> &'a mut DataStruct {
+        let _ = character.set(Self::BASE_ID, &[u8; 5], None);
+        character
+    }
+
+    fn as_editable_string(&self, lang: Lang) -> (&'static str, Option<&'static str>) {
+        (Skill::Survival.name(&lang), S.label(lang))
+    }
+
+    fn display_numeric(&self, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> (u16, u9, u9, i10, i10, i10) {
+        let sum = Self::BASE_PERCENT as i32 + occupation_points as i32 + interest_points as i32 + change as i32 + modifier as i32;
+        (Self::BASE_PERCENT, occupation_points, interest_points, change, modifier, sum as i10)
+    }
+}
+
+pub struct SurvivalArctic; impl SurvivalTrait<{ Survival::Arctic }> for SurvivalArctic {}
+pub struct SurvivalDesert; impl SurvivalTrait<{ Survival::Desert }> for SurvivalDesert {}
+pub struct SurvivalSea;    impl SurvivalTrait<{ Survival::Sea    }> for SurvivalSea    {}
+
+pub struct SurvivalCustom(pub u8);
+impl SurvivalTrait<{ Survival::Custom(0) }> for SurvivalCustom {
+    fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
+        let id = todo!("カスタムidをDataStructから動的に取得");
+        let bytes = character.get(id);
+        (
+            Self::OCCUPATION_POINTS.get(bytes) as u9,
+            Self::INTEREST_POINTS.get(bytes) as u9,
+            Self::CHANGE.get(bytes) as i10,
+            Self::MODIFIER.get(bytes) as i10,
+        )
+    }
+
+    fn as_editable_string(&self, lang: Lang) -> (&'static str, Option<&'static str>) {
+        (Skill::Survival.name(&lang), todo!("カスタム専門分野のラベルはDataStructから動的に取得"))
     }
 }
 
