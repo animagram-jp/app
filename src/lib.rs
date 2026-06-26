@@ -11,7 +11,7 @@ pub mod store;
 pub mod data_struct;
 pub mod app;
 pub mod model;
-pub mod roll;
+// pub mod roll;
 pub mod event;
 
 // ============================================================

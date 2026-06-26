@@ -207,17 +207,17 @@ impl StandardOfLiving {
     pub fn display(self, lang: Lang) -> &'static str {
         match (self, lang) {
             (Self::Pauper,    Lang::Ja) => "無一文",
-            (Self::Pauper,    Lang::En) => "Pauper",
+            (Self::Pauper,    Lang::En(_)) => "Pauper",
             (Self::Poor,      Lang::Ja) => "貧乏",
-            (Self::Poor,      Lang::En) => "Poor",
+            (Self::Poor,      Lang::En(_)) => "Poor",
             (Self::Average,   Lang::Ja) => "平均",
-            (Self::Average,   Lang::En) => "Average",
+            (Self::Average,   Lang::En(_)) => "Average",
             (Self::Wealthy,   Lang::Ja) => "裕福",
-            (Self::Wealthy,   Lang::En) => "Wealthy",
+            (Self::Wealthy,   Lang::En(_)) => "Wealthy",
             (Self::Rich,      Lang::Ja) => "富豪",
-            (Self::Rich,      Lang::En) => "Rich",
+            (Self::Rich,      Lang::En(_)) => "Rich",
             (Self::SuperRich, Lang::Ja) => "大富豪",
-            (Self::SuperRich, Lang::En) => "Super Rich",
+            (Self::SuperRich, Lang::En(_)) => "Super Rich",
         }
     }
 }
@@ -294,19 +294,19 @@ impl AgeCategory {
     pub fn display(&self, lang: Lang) -> &'static str {
         match (self, lang) {
             (Self::Teen,    Lang::Ja) => "10代 (15-19)",
-            (Self::Teen,    Lang::En) => "Teen (15-19)",
+            (Self::Teen,    Lang::En(_)) => "Teen (15-19)",
             (Self::Young,   Lang::Ja) => "若年 (20-39)",
-            (Self::Young,   Lang::En) => "Young Adult (20-39)",
+            (Self::Young,   Lang::En(_)) => "Young Adult (20-39)",
             (Self::Middle,  Lang::Ja) => "中年 (40-49)",
-            (Self::Middle,  Lang::En) => "Middle-Aged (40-49)",
+            (Self::Middle,  Lang::En(_)) => "Middle-Aged (40-49)",
             (Self::Senior,  Lang::Ja) => "熟年 (50-59)",
-            (Self::Senior,  Lang::En) => "Senior (50-59)",
+            (Self::Senior,  Lang::En(_)) => "Senior (50-59)",
             (Self::Elderly, Lang::Ja) => "老年 (60-69)",
-            (Self::Elderly, Lang::En) => "Elderly (60-69)",
+            (Self::Elderly, Lang::En(_)) => "Elderly (60-69)",
             (Self::Old,     Lang::Ja) => "高齢 (70-79)",
-            (Self::Old,     Lang::En) => "Old (70-79)",
+            (Self::Old,     Lang::En(_)) => "Old (70-79)",
             (Self::Ancient, Lang::Ja) => "超高齢 (80+)",
-            (Self::Ancient, Lang::En) => "Very Old (80+)",
+            (Self::Ancient, Lang::En(_)) => "Very Old (80+)",
         }
     }
 }

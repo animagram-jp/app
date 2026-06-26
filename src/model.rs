@@ -77,7 +77,7 @@ impl Character {
         }
     }
 
-    pub fn display(&self, lang: Lang) -> 'static &str {
+    pub fn display(&self, lang: Lang) -> &'static &str {
         match (self, lang) {
             (Self::Profile, Lang::En(_))        => "Profile",
             (Self::Profile, Lang::Ja)           => "プロフィール",
@@ -126,7 +126,7 @@ pub enum Profile {
 impl Profile {
 
     pub fn ids(&self) -> &'static [u32] {
-        const BASE = Character::Profile::base_id();
+        const BASE: u32 = Character::Profile::base_id();
         match self {
             Self::Name       => &[BASE + 0, BASE + 1],
             Self::Birthpalce => &[BASE + 2],
@@ -137,7 +137,7 @@ impl Profile {
         }
     }
 
-    pub fn display(&self, lang: Lang) -> 'static &str {
+    pub fn display(&self, lang: Lang) -> &'static &str {
         match (self, lang) {
             (Self::Name, Lang::En(_)) => "Name",
             (Self::Name, Lang::Ja)    => "名前",
@@ -514,7 +514,7 @@ pub enum Characteristic { // Characteristic {initial: u16, change: i16, modifier
 
 impl Characteristic {
 
-    pub fn label(&self, lang: Lang) -> 'static &str {
+    pub fn label(&self, lang: Lang) -> &'static &str {
         match (self, lang) {
             (Self::Strength,     _) => "STR",
             (Self::Constitution, _) => "CON",
@@ -639,7 +639,7 @@ impl SecondaryAttribute {
         }
     }
 
-    pub fn label(&self, lang: Lang) -> 'static &str {
+    pub fn label(&self, lang: Lang) -> &'static &str {
         match (self, lang) {
             (Self::HitPoints,                    _) => "HP",
             (Self::MagicPoints,                  _) => "MP",
@@ -1095,7 +1095,7 @@ impl Skill {
     }
 
     // 固定値の技能名のみ
-    pub fn name(&self, lang: &Lang) -> 'static &str {
+    pub fn name(&self, lang: &Lang) -> &'static &str {
         match (self, lang) {
             (Self::Accounting,       Lang::En(_)) => "Accounting",
             (Self::Accounting,       Lang::Ja)    => "経理",
@@ -1195,7 +1195,7 @@ impl Skill {
 }
 
 pub trait SkillTrait<const S: Skill> {
-    const SKILL: Skill = S,
+    const SKILL: Skill = S;
     const BASE_ID: SKILL.base_id(); // characterインスタンス内id
     const SKILL_NAME: SKILL.name(); // 技能名
     const BASE_PERCENT: SKILL.base_percent(); // 基本成功率
@@ -1293,9 +1293,9 @@ impl SkillTrait<S: Skill::Dodge> for Dodge {
 }
 
 pub struct LanguageOwn;
-impl SkillTrait<S: Skill: LanguageOwn> for LanguageOwn {
+impl SkillTrait<S: Skill::LanguageOwn> for LanguageOwn {
 
-    const SKILL: Skill = S,
+    const SKILL: Skill = S;
     const BASE_ID: SKILL.base_id(); // characterインスタンス内id
     const SKILL_NAME: SKILL.name(); // 技能名
     const BASE_PERCENT: SKILL.base_percent(); // 基本成功率
@@ -1431,7 +1431,7 @@ pub trait ArtAndCraftTrait<const A: ArtAndCraft> {
     const SKILL: Skill = Skill::ArtAndCraft;
     const SPECIFICATION: ArtAndCraft = A;
     const BASE_ID: u32 = SPECIFICATION.base_id();
-    const SKILL_NAME: 'static &str = SKILL.name();
+    const SKILL_NAME: &'static &str = SKILL.name();
     const BASE_PERCENT: u7 = SKILL.base_percent();
 
     const OCCUPATION_POINTS: Field = Field {position: 32, mask: (1 <<  9) - 1}
@@ -2591,7 +2591,7 @@ pub enum Weapon {
 }
 
 impl Weapon {
-    // pub fn label(&self, lang: Lang) -> 'static &str {
+    // pub fn label(&self, lang: Lang) -> &'static &str {
     //     match (self, lang) {
     //         (Self::Name,            Lang::En(_)) => "Weapon",
     //         (Self::Name,            Lang::Ja) => "武器",
@@ -3040,13 +3040,13 @@ pub struct Wealth {
 }
 
 impl Wealth {
-    pub fn label_spending_level(lang: Lang) -> 'static &str {
+    pub fn label_spending_level(lang: Lang) -> &'static &str {
         match lang { Lang::En(_) => "Spending Level", Lang::Ja => "支出レベル" }
     }
-    pub fn label_cash(lang: Lang) -> 'static &str {
+    pub fn label_cash(lang: Lang) -> &'static &str {
         match lang { Lang::En(_) => "Cash", Lang::Ja => "現金" }
     }
-    pub fn label_assets(lang: Lang) -> 'static &str {
+    pub fn label_assets(lang: Lang) -> &'static &str {
         match lang { Lang::En(_) => "Assets", Lang::Ja => "資産" }
     }
 }
@@ -3069,7 +3069,7 @@ impl Possession {
         }
     }
 
-    pub fn label(&self, lang: Lang) -> 'static &str {
+    pub fn label(&self, lang: Lang) -> &'static &str {
         match (self, lang) {
             (Self::Weapon(_),   Lang::En(_)) => "Weapon",
             (Self::Weapon(_),   Lang::Ja) => "武器",
@@ -3123,7 +3123,7 @@ impl Backstory {
         }
     }
 
-    pub fn label(&self, lang: Lang) -> 'static &str {
+    pub fn label(&self, lang: Lang) -> &'static &str {
         match (self, lang) {
             (Self::KeyConnection(_),              Lang::En(_)) => "Key Connection",
             (Self::KeyConnection(_),              Lang::Ja) => "キーコネクション",

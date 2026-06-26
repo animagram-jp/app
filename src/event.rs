@@ -244,11 +244,11 @@ impl Toast {
 
     fn label(&self, lang: Lang) -> &'static str {
         match (self, lang) {
-            (Self::Saved,     Lang::En) => "Saved",
+            (Self::Saved,     Lang::En(_)) => "Saved",
             (Self::Saved,     Lang::Ja) => "保存しました",
-            (Self::Discarded, Lang::En) => "Discarded",
+            (Self::Discarded, Lang::En(_)) => "Discarded",
             (Self::Discarded, Lang::Ja) => "破棄しました",
-            (Self::Synced,    Lang::En) => "Synced",
+            (Self::Synced,    Lang::En(_)) => "Synced",
             (Self::Synced,    Lang::Ja) => "同期しました",
         }
     }
