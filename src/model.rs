@@ -1280,7 +1280,7 @@ pub struct Track;         impl SkillTrait<{ Skill::Track         }> for Track   
 
 pub struct Dodge;
 impl SkillTrait<S: Skill::Dodge> for Dodge {
-    fn display_numeric(character: &DataStruct) -> (u7, u9, u9, i10, i10, i10) {
+    fn as_editable_numeric(character: &DataStruct) -> (u7, u9, u9, i10, i10, i10) {
         (
             base = Characteristic::Dexterity::sum(character) / 2,
             occupation_points,
@@ -1468,7 +1468,7 @@ pub trait ArtAndCraftTrait<const A: ArtAndCraft> {
     fn as_editable_string(&self, lang: Lang) -> (String, String) { (Self::NAME, A.read(lang).to_string()) }
 
     // -> base, occupation_points, interest_points, change, modifier, sum
-    fn display_numeric(&self, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> (u7, u9, u9, i10, i10, i10) {
+    fn as_editable_numeric(&self, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> (u7, u9, u9, i10, i10, i10) {
         Self::BASE,
         occupation_points,
         interest_points,
@@ -1622,7 +1622,7 @@ pub trait FightingTrait<const F: Fighting> {
     }
 
     // -> base, occupation_points, interest_points, change, modifier, sum
-    fn display_numeric(&self, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> (u16, u9, u9, i10, i10, i10) {
+    fn as_editable_numeric(&self, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> (u16, u9, u9, i10, i10, i10) {
         let sum = Self::BASE_PERCENT as i32 + occupation_points as i32 + interest_points as i32 + change as i32 + modifier as i32;
         (Self::BASE_PERCENT, occupation_points, interest_points, change, modifier, sum as i10)
     }
@@ -1756,7 +1756,7 @@ pub trait FirearmsTrait<const F: Firearms> {
     }
 
     // -> base, occupation_points, interest_points, change, modifier, sum
-    fn display_numeric(&self, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> (u16, u9, u9, i10, i10, i10) {
+    fn as_editable_numeric(&self, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> (u16, u9, u9, i10, i10, i10) {
         let sum = Self::BASE_PERCENT as i32 + occupation_points as i32 + interest_points as i32 + change as i32 + modifier as i32;
         (Self::BASE_PERCENT, occupation_points, interest_points, change, modifier, sum as i10)
     }
@@ -1841,7 +1841,7 @@ pub trait LanguageTrait<const L: Language> {
         (Skill::LanguageOther.name(&lang), todo!("言語名はDataStructから動的に取得"))
     }
 
-    fn display_numeric(&self, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> (u16, u9, u9, i10, i10, i10) {
+    fn as_editable_numeric(&self, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> (u16, u9, u9, i10, i10, i10) {
         let sum = Self::BASE_PERCENT as i32 + occupation_points as i32 + interest_points as i32 + change as i32 + modifier as i32;
         (Self::BASE_PERCENT, occupation_points, interest_points, change, modifier, sum as i10)
     }
@@ -1967,7 +1967,7 @@ pub trait PilotTrait<const P: Pilot> {
         (Skill::Pilot.name(&lang), P.label(lang))
     }
 
-    fn display_numeric(&self, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> (u16, u9, u9, i10, i10, i10) {
+    fn as_editable_numeric(&self, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> (u16, u9, u9, i10, i10, i10) {
         let sum = Self::BASE_PERCENT as i32 + occupation_points as i32 + interest_points as i32 + change as i32 + modifier as i32;
         (Self::BASE_PERCENT, occupation_points, interest_points, change, modifier, sum as i10)
     }
@@ -2119,7 +2119,7 @@ pub trait ScienceTrait<const S: Science> {
         (Skill::Science.name(&lang), S.label(lang))
     }
 
-    fn display_numeric(&self, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> (u16, u9, u9, i10, i10, i10) {
+    fn as_editable_numeric(&self, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> (u16, u9, u9, i10, i10, i10) {
         let sum = Self::BASE_PERCENT as i32 + occupation_points as i32 + interest_points as i32 + change as i32 + modifier as i32;
         (Self::BASE_PERCENT, occupation_points, interest_points, change, modifier, sum as i10)
     }
@@ -2227,7 +2227,7 @@ pub trait SurvivalTrait<const S: Survival> {
         (Skill::Survival.name(&lang), S.label(lang))
     }
 
-    fn display_numeric(&self, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> (u16, u9, u9, i10, i10, i10) {
+    fn as_editable_numeric(&self, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> (u16, u9, u9, i10, i10, i10) {
         let sum = Self::BASE_PERCENT as i32 + occupation_points as i32 + interest_points as i32 + change as i32 + modifier as i32;
         (Self::BASE_PERCENT, occupation_points, interest_points, change, modifier, sum as i10)
     }
