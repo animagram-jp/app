@@ -993,7 +993,7 @@ impl Skill {
 
     pub const fn base_id(&self) -> u32 {
         // ルールブック記載specialization id帯、custom id帯と衝突しないように基準idを割り振る
-        const BASE_PERCENT: u32 = Character::Skill.base_id();
+        const BASE: u32 = Character::Skill.base_id();
         match self {
             Self::Accounting       => BASE +  0, // 1 slot (minimum)
             Self::Anthropology     => BASE +  1,
@@ -1341,7 +1341,7 @@ impl SkillTrait<S: Skill: LanguageOwn> for LanguageOwn {
 }
 
 /// 芸術/製作 (専門分野) Art/Craft (Specialization) // p.62 モリダンス等は長いので除外
-enum ArtAndCraft {
+pub enum ArtAndCraft {
     Acting,       // 演劇
     Barber,       // 理容
     Calligraphy,  // 書道
@@ -1359,8 +1359,8 @@ enum ArtAndCraft {
 
 impl ArtAndCraft {
 
-    pub const fn base_id(&self, character: &DataStruct) -> u32 {
-        const BASE_ID: u32 = Skill::ArtAndCraft::base_id();
+    pub const fn base_id(&self) -> u32 {
+        const BASE_ID: u32 = Skill::ArtAndCraft.base_id();
         match self {
             Self::Acting      => BASE_ID +  1,
             Self::Barber      => BASE_ID +  2,
@@ -1404,6 +1404,7 @@ impl ArtAndCraft {
             (Self::Sculpting,   Lang::Ja)    => "彫刻",
             (Self::Writing,     Lang::En(_)) => "Writing",
             (Self::Writing,     Lang::Ja)    => "執筆",
+            (Self::Custom,      _)           => "",
         }
     }
 
@@ -1518,7 +1519,7 @@ impl Fighting {
 
     pub fn list() -> &'static [Self] {
         &[
-            Self::Axe, Self::Brawl, Self::Chainsaw, Self::Flail, Self::Garrote, Self::Spear, Self::Sword, Self::Whip, Self::Custom(_)
+            Self::Axe, Self::Brawl, Self::Chainsaw, Self::Flail, Self::Garrote, Self::Spear, Self::Sword, Self::Whip,
         ]
     }
 
@@ -1532,13 +1533,12 @@ impl Fighting {
             Self::Spear          => 6,
             Self::Sword          => 7,
             Self::Whip           => 8,
-            Self::Custom(0)      => 9,
-            Self::Custom(i)      => ,
+            Self::Custom(0)      => 9, // カスタムidリスト格納スロット
+            Self::Custom(_)      => todo!("カスタム専門分野のidはDataStructから動的に取得"),
         }
     }
 
-    // (spec_name: &str, base_value: u16, occupation_point: u8, interest_point: u8, modifier: i8)
-    pub fn read(&self, character: &DataStruct) -> (u16) { 
+    pub fn base_percent(&self) -> u16 {
         match self {
             Self::Axe       => 15,
             Self::Brawl     => 25,
@@ -1548,7 +1548,7 @@ impl Fighting {
             Self::Spear     => 20,
             Self::Sword     => 20,
             Self::Whip      =>  5,
-            Self::Custom(_) => ,
+            Self::Custom(_) =>  0,
         }
     }
 
@@ -1570,8 +1570,8 @@ impl Fighting {
             (Self::Sword,    Lang::Ja) => "刀剣",
             (Self::Whip,     Lang::En(_)) => "Whip",
             (Self::Whip,     Lang::Ja) => "鞭",
-            (Self::Custom(0), _) => CharacterError::Skill::Fighting("Custom(0) is not to label()")
-            (Self::Custom(i), _) => ,
+            (Self::Custom(0), _) => unreachable!("Custom(0) はリスト格納スロットであり label() 不可"),
+            (Self::Custom(_), _) => todo!("カスタム専門分野のラベルはDataStructから動的に取得"),
         }
     }
 }
@@ -1598,46 +1598,49 @@ impl Firearms {
     pub fn id(&self, base: u32) -> u32 {
         base + match self {
             Self::Bow            => 0,
-            Self::Handgun        => 1,
-            Self::HeavyWeapons   => 2,
-            Self::MachineGun     => 3,
-            Self::RifleShotgun   => 4,
-            Self::SubmachineGun  => 5,
-            Self::Custom(0) => 6,
-            Self::Custom(i) => ,
+            Self::FlameThrower   => 1,
+            Self::Handgun        => 2,
+            Self::HeavyWeapons   => 3,
+            Self::MachineGun     => 4,
+            Self::RifleShotgun   => 5,
+            Self::SubmachineGun  => 6,
+            Self::Custom(0)      => 7, // カスタムidリスト格納スロット
+            Self::Custom(_)      => todo!("カスタム専門分野のidはDataStructから動的に取得"),
         }
     }
 
     pub fn base_percent(&self) -> u16 {
         match self {
-            Self::None                              =>  0,
-            Self::Bow                               => 15,
-            Self::Handgun                           => 20,
-            Self::HeavyWeapons                      => 10,
-            Self::MachineGun                        => 10,
-            Self::RifleShotgun                      => 25,
-            Self::SubmachineGun                     => 15,
-            Self::Custom(0) => CharacterError::Skill::Firearms("Custom(0) is not to read()")
-            Self::Custom(i)      => ,
+            Self::Bow            => 15,
+            Self::FlameThrower   => 10,
+            Self::Handgun        => 20,
+            Self::HeavyWeapons   => 10,
+            Self::MachineGun     => 10,
+            Self::RifleShotgun   => 25,
+            Self::SubmachineGun  => 15,
+            Self::Custom(0)      => unreachable!("Custom(0) はリスト格納スロットであり base_percent() 不可"),
+            Self::Custom(_)      =>  0,
         }
     }
 
     pub fn label(&self, lang: Lang) -> &str {
         match (self, lang) {
             (Self::Bow,           Lang::En(_)) => "Bow",
-            (Self::Bow,           Lang::Ja) => "弓",
+            (Self::Bow,           Lang::Ja)    => "弓",
+            (Self::FlameThrower,  Lang::En(_)) => "Flamethrower",
+            (Self::FlameThrower,  Lang::Ja)    => "火炎放射器",
             (Self::Handgun,       Lang::En(_)) => "Handgun",
-            (Self::Handgun,       Lang::Ja) => "拳銃",
+            (Self::Handgun,       Lang::Ja)    => "拳銃",
             (Self::HeavyWeapons,  Lang::En(_)) => "Heavy Weapons",
-            (Self::HeavyWeapons,  Lang::Ja) => "重火器",
+            (Self::HeavyWeapons,  Lang::Ja)    => "重火器",
             (Self::MachineGun,    Lang::En(_)) => "Machine Gun",
-            (Self::MachineGun,    Lang::Ja) => "マシンガン",
+            (Self::MachineGun,    Lang::Ja)    => "マシンガン",
             (Self::RifleShotgun,  Lang::En(_)) => "Rifle/Shotgun",
-            (Self::RifleShotgun,  Lang::Ja) => "ライフル/ショットガン",
+            (Self::RifleShotgun,  Lang::Ja)    => "ライフル/ショットガン",
             (Self::SubmachineGun, Lang::En(_)) => "Submachine Gun",
-            (Self::SubmachineGun, Lang::Ja) => "サブマシンガン",
-            (Self::Custom(0), _) => CharacterError::Skill::Firearms::Custom("Custom(0) is not to read()")
-            (Self::Custom(i), _) => ,
+            (Self::SubmachineGun, Lang::Ja)    => "サブマシンガン",
+            (Self::Custom(0), _)               => unreachable!("Custom(0) はリスト格納スロットであり label() 不可"),
+            (Self::Custom(_), _)               => todo!("カスタム専門分野のラベルはDataStructから動的に取得"),
         }
     }
 }
@@ -1702,8 +1705,8 @@ impl Pilot {
             Self::Airliner   =>  7,
             Self::JetFighter =>  8,
             Self::Helicopter =>  9,
-            Self::Custom(0) => 10,
-            Self::Custom(i) => ,
+            Self::Custom(0) => 10, // カスタムidリスト格納スロット
+            Self::Custom(_) => todo!("カスタム専門分野のidはDataStructから動的に取得"),
         }
     }
 
@@ -1712,30 +1715,30 @@ impl Pilot {
     pub fn label(&self, lang: Lang) -> Option<&str> {
         match (self, lang) {
             // --- 両時代共通 ---
-            (Self::Boat,       Lang::Ja) => "ボート",
-            (Self::Boat,       Lang::En(_)) => "Boat",
-            (Self::SteamShip,  Lang::Ja) => "汽船",
-            (Self::SteamShip,  Lang::En(_)) => "Steam Ship",
-            (Self::Sailboat,   Lang::Ja) => "帆船",
-            (Self::Sailboat,   Lang::En(_)) => "Sailboat",
-            (Self::CivilProp,  Lang::Ja) => "民間プロペラ機",
-            (Self::CivilProp,  Lang::En(_)) => "Civil Prop",
+            (Self::Boat,       Lang::Ja)    => Some("ボート"),
+            (Self::Boat,       Lang::En(_)) => Some("Boat"),
+            (Self::SteamShip,  Lang::Ja)    => Some("汽船"),
+            (Self::SteamShip,  Lang::En(_)) => Some("Steam Ship"),
+            (Self::Sailboat,   Lang::Ja)    => Some("帆船"),
+            (Self::Sailboat,   Lang::En(_)) => Some("Sailboat"),
+            (Self::CivilProp,  Lang::Ja)    => Some("民間プロペラ機"),
+            (Self::CivilProp,  Lang::En(_)) => Some("Civil Prop"),
             // --- 1920s のみ ---
-            (Self::Balloon,    Lang::Ja) => "気球",
-            (Self::Balloon,    Lang::En(_)) => "Balloon",
-            (Self::Dirigible,  Lang::Ja) => "飛行船",
-            (Self::Dirigible,  Lang::En(_)) => "Dirigible",
+            (Self::Balloon,    Lang::Ja)    => Some("気球"),
+            (Self::Balloon,    Lang::En(_)) => Some("Balloon"),
+            (Self::Dirigible,  Lang::Ja)    => Some("飛行船"),
+            (Self::Dirigible,  Lang::En(_)) => Some("Dirigible"),
             // --- Modern (1990s) のみ ---
-            (Self::CivilJet,   Lang::Ja) => "民間ジェット機",
-            (Self::CivilJet,   Lang::En(_)) => "Civil Jet",
-            (Self::Airliner,   Lang::Ja) => "旅客機",
-            (Self::Airliner,   Lang::En(_)) => "Airliner",
-            (Self::JetFighter, Lang::Ja) => "ジェット戦闘機",
-            (Self::JetFighter, Lang::En(_)) => "Jet Fighter",
-            (Self::Helicopter, Lang::Ja) => "ヘリコプター",
-            (Self::Helicopter, Lang::En(_)) => "Helicopter",
-            (Self::Custom(0), _) => ,
-            (Self::Custom(i), _) => ,
+            (Self::CivilJet,   Lang::Ja)    => Some("民間ジェット機"),
+            (Self::CivilJet,   Lang::En(_)) => Some("Civil Jet"),
+            (Self::Airliner,   Lang::Ja)    => Some("旅客機"),
+            (Self::Airliner,   Lang::En(_)) => Some("Airliner"),
+            (Self::JetFighter, Lang::Ja)    => Some("ジェット戦闘機"),
+            (Self::JetFighter, Lang::En(_)) => Some("Jet Fighter"),
+            (Self::Helicopter, Lang::Ja)    => Some("ヘリコプター"),
+            (Self::Helicopter, Lang::En(_)) => Some("Helicopter"),
+            (Self::Custom(0),  _)           => None, // リスト格納スロット
+            (Self::Custom(_),  _)           => todo!("カスタム専門分野のラベルはDataStructから動的に取得"),
         }
     }
 }
@@ -1771,7 +1774,7 @@ impl Science {
 
     pub fn id(&self, base: u32) -> u32 {
         base + match self {
-            Self::None         => unreachable!(),
+            Self::None         => unreachable!("None は専門分野未選択を表すため id() 不可"),
             Self::Astronomy    =>  0,
             Self::Biology      =>  1,
             Self::Botany       =>  2,
@@ -1785,10 +1788,8 @@ impl Science {
             Self::Pharmacy     => 10,
             Self::Physics      => 11,
             Self::Zoology      => 12,
-            Self::Custom(0)   => 13,
-            Self::Custom(i)   => 14,
-            Self::Custom3(_)   => 15,
-            Self::Custom4(_)   => 16,
+            Self::Custom(0)    => 13, // カスタムidリスト格納スロット
+            Self::Custom(_)    => todo!("カスタム専門分野のidはDataStructから動的に取得"),
         }
     }
 
@@ -1796,34 +1797,35 @@ impl Science {
 
     pub fn label(&self, lang: Lang) -> Option<&str> {
         match (self, lang) {
-            (Self::None,         _)        => None,
-            (Self::Astronomy,    Lang::Ja) => "天文学"),
-            (Self::Astronomy,    Lang::En(_)) => "Astronomy"),
-            (Self::Biology,      Lang::Ja) => "生物学"),
-            (Self::Biology,      Lang::En(_)) => "Biology"),
-            (Self::Botany,       Lang::Ja) => "植物学"),
-            (Self::Botany,       Lang::En(_)) => "Botany"),
-            (Self::Chemistry,    Lang::Ja) => "化学"),
-            (Self::Chemistry,    Lang::En(_)) => "Chemistry"),
-            (Self::Cryptography, Lang::Ja) => "暗号学"),
-            (Self::Cryptography, Lang::En(_)) => "Cryptography"),
-            (Self::Engineering,  Lang::Ja) => "工学"),
-            (Self::Engineering,  Lang::En(_)) => "Engineering"),
-            (Self::Forensics,    Lang::Ja) => "法医学"),
-            (Self::Forensics,    Lang::En(_)) => "Forensics"),
-            (Self::Geology,      Lang::Ja) => "地質学"),
-            (Self::Geology,      Lang::En(_)) => "Geology"),
-            (Self::Mathematics,  Lang::Ja) => "数学"),
-            (Self::Mathematics,  Lang::En(_)) => "Mathematics"),
-            (Self::Meteorology,  Lang::Ja) => "気象学"),
-            (Self::Meteorology,  Lang::En(_)) => "Meteorology"),
-            (Self::Pharmacy,     Lang::Ja) => "薬学"),
-            (Self::Pharmacy,     Lang::En(_)) => "Pharmacy"),
-            (Self::Physics,      Lang::Ja) => "物理学"),
-            (Self::Physics,      Lang::En(_)) => "Physics"),
-            (Self::Zoology,      Lang::Ja) => "動物学"),
-            (Self::Zoology,      Lang::En(_)) => "Zoology"),
-            (Self::Custom(0) | Self::Custom(i), _) => s.as_str()),
+            (Self::None,         _)           => None,
+            (Self::Astronomy,    Lang::Ja)    => Some("天文学"),
+            (Self::Astronomy,    Lang::En(_)) => Some("Astronomy"),
+            (Self::Biology,      Lang::Ja)    => Some("生物学"),
+            (Self::Biology,      Lang::En(_)) => Some("Biology"),
+            (Self::Botany,       Lang::Ja)    => Some("植物学"),
+            (Self::Botany,       Lang::En(_)) => Some("Botany"),
+            (Self::Chemistry,    Lang::Ja)    => Some("化学"),
+            (Self::Chemistry,    Lang::En(_)) => Some("Chemistry"),
+            (Self::Cryptography, Lang::Ja)    => Some("暗号学"),
+            (Self::Cryptography, Lang::En(_)) => Some("Cryptography"),
+            (Self::Engineering,  Lang::Ja)    => Some("工学"),
+            (Self::Engineering,  Lang::En(_)) => Some("Engineering"),
+            (Self::Forensics,    Lang::Ja)    => Some("法医学"),
+            (Self::Forensics,    Lang::En(_)) => Some("Forensics"),
+            (Self::Geology,      Lang::Ja)    => Some("地質学"),
+            (Self::Geology,      Lang::En(_)) => Some("Geology"),
+            (Self::Mathematics,  Lang::Ja)    => Some("数学"),
+            (Self::Mathematics,  Lang::En(_)) => Some("Mathematics"),
+            (Self::Meteorology,  Lang::Ja)    => Some("気象学"),
+            (Self::Meteorology,  Lang::En(_)) => Some("Meteorology"),
+            (Self::Pharmacy,     Lang::Ja)    => Some("薬学"),
+            (Self::Pharmacy,     Lang::En(_)) => Some("Pharmacy"),
+            (Self::Physics,      Lang::Ja)    => Some("物理学"),
+            (Self::Physics,      Lang::En(_)) => Some("Physics"),
+            (Self::Zoology,      Lang::Ja)    => Some("動物学"),
+            (Self::Zoology,      Lang::En(_)) => Some("Zoology"),
+            (Self::Custom(0),    _)           => None,
+            (Self::Custom(_),    _)           => todo!("カスタム専門分野のラベルはDataStructから動的に取得"),
         }
     }
 }
@@ -1844,14 +1846,11 @@ impl Survival {
 
     pub fn id(&self, base: u32) -> u32 {
         base + match self {
-            Self::None       => unreachable!(),
-            Self::Arctic     => 0,
-            Self::Desert     => 1,
-            Self::Sea        => 2,
-            Self::Custom1(_) => 3,
-            Self::Custom2(_) => 4,
-            Self::Custom3(_) => 5,
-            Self::Custom4(_) => 6,
+            Self::Arctic    => 0,
+            Self::Desert    => 1,
+            Self::Sea       => 2,
+            Self::Custom(0) => 3, // カスタムidリスト格納スロット
+            Self::Custom(_) => todo!("カスタム専門分野のidはDataStructから動的に取得"),
         }
     }
 
@@ -1859,15 +1858,14 @@ impl Survival {
 
     pub fn label(&self, lang: Lang) -> Option<&str> {
         match (self, lang) {
-            (Self::None,     _)        => None,
-            (Self::Arctic,   Lang::Ja) => "極地"),
-            (Self::Arctic,   Lang::En(_)) => "Arctic"),
-            (Self::Desert,   Lang::Ja) => "砂漠"),
-            (Self::Desert,   Lang::En(_)) => "Desert"),
-            (Self::Sea,      Lang::Ja) => "海"),
-            (Self::Sea,      Lang::En(_)) => "Sea"),
-            (Self::Custom1(s) | Self::Custom2(s)
-            | Self::Custom3(s) | Self::Custom4(s), _) => s.as_str()),
+            (Self::Arctic,   Lang::Ja)    => Some("極地"),
+            (Self::Arctic,   Lang::En(_)) => Some("Arctic"),
+            (Self::Desert,   Lang::Ja)    => Some("砂漠"),
+            (Self::Desert,   Lang::En(_)) => Some("Desert"),
+            (Self::Sea,      Lang::Ja)    => Some("海"),
+            (Self::Sea,      Lang::En(_)) => Some("Sea"),
+            (Self::Custom(0), _)          => None,
+            (Self::Custom(_), _)          => todo!("カスタム専門分野のラベルはDataStructから動的に取得"),
         }
     }
 }
