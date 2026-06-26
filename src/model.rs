@@ -625,8 +625,8 @@ pub enum SecondaryAttribute {
 }
 
 impl SecondaryAttribute {
-    pub const fn id(&self) -> u32 {
-        Character::SecondaryAttribute.id() + match self {
+    pub const fn base_id(&self) -> u32 {
+        Character::SecondaryAttribute.base_id() + match self {
             Self::HitPoints             => 0,
             Self::MagicPoints           => 1,
             Self::Luck                  => 2,
@@ -991,15 +991,15 @@ impl Skill {
         ]
     }
 
-    pub const fn id(&self) -> u32 {
+    pub const fn base_id(&self) -> u32 {
         // ルールブック記載specialization id帯、custom id帯と衝突しないように基準idを割り振る
-        const BASE: u32 = Character::Skill.id();
+        const BASE_PERCENT: u32 = Character::Skill.base_id();
         match self {
-            Self::Accounting       => BASE +  0, //  1 slot
-            Self::Anthropology     => BASE +  1, //  1 slot
-            Self::Appraise         => BASE +  2, //  1 slot
-            Self::Archaeology      => BASE +  3, //  1 slot
-            Self::ArtAndCraft      => BASE +  4, // 13 slots (0..=12, Custom(0)=12)
+            Self::Accounting       => BASE +  0, // 1 slot (minimum)
+            Self::Anthropology     => BASE +  1,
+            Self::Appraise         => BASE +  2,
+            Self::Archaeology      => BASE +  3,
+            Self::ArtAndCraft      => BASE +  4, // 12 + 1 slots (defined + custom)
             Self::Charm            => BASE + 17,
             Self::Climb            => BASE + 18,
             Self::ComputerUse      => BASE + 19,
@@ -1011,42 +1011,42 @@ impl Skill {
             Self::ElectricalRepair => BASE + 25,
             Self::Electronics      => BASE + 26,
             Self::FastTalk         => BASE + 27,
-            Self::Fighting         => BASE + 28, //  9 slots (0..=8,  Custom(0)=8)
-            Self::Firearms         => BASE + 37, //  7 slots (0..=6,  Custom(0)=6)
+            Self::Fighting         => BASE + 28, // 8 + 1 slots (defined + custom)
+            Self::Firearms         => BASE + 37, // 7 + 1 slots (defined + custom)
             Self::FirstAid         => BASE + 44,
             Self::History          => BASE + 45,
             Self::Intimidate       => BASE + 46,
             Self::Jump             => BASE + 47,
-            Self::LanguageOther    => BASE + 48, // + 1 slot (name)
-            Self::LanguageOwn      => BASE + 50,
-            Self::Law              => BASE + 51,
-            Self::LibraryUse       => BASE + 52,
-            Self::Listen           => BASE + 53,
-            Self::Locksmith        => BASE + 54,
-            Self::MechanicalRepair => BASE + 55,
-            Self::Medicine         => BASE + 56,
-            Self::NaturalWorld     => BASE + 57,
-            Self::Navigate         => BASE + 58,
-            Self::Occult           => BASE + 59,
-            Self::Persuade         => BASE + 60,
-            Self::Pilot            => BASE + 61, // 11 slots (0..=10, Custom(0)=10)
-            Self::Psychoanalysis   => BASE + 72,
-            Self::Psychology       => BASE + 73,
-            Self::Ride             => BASE + 74,
-            Self::Science          => BASE + 75, // 14 slots (0..=13, Custom(0)=13)
-            Self::SleightOfHand    => BASE + 89,
-            Self::SpotHidden       => BASE + 90,
-            Self::Stealth          => BASE + 91,
-            Self::Survival         => BASE + 92, //  4 slots (0..=3,  Custom(0)=3)
-            Self::Swim             => BASE + 96,
-            Self::Throw            => BASE + 97,
-            Self::Track            => BASE + 98,
-            Self::Custom           => BASE + 99,
+            Self::LanguageOther    => BASE + 48, // 1 + 1 slot (+ name)
+            Self::LanguageOwn      => BASE + 50, // 1 + 1 slot (+ name)
+            Self::Law              => BASE + 52,
+            Self::LibraryUse       => BASE + 53,
+            Self::Listen           => BASE + 54,
+            Self::Locksmith        => BASE + 55,
+            Self::MechanicalRepair => BASE + 56,
+            Self::Medicine         => BASE + 57,
+            Self::NaturalWorld     => BASE + 58,
+            Self::Navigate         => BASE + 59,
+            Self::Occult           => BASE + 60,
+            Self::Persuade         => BASE + 61,
+            Self::Pilot            => BASE + 62, // 10 + 1 slots (defined + custom)
+            Self::Psychoanalysis   => BASE + 73,
+            Self::Psychology       => BASE + 74,
+            Self::Ride             => BASE + 75,
+            Self::Science          => BASE + 76, // 13 + 1 slots (defined + custom)
+            Self::SleightOfHand    => BASE + 90,
+            Self::SpotHidden       => BASE + 91,
+            Self::Stealth          => BASE + 92,
+            Self::Survival         => BASE + 93, // 3 + 1 slots (defined + custom)
+            Self::Swim             => BASE + 97,
+            Self::Throw            => BASE + 98,
+            Self::Track            => BASE + 99,
+            Self::Custom           => BASE + 100,
         }
     }
 
     // 固定値の基本成功率のみ
-    pub fn base(&self) -> u16 {
+    pub fn base_percent(&self) -> u16 {
         match self {
             Self::Accounting       =>  5,
             Self::Anthropology     =>  1,
@@ -1196,21 +1196,28 @@ impl Skill {
 
 pub trait SkillTrait<const S: Skill> {
     const SKILL: Skill = S,
-    const ID:   SKILL.id();   // characterインスタンス内id
-    const NAME: SKILL.name(); // 技能名
-    const BASE: SKILL.base(); // 基本成功率
+    const BASE_ID: SKILL.base_id(); // characterインスタンス内id
+    const SKILL_NAME: SKILL.name(); // 技能名
+    const BASE_PERCENT: SKILL.base_percent(); // 基本成功率
 
     const OCCUPATION_POINTS: Field = Field {position: 32, mask: (1 <<  9) - 1}; // 0~400, u9, bit 32~40
     const INTEREST_POINTS:   Field = Field {position: 23, mask: (1 <<  9) - 1}; // 0~400, u9, bit 23~31
     const CHANGE:            Field = Field {position: 13, mask: (1 << 10) - 1}; // -400~400, i10, bit 13~22
     const MODIFIER:          Field = Field {position:  3, mask: (1 << 10) - 1}; // -400~400, i10, bit 3~12
+
     // -> occupation_points, interest_points, change, modifier
     fn read(&self,character: &DataStruct) -> (u9, u9, i10, i10) {
-        bytes = character.get(Self::ID);
+        bytes = character.get(Self::BASE_ID);
+        (
+            OCCUPATION_POINTS.get(bytes) as u9,
+            INTEREST_POINTS.get(bytes) as u9,
+            CHANGE.get(bytes) as i10,
+            MODIFIER.get(bytes) as i10,
+        )
     }
 
     fn write(&self, character: 'a &mut DataStruct, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> 'a &mut DataStruct {
-        _ = character.set(Self::ID, value: [u8:5], None);
+        _ = character.set(Self::BASE_ID, value: [u8:5], None);
         character
     }
 
@@ -1271,31 +1278,65 @@ pub struct Swim;          impl SkillTrait<{ Skill::Swim          }> for Swim    
 pub struct Throw;         impl SkillTrait<{ Skill::Throw         }> for Throw         {}
 pub struct Track;         impl SkillTrait<{ Skill::Track         }> for Track         {}
 
-pub srtuct Dodge;
+pub struct Dodge;
 impl SkillTrait<S: Skill::Dodge> for Dodge {
     fn display_numeric(character: &DataStruct) -> (u7, u9, u9, i10, i10, i10) {
         (
-        base = Characteristic::Dexterity::sum(character) / 2,
-        occupation_points,
-        interest_points,
-        change,
-        modifier,
-        sum = base + occupation_points + interest_points + change + modifier,
+            base = Characteristic::Dexterity::sum(character) / 2,
+            occupation_points,
+            interest_points,
+            change,
+            modifier,
+            sum = base + occupation_points + interest_points + change + modifier,
         )
     }
 }
 
 pub struct LanguageOwn;
 impl SkillTrait<S: Skill: LanguageOwn> for LanguageOwn {
-    fn display_numeric(character: &DataStruct) -> (u7, u9, u9, i10, i10, i10) {
+
+    const SKILL: Skill = S,
+    const BASE_ID: SKILL.base_id(); // characterインスタンス内id
+    const SKILL_NAME: SKILL.name(); // 技能名
+    const BASE_PERCENT: SKILL.base_percent(); // 基本成功率
+
+    // -> occupation_points, interest_points, change, modifier, name
+    fn read(&self,character: &DataStruct) -> (u9, u9, i10, i10, &str) {
+        bytes = character.get(Self::BASE_ID);
         (
-        base = Characteristic::Education::sum(character),
-        occupation_points,
-        interest_points,
-        change,
-        modifier,
-        sum = base + occupation_points + interest_points + change + modifier,
+            OCCUPATION_POINTS.get(bytes) as u9,
+            INTEREST_POINTS.get(bytes) as u9,
+            CHANGE.get(bytes) as i10,
+            MODIFIER.get(bytes) as i10,
+            character.get(Self::BASE_ID + 1).as_str(),
         )
+    }
+
+    fn write(&self, character: 'a &mut DataStruct, occupation_points: u9, interest_points: u9, change: i10, modifier: i10, name: &str) -> 'a &mut DataStruct {
+        _ = character.set(Self::BASE_ID, value: [u8:5], None);
+        character
+    }
+
+    fn as_editable_numeric(character: &DataStruct) -> (u7, u9, u9, i10, i10, i10) {
+        (
+            base = Characteristic::Education::sum(character),
+            occupation_points,
+            interest_points,
+            change,
+            modifier,
+            sum = base + occupation_points + interest_points + change + modifier,
+        )
+    }
+
+    fn as_editable_string(name: &str) -> (&str, &str) {
+        (SKILL_NAME, name)
+    }
+
+    fn as_immutable_string(name: Option<&str>) -> String {
+        match name {
+            Some(n) => format!("{SKILL_NAME} (name)"),
+            _ => SKILL_NAME,
+        }
     }
 }
 
@@ -1318,26 +1359,26 @@ enum ArtAndCraft {
 
 impl ArtAndCraft {
 
-    pub fn id(&self, character: &DataStruct) -> u32 {
-        const base = Skill::ArtAndCraft::id();
+    pub const fn base_id(&self, character: &DataStruct) -> u32 {
+        const BASE_ID: u32 = Skill::ArtAndCraft::base_id();
         match self {
-            Self::Acting      => base +  1,
-            Self::Barber      => base +  2,
-            Self::Calligraphy => base +  3,
-            Self::Carpentry   => base +  4,
-            Self::Cook        => base +  5,
-            Self::Dancing     => base +  6,
-            Self::FineArt     => base +  7,
-            Self::Forgery     => base +  8,
-            Self::Photography => base +  9,
-            Self::Pottery     => base + 10,
-            Self::Sculpting   => base + 11,
-            Self::Writing     => base + 12,
-            Self::Custom      => base + 13, // Custom(u8)のidリスト格納スロット
+            Self::Acting      => BASE_ID +  1,
+            Self::Barber      => BASE_ID +  2,
+            Self::Calligraphy => BASE_ID +  3,
+            Self::Carpentry   => BASE_ID +  4,
+            Self::Cook        => BASE_ID +  5,
+            Self::Dancing     => BASE_ID +  6,
+            Self::FineArt     => BASE_ID +  7,
+            Self::Forgery     => BASE_ID +  8,
+            Self::Photography => BASE_ID +  9,
+            Self::Pottery     => BASE_ID + 10,
+            Self::Sculpting   => BASE_ID + 11,
+            Self::Writing     => BASE_ID + 12,
+            Self::Custom      => BASE_ID + 13, // Custom(u8)のidリスト格納スロット
         }
     }
 
-    pub fn read(&self, lang: Lang) -> &str {
+    pub fn name(&self, lang: Lang) -> &str {
         match (self, lang) {
             (Self::Acting,      Lang::En(_)) => "Acting",
             (Self::Acting,      Lang::Ja)    => "演劇",
@@ -1366,27 +1407,6 @@ impl ArtAndCraft {
         }
     }
 
-    /// カスタム専門分野を新規登録し、そのschema_idを返す。
-    /// Custom(0) スロットにidリスト（u32 LE配列）を保持し、末尾に追記する。
-    pub fn write_custom<'a>(&self, character: &'a mut DataStruct, value: &[u8]) -> Option<u32> {
-        let mut ids: Vec<u32> = character.get(Self::CUSTOM_LIST_ID).ok()
-            .map(|b| b.chunks_exact(4)
-                .filter_map(|c| c.try_into().ok().map(u32::from_le_bytes))
-                .collect())
-            .unwrap_or_default();
-
-        let builtin_max: u32 = 12;
-        let list_id: u32     = Self::CUSTOM_LIST_ID;
-        let existing_max = ids.iter().copied().max().unwrap_or(list_id);
-        let new_id = existing_max.max(builtin_max).max(list_id) + 1;
-
-        ids.push(new_id);
-        let list_bytes: Vec<u8> = ids.iter().flat_map(|id| id.to_le_bytes()).collect();
-        character.set(Self::CUSTOM_LIST_ID, &list_bytes, None).ok()?;
-        character.set(new_id, value, None).ok()?;
-        Some(new_id)
-    }
-
     pub fn list() -> &'static [Self] {
         &[
             Self::Acting, 
@@ -1409,25 +1429,38 @@ impl ArtAndCraft {
 pub trait ArtAndCraftTrait<const A: ArtAndCraft> {
     const SKILL: Skill = Skill::ArtAndCraft;
     const SPECIFICATION: ArtAndCraft = A;
-    const NAME: 'static &str = SKILL.name();
-    const BASE: u7           = SKILL.base();
+    const BASE_ID: u32 = SPECIFICATION.base_id();
+    const SKILL_NAME: 'static &str = SKILL.name();
+    const BASE_PERCENT: u7 = SKILL.base_percent();
 
     const OCCUPATION_POINTS: Field = Field {position: 32, mask: (1 <<  9) - 1}
     const INTEREST_POINTS:   Field = Field {position: 23, mask: (1 <<  9) - 1}
     const CHANGE:            Field = Field {position: 13, mask: (1 << 10) - 1}
     const MODIFIER:          Field = Field {position:  3, mask: (1 << 10) - 1}
 
-    // Custom以外はconst解決、Custom(i)はcharacterを参照
-    fn id(&self, character: &DataStruct) -> u32 { A.id(character) }
-
     // -> occupation_points, interest_points, change, modifier
     fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
         bytes = character.get(self.id(character));
     }
 
+    /// Custom(0) スロットにidリスト（u32 LE配列）を保持し、末尾に追記する。
     fn write<'a>(&self, character: &'a mut DataStruct, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> &'a mut DataStruct {
-        _ = character.set(self.id(character), value: [u8; 5], None);
-        character
+        let mut ids: Vec<u32> = character.get(Self::CUSTOM.base_id()).ok()
+        .map(|b| b.chunks_exact(4)
+            .filter_map(|c| c.try_into().ok().map(u32::from_le_bytes))
+            .collect())
+        .unwrap_or_default();
+
+        let builtin_max: u32 = 12;
+        let list_id: u32     = Self::CUSTOM_LIST_ID;
+        let existing_max = ids.iter().copied().max().unwrap_or(list_id);
+        let new_id = existing_max.max(builtin_max).max(list_id) + 1;
+
+        ids.push(new_id);
+        let list_bytes: Vec<u8> = ids.iter().flat_map(|id| id.to_le_bytes()).collect();
+        character.set(Self::CUSTOM_LIST_ID, &list_bytes, None).ok()?;
+        character.set(new_id, value, None).ok()?;
+        Some(new_id)
     }
 
     // -> name, specialization
@@ -1443,6 +1476,8 @@ pub trait ArtAndCraftTrait<const A: ArtAndCraft> {
         sum = Self::BASE + occupation_points + interest_points + change + modifier,
     }
 }
+
+pub struct Custom(pub u8);
 
 impl ArtAndCraftTrait<{ ArtAndCraft::Custom }> for Custom {
     fn id(&self, character: &DataStruct) -> u32 {
@@ -1464,8 +1499,6 @@ impl ArtAndCraftTrait<{ ArtAndCraft::Custom }> for Custom {
         (name, spec)
     }
 }
-
-pub struct Custom(pub u8);
 
 /// 近接戦闘 (専門分野) Fighting (Specialization) // p.61
 #[derive(Clone)]
@@ -1575,7 +1608,7 @@ impl Firearms {
         }
     }
 
-    pub fn base_value(&self) -> u16 {
+    pub fn base_percent(&self) -> u16 {
         match self {
             Self::None                              =>  0,
             Self::Bow                               => 15,
@@ -1674,7 +1707,7 @@ impl Pilot {
         }
     }
 
-    pub fn base_value(&self) -> u16 { 1 }
+    pub fn base_percent(&self) -> u16 { 1 }
 
     pub fn label(&self, lang: Lang) -> Option<&str> {
         match (self, lang) {
@@ -1759,7 +1792,7 @@ impl Science {
         }
     }
 
-    pub fn base_value(&self) -> u16 { 1 }
+    pub fn base_percent(&self) -> u16 { 1 }
 
     pub fn label(&self, lang: Lang) -> Option<&str> {
         match (self, lang) {
@@ -1822,7 +1855,7 @@ impl Survival {
         }
     }
 
-    pub fn base_value(&self) -> u16 { 10 }
+    pub fn base_percent(&self) -> u16 { 10 }
 
     pub fn label(&self, lang: Lang) -> Option<&str> {
         match (self, lang) {

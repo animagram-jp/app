@@ -95,10 +95,10 @@ Pushed Roll — 失敗後の再挑戦ロール
 保持しているskill stack stateの中で、failure以下のものだけ候補化する。この時、新しい順にソートする
 既にpush stackに紐づけがあるロールは候補から外すのが正確だが、複雑性が一気に増すので一旦省略。
 PushedRoll,
-Combined Skill Roll — 2技能を1ロールで同時判定
+Combined Skill Roll — 2技能(能力値含む)を1ロールで同時判定
 1. select[Skill]
-2. select[Skill] って感じでrulebook通り2つ技能を選択したら実行で良いんだが、プレイヤーを観察していると、skill+characteristicの混合も需要あるので、一応メモ。
-3. 出力は、[技能1 技能2] 実値1 実値2 出目 判定1(普通のSkill Rollと同様) 判定2。「部分的成功」みたいな組み合わせロール特有の用語は、rulebookに実は無いので、それは扱わない
+2. select[Skill] 
+3. 出力: "[技能1 技能2] 実値1 実値2 出目 判定1 判定2" (判定1,2: 普通のSkill Rollと同様)。「部分的成功」みたいな組み合わせロール特有の用語は、rulebookに実は無いので、それは扱わない
 
 Development Check - 上達チェック
 - ボーナスダイスの無いregular以上のstackのあるskillを候補にする。
@@ -176,6 +176,13 @@ This is a note by Andyou written through confirming rulebook.
 - 新クトゥルフ神話TRPGルールブック 第2刷 p.31
 - https://cthulhuwiki.chaosium.com/investigators/step-three-occupation-and-skills.html#sample-investigator-occupations
 - https://basicroleplaying.org/topic/9511-age-bonus-penalties/
+
+### Language (Own) 母国語
+
+- 母国語の言語名を明記する場所があるべき
+- 複数言語については、保留
+
+---
 
 ## 未使用スクリプト
 
