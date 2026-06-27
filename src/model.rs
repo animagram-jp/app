@@ -1950,7 +1950,7 @@ impl Language {
         }
     }
 
-    pub fn label(&self, _lang: Lang) -> Option<&str> {
+    pub fn label(&self, _lang: Lang) -> Option<&'static str> {
         match self {
             Self::Custom(0) => None, // リスト格納スロット
             Self::Custom(_) => todo!("カスタム専門分野のラベルはDataStructから動的に取得"),
@@ -2264,7 +2264,7 @@ impl Science {
 
     pub const fn base_percent(&self) -> u16 { 1 }
 
-    pub fn label(&self, lang: Lang) -> Option<&str> {
+    pub fn label(&self, lang: Lang) -> Option<&'static str> {
         match (self, lang) {
             (Self::None,         _)           => None,
             (Self::Astronomy,    Lang::Ja)    => Some("天文学"),
@@ -2399,7 +2399,7 @@ impl Survival {
 
     pub const fn base_percent(&self) -> u16 { 10 }
 
-    pub fn label(&self, lang: Lang) -> Option<&str> {
+    pub fn label(&self, lang: Lang) -> Option<&'static str> {
         match (self, lang) {
             (Self::Arctic,   Lang::Ja)    => Some("極地"),
             (Self::Arctic,   Lang::En(_)) => Some("Arctic"),
