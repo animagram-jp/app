@@ -9,14 +9,11 @@ use arbitrary_int::traits::Integer;
 //   = 0: The value is local time of timezone
 
 pub struct Field {
-    position: u32,
-    mask: u64,
+    pub position: u32,
+    pub mask: u64,
 }
 
 impl Field {
-    pub const fn new(position: u32, mask: u64) -> Self {
-        Self { position, mask }
-    }
     #[inline(always)]
     pub fn get<T: Integer>(&self, target: u64) -> T {
         u64::masked_new((target >> self.position) & self.mask).as_::<T>()
