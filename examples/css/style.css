@@ -156,7 +156,7 @@ article.warning {
 }
 
 main>section,
-#modal:modal fieldset {
+#main_section-2 fieldset {
     border: 1px solid var(--color-neutral-solid-gray-300);
     margin: 0.25rem 0 0;
 }
@@ -217,43 +217,6 @@ main>section,
     height: 0;
 }
 
-#modal:modal {
-    position: relative;
-    display: flex;
-    position-anchor: --header;
-    top: calc(anchor(--header bottom) + 0.5rem);
-    left: 0;
-    margin: 0 auto;
-    height: calc(100dvh - 112px - 0.5rem);
-    width: 100%;
-    max-width: 60rem;
-    margin-top: 0;
-    margin-bottom: 0;
-    background-color: var(--color-body-background);
-    padding: 0;
-    padding-bottom: 1rem;
-    overflow: visible;
-    border: 1px solid currentcolor;
-    border-radius: calc(8 / 16 * 1rem);
-}
-
-@media (width >=40rem) {
-    #modal:modal>* {
-        padding: 0 1rem;
-    }
-}
-
-#modal_header {
-    position: absolute;
-    top: -4rem;
-    right: 0.5rem;
-    background: transparent;
-}
-
-#modal_header button {
-    display: inline-block;
-}
-
 #header_button-4 {
     --button-color: var(--color-primitive-green-600);
     --button-hover-color: var(--color-primitive-green-700);
@@ -280,16 +243,6 @@ main>section,
     color: var(--color-neutral-white);
     font-size: 0.9em;
     line-height: 1;
-}
-
-#modal_section {
-    overflow: auto;
-    flex: 1;
-}
-
-#modal fieldset {
-    padding-left: 0;
-    padding-right: 0.125rem;
 }
 
 #main_section-2_fieldset-1,
@@ -385,51 +338,51 @@ main>section,
 }
 
 #main_section-2_fieldset-4_table_tbody_tr-5_td-1_button {
-    anchor-name: --modal_fieldset-4_table_tbody_tr-5_td-1_button;
+    anchor-name: --main_section-2_fieldset-4_table_tbody_tr-5_td-1_button;
 }
 
 #main_section-2_fieldset-4_table_tbody_tr-5_td-1_ul {
-    position-anchor: --modal_fieldset-4_table_tbody_tr-5_td-1_button;
+    position-anchor: --main_section-2_fieldset-4_table_tbody_tr-5_td-1_button;
 }
 
 #main_section-2_fieldset-4_table_tbody_tr-6_td-1_button {
-    anchor-name: --modal_fieldset-4_table_tbody_tr-6_td-1_button;
+    anchor-name: --main_section-2_fieldset-4_table_tbody_tr-6_td-1_button;
 }
 
 #main_section-2_fieldset-4_table_tbody_tr-6_td-1_ul {
-    position-anchor: --modal_fieldset-4_table_tbody_tr-6_td-1_button;
+    position-anchor: --main_section-2_fieldset-4_table_tbody_tr-6_td-1_button;
 }
 
 #main_section-2_fieldset-4_table_tbody_tr-23_td-1_button {
-    anchor-name: --modal_fieldset-4_table_tbody_tr-23_td-1_button;
+    anchor-name: --main_section-2_fieldset-4_table_tbody_tr-23_td-1_button;
 }
 
 #main_section-2_fieldset-4_table_tbody_tr-23_td-1_ul {
-    position-anchor: --modal_fieldset-4_table_tbody_tr-23_td-1_button;
+    position-anchor: --main_section-2_fieldset-4_table_tbody_tr-23_td-1_button;
 }
 
 #main_section-2_fieldset-4_table_tbody_tr-24_td-1_button {
-    anchor-name: --modal_fieldset-4_table_tbody_tr-24_td-1_button;
+    anchor-name: --main_section-2_fieldset-4_table_tbody_tr-24_td-1_button;
 }
 
 #main_section-2_fieldset-4_table_tbody_tr-24_td-1_ul {
-    position-anchor: --modal_fieldset-4_table_tbody_tr-24_td-1_button;
+    position-anchor: --main_section-2_fieldset-4_table_tbody_tr-24_td-1_button;
 }
 
 #main_section-2_fieldset-4_table_tbody_tr-25_td-1_button {
-    anchor-name: --modal_fieldset-4_table_tbody_tr-25_td-1_button;
+    anchor-name: --main_section-2_fieldset-4_table_tbody_tr-25_td-1_button;
 }
 
 #main_section-2_fieldset-4_table_tbody_tr-25_td-1_ul {
-    position-anchor: --modal_fieldset-4_table_tbody_tr-25_td-1_button;
+    position-anchor: --main_section-2_fieldset-4_table_tbody_tr-25_td-1_button;
 }
 
 #main_section-2_fieldset-4_table_tbody_tr-42_td-1_button {
-    anchor-name: --modal_fieldset-4_table_tbody_tr-42_td-1_button;
+    anchor-name: --main_section-2_fieldset-4_table_tbody_tr-42_td-1_button;
 }
 
 #main_section-2_fieldset-4_table_tbody_tr-42_td-1_ul {
-    position-anchor: --modal_fieldset-4_table_tbody_tr-42_td-1_button;
+    position-anchor: --main_section-2_fieldset-4_table_tbody_tr-42_td-1_button;
 }
 
 #main_section-2_fieldset-4 td:nth-child(2) {
@@ -457,28 +410,28 @@ main>section,
 }
 
 #main_section-2_fieldset-4_table_tbody_tr-46_td-1_button {
-    anchor-name: --modal_fieldset-4_table_tbody_tr-46_td-1_button;
+    anchor-name: --main_section-2_fieldset-4_table_tbody_tr-46_td-1_button;
 }
 
 #main_section-2_fieldset-4_table_tbody_tr-46_td-1_ul {
-    position-anchor: --modal_fieldset-4_table_tbody_tr-46_td-1_button;
+    position-anchor: --main_section-2_fieldset-4_table_tbody_tr-46_td-1_button;
 }
 
 #main_section-2_fieldset-4_table_tbody_tr-50_td-1_button {
-    anchor-name: --modal_fieldset-4_table_tbody_tr-50_td-1_button;
+    anchor-name: --main_section-2_fieldset-4_table_tbody_tr-50_td-1_button;
 }
 
 #main_section-2_fieldset-4_table_tbody_tr-50_td-1_ul {
-    position-anchor: --modal_fieldset-4_table_tbody_tr-50_td-1_button;
+    position-anchor: --main_section-2_fieldset-4_table_tbody_tr-50_td-1_button;
 }
 
 #main_section-2_fieldset-4_table_tbody_tr-55_td-1_button {
-    anchor-name: --modal_fieldset-4_table_tbody_tr-55_td-1_button;
+    anchor-name: --main_section-2_fieldset-4_table_tbody_tr-55_td-1_button;
     padding-inline-start: 0;
 }
 
 #main_section-2_fieldset-4_table_tbody_tr-55_td-1_ul {
-    position-anchor: --modal_fieldset-4_table_tbody_tr-55_td-1_button;
+    position-anchor: --main_section-2_fieldset-4_table_tbody_tr-55_td-1_button;
 }
 
 #main_section-2_fieldset-4_table_tbody_tr-55 .dads-input {

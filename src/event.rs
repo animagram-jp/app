@@ -17,7 +17,7 @@ use crate::model::{
 #[derive(Clone, Copy)]
 pub enum Dialog {
     None,
-    Modal,  // #modal
+    Modal,  // todo section(2)みたいな感じ
     Drawer, // #drawer
     Select { step: u8, index: u32 }, // #main_modal セレクトUI表示状態
     Input  { step: u8, value: u32 },   // #main_modal 入力UI表示状態
