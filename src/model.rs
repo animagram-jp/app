@@ -1240,7 +1240,7 @@ pub trait SkillTrait<const S: Skill> {
 
     // -> base, occupation_points, interest_points, change, modifier, sum
     fn as_editable_numeric(&self, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> (u16, u9, u9, i10, i10, i32) {
-        let sum = Self::BASE_PERCENT as i32 + occupation_points as i32 + interest_points as i32 + change as i32 + modifier as i32;
+        let sum = Self::BASE_PERCENT as i32 + occupation_points.value() as i32 + interest_points.value() as i32 + change.value() as i32 + modifier.value() as i32;
         (Self::BASE_PERCENT, occupation_points, interest_points, change, modifier, sum)
     }
 
@@ -1475,7 +1475,7 @@ pub trait ArtAndCraftTrait<const A: ArtAndCraft> {
 
     // -> base, occupation_points, interest_points, change, modifier, sum
     fn as_editable_numeric(&self, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> (u16, u9, u9, i10, i10, i32) {
-        let sum = Self::BASE_PERCENT as i32 + occupation_points as i32 + interest_points as i32 + change as i32 + modifier as i32;
+        let sum = Self::BASE_PERCENT as i32 + occupation_points.value() as i32 + interest_points.value() as i32 + change.value() as i32 + modifier.value() as i32;
         (Self::BASE_PERCENT, occupation_points, interest_points, change, modifier, sum)
     }
 }
@@ -1672,8 +1672,8 @@ pub trait FightingTrait<const F: Fighting> {
 
     // -> base, occupation_points, interest_points, change, modifier, sum
     fn as_editable_numeric(&self, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> (u16, u9, u9, i10, i10, i10) {
-        let sum = Self::BASE_PERCENT as i32 + occupation_points as i32 + interest_points as i32 + change as i32 + modifier as i32;
-        (Self::BASE_PERCENT, occupation_points, interest_points, change, modifier, sum as i10)
+        let sum = Self::BASE_PERCENT as i32 + occupation_points.value() as i32 + interest_points.value() as i32 + change.value() as i32 + modifier.value() as i32;
+        (Self::BASE_PERCENT, occupation_points, interest_points, change, modifier, i10::new(sum as i16))
     }
 }
 
@@ -1860,8 +1860,8 @@ pub trait FirearmsTrait<const F: Firearms> {
 
     // -> base, occupation_points, interest_points, change, modifier, sum
     fn as_editable_numeric(&self, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> (u16, u9, u9, i10, i10, i10) {
-        let sum = Self::BASE_PERCENT as i32 + occupation_points as i32 + interest_points as i32 + change as i32 + modifier as i32;
-        (Self::BASE_PERCENT, occupation_points, interest_points, change, modifier, sum as i10)
+        let sum = Self::BASE_PERCENT as i32 + occupation_points.value() as i32 + interest_points.value() as i32 + change.value() as i32 + modifier.value() as i32;
+        (Self::BASE_PERCENT, occupation_points, interest_points, change, modifier, i10::new(sum as i16))
     }
 }
 
@@ -1999,8 +1999,8 @@ pub trait LanguageTrait<const L: Language> {
     }
 
     fn as_editable_numeric(&self, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> (u16, u9, u9, i10, i10, i10) {
-        let sum = Self::BASE_PERCENT as i32 + occupation_points as i32 + interest_points as i32 + change as i32 + modifier as i32;
-        (Self::BASE_PERCENT, occupation_points, interest_points, change, modifier, sum as i10)
+        let sum = Self::BASE_PERCENT as i32 + occupation_points.value() as i32 + interest_points.value() as i32 + change.value() as i32 + modifier.value() as i32;
+        (Self::BASE_PERCENT, occupation_points, interest_points, change, modifier, i10::new(sum as i16))
     }
 }
 
@@ -2154,13 +2154,36 @@ pub trait PilotTrait<const P: Pilot> {
     const CHANGE:            Field = Field {position: 13, mask: (1 << 10) - 1};
     const MODIFIER:          Field = Field {position: 3, mask: (1 << 10) - 1};
 
-    fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) { todo!() }
+    fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
+        let raw = character.get(Self::BASE_ID).ok()
+            .and_then(|b| b.get(..5))
+            .map(|b| { let mut a = [0u8; 8]; a[..5].copy_from_slice(b); u64::from_le_bytes(a) })
+            .unwrap_or(0);
+        (
+            Self::OCCUPATION_POINTS.get(raw),
+            Self::INTEREST_POINTS.get(raw),
+            Self::CHANGE.get(raw),
+            Self::MODIFIER.get(raw),
+        )
+    }
 
-    fn write<'a>(&self, character: &'a mut DataStruct, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> &'a mut DataStruct { todo!() }
+    fn write<'a>(&self, character: &'a mut DataStruct, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> &'a mut DataStruct {
+        let raw = Self::OCCUPATION_POINTS.set(0u64, occupation_points);
+        let raw = Self::INTEREST_POINTS.set(raw, interest_points);
+        let raw = Self::CHANGE.set(raw, change);
+        let raw = Self::MODIFIER.set(raw, modifier);
+        let _ = character.set(Self::BASE_ID, &raw.to_le_bytes()[..5], None);
+        character
+    }
 
-    fn as_editable_string(&self, lang: Lang) -> (&'static str, Option<&'static str>) { todo!() }
+    fn as_editable_string(&self, lang: Lang) -> (&'static str, Option<&'static str>) {
+        (Skill::Pilot.name(&lang), P.label(lang))
+    }
 
-    fn as_editable_numeric(&self, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> (u16, u9, u9, i10, i10, i10) { todo!() }
+    fn as_editable_numeric(&self, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> (u16, u9, u9, i10, i10, i10) {
+        let sum = Self::BASE_PERCENT as i32 + occupation_points.value() as i32 + interest_points.value() as i32 + change.value() as i32 + modifier.value() as i32;
+        (Self::BASE_PERCENT, occupation_points, interest_points, change, modifier, i10::new(sum as i16))
+    }
 }
 
 pub struct PilotBoat;       impl PilotTrait<{ Pilot::Boat       }> for PilotBoat       {}
@@ -2190,9 +2213,32 @@ impl PilotCustom {
     const MODIFIER:          Field = Field {position: 3, mask: (1 << 10) - 1};
 
     // -> occupation_points, interest_points, change, modifier, name
-    pub fn read(&self, character: &DataStruct) -> (u16, u16, i16, i16, String) { todo!() }
+    pub fn read(&self, character: &DataStruct) -> (u16, u16, i16, i16, String) {
+        let raw = character.get(self.numeric_id()).ok()
+            .and_then(|b| b.get(..5))
+            .map(|b| { let mut a = [0u8; 8]; a[..5].copy_from_slice(b); u64::from_le_bytes(a) })
+            .unwrap_or(0);
+        let name = character.get(self.name_id()).ok()
+            .map(|b| String::from_utf8_lossy(b).into_owned())
+            .unwrap_or_default();
+        (
+            Self::OCCUPATION_POINTS.get(raw),
+            Self::INTEREST_POINTS.get(raw),
+            Self::CHANGE.get(raw),
+            Self::MODIFIER.get(raw),
+            name,
+        )
+    }
 
-    pub fn write<'a>(&self, character: &'a mut DataStruct, occupation_points: u16, interest_points: u16, change: i16, modifier: i16, name: &str) -> &'a mut DataStruct { todo!() }
+    pub fn write<'a>(&self, character: &'a mut DataStruct, occupation_points: u16, interest_points: u16, change: i16, modifier: i16, name: &str) -> &'a mut DataStruct {
+        let raw = Self::OCCUPATION_POINTS.set(0u64, occupation_points as u64);
+        let raw = Self::INTEREST_POINTS.set(raw, interest_points as u64);
+        let raw = Self::CHANGE.set(raw, change as u64);
+        let raw = Self::MODIFIER.set(raw, modifier as u64);
+        let _ = character.set(self.numeric_id(), &raw.to_le_bytes()[..5], None);
+        let _ = character.set(self.name_id(),    name.as_bytes(),         None);
+        character
+    }
 
     // read() の戻り値を引数に取る。character の読み出し不要。
     // -> base_percent(定数), occupation_points, interest_points, change, modifier, sum
@@ -2312,13 +2358,36 @@ pub trait ScienceTrait<const S: Science> {
     const CHANGE:            Field = Field {position: 13, mask: (1 << 10) - 1};
     const MODIFIER:          Field = Field {position: 3, mask: (1 << 10) - 1};
 
-    fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) { todo!() }
+    fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
+        let raw = character.get(Self::BASE_ID).ok()
+            .and_then(|b| b.get(..5))
+            .map(|b| { let mut a = [0u8; 8]; a[..5].copy_from_slice(b); u64::from_le_bytes(a) })
+            .unwrap_or(0);
+        (
+            Self::OCCUPATION_POINTS.get(raw),
+            Self::INTEREST_POINTS.get(raw),
+            Self::CHANGE.get(raw),
+            Self::MODIFIER.get(raw),
+        )
+    }
 
-    fn write<'a>(&self, character: &'a mut DataStruct, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> &'a mut DataStruct { todo!() }
+    fn write<'a>(&self, character: &'a mut DataStruct, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> &'a mut DataStruct {
+        let raw = Self::OCCUPATION_POINTS.set(0u64, occupation_points);
+        let raw = Self::INTEREST_POINTS.set(raw, interest_points);
+        let raw = Self::CHANGE.set(raw, change);
+        let raw = Self::MODIFIER.set(raw, modifier);
+        let _ = character.set(Self::BASE_ID, &raw.to_le_bytes()[..5], None);
+        character
+    }
 
-    fn as_editable_string(&self, lang: Lang) -> (&'static str, Option<&'static str>) { todo!() }
+    fn as_editable_string(&self, lang: Lang) -> (&'static str, Option<&'static str>) {
+        (Skill::Science.name(&lang), S.label(lang))
+    }
 
-    fn as_editable_numeric(&self, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> (u16, u9, u9, i10, i10, i10) { todo!() }
+    fn as_editable_numeric(&self, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> (u16, u9, u9, i10, i10, i10) {
+        let sum = Self::BASE_PERCENT as i32 + occupation_points.value() as i32 + interest_points.value() as i32 + change.value() as i32 + modifier.value() as i32;
+        (Self::BASE_PERCENT, occupation_points, interest_points, change, modifier, i10::new(sum as i16))
+    }
 }
 
 pub struct ScienceAstronomy;    impl ScienceTrait<{ Science::Astronomy    }> for ScienceAstronomy    {}
@@ -2351,9 +2420,32 @@ impl ScienceCustom {
     const MODIFIER:          Field = Field {position: 3, mask: (1 << 10) - 1};
 
     // -> occupation_points, interest_points, change, modifier, name
-    pub fn read(&self, character: &DataStruct) -> (u16, u16, i16, i16, String) { todo!() }
+    pub fn read(&self, character: &DataStruct) -> (u16, u16, i16, i16, String) {
+        let raw = character.get(self.numeric_id()).ok()
+            .and_then(|b| b.get(..5))
+            .map(|b| { let mut a = [0u8; 8]; a[..5].copy_from_slice(b); u64::from_le_bytes(a) })
+            .unwrap_or(0);
+        let name = character.get(self.name_id()).ok()
+            .map(|b| String::from_utf8_lossy(b).into_owned())
+            .unwrap_or_default();
+        (
+            Self::OCCUPATION_POINTS.get(raw),
+            Self::INTEREST_POINTS.get(raw),
+            Self::CHANGE.get(raw),
+            Self::MODIFIER.get(raw),
+            name,
+        )
+    }
 
-    pub fn write<'a>(&self, character: &'a mut DataStruct, occupation_points: u16, interest_points: u16, change: i16, modifier: i16, name: &str) -> &'a mut DataStruct { todo!() }
+    pub fn write<'a>(&self, character: &'a mut DataStruct, occupation_points: u16, interest_points: u16, change: i16, modifier: i16, name: &str) -> &'a mut DataStruct {
+        let raw = Self::OCCUPATION_POINTS.set(0u64, occupation_points as u64);
+        let raw = Self::INTEREST_POINTS.set(raw, interest_points as u64);
+        let raw = Self::CHANGE.set(raw, change as u64);
+        let raw = Self::MODIFIER.set(raw, modifier as u64);
+        let _ = character.set(self.numeric_id(), &raw.to_le_bytes()[..5], None);
+        let _ = character.set(self.name_id(),    name.as_bytes(),         None);
+        character
+    }
 
     // read() の戻り値を引数に取る。character の読み出し不要。
     // -> base_percent(定数), occupation_points, interest_points, change, modifier, sum
@@ -2426,13 +2518,36 @@ pub trait SurvivalTrait<const S: Survival> {
     const CHANGE:            Field = Field {position: 13, mask: (1 << 10) - 1};
     const MODIFIER:          Field = Field {position: 3, mask: (1 << 10) - 1};
 
-    fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) { todo!() }
+    fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
+        let raw = character.get(Self::BASE_ID).ok()
+            .and_then(|b| b.get(..5))
+            .map(|b| { let mut a = [0u8; 8]; a[..5].copy_from_slice(b); u64::from_le_bytes(a) })
+            .unwrap_or(0);
+        (
+            Self::OCCUPATION_POINTS.get(raw),
+            Self::INTEREST_POINTS.get(raw),
+            Self::CHANGE.get(raw),
+            Self::MODIFIER.get(raw),
+        )
+    }
 
-    fn write<'a>(&self, character: &'a mut DataStruct, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> &'a mut DataStruct { todo!() }
+    fn write<'a>(&self, character: &'a mut DataStruct, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> &'a mut DataStruct {
+        let raw = Self::OCCUPATION_POINTS.set(0u64, occupation_points);
+        let raw = Self::INTEREST_POINTS.set(raw, interest_points);
+        let raw = Self::CHANGE.set(raw, change);
+        let raw = Self::MODIFIER.set(raw, modifier);
+        let _ = character.set(Self::BASE_ID, &raw.to_le_bytes()[..5], None);
+        character
+    }
 
-    fn as_editable_string(&self, lang: Lang) -> (&'static str, Option<&'static str>) { todo!() }
+    fn as_editable_string(&self, lang: Lang) -> (&'static str, Option<&'static str>) {
+        (Skill::Survival.name(&lang), S.label(lang))
+    }
 
-    fn as_editable_numeric(&self, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> (u16, u9, u9, i10, i10, i10) { todo!() }
+    fn as_editable_numeric(&self, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> (u16, u9, u9, i10, i10, i10) {
+        let sum = Self::BASE_PERCENT as i32 + occupation_points.value() as i32 + interest_points.value() as i32 + change.value() as i32 + modifier.value() as i32;
+        (Self::BASE_PERCENT, occupation_points, interest_points, change, modifier, i10::new(sum as i16))
+    }
 }
 
 pub struct SurvivalArctic; impl SurvivalTrait<{ Survival::Arctic }> for SurvivalArctic {}
@@ -2455,9 +2570,32 @@ impl SurvivalCustom {
     const MODIFIER:          Field = Field {position: 3, mask: (1 << 10) - 1};
 
     // -> occupation_points, interest_points, change, modifier, name
-    pub fn read(&self, character: &DataStruct) -> (u16, u16, i16, i16, String) { todo!() }
+    pub fn read(&self, character: &DataStruct) -> (u16, u16, i16, i16, String) {
+        let raw = character.get(self.numeric_id()).ok()
+            .and_then(|b| b.get(..5))
+            .map(|b| { let mut a = [0u8; 8]; a[..5].copy_from_slice(b); u64::from_le_bytes(a) })
+            .unwrap_or(0);
+        let name = character.get(self.name_id()).ok()
+            .map(|b| String::from_utf8_lossy(b).into_owned())
+            .unwrap_or_default();
+        (
+            Self::OCCUPATION_POINTS.get(raw),
+            Self::INTEREST_POINTS.get(raw),
+            Self::CHANGE.get(raw),
+            Self::MODIFIER.get(raw),
+            name,
+        )
+    }
 
-    pub fn write<'a>(&self, character: &'a mut DataStruct, occupation_points: u16, interest_points: u16, change: i16, modifier: i16, name: &str) -> &'a mut DataStruct { todo!() }
+    pub fn write<'a>(&self, character: &'a mut DataStruct, occupation_points: u16, interest_points: u16, change: i16, modifier: i16, name: &str) -> &'a mut DataStruct {
+        let raw = Self::OCCUPATION_POINTS.set(0u64, occupation_points as u64);
+        let raw = Self::INTEREST_POINTS.set(raw, interest_points as u64);
+        let raw = Self::CHANGE.set(raw, change as u64);
+        let raw = Self::MODIFIER.set(raw, modifier as u64);
+        let _ = character.set(self.numeric_id(), &raw.to_le_bytes()[..5], None);
+        let _ = character.set(self.name_id(),    name.as_bytes(),         None);
+        character
+    }
 
     // read() の戻り値を引数に取る。character の読み出し不要。
     // -> base_percent(定数), occupation_points, interest_points, change, modifier, sum
