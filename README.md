@@ -2,8 +2,7 @@
 
 # app
 
-[![animagram](https://img.shields.io/badge/animagram-5B2F91?logo=github&logoColor=white)](https://github.com/animagram-jp)
-[![Andyou](https://img.shields.io/badge/Andyou_007-black?logo=x)](https://x.com/Andyou_007)
+[![animagram](https://img.shields.io/badge/animagram-5B2F91?logo=github&logoColor=white)](https://github.com/animagram-jp)[![Andyou](https://img.shields.io/badge/Andyou_007-black?logo=x)](https://x.com/Andyou_007)
 
 Apps from animagram, made by Andyou.
 
@@ -19,7 +18,7 @@ micro version within each month).
 
 ---
 
-[![日本語](https://img.shields.io/badge/言語-日本語-red)](#ja)
+[English](#version) | [日本語](#ja) 
 
 ## CoC7th - Call of Cthulhu 7th edition playing engine
 
