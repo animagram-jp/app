@@ -2532,8 +2532,39 @@ impl SurvivalCustom {
 }
 
 // ============================================================
-// --- 装備 (Equipment) ---
+// --- Possession --- p.44
 // ============================================================
+
+pub enum Possession {
+    Weapon,
+    Armor,
+    Equipment,
+    Wealth,
+}
+
+impl Possession {
+    pub fn id(&self) -> u32 {
+        Character::Possession.id() + match self {
+            Self::Weapon    => 0,
+            Self::Armor     => 1,
+            Self::Equipment => 2,
+            Self::Wealth    => 3,
+        }
+    }
+
+    pub fn label(&self, lang: Lang) -> &'static &str {
+        match (self, lang) {
+            (Self::Weapon, Lang::En(_)) => "Weapon",
+            (Self::Weapon, Lang::Ja)    => "武器",
+            (Self::Armor,  Lang::En(_)) => "Armor",
+            (Self::Armor,  Lang::Ja)    => "装甲",
+            (Self::Equipment, Lang::En(_)) => "Equipment",
+            (Self::Equipment, Lang::Ja)    => "所持品",
+            (Self::Wealth, Lang::En(_)) => "Wealth",
+            (Self::Wealth, Lang::Ja)    => "収入と財産",
+        }
+    }
+}
 
 pub enum Weapon {
     // --- 近接・投擲武器 ---
@@ -3048,42 +3079,6 @@ impl Wealth {
     }
     pub fn label_assets(lang: Lang) -> &'static &str {
         match lang { Lang::En(_) => "Assets", Lang::Ja => "資産" }
-    }
-}
-
-// --- 所持品カテゴリ (Possession) ---
-pub enum Possession {
-    Weapon(Weapon),
-    Armor(Armor),
-    GearItem(String),
-    Wealth(Wealth),
-}
-
-impl Possession {
-    pub fn id(&self) -> u32 {
-        Character::Possession.id() + match self {
-            Self::Weapon(_)   => 0,
-            Self::Armor(_)    => 1,
-            Self::GearItem(_) => 2,
-            Self::Wealth(_)   => 3,
-        }
-    }
-
-    pub fn label(&self, lang: Lang) -> &'static &str {
-        match (self, lang) {
-            (Self::Weapon(_),   Lang::En(_)) => "Weapon",
-            (Self::Weapon(_),   Lang::Ja) => "武器",
-            (Self::Armor(_),    Lang::En(_)) => "Armor",
-            (Self::Armor(_),    Lang::Ja) => "装甲",
-            (Self::GearItem(_), Lang::En(_)) => "Equipment",
-            (Self::GearItem(_), Lang::Ja) => "装備",
-            (Self::Wealth(_),   Lang::En(_)) => "Wealth",
-            (Self::Wealth(_),   Lang::Ja) => "収入と財産",
-        }
-    }
-
-    pub fn decode() {
-        // name: &str
     }
 }
 
