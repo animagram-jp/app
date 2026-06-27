@@ -1,5 +1,3 @@
-use core::{option::Option::{self, Some, None}, result::Result::{self, Ok}, marker::Copy, fmt, cmp::PartialEq, default::Default, clone::Clone, matches};
-use alloc::{vec::Vec, vec, string::String, format};
 use wasm_bindgen::JsValue;
 use js_sys::Reflect;
 use serde::Serialize;
@@ -12,28 +10,36 @@ pub enum Operation {
     SetText,
     SetValue,
     SetAttr,
+    RemoveAttr,
     AddClass,
     RemoveClass,
-    Focus,
-    OpenModal,
+    SetWidth,
+    SetHeight,
+    SetBackground,
+    SetTransform,
+    ShowModal,
     CloseModal,
-    JsClass,
-    SetHtml,
+    Focus,
+    JsFn,
 }
 
 impl Operation {
     pub fn as_u8(&self) -> u8 {
         match self {
-            Self::SetText     => 1,
-            Self::SetValue    => 2,
-            Self::SetAttr     => 3,
-            Self::AddClass    => 4,
-            Self::RemoveClass => 5,
-            Self::Focus       => 6,
-            Self::OpenModal   => 7,
-            Self::CloseModal  => 8,
-            Self::JsClass     => 9,
-            Self::SetHtml     => 10,
+            Self::SetText       =>  1,
+            Self::SetValue      =>  2,
+            Self::SetAttr       =>  3,
+            Self::RemoveAttr    =>  4,
+            Self::AddClass      =>  5,
+            Self::RemoveClass   =>  6,
+            Self::SetWidth      =>  7,
+            Self::SetHeight     =>  8,
+            Self::SetBackground =>  9,
+            Self::SetTransform  => 10,
+            Self::ShowModal     => 11,
+            Self::CloseModal    => 12,
+            Self::Focus         => 13,
+            Self::JsFn          => 14,
         }
     }
 }
@@ -127,7 +133,7 @@ pub enum EventType {
     Input,
     Change,
     FocusIn,
-    Blur,
+    FocusOut,
     Resize,
     Scroll,
     Drop,
@@ -148,7 +154,7 @@ impl EventType {
             "input"        => Self::Input,
             "change"       => Self::Change,
             "focusin"      => Self::FocusIn,
-            "blur"         => Self::Blur,
+            "focusout"     => Self::FocusOut,
             "resize"       => Self::Resize,
             "scroll"       => Self::Scroll,
             "drop"         => Self::Drop,
@@ -194,19 +200,13 @@ impl KeyName {
 // ============================================================
 
 pub enum Device {
-    Mobile,
-    Tablet,
-    Desktop,
+    Touch,
+    Mouse,
 }
 
-// screen_width: screen.width (px)
 // pointer_coarse: window.matchMedia('(pointer: coarse)').matches
-pub fn detect_device(screen_width: u32, pointer_coarse: bool) -> Device {
-    match (pointer_coarse, screen_width) {
-        (true, w) if w < 768  => Device::Mobile,
-        (true, _)             => Device::Tablet,
-        _                     => Device::Desktop,
-    }
+pub fn detect_device(pointer_coarse: bool) -> Device {
+    if pointer_coarse { Device::Touch } else { Device::Mouse }
 }
 
 // ============================================================
@@ -219,7 +219,8 @@ pub enum Gesture {
     SwipeDown,
     SwipeLeft,
     SwipeRight,
-    Drag,
+    Drag { x: f64, y: f64 },
+    DragEnd,
 }
 
 // pointerdown:   is_down = true, 座標・時刻記録, タイマー起動
@@ -234,6 +235,9 @@ pub struct PointerState {
     current_x:  f64,    // default: 0.0
     current_y:  f64,    // default: 0.0
     start_time: f64,    // default: 0.0
+    drag_offset: (f64, f64), // PointerDown時の (pointer_px - カード左上px)
+    drag_px:     (f64, f64), // Drag中のカード左上px座標(一時)
+    is_dragging: bool,       // Dragジェスチャが1回以上発火した
 }
 
 impl PointerState {
@@ -241,26 +245,37 @@ impl PointerState {
     pub fn update(self, event_type: &EventType, x: f64, y: f64, time: f64) -> Self {
         match event_type {
             EventType::PointerDown => Self {
-                is_down:    true,
-                start_x:    x,
-                start_y:    y,
-                current_x:  x,
-                current_y:  y,
-                start_time: time,
+                is_down:     true,
+                start_x:     x,
+                start_y:     y,
+                current_x:   x,
+                current_y:   y,
+                start_time:  time,
+                drag_offset: (0.0, 0.0),
+                drag_px:     (0.0, 0.0),
+                is_dragging: false,
             },
             EventType::PointerMove => Self {
                 current_x: x,
                 current_y: y,
                 ..self
             },
-            EventType::PointerUp | EventType::PointerCancel => Self::default(),
+            EventType::PointerUp | EventType::PointerCancel => Self {
+                is_dragging: false,
+                ..Self::default()
+            },
             _ => self,
         }
     }
 }
 
-pub fn detect_gesture(state: &PointerState, event_type: &EventType, current_time: f64) -> Option<Gesture> {
-    if !state.is_down { return None; }
+pub fn detect_gesture(state: &PointerState, prev_state: &PointerState, event_type: &EventType, current_time: f64) -> Option<Gesture> {
+    if !state.is_down {
+        if prev_state.is_dragging {
+            return Some(Gesture::DragEnd);
+        }
+        return None;
+    }
 
     let dx = state.current_x - state.start_x;
     let dy = state.current_y - state.start_y;
@@ -284,9 +299,9 @@ pub fn detect_gesture(state: &PointerState, event_type: &EventType, current_time
         }
     }
 
-    // drag: 距離大きい
-    if distance > 10.0 {
-        return Some(Gesture::Drag);
+    // drag: PointerMove中に距離が閾値超え → 差分を返す
+    if matches!(event_type, EventType::PointerMove) && distance > 10.0 {
+        return Some(Gesture::Drag { x: state.current_x, y: state.current_y });
     }
 
     None

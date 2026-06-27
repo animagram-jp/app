@@ -37,22 +37,22 @@ pub struct Handler {
 }
 
 impl Handler {
-    pub async fn ready() -> Self {
+    pub async fn ready(_viewport_width: f64, _viewport_height: f64) -> Self {
         Self {
             dialog:     Dialog::None,
             lang:       Lang::Ja,
-            last_toast: u2::new(1), // todo! 正しいか要確認
+            last_toast: u2::new(1),
             character:  DataStruct::new(0, 0.0, 256),
             characters: FileStore::new(CHARACTER_SCHEMA_NAME).await
                 .unwrap_or_else(|e| panic!("FileStore::new failed: {}", e)),
-            logs: Vec::new(),
+            logs:       Vec::new(),
         }
     }
     pub fn close(&self) {
         self.characters.close();
     }
 
-    pub fn initial_draw() -> Vec<Command> {
+    pub fn initial_draw(&self) -> Vec<Command> {
         Vec::new()
     }
     pub fn process(&mut self, event: &CanvasEvent) -> Vec<Command> {
@@ -78,15 +78,15 @@ impl Handler {
                     vec![]
                 }
             }
-            (EventType::KeyDown, _)             => todo!("keydown"),
-            (EventType::Input,   _)             => todo!("input"),
-            (EventType::Change,  _)             => todo!("change"),
-            (EventType::Blur,    _)             => todo!("blur"),
-            (EventType::Submit,  _)             => todo!("submit"),
-            _                                   => vec![],
+            (EventType::KeyDown,  _) => todo!("keydown"),
+            (EventType::Input,    _) => todo!("input"),
+            (EventType::Change,   _) => todo!("change"),
+            (EventType::FocusOut, _) => todo!("FocusOut"),
+            (EventType::Submit,   _) => todo!("submit"),
+            _                        => vec![],
         }
     }
-    pub fn process_gesture(gesture: &Gesture) -> Vec<Command> {
+    pub fn process_gesture(&mut self, gesture: &Gesture) -> Vec<Command> {
         todo!()
     }
 }
@@ -179,7 +179,7 @@ pub fn open_modal() -> Vec<Command> {
     let mut commands = Vec::new();
 
     let modal = Id::new(&[(Tag::Modal, None)]);
-    commands.push(Command::new(Operation::OpenModal, &modal.encode(), None, None));
+    commands.push(Command::new(Operation::ShowModal, &modal.encode(), None, None));
 
     commands
 }
@@ -271,7 +271,7 @@ impl Toast {
             Command::new(Operation::SetText,  &span.encode(),    None, Some(self.icon())),
             Command::new(Operation::SetText,  &p.encode(),       None, Some(self.label(state.lang))),
             Command::new(Operation::AddClass, &article.encode(), None, Some(self.css_class())),
-            Command::new(Operation::JsClass,  &article.encode(), None, Some("show")),
+            Command::new(Operation::JsFn,     &article.encode(), None, Some("show")),
         ]
     }
 }

@@ -7,7 +7,7 @@ self.addEventListener("message", async (e) => {
     const { default: init, App } = await import("./app/app.js");
     await init();
 
-    app = await App.init(payload.screen_width, payload.pointer_coarse);
+    app = await App.init(payload.pointer_coarse, payload.viewport_width ?? 0, payload.viewport_height ?? 0);
     self.postMessage({ type: "ready" });
     const init_commands = app.process({});
     if (init_commands?.length) self.postMessage({ type: "execute", payload: Array.from(init_commands) });

@@ -26,8 +26,9 @@ function start() {
   w.postMessage({
     type: "init",
     payload: {
-      screen_width:   screen.width,
-      pointer_coarse: window.matchMedia("(pointer: coarse)").matches,
+      pointer_coarse:  window.matchMedia("(pointer: coarse)").matches,
+      viewport_width:  window.innerWidth,
+      viewport_height: window.innerHeight,
     },
   });
 
@@ -51,21 +52,25 @@ function execute({ operation, id, attribute, value }) {
   const el = document.getElementById(id);
   if (!el) return;
   switch (operation) {
-    case 1: el.textContent = value ?? ""; break;
-    case 2: el.value = value ?? ""; break;
-    case 3: el.toggleAttribute(attribute, value === "true"); break;
-    case 4: el.classList.add(value); break;
-    case 5: el.classList.remove(value); break;
-    case 6: el.focus(); break;
-    case 7: el.showModal(); break;
-    case 8: el.close(); break;
-    case 9: applyClass(el, value); break;
-    case 10: el.innerHTML = value ?? ""; break;
+    case 1:  el.textContent = value ?? ""; break;
+    case 2:  el.value = value ?? ""; break;
+    case 3:  el.setAttribute(attribute, value ?? ""); break;
+    case 4:  el.removeAttribute(attribute); break;
+    case 5:  el.classList.add(value); break;
+    case 6:  el.classList.remove(value); break;
+    case 7:  el.style.width = value + "px"; break;
+    case 8:  el.style.height = value + "px"; break;
+    case 9:  el.style.background = value; break;
+    case 10: el.style.transform = `translate(${attribute}px, ${value}px)`; break;
+    case 11: el.showModal(); break;
+    case 12: el.close(); break;
+    case 13: el.focus(); break;
+    case 14: jsFn[value]?.(el); break;
   }
 }
 
-function applyClass(el, value) {
-  if (value === "show") {
+const jsFn = {
+  show: (el) => {
     el.classList.remove("hidden");
     requestAnimationFrame(() => requestAnimationFrame(() => {
       el.classList.add("show");
@@ -74,17 +79,18 @@ function applyClass(el, value) {
         el.addEventListener("transitionend", () => el.classList.remove("hide"), { once: true });
       }, 3000);
     }));
-  } else if (value === "hide") {
+  },
+  hide: (el) => {
     el.classList.replace("show", "hide");
     el.addEventListener("transitionend", () => el.classList.remove("hide"), { once: true });
-  }
-}
+  },
+};
 
 // ============================================================
 // send event
 // ============================================================
 
-const ROOTS = ["header", "main", "modal", "form", "output"]
+const ROOTS = ["header", "main", "modal", "form", "output", "section"]
   .map(id => document.getElementById(id));
 
 function send(e) {
@@ -106,6 +112,23 @@ function bind() {
   for (const type of EVENTS) {
     document.addEventListener(type, send);
   }
+
+  let resizeTimer;
+  window.addEventListener("resize", () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      worker.postMessage({ type: "event", payload: {
+        event_type: "resize",
+        target_id:  "",
+        key:        "",
+        value:      "",
+        x:          window.innerWidth,
+        y:          window.innerHeight,
+        time:       performance.now(),
+      }});
+    }, 100);
+  });
+
   window.addEventListener("pagehide", (e) => {
     if (!e.persisted) worker.postMessage({ type: "close" });
   });

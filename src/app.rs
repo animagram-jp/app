@@ -31,15 +31,15 @@ pub struct App {
 
 #[wasm_bindgen]
 impl App {
-    pub async fn init(screen_width: u32, pointer_coarse: bool) -> App {
-        let device = detect_device(screen_width, pointer_coarse);
+    pub async fn init(pointer_coarse: bool, viewport_width: f64, viewport_height: f64) -> App {
+        let device = detect_device(pointer_coarse);
 
         let mut app = App {
             device,
             pointer_state: PointerState::default(),
             events:        Vec::new(),
             commands:      Vec::new(),
-            handler:       Handler::ready().await,
+            handler:       Handler::ready(viewport_width, viewport_height).await,
         };
 
         app.events.push(Event::Ready);
@@ -52,19 +52,26 @@ impl App {
 
     pub fn process(&mut self, payload: JsValue) -> JsValue {
         let canvas_event = CanvasEvent::decode(&payload);
+        let prev_state = self.pointer_state;
         self.pointer_state = self.pointer_state.update(
             &canvas_event.event_type,
             canvas_event.x, canvas_event.y, canvas_event.time,
         );
-        match detect_gesture(&self.pointer_state, &canvas_event.event_type, canvas_event.time) {
-            Some(gesture) => self.events.push(Event::Gesture(gesture)),
+        match detect_gesture(&self.pointer_state, &prev_state, &canvas_event.event_type, canvas_event.time) {
+            Some(gesture) => {
+                if matches!(gesture, Gesture::Drag { .. }) {
+                    self.pointer_state.is_dragging = true;
+                }
+                self.events.push(Event::Gesture(gesture));
+            }
             None => match &canvas_event.event_type {
-                EventType::PointerDown | EventType::PointerMove |
-                EventType::PointerUp   | EventType::PointerCancel => {}, // 正しいのか要確認
+                EventType::PointerDown => self.events.push(Event::Canvas(canvas_event)),
+                EventType::PointerMove |
+                EventType::PointerUp   | EventType::PointerCancel => {},
                 _ => self.events.push(Event::Canvas(canvas_event)),
             },
         }
-        while let Some(event) = self.events.pop() { // 必要そうならtimeoutやlimitを設ける
+        while let Some(event) = self.events.pop() {
             let commands = self.dispatch(event);
             self.commands.extend(commands);
         }
@@ -76,13 +83,13 @@ impl App {
     fn dispatch(&mut self, event: Event) -> Vec<Command> {
         match event {
             Event::Ready => {
-                Handler::initial_draw()
+                self.handler.initial_draw()
             }
             Event::Canvas(canvas_event) => {
                 self.handler.process(&canvas_event)
             }
             Event::Gesture(gesture) => {
-                Handler::process_gesture(&gesture)
+                self.handler.process_gesture(&gesture)
             }
         }
     }
