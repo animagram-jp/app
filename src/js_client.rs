@@ -269,7 +269,7 @@ impl PointerState {
     }
 }
 
-pub fn detect_gesture(state: &PointerState, prev_state: &PointerState, event_type: &EventType, current_time: f64) -> Option<Gesture> {
+pub fn detect_gesture(state: &mut PointerState, prev_state: &PointerState, event_type: &EventType, current_time: f64) -> Option<Gesture> {
     if !state.is_down {
         if prev_state.is_dragging {
             return Some(Gesture::DragEnd);
@@ -301,6 +301,7 @@ pub fn detect_gesture(state: &PointerState, prev_state: &PointerState, event_typ
 
     // drag: PointerMove中に距離が閾値超え → 差分を返す
     if matches!(event_type, EventType::PointerMove) && distance > 10.0 {
+        state.is_dragging = true;
         return Some(Gesture::Drag { x: state.current_x, y: state.current_y });
     }
 

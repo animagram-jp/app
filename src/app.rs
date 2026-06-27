@@ -57,11 +57,8 @@ impl App {
             &canvas_event.event_type,
             canvas_event.x, canvas_event.y, canvas_event.time,
         );
-        match detect_gesture(&self.pointer_state, &prev_state, &canvas_event.event_type, canvas_event.time) {
+        match detect_gesture(&mut self.pointer_state, &prev_state, &canvas_event.event_type, canvas_event.time) {
             Some(gesture) => {
-                if matches!(gesture, Gesture::Drag { .. }) {
-                    self.pointer_state.is_dragging = true;
-                }
                 self.events.push(Event::Gesture(gesture));
             }
             None => match &canvas_event.event_type {
