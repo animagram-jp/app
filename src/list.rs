@@ -1,4 +1,11 @@
-use core::{mem::size_of, option::Option::{self, Some, None}, result::Result::{self, Ok, Err}, marker::Copy, fmt, cmp::PartialEq, default::Default, clone::Clone, matches};
+use core::{
+    mem::size_of, option::Option::{self, Some, None}, 
+    result::Result::{self, Ok, Err}, marker::Copy, 
+    cmp::PartialEq, 
+    default::Default, 
+    clone::Clone, 
+    matches
+};
 use alloc::{collections::BTreeMap, vec::Vec, vec};
 
 #[derive(Debug)]

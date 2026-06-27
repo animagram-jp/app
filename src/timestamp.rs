@@ -9,8 +9,8 @@ use arbitrary_int::traits::Integer;
 //   = 0: The value is local time of timezone
 
 pub struct Field {
-    position: u32,
-    mask: u64,
+    pub position: u32,
+    pub mask: u64,
 }
 
 impl Field {

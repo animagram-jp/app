@@ -1,5 +1,6 @@
 use core::{primitive::{u8, i8, i32}, array::from_fn};
 use alloc::string::String;
+use arbitrary_int::{u7, u9, i10};
 use crate::{Lang, En};
 use crate::list::ListError;
 use crate::timestamp::Field;
@@ -77,7 +78,7 @@ impl Character {
         }
     }
 
-    pub fn display(&self, lang: Lang) -> &'static &str {
+    pub fn display(&self, lang: Lang) -> &'static str {
         match (self, lang) {
             (Self::Profile, Lang::En(_))        => "Profile",
             (Self::Profile, Lang::Ja)           => "プロフィール",
@@ -126,7 +127,7 @@ pub enum Profile {
 impl Profile {
 
     pub fn ids(&self) -> &'static [u32] {
-        const BASE: u32 = Character::Profile::base_id();
+        const BASE: u32 = Character::Profile.base_id();
         match self {
             Self::Name       => &[BASE + 0, BASE + 1],
             Self::Birthpalce => &[BASE + 2],
@@ -137,7 +138,7 @@ impl Profile {
         }
     }
 
-    pub fn display(&self, lang: Lang) -> &'static &str {
+    pub fn display(&self, lang: Lang) -> &'static str {
         match (self, lang) {
             (Self::Name, Lang::En(_)) => "Name",
             (Self::Name, Lang::Ja)    => "名前",
@@ -193,7 +194,7 @@ impl Name {
     pub fn display(name: &String, complement: &Option<String>) -> String {
         match complement {
             Some(c) if !c.is_empty() => format!("{name} ({c})"),
-            _ => name,
+            _ => name.clone(),
         }
     }
 }
@@ -514,7 +515,7 @@ pub enum Characteristic { // Characteristic {initial: u16, change: i16, modifier
 
 impl Characteristic {
 
-    pub fn label(&self, lang: Lang) -> &'static &str {
+    pub fn label(&self, lang: Lang) -> &'static str {
         match (self, lang) {
             (Self::Strength,     _) => "STR",
             (Self::Constitution, _) => "CON",
@@ -528,7 +529,7 @@ impl Characteristic {
     }
 
     pub const fn id(&self) -> u32 {
-        Character::Characteristic.id() + match self {
+        Character::Characteristic.base_id() + match self {
             Self::Strength     => 0,
             Self::Constitution => 1,
             Self::Size         => 2,
@@ -541,7 +542,7 @@ impl Characteristic {
     }
 
     pub fn from_id(id: u8) -> Option<Self> {
-        let offset = id as u32 - Character::Characteristic.id();
+        let offset = id as u32 - Character::Characteristic.base_id();
         match offset {
             0 => Some(Self::Strength),
             1 => Some(Self::Constitution),
@@ -639,7 +640,7 @@ impl SecondaryAttribute {
         }
     }
 
-    pub fn label(&self, lang: Lang) -> &'static &str {
+    pub fn label(&self, lang: Lang) -> &'static str {
         match (self, lang) {
             (Self::HitPoints,                    _) => "HP",
             (Self::MagicPoints,                  _) => "MP",
@@ -664,7 +665,7 @@ impl SecondaryAttribute {
 pub struct HitPoints; // HitPoints: u8 | CON, SIZ -> u8
 
 impl HitPoints {
-    pub fn id() -> u32 { SecondaryAttribute::HitPoints.id() }
+    pub fn id() -> u32 { SecondaryAttribute::HitPoints.base_id() }
 
     pub fn read(character: &DataStruct) -> u8 {
         character.get(Self::id()).ok()
@@ -687,7 +688,7 @@ impl HitPoints {
 pub struct MagicPoints; // MagicPoints: u8 | POW -> u8
 
 impl MagicPoints {
-    pub fn id() -> u32 { SecondaryAttribute::MagicPoints.id() }
+    pub fn id() -> u32 { SecondaryAttribute::MagicPoints.base_id() }
 
     pub fn read(character: &DataStruct) -> u8 {
         character.get(Self::id()).ok()
@@ -710,18 +711,17 @@ pub struct Luck; // Luck: u8 | -> u8
 impl Luck {
 
     pub fn read(character: &DataStruct) -> u8 {
-        character.get(SecondaryAttribute::Luck.id()).ok()
+        character.get(SecondaryAttribute::Luck.base_id()).ok()
             .and_then(|b| b.first().copied())
             .unwrap_or(0)
     }
 
     pub fn write<'a>(character: &'a mut DataStruct, value: u8) -> &'a mut DataStruct {
-        let _ = character.set(SecondaryAttribute::Luck.id(), &[value], None);
+        let _ = character.set(SecondaryAttribute::Luck.base_id(), &[value], None);
         character
     }
 
     pub fn roll() -> u8 {
-        use super::dice;
         (dice::roll(&[(3, 6, 0)]) * 5) as u8
     }
 }
@@ -730,13 +730,13 @@ pub struct Sanity; // Sanity: u8 | POW -> u8
 
 impl Sanity {
     pub fn read(character: &DataStruct) -> u8 {
-        character.get(SecondaryAttribute::Sanity.id()).ok()
+        character.get(SecondaryAttribute::Sanity.base_id()).ok()
             .and_then(|b| b.first().copied())
             .unwrap_or(0)
     }
 
     pub fn write<'a>(character: &'a mut DataStruct, value: u8) -> &'a mut DataStruct {
-        let _ = character.set(SecondaryAttribute::Sanity.id(), &[value], None);
+        let _ = character.set(SecondaryAttribute::Sanity.base_id(), &[value], None);
         character
     }
 
@@ -750,14 +750,14 @@ pub struct Build; // Build: i8 | STR, SIZ -> i8
 impl Build {
 
     pub fn read(character: &DataStruct) -> i8 {
-        character.get(SecondaryAttribute::Build.id()).ok()
+        character.get(SecondaryAttribute::Build.base_id()).ok()
             .and_then(|b| b.first().copied())
             .map(|b| b as i8)
             .unwrap_or(0)
     }
 
     pub fn write<'a>(character: &'a mut DataStruct, value: i8) -> &'a mut DataStruct {
-        let _ = character.set(Self::id(), &[value as u8], None);
+        let _ = character.set(SecondaryAttribute::Build.base_id(), &[value as u8], None);
         character
     }
 
@@ -782,6 +782,10 @@ impl Build {
 pub struct DamageBonus; // DamageBonus: DamageBonusTuple | Build -> DamageBonusTuple
 
 impl DamageBonus {
+
+    pub fn read(character: &DataStruct) -> DamageBonusTuple {
+        Self::derive(character)
+    }
 
     pub fn display(character: &DataStruct) -> String {
         dice::display(&[Self::read(character)])
@@ -808,13 +812,13 @@ pub struct MoveRate; // MoveRate: u8 | STR, DEX, SIZ, Age -> u8
 impl MoveRate {
 
     pub fn read(character: &DataStruct) -> u8 {
-        character.get(SecondaryAttribute::MoveRate.id()).ok()
+        character.get(SecondaryAttribute::MoveRate.base_id()).ok()
             .and_then(|b| b.first().copied())
             .unwrap_or(0)
     }
 
     pub fn write<'a>(character: &'a mut DataStruct, value: u8) -> &'a mut DataStruct {
-        let _ = character.set(SecondaryAttribute::MoveRate.id(), &[value], None);
+        let _ = character.set(SecondaryAttribute::MoveRate.base_id(), &[value], None);
         character
     }
 
@@ -842,14 +846,14 @@ pub struct OccupationSkillPoints; // OccupationSkillPoints: (Characteristic, Cha
 impl OccupationSkillPoints {
 
     pub fn read(character: &DataStruct) -> Option<(Characteristic, Characteristic)> {
-        let b = character.get(SecondaryAttribute::OccupationSkillPoints.id()).ok()?;
+        let b = character.get(SecondaryAttribute::OccupationSkillPoints.base_id()).ok()?;
         let c1 = Characteristic::from_id(*b.first()?)?;
         let c2 = Characteristic::from_id(*b.get(1)?)?;
         Some((c1, c2))
     }
 
     pub fn write<'a>(character: &'a mut DataStruct, value: (Characteristic, Characteristic)) -> &'a mut DataStruct {
-        let _ = character.set(SecondaryAttribute::OccupationSkillPoints.id(), &[value.0.id() as u8, value.1.id() as u8], None);
+        let _ = character.set(SecondaryAttribute::OccupationSkillPoints.base_id(), &[value.0.id() as u8, value.1.id() as u8], None);
         character
     }
 
@@ -887,7 +891,7 @@ impl InterestSkillPoints {
 // Skill, ArtAndCraft, Fighting, Firearms, LanguageOther, Survival p.54
 // ============================================================
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum Skill {
     Accounting,
     Anthropology,
@@ -1046,7 +1050,7 @@ impl Skill {
     }
 
     // 固定値の基本成功率のみ
-    pub fn base_percent(&self) -> u16 {
+    pub const fn base_percent(&self) -> u16 {
         match self {
             Self::Accounting       =>  5,
             Self::Anthropology     =>  1,
@@ -1095,7 +1099,7 @@ impl Skill {
     }
 
     // 固定値の技能名のみ
-    pub fn name(&self, lang: &Lang) -> &'static &str {
+    pub fn name(&self, lang: &Lang) -> &'static str {
         match (self, lang) {
             (Self::Accounting,       Lang::En(_)) => "Accounting",
             (Self::Accounting,       Lang::Ja)    => "経理",
@@ -1194,51 +1198,54 @@ impl Skill {
     }
 }
 
+impl core::marker::ConstParamTy_ for Skill {}
+
 pub trait SkillTrait<const S: Skill> {
     const SKILL: Skill = S;
-    const BASE_ID: SKILL.base_id(); // characterインスタンス内id
-    const SKILL_NAME: SKILL.name(); // 技能名
-    const BASE_PERCENT: SKILL.base_percent(); // 基本成功率
+    const BASE_ID: u32 = S.base_id();
+    const BASE_PERCENT: u16 = S.base_percent();
 
     const OCCUPATION_POINTS: Field = Field {position: 32, mask: (1 <<  9) - 1}; // 0~400, u9, bit 32~40
     const INTEREST_POINTS:   Field = Field {position: 23, mask: (1 <<  9) - 1}; // 0~400, u9, bit 23~31
     const CHANGE:            Field = Field {position: 13, mask: (1 << 10) - 1}; // -400~400, i10, bit 13~22
-    const MODIFIER:          Field = Field {position:  3, mask: (1 << 10) - 1}; // -400~400, i10, bit 3~12
+    const MODIFIER:          Field = Field {position: 3, mask: (1 << 10) - 1}; // -400~400, i10, bit 3~12
 
     // -> occupation_points, interest_points, change, modifier
-    fn read(&self,character: &DataStruct) -> (u9, u9, i10, i10) {
-        bytes = character.get(Self::BASE_ID);
+    fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
+        let raw = character.get(Self::BASE_ID).ok()
+            .and_then(|b| b.get(..5))
+            .map(|b| { let mut a = [0u8; 8]; a[..5].copy_from_slice(b); u64::from_le_bytes(a) })
+            .unwrap_or(0);
         (
-            OCCUPATION_POINTS.get(bytes) as u9,
-            INTEREST_POINTS.get(bytes) as u9,
-            CHANGE.get(bytes) as i10,
-            MODIFIER.get(bytes) as i10,
+            Self::OCCUPATION_POINTS.get(raw),
+            Self::INTEREST_POINTS.get(raw),
+            Self::CHANGE.get(raw),
+            Self::MODIFIER.get(raw),
         )
     }
 
-    fn write(&self, character: 'a &mut DataStruct, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> 'a &mut DataStruct {
-        _ = character.set(Self::BASE_ID, value: [u8:5], None);
+    fn write<'a>(&self, character: &'a mut DataStruct, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> &'a mut DataStruct {
+        let raw = Self::OCCUPATION_POINTS.set(0u64, occupation_points);
+        let raw = Self::INTEREST_POINTS.set(raw, interest_points);
+        let raw = Self::CHANGE.set(raw, change);
+        let raw = Self::MODIFIER.set(raw, modifier);
+        let _ = character.set(Self::BASE_ID, &raw.to_le_bytes()[..5], None);
         character
     }
 
-    // -> name, specialization
-    fn as_editable_string(&self) -> (String, String) { (Self::NAME, String::new()) }
+    // -> skill_name, specialization_name
+    fn as_editable_string(&self) -> (String, String) {
+        (S.name(&Lang::Ja).to_owned(), String::new())
+    }
 
     // -> base, occupation_points, interest_points, change, modifier, sum
-    fn as_editable_numeric(&self, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> (u7, u9, u9, i10, i10, i10) {
-        Self::BASE,
-        occupation_points,
-        interest_points,
-        change,
-        modifier,
-        sum = Self::BASE + occupation_points + interest_points + change + modifier,
+    fn as_editable_numeric(&self, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> (u16, u9, u9, i10, i10, i32) {
+        let sum = Self::BASE_PERCENT as i32 + occupation_points.value() as i32 + interest_points.value() as i32 + change.value() as i32 + modifier.value() as i32;
+        (Self::BASE_PERCENT, occupation_points, interest_points, change, modifier, sum)
     }
 
     fn as_immutable_string(&self) -> String {
-        match specialization {
-            Some(s) => format!("{name} ({s})"),
-            None    => format!("{name}"),
-        }
+        S.name(&Lang::Ja).to_owned()
     }
 }
 
@@ -1279,68 +1286,66 @@ pub struct Throw;         impl SkillTrait<{ Skill::Throw         }> for Throw   
 pub struct Track;         impl SkillTrait<{ Skill::Track         }> for Track         {}
 
 pub struct Dodge;
-impl SkillTrait<S: Skill::Dodge> for Dodge {
-    fn as_editable_numeric(character: &DataStruct) -> (u7, u9, u9, i10, i10, i10) {
-        (
-            base = Characteristic::Dexterity::sum(character) / 2,
-            occupation_points,
-            interest_points,
-            change,
-            modifier,
-            sum = base + occupation_points + interest_points + change + modifier,
-        )
-    }
-}
+impl SkillTrait<{ Skill::Dodge }> for Dodge {}
 
 pub struct LanguageOwn;
-impl SkillTrait<S: Skill::LanguageOwn> for LanguageOwn {
 
-    const SKILL: Skill = S;
-    const BASE_ID: SKILL.base_id(); // characterインスタンス内id
-    const SKILL_NAME: SKILL.name(); // 技能名
-    const BASE_PERCENT: SKILL.base_percent(); // 基本成功率
+impl LanguageOwn {
+    const BASE_ID: u32 = Skill::LanguageOwn.base_id();
+
+    const OCCUPATION_POINTS: Field = Field {position: 32, mask: (1 <<  9) - 1};
+    const INTEREST_POINTS:   Field = Field {position: 23, mask: (1 <<  9) - 1};
+    const CHANGE:            Field = Field {position: 13, mask: (1 << 10) - 1};
+    const MODIFIER:          Field = Field {position:  3, mask: (1 << 10) - 1};
 
     // -> occupation_points, interest_points, change, modifier, name
-    fn read(&self,character: &DataStruct) -> (u9, u9, i10, i10, &str) {
-        bytes = character.get(Self::BASE_ID);
+    pub fn read(&self, character: &DataStruct) -> (u16, u16, i16, i16, String) {
+        let raw = character.get(Self::BASE_ID).ok()
+            .and_then(|b| b.get(..5))
+            .map(|b| { let mut a = [0u8; 8]; a[..5].copy_from_slice(b); u64::from_le_bytes(a) })
+            .unwrap_or(0);
+        let name = character.get(Self::BASE_ID + 1).ok()
+            .map(|b| String::from_utf8_lossy(b).into_owned())
+            .unwrap_or_default();
         (
-            OCCUPATION_POINTS.get(bytes) as u9,
-            INTEREST_POINTS.get(bytes) as u9,
-            CHANGE.get(bytes) as i10,
-            MODIFIER.get(bytes) as i10,
-            character.get(Self::BASE_ID + 1).as_str(),
+            Self::OCCUPATION_POINTS.get(raw),
+            Self::INTEREST_POINTS.get(raw),
+            Self::CHANGE.get(raw),
+            Self::MODIFIER.get(raw),
+            name,
         )
     }
 
-    fn write(&self, character: 'a &mut DataStruct, occupation_points: u9, interest_points: u9, change: i10, modifier: i10, name: &str) -> 'a &mut DataStruct {
-        _ = character.set(Self::BASE_ID, value: [u8:5], None);
+    pub fn write<'a>(&self, character: &'a mut DataStruct, occupation_points: u16, interest_points: u16, change: i16, modifier: i16, name: &str) -> &'a mut DataStruct {
+        let raw = Self::OCCUPATION_POINTS.set(0u64, occupation_points as u64);
+        let raw = Self::INTEREST_POINTS.set(raw, interest_points as u64);
+        let raw = Self::CHANGE.set(raw, change as u64);
+        let raw = Self::MODIFIER.set(raw, modifier as u64);
+        let _ = character.set(Self::BASE_ID,     &raw.to_le_bytes()[..5], None);
+        let _ = character.set(Self::BASE_ID + 1, name.as_bytes(),         None);
         character
     }
 
-    fn as_editable_numeric(character: &DataStruct) -> (u7, u9, u9, i10, i10, i10) {
-        (
-            base = Characteristic::Education::sum(character),
-            occupation_points,
-            interest_points,
-            change,
-            modifier,
-            sum = base + occupation_points + interest_points + change + modifier,
-        )
+    // read() の戻り値を引数に取る。character の読み出し不要。
+    // -> base_percent(定数), occupation_points, interest_points, change, modifier, sum
+    pub fn as_editable_numeric(occupation_points: u16, interest_points: u16, change: i16, modifier: i16) -> (u16, u16, u16, i16, i16, i32) {
+        const BASE: u16 = 1;
+        let sum = BASE as i32 + occupation_points as i32 + interest_points as i32 + change as i32 + modifier as i32;
+        (BASE, occupation_points, interest_points, change, modifier, sum)
     }
 
-    fn as_editable_string(name: &str) -> (&str, &str) {
-        (SKILL_NAME, name)
+    // -> skill_name, name
+    pub fn as_editable_string<'a>(name: &'a str, lang: Lang) -> (&'static str, &'a str) {
+        (Skill::LanguageOwn.name(&lang), name)
     }
 
-    fn as_immutable_string(name: Option<&str>) -> String {
-        match name {
-            Some(n) => format!("{SKILL_NAME} (name)"),
-            _ => SKILL_NAME,
-        }
+    pub fn as_immutable_string(name: &str, lang: Lang) -> String {
+        format!("{} ({})", Skill::LanguageOwn.name(&lang), name)
     }
 }
 
 /// 芸術/製作 (専門分野) Art/Craft (Specialization) // p.62 モリダンス等は長いので除外
+#[derive(PartialEq, Eq)]
 pub enum ArtAndCraft {
     Acting,       // 演劇
     Barber,       // 理容
@@ -1427,54 +1432,51 @@ impl ArtAndCraft {
     }
 }
 
+impl core::marker::ConstParamTy_ for ArtAndCraft {}
+
 pub trait ArtAndCraftTrait<const A: ArtAndCraft> {
     const SKILL: Skill = Skill::ArtAndCraft;
     const SPECIFICATION: ArtAndCraft = A;
-    const BASE_ID: u32 = SPECIFICATION.base_id();
-    const SKILL_NAME: &'static &str = SKILL.name();
-    const BASE_PERCENT: u7 = SKILL.base_percent();
+    const BASE_ID: u32 = A.base_id();
+    const BASE_PERCENT: u16 = Skill::ArtAndCraft.base_percent();
 
-    const OCCUPATION_POINTS: Field = Field {position: 32, mask: (1 <<  9) - 1}
-    const INTEREST_POINTS:   Field = Field {position: 23, mask: (1 <<  9) - 1}
-    const CHANGE:            Field = Field {position: 13, mask: (1 << 10) - 1}
-    const MODIFIER:          Field = Field {position:  3, mask: (1 << 10) - 1}
+    const OCCUPATION_POINTS: Field = Field {position: 32, mask: (1 <<  9) - 1};
+    const INTEREST_POINTS:   Field = Field {position: 23, mask: (1 <<  9) - 1};
+    const CHANGE:            Field = Field {position: 13, mask: (1 << 10) - 1};
+    const MODIFIER:          Field = Field {position: 3, mask: (1 << 10) - 1};
 
     // -> occupation_points, interest_points, change, modifier
     fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
-        bytes = character.get(self.id(character));
+        let raw = character.get(Self::BASE_ID).ok()
+            .and_then(|b| b.get(..5))
+            .map(|b| { let mut a = [0u8; 8]; a[..5].copy_from_slice(b); u64::from_le_bytes(a) })
+            .unwrap_or(0);
+        (
+            Self::OCCUPATION_POINTS.get(raw),
+            Self::INTEREST_POINTS.get(raw),
+            Self::CHANGE.get(raw),
+            Self::MODIFIER.get(raw),
+        )
     }
 
-    /// Custom(0) スロットにidリスト（u32 LE配列）を保持し、末尾に追記する。
     fn write<'a>(&self, character: &'a mut DataStruct, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> &'a mut DataStruct {
-        let mut ids: Vec<u32> = character.get(Self::CUSTOM.base_id()).ok()
-        .map(|b| b.chunks_exact(4)
-            .filter_map(|c| c.try_into().ok().map(u32::from_le_bytes))
-            .collect())
-        .unwrap_or_default();
-
-        let builtin_max: u32 = 12;
-        let list_id: u32     = Self::CUSTOM_LIST_ID;
-        let existing_max = ids.iter().copied().max().unwrap_or(list_id);
-        let new_id = existing_max.max(builtin_max).max(list_id) + 1;
-
-        ids.push(new_id);
-        let list_bytes: Vec<u8> = ids.iter().flat_map(|id| id.to_le_bytes()).collect();
-        character.set(Self::CUSTOM_LIST_ID, &list_bytes, None).ok()?;
-        character.set(new_id, value, None).ok()?;
-        Some(new_id)
+        let raw = Self::OCCUPATION_POINTS.set(0u64, occupation_points);
+        let raw = Self::INTEREST_POINTS.set(raw, interest_points);
+        let raw = Self::CHANGE.set(raw, change);
+        let raw = Self::MODIFIER.set(raw, modifier);
+        let _ = character.set(Self::BASE_ID, &raw.to_le_bytes()[..5], None);
+        character
     }
 
-    // -> name, specialization
-    fn as_editable_string(&self, lang: Lang) -> (String, String) { (Self::NAME, A.read(lang).to_string()) }
+    // -> skill_name, specialization_name
+    fn as_editable_string(&self, lang: Lang) -> (String, String) {
+        (Skill::ArtAndCraft.name(&lang).to_owned(), A.name(lang).to_owned())
+    }
 
     // -> base, occupation_points, interest_points, change, modifier, sum
-    fn as_editable_numeric(&self, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> (u7, u9, u9, i10, i10, i10) {
-        Self::BASE,
-        occupation_points,
-        interest_points,
-        change,
-        modifier,
-        sum = Self::BASE + occupation_points + interest_points + change + modifier,
+    fn as_editable_numeric(&self, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> (u16, u9, u9, i10, i10, i32) {
+        let sum = Self::BASE_PERCENT as i32 + occupation_points.value() as i32 + interest_points.value() as i32 + change.value() as i32 + modifier.value() as i32;
+        (Self::BASE_PERCENT, occupation_points, interest_points, change, modifier, sum)
     }
 }
 
@@ -1504,29 +1506,33 @@ impl ArtAndCraftCustom {
     const OCCUPATION_POINTS: Field = Field {position: 32, mask: (1 <<  9) - 1};
     const INTEREST_POINTS:   Field = Field {position: 23, mask: (1 <<  9) - 1};
     const CHANGE:            Field = Field {position: 13, mask: (1 << 10) - 1};
-    const MODIFIER:          Field = Field {position:  3, mask: (1 << 10) - 1};
+    const MODIFIER:          Field = Field {position: 3, mask: (1 << 10) - 1};
 
     // -> occupation_points, interest_points, change, modifier, name
     pub fn read(&self, character: &DataStruct) -> (u16, u16, i16, i16, String) {
-        let bytes = character.get(self.numeric_id()).unwrap_or_default();
-        let occupation_points = Self::OCCUPATION_POINTS.get(&bytes) as u16;
-        let interest_points   = Self::INTEREST_POINTS.get(&bytes) as u16;
-        let change            = Self::CHANGE.get(&bytes) as i16;
-        let modifier          = Self::MODIFIER.get(&bytes) as i16;
+        let raw = character.get(self.numeric_id()).ok()
+            .and_then(|b| b.get(..5))
+            .map(|b| { let mut a = [0u8; 8]; a[..5].copy_from_slice(b); u64::from_le_bytes(a) })
+            .unwrap_or(0);
         let name = character.get(self.name_id()).ok()
             .map(|b| String::from_utf8_lossy(b).into_owned())
             .unwrap_or_default();
-        (occupation_points, interest_points, change, modifier, name)
+        (
+            Self::OCCUPATION_POINTS.get(raw),
+            Self::INTEREST_POINTS.get(raw),
+            Self::CHANGE.get(raw),
+            Self::MODIFIER.get(raw),
+            name,
+        )
     }
 
     pub fn write<'a>(&self, character: &'a mut DataStruct, occupation_points: u16, interest_points: u16, change: i16, modifier: i16, name: &str) -> &'a mut DataStruct {
-        let mut bytes = [0u8; 5];
-        Self::OCCUPATION_POINTS.set(&mut bytes, occupation_points as u64);
-        Self::INTEREST_POINTS.set(&mut bytes, interest_points as u64);
-        Self::CHANGE.set(&mut bytes, change as u64);
-        Self::MODIFIER.set(&mut bytes, modifier as u64);
-        let _ = character.set(self.numeric_id(), &bytes, Some(Upsert));
-        let _ = character.set(self.name_id(), name.as_bytes(), Some(Upsert));
+        let raw = Self::OCCUPATION_POINTS.set(0u64, occupation_points as u64);
+        let raw = Self::INTEREST_POINTS.set(raw, interest_points as u64);
+        let raw = Self::CHANGE.set(raw, change as u64);
+        let raw = Self::MODIFIER.set(raw, modifier as u64);
+        let _ = character.set(self.numeric_id(), &raw.to_le_bytes()[..5], None);
+        let _ = character.set(self.name_id(),    name.as_bytes(),         None);
         character
     }
 
@@ -1549,7 +1555,7 @@ impl ArtAndCraftCustom {
 }
 
 /// 近接戦闘 (専門分野) Fighting (Specialization) // p.61
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum Fighting {
     Axe,        // 斧         15%
     Brawl,      // 格闘       25%
@@ -1570,7 +1576,7 @@ impl Fighting {
         ]
     }
 
-    pub fn id(&self, base: u32) -> u32 {
+    pub const fn id(&self, base: u32) -> u32 {
         base + match self {
             Self::Axe            => 1,
             Self::Brawl          => 2,
@@ -1581,11 +1587,11 @@ impl Fighting {
             Self::Sword          => 7,
             Self::Whip           => 8,
             Self::Custom(0)      => 9, // カスタムidリスト格納スロット
-            Self::Custom(_)      => todo!("カスタム専門分野のidはDataStructから動的に取得"),
+            Self::Custom(_)      => todo!(),
         }
     }
 
-    pub fn base_percent(&self) -> u16 {
+    pub const fn base_percent(&self) -> u16 {
         match self {
             Self::Axe       => 15,
             Self::Brawl     => 25,
@@ -1623,6 +1629,8 @@ impl Fighting {
     }
 }
 
+impl core::marker::ConstParamTy_ for Fighting {}
+
 pub trait FightingTrait<const F: Fighting> {
     const SKILL: Skill = Skill::Fighting;
     const SPECIALIZATION: Fighting = F;
@@ -1632,21 +1640,28 @@ pub trait FightingTrait<const F: Fighting> {
     const OCCUPATION_POINTS: Field = Field {position: 32, mask: (1 <<  9) - 1};
     const INTEREST_POINTS:   Field = Field {position: 23, mask: (1 <<  9) - 1};
     const CHANGE:            Field = Field {position: 13, mask: (1 << 10) - 1};
-    const MODIFIER:          Field = Field {position:  3, mask: (1 << 10) - 1};
+    const MODIFIER:          Field = Field {position: 3, mask: (1 << 10) - 1};
 
     // -> occupation_points, interest_points, change, modifier
     fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
-        let bytes = character.get(Self::BASE_ID);
+        let raw = character.get(Self::BASE_ID).ok()
+            .and_then(|b| b.get(..5))
+            .map(|b| { let mut a = [0u8; 8]; a[..5].copy_from_slice(b); u64::from_le_bytes(a) })
+            .unwrap_or(0);
         (
-            Self::OCCUPATION_POINTS.get(bytes) as u9,
-            Self::INTEREST_POINTS.get(bytes) as u9,
-            Self::CHANGE.get(bytes) as i10,
-            Self::MODIFIER.get(bytes) as i10,
+            Self::OCCUPATION_POINTS.get(raw),
+            Self::INTEREST_POINTS.get(raw),
+            Self::CHANGE.get(raw),
+            Self::MODIFIER.get(raw),
         )
     }
 
     fn write<'a>(&self, character: &'a mut DataStruct, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> &'a mut DataStruct {
-        let _ = character.set(Self::BASE_ID, &[u8; 5], None);
+        let raw = Self::OCCUPATION_POINTS.set(0u64, occupation_points);
+        let raw = Self::INTEREST_POINTS.set(raw, interest_points);
+        let raw = Self::CHANGE.set(raw, change);
+        let raw = Self::MODIFIER.set(raw, modifier);
+        let _ = character.set(Self::BASE_ID, &raw.to_le_bytes()[..5], None);
         character
     }
 
@@ -1657,8 +1672,8 @@ pub trait FightingTrait<const F: Fighting> {
 
     // -> base, occupation_points, interest_points, change, modifier, sum
     fn as_editable_numeric(&self, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> (u16, u9, u9, i10, i10, i10) {
-        let sum = Self::BASE_PERCENT as i32 + occupation_points as i32 + interest_points as i32 + change as i32 + modifier as i32;
-        (Self::BASE_PERCENT, occupation_points, interest_points, change, modifier, sum as i10)
+        let sum = Self::BASE_PERCENT as i32 + occupation_points.value() as i32 + interest_points.value() as i32 + change.value() as i32 + modifier.value() as i32;
+        (Self::BASE_PERCENT, occupation_points, interest_points, change, modifier, i10::new(sum as i16))
     }
 }
 
@@ -1685,31 +1700,35 @@ impl FightingCustom {
     const OCCUPATION_POINTS:  Field = Field {position: 32, mask: (1 <<  9) - 1};
     const INTEREST_POINTS:    Field = Field {position: 23, mask: (1 <<  9) - 1};
     const CHANGE:             Field = Field {position: 13, mask: (1 << 10) - 1};
-    const MODIFIER:           Field = Field {position:  3, mask: (1 << 10) - 1};
+    const MODIFIER:           Field = Field {position: 3, mask: (1 << 10) - 1};
 
     // -> base_percent, occupation_points, interest_points, change, modifier, name
     pub fn read(&self, character: &DataStruct) -> (u16, u16, u16, i16, i16, String) {
-        let bytes = character.get(self.numeric_id()).unwrap_or_default();
-        let base_percent      = Self::BASE_PERCENT_FIELD.get(&bytes) as u16;
-        let occupation_points = Self::OCCUPATION_POINTS.get(&bytes) as u16;
-        let interest_points   = Self::INTEREST_POINTS.get(&bytes) as u16;
-        let change            = Self::CHANGE.get(&bytes) as i16;
-        let modifier          = Self::MODIFIER.get(&bytes) as i16;
+        let raw = character.get(self.numeric_id()).ok()
+            .and_then(|b| b.get(..6))
+            .map(|b| { let mut a = [0u8; 8]; a[..6].copy_from_slice(b); u64::from_le_bytes(a) })
+            .unwrap_or(0);
         let name = character.get(self.name_id()).ok()
             .map(|b| String::from_utf8_lossy(b).into_owned())
             .unwrap_or_default();
-        (base_percent, occupation_points, interest_points, change, modifier, name)
+        (
+            Self::BASE_PERCENT_FIELD.get(raw),
+            Self::OCCUPATION_POINTS.get(raw),
+            Self::INTEREST_POINTS.get(raw),
+            Self::CHANGE.get(raw),
+            Self::MODIFIER.get(raw),
+            name,
+        )
     }
 
     pub fn write<'a>(&self, character: &'a mut DataStruct, base_percent: u16, occupation_points: u16, interest_points: u16, change: i16, modifier: i16, name: &str) -> &'a mut DataStruct {
-        let mut bytes = [0u8; 6];
-        Self::BASE_PERCENT_FIELD.set(&mut bytes, base_percent as u64);
-        Self::OCCUPATION_POINTS.set(&mut bytes, occupation_points as u64);
-        Self::INTEREST_POINTS.set(&mut bytes, interest_points as u64);
-        Self::CHANGE.set(&mut bytes, change as u64);
-        Self::MODIFIER.set(&mut bytes, modifier as u64);
-        let _ = character.set(self.numeric_id(), &bytes, Some(Upsert));
-        let _ = character.set(self.name_id(), name.as_bytes(), Some(Upsert));
+        let raw = Self::BASE_PERCENT_FIELD.set(0u64, base_percent as u64);
+        let raw = Self::OCCUPATION_POINTS.set(raw, occupation_points as u64);
+        let raw = Self::INTEREST_POINTS.set(raw, interest_points as u64);
+        let raw = Self::CHANGE.set(raw, change as u64);
+        let raw = Self::MODIFIER.set(raw, modifier as u64);
+        let _ = character.set(self.numeric_id(), &raw.to_le_bytes()[..6], None);
+        let _ = character.set(self.name_id(),    name.as_bytes(),         None);
         character
     }
 
@@ -1731,7 +1750,7 @@ impl FightingCustom {
 }
 
 /// 射撃 (専門分野) Firearms (Specialization) // p.64
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum Firearms {
     Bow,           // 弓, 15%
     FlameThrower,  // 火炎放射器, 10%
@@ -1749,7 +1768,7 @@ impl Firearms {
         &[Self::Bow, Self::FlameThrower, Self::Handgun, Self::HeavyWeapons, Self::MachineGun, Self::RifleShotgun, Self::SubmachineGun]
     }
 
-    pub fn id(&self, base: u32) -> u32 {
+    pub const fn id(&self, base: u32) -> u32 {
         base + match self {
             Self::Bow            => 0,
             Self::FlameThrower   => 1,
@@ -1759,11 +1778,11 @@ impl Firearms {
             Self::RifleShotgun   => 5,
             Self::SubmachineGun  => 6,
             Self::Custom(0)      => 7, // カスタムidリスト格納スロット
-            Self::Custom(_)      => todo!("カスタム専門分野のidはDataStructから動的に取得"),
+            Self::Custom(_)      => todo!(),
         }
     }
 
-    pub fn base_percent(&self) -> u16 {
+    pub const fn base_percent(&self) -> u16 {
         match self {
             Self::Bow            => 15,
             Self::FlameThrower   => 10,
@@ -1772,7 +1791,7 @@ impl Firearms {
             Self::MachineGun     => 10,
             Self::RifleShotgun   => 25,
             Self::SubmachineGun  => 15,
-            Self::Custom(0)      => unreachable!("Custom(0) はリスト格納スロットであり base_percent() 不可"),
+            Self::Custom(0)      => unreachable!(),
             Self::Custom(_)      =>  0,
         }
     }
@@ -1799,6 +1818,8 @@ impl Firearms {
     }
 }
 
+impl core::marker::ConstParamTy_ for Firearms {}
+
 pub trait FirearmsTrait<const F: Firearms> {
     const SKILL: Skill = Skill::Firearms;
     const SPECIALIZATION: Firearms = F;
@@ -1808,20 +1829,27 @@ pub trait FirearmsTrait<const F: Firearms> {
     const OCCUPATION_POINTS: Field = Field {position: 32, mask: (1 <<  9) - 1};
     const INTEREST_POINTS:   Field = Field {position: 23, mask: (1 <<  9) - 1};
     const CHANGE:            Field = Field {position: 13, mask: (1 << 10) - 1};
-    const MODIFIER:          Field = Field {position:  3, mask: (1 << 10) - 1};
+    const MODIFIER:          Field = Field {position: 3, mask: (1 << 10) - 1};
 
     fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
-        let bytes = character.get(Self::BASE_ID);
+        let raw = character.get(Self::BASE_ID).ok()
+            .and_then(|b| b.get(..5))
+            .map(|b| { let mut a = [0u8; 8]; a[..5].copy_from_slice(b); u64::from_le_bytes(a) })
+            .unwrap_or(0);
         (
-            Self::OCCUPATION_POINTS.get(bytes) as u9,
-            Self::INTEREST_POINTS.get(bytes) as u9,
-            Self::CHANGE.get(bytes) as i10,
-            Self::MODIFIER.get(bytes) as i10,
+            Self::OCCUPATION_POINTS.get(raw),
+            Self::INTEREST_POINTS.get(raw),
+            Self::CHANGE.get(raw),
+            Self::MODIFIER.get(raw),
         )
     }
 
     fn write<'a>(&self, character: &'a mut DataStruct, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> &'a mut DataStruct {
-        let _ = character.set(Self::BASE_ID, &[u8; 5], None);
+        let raw = Self::OCCUPATION_POINTS.set(0u64, occupation_points);
+        let raw = Self::INTEREST_POINTS.set(raw, interest_points);
+        let raw = Self::CHANGE.set(raw, change);
+        let raw = Self::MODIFIER.set(raw, modifier);
+        let _ = character.set(Self::BASE_ID, &raw.to_le_bytes()[..5], None);
         character
     }
 
@@ -1832,8 +1860,8 @@ pub trait FirearmsTrait<const F: Firearms> {
 
     // -> base, occupation_points, interest_points, change, modifier, sum
     fn as_editable_numeric(&self, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> (u16, u9, u9, i10, i10, i10) {
-        let sum = Self::BASE_PERCENT as i32 + occupation_points as i32 + interest_points as i32 + change as i32 + modifier as i32;
-        (Self::BASE_PERCENT, occupation_points, interest_points, change, modifier, sum as i10)
+        let sum = Self::BASE_PERCENT as i32 + occupation_points.value() as i32 + interest_points.value() as i32 + change.value() as i32 + modifier.value() as i32;
+        (Self::BASE_PERCENT, occupation_points, interest_points, change, modifier, i10::new(sum as i16))
     }
 }
 
@@ -1859,31 +1887,35 @@ impl FirearmsCustom {
     const OCCUPATION_POINTS:  Field = Field {position: 32, mask: (1 <<  9) - 1};
     const INTEREST_POINTS:    Field = Field {position: 23, mask: (1 <<  9) - 1};
     const CHANGE:             Field = Field {position: 13, mask: (1 << 10) - 1};
-    const MODIFIER:           Field = Field {position:  3, mask: (1 << 10) - 1};
+    const MODIFIER:           Field = Field {position: 3, mask: (1 << 10) - 1};
 
     // -> base_percent, occupation_points, interest_points, change, modifier, name
     pub fn read(&self, character: &DataStruct) -> (u16, u16, u16, i16, i16, String) {
-        let bytes = character.get(self.numeric_id()).unwrap_or_default();
-        let base_percent      = Self::BASE_PERCENT_FIELD.get(&bytes) as u16;
-        let occupation_points = Self::OCCUPATION_POINTS.get(&bytes) as u16;
-        let interest_points   = Self::INTEREST_POINTS.get(&bytes) as u16;
-        let change            = Self::CHANGE.get(&bytes) as i16;
-        let modifier          = Self::MODIFIER.get(&bytes) as i16;
+        let raw = character.get(self.numeric_id()).ok()
+            .and_then(|b| b.get(..6))
+            .map(|b| { let mut a = [0u8; 8]; a[..6].copy_from_slice(b); u64::from_le_bytes(a) })
+            .unwrap_or(0);
         let name = character.get(self.name_id()).ok()
             .map(|b| String::from_utf8_lossy(b).into_owned())
             .unwrap_or_default();
-        (base_percent, occupation_points, interest_points, change, modifier, name)
+        (
+            Self::BASE_PERCENT_FIELD.get(raw),
+            Self::OCCUPATION_POINTS.get(raw),
+            Self::INTEREST_POINTS.get(raw),
+            Self::CHANGE.get(raw),
+            Self::MODIFIER.get(raw),
+            name,
+        )
     }
 
     pub fn write<'a>(&self, character: &'a mut DataStruct, base_percent: u16, occupation_points: u16, interest_points: u16, change: i16, modifier: i16, name: &str) -> &'a mut DataStruct {
-        let mut bytes = [0u8; 6];
-        Self::BASE_PERCENT_FIELD.set(&mut bytes, base_percent as u64);
-        Self::OCCUPATION_POINTS.set(&mut bytes, occupation_points as u64);
-        Self::INTEREST_POINTS.set(&mut bytes, interest_points as u64);
-        Self::CHANGE.set(&mut bytes, change as u64);
-        Self::MODIFIER.set(&mut bytes, modifier as u64);
-        let _ = character.set(self.numeric_id(), &bytes, Some(Upsert));
-        let _ = character.set(self.name_id(), name.as_bytes(), Some(Upsert));
+        let raw = Self::BASE_PERCENT_FIELD.set(0u64, base_percent as u64);
+        let raw = Self::OCCUPATION_POINTS.set(raw, occupation_points as u64);
+        let raw = Self::INTEREST_POINTS.set(raw, interest_points as u64);
+        let raw = Self::CHANGE.set(raw, change as u64);
+        let raw = Self::MODIFIER.set(raw, modifier as u64);
+        let _ = character.set(self.numeric_id(), &raw.to_le_bytes()[..6], None);
+        let _ = character.set(self.name_id(),    name.as_bytes(),         None);
         character
     }
 
@@ -1905,26 +1937,28 @@ impl FirearmsCustom {
 }
 
 /// ほかの言語 (専門分野) (Language (Other) (Specialization) // p.73
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum Language {
     Custom(u8),
 }
 
 impl Language {
-    pub fn id(&self, base: u32) -> u32 {
+    pub const fn id(&self, base: u32) -> u32 {
         base + match self {
             Self::Custom(0) => 0,
-            Self::Custom(i) => ,
+            Self::Custom(_) => todo!(),
         }
     }
 
-    pub fn label(&self, _lang: Lang) -> Option<&str> {
+    pub fn label(&self, _lang: Lang) -> Option<&'static str> {
         match self {
             Self::Custom(0) => None, // リスト格納スロット
             Self::Custom(_) => todo!("カスタム専門分野のラベルはDataStructから動的に取得"),
         }
     }
 }
+
+impl core::marker::ConstParamTy_ for Language {}
 
 pub trait LanguageTrait<const L: Language> {
     const SKILL: Skill = Skill::LanguageOther;
@@ -1935,31 +1969,38 @@ pub trait LanguageTrait<const L: Language> {
     const OCCUPATION_POINTS: Field = Field {position: 32, mask: (1 <<  9) - 1};
     const INTEREST_POINTS:   Field = Field {position: 23, mask: (1 <<  9) - 1};
     const CHANGE:            Field = Field {position: 13, mask: (1 << 10) - 1};
-    const MODIFIER:          Field = Field {position:  3, mask: (1 << 10) - 1};
+    const MODIFIER:          Field = Field {position: 3, mask: (1 << 10) - 1};
 
     fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
-        let bytes = character.get(Self::BASE_ID);
+        let raw = character.get(Self::BASE_ID).ok()
+            .and_then(|b| b.get(..5))
+            .map(|b| { let mut a = [0u8; 8]; a[..5].copy_from_slice(b); u64::from_le_bytes(a) })
+            .unwrap_or(0);
         (
-            Self::OCCUPATION_POINTS.get(bytes) as u9,
-            Self::INTEREST_POINTS.get(bytes) as u9,
-            Self::CHANGE.get(bytes) as i10,
-            Self::MODIFIER.get(bytes) as i10,
+            Self::OCCUPATION_POINTS.get(raw),
+            Self::INTEREST_POINTS.get(raw),
+            Self::CHANGE.get(raw),
+            Self::MODIFIER.get(raw),
         )
     }
 
     fn write<'a>(&self, character: &'a mut DataStruct, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> &'a mut DataStruct {
-        let _ = character.set(Self::BASE_ID, &[u8; 5], None);
+        let raw = Self::OCCUPATION_POINTS.set(0u64, occupation_points);
+        let raw = Self::INTEREST_POINTS.set(raw, interest_points);
+        let raw = Self::CHANGE.set(raw, change);
+        let raw = Self::MODIFIER.set(raw, modifier);
+        let _ = character.set(Self::BASE_ID, &raw.to_le_bytes()[..5], None);
         character
     }
 
     // -> skill_name, language_name (自由記述)
     fn as_editable_string(&self, lang: Lang) -> (&'static str, &'static str) {
-        (Skill::LanguageOther.name(&lang), todo!("言語名はDataStructから動的に取得"))
+        (Skill::LanguageOther.name(&lang), "")
     }
 
     fn as_editable_numeric(&self, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> (u16, u9, u9, i10, i10, i10) {
-        let sum = Self::BASE_PERCENT as i32 + occupation_points as i32 + interest_points as i32 + change as i32 + modifier as i32;
-        (Self::BASE_PERCENT, occupation_points, interest_points, change, modifier, sum as i10)
+        let sum = Self::BASE_PERCENT as i32 + occupation_points.value() as i32 + interest_points.value() as i32 + change.value() as i32 + modifier.value() as i32;
+        (Self::BASE_PERCENT, occupation_points, interest_points, change, modifier, i10::new(sum as i16))
     }
 }
 
@@ -1976,29 +2017,33 @@ impl LanguageCustom {
     const OCCUPATION_POINTS: Field = Field {position: 32, mask: (1 <<  9) - 1};
     const INTEREST_POINTS:   Field = Field {position: 23, mask: (1 <<  9) - 1};
     const CHANGE:            Field = Field {position: 13, mask: (1 << 10) - 1};
-    const MODIFIER:          Field = Field {position:  3, mask: (1 << 10) - 1};
+    const MODIFIER:          Field = Field {position: 3, mask: (1 << 10) - 1};
 
     // -> occupation_points, interest_points, change, modifier, name
     pub fn read(&self, character: &DataStruct) -> (u16, u16, i16, i16, String) {
-        let bytes = character.get(self.numeric_id()).unwrap_or_default();
-        let occupation_points = Self::OCCUPATION_POINTS.get(&bytes) as u16;
-        let interest_points   = Self::INTEREST_POINTS.get(&bytes) as u16;
-        let change            = Self::CHANGE.get(&bytes) as i16;
-        let modifier          = Self::MODIFIER.get(&bytes) as i16;
+        let raw = character.get(self.numeric_id()).ok()
+            .and_then(|b| b.get(..5))
+            .map(|b| { let mut a = [0u8; 8]; a[..5].copy_from_slice(b); u64::from_le_bytes(a) })
+            .unwrap_or(0);
         let name = character.get(self.name_id()).ok()
             .map(|b| String::from_utf8_lossy(b).into_owned())
             .unwrap_or_default();
-        (occupation_points, interest_points, change, modifier, name)
+        (
+            Self::OCCUPATION_POINTS.get(raw),
+            Self::INTEREST_POINTS.get(raw),
+            Self::CHANGE.get(raw),
+            Self::MODIFIER.get(raw),
+            name,
+        )
     }
 
     pub fn write<'a>(&self, character: &'a mut DataStruct, occupation_points: u16, interest_points: u16, change: i16, modifier: i16, name: &str) -> &'a mut DataStruct {
-        let mut bytes = [0u8; 5];
-        Self::OCCUPATION_POINTS.set(&mut bytes, occupation_points as u64);
-        Self::INTEREST_POINTS.set(&mut bytes, interest_points as u64);
-        Self::CHANGE.set(&mut bytes, change as u64);
-        Self::MODIFIER.set(&mut bytes, modifier as u64);
-        let _ = character.set(self.numeric_id(), &bytes, Some(Upsert));
-        let _ = character.set(self.name_id(), name.as_bytes(), Some(Upsert));
+        let raw = Self::OCCUPATION_POINTS.set(0u64, occupation_points as u64);
+        let raw = Self::INTEREST_POINTS.set(raw, interest_points as u64);
+        let raw = Self::CHANGE.set(raw, change as u64);
+        let raw = Self::MODIFIER.set(raw, modifier as u64);
+        let _ = character.set(self.numeric_id(), &raw.to_le_bytes()[..5], None);
+        let _ = character.set(self.name_id(),    name.as_bytes(),         None);
         character
     }
 
@@ -2021,7 +2066,7 @@ impl LanguageCustom {
 }
 
 /// 操縦 (専門分野) Pilot (Specialization) // p.67
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum Pilot {
     // --- 両時代共通 ---
     Boat,       // ボート
@@ -2046,7 +2091,7 @@ impl Pilot {
           Self::JetFighter, Self::Helicopter]
     }
 
-    pub fn id(&self, base: u32) -> u32 {
+    pub const fn id(&self, base: u32) -> u32 {
         base + match self {
             Self::Boat       =>  0,
             Self::SteamShip  =>  1,
@@ -2059,13 +2104,13 @@ impl Pilot {
             Self::JetFighter =>  8,
             Self::Helicopter =>  9,
             Self::Custom(0) => 10, // カスタムidリスト格納スロット
-            Self::Custom(_) => todo!("カスタム専門分野のidはDataStructから動的に取得"),
+            Self::Custom(_) => todo!(),
         }
     }
 
-    pub fn base_percent(&self) -> u16 { 1 }
+    pub const fn base_percent(&self) -> u16 { 1 }
 
-    pub fn label(&self, lang: Lang) -> Option<&str> {
+    pub fn label(&self, lang: Lang) -> Option<&'static str> {
         match (self, lang) {
             // --- 両時代共通 ---
             (Self::Boat,       Lang::Ja)    => Some("ボート"),
@@ -2096,6 +2141,8 @@ impl Pilot {
     }
 }
 
+impl core::marker::ConstParamTy_ for Pilot {}
+
 pub trait PilotTrait<const P: Pilot> {
     const SKILL: Skill = Skill::Pilot;
     const SPECIALIZATION: Pilot = P;
@@ -2105,20 +2152,27 @@ pub trait PilotTrait<const P: Pilot> {
     const OCCUPATION_POINTS: Field = Field {position: 32, mask: (1 <<  9) - 1};
     const INTEREST_POINTS:   Field = Field {position: 23, mask: (1 <<  9) - 1};
     const CHANGE:            Field = Field {position: 13, mask: (1 << 10) - 1};
-    const MODIFIER:          Field = Field {position:  3, mask: (1 << 10) - 1};
+    const MODIFIER:          Field = Field {position: 3, mask: (1 << 10) - 1};
 
     fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
-        let bytes = character.get(Self::BASE_ID);
+        let raw = character.get(Self::BASE_ID).ok()
+            .and_then(|b| b.get(..5))
+            .map(|b| { let mut a = [0u8; 8]; a[..5].copy_from_slice(b); u64::from_le_bytes(a) })
+            .unwrap_or(0);
         (
-            Self::OCCUPATION_POINTS.get(bytes) as u9,
-            Self::INTEREST_POINTS.get(bytes) as u9,
-            Self::CHANGE.get(bytes) as i10,
-            Self::MODIFIER.get(bytes) as i10,
+            Self::OCCUPATION_POINTS.get(raw),
+            Self::INTEREST_POINTS.get(raw),
+            Self::CHANGE.get(raw),
+            Self::MODIFIER.get(raw),
         )
     }
 
     fn write<'a>(&self, character: &'a mut DataStruct, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> &'a mut DataStruct {
-        let _ = character.set(Self::BASE_ID, &[u8; 5], None);
+        let raw = Self::OCCUPATION_POINTS.set(0u64, occupation_points);
+        let raw = Self::INTEREST_POINTS.set(raw, interest_points);
+        let raw = Self::CHANGE.set(raw, change);
+        let raw = Self::MODIFIER.set(raw, modifier);
+        let _ = character.set(Self::BASE_ID, &raw.to_le_bytes()[..5], None);
         character
     }
 
@@ -2127,8 +2181,8 @@ pub trait PilotTrait<const P: Pilot> {
     }
 
     fn as_editable_numeric(&self, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> (u16, u9, u9, i10, i10, i10) {
-        let sum = Self::BASE_PERCENT as i32 + occupation_points as i32 + interest_points as i32 + change as i32 + modifier as i32;
-        (Self::BASE_PERCENT, occupation_points, interest_points, change, modifier, sum as i10)
+        let sum = Self::BASE_PERCENT as i32 + occupation_points.value() as i32 + interest_points.value() as i32 + change.value() as i32 + modifier.value() as i32;
+        (Self::BASE_PERCENT, occupation_points, interest_points, change, modifier, i10::new(sum as i16))
     }
 }
 
@@ -2156,29 +2210,33 @@ impl PilotCustom {
     const OCCUPATION_POINTS: Field = Field {position: 32, mask: (1 <<  9) - 1};
     const INTEREST_POINTS:   Field = Field {position: 23, mask: (1 <<  9) - 1};
     const CHANGE:            Field = Field {position: 13, mask: (1 << 10) - 1};
-    const MODIFIER:          Field = Field {position:  3, mask: (1 << 10) - 1};
+    const MODIFIER:          Field = Field {position: 3, mask: (1 << 10) - 1};
 
     // -> occupation_points, interest_points, change, modifier, name
     pub fn read(&self, character: &DataStruct) -> (u16, u16, i16, i16, String) {
-        let bytes = character.get(self.numeric_id()).unwrap_or_default();
-        let occupation_points = Self::OCCUPATION_POINTS.get(&bytes) as u16;
-        let interest_points   = Self::INTEREST_POINTS.get(&bytes) as u16;
-        let change            = Self::CHANGE.get(&bytes) as i16;
-        let modifier          = Self::MODIFIER.get(&bytes) as i16;
+        let raw = character.get(self.numeric_id()).ok()
+            .and_then(|b| b.get(..5))
+            .map(|b| { let mut a = [0u8; 8]; a[..5].copy_from_slice(b); u64::from_le_bytes(a) })
+            .unwrap_or(0);
         let name = character.get(self.name_id()).ok()
             .map(|b| String::from_utf8_lossy(b).into_owned())
             .unwrap_or_default();
-        (occupation_points, interest_points, change, modifier, name)
+        (
+            Self::OCCUPATION_POINTS.get(raw),
+            Self::INTEREST_POINTS.get(raw),
+            Self::CHANGE.get(raw),
+            Self::MODIFIER.get(raw),
+            name,
+        )
     }
 
     pub fn write<'a>(&self, character: &'a mut DataStruct, occupation_points: u16, interest_points: u16, change: i16, modifier: i16, name: &str) -> &'a mut DataStruct {
-        let mut bytes = [0u8; 5];
-        Self::OCCUPATION_POINTS.set(&mut bytes, occupation_points as u64);
-        Self::INTEREST_POINTS.set(&mut bytes, interest_points as u64);
-        Self::CHANGE.set(&mut bytes, change as u64);
-        Self::MODIFIER.set(&mut bytes, modifier as u64);
-        let _ = character.set(self.numeric_id(), &bytes, Some(Upsert));
-        let _ = character.set(self.name_id(), name.as_bytes(), Some(Upsert));
+        let raw = Self::OCCUPATION_POINTS.set(0u64, occupation_points as u64);
+        let raw = Self::INTEREST_POINTS.set(raw, interest_points as u64);
+        let raw = Self::CHANGE.set(raw, change as u64);
+        let raw = Self::MODIFIER.set(raw, modifier as u64);
+        let _ = character.set(self.numeric_id(), &raw.to_le_bytes()[..5], None);
+        let _ = character.set(self.name_id(),    name.as_bytes(),         None);
         character
     }
 
@@ -2201,7 +2259,7 @@ impl PilotCustom {
 }
 
 /// 科学 (専門分野) Science (Specialization) // p.59
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum Science {
     None,
     Astronomy,    // 天文学
@@ -2229,9 +2287,9 @@ impl Science {
           Self::Zoology]
     }
 
-    pub fn id(&self, base: u32) -> u32 {
+    pub const fn id(&self, base: u32) -> u32 {
         base + match self {
-            Self::None         => unreachable!("None は専門分野未選択を表すため id() 不可"),
+            Self::None         => unreachable!(),
             Self::Astronomy    =>  0,
             Self::Biology      =>  1,
             Self::Botany       =>  2,
@@ -2246,13 +2304,13 @@ impl Science {
             Self::Physics      => 11,
             Self::Zoology      => 12,
             Self::Custom(0)    => 13, // カスタムidリスト格納スロット
-            Self::Custom(_)    => todo!("カスタム専門分野のidはDataStructから動的に取得"),
+            Self::Custom(_)    => todo!(),
         }
     }
 
-    pub fn base_percent(&self) -> u16 { 1 }
+    pub const fn base_percent(&self) -> u16 { 1 }
 
-    pub fn label(&self, lang: Lang) -> Option<&str> {
+    pub fn label(&self, lang: Lang) -> Option<&'static str> {
         match (self, lang) {
             (Self::None,         _)           => None,
             (Self::Astronomy,    Lang::Ja)    => Some("天文学"),
@@ -2287,6 +2345,8 @@ impl Science {
     }
 }
 
+impl core::marker::ConstParamTy_ for Science {}
+
 pub trait ScienceTrait<const S: Science> {
     const SKILL: Skill = Skill::Science;
     const SPECIALIZATION: Science = S;
@@ -2296,20 +2356,27 @@ pub trait ScienceTrait<const S: Science> {
     const OCCUPATION_POINTS: Field = Field {position: 32, mask: (1 <<  9) - 1};
     const INTEREST_POINTS:   Field = Field {position: 23, mask: (1 <<  9) - 1};
     const CHANGE:            Field = Field {position: 13, mask: (1 << 10) - 1};
-    const MODIFIER:          Field = Field {position:  3, mask: (1 << 10) - 1};
+    const MODIFIER:          Field = Field {position: 3, mask: (1 << 10) - 1};
 
     fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
-        let bytes = character.get(Self::BASE_ID);
+        let raw = character.get(Self::BASE_ID).ok()
+            .and_then(|b| b.get(..5))
+            .map(|b| { let mut a = [0u8; 8]; a[..5].copy_from_slice(b); u64::from_le_bytes(a) })
+            .unwrap_or(0);
         (
-            Self::OCCUPATION_POINTS.get(bytes) as u9,
-            Self::INTEREST_POINTS.get(bytes) as u9,
-            Self::CHANGE.get(bytes) as i10,
-            Self::MODIFIER.get(bytes) as i10,
+            Self::OCCUPATION_POINTS.get(raw),
+            Self::INTEREST_POINTS.get(raw),
+            Self::CHANGE.get(raw),
+            Self::MODIFIER.get(raw),
         )
     }
 
     fn write<'a>(&self, character: &'a mut DataStruct, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> &'a mut DataStruct {
-        let _ = character.set(Self::BASE_ID, &[u8; 5], None);
+        let raw = Self::OCCUPATION_POINTS.set(0u64, occupation_points);
+        let raw = Self::INTEREST_POINTS.set(raw, interest_points);
+        let raw = Self::CHANGE.set(raw, change);
+        let raw = Self::MODIFIER.set(raw, modifier);
+        let _ = character.set(Self::BASE_ID, &raw.to_le_bytes()[..5], None);
         character
     }
 
@@ -2318,8 +2385,8 @@ pub trait ScienceTrait<const S: Science> {
     }
 
     fn as_editable_numeric(&self, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> (u16, u9, u9, i10, i10, i10) {
-        let sum = Self::BASE_PERCENT as i32 + occupation_points as i32 + interest_points as i32 + change as i32 + modifier as i32;
-        (Self::BASE_PERCENT, occupation_points, interest_points, change, modifier, sum as i10)
+        let sum = Self::BASE_PERCENT as i32 + occupation_points.value() as i32 + interest_points.value() as i32 + change.value() as i32 + modifier.value() as i32;
+        (Self::BASE_PERCENT, occupation_points, interest_points, change, modifier, i10::new(sum as i16))
     }
 }
 
@@ -2350,29 +2417,33 @@ impl ScienceCustom {
     const OCCUPATION_POINTS: Field = Field {position: 32, mask: (1 <<  9) - 1};
     const INTEREST_POINTS:   Field = Field {position: 23, mask: (1 <<  9) - 1};
     const CHANGE:            Field = Field {position: 13, mask: (1 << 10) - 1};
-    const MODIFIER:          Field = Field {position:  3, mask: (1 << 10) - 1};
+    const MODIFIER:          Field = Field {position: 3, mask: (1 << 10) - 1};
 
     // -> occupation_points, interest_points, change, modifier, name
     pub fn read(&self, character: &DataStruct) -> (u16, u16, i16, i16, String) {
-        let bytes = character.get(self.numeric_id()).unwrap_or_default();
-        let occupation_points = Self::OCCUPATION_POINTS.get(&bytes) as u16;
-        let interest_points   = Self::INTEREST_POINTS.get(&bytes) as u16;
-        let change            = Self::CHANGE.get(&bytes) as i16;
-        let modifier          = Self::MODIFIER.get(&bytes) as i16;
+        let raw = character.get(self.numeric_id()).ok()
+            .and_then(|b| b.get(..5))
+            .map(|b| { let mut a = [0u8; 8]; a[..5].copy_from_slice(b); u64::from_le_bytes(a) })
+            .unwrap_or(0);
         let name = character.get(self.name_id()).ok()
             .map(|b| String::from_utf8_lossy(b).into_owned())
             .unwrap_or_default();
-        (occupation_points, interest_points, change, modifier, name)
+        (
+            Self::OCCUPATION_POINTS.get(raw),
+            Self::INTEREST_POINTS.get(raw),
+            Self::CHANGE.get(raw),
+            Self::MODIFIER.get(raw),
+            name,
+        )
     }
 
     pub fn write<'a>(&self, character: &'a mut DataStruct, occupation_points: u16, interest_points: u16, change: i16, modifier: i16, name: &str) -> &'a mut DataStruct {
-        let mut bytes = [0u8; 5];
-        Self::OCCUPATION_POINTS.set(&mut bytes, occupation_points as u64);
-        Self::INTEREST_POINTS.set(&mut bytes, interest_points as u64);
-        Self::CHANGE.set(&mut bytes, change as u64);
-        Self::MODIFIER.set(&mut bytes, modifier as u64);
-        let _ = character.set(self.numeric_id(), &bytes, Some(Upsert));
-        let _ = character.set(self.name_id(), name.as_bytes(), Some(Upsert));
+        let raw = Self::OCCUPATION_POINTS.set(0u64, occupation_points as u64);
+        let raw = Self::INTEREST_POINTS.set(raw, interest_points as u64);
+        let raw = Self::CHANGE.set(raw, change as u64);
+        let raw = Self::MODIFIER.set(raw, modifier as u64);
+        let _ = character.set(self.numeric_id(), &raw.to_le_bytes()[..5], None);
+        let _ = character.set(self.name_id(),    name.as_bytes(),         None);
         character
     }
 
@@ -2395,7 +2466,7 @@ impl ScienceCustom {
 }
 
 // --- サバイバル 専門分野 (Survival Specialization) --- p.63
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum Survival {
     Arctic,
     Desert,
@@ -2408,19 +2479,19 @@ impl Survival {
         &[Self::Arctic, Self::Desert, Self::Sea]
     }
 
-    pub fn id(&self, base: u32) -> u32 {
+    pub const fn id(&self, base: u32) -> u32 {
         base + match self {
             Self::Arctic    => 0,
             Self::Desert    => 1,
             Self::Sea       => 2,
             Self::Custom(0) => 3, // カスタムidリスト格納スロット
-            Self::Custom(_) => todo!("カスタム専門分野のidはDataStructから動的に取得"),
+            Self::Custom(_) => todo!(),
         }
     }
 
-    pub fn base_percent(&self) -> u16 { 10 }
+    pub const fn base_percent(&self) -> u16 { 10 }
 
-    pub fn label(&self, lang: Lang) -> Option<&str> {
+    pub fn label(&self, lang: Lang) -> Option<&'static str> {
         match (self, lang) {
             (Self::Arctic,   Lang::Ja)    => Some("極地"),
             (Self::Arctic,   Lang::En(_)) => Some("Arctic"),
@@ -2434,6 +2505,8 @@ impl Survival {
     }
 }
 
+impl core::marker::ConstParamTy_ for Survival {}
+
 pub trait SurvivalTrait<const S: Survival> {
     const SKILL: Skill = Skill::Survival;
     const SPECIALIZATION: Survival = S;
@@ -2443,20 +2516,27 @@ pub trait SurvivalTrait<const S: Survival> {
     const OCCUPATION_POINTS: Field = Field {position: 32, mask: (1 <<  9) - 1};
     const INTEREST_POINTS:   Field = Field {position: 23, mask: (1 <<  9) - 1};
     const CHANGE:            Field = Field {position: 13, mask: (1 << 10) - 1};
-    const MODIFIER:          Field = Field {position:  3, mask: (1 << 10) - 1};
+    const MODIFIER:          Field = Field {position: 3, mask: (1 << 10) - 1};
 
     fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
-        let bytes = character.get(Self::BASE_ID);
+        let raw = character.get(Self::BASE_ID).ok()
+            .and_then(|b| b.get(..5))
+            .map(|b| { let mut a = [0u8; 8]; a[..5].copy_from_slice(b); u64::from_le_bytes(a) })
+            .unwrap_or(0);
         (
-            Self::OCCUPATION_POINTS.get(bytes) as u9,
-            Self::INTEREST_POINTS.get(bytes) as u9,
-            Self::CHANGE.get(bytes) as i10,
-            Self::MODIFIER.get(bytes) as i10,
+            Self::OCCUPATION_POINTS.get(raw),
+            Self::INTEREST_POINTS.get(raw),
+            Self::CHANGE.get(raw),
+            Self::MODIFIER.get(raw),
         )
     }
 
     fn write<'a>(&self, character: &'a mut DataStruct, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> &'a mut DataStruct {
-        let _ = character.set(Self::BASE_ID, &[u8; 5], None);
+        let raw = Self::OCCUPATION_POINTS.set(0u64, occupation_points);
+        let raw = Self::INTEREST_POINTS.set(raw, interest_points);
+        let raw = Self::CHANGE.set(raw, change);
+        let raw = Self::MODIFIER.set(raw, modifier);
+        let _ = character.set(Self::BASE_ID, &raw.to_le_bytes()[..5], None);
         character
     }
 
@@ -2465,8 +2545,8 @@ pub trait SurvivalTrait<const S: Survival> {
     }
 
     fn as_editable_numeric(&self, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> (u16, u9, u9, i10, i10, i10) {
-        let sum = Self::BASE_PERCENT as i32 + occupation_points as i32 + interest_points as i32 + change as i32 + modifier as i32;
-        (Self::BASE_PERCENT, occupation_points, interest_points, change, modifier, sum as i10)
+        let sum = Self::BASE_PERCENT as i32 + occupation_points.value() as i32 + interest_points.value() as i32 + change.value() as i32 + modifier.value() as i32;
+        (Self::BASE_PERCENT, occupation_points, interest_points, change, modifier, i10::new(sum as i16))
     }
 }
 
@@ -2487,29 +2567,33 @@ impl SurvivalCustom {
     const OCCUPATION_POINTS: Field = Field {position: 32, mask: (1 <<  9) - 1};
     const INTEREST_POINTS:   Field = Field {position: 23, mask: (1 <<  9) - 1};
     const CHANGE:            Field = Field {position: 13, mask: (1 << 10) - 1};
-    const MODIFIER:          Field = Field {position:  3, mask: (1 << 10) - 1};
+    const MODIFIER:          Field = Field {position: 3, mask: (1 << 10) - 1};
 
     // -> occupation_points, interest_points, change, modifier, name
     pub fn read(&self, character: &DataStruct) -> (u16, u16, i16, i16, String) {
-        let bytes = character.get(self.numeric_id()).unwrap_or_default();
-        let occupation_points = Self::OCCUPATION_POINTS.get(&bytes) as u16;
-        let interest_points   = Self::INTEREST_POINTS.get(&bytes) as u16;
-        let change            = Self::CHANGE.get(&bytes) as i16;
-        let modifier          = Self::MODIFIER.get(&bytes) as i16;
+        let raw = character.get(self.numeric_id()).ok()
+            .and_then(|b| b.get(..5))
+            .map(|b| { let mut a = [0u8; 8]; a[..5].copy_from_slice(b); u64::from_le_bytes(a) })
+            .unwrap_or(0);
         let name = character.get(self.name_id()).ok()
             .map(|b| String::from_utf8_lossy(b).into_owned())
             .unwrap_or_default();
-        (occupation_points, interest_points, change, modifier, name)
+        (
+            Self::OCCUPATION_POINTS.get(raw),
+            Self::INTEREST_POINTS.get(raw),
+            Self::CHANGE.get(raw),
+            Self::MODIFIER.get(raw),
+            name,
+        )
     }
 
     pub fn write<'a>(&self, character: &'a mut DataStruct, occupation_points: u16, interest_points: u16, change: i16, modifier: i16, name: &str) -> &'a mut DataStruct {
-        let mut bytes = [0u8; 5];
-        Self::OCCUPATION_POINTS.set(&mut bytes, occupation_points as u64);
-        Self::INTEREST_POINTS.set(&mut bytes, interest_points as u64);
-        Self::CHANGE.set(&mut bytes, change as u64);
-        Self::MODIFIER.set(&mut bytes, modifier as u64);
-        let _ = character.set(self.numeric_id(), &bytes, Some(Upsert));
-        let _ = character.set(self.name_id(), name.as_bytes(), Some(Upsert));
+        let raw = Self::OCCUPATION_POINTS.set(0u64, occupation_points as u64);
+        let raw = Self::INTEREST_POINTS.set(raw, interest_points as u64);
+        let raw = Self::CHANGE.set(raw, change as u64);
+        let raw = Self::MODIFIER.set(raw, modifier as u64);
+        let _ = character.set(self.numeric_id(), &raw.to_le_bytes()[..5], None);
+        let _ = character.set(self.name_id(),    name.as_bytes(),         None);
         character
     }
 
@@ -2544,7 +2628,7 @@ pub enum Possession {
 
 impl Possession {
     pub fn id(&self) -> u32 {
-        Character::Possession.id() + match self {
+        Character::Possession.base_id() + match self {
             Self::Weapon    => 0,
             Self::Armor     => 1,
             Self::Equipment => 2,
@@ -2552,7 +2636,7 @@ impl Possession {
         }
     }
 
-    pub fn label(&self, lang: Lang) -> &'static &str {
+    pub fn label(&self, lang: Lang) -> &'static str {
         match (self, lang) {
             (Self::Weapon, Lang::En(_)) => "Weapon",
             (Self::Weapon, Lang::Ja)    => "武器",
@@ -2739,55 +2823,7 @@ impl Weapon {
         }
     }
 
-    pub fn skill(&self) -> Skill {
-        match self {
-            Self::BowAndArrows                          => Skill::Firearms(FirearmsSpec::Bow),
-            Self::BrassKnuckles                         => Skill::Fighting(FightingSpec::Brawl),
-            Self::Bullwhip                              => Skill::Fighting(FightingSpec::Whip),
-            Self::BurningTorch                          => Skill::Fighting(FightingSpec::Brawl),
-            Self::Blackjack                             => Skill::Fighting(FightingSpec::Brawl),
-            Self::ClubLarge                             => Skill::Fighting(FightingSpec::Brawl),
-            Self::ClubSmall                             => Skill::Fighting(FightingSpec::Brawl),
-            Self::Crossbow                              => Skill::Firearms(FirearmsSpec::Bow),
-            Self::Garrote                               => Skill::Fighting(FightingSpec::Garrote),
-            Self::HatchetSickle                         => Skill::Fighting(FightingSpec::Axe),
-            Self::KnifeLarge                            => Skill::Fighting(FightingSpec::Brawl),
-            Self::KnifeMedium                           => Skill::Fighting(FightingSpec::Brawl),
-            Self::KnifeSmall                            => Skill::Fighting(FightingSpec::Brawl),
-            Self::Nunchaku                              => Skill::Fighting(FightingSpec::Flail),
-            Self::RockThrown                            => Skill::Throw,
-            Self::Shuriken                              => Skill::Throw,
-            Self::Spear                                 => Skill::Fighting(FightingSpec::Spear),
-            Self::SpearThrown                           => Skill::Throw,
-            Self::Auto22Short                           => Skill::Firearms(FirearmsSpec::Handgun),
-            Self::Derringer25                           => Skill::Firearms(FirearmsSpec::Handgun),
-            Self::Revolver32                            => Skill::Firearms(FirearmsSpec::Handgun),
-            Self::Automatic32                           => Skill::Firearms(FirearmsSpec::Handgun),
-            Self::LugerP08                              => Skill::Firearms(FirearmsSpec::Handgun),
-            Self::Revolver45                            => Skill::Firearms(FirearmsSpec::Handgun),
-            Self::Automatic45                           => Skill::Firearms(FirearmsSpec::Handgun),
-            Self::BoltAction22                          => Skill::Firearms(FirearmsSpec::RifleShotgun),
-            Self::LeverAction30                         => Skill::Firearms(FirearmsSpec::RifleShotgun),
-            Self::MartiniHenry45                        => Skill::Firearms(FirearmsSpec::RifleShotgun),
-            Self::MoranAirRifle                         => Skill::Firearms(FirearmsSpec::RifleShotgun),
-            Self::LeeEnfield303                         => Skill::Firearms(FirearmsSpec::RifleShotgun),
-            Self::BoltAction3006                        => Skill::Firearms(FirearmsSpec::RifleShotgun),
-            Self::ElephantGun                           => Skill::Firearms(FirearmsSpec::RifleShotgun),
-            Self::Shotgun20Gauge                        => Skill::Firearms(FirearmsSpec::RifleShotgun),
-            Self::Shotgun16Gauge                        => Skill::Firearms(FirearmsSpec::RifleShotgun),
-            Self::Shotgun12Gauge                        => Skill::Firearms(FirearmsSpec::RifleShotgun),
-            Self::Shotgun12GaugeSemiAuto                => Skill::Firearms(FirearmsSpec::RifleShotgun),
-            Self::Shotgun12GaugeSawedOff                => Skill::Firearms(FirearmsSpec::RifleShotgun),
-            Self::BergmannMP18                          => Skill::Firearms(FirearmsSpec::SubmachineGun),
-            Self::Thompson                              => Skill::Firearms(FirearmsSpec::SubmachineGun),
-            Self::BrowningAutoRifle                     => Skill::Firearms(FirearmsSpec::MachineGun),
-            Self::BrowningM1917                         => Skill::Firearms(FirearmsSpec::MachineGun),
-            Self::BrenGun                               => Skill::Firearms(FirearmsSpec::MachineGun),
-            Self::LewisGun                              => Skill::Firearms(FirearmsSpec::MachineGun),
-            Self::Vickers303                            => Skill::Firearms(FirearmsSpec::MachineGun),
-            Self::Custom(_)                             => Skill::Fighting(FightingSpec::Brawl),
-        }
-    }
+    pub fn skill(&self) -> Skill { todo!() }
 
     pub fn range(&self, _lang: Lang) -> (u8, &str) { // integer, unit
         todo!()
@@ -3064,6 +3100,8 @@ impl Armor {
 }
 
 // --- 収入と財産 (Wealth) ---
+pub enum StandardOfLiving { Pauper, Poor, Average, Wealthy, Rich }
+
 pub struct Wealth {
     pub spending_level: StandardOfLiving,
     pub cash:           String,   // e.g. "$20"
@@ -3071,13 +3109,13 @@ pub struct Wealth {
 }
 
 impl Wealth {
-    pub fn label_spending_level(lang: Lang) -> &'static &str {
+    pub fn label_spending_level(lang: Lang) -> &'static str {
         match lang { Lang::En(_) => "Spending Level", Lang::Ja => "支出レベル" }
     }
-    pub fn label_cash(lang: Lang) -> &'static &str {
+    pub fn label_cash(lang: Lang) -> &'static str {
         match lang { Lang::En(_) => "Cash", Lang::Ja => "現金" }
     }
-    pub fn label_assets(lang: Lang) -> &'static &str {
+    pub fn label_assets(lang: Lang) -> &'static str {
         match lang { Lang::En(_) => "Assets", Lang::Ja => "資産" }
     }
 }
@@ -3102,7 +3140,7 @@ pub enum Backstory {
 
 impl Backstory {
     pub fn id(&self) -> u32 {
-        Character::Backstory.id() + match self {
+        Character::Backstory.base_id() + match self {
             Self::KeyConnection(_)              => 0,
             Self::PersonalDescription           => 1,
             Self::IdeologyAndBeliefs            => 2,
@@ -3118,7 +3156,7 @@ impl Backstory {
         }
     }
 
-    pub fn label(&self, lang: Lang) -> &'static &str {
+    pub fn label(&self, lang: Lang) -> &'static str {
         match (self, lang) {
             (Self::KeyConnection(_),              Lang::En(_)) => "Key Connection",
             (Self::KeyConnection(_),              Lang::Ja) => "キーコネクション",
@@ -3169,7 +3207,7 @@ impl Memo {
 
     /// DataStruct のキーとなる ID。Character::Memo の const id を直接参照。
     pub fn id(&self) -> u32 {
-        Character::Memo.id() + self.slot as u32
+        Character::Memo.base_id() + self.slot as u32
     }
 
     /// [title_len: u32 LE][title: utf-8][body: utf-8]

@@ -1,11 +1,7 @@
-use core::{option::Option::{self, Some, None}, result::Result::{self, Ok, Err}, marker::Copy, fmt, cmp::PartialEq, clone::Clone, todo, matches};
 use alloc::{vec::Vec, vec};
 use rand::{rng, RngExt};
 use crate::Lang;
-use crate::model::{
-    dice, Dice, Character, Profile, Characteristic, Skill,
-    ArtAndCraft, Fighting, Firearms, Pilot, Science, Survival,
-};
+use crate::model::{dice, Dice, Characteristic, Skill};
 
 // ============================================================
 // Percent Roll (1d100 + Bonus/Penalty Dice)
@@ -42,7 +38,6 @@ pub fn percent_roll(bonus: i32) -> (u32, Vec<u32>) {
 pub type Count = u16;
 pub type Side  = u16;
 
-pub type Dice = model::Dice;
 pub struct DiceModifier(pub i16);
 pub struct Skills<T>(pub Vec<T>);
 pub struct Characteristics<T>(pub Vec<T>);
