@@ -1,4 +1,6 @@
 // #![no_implicit_prelude] // Added temporarily to ensure explicit `use` declarations. Please comment out after finishing the modifications.
+#![feature(adt_const_params)]
+#![feature(const_param_ty_trait)]
 
 extern crate core;
 extern crate alloc;
@@ -11,7 +13,7 @@ pub mod store;
 pub mod data_struct;
 pub mod app;
 pub mod model;
-// pub mod roll;
+pub mod roll;
 pub mod event;
 
 // ============================================================
