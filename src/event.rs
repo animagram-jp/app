@@ -8,7 +8,7 @@ use crate::data_struct::DataStruct;
 use crate::model::{
     Dice, dice,
     Character, Profile, Characteristic, SecondaryAttribute, Skill, Possession, Backstory, Memo,
-    LanguageOwn, LanguageOther, ArtAndCraft, Fighting, Firearms, Pilot, Science, Survival,
+    LanguageOwn, ArtAndCraft, Fighting, Firearms, Pilot, Science, Survival,
     HitPoints, MagicPoints, Luck, Sanity, Build, DamageBonus, MoveRate, OccupationSkillPoints, InterestSkillPoints,
 };
 
@@ -67,31 +67,24 @@ impl Handler {
         Vec::new()
     }
     pub fn process(&mut self, event: &CanvasEvent) -> Vec<Command> {
-        match &event.id {
-            Id::new(&[
-                (Tag::Header, None),
-                (Tag::Button, 3),
-            ]) => match self.character_sheet {
+        let id = &event.id;
+        if matches!(event.event_type, EventType::Click)
+            && id == &Id::new(&[(Tag::Header, None), (Tag::Button, Some(3))]) {
+            match self.character_sheet {
                 CharacterSheet::Immutable => {
-                    self.character_sheet = CharacterSheet::Editable,
+                    self.character_sheet = CharacterSheet::Editable;
                     vec![
                         Command::new(
-                            Operation::RemoveClass, 
-                            Id::new(&[
-                                (Tag::Main, None),
-                                (Tag::Section, Some(1)),
-                            ]).encode(), 
-                            hidden, 
+                            Operation::RemoveClass,
+                            &Id::new(&[(Tag::Main, None), (Tag::Section, Some(1))]).encode(),
                             None,
+                            Some("hidden"),
                         ),
                         Command::new(
-                            Operation::AddClass, 
-                            Id::new(&[
-                                (Tag::Main, None),
-                                (Tag::Section, Some(2)),
-                            ]).encode(), 
-                            hidden, 
+                            Operation::AddClass,
+                            &Id::new(&[(Tag::Main, None), (Tag::Section, Some(2))]).encode(),
                             None,
+                            Some("hidden"),
                         ),
                     ]
                 }
@@ -99,31 +92,26 @@ impl Handler {
                     self.character_sheet = CharacterSheet::Immutable;
                     vec![
                         Command::new(
-                            Operation::RemoveClass, 
-                            Id::new(&[
-                                (Tag::Main, None),
-                                (Tag::Section, Some(2)),
-                            ]).encode(), 
-                            hidden, 
+                            Operation::RemoveClass,
+                            &Id::new(&[(Tag::Main, None), (Tag::Section, Some(2))]).encode(),
                             None,
+                            Some("hidden"),
                         ),
                         Command::new(
-                            Operation::AddClass, 
-                            Id::new(&[
-                                (Tag::Main, None),
-                                (Tag::Section, Some(1)),
-                            ]).encode(), 
-                            hidden, 
+                            Operation::AddClass,
+                            &Id::new(&[(Tag::Main, None), (Tag::Section, Some(1))]).encode(),
                             None,
+                            Some("hidden"),
                         ),
-                    ]                    
+                    ]
                 }
             }
-            _                        => vec![],
+        } else {
+            vec![]
         }
     }
     pub fn process_gesture(&mut self, gesture: &Gesture) -> Vec<Command> {
-        todo!()
+        vec![]
     }
 }
 
@@ -134,9 +122,8 @@ impl Handler {
 /// mapping model::{Models}::read() <-> dom::Id
 fn map_id(item: &Character, parent: &Id, n: u32) -> Vec<Id> {
     match parent {
-        p if p == &Id::new(&[(Tag::Section, 1)]) => {
+        p if p == &Id::new(&[(Tag::Section, Some(1))]) => {
             let section_n = match item {
-                DataStruct::ManagementData => 1,
                 Character::Profile         => 2,
                 Character::Characteristic  => 3,
                 Character::SecondaryAttribute => 4,
@@ -156,9 +143,8 @@ fn map_id(item: &Character, parent: &Id, n: u32) -> Vec<Id> {
                 Id::new(&[base.as_slice(), &[(Tag::Span, Some(2))]].concat()),  // value
             ]
         }
-        p if p == &Id::new(&[(Tag::Section, 2)]) => {
+        p if p == &Id::new(&[(Tag::Section, Some(2))]) => {
             let fieldset_n = match item {
-                DataStruct::ManagementData => 1,
                 Character::Profile         => 2,
                 Character::Characteristic  => 3,
                 Character::SecondaryAttribute => 4,
