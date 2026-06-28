@@ -9,8 +9,8 @@ use serde::Serialize;
 pub enum Operation {
     SetText,
     SetValue,
-    SetAttr,
-    RemoveAttr,
+    SetAttribute,
+    RemoveAttribute,
     AddClass,
     RemoveClass,
     SetWidth,
@@ -26,20 +26,20 @@ pub enum Operation {
 impl Operation {
     pub fn as_u8(&self) -> u8 {
         match self {
-            Self::SetText       =>  1,
-            Self::SetValue      =>  2,
-            Self::SetAttr       =>  3,
-            Self::RemoveAttr    =>  4,
-            Self::AddClass      =>  5,
-            Self::RemoveClass   =>  6,
-            Self::SetWidth      =>  7,
-            Self::SetHeight     =>  8,
-            Self::SetBackground =>  9,
-            Self::SetTransform  => 10,
-            Self::ShowModal     => 11,
-            Self::CloseModal    => 12,
-            Self::Focus         => 13,
-            Self::JsFn          => 14,
+            Self::SetText         =>  1,
+            Self::SetValue        =>  2,
+            Self::SetAttribute    =>  3,
+            Self::RemoveAttribute =>  4,
+            Self::AddClass        =>  5,
+            Self::RemoveClass     =>  6,
+            Self::SetWidth        =>  7,
+            Self::SetHeight       =>  8,
+            Self::SetBackground   =>  9,
+            Self::SetTransform    => 10,
+            Self::ShowModal       => 11,
+            Self::CloseModal      => 12,
+            Self::Focus           => 13,
+            Self::JsFn            => 14,
         }
     }
 }
@@ -309,16 +309,8 @@ pub fn detect_gesture(state: &mut PointerState, prev_state: &PointerState, event
 }
 
 // ============================================================
-// dom (rust item <=> element id)
+// dom::(Tag, Segment, Id)::decode/encode <-> id: str
 // ============================================================
-//
-// id規則:
-//   "_" = 親子セグメント区切り  例: main_div_section-1
-//   "-N" = 同タグ内の連番       例: span-3, th-2
-//   連番なし = その階層に1つだけ 例: thead_tr, legend_h5
-//
-// dom::Id::encode()  -> "seg1_seg2_seg-N_..."
-// dom::Id::decode()  -> Vec<dom::Segment> のパース
 
 pub mod dom {
     use core::{option::Option::{self, Some, None}, result::Result::Ok, marker::Copy, fmt, cmp::PartialEq, clone::Clone};
@@ -338,8 +330,8 @@ pub mod dom {
         Ol,
         P,
         Textarea,
-        Drawer,   // <dialog id="drawer">
-        Modal,    // <dialog id="modal">, <dialog id="main_modal">
+        Drawer, // <dialog id="*drawer*">
+        Modal,  // <dialog id="*modal*">
         Form,
         Input,
         Fieldset,

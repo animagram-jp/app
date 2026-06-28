@@ -99,6 +99,10 @@ wasm-pack build --target web --out-dir examples/app --out-name app
       - 同列要素: `display: inline-block`, `display: inline`, `display: table-cell`
       - htmlの制約として、同列要素の中に段落要素を格納する、すなわち集合要素を持つべき時、タグを子に分離する必要がある。この時も、セマンティクスを最もよく表すタグを選択する。
 - idはbody以降の親tag・その連番と、同層同tagの連番から機械的に決定される。
+  - id規則:
+    - "_" = 親子セグメント区切り  例: main_div_section-1
+    - "-N" = 同タグ内の連番      例: span-3, th-2
+    - 連番なし = その階層に1つだけ 例: thead_tr, legend_h5
 - 各element内の記述順は、`<tagname, id, html standard attribute, aria-label, class, class unique attribute>`。
 - formatting rule:
     - Do not insert a line break before a closing tag.

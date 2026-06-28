@@ -6,28 +6,39 @@ use crate::js_client::{Command, Operation, EventType, Gesture, dom::{Id, Tag}, C
 use crate::store::FileStore;
 use crate::data_struct::DataStruct;
 use crate::model::{
-    Character, Profile, Characteristic, Skill,
-    ArtAndCraft, Fighting, Firearms, Pilot, Science, Survival,
+    Dice, dice,
+    Character, Profile, Characteristic, SecondaryAttribute, Skill, Possession, Backstory, Memo,
+    LanguageOwn, LanguageOther, ArtAndCraft, Fighting, Firearms, Pilot, Science, Survival,
+    HitPoints, MagicPoints, Luck, Sanity, Build, DamageBonus, MoveRate, OccupationSkillPoints, InterestSkillPoints,
 };
 
 // ============================================================
-// Event Handler
+// viewport state
 // ============================================================
+
+pub enum CharacterSheet {
+    Immutable,
+    Editable,
+}
 
 #[derive(Clone, Copy)]
 pub enum Dialog {
     None,
-    Modal,  // todo section(2)みたいな感じ
     Drawer, // #drawer
     Select { step: u8, index: u32 }, // #main_modal セレクトUI表示状態
     Input  { step: u8, value: u32 },   // #main_modal 入力UI表示状態
 }
+
+// ============================================================
+// event handler
+// ============================================================
 
 const CHARACTER_SCHEMA_NAME: &str = "characters";
 
 pub struct Log;
 
 pub struct Handler {
+    character_sheet: CharacterSheet,
     dialog:     Dialog,
     lang:       Lang,
     last_toast: u2,
@@ -39,9 +50,10 @@ pub struct Handler {
 impl Handler {
     pub async fn ready(_viewport_width: f64, _viewport_height: f64) -> Self {
         Self {
+            character_sheet: CharacterSheet::Immutable,
             dialog:     Dialog::None,
             lang:       Lang::Ja,
-            last_toast: u2::new(1),
+            last_toast: u2::new(1), // todo last_toastをnext_toastにrenameするか検討
             character:  DataStruct::new(0, 0.0, 256),
             characters: FileStore::new(CHARACTER_SCHEMA_NAME).await
                 .unwrap_or_else(|e| panic!("FileStore::new failed: {}", e)),
@@ -51,38 +63,62 @@ impl Handler {
     pub fn close(&self) {
         self.characters.close();
     }
-
     pub fn initial_draw(&self) -> Vec<Command> {
         Vec::new()
     }
     pub fn process(&mut self, event: &CanvasEvent) -> Vec<Command> {
-        match (&event.event_type, self.dialog) {
-            (EventType::Click, Dialog::None) => {
-                match event.id.last_tag() {
-                    // header_button-3: モーダルを開く
-                    Some(Tag::Button) if event.id == Id::new(&[
-                        (Tag::Header, None),
-                        (Tag::Button, Some(3)),
-                    ]) => {
-                        self.dialog = Dialog::Modal;
-                        open_modal()
-                    }
-                    _ => vec![],
+        match &event.id {
+            Id::new(&[
+                (Tag::Header, None),
+                (Tag::Button, 3),
+            ]) => match self.character_sheet {
+                CharacterSheet::Immutable => {
+                    self.character_sheet = CharacterSheet::Editable,
+                    vec![
+                        Command::new(
+                            Operation::RemoveClass, 
+                            Id::new(&[
+                                (Tag::Main, None),
+                                (Tag::Section, Some(1)),
+                            ]).encode(), 
+                            hidden, 
+                            None,
+                        ),
+                        Command::new(
+                            Operation::AddClass, 
+                            Id::new(&[
+                                (Tag::Main, None),
+                                (Tag::Section, Some(2)),
+                            ]).encode(), 
+                            hidden, 
+                            None,
+                        ),
+                    ]
+                }
+                CharacterSheet::Editable => {
+                    self.character_sheet = CharacterSheet::Immutable;
+                    vec![
+                        Command::new(
+                            Operation::RemoveClass, 
+                            Id::new(&[
+                                (Tag::Main, None),
+                                (Tag::Section, Some(2)),
+                            ]).encode(), 
+                            hidden, 
+                            None,
+                        ),
+                        Command::new(
+                            Operation::AddClass, 
+                            Id::new(&[
+                                (Tag::Main, None),
+                                (Tag::Section, Some(1)),
+                            ]).encode(), 
+                            hidden, 
+                            None,
+                        ),
+                    ]                    
                 }
             }
-            (EventType::Click, Dialog::Modal) => {
-                if event.id == Id::new(&[(Tag::Modal, None)]) {
-                    self.dialog = Dialog::None;
-                    close_modal()
-                } else {
-                    vec![]
-                }
-            }
-            (EventType::KeyDown,  _) => todo!("keydown"),
-            (EventType::Input,    _) => todo!("input"),
-            (EventType::Change,   _) => todo!("change"),
-            (EventType::FocusOut, _) => todo!("FocusOut"),
-            (EventType::Submit,   _) => todo!("submit"),
             _                        => vec![],
         }
     }
@@ -92,9 +128,10 @@ impl Handler {
 }
 
 // ============================================================
-// map item to dom::Id
+// internal helper
 // ============================================================
 
+/// mapping model::{Models}::read() <-> dom::Id
 fn map_id(item: &Character, parent: &Id, n: u32) -> Vec<Id> {
     match parent {
         p if p == &Id::new(&[(Tag::Section, 1)]) => {
@@ -168,70 +205,7 @@ fn map_id(item: &Character, parent: &Id, n: u32) -> Vec<Id> {
     }
 }
 
-// ============================================================
-// action
-// ============================================================
-
-pub fn close_modal() -> Vec<Command> {
-    let modal = Id::new(&[(Tag::Modal, None)]);
-    vec![Command::new(Operation::CloseModal, &modal.encode(), None, None)]
-}
-
-pub fn open_modal() -> Vec<Command> {
-    let mut commands = Vec::new();
-
-    let modal = Id::new(&[(Tag::Modal, None)]);
-    commands.push(Command::new(Operation::ShowModal, &modal.encode(), None, None));
-
-    commands
-}
-
-// Characteristic: input-1(初期値) + input-2(変動値) + input-3(補正値) → span(合計) をリアルタイム更新
-pub fn on_characteristic_input(_row: usize, base: i32, delta: i32, bonus: i32) -> Vec<Command> {
-    let _total = (base + delta + bonus).max(1);
-    todo!()
-}
-
-// Skill: 専門分野(td-1_input)が変わったら th のテキストを更新する
-pub fn on_skill_spec_input(_row: usize, _skill: &Skill, _spec: &str) -> Vec<Command> {
-    todo!()
-}
-
-// Skill: 職業pt(input-1) か 興味pt(input-2) か 補正値(input-3) が変わったら合計spanを更新する
-pub fn on_skill_input(_row: usize, _base: u16, _occ_pt: u16, _int_pt: u16, _bonus: i32) -> Vec<Command> {
-    todo!()
-}
-
-// modal header button: 全Characteristicを一括ロール
-pub fn roll_characteristics(_char_data: &mut DataStruct) -> Vec<Command> {
-    todo!()
-}
-
-pub fn restore_modal(ds: &DataStruct) -> Vec<Command> {
-    let mut commands = Vec::new();
-    // todo
-    commands
-}
-
-
-
-pub fn update_character_view(ds: &DataStruct) -> Vec<Command> {
-    let mut commands = Vec::new();
-    commands
-}
-
-pub fn update_select(_list: &[(u32, String)], _selected_id: Option<u32>) -> Vec<Command> {
-    todo!()
-}
-
-pub fn reset_modal() -> Vec<Command> {
-    let mut commands = Vec::new();
-    commands
-}
-
-// ============================================================
-// Toast
-// ============================================================
+// --- toast ---
 
 pub enum Toast { Saved, Discarded, Synced }
 
@@ -247,11 +221,11 @@ impl Toast {
     fn label(&self, lang: Lang) -> &'static str {
         match (self, lang) {
             (Self::Saved,     Lang::En(_)) => "Saved",
-            (Self::Saved,     Lang::Ja) => "保存しました",
+            (Self::Saved,     Lang::Ja)    => "保存しました",
             (Self::Discarded, Lang::En(_)) => "Discarded",
-            (Self::Discarded, Lang::Ja) => "破棄しました",
+            (Self::Discarded, Lang::Ja)    => "破棄しました",
             (Self::Synced,    Lang::En(_)) => "Synced",
-            (Self::Synced,    Lang::Ja) => "同期しました",
+            (Self::Synced,    Lang::Ja)    => "同期しました",
         }
     }
 

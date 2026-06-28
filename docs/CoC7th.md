@@ -38,6 +38,11 @@ This project is an independent, unofficial work and is not affiliated with, endo
 - 2. 既存のキャラクターシートサービスくらいには良い感じの表示になるようにする。
 - 3. スマートフォンでも表示(・編集)に支障が無いようにUIを精査する。
 
+- Characteristic: input-1(初期値) + input-2(変動値) + input-3(補正値) → span(合計) をリアルタイム更新
+- Skill: 専門分野(td-1_input)が変わったら th のテキストを更新する
+- Skill: 職業pt(input-1) か 興味pt(input-2) か 補正値(input-3) が変わったら合計spanを更新する
+- modal header button: 全Characteristicを一括ロール
+
 ### 2. チャットボックスでのコマンド実行・保持
 
 予約語(デフォルトは"/")入力をトリガーとして、ダイスロール実行やデータ操作・集計を行う。
