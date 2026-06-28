@@ -97,15 +97,16 @@ impl Handler {
 
 fn map_id(item: &Character, parent: &Id, n: u32) -> Vec<Id> {
     match parent {
-        p if p == &Id::new(&[(Tag::Main, None)]) => {
+        p if p == &Id::new(&[(Tag::Section, 1)]) => {
             let section_n = match item {
-                Character::Profile        => 2,
-                Character::Characteristic => 3,
+                DataStruct::ManagementData => 1,
+                Character::Profile         => 2,
+                Character::Characteristic  => 3,
                 Character::SecondaryAttribute => 4,
-                Character::Skill          => 5,
-                Character::Possession     => 6,
-                Character::Backstory      => 7,
-                Character::Memo           => 8,
+                Character::Skill      => 5,
+                Character::Possession => 6,
+                Character::Backstory  => 7,
+                Character::Memo       => 8,
             };
             let base: Vec<(Tag, Option<u32>)> = vec![
                 (Tag::Main,    None),
@@ -118,15 +119,16 @@ fn map_id(item: &Character, parent: &Id, n: u32) -> Vec<Id> {
                 Id::new(&[base.as_slice(), &[(Tag::Span, Some(2))]].concat()),  // value
             ]
         }
-        p if p == &Id::new(&[(Tag::Modal, None)]) => {
+        p if p == &Id::new(&[(Tag::Section, 2)]) => {
             let fieldset_n = match item {
-                Character::Profile        => 1,
-                Character::Characteristic => 2,
-                Character::Skill          => 3,
-                Character::Backstory      => 4,
-                Character::Memo           => 5,
-                Character::SecondaryAttribute => todo!("SecondaryAttributeのfieldsetはmodalに未実装"),
-                Character::Possession     => todo!("Possessionのfieldsetはmodalに未実装"),
+                DataStruct::ManagementData => 1,
+                Character::Profile         => 2,
+                Character::Characteristic  => 3,
+                Character::SecondaryAttribute => 4,
+                Character::Skill      => 5,
+                Character::Possession => 6,
+                Character::Backstory  => 7,
+                Character::Memo       => 8,
             };
             let tr: Vec<(Tag, Option<u32>)> = vec![
                 (Tag::Modal,    None),
