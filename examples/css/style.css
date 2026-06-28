@@ -48,6 +48,10 @@ textarea {
     font-size: inherit;
 }
 
+input[inputmode="numeric"] {
+    text-align: right;
+}
+
 output {
     bottom: 1.5rem;
     right: 1.5rem;
