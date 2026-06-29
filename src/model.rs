@@ -1410,8 +1410,7 @@ impl ArtAndCraft {
             (Self::Sculpting,   Lang::Ja)    => "彫刻",
             (Self::Writing,     Lang::En(_)) => "Writing",
             (Self::Writing,     Lang::Ja)    => "執筆",
-            (Self::Custom,      _)           => "",
-        }
+            // (Self::Custom,      _)        => unreachable!(),
     }
 
     pub fn list() -> &'static [Self] {
@@ -1497,11 +1496,7 @@ pub struct Writing;      impl ArtAndCraftTrait<{ ArtAndCraft::Writing     }> for
 pub struct ArtAndCraftCustom(pub u8);
 
 impl ArtAndCraftCustom {
-    // Custom(0) = リスト格納スロット。Custom(i) (i≥1) → numeric: list+i*2-1, name: list+i*2
     const LIST_ID: u32 = ArtAndCraft::Custom.base_id();
-
-    fn numeric_id(&self) -> u32 { Self::LIST_ID + self.0 as u32 * 2 - 1 }
-    fn name_id(&self)    -> u32 { Self::LIST_ID + self.0 as u32 * 2 }
 
     // base_percent は定数(5%)のため SkillTrait と同一 Field 構成・5 bytes
     const OCCUPATION_POINTS: Field = Field {position: 32, mask: (1 <<  9) - 1};
@@ -1511,11 +1506,23 @@ impl ArtAndCraftCustom {
 
     // -> occupation_points, interest_points, change, modifier, name
     pub fn read(&self, character: &DataStruct) -> (u16, u16, i16, i16, String) {
-        let raw = character.get(self.numeric_id()).ok()
+        let i = self.0 as usize;
+        let (numeric_id, name_id) = character.get(Self::LIST_ID).ok()
+            .and_then(|b| {
+                let base = i * 2 * 4;
+                let numeric = b.get(base..base + 4)?;
+                let name    = b.get(base + 4..base + 8)?;
+                Some((
+                    u32::from_le_bytes(numeric.try_into().unwrap()),
+                    u32::from_le_bytes(name.try_into().unwrap()),
+                ))
+            })
+            .unwrap_or((0, 0));
+        let raw = character.get(numeric_id).ok()
             .and_then(|b| b.get(..5))
             .map(|b| { let mut a = [0u8; 8]; a[..5].copy_from_slice(b); u64::from_le_bytes(a) })
             .unwrap_or(0);
-        let name = character.get(self.name_id()).ok()
+        let name = character.get(name_id).ok()
             .map(|b| String::from_utf8_lossy(b).into_owned())
             .unwrap_or_default();
         (
@@ -1527,13 +1534,21 @@ impl ArtAndCraftCustom {
         )
     }
 
-    pub fn write<'a>(&self, character: &'a mut DataStruct, occupation_points: u16, interest_points: u16, change: i16, modifier: i16, name: &str) -> &'a mut DataStruct {
+    pub fn write<'a>(&self, character: &'a mut DataStruct, ids: [u32; 2], occupation_points: u16, interest_points: u16, change: i16, modifier: i16, name: &str) -> &'a mut DataStruct {
         let raw = Self::OCCUPATION_POINTS.set(0u64, occupation_points as u64);
         let raw = Self::INTEREST_POINTS.set(raw, interest_points as u64);
         let raw = Self::CHANGE.set(raw, change as u64);
         let raw = Self::MODIFIER.set(raw, modifier as u64);
-        let _ = character.set(self.numeric_id(), &raw.to_le_bytes()[..5], None);
-        let _ = character.set(self.name_id(),    name.as_bytes(),         None);
+        let i = self.0 as usize;
+        let base = i * 2 * 4;
+        let min_len = base + 8;
+        let mut list = character.get(Self::LIST_ID).map(|b| b.to_vec()).unwrap_or_default();
+        if list.len() < min_len { list.resize(min_len, 0); }
+        list[base..base + 4].copy_from_slice(&ids[0].to_le_bytes());
+        list[base + 4..base + 8].copy_from_slice(&ids[1].to_le_bytes());
+        let _ = character.set(Self::LIST_ID, &list, None);
+        let _ = character.set(ids[0], &raw.to_le_bytes()[..5], None);
+        let _ = character.set(ids[1], name.as_bytes(), None);
         character
     }
 
@@ -1566,66 +1581,70 @@ pub enum Fighting {
     Spear,      // 槍         20%
     Sword,      // 刀剣       20%
     Whip,       // 鞭         05%
-    Custom(u8),
+    Custom,
 }
 
 impl Fighting {
 
     pub fn list() -> &'static [Self] {
         &[
-            Self::Axe, Self::Brawl, Self::Chainsaw, Self::Flail, Self::Garrote, Self::Spear, Self::Sword, Self::Whip,
+            Self::Axe, 
+            Self::Brawl, 
+            Self::Chainsaw, 
+            Self::Flail, 
+            Self::Garrote, 
+            Self::Spear, 
+            Self::Sword, 
+            Self::Whip,
         ]
     }
 
     pub const fn id(&self, base: u32) -> u32 {
         base + match self {
-            Self::Axe            => 1,
-            Self::Brawl          => 2,
-            Self::Chainsaw       => 3,
-            Self::Flail          => 4,
-            Self::Garrote        => 5,
-            Self::Spear          => 6,
-            Self::Sword          => 7,
-            Self::Whip           => 8,
-            Self::Custom(0)      => 9, // カスタムidリスト格納スロット
-            Self::Custom(_)      => todo!(),
+            Self::Axe         => 1,
+            Self::Brawl       => 2,
+            Self::Chainsaw    => 3,
+            Self::Flail       => 4,
+            Self::Garrote     => 5,
+            Self::Spear       => 6,
+            Self::Sword       => 7,
+            Self::Whip        => 8,
+            Self::Custom      => 9,
         }
     }
 
     pub const fn base_percent(&self) -> u16 {
         match self {
-            Self::Axe       => 15,
-            Self::Brawl     => 25,
-            Self::Chainsaw  => 10,
-            Self::Flail     => 10,
-            Self::Garrote   => 15,
-            Self::Spear     => 20,
-            Self::Sword     => 20,
-            Self::Whip      =>  5,
-            Self::Custom(_) =>  0,
+            Self::Axe      => 15,
+            Self::Brawl    => 25,
+            Self::Chainsaw => 10,
+            Self::Flail    => 10,
+            Self::Garrote  => 15,
+            Self::Spear    => 20,
+            Self::Sword    => 20,
+            Self::Whip     =>  5,
+            // Self::Custom      => unreachable!(),
         }
     }
 
-    pub fn label(&self, lang: Lang) -> &str {
+    pub fn name(&self, lang: Lang) -> &str {
         match (self, lang) {
             (Self::Axe,      Lang::En(_)) => "Axe",
-            (Self::Axe,      Lang::Ja) => "斧",
+            (Self::Axe,      Lang::Ja)    => "斧",
             (Self::Brawl,    Lang::En(_)) => "Brawl",
-            (Self::Brawl,    Lang::Ja) => "格闘",
+            (Self::Brawl,    Lang::Ja)    => "格闘",
             (Self::Chainsaw, Lang::En(_)) => "Chainsaw",
-            (Self::Chainsaw, Lang::Ja) => "チェーンソー",
+            (Self::Chainsaw, Lang::Ja)    => "チェーンソー",
             (Self::Flail,    Lang::En(_)) => "Flail",
-            (Self::Flail,    Lang::Ja) => "フレイル",
+            (Self::Flail,    Lang::Ja)    => "フレイル",
             (Self::Garrote,  Lang::En(_)) => "Garrote",
-            (Self::Garrote,  Lang::Ja) => "絞殺ひも",
+            (Self::Garrote,  Lang::Ja)    => "絞殺ひも",
             (Self::Spear,    Lang::En(_)) => "Spear",
-            (Self::Spear,    Lang::Ja) => "槍",
+            (Self::Spear,    Lang::Ja)    => "槍",
             (Self::Sword,    Lang::En(_)) => "Sword",
-            (Self::Sword,    Lang::Ja) => "刀剣",
+            (Self::Sword,    Lang::Ja)    => "刀剣",
             (Self::Whip,     Lang::En(_)) => "Whip",
-            (Self::Whip,     Lang::Ja) => "鞭",
-            (Self::Custom(0), _) => unreachable!("Custom(0) はリスト格納スロットであり label() 不可"),
-            (Self::Custom(_), _) => todo!("カスタム専門分野のラベルはDataStructから動的に取得"),
+            (Self::Whip,     Lang::Ja)    => "鞭",
         }
     }
 }
@@ -1641,7 +1660,7 @@ pub trait FightingTrait<const F: Fighting> {
     const OCCUPATION_POINTS: Field = Field {position: 32, mask: (1 <<  9) - 1};
     const INTEREST_POINTS:   Field = Field {position: 23, mask: (1 <<  9) - 1};
     const CHANGE:            Field = Field {position: 13, mask: (1 << 10) - 1};
-    const MODIFIER:          Field = Field {position: 3, mask: (1 << 10) - 1};
+    const MODIFIER:          Field = Field {position:  3, mask: (1 << 10) - 1};
 
     // -> occupation_points, interest_points, change, modifier
     fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
@@ -1666,9 +1685,9 @@ pub trait FightingTrait<const F: Fighting> {
         character
     }
 
-    // -> skill_name, specialization_label
+    // -> skill_name, specialization_name
     fn as_editable_string(&self, lang: Lang) -> (&'static str, &'static str) {
-        (Skill::Fighting.name(&lang), F.label(lang))
+        (Skill::Fighting.name(&lang), F.name(lang))
     }
 
     // -> base, occupation_points, interest_points, change, modifier, sum
@@ -1697,23 +1716,35 @@ impl FightingCustom {
     fn name_id(&self)    -> u32 { Self::LIST_ID + self.0 as u32 * 2 }
 
     // base_percent は可変のため 6 bytes (bits 41-47 に格納)
-    const BASE_PERCENT_FIELD: Field = Field {position: 41, mask: (1 <<  7) - 1};
+    const BASE_PERCENT:       Field = Field {position: 41, mask: (1 <<  7) - 1};
     const OCCUPATION_POINTS:  Field = Field {position: 32, mask: (1 <<  9) - 1};
     const INTEREST_POINTS:    Field = Field {position: 23, mask: (1 <<  9) - 1};
     const CHANGE:             Field = Field {position: 13, mask: (1 << 10) - 1};
-    const MODIFIER:           Field = Field {position: 3, mask: (1 << 10) - 1};
+    const MODIFIER:           Field = Field {position:  3, mask: (1 << 10) - 1};
 
-    // -> base_percent, occupation_points, interest_points, change, modifier, name
-    pub fn read(&self, character: &DataStruct) -> (u16, u16, u16, i16, i16, String) {
-        let raw = character.get(self.numeric_id()).ok()
-            .and_then(|b| b.get(..6))
-            .map(|b| { let mut a = [0u8; 8]; a[..6].copy_from_slice(b); u64::from_le_bytes(a) })
+    // -> occupation_points, interest_points, change, modifier, name
+    pub fn read(&self, character: &DataStruct) -> (u16, u16, i16, i16, String) {
+        let i = self.0 as usize;
+        let (numeric_id, name_id) = character.get(Self::LIST_ID).ok()
+            .and_then(|b| {
+                let base = i * 2 * 4;
+                let numeric = b.get(base..base + 4)?;
+                let name    = b.get(base + 4..base + 8)?;
+                Some((
+                    u32::from_le_bytes(numeric.try_into().unwrap()),
+                    u32::from_le_bytes(name.try_into().unwrap()),
+                ))
+            })
+            .unwrap_or((0, 0));
+        let raw = character.get(numeric_id).ok()
+            .and_then(|b| b.get(..5))
+            .map(|b| { let mut a = [0u8; 8]; a[..5].copy_from_slice(b); u64::from_le_bytes(a) })
             .unwrap_or(0);
-        let name = character.get(self.name_id()).ok()
+        let name = character.get(name_id).ok()
             .map(|b| String::from_utf8_lossy(b).into_owned())
             .unwrap_or_default();
         (
-            Self::BASE_PERCENT_FIELD.get(raw),
+            Self::BASE_PERCENT.get(raw),
             Self::OCCUPATION_POINTS.get(raw),
             Self::INTEREST_POINTS.get(raw),
             Self::CHANGE.get(raw),
@@ -1722,14 +1753,22 @@ impl FightingCustom {
         )
     }
 
-    pub fn write<'a>(&self, character: &'a mut DataStruct, base_percent: u16, occupation_points: u16, interest_points: u16, change: i16, modifier: i16, name: &str) -> &'a mut DataStruct {
-        let raw = Self::BASE_PERCENT_FIELD.set(0u64, base_percent as u64);
-        let raw = Self::OCCUPATION_POINTS.set(raw, occupation_points as u64);
-        let raw = Self::INTEREST_POINTS.set(raw, interest_points as u64);
-        let raw = Self::CHANGE.set(raw, change as u64);
-        let raw = Self::MODIFIER.set(raw, modifier as u64);
-        let _ = character.set(self.numeric_id(), &raw.to_le_bytes()[..6], None);
-        let _ = character.set(self.name_id(),    name.as_bytes(),         None);
+    pub fn write<'a>(&self, character: &'a mut DataStruct, ids: [u32; 2], base_percent: u16, occupation_points: u16, interest_points: u16, change: i16, modifier: i16, name: &str) -> &'a mut DataStruct {
+        let raw = Self::BASE_PERCENT.set(0u64, base_percent as u64);
+        raw = Self::OCCUPATION_POINTS.set(raw, occupation_points as u64);
+        raw = Self::INTEREST_POINTS.set(raw, interest_points as u64);
+        raw = Self::CHANGE.set(raw, change as u64);
+        raw = Self::MODIFIER.set(raw, modifier as u64);
+        let i = self.0 as usize;
+        let base = i * 2 * 4;
+        let min_len = base + 8;
+        let mut list = character.get(Self::LIST_ID).map(|b| b.to_vec()).unwrap_or_default();
+        if list.len() < min_len { list.resize(min_len, 0); }
+        list[base..base + 4].copy_from_slice(&ids[0].to_le_bytes());
+        list[base + 4..base + 8].copy_from_slice(&ids[1].to_le_bytes());
+        let _ = character.set(Self::LIST_ID, &list, None);
+        let _ = character.set(ids[0], &raw.to_le_bytes()[..5], None);
+        let _ = character.set(ids[1], name.as_bytes(), None);
         character
     }
 
@@ -1760,7 +1799,7 @@ pub enum Firearms {
     MachineGun,    // マシンガン, 10%
     RifleShotgun,  // ライフル/ショットガン, 25%
     SubmachineGun, // サブマシンガン, 15%
-    Custom(u8),
+    Custom,
 }
 
 impl Firearms {
@@ -1778,8 +1817,7 @@ impl Firearms {
             Self::MachineGun     => 4,
             Self::RifleShotgun   => 5,
             Self::SubmachineGun  => 6,
-            Self::Custom(0)      => 7, // カスタムidリスト格納スロット
-            Self::Custom(_)      => todo!(),
+            Self::Custom         => 7,
         }
     }
 
@@ -1792,12 +1830,11 @@ impl Firearms {
             Self::MachineGun     => 10,
             Self::RifleShotgun   => 25,
             Self::SubmachineGun  => 15,
-            Self::Custom(0)      => unreachable!(),
-            Self::Custom(_)      =>  0,
+            // Self::Custom      => unreachable!(),
         }
     }
 
-    pub fn label(&self, lang: Lang) -> &str {
+    pub fn name(&self, lang: Lang) -> &str {
         match (self, lang) {
             (Self::Bow,           Lang::En(_)) => "Bow",
             (Self::Bow,           Lang::Ja)    => "弓",
@@ -1813,8 +1850,7 @@ impl Firearms {
             (Self::RifleShotgun,  Lang::Ja)    => "ライフル/ショットガン",
             (Self::SubmachineGun, Lang::En(_)) => "Submachine Gun",
             (Self::SubmachineGun, Lang::Ja)    => "サブマシンガン",
-            (Self::Custom(0), _)               => unreachable!("Custom(0) はリスト格納スロットであり label() 不可"),
-            (Self::Custom(_), _)               => todo!("カスタム専門分野のラベルはDataStructから動的に取得"),
+            (Self::Custom, _)                  => unreachable!("Firearms::Customはリスト格納スロットでありname() 不可"),
         }
     }
 }
@@ -1877,30 +1913,41 @@ pub struct SubmachineGun;        impl FirearmsTrait<{ Firearms::SubmachineGun }>
 pub struct FirearmsCustom(pub u8);
 
 impl FirearmsCustom {
-    // Custom(0) = リスト格納スロット。Custom(i) (i≥1) → numeric: list+i*2-1, name: list+i*2
-    const LIST_ID: u32 = Skill::Firearms.base_id() + 7;
+    const LIST_ID: u32 = Firearms::Custom.base_id();
 
     fn numeric_id(&self) -> u32 { Self::LIST_ID + self.0 as u32 * 2 - 1 }
     fn name_id(&self)    -> u32 { Self::LIST_ID + self.0 as u32 * 2 }
 
     // base_percent は可変のため 6 bytes (bits 41-47 に格納)
-    const BASE_PERCENT_FIELD: Field = Field {position: 41, mask: (1 <<  7) - 1};
+    const BASE_PERCENT:       Field = Field {position: 41, mask: (1 <<  7) - 1};
     const OCCUPATION_POINTS:  Field = Field {position: 32, mask: (1 <<  9) - 1};
     const INTEREST_POINTS:    Field = Field {position: 23, mask: (1 <<  9) - 1};
     const CHANGE:             Field = Field {position: 13, mask: (1 << 10) - 1};
-    const MODIFIER:           Field = Field {position: 3, mask: (1 << 10) - 1};
+    const MODIFIER:           Field = Field {position:  3, mask: (1 << 10) - 1};
 
-    // -> base_percent, occupation_points, interest_points, change, modifier, name
+    // -> occupation_points, interest_points, change, modifier, name
     pub fn read(&self, character: &DataStruct) -> (u16, u16, u16, i16, i16, String) {
-        let raw = character.get(self.numeric_id()).ok()
-            .and_then(|b| b.get(..6))
-            .map(|b| { let mut a = [0u8; 8]; a[..6].copy_from_slice(b); u64::from_le_bytes(a) })
+        let i = self.0 as usize;
+        let (numeric_id, name_id) = character.get(Self::LIST_ID).ok()
+            .and_then(|b| {
+                let base = i * 2 * 4;
+                let numeric = b.get(base..base + 4)?;
+                let name    = b.get(base + 4..base + 8)?;
+                Some((
+                    u32::from_le_bytes(numeric.try_into().unwrap()),
+                    u32::from_le_bytes(name.try_into().unwrap()),
+                ))
+            })
+            .unwrap_or((0, 0));
+        let raw = character.get(numeric_id).ok()
+            .and_then(|b| b.get(..5))
+            .map(|b| { let mut a = [0u8; 8]; a[..5].copy_from_slice(b); u64::from_le_bytes(a) })
             .unwrap_or(0);
-        let name = character.get(self.name_id()).ok()
+        let name = character.get(name_id).ok()
             .map(|b| String::from_utf8_lossy(b).into_owned())
             .unwrap_or_default();
         (
-            Self::BASE_PERCENT_FIELD.get(raw),
+            Self::BASE_PERCENT.get(raw),
             Self::OCCUPATION_POINTS.get(raw),
             Self::INTEREST_POINTS.get(raw),
             Self::CHANGE.get(raw),
@@ -1909,14 +1956,22 @@ impl FirearmsCustom {
         )
     }
 
-    pub fn write<'a>(&self, character: &'a mut DataStruct, base_percent: u16, occupation_points: u16, interest_points: u16, change: i16, modifier: i16, name: &str) -> &'a mut DataStruct {
-        let raw = Self::BASE_PERCENT_FIELD.set(0u64, base_percent as u64);
-        let raw = Self::OCCUPATION_POINTS.set(raw, occupation_points as u64);
-        let raw = Self::INTEREST_POINTS.set(raw, interest_points as u64);
-        let raw = Self::CHANGE.set(raw, change as u64);
-        let raw = Self::MODIFIER.set(raw, modifier as u64);
-        let _ = character.set(self.numeric_id(), &raw.to_le_bytes()[..6], None);
-        let _ = character.set(self.name_id(),    name.as_bytes(),         None);
+    pub fn write<'a>(&self, character: &'a mut DataStruct, ids: [u32; 2], base_percent: u16, occupation_points: u16, interest_points: u16, change: i16, modifier: i16, name: &str) -> &'a mut DataStruct {
+        let raw = Self::BASE_PERCENT.set(0u64, base_percent as u64);
+        raw = Self::OCCUPATION_POINTS.set(raw, occupation_points as u64);
+        raw = Self::INTEREST_POINTS.set(raw, interest_points as u64);
+        raw = Self::CHANGE.set(raw, change as u64);
+        raw = Self::MODIFIER.set(raw, modifier as u64);
+        let i = self.0 as usize;
+        let base = i * 2 * 4;
+        let min_len = base + 8;
+        let mut list = character.get(Self::LIST_ID).map(|b| b.to_vec()).unwrap_or_default();
+        if list.len() < min_len { list.resize(min_len, 0); }
+        list[base..base + 4].copy_from_slice(&ids[0].to_le_bytes());
+        list[base + 4..base + 8].copy_from_slice(&ids[1].to_le_bytes());
+        let _ = character.set(Self::LIST_ID, &list, None);
+        let _ = character.set(ids[0], &raw.to_le_bytes()[..5], None);
+        let _ = character.set(ids[1], name.as_bytes(), None);
         character
     }
 
@@ -1938,78 +1993,11 @@ impl FirearmsCustom {
 }
 
 /// ほかの言語 (専門分野) (Language (Other) (Specialization) // p.73
-#[derive(Clone, PartialEq, Eq)]
-pub enum Language {
-    Custom(u8),
-}
+pub struct LanguageOther(pub u8);
 
-impl Language {
-    pub const fn id(&self, base: u32) -> u32 {
-        base + match self {
-            Self::Custom(0) => 0,
-            Self::Custom(_) => todo!(),
-        }
-    }
-
-    pub fn label(&self, _lang: Lang) -> Option<&'static str> {
-        match self {
-            Self::Custom(0) => None, // リスト格納スロット
-            Self::Custom(_) => todo!("カスタム専門分野のラベルはDataStructから動的に取得"),
-        }
-    }
-}
-
-impl core::marker::ConstParamTy_ for Language {}
-
-pub trait LanguageTrait<const L: Language> {
-    const SKILL: Skill = Skill::LanguageOther;
-    const SPECIALIZATION: Language = L;
-    const BASE_ID: u32 = L.id(Skill::LanguageOther.base_id());
-    const BASE_PERCENT: u16 = 1;
-
-    const OCCUPATION_POINTS: Field = Field {position: 32, mask: (1 <<  9) - 1};
-    const INTEREST_POINTS:   Field = Field {position: 23, mask: (1 <<  9) - 1};
-    const CHANGE:            Field = Field {position: 13, mask: (1 << 10) - 1};
-    const MODIFIER:          Field = Field {position: 3, mask: (1 << 10) - 1};
-
-    fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
-        let raw = character.get(Self::BASE_ID).ok()
-            .and_then(|b| b.get(..5))
-            .map(|b| { let mut a = [0u8; 8]; a[..5].copy_from_slice(b); u64::from_le_bytes(a) })
-            .unwrap_or(0);
-        (
-            Self::OCCUPATION_POINTS.get(raw),
-            Self::INTEREST_POINTS.get(raw),
-            Self::CHANGE.get(raw),
-            Self::MODIFIER.get(raw),
-        )
-    }
-
-    fn write<'a>(&self, character: &'a mut DataStruct, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> &'a mut DataStruct {
-        let raw = Self::OCCUPATION_POINTS.set(0u64, occupation_points);
-        let raw = Self::INTEREST_POINTS.set(raw, interest_points);
-        let raw = Self::CHANGE.set(raw, change);
-        let raw = Self::MODIFIER.set(raw, modifier);
-        let _ = character.set(Self::BASE_ID, &raw.to_le_bytes()[..5], None);
-        character
-    }
-
-    // -> skill_name, language_name (自由記述)
-    fn as_editable_string(&self, lang: Lang) -> (&'static str, &'static str) {
-        (Skill::LanguageOther.name(&lang), "")
-    }
-
-    fn as_editable_numeric(&self, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> (u16, u9, u9, i10, i10, i10) {
-        let sum = Self::BASE_PERCENT as i32 + occupation_points.value() as i32 + interest_points.value() as i32 + change.value() as i32 + modifier.value() as i32;
-        (Self::BASE_PERCENT, occupation_points, interest_points, change, modifier, i10::new(sum as i16))
-    }
-}
-
-pub struct LanguageCustom(pub u8);
-
-impl LanguageCustom {
-    // Custom(0) = リスト格納スロット。Custom(i) (i≥1) → numeric: list+i*2-1, name: list+i*2
+impl LanguageOther {
     const LIST_ID: u32 = Skill::LanguageOther.base_id();
+    const BASE_PERCENT: u16 = 1;
 
     fn numeric_id(&self) -> u32 { Self::LIST_ID + self.0 as u32 * 2 - 1 }
     fn name_id(&self)    -> u32 { Self::LIST_ID + self.0 as u32 * 2 }
@@ -2018,15 +2006,27 @@ impl LanguageCustom {
     const OCCUPATION_POINTS: Field = Field {position: 32, mask: (1 <<  9) - 1};
     const INTEREST_POINTS:   Field = Field {position: 23, mask: (1 <<  9) - 1};
     const CHANGE:            Field = Field {position: 13, mask: (1 << 10) - 1};
-    const MODIFIER:          Field = Field {position: 3, mask: (1 << 10) - 1};
+    const MODIFIER:          Field = Field {position:  3, mask: (1 << 10) - 1};
 
     // -> occupation_points, interest_points, change, modifier, name
     pub fn read(&self, character: &DataStruct) -> (u16, u16, i16, i16, String) {
-        let raw = character.get(self.numeric_id()).ok()
+        let i = self.0 as usize;
+        let (numeric_id, name_id) = character.get(Self::LIST_ID).ok()
+            .and_then(|b| {
+                let base = i * 2 * 4;
+                let numeric = b.get(base..base + 4)?;
+                let name    = b.get(base + 4..base + 8)?;
+                Some((
+                    u32::from_le_bytes(numeric.try_into().unwrap()),
+                    u32::from_le_bytes(name.try_into().unwrap()),
+                ))
+            })
+            .unwrap_or((0, 0));
+        let raw = character.get(numeric_id).ok()
             .and_then(|b| b.get(..5))
             .map(|b| { let mut a = [0u8; 8]; a[..5].copy_from_slice(b); u64::from_le_bytes(a) })
             .unwrap_or(0);
-        let name = character.get(self.name_id()).ok()
+        let name = character.get(name_id).ok()
             .map(|b| String::from_utf8_lossy(b).into_owned())
             .unwrap_or_default();
         (
@@ -2038,22 +2038,29 @@ impl LanguageCustom {
         )
     }
 
-    pub fn write<'a>(&self, character: &'a mut DataStruct, occupation_points: u16, interest_points: u16, change: i16, modifier: i16, name: &str) -> &'a mut DataStruct {
+    pub fn write<'a>(&self, character: &'a mut DataStruct, ids: [u32; 2], occupation_points: u16, interest_points: u16, change: i16, modifier: i16, name: &str) -> &'a mut DataStruct {
         let raw = Self::OCCUPATION_POINTS.set(0u64, occupation_points as u64);
         let raw = Self::INTEREST_POINTS.set(raw, interest_points as u64);
         let raw = Self::CHANGE.set(raw, change as u64);
         let raw = Self::MODIFIER.set(raw, modifier as u64);
-        let _ = character.set(self.numeric_id(), &raw.to_le_bytes()[..5], None);
-        let _ = character.set(self.name_id(),    name.as_bytes(),         None);
+        let i = self.0 as usize;
+        let base = i * 2 * 4;
+        let min_len = base + 8;
+        let mut list = character.get(Self::LIST_ID).map(|b| b.to_vec()).unwrap_or_default();
+        if list.len() < min_len { list.resize(min_len, 0); }
+        list[base..base + 4].copy_from_slice(&ids[0].to_le_bytes());
+        list[base + 4..base + 8].copy_from_slice(&ids[1].to_le_bytes());
+        let _ = character.set(Self::LIST_ID, &list, None);
+        let _ = character.set(ids[0], &raw.to_le_bytes()[..5], None);
+        let _ = character.set(ids[1], name.as_bytes(), None);
         character
     }
 
     // read() の戻り値を引数に取る。character の読み出し不要。
     // -> base_percent(定数), occupation_points, interest_points, change, modifier, sum
-    pub fn as_editable_numeric(occupation_points: u16, interest_points: u16, change: i16, modifier: i16) -> (u16, u16, u16, i16, i16, i32) {
-        const BASE: u16 = 1;
-        let sum = BASE as i32 + occupation_points as i32 + interest_points as i32 + change as i32 + modifier as i32;
-        (BASE, occupation_points, interest_points, change, modifier, sum)
+    pub fn as_editable_numeric(&self, occupation_points: u16, interest_points: u16, change: i16, modifier: i16) -> (u16, u16, u16, i16, i16, i32) {
+        let sum = Self.BASE_PERCENT as i32 + occupation_points as i32 + interest_points as i32 + change as i32 + modifier as i32;
+        (Self.BASE_PERCENT, occupation_points, interest_points, change, modifier, sum)
     }
 
     // -> skill_name, language_name
@@ -2082,14 +2089,16 @@ pub enum Pilot {
     Airliner,   // 定期旅客機
     JetFighter, // ジェット戦闘機
     Helicopter, // ヘリコプター
-    Custom(u8),
+    Custom,
 }
 
 impl Pilot {
     pub fn list() -> &'static [Self] {
-        &[Self::Boat, Self::SteamShip, Self::Sailboat, Self::CivilProp,
-          Self::Balloon, Self::Dirigible, Self::CivilJet, Self::Airliner,
-          Self::JetFighter, Self::Helicopter]
+        &[
+            Self::Boat, Self::SteamShip, Self::Sailboat, Self::CivilProp,
+            Self::Balloon, Self::Dirigible, Self::CivilJet, Self::Airliner,
+            Self::JetFighter, Self::Helicopter
+        ]
     }
 
     pub const fn id(&self, base: u32) -> u32 {
@@ -2104,40 +2113,38 @@ impl Pilot {
             Self::Airliner   =>  7,
             Self::JetFighter =>  8,
             Self::Helicopter =>  9,
-            Self::Custom(0) => 10, // カスタムidリスト格納スロット
-            Self::Custom(_) => todo!(),
+            Self::Custom     => 10,
         }
     }
 
     pub const fn base_percent(&self) -> u16 { 1 }
 
-    pub fn label(&self, lang: Lang) -> Option<&'static str> {
+    pub const fn name(&self, lang: Lang) -> &'static str {
         match (self, lang) {
             // --- 両時代共通 ---
-            (Self::Boat,       Lang::Ja)    => Some("ボート"),
-            (Self::Boat,       Lang::En(_)) => Some("Boat"),
-            (Self::SteamShip,  Lang::Ja)    => Some("汽船"),
-            (Self::SteamShip,  Lang::En(_)) => Some("Steam Ship"),
-            (Self::Sailboat,   Lang::Ja)    => Some("帆船"),
-            (Self::Sailboat,   Lang::En(_)) => Some("Sailboat"),
-            (Self::CivilProp,  Lang::Ja)    => Some("民間プロペラ機"),
-            (Self::CivilProp,  Lang::En(_)) => Some("Civil Prop"),
+            (Self::Boat,       Lang::Ja)    => "ボート"),
+            (Self::Boat,       Lang::En(_)) => "Boat"),
+            (Self::SteamShip,  Lang::Ja)    => "汽船"),
+            (Self::SteamShip,  Lang::En(_)) => "Steam Ship"),
+            (Self::Sailboat,   Lang::Ja)    => "帆船"),
+            (Self::Sailboat,   Lang::En(_)) => "Sailboat"),
+            (Self::CivilProp,  Lang::Ja)    => "民間プロペラ機"),
+            (Self::CivilProp,  Lang::En(_)) => "Civil Prop"),
             // --- 1920s のみ ---
-            (Self::Balloon,    Lang::Ja)    => Some("気球"),
-            (Self::Balloon,    Lang::En(_)) => Some("Balloon"),
-            (Self::Dirigible,  Lang::Ja)    => Some("飛行船"),
-            (Self::Dirigible,  Lang::En(_)) => Some("Dirigible"),
+            (Self::Balloon,    Lang::Ja)    => "気球"),
+            (Self::Balloon,    Lang::En(_)) => "Balloon"),
+            (Self::Dirigible,  Lang::Ja)    => "飛行船"),
+            (Self::Dirigible,  Lang::En(_)) => "Dirigible"),
             // --- Modern (1990s) のみ ---
-            (Self::CivilJet,   Lang::Ja)    => Some("民間ジェット機"),
-            (Self::CivilJet,   Lang::En(_)) => Some("Civil Jet"),
-            (Self::Airliner,   Lang::Ja)    => Some("旅客機"),
-            (Self::Airliner,   Lang::En(_)) => Some("Airliner"),
-            (Self::JetFighter, Lang::Ja)    => Some("ジェット戦闘機"),
-            (Self::JetFighter, Lang::En(_)) => Some("Jet Fighter"),
-            (Self::Helicopter, Lang::Ja)    => Some("ヘリコプター"),
-            (Self::Helicopter, Lang::En(_)) => Some("Helicopter"),
-            (Self::Custom(0),  _)           => None, // リスト格納スロット
-            (Self::Custom(_),  _)           => todo!("カスタム専門分野のラベルはDataStructから動的に取得"),
+            (Self::CivilJet,   Lang::Ja)    => "民間ジェット機"),
+            (Self::CivilJet,   Lang::En(_)) => "Civil Jet"),
+            (Self::Airliner,   Lang::Ja)    => "旅客機"),
+            (Self::Airliner,   Lang::En(_)) => "Airliner"),
+            (Self::JetFighter, Lang::Ja)    => "ジェット戦闘機"),
+            (Self::JetFighter, Lang::En(_)) => "Jet Fighter"),
+            (Self::Helicopter, Lang::Ja)    => "ヘリコプター"),
+            (Self::Helicopter, Lang::En(_)) => "Helicopter"),
+            (Self::Custom,  _)              => unreachable!()
         }
     }
 }
@@ -2311,35 +2318,35 @@ impl Science {
 
     pub const fn base_percent(&self) -> u16 { 1 }
 
-    pub fn label(&self, lang: Lang) -> Option<&'static str> {
+    pub fn name(&self, lang: Lang) -> &'static str {
         match (self, lang) {
             (Self::None,         _)           => None,
-            (Self::Astronomy,    Lang::Ja)    => Some("天文学"),
-            (Self::Astronomy,    Lang::En(_)) => Some("Astronomy"),
-            (Self::Biology,      Lang::Ja)    => Some("生物学"),
-            (Self::Biology,      Lang::En(_)) => Some("Biology"),
-            (Self::Botany,       Lang::Ja)    => Some("植物学"),
-            (Self::Botany,       Lang::En(_)) => Some("Botany"),
-            (Self::Chemistry,    Lang::Ja)    => Some("化学"),
-            (Self::Chemistry,    Lang::En(_)) => Some("Chemistry"),
-            (Self::Cryptography, Lang::Ja)    => Some("暗号学"),
-            (Self::Cryptography, Lang::En(_)) => Some("Cryptography"),
-            (Self::Engineering,  Lang::Ja)    => Some("工学"),
-            (Self::Engineering,  Lang::En(_)) => Some("Engineering"),
-            (Self::Forensics,    Lang::Ja)    => Some("法医学"),
-            (Self::Forensics,    Lang::En(_)) => Some("Forensics"),
-            (Self::Geology,      Lang::Ja)    => Some("地質学"),
-            (Self::Geology,      Lang::En(_)) => Some("Geology"),
-            (Self::Mathematics,  Lang::Ja)    => Some("数学"),
-            (Self::Mathematics,  Lang::En(_)) => Some("Mathematics"),
-            (Self::Meteorology,  Lang::Ja)    => Some("気象学"),
-            (Self::Meteorology,  Lang::En(_)) => Some("Meteorology"),
-            (Self::Pharmacy,     Lang::Ja)    => Some("薬学"),
-            (Self::Pharmacy,     Lang::En(_)) => Some("Pharmacy"),
-            (Self::Physics,      Lang::Ja)    => Some("物理学"),
-            (Self::Physics,      Lang::En(_)) => Some("Physics"),
-            (Self::Zoology,      Lang::Ja)    => Some("動物学"),
-            (Self::Zoology,      Lang::En(_)) => Some("Zoology"),
+            (Self::Astronomy,    Lang::Ja)    => "天文学"),
+            (Self::Astronomy,    Lang::En(_)) => "Astronomy"),
+            (Self::Biology,      Lang::Ja)    => "生物学"),
+            (Self::Biology,      Lang::En(_)) => "Biology"),
+            (Self::Botany,       Lang::Ja)    => "植物学"),
+            (Self::Botany,       Lang::En(_)) => "Botany"),
+            (Self::Chemistry,    Lang::Ja)    => "化学"),
+            (Self::Chemistry,    Lang::En(_)) => "Chemistry"),
+            (Self::Cryptography, Lang::Ja)    => "暗号学"),
+            (Self::Cryptography, Lang::En(_)) => "Cryptography"),
+            (Self::Engineering,  Lang::Ja)    => "工学"),
+            (Self::Engineering,  Lang::En(_)) => "Engineering"),
+            (Self::Forensics,    Lang::Ja)    => "法医学"),
+            (Self::Forensics,    Lang::En(_)) => "Forensics"),
+            (Self::Geology,      Lang::Ja)    => "地質学"),
+            (Self::Geology,      Lang::En(_)) => "Geology"),
+            (Self::Mathematics,  Lang::Ja)    => "数学"),
+            (Self::Mathematics,  Lang::En(_)) => "Mathematics"),
+            (Self::Meteorology,  Lang::Ja)    => "気象学"),
+            (Self::Meteorology,  Lang::En(_)) => "Meteorology"),
+            (Self::Pharmacy,     Lang::Ja)    => "薬学"),
+            (Self::Pharmacy,     Lang::En(_)) => "Pharmacy"),
+            (Self::Physics,      Lang::Ja)    => "物理学"),
+            (Self::Physics,      Lang::En(_)) => "Physics"),
+            (Self::Zoology,      Lang::Ja)    => "動物学"),
+            (Self::Zoology,      Lang::En(_)) => "Zoology"),
             (Self::Custom(0),    _)           => None,
             (Self::Custom(_),    _)           => todo!("カスタム専門分野のラベルはDataStructから動的に取得"),
         }
@@ -2492,16 +2499,15 @@ impl Survival {
 
     pub const fn base_percent(&self) -> u16 { 10 }
 
-    pub fn label(&self, lang: Lang) -> Option<&'static str> {
+    pub fn name(&self, lang: Lang) -> &'static str {
         match (self, lang) {
-            (Self::Arctic,   Lang::Ja)    => Some("極地"),
-            (Self::Arctic,   Lang::En(_)) => Some("Arctic"),
-            (Self::Desert,   Lang::Ja)    => Some("砂漠"),
-            (Self::Desert,   Lang::En(_)) => Some("Desert"),
-            (Self::Sea,      Lang::Ja)    => Some("海"),
-            (Self::Sea,      Lang::En(_)) => Some("Sea"),
-            (Self::Custom(0), _)          => None,
-            (Self::Custom(_), _)          => todo!("カスタム専門分野のラベルはDataStructから動的に取得"),
+            (Self::Arctic,   Lang::Ja)    => "極地"),
+            (Self::Arctic,   Lang::En(_)) => "Arctic"),
+            (Self::Desert,   Lang::Ja)    => "砂漠"),
+            (Self::Desert,   Lang::En(_)) => "Desert"),
+            (Self::Sea,      Lang::Ja)    => "海"),
+            (Self::Sea,      Lang::En(_)) => "Sea"),
+            (Self::Custom, _)             => unreachable!(),
         }
     }
 }
