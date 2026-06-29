@@ -17,6 +17,7 @@
     - ハンドラー: データストラクト(インスタンスidと、インスタンス内部でのidを指定してデータを編集できるオブジェクト)とモデル関数を使って、イベントに対応した編集処理を定義されたオブジェクト
 
 ```rust
+use data_struct::DataStruct;
 
 pub enum Lang {En(En), Ja};
 pub enum En {Us, Uk};
@@ -44,12 +45,12 @@ mod domain {
             pub fn display(&self, lang: Lang) -> & 'static str {
                 match (self, lang) {
                     (Self::Predicate, _) => "predicate",
-                    (Self::Custom, _)   =>  "custom", // 使うのはデバッグの時だけなので、消した方が良いかも
+                    (_, _) => _,
                 }
             }
         }
 
-        // 定義者構成の無い終端モデルの例
+        // 定義者の無い終端モデルの例
         pub struct Predicate;
 
         impl Predicate {
@@ -100,6 +101,7 @@ mod domain {
             }
         }
 
+        /// model::{Model, Predicate} <-> dom::Id
         fn map() {
 
         }
