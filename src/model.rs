@@ -1411,6 +1411,7 @@ impl ArtAndCraft {
             (Self::Writing,     Lang::En(_)) => "Writing",
             (Self::Writing,     Lang::Ja)    => "執筆",
             // (Self::Custom,      _)        => unreachable!(),
+        }
     }
 
     pub fn list() -> &'static [Self] {
@@ -1443,7 +1444,7 @@ pub trait ArtAndCraftTrait<const A: ArtAndCraft> {
     const OCCUPATION_POINTS: Field = Field {position: 32, mask: (1 <<  9) - 1};
     const INTEREST_POINTS:   Field = Field {position: 23, mask: (1 <<  9) - 1};
     const CHANGE:            Field = Field {position: 13, mask: (1 << 10) - 1};
-    const MODIFIER:          Field = Field {position: 3, mask: (1 << 10) - 1};
+    const MODIFIER:          Field = Field {position:  3, mask: (1 << 10) - 1};
 
     // -> occupation_points, interest_points, change, modifier
     fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
