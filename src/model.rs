@@ -559,6 +559,7 @@ impl Characteristic {
     pub fn read(&self, character: &DataStruct) -> (u16, i16, i16) {
         character.get(self.id()).ok()
             .map(|b| {
+                // todo: Field使用
                 let initial  = b.get(0..2).and_then(|x| x.try_into().ok()).map(u16::from_le_bytes).unwrap_or(0);
                 let change   = b.get(2..4).and_then(|x| x.try_into().ok()).map(i16::from_le_bytes).unwrap_or(0);
                 let modifier = b.get(4..6).and_then(|x| x.try_into().ok()).map(i16::from_le_bytes).unwrap_or(0);
@@ -1506,7 +1507,7 @@ impl ArtAndCraftCustom {
     const OCCUPATION_POINTS: Field = Field {position: 32, mask: (1 <<  9) - 1};
     const INTEREST_POINTS:   Field = Field {position: 23, mask: (1 <<  9) - 1};
     const CHANGE:            Field = Field {position: 13, mask: (1 << 10) - 1};
-    const MODIFIER:          Field = Field {position: 3, mask: (1 << 10) - 1};
+    const MODIFIER:          Field = Field {position:  3, mask: (1 << 10) - 1};
 
     // -> occupation_points, interest_points, change, modifier, name
     pub fn read(&self, character: &DataStruct) -> (u16, u16, i16, i16, String) {
