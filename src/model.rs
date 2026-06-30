@@ -1410,7 +1410,7 @@ impl ArtAndCraft {
             (Self::Sculpting,   Lang::Ja)    => "彫刻",
             (Self::Writing,     Lang::En(_)) => "Writing",
             (Self::Writing,     Lang::Ja)    => "執筆",
-            // (Self::Custom,      _)        => unreachable!(),
+            (Self::Custom,      _)           => unreachable!("ArtAndCraft::Customはリスト格納スロットでありname() 不可"),
         }
     }
 
@@ -1624,7 +1624,7 @@ impl Fighting {
             Self::Spear    => 20,
             Self::Sword    => 20,
             Self::Whip     =>  5,
-            // Self::Custom      => unreachable!(),
+            Self::Custom   => unreachable!(),
         }
     }
 
@@ -1646,6 +1646,7 @@ impl Fighting {
             (Self::Sword,    Lang::Ja)    => "刀剣",
             (Self::Whip,     Lang::En(_)) => "Whip",
             (Self::Whip,     Lang::Ja)    => "鞭",
+            (Self::Custom,   _)           => unreachable!("Fighting::Customはリスト格納スロットでありname() 不可"),
         }
     }
 }
@@ -1724,7 +1725,7 @@ impl FightingCustom {
     const MODIFIER:           Field = Field {position:  3, mask: (1 << 10) - 1};
 
     // -> occupation_points, interest_points, change, modifier, name
-    pub fn read(&self, character: &DataStruct) -> (u16, u16, i16, i16, String) {
+    pub fn read(&self, character: &DataStruct) -> (u16, u16, u16, i16, i16, String) {
         let i = self.0 as usize;
         let (numeric_id, name_id) = character.get(Self::LIST_ID).ok()
             .and_then(|b| {
@@ -1755,7 +1756,7 @@ impl FightingCustom {
     }
 
     pub fn write<'a>(&self, character: &'a mut DataStruct, ids: [u32; 2], base_percent: u16, occupation_points: u16, interest_points: u16, change: i16, modifier: i16, name: &str) -> &'a mut DataStruct {
-        let raw = Self::BASE_PERCENT.set(0u64, base_percent as u64);
+        let mut raw = Self::BASE_PERCENT.set(0u64, base_percent as u64);
         raw = Self::OCCUPATION_POINTS.set(raw, occupation_points as u64);
         raw = Self::INTEREST_POINTS.set(raw, interest_points as u64);
         raw = Self::CHANGE.set(raw, change as u64);
@@ -1831,7 +1832,7 @@ impl Firearms {
             Self::MachineGun     => 10,
             Self::RifleShotgun   => 25,
             Self::SubmachineGun  => 15,
-            // Self::Custom      => unreachable!(),
+            Self::Custom         => unreachable!(),
         }
     }
 
@@ -1893,7 +1894,7 @@ pub trait FirearmsTrait<const F: Firearms> {
 
     // -> skill_name, specialization_label
     fn as_editable_string(&self, lang: Lang) -> (&'static str, &'static str) {
-        (Skill::Firearms.name(&lang), F.label(lang))
+        (Skill::Firearms.name(&lang), F.name(lang))
     }
 
     // -> base, occupation_points, interest_points, change, modifier, sum
@@ -1914,7 +1915,7 @@ pub struct SubmachineGun;        impl FirearmsTrait<{ Firearms::SubmachineGun }>
 pub struct FirearmsCustom(pub u8);
 
 impl FirearmsCustom {
-    const LIST_ID: u32 = Firearms::Custom.base_id();
+    const LIST_ID: u32 = Skill::Firearms.base_id() + 7;
 
     fn numeric_id(&self) -> u32 { Self::LIST_ID + self.0 as u32 * 2 - 1 }
     fn name_id(&self)    -> u32 { Self::LIST_ID + self.0 as u32 * 2 }
@@ -1958,7 +1959,7 @@ impl FirearmsCustom {
     }
 
     pub fn write<'a>(&self, character: &'a mut DataStruct, ids: [u32; 2], base_percent: u16, occupation_points: u16, interest_points: u16, change: i16, modifier: i16, name: &str) -> &'a mut DataStruct {
-        let raw = Self::BASE_PERCENT.set(0u64, base_percent as u64);
+        let mut raw = Self::BASE_PERCENT.set(0u64, base_percent as u64);
         raw = Self::OCCUPATION_POINTS.set(raw, occupation_points as u64);
         raw = Self::INTEREST_POINTS.set(raw, interest_points as u64);
         raw = Self::CHANGE.set(raw, change as u64);
@@ -2060,8 +2061,8 @@ impl LanguageOther {
     // read() の戻り値を引数に取る。character の読み出し不要。
     // -> base_percent(定数), occupation_points, interest_points, change, modifier, sum
     pub fn as_editable_numeric(&self, occupation_points: u16, interest_points: u16, change: i16, modifier: i16) -> (u16, u16, u16, i16, i16, i32) {
-        let sum = Self.BASE_PERCENT as i32 + occupation_points as i32 + interest_points as i32 + change as i32 + modifier as i32;
-        (Self.BASE_PERCENT, occupation_points, interest_points, change, modifier, sum)
+        let sum = Self::BASE_PERCENT as i32 + occupation_points as i32 + interest_points as i32 + change as i32 + modifier as i32;
+        (Self::BASE_PERCENT, occupation_points, interest_points, change, modifier, sum)
     }
 
     // -> skill_name, language_name
@@ -2123,28 +2124,28 @@ impl Pilot {
     pub const fn name(&self, lang: Lang) -> &'static str {
         match (self, lang) {
             // --- 両時代共通 ---
-            (Self::Boat,       Lang::Ja)    => "ボート"),
-            (Self::Boat,       Lang::En(_)) => "Boat"),
-            (Self::SteamShip,  Lang::Ja)    => "汽船"),
-            (Self::SteamShip,  Lang::En(_)) => "Steam Ship"),
-            (Self::Sailboat,   Lang::Ja)    => "帆船"),
-            (Self::Sailboat,   Lang::En(_)) => "Sailboat"),
-            (Self::CivilProp,  Lang::Ja)    => "民間プロペラ機"),
-            (Self::CivilProp,  Lang::En(_)) => "Civil Prop"),
+            (Self::Boat,       Lang::Ja)    => "ボート",
+            (Self::Boat,       Lang::En(_)) => "Boat",
+            (Self::SteamShip,  Lang::Ja)    => "汽船",
+            (Self::SteamShip,  Lang::En(_)) => "Steam Ship",
+            (Self::Sailboat,   Lang::Ja)    => "帆船",
+            (Self::Sailboat,   Lang::En(_)) => "Sailboat",
+            (Self::CivilProp,  Lang::Ja)    => "民間プロペラ機",
+            (Self::CivilProp,  Lang::En(_)) => "Civil Prop",
             // --- 1920s のみ ---
-            (Self::Balloon,    Lang::Ja)    => "気球"),
-            (Self::Balloon,    Lang::En(_)) => "Balloon"),
-            (Self::Dirigible,  Lang::Ja)    => "飛行船"),
-            (Self::Dirigible,  Lang::En(_)) => "Dirigible"),
+            (Self::Balloon,    Lang::Ja)    => "気球",
+            (Self::Balloon,    Lang::En(_)) => "Balloon",
+            (Self::Dirigible,  Lang::Ja)    => "飛行船",
+            (Self::Dirigible,  Lang::En(_)) => "Dirigible",
             // --- Modern (1990s) のみ ---
-            (Self::CivilJet,   Lang::Ja)    => "民間ジェット機"),
-            (Self::CivilJet,   Lang::En(_)) => "Civil Jet"),
-            (Self::Airliner,   Lang::Ja)    => "旅客機"),
-            (Self::Airliner,   Lang::En(_)) => "Airliner"),
-            (Self::JetFighter, Lang::Ja)    => "ジェット戦闘機"),
-            (Self::JetFighter, Lang::En(_)) => "Jet Fighter"),
-            (Self::Helicopter, Lang::Ja)    => "ヘリコプター"),
-            (Self::Helicopter, Lang::En(_)) => "Helicopter"),
+            (Self::CivilJet,   Lang::Ja)    => "民間ジェット機",
+            (Self::CivilJet,   Lang::En(_)) => "Civil Jet",
+            (Self::Airliner,   Lang::Ja)    => "旅客機",
+            (Self::Airliner,   Lang::En(_)) => "Airliner",
+            (Self::JetFighter, Lang::Ja)    => "ジェット戦闘機",
+            (Self::JetFighter, Lang::En(_)) => "Jet Fighter",
+            (Self::Helicopter, Lang::Ja)    => "ヘリコプター",
+            (Self::Helicopter, Lang::En(_)) => "Helicopter",
             (Self::Custom,  _)              => unreachable!()
         }
     }
@@ -2185,8 +2186,8 @@ pub trait PilotTrait<const P: Pilot> {
         character
     }
 
-    fn as_editable_string(&self, lang: Lang) -> (&'static str, Option<&'static str>) {
-        (Skill::Pilot.name(&lang), P.label(lang))
+    fn as_editable_string(&self, lang: Lang) -> (&'static str, &'static str) {
+        (Skill::Pilot.name(&lang), P.name(lang))
     }
 
     fn as_editable_numeric(&self, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> (u16, u9, u9, i10, i10, i10) {
@@ -2284,7 +2285,7 @@ pub enum Science {
     Pharmacy,     // 薬学
     Physics,      // 物理学
     Zoology,      // 動物学
-    Custom(u8),
+    Custom,
 }
 
 
@@ -2312,44 +2313,42 @@ impl Science {
             Self::Pharmacy     => 10,
             Self::Physics      => 11,
             Self::Zoology      => 12,
-            Self::Custom(0)    => 13, // カスタムidリスト格納スロット
-            Self::Custom(_)    => todo!(),
+            Self::Custom       => 13, // カスタムidリスト格納スロット
         }
     }
 
     pub const fn base_percent(&self) -> u16 { 1 }
 
-    pub fn name(&self, lang: Lang) -> &'static str {
+    pub fn name(&self, lang: Lang) -> Option<&'static str> {
         match (self, lang) {
             (Self::None,         _)           => None,
-            (Self::Astronomy,    Lang::Ja)    => "天文学"),
-            (Self::Astronomy,    Lang::En(_)) => "Astronomy"),
-            (Self::Biology,      Lang::Ja)    => "生物学"),
-            (Self::Biology,      Lang::En(_)) => "Biology"),
-            (Self::Botany,       Lang::Ja)    => "植物学"),
-            (Self::Botany,       Lang::En(_)) => "Botany"),
-            (Self::Chemistry,    Lang::Ja)    => "化学"),
-            (Self::Chemistry,    Lang::En(_)) => "Chemistry"),
-            (Self::Cryptography, Lang::Ja)    => "暗号学"),
-            (Self::Cryptography, Lang::En(_)) => "Cryptography"),
-            (Self::Engineering,  Lang::Ja)    => "工学"),
-            (Self::Engineering,  Lang::En(_)) => "Engineering"),
-            (Self::Forensics,    Lang::Ja)    => "法医学"),
-            (Self::Forensics,    Lang::En(_)) => "Forensics"),
-            (Self::Geology,      Lang::Ja)    => "地質学"),
-            (Self::Geology,      Lang::En(_)) => "Geology"),
-            (Self::Mathematics,  Lang::Ja)    => "数学"),
-            (Self::Mathematics,  Lang::En(_)) => "Mathematics"),
-            (Self::Meteorology,  Lang::Ja)    => "気象学"),
-            (Self::Meteorology,  Lang::En(_)) => "Meteorology"),
-            (Self::Pharmacy,     Lang::Ja)    => "薬学"),
-            (Self::Pharmacy,     Lang::En(_)) => "Pharmacy"),
-            (Self::Physics,      Lang::Ja)    => "物理学"),
-            (Self::Physics,      Lang::En(_)) => "Physics"),
-            (Self::Zoology,      Lang::Ja)    => "動物学"),
-            (Self::Zoology,      Lang::En(_)) => "Zoology"),
-            (Self::Custom(0),    _)           => None,
-            (Self::Custom(_),    _)           => todo!("カスタム専門分野のラベルはDataStructから動的に取得"),
+            (Self::Astronomy,    Lang::Ja)    => Some("天文学"),
+            (Self::Astronomy,    Lang::En(_)) => Some("Astronomy"),
+            (Self::Biology,      Lang::Ja)    => Some("生物学"),
+            (Self::Biology,      Lang::En(_)) => Some("Biology"),
+            (Self::Botany,       Lang::Ja)    => Some("植物学"),
+            (Self::Botany,       Lang::En(_)) => Some("Botany"),
+            (Self::Chemistry,    Lang::Ja)    => Some("化学"),
+            (Self::Chemistry,    Lang::En(_)) => Some("Chemistry"),
+            (Self::Cryptography, Lang::Ja)    => Some("暗号学"),
+            (Self::Cryptography, Lang::En(_)) => Some("Cryptography"),
+            (Self::Engineering,  Lang::Ja)    => Some("工学"),
+            (Self::Engineering,  Lang::En(_)) => Some("Engineering"),
+            (Self::Forensics,    Lang::Ja)    => Some("法医学"),
+            (Self::Forensics,    Lang::En(_)) => Some("Forensics"),
+            (Self::Geology,      Lang::Ja)    => Some("地質学"),
+            (Self::Geology,      Lang::En(_)) => Some("Geology"),
+            (Self::Mathematics,  Lang::Ja)    => Some("数学"),
+            (Self::Mathematics,  Lang::En(_)) => Some("Mathematics"),
+            (Self::Meteorology,  Lang::Ja)    => Some("気象学"),
+            (Self::Meteorology,  Lang::En(_)) => Some("Meteorology"),
+            (Self::Pharmacy,     Lang::Ja)    => Some("薬学"),
+            (Self::Pharmacy,     Lang::En(_)) => Some("Pharmacy"),
+            (Self::Physics,      Lang::Ja)    => Some("物理学"),
+            (Self::Physics,      Lang::En(_)) => Some("Physics"),
+            (Self::Zoology,      Lang::Ja)    => Some("動物学"),
+            (Self::Zoology,      Lang::En(_)) => Some("Zoology"),
+            (Self::Custom,       _)           => None,
         }
     }
 }
@@ -2390,7 +2389,7 @@ pub trait ScienceTrait<const S: Science> {
     }
 
     fn as_editable_string(&self, lang: Lang) -> (&'static str, Option<&'static str>) {
-        (Skill::Science.name(&lang), S.label(lang))
+        (Skill::Science.name(&lang), S.name(lang))
     }
 
     fn as_editable_numeric(&self, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> (u16, u9, u9, i10, i10, i10) {
@@ -2480,7 +2479,7 @@ pub enum Survival {
     Arctic,
     Desert,
     Sea,
-    Custom(u8),
+    Custom,
 }
 
 impl Survival {
@@ -2490,11 +2489,10 @@ impl Survival {
 
     pub const fn id(&self, base: u32) -> u32 {
         base + match self {
-            Self::Arctic    => 0,
-            Self::Desert    => 1,
-            Self::Sea       => 2,
-            Self::Custom(0) => 3, // カスタムidリスト格納スロット
-            Self::Custom(_) => todo!(),
+            Self::Arctic => 0,
+            Self::Desert => 1,
+            Self::Sea    => 2,
+            Self::Custom => 3, // カスタムidリスト格納スロット
         }
     }
 
@@ -2502,13 +2500,13 @@ impl Survival {
 
     pub fn name(&self, lang: Lang) -> &'static str {
         match (self, lang) {
-            (Self::Arctic,   Lang::Ja)    => "極地"),
-            (Self::Arctic,   Lang::En(_)) => "Arctic"),
-            (Self::Desert,   Lang::Ja)    => "砂漠"),
-            (Self::Desert,   Lang::En(_)) => "Desert"),
-            (Self::Sea,      Lang::Ja)    => "海"),
-            (Self::Sea,      Lang::En(_)) => "Sea"),
-            (Self::Custom, _)             => unreachable!(),
+            (Self::Arctic,   Lang::Ja)    => "極地",
+            (Self::Arctic,   Lang::En(_)) => "Arctic",
+            (Self::Desert,   Lang::Ja)    => "砂漠",
+            (Self::Desert,   Lang::En(_)) => "Desert",
+            (Self::Sea,      Lang::Ja)    => "海",
+            (Self::Sea,      Lang::En(_)) => "Sea",
+            (Self::Custom,   _)           => unreachable!("Survival::Customはリスト格納スロットでありname() 不可"),
         }
     }
 }
@@ -2548,8 +2546,8 @@ pub trait SurvivalTrait<const S: Survival> {
         character
     }
 
-    fn as_editable_string(&self, lang: Lang) -> (&'static str, Option<&'static str>) {
-        (Skill::Survival.name(&lang), S.label(lang))
+    fn as_editable_string(&self, lang: Lang) -> (&'static str, &'static str) {
+        (Skill::Survival.name(&lang), S.name(lang))
     }
 
     fn as_editable_numeric(&self, occupation_points: u9, interest_points: u9, change: i10, modifier: i10) -> (u16, u9, u9, i10, i10, i10) {
