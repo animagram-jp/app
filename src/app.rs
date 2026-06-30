@@ -25,7 +25,6 @@ pub struct App {
     device:        Device,
     pointer_state: PointerState,
     events:        Vec<Event>,
-    commands:      Vec<Command>,
     handler:       Handler,
 }
 
@@ -38,7 +37,6 @@ impl App {
             device,
             pointer_state: PointerState::default(),
             events:        Vec::new(),
-            commands:      Vec::new(),
             handler:       Handler::ready(viewport_width, viewport_height).await,
         };
 
@@ -51,6 +49,7 @@ impl App {
     }
 
     pub fn process(&mut self, payload: JsValue) -> JsValue {
+        let mut commands = Vec::new();
         let canvas_event = CanvasEvent::decode(&payload);
         let prev_state = self.pointer_state;
         self.pointer_state = self.pointer_state.update(
@@ -69,12 +68,9 @@ impl App {
             },
         }
         while let Some(event) = self.events.pop() {
-            let commands = self.dispatch(event);
-            self.commands.extend(commands);
+            commands.extend(self.dispatch(event));
         }
-        let out = to_value(&self.commands).unwrap_or(JsValue::NULL);
-        self.commands.clear();
-        out
+        to_value(&commands).unwrap_or(JsValue::NULL)
     }
 
     fn dispatch(&mut self, event: Event) -> Vec<Command> {
