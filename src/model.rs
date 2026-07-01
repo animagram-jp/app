@@ -50,15 +50,33 @@ pub mod dice {
 }
 
 // ============================================================
+// EnumTrait: グループ分けenum(Profile, Character, ...)自身が持つ、
+// バリアントに対応するids/labelを返す能力。
+// ============================================================
+
+pub trait EnumTrait {
+    fn ids(&self) -> &'static [u32];
+    fn label(&self, lang: Lang) -> &'static str;
+}
+
+// ============================================================
 // StaticModel: 固定N件のidsを持つフィールドの共通trait。
 // idsの並びがコンパイル時に決まっているものが対象(Customのような実行時に
 // 件数が決まる可変長の間接参照は対象外。そちらはDynamicModel相当で別途扱う)。
+//
+// 各structは「自分がどのenum(Enum)のどのバリアント(VARIANT)に属するか」を
+// 宣言するだけでよく、idsへの正規化はここでの既定実装に任せられる。
+// structがEnumTraitを実装するわけではない(所属先はstructの外、implの中で宣言する)。
 // ============================================================
 
 pub trait StaticModel<const N: usize> {
     type Parsed;
+    type Enum: EnumTrait;
+    const VARIANT: Self::Enum;
 
-    fn ids() -> [u32; N];
+    fn ids() -> [u32; N] {
+        Self::VARIANT.ids().try_into().expect("id slice length mismatch")
+    }
 
     /// バイト列(値なしはNone)からドメイン値へ変換する。DataStructに依存しない純粋関数。
     fn parse(bytes: [Option<&[u8]>; N]) -> Self::Parsed;
@@ -152,9 +170,9 @@ pub enum Profile {
     Age,
 }
 
-impl Profile {
+impl EnumTrait for Profile {
 
-    pub fn ids(&self) -> &'static [u32] {
+    fn ids(&self) -> &'static [u32] {
         const BASE: u32 = Character::Profile.base_id();
         match self {
             Self::Name       => &[BASE + 0, BASE + 1],
@@ -166,7 +184,7 @@ impl Profile {
         }
     }
 
-    pub fn display(&self, lang: Lang) -> &'static str {
+    fn label(&self, lang: Lang) -> &'static str {
         match (self, lang) {
             (Self::Name, Lang::En(_)) => "Name",
             (Self::Name, Lang::Ja)    => "名前",
@@ -182,7 +200,9 @@ impl Profile {
             (Self::Age, Lang::Ja)    => "年齢",
         }
     }
+}
 
+impl Profile {
     pub fn list() -> &'static [Profile] {
         &[
             Self::Name,
@@ -209,11 +229,8 @@ impl Name {
 
 impl StaticModel<2> for Name {
     type Parsed = (String, Option<String>); // name, complement
-
-    fn ids() -> [u32; 2] {
-        let ids = Profile::Name.ids();
-        [ids[0], ids[1]]
-    }
+    type Enum = Profile;
+    const VARIANT: Profile = Profile::Name;
 
     fn parse(bytes: [Option<&[u8]>; 2]) -> Self::Parsed {
         let name = bytes[0].map(|b| String::from_utf8_lossy(b).into_owned()).unwrap_or_default();
@@ -437,11 +454,8 @@ impl Occupation {
 
 impl StaticModel<3> for Occupation {
     type Parsed = (OccupationKind, Option<String>, Option<String>); // kind, custom_name, title
-
-    fn ids() -> [u32; 3] {
-        let ids = Profile::Occupation.ids();
-        [ids[0], ids[1], ids[2]]
-    }
+    type Enum = Profile;
+    const VARIANT: Profile = Profile::Occupation;
 
     fn parse(bytes: [Option<&[u8]>; 3]) -> Self::Parsed {
         let kind_id = bytes[0].and_then(|b| b.first().copied()).unwrap_or(0);
@@ -464,8 +478,8 @@ pub struct Birthplace; // Birthplace: str
 
 impl StaticModel<1> for Birthplace {
     type Parsed = String;
-
-    fn ids() -> [u32; 1] { [Profile::Birthpalce.ids()[0]] }
+    type Enum = Profile;
+    const VARIANT: Profile = Profile::Birthpalce;
 
     fn parse(bytes: [Option<&[u8]>; 1]) -> Self::Parsed {
         bytes[0].map(|b| String::from_utf8_lossy(b).into_owned()).unwrap_or_default()
@@ -480,8 +494,8 @@ pub struct Pronoun; // Pronoun: str
 
 impl StaticModel<1> for Pronoun {
     type Parsed = String;
-
-    fn ids() -> [u32; 1] { [Profile::Pronoun.ids()[0]] }
+    type Enum = Profile;
+    const VARIANT: Profile = Profile::Pronoun;
 
     fn parse(bytes: [Option<&[u8]>; 1]) -> Self::Parsed {
         bytes[0].map(|b| String::from_utf8_lossy(b).into_owned()).unwrap_or_default()
@@ -496,8 +510,8 @@ pub struct Residence; // Residence: str
 
 impl StaticModel<1> for Residence {
     type Parsed = String;
-
-    fn ids() -> [u32; 1] { [Profile::Residence.ids()[0]] }
+    type Enum = Profile;
+    const VARIANT: Profile = Profile::Residence;
 
     fn parse(bytes: [Option<&[u8]>; 1]) -> Self::Parsed {
         bytes[0].map(|b| String::from_utf8_lossy(b).into_owned()).unwrap_or_default()
@@ -512,8 +526,8 @@ pub struct Age; // Age: u16
 
 impl StaticModel<1> for Age {
     type Parsed = u16;
-
-    fn ids() -> [u32; 1] { [Profile::Age.ids()[0]] }
+    type Enum = Profile;
+    const VARIANT: Profile = Profile::Age;
 
     fn parse(bytes: [Option<&[u8]>; 1]) -> Self::Parsed {
         bytes[0]
