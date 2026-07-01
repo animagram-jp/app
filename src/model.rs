@@ -2001,6 +2001,7 @@ pub struct LanguageOther(pub u8);
 
 impl LanguageOther {
     const LIST_ID: u32 = Skill::LanguageOther.base_id();
+    pub const fn list_id() -> u32 { Self::LIST_ID }
     const BASE_PERCENT: u16 = 1;
 
     fn numeric_id(&self) -> u32 { Self::LIST_ID + self.0 as u32 * 2 - 1 }

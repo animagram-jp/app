@@ -10,7 +10,7 @@ use crate::model::{
     Character, Profile, Characteristic, SecondaryAttribute, Skill, Possession, Backstory, Memo,
     LanguageOwn, ArtAndCraft, Fighting, Firearms, Pilot, Science, Survival,
     HitPoints, MagicPoints, Luck, Sanity, Build, DamageBonus, MoveRate, OccupationSkillPoints, InterestSkillPoints,
-    ArtAndCraftCustom, FightingCustom, FirearmsCustom, PilotCustom, ScienceCustom, SurvivalCustom,
+    ArtAndCraftCustom, FightingCustom, FirearmsCustom, LanguageOther, PilotCustom, ScienceCustom, SurvivalCustom,
 };
 
 // ============================================================
@@ -196,10 +196,11 @@ fn map_id(item: &Character, parent: &Id, n: u32) -> Vec<Id> {
 /// Customへ新規idを割り当てる前にHandlerが一度だけ実行し、使用状況を把握するために使う。
 /// 使用状況を別途メタデータとして持たず、都度character自体を走査して求める。
 fn used_custom_ids(character: &DataStruct) -> Vec<u32> {
-    const LIST_IDS: [u32; 6] = [
+    const LIST_IDS: [u32; 7] = [
         ArtAndCraftCustom::list_id(),
         FightingCustom::list_id(),
         FirearmsCustom::list_id(),
+        LanguageOther::list_id(),
         PilotCustom::list_id(),
         ScienceCustom::list_id(),
         SurvivalCustom::list_id(),
