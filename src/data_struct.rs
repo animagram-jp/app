@@ -88,6 +88,58 @@ impl DataStruct {
         self.values.delete(&variable_id)
     }
 
+    /// 固定N件のschema_idをまとめて取得する。値なし(未設定)はNoneで表す。
+    pub fn get_many<const N: usize>(&self, ids: [u32; N]) -> [Option<&[u8]>; N] {
+        ids.map(|id| self.get(id).ok())
+    }
+
+    /// 固定N件のschema_idをまとめてset/deleteする(Some=set, None=delete)。
+    /// updated_atは全体で一度だけ更新する。途中で失敗した場合はselfを変更しない(all-or-nothing)。
+    pub fn set_many<const N: usize>(&mut self, entries: [(u32, Option<&[u8]>); N], time: Option<f64>) -> Result<(), ListError> {
+        let mut staged = self.clone();
+        for (schema_id, value) in entries {
+            match value {
+                Some(bytes) => { staged.set(schema_id, bytes, None)?; }
+                None => match staged.delete(schema_id) {
+                    Ok(())                   => {}
+                    Err(ListError::NotExist) => {} // 元々存在しないなら無視
+                    Err(e)                   => return Err(e),
+                },
+            }
+        }
+        if let Some(t) = time {
+            let ts = timestamp::from_ut(t, true, &Timezone::AsiaTokyo);
+            staged.set(ID_UPDATED_AT, &ts.to_le_bytes(), None)?;
+        }
+        *self = staged;
+        Ok(())
+    }
+
+    /// list_id に格納された「K個組のu32 id」の配列からindex番目の組を取得する。
+    /// Skill/ArtAndCraft等のCustomスロットのような、動的に確保されるレコード群への間接参照に使う。
+    pub fn get_indirect<const K: usize>(&self, list_id: u32, index: usize) -> Option<[u32; K]> {
+        let b = self.get(list_id).ok()?;
+        let base = index * K * 4;
+        let mut ids = [0u32; K];
+        for (k, id) in ids.iter_mut().enumerate() {
+            *id = u32::from_le_bytes(b.get(base + k * 4..base + k * 4 + 4)?.try_into().ok()?);
+        }
+        Some(ids)
+    }
+
+    /// get_indirectの書き込み版。list_idのバイト列をindex番目の組が収まるまで0拡張してから書き込む。
+    pub fn set_indirect<const K: usize>(&mut self, list_id: u32, index: usize, ids: [u32; K]) -> Result<(), ListError> {
+        let base = index * K * 4;
+        let min_len = base + K * 4;
+        let mut list = self.get(list_id).map(|b| b.to_vec()).unwrap_or_default();
+        if list.len() < min_len { list.resize(min_len, 0); }
+        for (k, id) in ids.iter().enumerate() {
+            list[base + k * 4..base + (k + 1) * 4].copy_from_slice(&id.to_le_bytes());
+        }
+        self.set(list_id, &list, None)?;
+        Ok(())
+    }
+
     pub fn compact(&mut self) -> Result<BTreeMap<u32, u32>, VariableListError> {
         let remap = self.values.compact()?;
         for i in 0..self.index.data.len() as u32 {
