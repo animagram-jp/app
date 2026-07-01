@@ -11,7 +11,6 @@ use crate::data_struct::DataStruct;
 // ============================================================
 
 pub type Dice = (i8, u8, i8); // (count, sides, modifier)
-type DamageBonusTuple = (i8, u8, i8); // (count, sides, modifier)
 
 pub mod dice {
     use super::Dice;
@@ -620,7 +619,7 @@ pub enum SecondaryAttribute {
     Luck,                  // u8
     Sanity,                // u8 | POW -> u8
     Build,                 // STR, SIZ -> i8
-    DamageBonus,           // Build -> DamageBonusTuple
+    DamageBonus,           // Build -> Dice
     MoveRate,              // u8 | STR, DEX, SIZ, Age -> u8
     OccupationSkillPoints, // (Characteristic, Characteristic) | (Characteristic, Characteristic) -> (u16, u16)
     InterestSkillPoints,   // INT -> (u16, u16)
@@ -780,11 +779,11 @@ impl Build {
     }
 }
 
-pub struct DamageBonus; // DamageBonus: DamageBonusTuple | Build -> DamageBonusTuple
+pub struct DamageBonus; // DamageBonus: Dice | Build -> Dice
 
 impl DamageBonus {
 
-    pub fn read(character: &DataStruct) -> DamageBonusTuple {
+    pub fn read(character: &DataStruct) -> Dice {
         Self::derive(character)
     }
 
@@ -792,7 +791,7 @@ impl DamageBonus {
         dice::display(&[Self::read(character)])
     }
 
-    pub fn derive(character: &DataStruct) -> DamageBonusTuple {
+    pub fn derive(character: &DataStruct) -> Dice {
         match Build::read(character) {
             i8::MIN..=-2 => (0, 0, -2),
                       -1 => (0, 0, -1),
