@@ -1497,6 +1497,7 @@ pub struct ArtAndCraftCustom(pub u8);
 
 impl ArtAndCraftCustom {
     const LIST_ID: u32 = ArtAndCraft::Custom.base_id();
+    pub const fn list_id() -> u32 { Self::LIST_ID }
 
     // base_percent は定数(5%)のため SkillTrait と同一 Field 構成・5 bytes
     const OCCUPATION_POINTS: Field = Field {position: 32, mask: (1 <<  9) - 1};
@@ -1712,6 +1713,7 @@ pub struct FightingCustom(pub u8);
 impl FightingCustom {
     // Custom(0) = リスト格納スロット。Custom(i) (i≥1) → numeric: list+i*2-1, name: list+i*2
     const LIST_ID: u32 = Skill::Fighting.base_id() + 9;
+    pub const fn list_id() -> u32 { Self::LIST_ID }
 
     fn numeric_id(&self) -> u32 { Self::LIST_ID + self.0 as u32 * 2 - 1 }
     fn name_id(&self)    -> u32 { Self::LIST_ID + self.0 as u32 * 2 }
@@ -1915,6 +1917,7 @@ pub struct FirearmsCustom(pub u8);
 
 impl FirearmsCustom {
     const LIST_ID: u32 = Skill::Firearms.base_id() + 7;
+    pub const fn list_id() -> u32 { Self::LIST_ID }
 
     fn numeric_id(&self) -> u32 { Self::LIST_ID + self.0 as u32 * 2 - 1 }
     fn name_id(&self)    -> u32 { Self::LIST_ID + self.0 as u32 * 2 }
@@ -2211,6 +2214,7 @@ pub struct PilotCustom(pub u8);
 impl PilotCustom {
     // Custom(0) = リスト格納スロット。Custom(i) (i≥1) → numeric: list+i*2-1, name: list+i*2
     const LIST_ID: u32 = Skill::Pilot.base_id() + 10;
+    pub const fn list_id() -> u32 { Self::LIST_ID }
 
     fn numeric_id(&self) -> u32 { Self::LIST_ID + self.0 as u32 * 2 - 1 }
     fn name_id(&self)    -> u32 { Self::LIST_ID + self.0 as u32 * 2 }
@@ -2416,6 +2420,7 @@ pub struct ScienceCustom(pub u8);
 impl ScienceCustom {
     // Custom(0) = リスト格納スロット。Custom(i) (i≥1) → numeric: list+i*2-1, name: list+i*2
     const LIST_ID: u32 = Skill::Science.base_id() + 13;
+    pub const fn list_id() -> u32 { Self::LIST_ID }
 
     fn numeric_id(&self) -> u32 { Self::LIST_ID + self.0 as u32 * 2 - 1 }
     fn name_id(&self)    -> u32 { Self::LIST_ID + self.0 as u32 * 2 }
@@ -2564,6 +2569,7 @@ pub struct SurvivalCustom(pub u8);
 impl SurvivalCustom {
     // Custom(0) = リスト格納スロット。Custom(i) (i≥1) → numeric: list+i*2-1, name: list+i*2
     const LIST_ID: u32 = Skill::Survival.base_id() + 3;
+    pub const fn list_id() -> u32 { Self::LIST_ID }
 
     fn numeric_id(&self) -> u32 { Self::LIST_ID + self.0 as u32 * 2 - 1 }
     fn name_id(&self)    -> u32 { Self::LIST_ID + self.0 as u32 * 2 }

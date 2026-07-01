@@ -10,6 +10,7 @@ use crate::model::{
     Character, Profile, Characteristic, SecondaryAttribute, Skill, Possession, Backstory, Memo,
     LanguageOwn, ArtAndCraft, Fighting, Firearms, Pilot, Science, Survival,
     HitPoints, MagicPoints, Luck, Sanity, Build, DamageBonus, MoveRate, OccupationSkillPoints, InterestSkillPoints,
+    ArtAndCraftCustom, FightingCustom, FirearmsCustom, PilotCustom, ScienceCustom, SurvivalCustom,
 };
 
 // ============================================================
@@ -189,6 +190,31 @@ fn map_id(item: &Character, parent: &Id, n: u32) -> Vec<Id> {
         }
         _ => todo!(),
     }
+}
+
+/// 各SkillのCustomスロット(indirect id list)を走査し、既に使用中のschema_idを収集する。
+/// Customへ新規idを割り当てる前にHandlerが一度だけ実行し、使用状況を把握するために使う。
+/// 使用状況を別途メタデータとして持たず、都度character自体を走査して求める。
+fn used_custom_ids(character: &DataStruct) -> Vec<u32> {
+    const LIST_IDS: [u32; 6] = [
+        ArtAndCraftCustom::list_id(),
+        FightingCustom::list_id(),
+        FirearmsCustom::list_id(),
+        PilotCustom::list_id(),
+        ScienceCustom::list_id(),
+        SurvivalCustom::list_id(),
+    ];
+    let mut used = Vec::new();
+    for list_id in LIST_IDS {
+        let Ok(bytes) = character.get(list_id) else { continue; };
+        let count = bytes.len() / 8; // (numeric_id, name_id) = u32 * 2 ペアごと
+        for i in 0..count {
+            if let Some(ids) = character.get_indirect::<2>(list_id, i) {
+                used.extend(ids.into_iter().filter(|&id| id != 0));
+            }
+        }
+    }
+    used
 }
 
 // --- toast ---
