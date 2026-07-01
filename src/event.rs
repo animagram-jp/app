@@ -210,7 +210,7 @@ fn used_custom_ids(character: &DataStruct) -> Vec<u32> {
         let Ok(bytes) = character.get(list_id) else { continue; };
         let count = bytes.len() / 8; // (numeric_id, name_id) = u32 * 2 ペアごと
         for i in 0..count {
-            if let Some(ids) = character.get_indirect::<2>(list_id, i) {
+            if let [Some(ids)] = character.get_indirect::<1, 2>(list_id, [i]) {
                 used.extend(ids.into_iter().filter(|&id| id != 0));
             }
         }

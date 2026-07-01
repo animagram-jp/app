@@ -13,6 +13,17 @@ const ID_IDENTITY:   u32 = 1;
 const ID_CREATED_AT: u32 = 2;
 const ID_UPDATED_AT: u32 = 3;
 
+#[derive(Debug)]
+pub enum DataStructError {
+    List(ListError),
+    /// list_id への書き込み失敗時、書き込もうとしていたidを保持する
+    IndirectWrite { list_id: u32, ids: Vec<u32>, source: ListError },
+}
+
+impl From<ListError> for DataStructError {
+    fn from(source: ListError) -> Self { DataStructError::List(source) }
+}
+
 #[derive(Clone)]
 pub struct DataStruct {
     schema_size: u32,
@@ -115,28 +126,37 @@ impl DataStruct {
         Ok(())
     }
 
-    /// list_id に格納された「K個組のu32 id」の配列からindex番目の組を取得する。
+    /// list_id に格納された「K個組のu32 id」の配列から、指定したN個のindexの組をまとめて取得する。
     /// Skill/ArtAndCraft等のCustomスロットのような、動的に確保されるレコード群への間接参照に使う。
-    pub fn get_indirect<const K: usize>(&self, list_id: u32, index: usize) -> Option<[u32; K]> {
-        let b = self.get(list_id).ok()?;
-        let base = index * K * 4;
-        let mut ids = [0u32; K];
-        for (k, id) in ids.iter_mut().enumerate() {
-            *id = u32::from_le_bytes(b.get(base + k * 4..base + k * 4 + 4)?.try_into().ok()?);
-        }
-        Some(ids)
+    pub fn get_indirect<const N: usize, const K: usize>(&self, list_id: u32, indices: [usize; N]) -> [Option<[u32; K]>; N] {
+        let Ok(bytes) = self.get(list_id) else { return [None; N]; };
+        indices.map(|index| {
+            let base = index * K * 4;
+            let mut ids = [0u32; K];
+            for (k, id) in ids.iter_mut().enumerate() {
+                *id = u32::from_le_bytes(bytes.get(base + k * 4..base + k * 4 + 4)?.try_into().ok()?);
+            }
+            Some(ids)
+        })
     }
 
-    /// get_indirectの書き込み版。list_idのバイト列をindex番目の組が収まるまで0拡張してから書き込む。
-    pub fn set_indirect<const K: usize>(&mut self, list_id: u32, index: usize, ids: [u32; K]) -> Result<(), ListError> {
-        let base = index * K * 4;
-        let min_len = base + K * 4;
+    /// get_indirectの書き込み版。N個のindex分の組をlist_idのバイト列にまとめて書き込み、1回のsetに集約する
+    /// (list全体を一度だけ読み書きするため、途中失敗時もselfは変更されない)。
+    /// list_idへの書き込みが失敗した場合、DataStructError::IndirectWriteに書き込もうとしていたidを保持して返す。
+    pub fn set_indirect<const N: usize, const K: usize>(&mut self, list_id: u32, entries: [(usize, [u32; K]); N]) -> Result<(), DataStructError> {
         let mut list = self.get(list_id).map(|b| b.to_vec()).unwrap_or_default();
-        if list.len() < min_len { list.resize(min_len, 0); }
-        for (k, id) in ids.iter().enumerate() {
-            list[base + k * 4..base + (k + 1) * 4].copy_from_slice(&id.to_le_bytes());
+        let mut written_ids = Vec::with_capacity(N * K);
+        for (index, ids) in entries {
+            let base = index * K * 4;
+            let min_len = base + K * 4;
+            if list.len() < min_len { list.resize(min_len, 0); }
+            for (k, id) in ids.iter().enumerate() {
+                list[base + k * 4..base + (k + 1) * 4].copy_from_slice(&id.to_le_bytes());
+                written_ids.push(*id);
+            }
         }
-        self.set(list_id, &list, None)?;
+        self.set(list_id, &list, None)
+            .map_err(|source| DataStructError::IndirectWrite { list_id, ids: written_ids, source })?;
         Ok(())
     }
 
