@@ -50,6 +50,35 @@ pub mod dice {
 }
 
 // ============================================================
+// StaticModel: 固定N件のidsを持つフィールドの共通trait。
+// idsの並びがコンパイル時に決まっているものが対象(Customのような実行時に
+// 件数が決まる可変長の間接参照は対象外。そちらはDynamicModel相当で別途扱う)。
+// ============================================================
+
+pub trait StaticModel<const N: usize> {
+    type Parsed;
+
+    fn ids() -> [u32; N];
+
+    /// バイト列(値なしはNone)からドメイン値へ変換する。DataStructに依存しない純粋関数。
+    fn parse(bytes: [Option<&[u8]>; N]) -> Self::Parsed;
+
+    /// ドメイン値からバイト列へ変換する。Noneは削除を意味する。DataStructに依存しない純粋関数。
+    fn encode(value: &Self::Parsed) -> [Option<Vec<u8>>; N];
+
+    fn read(character: &DataStruct) -> Self::Parsed {
+        Self::parse(character.get_many(Self::ids()))
+    }
+
+    fn write(character: &mut DataStruct, value: &Self::Parsed, time: Option<f64>) -> Result<(), ListError> {
+        let ids = Self::ids();
+        let encoded = Self::encode(value);
+        let entries: [(u32, Option<&[u8]>); N] = from_fn(|i| (ids[i], encoded[i].as_deref()));
+        character.set_many(entries, time)
+    }
+}
+
+// ============================================================
 // Character::{Profile, Characteristic, Secondary Attribute, Skill, Posession, Backstory, Memo}
 // ============================================================
 
@@ -170,31 +199,33 @@ pub struct Name;
 
 impl Name {
 
-    pub fn read(character: &DataStruct) -> (String, Option<String>) { // name, complement
-        let ids = Profile::Name.ids();
-        let name = character.get(ids[0]).ok()
-            .map(|b| String::from_utf8_lossy(b).into_owned())
-            .unwrap_or_default();
-        let complement = character.get(ids[1]).ok()
-            .map(|b| String::from_utf8_lossy(b).into_owned());
-        (name, complement)
-    }
-
-    pub fn write<'a>(character: &'a mut DataStruct, value: (&str, Option<&str>)) -> &'a mut DataStruct {
-        let ids = Profile::Name.ids();
-        let _ = character.set(ids[0], value.0.as_bytes(), None);
-        match value.1 {
-            Some(complement) => { let _ = character.set(ids[1], complement.as_bytes(), None); }
-            None => { let _ = character.delete(ids[1]); }
-        }
-        character
-    }
-
     pub fn display(name: &String, complement: &Option<String>) -> String {
         match complement {
             Some(c) if !c.is_empty() => format!("{name} ({c})"),
             _ => name.clone(),
         }
+    }
+}
+
+impl StaticModel<2> for Name {
+    type Parsed = (String, Option<String>); // name, complement
+
+    fn ids() -> [u32; 2] {
+        let ids = Profile::Name.ids();
+        [ids[0], ids[1]]
+    }
+
+    fn parse(bytes: [Option<&[u8]>; 2]) -> Self::Parsed {
+        let name = bytes[0].map(|b| String::from_utf8_lossy(b).into_owned()).unwrap_or_default();
+        let complement = bytes[1].map(|b| String::from_utf8_lossy(b).into_owned());
+        (name, complement)
+    }
+
+    fn encode(value: &Self::Parsed) -> [Option<Vec<u8>>; 2] {
+        [
+            Some(value.0.as_bytes().to_vec()),
+            value.1.as_deref().map(|c| c.as_bytes().to_vec()),
+        ]
     }
 }
 
@@ -303,34 +334,6 @@ impl OccupationKind {
 pub struct Occupation;
 
 impl Occupation {
-    // ids[0]: kind_id (u8), ids[1]: custom_name (str), ids[2]: title (str)
-    pub fn read(character: &DataStruct) -> (OccupationKind, Option<String>, Option<String>) {
-        let ids = Profile::Occupation.ids();
-        let kind_id = character.get(ids[0]).ok()
-            .and_then(|b| b.first().copied())
-            .unwrap_or(0);
-        let custom_name = character.get(ids[1]).ok()
-            .map(|b| String::from_utf8_lossy(b).into_owned());
-        let title = character.get(ids[2]).ok()
-            .map(|b| String::from_utf8_lossy(b).into_owned());
-        let kind = OccupationKind::detect(kind_id);
-        (kind, custom_name, title)
-    }
-
-    pub fn write<'a>(character: &'a mut DataStruct, kind_id: u8, custom_name: Option<&str>, title: Option<&str>) -> &'a mut DataStruct {
-        let ids = Profile::Occupation.ids();
-        let _ = character.set(ids[0], &[kind_id], None);
-        match custom_name {
-            Some(v) => { let _ = character.set(ids[1], v.as_bytes(), None); }
-            None    => { let _ = character.delete(ids[1]); }
-        }
-        match title {
-            Some(t) => { let _ = character.set(ids[2], t.as_bytes(), None); }
-            None    => { let _ = character.delete(ids[2]); }
-        }
-        character
-    }
-
     pub fn display(kind: &OccupationKind, custom_name: Option<&str>, title: Option<&str>, lang: Lang) -> String {
         let name = match (kind, lang) {
             (OccupationKind::Activist,            Lang::En(_)) => "Activist",
@@ -432,67 +435,95 @@ impl Occupation {
     }
 }
 
+impl StaticModel<3> for Occupation {
+    type Parsed = (OccupationKind, Option<String>, Option<String>); // kind, custom_name, title
+
+    fn ids() -> [u32; 3] {
+        let ids = Profile::Occupation.ids();
+        [ids[0], ids[1], ids[2]]
+    }
+
+    fn parse(bytes: [Option<&[u8]>; 3]) -> Self::Parsed {
+        let kind_id = bytes[0].and_then(|b| b.first().copied()).unwrap_or(0);
+        let custom_name = bytes[1].map(|b| String::from_utf8_lossy(b).into_owned());
+        let title = bytes[2].map(|b| String::from_utf8_lossy(b).into_owned());
+        (OccupationKind::detect(kind_id), custom_name, title)
+    }
+
+    fn encode(value: &Self::Parsed) -> [Option<Vec<u8>>; 3] {
+        let (kind, custom_name, title) = value;
+        [
+            Some(vec![kind.id()]),
+            custom_name.as_deref().map(|v| v.as_bytes().to_vec()),
+            title.as_deref().map(|t| t.as_bytes().to_vec()),
+        ]
+    }
+}
 
 pub struct Birthplace; // Birthplace: str
 
-impl Birthplace {
-    pub fn read(character: &DataStruct) -> String {
-        character.get(Profile::Birthpalce.ids()[0]).ok()
-            .map(|b| String::from_utf8_lossy(b).into_owned())
-            .unwrap_or_default()
+impl StaticModel<1> for Birthplace {
+    type Parsed = String;
+
+    fn ids() -> [u32; 1] { [Profile::Birthpalce.ids()[0]] }
+
+    fn parse(bytes: [Option<&[u8]>; 1]) -> Self::Parsed {
+        bytes[0].map(|b| String::from_utf8_lossy(b).into_owned()).unwrap_or_default()
     }
 
-    pub fn write<'a>(character: &'a mut DataStruct, value: &str) -> &'a mut DataStruct {
-        let _ = character.set(Profile::Birthpalce.ids()[0], value.as_bytes(), None);
-        character
+    fn encode(value: &Self::Parsed) -> [Option<Vec<u8>>; 1] {
+        [Some(value.as_bytes().to_vec())]
     }
 }
 
 pub struct Pronoun; // Pronoun: str
 
-impl Pronoun {
-    pub fn read(character: &DataStruct) -> String {
-        character.get(Profile::Pronoun.ids()[0]).ok()
-            .map(|b| String::from_utf8_lossy(b).into_owned())
-            .unwrap_or_default()
+impl StaticModel<1> for Pronoun {
+    type Parsed = String;
+
+    fn ids() -> [u32; 1] { [Profile::Pronoun.ids()[0]] }
+
+    fn parse(bytes: [Option<&[u8]>; 1]) -> Self::Parsed {
+        bytes[0].map(|b| String::from_utf8_lossy(b).into_owned()).unwrap_or_default()
     }
 
-    pub fn write<'a>(character: &'a mut DataStruct, value: &str) -> &'a mut DataStruct {
-        let _ = character.set(Profile::Pronoun.ids()[0], value.as_bytes(), None);
-        character
+    fn encode(value: &Self::Parsed) -> [Option<Vec<u8>>; 1] {
+        [Some(value.as_bytes().to_vec())]
     }
 }
 
 pub struct Residence; // Residence: str
 
-impl Residence {
+impl StaticModel<1> for Residence {
+    type Parsed = String;
 
-    pub fn read(character: &DataStruct) -> String {
-        character.get(Profile::Residence.ids()[0]).ok()
-            .map(|b| String::from_utf8_lossy(b).into_owned())
-            .unwrap_or_default()
+    fn ids() -> [u32; 1] { [Profile::Residence.ids()[0]] }
+
+    fn parse(bytes: [Option<&[u8]>; 1]) -> Self::Parsed {
+        bytes[0].map(|b| String::from_utf8_lossy(b).into_owned()).unwrap_or_default()
     }
 
-    pub fn write<'a>(character: &'a mut DataStruct, value: &str) -> &'a mut DataStruct {
-        let _ = character.set(Profile::Residence.ids()[0], value.as_bytes(), None);
-        character
+    fn encode(value: &Self::Parsed) -> [Option<Vec<u8>>; 1] {
+        [Some(value.as_bytes().to_vec())]
     }
 }
 
 pub struct Age; // Age: u16
 
-impl Age {
+impl StaticModel<1> for Age {
+    type Parsed = u16;
 
-    pub fn read(character: &DataStruct) -> u16 {
-        character.get(Profile::Age.ids()[0]).ok()
+    fn ids() -> [u32; 1] { [Profile::Age.ids()[0]] }
+
+    fn parse(bytes: [Option<&[u8]>; 1]) -> Self::Parsed {
+        bytes[0]
             .and_then(|b| b.get(0..2)?.try_into().ok())
             .map(u16::from_le_bytes)
             .unwrap_or(0)
     }
 
-    pub fn write<'a>(character: &'a mut DataStruct, value: u16) -> &'a mut DataStruct {
-        let _ = character.set(Profile::Age.ids()[0], &value.to_le_bytes(), None);
-        character
+    fn encode(value: &Self::Parsed) -> [Option<Vec<u8>>; 1] {
+        [Some(value.to_le_bytes().to_vec())]
     }
 }
 
