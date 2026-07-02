@@ -61,6 +61,7 @@ pub mod dice {
 pub trait SubjectTrait {
     fn ids(&self) -> &'static [u32];
     fn label(&self, lang: Lang) -> &'static str;
+    fn list() -> &'static [Self] where Self: Sized;
 }
 
 // ============================================================
@@ -76,7 +77,7 @@ pub trait SubjectTrait {
 pub trait StaticModel<const N: usize> {
     type Parsed;
     type Subject: SubjectTrait;
-    const VARIANT: Self::Enum;
+    const VARIANT: Self::Subject;
 
     fn ids() -> [u32; N] {
         Self::VARIANT.ids().try_into().expect("id slice length mismatch")
@@ -147,7 +148,7 @@ impl Character {
         }
     }
 
-    pub fn list(&self) -> &[Character] {
+    pub fn list() -> &[Self] {
         &[
             Self::Profile,
             Self::Characteristic,
@@ -204,10 +205,8 @@ impl SubjectTrait for Profile {
             (Self::Age, Lang::Ja)    => "年齢",
         }
     }
-}
 
-impl Profile {
-    pub fn list() -> &'static [Profile] {
+    fn list() -> &'static [Self] {
         &[
             Self::Name,
             Self::Birthpalce,
@@ -233,7 +232,7 @@ impl Name {
 
 impl StaticModel<2> for Name {
     type Parsed = (String, Option<String>); // name, complement
-    type Enum = Profile;
+    type Subject = Profile;
     const VARIANT: Profile = Profile::Name;
 
     fn parse(bytes: [Option<&[u8]>; 2]) -> Self::Parsed {
@@ -458,7 +457,7 @@ impl Occupation {
 
 impl StaticModel<3> for Occupation {
     type Parsed = (OccupationKind, Option<String>, Option<String>); // kind, custom_name, title
-    type Enum = Profile;
+    type Subject = Profile;
     const VARIANT: Profile = Profile::Occupation;
 
     fn parse(bytes: [Option<&[u8]>; 3]) -> Self::Parsed {
@@ -482,7 +481,7 @@ pub struct Birthplace; // Birthplace: str
 
 impl StaticModel<1> for Birthplace {
     type Parsed = String;
-    type Enum = Profile;
+    type Subject = Profile;
     const VARIANT: Profile = Profile::Birthpalce;
 
     fn parse(bytes: [Option<&[u8]>; 1]) -> Self::Parsed {
@@ -498,7 +497,7 @@ pub struct Pronoun; // Pronoun: str
 
 impl StaticModel<1> for Pronoun {
     type Parsed = String;
-    type Enum = Profile;
+    type Subject = Profile;
     const VARIANT: Profile = Profile::Pronoun;
 
     fn parse(bytes: [Option<&[u8]>; 1]) -> Self::Parsed {
@@ -514,7 +513,7 @@ pub struct Residence; // Residence: str
 
 impl StaticModel<1> for Residence {
     type Parsed = String;
-    type Enum = Profile;
+    type Subject = Profile;
     const VARIANT: Profile = Profile::Residence;
 
     fn parse(bytes: [Option<&[u8]>; 1]) -> Self::Parsed {
@@ -530,7 +529,7 @@ pub struct Age; // Age: u16
 
 impl StaticModel<1> for Age {
     type Parsed = u16;
-    type Enum = Profile;
+    type Subject = Profile;
     const VARIANT: Profile = Profile::Age;
 
     fn parse(bytes: [Option<&[u8]>; 1]) -> Self::Parsed {
