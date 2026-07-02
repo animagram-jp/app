@@ -16,7 +16,7 @@ pub enum Operation {
     SetWidth,
     SetHeight,
     SetBackground,
-    SetTransform,
+    SetTranslate,
     ShowModal,
     CloseModal,
     Focus,
@@ -35,7 +35,7 @@ impl Operation {
             Self::SetWidth        =>  7,
             Self::SetHeight       =>  8,
             Self::SetBackground   =>  9,
-            Self::SetTransform    => 10,
+            Self::SetTranslate    => 10,
             Self::ShowModal       => 11,
             Self::CloseModal      => 12,
             Self::Focus           => 13,
@@ -309,8 +309,16 @@ pub fn detect_gesture(state: &mut PointerState, prev_state: &PointerState, event
 }
 
 // ============================================================
-// dom::(Tag, Segment, Id)::decode/encode <-> id: str
+// dom (rust item <=> element id)
 // ============================================================
+//
+// id規則:
+//   "_" = 親子セグメント区切り  例: main_div_section-1
+//   "-N" = 同タグ内の連番       例: span-3, th-2
+//   連番なし = その階層に1つだけ 例: thead_tr, legend_h5
+//
+// dom::Id::encode()  -> "seg1_seg2_seg-N_..."
+// dom::Id::decode()  -> Vec<dom::Segment> のパース
 
 pub mod dom {
     use core::{option::Option::{self, Some, None}, result::Result::Ok, marker::Copy, fmt, cmp::PartialEq, clone::Clone};
