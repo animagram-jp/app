@@ -2,7 +2,7 @@ use core::{option::Option::{self, Some, None}, marker::Copy, clone::Clone, todo}
 use alloc::{vec::Vec, vec, string::String};
 use arbitrary_int::u2;
 use crate::Lang;
-use crate::js_client::{Command, Operation, EventType, Gesture, dom::{Id, Tag}, CanvasEvent};
+use crate::js_client::{Command, Operation, EventType, Gesture, dom::{Id, Tag}, CanvasEvent, PointerState};
 use crate::store::FileStore;
 use crate::data_struct::DataStruct;
 use crate::model::{
@@ -74,12 +74,12 @@ impl Handler {
     pub fn close(&self) {
         self.characters.close();
     }
-    pub fn initial_draw(&self) -> Vec<Command> {
-        Vec::new()
+    pub fn initial_draw(&self) -> (Vec<Event>, Vec<Command>) {
+        (Vec::new(), Vec::new())
     }
-    pub fn process(&mut self, event: &CanvasEvent) -> Vec<Command> {
+    pub fn process(&mut self, event: &CanvasEvent, _pointer_state: &PointerState) -> (Vec<Event>, Vec<Command>) {
         let id = &event.id;
-        if matches!(event.event_type, EventType::Click)
+        let commands = if matches!(event.event_type, EventType::Click)
             && id == &Id::new(&[(Tag::Header, None), (Tag::Button, Some(3))]) {
             match self.character_sheet {
                 CharacterSheet::Immutable => {
@@ -118,11 +118,12 @@ impl Handler {
                 }
             }
         } else {
-            vec![]
-        }
+            Vec::new()
+        };
+        (Vec::new(), commands)
     }
-    pub fn process_gesture(&mut self, gesture: &Gesture) -> Vec<Command> {
-        vec![]
+    pub fn process_gesture(&mut self, _gesture: &Gesture, _pointer_state: &PointerState) -> (Vec<Event>, Vec<Command>) {
+        (Vec::new(), Vec::new())
     }
 }
 

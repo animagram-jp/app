@@ -47,9 +47,7 @@ impl App {
             canvas_event.x, canvas_event.y, canvas_event.time,
         );
         match detect_gesture(&mut self.pointer_state, &prev_state, &canvas_event.event_type, canvas_event.time) {
-            Some(gesture) => {
-                self.events.push(Event::Gesture(gesture));
-            }
+            Some(gesture) => self.events.push(Event::Gesture(gesture)),
             None => match &canvas_event.event_type {
                 EventType::PointerDown => self.events.push(Event::Canvas(canvas_event)),
                 EventType::PointerMove |
@@ -58,22 +56,19 @@ impl App {
             },
         }
         while let Some(event) = self.events.pop() {
-            commands.extend(self.dispatch(event));
+            let (new_events, new_commands) = self.dispatch(event);
+            self.events.extend(new_events);
+            commands.extend(new_commands);
         }
         to_value(&commands).unwrap_or(JsValue::NULL)
     }
 
-    fn dispatch(&mut self, event: Event) -> Vec<Command> {
+    fn dispatch(&mut self, event: Event) -> (Vec<Event>, Vec<Command>) {
+        let Self { handler, pointer_state, .. } = self;
         match event {
-            Event::Ready => {
-                self.handler.initial_draw()
-            }
-            Event::Canvas(canvas_event) => {
-                self.handler.process(&canvas_event)
-            }
-            Event::Gesture(gesture) => {
-                self.handler.process_gesture(&gesture)
-            }
+            Event::Ready             => handler.initial_draw(),
+            Event::Canvas(e)         => handler.process(&e, pointer_state),
+            Event::Gesture(g)        => handler.process_gesture(&g, pointer_state),
         }
     }
 }

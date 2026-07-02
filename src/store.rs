@@ -1,4 +1,4 @@
-use core::{primitive::{u8, u32}, option::Option::{self, Some, None}, result::Result::{self, Ok}, fmt, cmp::PartialEq, clone::Clone};
+use core::{primitive::{u8, u32}, option::Option::{self, Some, None}, result::Result::{self, Ok}, cmp::PartialEq, clone::Clone};
 use alloc::{collections::{BTreeMap, BTreeSet}, vec::Vec, vec, string::String, format};
 use js_sys;
 use wasm_bindgen::JsCast;
