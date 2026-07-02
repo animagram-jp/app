@@ -223,10 +223,10 @@ use data_struct::DataStruct::{new, get_from_bytes, get, set, delete, compact, to
 - データモデル固有のフィールド数(schema_size)固定Listと可変部VariableListによるデータインスタンス操作モジュール。
 - フィールド1にid(u32), 2にcreated_at(timestamp), 3にupdated_at(timestamp)を確定し、4~を開放。
 
-#### model.rs
+#### object.rs
 
 ```rust
-use model::{
+use object::{
     Dice, dice::{display, roll}, 
     Character, Profile, Characteristic, Skill, 
     ArtAndCraft, Fighting, Firearms, Pilot, Science, Survival,
@@ -243,8 +243,8 @@ use event::{Dialog, Handler, Toast};
 ```
 
 - canvasを操作する、ドメイン固有のstate定義とhandler。
-- handlerは、DataStructと、フィールド4~schema_sizeまでの操作ロジックを定義するmodelを束ねて操作を行う。
-- js_clientのdom::Idとmodelのフィールドを相互にバルクマッピングする関数を定義して、canvasと内部データを互換する。
+- handlerは、DataStructと、フィールド4~schema_sizeまでの操作ロジックを定義するobjectを束ねて操作を行う。
+- js_clientのdom::Idとobjectのフィールドを相互にバルクマッピングする関数を定義して、canvasと内部データを互換する。
 
 #### app.rs
 
@@ -257,6 +257,6 @@ use app::{Event, App::{init, close, process, dispatch}};
 
 #### その他
 
-- roll.rs: model.rsの形に整形する前のダイスロールモジュール。lib.rsの関連fnの収容・character.rsとの相互参照のモジュール化対応必要。
+- roll.rs: object.rsの形に整形する前のダイスロールモジュール。lib.rsの関連fnの収容・character.rsとの相互参照のモジュール化対応必要。
 - ugrid.rs: Region operating functions with two (base and derived) Cartesian coordinate. It's under development now.
 - temporal.rs: カレンダー機能に向けた時間表現モジュール。timestamp.rsに依存。開発途中。

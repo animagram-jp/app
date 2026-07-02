@@ -1,7 +1,7 @@
 use alloc::{vec::Vec, vec};
 use rand::{rng, RngExt};
 use crate::Lang;
-use crate::model::{dice, Dice, Characteristic, Skill};
+use crate::object::{dice, Dice, Characteristic, Skill};
 
 // ============================================================
 // Percent Roll (1d100 + Bonus/Penalty Dice)
@@ -44,8 +44,8 @@ pub struct Characteristics<T>(pub Vec<T>);
 pub struct SkillModifier(pub i32);
 
 pub enum SkillOrCharacteristic {
-    Skill(crate::model::Skill),
-    Characteristic(crate::model::Characteristic),
+    Skill(crate::object::Skill),
+    Characteristic(crate::object::Characteristic),
 }
 
 pub enum SuccessLevel { Regular, Hard, Extreme, Critical }
@@ -84,7 +84,7 @@ pub enum BulletSetCap { Auto, Specified(u32) }
 // ============================================================
 
 pub enum Roll {
-    /// 任意ダイス式ロール。dice_terms は model::Dice = (count, sides, modifier) のリスト。
+    /// 任意ダイス式ロール。dice_terms は object::Dice = (count, sides, modifier) のリスト。
     DiceRoll(Vec<Dice>),
     SkillRoll(Skills<Skill>, Option<SuccessLevel>, Option<i16>), // option(i16)とは補正値(+-i)のこと
     CharacteristicRoll(Characteristics<Characteristic>, Option<SuccessLevel>, SkillModifier),
@@ -292,8 +292,8 @@ pub struct DiceRoll {
     select:        Vec<DiceRollSelect>,
     bonus_dice:    i32,
     level:         Level,
-    target_select: (crate::model::Characteristic, crate::model::Skill),
-    /// ダイス項目リスト。model::Dice = (count: i8, sides: u8, modifier: i8)
+    target_select: (crate::object::Characteristic, crate::object::Skill),
+    /// ダイス項目リスト。object::Dice = (count: i8, sides: u8, modifier: i8)
     dice_terms:    Vec<Dice>,
     result:        RollResult,
 }

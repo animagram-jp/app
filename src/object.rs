@@ -47,14 +47,18 @@ pub mod dice {
             rolled + modifier as i32
         }).sum()
     }
+
+    pub fn percent_roll() -> u32 { // level: -2,-1,0,1,2, difficulty: Difficulty(enum {...,Regular,...}) -> RollResult
+        todo!("see docs/dice.py")
+    }
 }
 
 // ============================================================
-// EnumTrait: グループ分けenum(Profile, Character, ...)自身が持つ、
+// SubjectTrait: グループ分けenum(Profile, Character, ...)自身が持つ、
 // バリアントに対応するids/labelを返す能力。
 // ============================================================
 
-pub trait EnumTrait {
+pub trait SubjectTrait {
     fn ids(&self) -> &'static [u32];
     fn label(&self, lang: Lang) -> &'static str;
 }
@@ -66,12 +70,12 @@ pub trait EnumTrait {
 //
 // 各structは「自分がどのenum(Enum)のどのバリアント(VARIANT)に属するか」を
 // 宣言するだけでよく、idsへの正規化はここでの既定実装に任せられる。
-// structがEnumTraitを実装するわけではない(所属先はstructの外、implの中で宣言する)。
+// structがSubjectTraitを実装するわけではない(所属先はstructの外、implの中で宣言する)。
 // ============================================================
 
 pub trait StaticModel<const N: usize> {
     type Parsed;
-    type Enum: EnumTrait;
+    type Subject: SubjectTrait;
     const VARIANT: Self::Enum;
 
     fn ids() -> [u32; N] {
@@ -170,7 +174,7 @@ pub enum Profile {
     Age,
 }
 
-impl EnumTrait for Profile {
+impl SubjectTrait for Profile {
 
     fn ids(&self) -> &'static [u32] {
         const BASE: u32 = Character::Profile.base_id();

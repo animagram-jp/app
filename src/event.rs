@@ -5,7 +5,7 @@ use crate::Lang;
 use crate::js_client::{Command, Operation, EventType, Gesture, dom::{Id, Tag}, CanvasEvent, PointerState};
 use crate::store::FileStore;
 use crate::data_struct::DataStruct;
-use crate::model::{
+use crate::object::{
     Dice, dice,
     Character, Profile, Characteristic, SecondaryAttribute, Skill, Possession, Backstory, Memo,
     LanguageOwn, ArtAndCraft, Fighting, Firearms, Pilot, Science, Survival,
@@ -131,7 +131,7 @@ impl Handler {
 // internal helper
 // ============================================================
 
-/// mapping model::{Models}::read() <-> dom::Id
+/// mapping object::{Objects}::read() <-> dom::Id
 fn map_id(item: &Character, parent: &Id, n: u32) -> Vec<Id> {
     match parent {
         p if p == &Id::new(&[(Tag::Section, Some(1))]) => {

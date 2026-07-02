@@ -12,7 +12,7 @@ pub mod js_client;
 pub mod store;
 pub mod data_struct;
 pub mod app;
-pub mod model;
+pub mod object;
 pub mod roll;
 pub mod event;
 
