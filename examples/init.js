@@ -60,12 +60,13 @@ function execute({ operation, id, attribute, value }) {
     case 6:  el.classList.remove(value); break;
     case 7:  el.style.width = value + "px"; break;
     case 8:  el.style.height = value + "px"; break;
-    case 9:  el.style.background = value; break;
-    case 10: el.style.transform = `translate(${attribute}px, ${value}px)`; break;
-    case 11: el.showModal(); break;
-    case 12: el.close(); break;
-    case 13: el.focus(); break;
-    case 14: jsFn[value]?.(el); break;
+    case 9: el.style.zIndex = value; break;
+    case 10:  el.style.background = value; break;
+    case 11: el.style.transform = `translate(${attribute}px, ${value}px)`; break;
+    case 12: el.showModal(); break;
+    case 13: el.close(); break;
+    case 14: el.focus(); break;
+    case 15: jsFn[value]?.(el); break;
   }
 }
 

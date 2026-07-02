@@ -15,6 +15,7 @@ pub enum Operation {
     RemoveClass,
     SetWidth,
     SetHeight,
+    SetZIndex,
     SetBackground,
     SetTranslate,
     ShowModal,
@@ -34,12 +35,13 @@ impl Operation {
             Self::RemoveClass     =>  6,
             Self::SetWidth        =>  7,
             Self::SetHeight       =>  8,
-            Self::SetBackground   =>  9,
-            Self::SetTranslate    => 10,
-            Self::ShowModal       => 11,
-            Self::CloseModal      => 12,
-            Self::Focus           => 13,
-            Self::JsFn            => 14,
+            Self::SetZIndex       =>  9,
+            Self::SetBackground   => 10,
+            Self::SetTranslate    => 11,
+            Self::ShowModal       => 12,
+            Self::CloseModal      => 13,
+            Self::Focus           => 14,
+            Self::JsFn            => 15,
         }
     }
 }
