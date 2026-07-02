@@ -7,7 +7,7 @@ use crate::timestamp::Field;
 use crate::data_struct::DataStruct;
 
 // ============================================================
-// Dice, dice::{display, roll}
+// Dice, dice::{label, roll}
 // ============================================================
 
 pub type Dice = (i8, u8, i8); // (count, sides, modifier)
@@ -16,7 +16,7 @@ pub mod dice {
     use super::Dice;
     use rand::RngExt as _;
 
-    pub fn display(dice: &[Dice]) -> String {
+    pub fn label(dice: &[Dice]) -> String {
         let s = dice.iter().map(|&(count, sides, modifier)| {
             let dice_str = if count == 0 || sides == 0 {
                 String::new()
@@ -128,7 +128,7 @@ impl Character {
         }
     }
 
-    pub fn display(&self, lang: Lang) -> &'static str {
+    pub fn label(&self, lang: Lang) -> &'static str {
         match (self, lang) {
             (Self::Profile, Lang::En(_))        => "Profile",
             (Self::Profile, Lang::Ja)           => "プロフィール",
@@ -223,7 +223,7 @@ pub struct Name;
 
 impl Name {
 
-    pub fn display(name: &String, complement: &Option<String>) -> String {
+    pub fn label(name: &String, complement: &Option<String>) -> String {
         match complement {
             Some(c) if !c.is_empty() => format!("{name} ({c})"),
             _ => name.clone(),
@@ -355,7 +355,7 @@ impl OccupationKind {
 pub struct Occupation;
 
 impl Occupation {
-    pub fn display(kind: &OccupationKind, custom_name: Option<&str>, title: Option<&str>, lang: Lang) -> String {
+    pub fn label(kind: &OccupationKind, custom_name: Option<&str>, title: Option<&str>, lang: Lang) -> String {
         let name = match (kind, lang) {
             (OccupationKind::Activist,            Lang::En(_)) => "Activist",
             (OccupationKind::Activist,            Lang::Ja)    => "活動家",
@@ -836,8 +836,8 @@ impl DamageBonus {
         Self::derive(character)
     }
 
-    pub fn display(character: &DataStruct) -> String {
-        dice::display(&[Self::read(character)])
+    pub fn label(character: &DataStruct) -> String {
+        dice::label(&[Self::read(character)])
     }
 
     pub fn derive(character: &DataStruct) -> Dice {
@@ -2790,7 +2790,7 @@ impl Weapon {
     //     }
     // }
 
-    pub fn display(&self, lang: Lang) -> &str {
+    pub fn label(&self, lang: Lang) -> &str {
         match (self, lang) {
             (Self::BowAndArrows,           Lang::En(_)) => "Bow and Arrows",
             (Self::BowAndArrows,           Lang::Ja) => "弓と矢",
