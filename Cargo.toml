@@ -2,9 +2,10 @@
 name = "app"
 version = "0.1.0"
 edition = "2024"
-authors = ["Andyou <andyou@animagram.jp>"]
 description = "Gui application for editing and reading structured data."
 license = "Apache-2.0"
+repository = "https://github.com/animagram-jp/app"
+readme = "docs/Architecture.md"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
