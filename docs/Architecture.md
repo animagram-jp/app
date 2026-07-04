@@ -258,5 +258,5 @@ use app::{Event, App::{init, close, process, dispatch}};
 #### その他
 
 - roll.rs: object.rsの形に整形する前のダイスロールモジュール。lib.rsの関連fnの収容・character.rsとの相互参照のモジュール化対応必要。
-- ugrid.rs: Region operating functions with two (base and derived) Cartesian coordinate. It's under development now.
+- rectgrid.rs: Region operating functions with two (base and derived) Cartesian coordinate. It's under development now.
 - temporal.rs: カレンダー機能に向けた時間表現モジュール。timestamp.rsに依存。開発途中。
