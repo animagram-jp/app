@@ -1,5 +1,7 @@
+*.md
+!README.md
+!CONTRIBUTING.md
+
 Cargo.lock
 **/target
-CLAUDE.md
-**/Tsumugi.md
 **/examples/app/*

@@ -1,8 +1,6 @@
-name: Build and deploy to GitHub Pages
+name: "Deploy to GitHub Pages"
 
 on:
-  release:
-    branches: ["main"]
   workflow_dispatch:
 
 permissions:
@@ -18,13 +16,13 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
+      - name: Git clone
+        run: |
+          git clone --depth 1 --branch "${GITHUB_REF_NAME}" \
+          "https://github.com/${GITHUB_REPOSITORY}.git" .
 
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: wasm32-unknown-unknown
+      - name: Add wasm32 target
+        run: rustup target add wasm32-unknown-unknown
 
       - name: Install wasm-pack
         run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
@@ -39,9 +37,9 @@ jobs:
         uses: actions/configure-pages@v6
 
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v4
+        uses: actions/upload-pages-artifact@v7
         with:
-          path: './examples'
+          path: "./examples"
 
   deploy:
     needs: build
