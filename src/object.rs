@@ -148,7 +148,7 @@ impl Character {
         }
     }
 
-    pub fn list() -> &[Self] {
+    pub fn list() -> &'static [Character] {
         &[
             Self::Profile,
             Self::Characteristic,
@@ -1463,16 +1463,16 @@ impl ArtAndCraft {
 
     pub fn list() -> &'static [Self] {
         &[
-            Self::Acting, 
-            Self::Barber, 
-            Self::Calligraphy, 
-            Self::Carpentry, 
-            Self::Cook, 
-            Self::Dancing, 
-            Self::FineArt, 
-            Self::Forgery, 
-            Self::Photography, 
-            Self::Pottery, 
+            Self::Acting,
+            Self::Barber,
+            Self::Calligraphy,
+            Self::Carpentry,
+            Self::Cook,
+            Self::Dancing,
+            Self::FineArt,
+            Self::Forgery,
+            Self::Photography,
+            Self::Pottery,
             Self::Sculpting,
             Self::Writing,
             Self::Custom,
@@ -1637,13 +1637,13 @@ impl Fighting {
 
     pub fn list() -> &'static [Self] {
         &[
-            Self::Axe, 
-            Self::Brawl, 
-            Self::Chainsaw, 
-            Self::Flail, 
-            Self::Garrote, 
-            Self::Spear, 
-            Self::Sword, 
+            Self::Axe,
+            Self::Brawl,
+            Self::Chainsaw,
+            Self::Flail,
+            Self::Garrote,
+            Self::Spear,
+            Self::Sword,
             Self::Whip,
         ]
     }
