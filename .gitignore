@@ -4,4 +4,4 @@
 
 Cargo.lock
 **/target
-**/examples/app/*
+**/examples/app/
