@@ -29,11 +29,19 @@ use web_sys::{
 // ============================================================
 
 fn fletcher32(data: &[u8]) -> u32 {
-    let mut sum1: u32 = 0;
-    let mut sum2: u32 = 0;
-    for &byte in data {
-        sum1 = (sum1 + byte as u32) % 65535;
-        sum2 = (sum2 + sum1)        % 65535;
+    let mut sum1: u32 = 0xffff;
+    let mut sum2: u32 = 0xffff;
+    let mut chunks = data.chunks_exact(2);
+    for chunk in &mut chunks {
+        let word = u16::from_le_bytes([chunk[0], chunk[1]]) as u32;
+        sum1 = (sum1 + word) % 65535;
+        sum2 = (sum2 + sum1) % 65535;
+    }
+    // 奇数長の余り1バイト
+    let rem = chunks.remainder();
+    if !rem.is_empty() {
+        sum1 = (sum1 + rem[0] as u32) % 65535;
+        sum2 = (sum2 + sum1) % 65535;
     }
     (sum2 << 16) | sum1
 }
@@ -264,7 +272,7 @@ mod tests {
 
     #[test]
     fn fletcher32_known() {
-        assert_eq!(fletcher32(b"abcd"), 0x03D4_018A);
+        assert_eq!(fletcher32(b"abcdef"), 0xDF09D509);
     }
 
     // ── LogRecord round-trip ──────────────────────────────────
