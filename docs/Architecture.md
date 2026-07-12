@@ -2,85 +2,6 @@
 
 # Architecture
 
-Gui application system for editing and reading structured data.
-
----
-
-## Rule
-
-- [common for projects](https://github.com/animagram-jp/.github/blob/main/Rule.md)
-
-## Commands
-
-```bash
-# unit test
-cargo test
-
-# wasm-pack compile
-wasm-pack build --target web --out-dir examples/app --out-name app
-```
-
-- OPFS files are in
-   - `C:\Users\<User>\AppData\Roaming\Mozilla\Firefox\Profiles\<Profile>\storage\default\`.
-   - `C:\Users\<User>\AppData\Local\Google\Chrome\User Data\Default\Storage\ext\`
-
-## Debug
-
-- for iPhone: [url with eruda](https://animagram-jp.github.io/app/?eruda)
-
----
-
-## System diagram
-
-```
-┌──────┐
-│ user │
-└──┬───┘
-   ▼
-┌────────────────────────┐
-│ browser                │
-│┌──────┐┌──────┐┌──────┐│
-││ dom  ││ opfs ││ sw   ││
-│└──────┘└──────┘└──────┘│
-│┌──────────────────────┐│
-││ app (web worker)     ││
-│└──────────────────────┘│
-│  ▲                  │▲ │
-│  │ post/onMessage   ││ │
-│  ▼                  ││ │
-│┌──────────────────┐ ││ │
-││ extension worker │ ││ │
-│└──────────────────┘ ││ │
-└─ ▲ ──────────────── ││─┘
-   │                  ││
-   │ native messaging ││websocket
-   ▼                  ││
-┌───────────────┐     ││
-│ native worker │     ││
-│ (host api)    │     ││
-└──┬────────────┘     ││
-   │ http request     ││
-   │     ┌──────┬─────┤│
-   │     ▼stun  ▼turn │←:http
-   │ ┌──────┐┌──────┐ ││
-   │ │ stun ││ turn │ ││
-   ▼ └──────┘└──────┘ ▼▼
-┌────────────────────────┐
-│ server                 │
-│┌──────────────────────┐│
-││ nginx (external port)││
-│└──────────────────────┘│
-│┌──────────────────────┐│
-││ app (rust)           ││
-│└──────────────────────┘│
-│┌──────────────────────┐│
-││ vfs                  ││
-│└──────────────────────┘│
-└────────────────────────┘
-```
-
----
-
 ## html
 
 - index.htmlの1ファイル完結。
@@ -206,8 +127,8 @@ use store::FileStore::{new, issue, get, set, save, delete, close, compact};
 ```rust
 use timestamp::{
     Field, YEAR, MONTH, DAY, HOUR, MINUTE, SECOND, DECISECOND, IS_UTC, TIMEZONE, Timezone,
-    from_ut, new, display, unpack, pack, 
-    add_years, sub_years, add_months, sub_months, add_days, sub_days, 
+    from_ut, new, display, unpack, pack,
+    add_years, sub_years, add_months, sub_months, add_days, sub_days,
     add_hours, sub_hours, add_minutes, sub_minutes
 };
 ```
@@ -227,8 +148,8 @@ use data_struct::DataStruct::{new, get_from_bytes, get, set, delete, compact, to
 
 ```rust
 use object::{
-    Dice, dice::{display, roll}, 
-    Character, Profile, Characteristic, Skill, 
+    Dice, dice::{display, roll},
+    Character, Profile, Characteristic, Skill,
     ArtAndCraft, Fighting, Firearms, Pilot, Science, Survival,
 };
 ```
