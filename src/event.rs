@@ -2,7 +2,7 @@ use core::{option::Option::{self, Some, None}, marker::Copy, clone::Clone, todo}
 use alloc::{vec::Vec, vec, string::String};
 use arbitrary_int::u2;
 use crate::Lang;
-use crate::js_client::{Command, Operation, EventType, Gesture, dom::{Id, Tag}, CanvasEvent, PointerState};
+use crate::js_client::{Command, EventType, Gesture, dom::{Id, Tag}, CanvasEvent, PointerState};
 use crate::store::FileStore;
 use crate::data_struct::DataStruct;
 use crate::object::{
@@ -85,35 +85,27 @@ impl Handler {
                 CharacterSheet::Immutable => {
                     self.character_sheet = CharacterSheet::Editable;
                     vec![
-                        Command::new(
-                            Operation::RemoveClass,
-                            &Id::new(&[(Tag::Main, None), (Tag::Section, Some(1))]).encode(),
-                            None,
-                            Some("hidden"),
-                        ),
-                        Command::new(
-                            Operation::AddClass,
-                            &Id::new(&[(Tag::Main, None), (Tag::Section, Some(2))]).encode(),
-                            None,
-                            Some("hidden"),
-                        ),
+                        Command::RemoveClass {
+                            id:    Id::new(&[(Tag::Main, None), (Tag::Section, Some(1))]).encode(),
+                            value: "hidden".to_string(),
+                        },
+                        Command::AddClass {
+                            id:    Id::new(&[(Tag::Main, None), (Tag::Section, Some(2))]).encode(),
+                            value: "hidden".to_string(),
+                        },
                     ]
                 }
                 CharacterSheet::Editable => {
                     self.character_sheet = CharacterSheet::Immutable;
                     vec![
-                        Command::new(
-                            Operation::RemoveClass,
-                            &Id::new(&[(Tag::Main, None), (Tag::Section, Some(2))]).encode(),
-                            None,
-                            Some("hidden"),
-                        ),
-                        Command::new(
-                            Operation::AddClass,
-                            &Id::new(&[(Tag::Main, None), (Tag::Section, Some(1))]).encode(),
-                            None,
-                            Some("hidden"),
-                        ),
+                        Command::RemoveClass {
+                            id:    Id::new(&[(Tag::Main, None), (Tag::Section, Some(2))]).encode(),
+                            value: "hidden".to_string(),
+                        },
+                        Command::AddClass {
+                            id:    Id::new(&[(Tag::Main, None), (Tag::Section, Some(1))]).encode(),
+                            value: "hidden".to_string(),
+                        },
                     ]
                 }
             }
@@ -268,10 +260,10 @@ impl Toast {
         let span    = Id::new(&[(Tag::Output, None), (Tag::Article, Some(n.value() as u32)), (Tag::Span, None)]);
         let p       = Id::new(&[(Tag::Output, None), (Tag::Article, Some(n.value() as u32)), (Tag::P,    None)]);
         vec![
-            Command::new(Operation::SetText,  &span.encode(),    None, Some(self.icon())),
-            Command::new(Operation::SetText,  &p.encode(),       None, Some(self.label(state.lang))),
-            Command::new(Operation::AddClass, &article.encode(), None, Some(self.css_class())),
-            Command::new(Operation::JsFn,     &article.encode(), None, Some("show")),
+            Command::SetText  { id: span.encode(),    value: self.icon().to_string() },
+            Command::SetText  { id: p.encode(),        value: self.label(state.lang).to_string() },
+            Command::AddClass { id: article.encode(),  value: self.css_class().to_string() },
+            Command::JsFn     { id: article.encode(),  name: "show".to_string() },
         ]
     }
 }

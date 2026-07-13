@@ -2,7 +2,8 @@ use core::option::Option::{self, Some, None};
 use alloc::vec::Vec;
 use wasm_bindgen::prelude::{wasm_bindgen, *};
 use wasm_bindgen::JsValue;
-use serde_wasm_bindgen::to_value;
+use serde::Serialize;
+use serde_wasm_bindgen::Serializer;
 use crate::js_client::{Command, get_js_str, get_js_f64, EventType, Device, detect_device, Gesture, PointerState, detect_gesture, dom, CanvasEvent};
 use crate::event::{Handler, Event};
 
@@ -60,7 +61,8 @@ impl App {
             self.events.extend(new_events);
             commands.extend(new_commands);
         }
-        to_value(&commands).unwrap_or(JsValue::NULL)
+        let serializer = Serializer::new().serialize_maps_as_objects(true);
+        commands.serialize(&serializer).unwrap_or(JsValue::NULL)
     }
 
     fn dispatch(&mut self, event: Event) -> (Vec<Event>, Vec<Command>) {

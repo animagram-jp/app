@@ -1,7 +1,7 @@
 use core::{primitive::{u8, i8, i32}, array::from_fn};
 use alloc::string::String;
 use arbitrary_int::{u7, u9, i10};
-use crate::{Lang, En};
+use crate::Lang;
 use crate::list::ListError;
 use crate::timestamp::Field;
 use crate::data_struct::DataStruct;

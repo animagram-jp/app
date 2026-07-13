@@ -47,26 +47,27 @@ function start() {
 // receive and excute commands
 // ============================================================
 
-// Command: { operation: u8, id: string, attribute?: string, value?: string }
-function execute({ operation, id, attribute, value }) {
-  const el = document.getElementById(id);
+// Command: op別のフィールドを持つタグ付きオブジェクト。operation番号(u8)はjs_client.rsのCommand enumと対応。
+function execute(cmd) {
+  const el = document.getElementById(cmd.id);
   if (!el) return;
-  switch (operation) {
-    case 1:  el.textContent = value ?? ""; break;
-    case 2:  el.value = value ?? ""; break;
-    case 3:  el.setAttribute(attribute, value ?? ""); break;
-    case 4:  el.removeAttribute(attribute); break;
-    case 5:  el.classList.add(value); break;
-    case 6:  el.classList.remove(value); break;
-    case 7:  el.style.width = value + "px"; break;
-    case 8:  el.style.height = value + "px"; break;
-    case 9:  el.style.zIndex = value; break;
-    case 10: el.style.background = value; break;
-    case 11: el.style.transform = `translate(${attribute}px, ${value}px)`; break;
-    case 12: el.showModal(); break;
-    case 13: el.close(); break;
-    case 14: el.focus(); break;
-    case 15: jsFn[value]?.(el); break;
+  switch (cmd.operation) {
+    case 1:  el.textContent = cmd.value ?? ""; break;
+    case 2:  el.value = cmd.value ?? ""; break;
+    case 3:  el.setAttribute(cmd.attribute, cmd.value ?? ""); break;
+    case 4:  el.removeAttribute(cmd.attribute); break;
+    case 5:  el.classList.add(cmd.value); break;
+    case 6:  el.classList.remove(cmd.value); break;
+    case 7:  el.style.width = cmd.px + "px"; break;
+    case 8:  el.style.height = cmd.px + "px"; break;
+    case 9:  el.style.zIndex = cmd.z; break;
+    case 10: el.style.background = cmd.value; break;
+    case 11: el.style.translate = `${cmd.x}px ${cmd.y}px`; break;
+    case 12: el.style.cursor = cmd.value ?? ""; break;
+    case 13: el.showModal(); break;
+    case 14: el.close(); break;
+    case 15: el.focus(); break;
+    case 16: jsFn[cmd.name]?.(el); break;
   }
 }
 
