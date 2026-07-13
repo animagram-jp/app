@@ -1,7 +1,10 @@
 *.md
 !README.md
 !CONTRIBUTING.md
+!docs/*.md
 
 Cargo.lock
 **/target
 **/examples/app/
+
+docs/*.json
