@@ -30,6 +30,9 @@ cargo test
 
 # wasm-pack compile
 wasm-pack build --target web --out-dir examples/app --out-name app
+
+# follow updates of css repo
+cp -i ../css/css/*.css /examples/css/
 ```
 
 - OPFS files are in
@@ -90,3 +93,5 @@ wasm-pack build --target web --out-dir examples/app --out-name app
 │└──────────────────────┘│
 └────────────────────────┘
 ```
+
+---
