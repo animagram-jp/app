@@ -19,28 +19,30 @@ jobs:
             url: ${{ steps.deployment.outputs.page_url }}
         runs-on: ubuntu-latest
         steps:
-            - name: git clone
+            - name: "git clone"
               run: |
                   git clone --depth 1 --branch "${GITHUB_REF_NAME}" \
                   "https://github.com/${GITHUB_REPOSITORY}.git" .
 
-            - name: add wasm32 target
+            - name: "add wasm32 target"
               run: rustup target add wasm32-unknown-unknown
 
-            - name: install wasm-pack
+            - name: "install wasm-pack"
               run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
 
-            - name: cargo test
+            - name: "cargo test"
               run: cargo test
               
-            - name: wasm-pack build
+            - name: "wasm-pack build"
               run: wasm-pack build --target web --out-dir examples/app --out-name app
-            - name: Setup Pages
+              
+            - name: "setup Github Pages"
               uses: actions/configure-pages@v6
             - name: Upload artifact
               uses: actions/upload-pages-artifact@v5
               with:
                 path: "./examples"
-            - name: deploy to GitHub Pages
+                
+            - name: "deploy to GitHub Pages"
               id: "deployment"
               uses: actions/deploy-pages@v5
