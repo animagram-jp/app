@@ -38,7 +38,8 @@ jobs:
               
             - name: "setup Github Pages"
               uses: actions/configure-pages@v6
-            - name: Upload artifact
+              
+            - name: "upload artifact as Github Pages"
               uses: actions/upload-pages-artifact@v5
               with:
                 path: "./examples"
