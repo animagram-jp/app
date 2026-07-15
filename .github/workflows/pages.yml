@@ -19,10 +19,8 @@ jobs:
             url: ${{ steps.deployment.outputs.page_url }}
         runs-on: ubuntu-latest
         steps:
-            - name: "git clone"
-              run: |
-                  git clone --depth 1 --branch "${GITHUB_REF_NAME}" \
-                  "https://github.com/${GITHUB_REPOSITORY}.git" .
+            - name: "git checkout"
+              uses: actions/checkout@v7
 
             - name: "add wasm32 target"
               run: rustup target add wasm32-unknown-unknown
