@@ -9,7 +9,7 @@ extern crate std;
 pub mod list;
 pub mod timestamp;
 pub mod js_client;
-pub mod store;
+pub mod file_store;
 pub mod data_struct;
 pub mod app;
 pub mod object;

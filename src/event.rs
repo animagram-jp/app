@@ -3,7 +3,7 @@ use alloc::{vec::Vec, vec, string::String};
 use arbitrary_int::u2;
 use crate::Lang;
 use crate::js_client::{Command, EventType, Gesture, dom::{Id, Tag}, CanvasEvent, PointerState};
-use crate::store::FileStore;
+use crate::file_store::FileStore;
 use crate::data_struct::DataStruct;
 use crate::object::{
     Dice, dice,
