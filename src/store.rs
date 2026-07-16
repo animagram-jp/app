@@ -172,14 +172,19 @@ impl FileStore {
         self.unsaved.insert(id);
     }
 
-    /// unsaved を log に書き出す。
+    /// unsaved を1本のバイト列に結合し、log に一括 append する。
+    /// write/flush が失敗した場合は unsaved を維持し、次回 open 時のチェックサム検証に委ねる。
     pub fn save(&mut self) -> Option<()> {
-        for id in self.unsaved.iter().copied().collect::<Vec<_>>() {
+        let ids: Vec<u32> = self.unsaved.iter().copied().collect();
+        let mut batch = Vec::new();
+        for &id in &ids {
             if let Some(bytes) = self.memory.get(&id) {
-                let record = LogRecord::set(id, bytes.clone()).to_bytes();
-                append(&self.log, &record)?;
-                if id > self.next_id { self.next_id = id; }
+                batch.extend_from_slice(&LogRecord::set(id, bytes.clone()).to_bytes());
             }
+        }
+        append(&self.log, &batch)?;
+        for id in ids {
+            if id > self.next_id { self.next_id = id; }
         }
         self.unsaved.clear();
         Some(())
