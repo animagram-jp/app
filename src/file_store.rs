@@ -213,8 +213,8 @@ fn classify(context: &str, error: JsValue) -> FileStoreError {
 /// Full lifecycle (requires a dedicated worker, hence `no_run`):
 ///
 /// ```no_run
-/// # async fn example() -> Result<(), file_store::file_store::FileStoreError> {
-/// use file_store::file_store::FileStore;
+/// # async fn example() -> Result<(), app::file_store::FileStoreError> {
+/// use app::file_store::FileStore;
 ///
 /// let mut store = FileStore::new("tenant").await?;
 /// let id = store.issue_id();
@@ -287,8 +287,8 @@ impl FileStore {
     /// (see [`FileStore::new`]).
     ///
     /// ```no_run
-    /// # async fn example() -> Result<(), file_store::file_store::FileStoreError> {
-    /// # use file_store::file_store::FileStore;
+    /// # async fn example() -> Result<(), app::file_store::FileStoreError> {
+    /// # use app::file_store::FileStore;
     /// # let mut store = FileStore::new("tenant").await?;
     /// let first  = store.issue_id();
     /// let second = store.issue_id();
@@ -304,8 +304,8 @@ impl FileStore {
     /// and unsaved mutations are visible immediately.
     ///
     /// ```no_run
-    /// # async fn example() -> Result<(), file_store::file_store::FileStoreError> {
-    /// # use file_store::file_store::FileStore;
+    /// # async fn example() -> Result<(), app::file_store::FileStoreError> {
+    /// # use app::file_store::FileStore;
     /// # let store = FileStore::new("tenant").await?;
     /// assert_eq!(store.get(9999), None); // absent id
     /// # Ok(()) }
@@ -318,8 +318,8 @@ impl FileStore {
     /// the disk; durability requires an explicit `save()`.
     ///
     /// ```no_run
-    /// # async fn example() -> Result<(), file_store::file_store::FileStoreError> {
-    /// # use file_store::file_store::FileStore;
+    /// # async fn example() -> Result<(), app::file_store::FileStoreError> {
+    /// # use app::file_store::FileStore;
     /// # let mut store = FileStore::new("tenant").await?;
     /// store.set(1, b"v".to_vec());
     /// assert_eq!(store.get(1), Some(&b"v"[..])); // visible before any save
@@ -336,8 +336,8 @@ impl FileStore {
     /// into a tombstone record.
     ///
     /// ```no_run
-    /// # async fn example() -> Result<(), file_store::file_store::FileStoreError> {
-    /// # use file_store::file_store::FileStore;
+    /// # async fn example() -> Result<(), app::file_store::FileStoreError> {
+    /// # use app::file_store::FileStore;
     /// # let mut store = FileStore::new("tenant").await?;
     /// store.set(1, b"v".to_vec());
     /// store.delete(1);
@@ -363,8 +363,8 @@ impl FileStore {
     /// advance, so the same `save()` can be retried as-is.
     ///
     /// ```no_run
-    /// # async fn example() -> Result<(), file_store::file_store::FileStoreError> {
-    /// # use file_store::file_store::FileStore;
+    /// # async fn example() -> Result<(), app::file_store::FileStoreError> {
+    /// # use app::file_store::FileStore;
     /// # let mut store = FileStore::new("tenant").await?;
     /// store.set(1, b"v".to_vec());
     /// if store.save().is_err() {
@@ -428,8 +428,8 @@ impl FileStore {
     /// re-issue accepted in [`FileStore::new`].)
     ///
     /// ```no_run
-    /// # async fn example() -> Result<(), file_store::file_store::FileStoreError> {
-    /// # use file_store::file_store::FileStore;
+    /// # async fn example() -> Result<(), app::file_store::FileStoreError> {
+    /// # use app::file_store::FileStore;
     /// # let mut store = FileStore::new("tenant").await?;
     /// store.set(1, b"draft".to_vec());
     /// store.discard()?;               // unsaved set is rolled back
