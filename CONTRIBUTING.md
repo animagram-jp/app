@@ -2,9 +2,9 @@
 
 # Contrinbuting
 
-- Follow [ORG_CONTRIBUTING.md](./ORG_CONTRIBUTING.md)
+Follow [ORG_CONTRIBUTING.md](./ORG_CONTRIBUTING.md)
 
-If "ORG_CONTRIBUTING.md" does not exist in the repository root of your working environment, download it by executing the following.
+- If "ORG_CONTRIBUTING.md" does not exist in the repository root of your working environment, download it by executing the following.
 
 ```bash
 curl -fsSL -H "Accept: application/vnd.github.raw+json" "https://api.github.com/repos/animagram-jp/.github/contents/.github/CONTRIBUTING.md?ref=main" -o "ORG_CONTRIBUTING.md"
@@ -15,8 +15,9 @@ curl -fsSL -H "Accept: application/vnd.github.raw+json" "https://api.github.com/
 Gui application system for editing and reading structured data. Handles event loop by Wasm App.
 
 - 人間に普遍的に必要とされるアプリケーションを、提供コストをユビキタス化可能なまでに抑えたwebシステムアーキテクチャで実現する。普遍的機能とは、以下を指す:
-    - 1: データを編集し、保存・複数端末で同期する機能。データは、その最適な閲覧・編集UIを決定するスキーマに多対一に紐づく。人間及びシステムにとって、時系が原始のデータの識別手段である。既存のアプリで「カレンダー」「メモ」に対応する機能は、人間の意識に昇る時系であるかの違いと理解できる。
-    - 2: スキーマ自体を編集する機能。
+    1. データを編集し、保存・複数端末で同期する機能。データは、その最適な閲覧・編集UIを決定するスキーマに多対一に紐づく。人間及びシステムにとって、時系が原始のデータの識別手段である。既存のアプリで「カレンダー」「メモ」に対応する機能は、人間の意識に昇る時系であるかの違いと理解できる。
+    2. 任意のスキーマデータを編集する機能。
+    3. スキーマ自体を編集する機能。
 
 ---
 
@@ -40,6 +41,7 @@ cp -i ../css/css/*.css /public/css/
 ```bash
 # --- Setup for wasm-bindgen-test ---
 # updated_at: 2026-07
+# fire fox installation
 sudo install -d -m 0755 /etc/apt/keyrings
 curl -fsSL https://packages.mozilla.org/apt/repo-signing-key.gpg | sudo tee /etc/apt/keyrings/packages.mozilla.org.asc > /dev/null
 sudo tee /etc/apt/sources.list.d/mozilla.sources > /dev/null <<< $'Types: deb\nURIs: https://packages.mozilla.org/apt\nSuites: mozilla\nComponents: main\nSigned-By: /etc/apt/keyrings/packages.mozilla.org.asc'
