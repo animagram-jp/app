@@ -30,18 +30,18 @@ jobs:
 
             - name: "cargo test"
               run: cargo test
-              
+
             - name: "wasm-pack build"
-              run: wasm-pack build --target web --out-dir examples/app --out-name app
-              
+              run: wasm-pack build --target web --out-dir public/app --out-name app
+
             - name: "setup Github Pages"
               uses: actions/configure-pages@v6
-              
+
             - name: "upload artifact as Github Pages"
               uses: actions/upload-pages-artifact@v5
               with:
-                path: "./examples"
-                
+                path: "./public"
+
             - name: "deploy to GitHub Pages"
               id: "deployment"
               uses: actions/deploy-pages@v5

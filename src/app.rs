@@ -1,6 +1,6 @@
-use core::option::Option::{self, Some, None};
+use core::option::Option::{Some, None};
 use alloc::vec::Vec;
-use wasm_bindgen::prelude::{wasm_bindgen, *};
+use wasm_bindgen::prelude::wasm_bindgen;
 use wasm_bindgen::JsValue;
 use serde::Serialize;
 use serde_wasm_bindgen::Serializer;

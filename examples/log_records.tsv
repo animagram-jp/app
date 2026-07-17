@@ -1,0 +1,19 @@
+# scenario	op	id	payload — shared record dataset for host unit tests and OPFS integration tests
+checksum	set	1	abcdef
+checksum_odd	set	1	abcde
+roundtrip	set	42	hello
+roundtrip	delete	7
+single	set	1	aaa
+pair	set	1	aaa
+pair	set	2	bbb
+set_delete	set	1	aaa
+set_delete	set	2	bbb
+set_delete	delete	1
+overwrite	set	1	old
+overwrite	set	1	new
+snap	set	1	snap_aaa
+snap	set	2	snap_bbb
+overlay	set	1	log_aaa
+overlay	delete	2
+overlay	set	3	log_ccc
+caller_id	set	100	direct

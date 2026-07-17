@@ -50,13 +50,13 @@ impl Lang {
 // log
 // ============================================================
 
-macro_rules! debug_log {
-    ($($arg:tt)*) => {{
-        web_sys::console::error_1(
-            &wasm_bindgen::JsValue::from_str(&format!($($arg)*))
-        );
-    }};
-}
+// macro_rules! debug_log {
+//     ($($arg:tt)*) => {{
+//         web_sys::console::error_1(
+//             &wasm_bindgen::JsValue::from_str(&format!($($arg)*))
+//         );
+//     }};
+// }
 
 // ============================================================
 // no_std (note)

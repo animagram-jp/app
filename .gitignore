@@ -1,4 +1,4 @@
-*.md
+/*.md
 !README.md
 !CONTRIBUTING.md
 !docs/*.md
@@ -7,4 +7,4 @@ Cargo.lock
 **/target
 **/examples/app/
 
-docs/*.json
+docs/character.json
