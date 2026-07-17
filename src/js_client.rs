@@ -263,17 +263,8 @@ pub fn detect_device(pointer_coarse: bool) -> Device {
 
 // ============================================================
 // gesture: long press, swipe (up,down,left,right), drag
+// See ./docs/Gesture.md
 // ============================================================
-
-pub enum Gesture {
-    LongPress,
-    SwipeUp,
-    SwipeDown,
-    SwipeLeft,
-    SwipeRight,
-    Drag { x: f64, y: f64 },
-    DragEnd,
-}
 
 // pointerdown:   is_down = true, 座標・時刻記録, タイマー起動
 // pointermove:   座標がブレていたら長押しキャンセル (指がズレた)
@@ -321,6 +312,16 @@ impl PointerState {
     }
 }
 
+pub enum Gesture {
+    LongPress,
+    SwipeUp,
+    SwipeDown,
+    SwipeLeft,
+    SwipeRight,
+    Drag { x: f64, y: f64 },
+    DragEnd,
+}
+
 pub fn detect_gesture(state: &mut PointerState, prev_state: &PointerState, event_type: &EventType, current_time: f64) -> Option<Gesture> {
     if !state.is_down {
         if prev_state.is_dragging {
@@ -364,13 +365,14 @@ pub fn detect_gesture(state: &mut PointerState, prev_state: &PointerState, event
 // dom (rust item <=> element id)
 // ============================================================
 //
-// id規則:
-//   "_" = 親子セグメント区切り  例: main_div_section-1
-//   "-N" = 同タグ内の連番       例: span-3, th-2
-//   連番なし = その階層に1つだけ 例: thead_tr, legend_h5
+// Tag id rules:
+//  - Automatically determined based on the parent tag after the body and its sequence number.
+//      - "_" = Parent-child segment separator. (e.g., main_div_section-1)
+//      - "-N" = Sequence number within the same tag. (e.g., span-3, th-2)
+//      - No sequence number = Only one in that hierarchy. (e.g., thead_tr, legend_h5)
 //
-// dom::Id::encode()  -> "seg1_seg2_seg-N_..."
-// dom::Id::decode()  -> Vec<dom::Segment> のパース
+// dom::Id::decode(id: &str)  -> Self
+// dom::Id::encode(&self)     -> String
 
 pub mod dom {
     use core::{option::Option::{self, Some, None}, result::Result::Ok, cmp::PartialEq, clone::Clone};
@@ -480,7 +482,6 @@ pub mod dom {
         }
     }
 
-    // セグメント1つ: タグ + オプション連番
     #[derive(Debug, Clone, PartialEq)]
     pub struct Segment {
         pub tag: Tag,
@@ -509,7 +510,6 @@ pub mod dom {
         }
     }
 
-    // id全体: セグメントのリスト
     #[derive(Debug, Clone, PartialEq)]
     pub struct Id(pub Vec<Segment>);
 

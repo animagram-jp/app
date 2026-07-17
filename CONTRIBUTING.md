@@ -122,103 +122,65 @@ Debug link is:
 
 ## Javascript
 
-Javascriptのスクリプトは、機能内容に依存せず4ファイルで構成する:
-
-| Filename | Role |
-|-|-|
-| init.js   | htmlからメインスレッドmoduleとして呼ばれ、Web Workerとmessageを送受信、受け取ったcommandキューの内容を実行する |
-| worker.js | メインと非同期なdedicated Web Workerスレッドでapp.jsを実行する |
-| app.js    | app_bg.wasmのglueスクリプト(wasm-bindgenによる自動生成) |
-| sw.js     | オフライン動作のためのService workerを起動する |
+| File | Port | Description |
+|-|-|-|
+| init.js   | `start` | Entrypoint: start listening commands and events, returning dedicated Worker. |
+| | `send` | Send Event to app. |
+| | `excute` | Excute commands recieved from app. |
+| worker.js | | メインと非同期なdedicated Web Workerスレッドでapp.jsを実行する |
+| app.js    | | app_bg.wasmのglueスクリプト(wasm-bindgenによる自動生成) |
+| sw.js     | | オフライン動作のためのService workerを起動する |
 
 ---
 
-### js_client.rs
+## App (Web Worker)
+
+| File | Description |
+|-|-|
+| js_client.rs | WebAPIsの操作オブジェクト・関数をWebAssembly内で再定義する。操作関数はオブジェクトを引数に取る。 |
+| list.rs | 可変長論理バイト列の宣言と、固定長要素列操作Listと可変長(バイト倍数)要素列操作VariabeList。バイト列読み取り関数new_from_bytesとget_from_bytesも含む。 |
+| file_store.rs | [トランザクション可能なストアのOPFS実装](./FileStore.md) |
+| timestamp.rs | TZ, decisecondsまでとカレンダー加減算に対応した、u64 timestampモジュール。 |
+| data_struct.rs | データモデル固有のフィールド数(schema_size)固定Listと可変部VariableListによるデータインスタンス操作モジュール。フィールド1にid(u32), 2にcreated_at(timestamp), 3にupdated_at(timestamp)を確定し、4~を開放。 |
+| object.rs | ドメイン固有のデータモデルの全フィールドとロジックを、各自公開されたenumのネスト群で表現したモジュール。関数はitemのドメイン意味(表示)を定義する`label`, 一意なschema_idを発行する`id`, バイト列とdomからの流入(u32,str,f64)を相互変換する`read` / `write`, 値の表示を導出する`display`などを各enum itemに対して定義する。 |
+| event.rs | canvasを操作する、ドメイン固有のステートを持つHandler定義。Handlerは、DataStructと、フィールド4~schema_sizeまでの操作ロジックを定義するobjectを束ねて操作を行う。js_clientのdom::Idとobjectのフィールドを相互にバルクマッピングする関数を定義して、canvasと内部データを相互変換する。 |
+| app.rs | - initとprocessの公開apiを持つ、Appインスタンス。eventsとcommandsの2つのキューを持ち、event::Handler.processへevents消費を移譲ループする。 |
 
 ```rust
-use js_client::{
-    Operation, Command,
-    get_js_str, get_js_u32, get_js_f64, get_js_field,
-    EventType, KeyName,
-    Device, Gesture, PointerState,
-    dom, CanvasEvent
+use crate::{
+    js_client::{
+        Command,
+        get_js_str, get_js_u32, get_js_f64, get_js_field,
+        EventType, KeyName,
+        Device, Gesture, PointerState,
+        dom, CanvasEvent
+    },
+    list::{
+        List::{new, get, set, delete},
+        VariableList::{new, new_from_bytes, get, get_from_bytes, set, delete},
+    },
+    file_store::FileStore::{
+        new, issue_id, get, set, delete, save, discard, compact, close
+    },
+    timestamp::{
+        Field, YEAR, MONTH, DAY, HOUR, MINUTE, SECOND, DECISECOND, IS_UTC, TIMEZONE, Timezone,
+        from_ut, new, display, unpack, pack,
+        add_years, sub_years, add_months, sub_months, add_days, sub_days,
+        add_hours, sub_hours, add_minutes, sub_minutes
+    },
+    data_struct::DataStruct::{
+        new, get_from_bytes, get, set, delete, compact, to_bytes, from_bytes
+    },
+    object::{
+        Dice, dice::{display, roll},
+        Character, Profile, Characteristic, Skill,
+        ArtAndCraft, Fighting, Firearms, Pilot, Science, Survival,
+    },
+    event::Handler::{
+        ready, close, initial_draw, process, process_gesture
+    },
+    app::{
+        Event, App::{init, close, process, dispatch}
+    },
 };
 ```
-
-- DOM Living Standard知識の操作対象と操作関数を定義する。
-- DOMのステートはブラウザが保持しているので、操作関数は引数に取る。
-- 端末・人間の特性値に関わる操作関数(`detect_gesture`)は既存の知見を参照する: [Gesture.md](./Gesture.md)
-
-### list.rs
-
-```rust
-use list::{
-    List::{new, get, set, delete},
-    VariableList::{new, new_from_bytes, get, get_from_bytes, set, delete},
-};
-```
-
-- 可変長論理バイト列の宣言と、固定長要素列操作Listと可変長(バイト倍数)要素列操作VariabeList。
-- FileStoreのプールメモリの読み取りに対応して、バイト列読み取り関数new_from_bytesとget_from_bytesも公開。
-
-### file_store.rs
-
-```rust
-use file_store::FileStore::{new, issue_id, get, set, delete, save, discard, compact, close};
-```
-
-- [See file_store specification](./FileStore.md)
-
-### timestamp.rs
-
-TZ, decisecondsまでとカレンダー加減算に対応した、u64 timestampモジュール。
-
-```rust
-use timestamp::{
-    Field, YEAR, MONTH, DAY, HOUR, MINUTE, SECOND, DECISECOND, IS_UTC, TIMEZONE, Timezone,
-    from_ut, new, display, unpack, pack,
-    add_years, sub_years, add_months, sub_months, add_days, sub_days,
-    add_hours, sub_hours, add_minutes, sub_minutes
-};
-```
-
-### data_struct.rs
-
-```rust
-use data_struct::DataStruct::{new, get_from_bytes, get, set, delete, compact, to_bytes, from_bytes};
-```
-
-- データモデル固有のフィールド数(schema_size)固定Listと可変部VariableListによるデータインスタンス操作モジュール。
-- フィールド1にid(u32), 2にcreated_at(timestamp), 3にupdated_at(timestamp)を確定し、4~を開放。
-
-### object.rs
-
-```rust
-use object::{
-    Dice, dice::{display, roll},
-    Character, Profile, Characteristic, Skill,
-    ArtAndCraft, Fighting, Firearms, Pilot, Science, Survival,
-};
-```
-
-- ドメイン固有のデータモデルの全フィールドとロジックを、各自公開されたenumのネスト群で表現したモジュール。
-- 関数はitemのドメイン意味(表示)を定義する`label`, 一意なschema_idを発行する`id`, バイト列とdomからの流入(u32,str,f64)を相互変換する`read` / `write`, 値の表示を導出する`display`などを各enum itemに対して定義する。
-
-### event.rs
-
-```rust
-use event::{Dialog, Handler, Toast};
-```
-
-- canvasを操作する、ドメイン固有のstate定義とhandler。
-- handlerは、DataStructと、フィールド4~schema_sizeまでの操作ロジックを定義するobjectを束ねて操作を行う。
-- js_clientのdom::Idとobjectのフィールドを相互にバルクマッピングする関数を定義して、canvasと内部データを互換する。
-
-### app.rs
-
-```rust
-use app::{Event, App::{init, close, process, dispatch}};
-```
-
-- initとprocessの公開apiを持つ、Appインスタンス。
-- eventsとcommandsの2つのキューを持ち、event::Handler.processへevents消費を移譲ループする。
