@@ -25,7 +25,6 @@
 
 ## Todo
 
-
 [html]
 - main header: 前月/次月ボタン（‹ ›）、週スクロール（↑↓）、歯車ボタンを追加
 - modal header: 歯車ボタンを追加、entry編集↔settings切り替えに使用

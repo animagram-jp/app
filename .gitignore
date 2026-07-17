@@ -5,6 +5,6 @@
 
 Cargo.lock
 **/target
-**/examples/app/
+**/public/app/
 
 docs/character.json

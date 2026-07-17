@@ -1,3 +1,5 @@
+// This file includes untranslated text (ja).
+
 # FileStore
 
 ファイルシステムの基礎的なAPIを使って、保存時のエラーハンドリングを適切に行うための操作関数を公開するモジュールを、ストアの1つとしてファイルストアと呼ぶ。本システムにおいて、ストアはディスク上のデータ構造ではなく、あくまでメモリ上の実行体である。ファイルストアは永続化の責務を、公開される操作関数の追加として表現する。
@@ -20,28 +22,6 @@
 | discard | &mut self | `Result<(), FileStoreError>` | rollback。`unsaved`/`deleted` を破棄し、`memory` を flush 確認済みの確定状態（`snap`+`log[..log_end]` を読み直したもの）に巻き戻す。ディスクへの書き込みは一切行わない |
 | `compact` | `&mut self` | `Result<(), FileStoreError>` | snap/log（`log[..log_end]`）を読み直した一時的な状態（memory は参照しない）を元に snap を再構築し、log を空にする |
 | close   | &self | | snap/log の SyncAccessHandle を閉じる |
-
-## Commands
-
-```bash
-# host: unit tests（純粋関数）+ DocTest（コンパイル検証）
-cargo test
-# OPFS integration tests（Dedicated Worker 実機）
-wasm-pack test --headless --firefox
-```
-
-### ヘッドレスブラウザテストセットアップ
-
-- [Fire Fox](https://support.mozilla.org/ja/kb/install-firefox-linux#w_debian-be-suoyobi-ubuntu-be-sunodeisutoribiyu-shiyonni-firefox-deb-patsuke-ziwoinsuto-rusuru-tui-jiang)
-
-```bash
-# updated_at: 2026-07
-sudo install -d -m 0755 /etc/apt/keyrings
-curl -fsSL https://packages.mozilla.org/apt/repo-signing-key.gpg | sudo tee /etc/apt/keyrings/packages.mozilla.org.asc > /dev/null
-sudo tee /etc/apt/sources.list.d/mozilla.sources > /dev/null <<< $'Types: deb\nURIs: https://packages.mozilla.org/apt\nSuites: mozilla\nComponents: main\nSigned-By: /etc/apt/keyrings/packages.mozilla.org.asc'
-sudo tee /etc/apt/preferences.d/mozilla > /dev/null <<< $'Package: *\nPin: origin packages.mozilla.org\nPin-Priority: 1000'
-sudo apt update && sudo apt install firefox
-```
 
 ## Store
 

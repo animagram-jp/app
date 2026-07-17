@@ -43,11 +43,12 @@ function start() {
   return w;
 }
 
-// ============================================================
-// receive and excute commands
-// ============================================================
-
-// Command: op別のフィールドを持つタグ付きオブジェクト。operation番号(u8)はjs_client.rsのCommand enumと対応。
+/**
+ *  Excute commands recieved from app:
+ *  @param {any}    cmd - js_client.rs:11
+ *  @param {number} cmd.operation
+ *  @param {string} cmd.id - DOM tag id
+ */
 function execute(cmd) {
   const el = document.getElementById(cmd.id);
   if (!el) return;
@@ -88,13 +89,14 @@ const jsFn = {
   },
 };
 
-// ============================================================
-// send event
-// ============================================================
-
 const ROOTS = ["header", "main", "modal", "form", "output", "section"]
   .map(id => document.getElementById(id));
 
+/**
+ * Send event to app
+ * @param {*} e - Web APIs Event
+ * @returns
+ */
 function send(e) {
   if (!ROOTS.some(r => r && r.contains(e.target))) return;
   worker.postMessage({ type: "event", payload: {
