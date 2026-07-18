@@ -16,7 +16,6 @@ def dice(level: int = 0):
 
     return arg1 * 10 + arg2
 
-
 def judge(target: int = 50, level: int = 0) -> bool:
     if not isinstance(target, int):
         raise TypeError(f"target must be an integer, got {type(target).__name__}")

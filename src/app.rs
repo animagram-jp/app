@@ -4,7 +4,7 @@ use wasm_bindgen::prelude::wasm_bindgen;
 use wasm_bindgen::JsValue;
 use serde::Serialize;
 use serde_wasm_bindgen::Serializer;
-use crate::js_client::{Command, get_js_str, get_js_f64, EventType, Device, detect_device, Gesture, PointerState, detect_gesture, dom, CanvasEvent};
+use crate::js_client::{Command, EventType, Device, detect_device, PointerState, detect_gesture, CanvasEvent};
 use crate::event::{Handler, Event};
 
 // ============================================================

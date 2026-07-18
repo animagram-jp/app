@@ -48,8 +48,27 @@ pub mod dice {
         }).sum()
     }
 
-    pub fn percent_roll() -> u32 { // level: -2,-1,0,1,2, difficulty: Difficulty(enum {...,Regular,...}) -> RollResult
-        todo!("see docs/dice.py")
+    pub fn percent_roll(level: i8) -> u8 { // level: -2,-1,0,1,2, difficulty: Difficulty(enum {...,Regular,...}) -> RollResult
+        0 // todo!("see docs/dice.py")
+    }
+
+    #[derive(Debug)]
+    pub enum JudgeResult {None, Regular, Hard, Extreme, Critical, Fumble, Failure}
+
+    impl JudgeResult {
+        pub fn get(target:u8, rolled: u8) -> Self {
+            if rolled == 1               {Self::Critical}
+            else if rolled <= target / 5 {Self::Extreme}
+            else if rolled <= target / 2 {Self::Hard}
+            else if rolled <= target     {Self::Regular}
+            else if rolled >= if target < 50 {96} else {100} {Self::Fumble}
+            else                         {Self::Failure}
+        }
+    }
+
+    pub fn judge(target: u8, difficulty: JudgeResult, level: i8) -> JudgeResult {
+        let rolled = percent_roll(level);
+        JudgeResult::get(target, rolled)
     }
 }
 
