@@ -2,9 +2,9 @@
 
 # Contrinbuting
 
-Follow [ORG_CONTRIBUTING.md](./ORG_CONTRIBUTING.md)
+- Follow [ORG_CONTRIBUTING.md](./ORG_CONTRIBUTING.md)
 
-- If "ORG_CONTRIBUTING.md" does not exist in the repository root of your working environment, download it by executing the following.
+If "ORG_CONTRIBUTING.md" does not exist in the repository root of your working environment, download it by executing the following.
 
 ```bash
 curl -fsSL -H "Accept: application/vnd.github.raw+json" "https://api.github.com/repos/animagram-jp/.github/contents/.github/CONTRIBUTING.md?ref=main" -o "ORG_CONTRIBUTING.md"
@@ -14,7 +14,7 @@ curl -fsSL -H "Accept: application/vnd.github.raw+json" "https://api.github.com/
 
 Gui application system for editing and reading structured data. Handles event loop by Wasm App.
 
-- 人間に普遍的に必要とされるアプリケーションを、提供コストをユビキタス化可能なまでに抑えたwebシステムアーキテクチャで実現する。普遍的機能とは、以下を指す:
+- 人間に普遍的に必要とされるアプリケーションを、提供コストをユビキタスに成り得る閾値まで抑えたwebシステムアーキテクチャで実現する。普遍的機能とは、以下を指す:
     1. データを編集し、保存・複数端末で同期する機能。データは、その最適な閲覧・編集UIを決定するスキーマに多対一に紐づく。人間及びシステムにとって、時系が原始のデータの識別手段である。既存のアプリで「カレンダー」「メモ」に対応する機能は、人間の意識に昇る時系であるかの違いと理解できる。
     2. 任意のスキーマデータを編集する機能。
     3. スキーマ自体を編集する機能。
@@ -24,7 +24,8 @@ Gui application system for editing and reading structured data. Handles event lo
 ## Commands
 
 ```bash
-cargo test # unit test
+# unit test
+cargo test
 
 # wasm-pack compile
 wasm-pack build --target web --out-dir public/app --out-name app
@@ -142,7 +143,7 @@ Debug link is:
 | js_client.rs | WebAPIsの操作オブジェクト・関数をWebAssembly内で再定義する。操作関数はオブジェクトを引数に取る。 |
 | list.rs | 可変長論理バイト列の宣言と、固定長要素列操作Listと可変長(バイト倍数)要素列操作VariabeList。バイト列読み取り関数new_from_bytesとget_from_bytesも含む。 |
 | file_store.rs | [トランザクション可能なストアのOPFS実装](./FileStore.md) |
-| timestamp.rs | TZ, decisecondsまでとカレンダー加減算に対応した、u64 timestampモジュール。 |
+| timestamp.rs | タイムゾーンとデシ秒、カレンダー加減算に対応した、u64 timestampモジュール。 |
 | data_struct.rs | データモデル固有のフィールド数(schema_size)固定Listと可変部VariableListによるデータインスタンス操作モジュール。フィールド1にid(u32), 2にcreated_at(timestamp), 3にupdated_at(timestamp)を確定し、4~を開放。 |
 | object.rs | ドメイン固有のデータモデルの全フィールドとロジックを、各自公開されたenumのネスト群で表現したモジュール。関数はitemのドメイン意味(表示)を定義する`label`, 一意なschema_idを発行する`id`, バイト列とdomからの流入(u32,str,f64)を相互変換する`read` / `write`, 値の表示を導出する`display`などを各enum itemに対して定義する。 |
 | event.rs | canvasを操作する、ドメイン固有のステートを持つHandler定義。Handlerは、DataStructと、フィールド4~schema_sizeまでの操作ロジックを定義するobjectを束ねて操作を行う。js_clientのdom::Idとobjectのフィールドを相互にバルクマッピングする関数を定義して、canvasと内部データを相互変換する。 |
