@@ -58,22 +58,6 @@ pub enum SkillRollError { BonusDiceOutOfRange }
 
 pub enum Difficulty { None, Hard, Extreme, Critical }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum ResultLevel { Regular, Hard, Extreme, Critical, Fumble, Failure }
-impl ResultLevel {
-    pub fn from_values(total: u32, skill: u32) -> Self {
-        if total == 1               { Self::Critical }
-        else if total <= skill / 5  { Self::Extreme }
-        else if total <= skill / 2  { Self::Hard }
-        else if total <= skill      { Self::Regular }
-        else if total >= if skill < 50 { 96 } else { 100 } { Self::Fumble }
-        else                        { Self::Failure }
-    }
-    pub fn with_difficulty_level(total: u32, skill: u32) -> Self {
-        Self::from_values(total, skill)
-    }
-}
-
 pub enum DiceRollSelect {}
 pub enum Level { Regular, Hard, Extreme }
 
@@ -213,15 +197,20 @@ pub enum RollJudge {
 }
 
 impl RollJudge {
+    /// difficulty が明示されている（Difficulty::None 以外）場合、Regular/Hard/Extreme の成功段階は
+    /// Success に潰す。この潰し込みは dice::judge() の責務ではなく、呼び出し元であるここで行う。
     pub fn judge(total: u32, target: u32, difficulty: Option<&Self>) -> Self {
-        let fumble_at = if target < 50 { 96 } else { 100 };
-        if total == 1                                         { Self::Critical }
-        else if total >= fumble_at                            { Self::Fumble }
-        else if difficulty.is_some() && total <= target       { Self::Success }
-        else if total <= target / 5                           { Self::Extreme }
-        else if total <= target / 2                           { Self::Hard }
-        else if total <= target                               { Self::Regular }
-        else                                                  { Self::Failure }
+        let level = dice::JudgeResult::get(target as u8, total as u8);
+        match level {
+            dice::JudgeResult::Critical => Self::Critical,
+            dice::JudgeResult::Fumble   => Self::Fumble,
+            dice::JudgeResult::Failure  => Self::Failure,
+            dice::JudgeResult::Regular | dice::JudgeResult::Hard | dice::JudgeResult::Extreme
+                if difficulty.is_some() => Self::Success,
+            dice::JudgeResult::Regular => Self::Regular,
+            dice::JudgeResult::Hard    => Self::Hard,
+            dice::JudgeResult::Extreme => Self::Extreme,
+        }
     }
     pub fn label(self, lang: Lang) -> &'static str {
         match(self, lang) {
@@ -278,10 +267,7 @@ impl SkillRoll {
 
         let (total, _dice_candidates) = percent_roll(bonus_dice);
 
-        let _level = match difficulty {
-            Difficulty::None => ResultLevel::from_values(total, effective_target),
-            _                    => ResultLevel::with_difficulty_level(total, effective_target),
-        };
+        let _level = dice::JudgeResult::get(effective_target as u8, total as u8);
 
         Ok(SkillRollResult)
     }
