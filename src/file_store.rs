@@ -12,7 +12,7 @@
 //!   zero-filled regions would otherwise decode as valid records.
 //! - `checksum`: `fletcher32(header).wrapping_add(fletcher32(data))`
 //!
-//! Design rules (full rationale in README):
+//! Design rules (full in docs/FileStore.md):
 //! - The instance is the single writer; transaction boundaries belong to the caller.
 //! - `set` / `delete` never touch the disk; `save` pushes the pending diff out.
 //! - Rollback (`discard`) never writes: uncommitted state has no on-disk form.

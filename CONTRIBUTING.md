@@ -108,6 +108,22 @@ Debug link is:
 └────────────────────────┘
 ```
 
+## データ構造体
+
+データの構造体は、インスタンスと、スキーマからなる。
+instanceは、null(未入力)をlistの out of range で表現し、メモリ占有量の発散を防ぐ。
+
+```
+┌──────────────────────┐OutOfRange┌──────────┐
+│ instance             │--------->│          │request
+│ (VariableList, List) │<---------│          │<------┌────────┐
+└──────────────────────┘new,get,  │ runtime  │       │ client │
+┌──────────────────────┐set,delete│ operator │------>└────────┘
+│ schema               │--------->│          │ key,
+│ (set of item and fn) │ item.fn  │          │ value
+└──────────────────────┘          └──────────┘
+```
+
 ---
 
 ## Html
@@ -142,7 +158,7 @@ Debug link is:
 |-|-|
 | js_client.rs | WebAPIsの操作オブジェクト・関数をWebAssembly内で再定義する。操作関数はオブジェクトを引数に取る。 |
 | list.rs | 可変長論理バイト列の宣言と、固定長要素列操作Listと可変長(バイト倍数)要素列操作VariabeList。バイト列読み取り関数new_from_bytesとget_from_bytesも含む。 |
-| file_store.rs | [トランザクション可能なストアのOPFS実装](./FileStore.md) |
+| file_store.rs | [トランザクションストアのOPFS実装](./docs/FileStore.md) |
 | timestamp.rs | タイムゾーンとデシ秒、カレンダー加減算に対応した、u64 timestampモジュール。 |
 | data_struct.rs | データモデル固有のフィールド数(schema_size)固定Listと可変部VariableListによるデータインスタンス操作モジュール。フィールド1にid(u32), 2にcreated_at(timestamp), 3にupdated_at(timestamp)を確定し、4~を開放。 |
 | object.rs | ドメイン固有のデータモデルの全フィールドとロジックを、各自公開されたenumのネスト群で表現したモジュール。関数はitemのドメイン意味(表示)を定義する`label`, 一意なschema_idを発行する`id`, バイト列とdomからの流入(u32,str,f64)を相互変換する`read` / `write`, 値の表示を導出する`display`などを各enum itemに対して定義する。 |

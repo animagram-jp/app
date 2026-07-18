@@ -240,7 +240,7 @@ panic するため、tsv の typo でテストが空振り（vacuous pass）す�
     `FileStore` struct のライフサイクル例（new → issue_id → set → save → get →
     compact → close）でカバーする。
 - **Host unit test**（`cargo test`）: 純粋関数（wire format / replay）のみ。OPFS には一切触れない。
-- **OPFS integration test**（`wasm-pack test --headless --firefox`）: 実 OPFS +
+- **Opfs integration test**（`wasm-pack test --headless --firefox`）: 実 OPFS +
     Dedicated Worker 上で公開関数を検証。期待値は同一シナリオから構築した
     in-memory oracle（`BTreeMap`）との一致で判定する（インライン期待値を持たない）。
     クラッシュ由来の torn 断片は、store を close した上でテストが raw
@@ -249,9 +249,9 @@ panic するため、tsv の typo でテストが空振り（vacuous pass）す�
     「flush 失敗が残す整形済み未確認 batch」の分岐は fault injection 可能な
     vfs 移植（trait 化）後の検証対象として残っている。
 
-### Host unit tests（wire format / replay）
+### Host unit tests
 
-| Test | 検証内容 |
+| Test | Target |
 |-|-|
 | `fletcher32_empty` | 空入力 → 0（chunks 無しの経路） |
 | `fletcher32_even_length` | 偶数長の既知ベクトル（dataset `checksum`）→ `0x56502D2A` |
@@ -272,9 +272,9 @@ panic するため、tsv の typo でテストが空振り（vacuous pass）す�
 | `build_memory_log_overlays_snap` | log の set/delete/新規追加が snap の内容を正しく上書きする（3パターン同時） |
 | `compact_snapshot_round_trip` | compact 相当の snap 再構築（全件 set レコード化）を読み戻すと元の状態と完全一致（非空も assert） |
 
-### Opfs integration tests（実機、oracle 比較）
+### Opfs integration tests
 
-| Test | 検証する契約 |
+| Test | Target |
 |-|-|
 | `save_persists_sets_across_reopen` | save 済み set が別インスタンスの new 後も oracle と一致 |
 | `save_persists_deletes_across_reopen` | 確定済み set への delete が tombstone として log に残り、reopen 後も削除が保たれる |
