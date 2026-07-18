@@ -1,21 +1,21 @@
-const CACHE = 'calendar-v1';
+const CACHE = "calendar-v1";
 const PRECACHE = [
-  '/',
-  '/init.js',
-  '/worker.js',
-  '/manifest.json',
-  '/icon.png',
-  '/app/app_bg.wasm',
-  '/app/app.js',
-  'manifest/state.yml',
-  'css/config.css',
-  'css/button.css',
-  'css/style.css',
-  '/fonts/IBMPlexSans-Regular.woff2',
-  '/fonts/IBMPlexSans-SemiBold.woff2',
+  "/",
+  "/init.js",
+  "/worker.js",
+  "/manifest.json",
+  "/icon.png",
+  "/app/app_bg.wasm",
+  "/app/app.js",
+  "manifest/state.yml",
+  "css/config.css",
+  "css/button.css",
+  "css/style.css",
+  "/fonts/IBMPlexSans-Regular.woff2",
+  "/fonts/IBMPlexSans-SemiBold.woff2",
 ];
 
-self.addEventListener('install', (e) => {
+self.addEventListener("install", (e) => {
   e.waitUntil(
     caches.open(CACHE).then(c =>
       Promise.allSettled(PRECACHE.map(url => c.add(url)))
@@ -23,7 +23,7 @@ self.addEventListener('install', (e) => {
   );
 });
 
-self.addEventListener('activate', (e) => {
+self.addEventListener("activate", (e) => {
   e.waitUntil(
     caches.keys()
       .then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
@@ -31,10 +31,8 @@ self.addEventListener('activate', (e) => {
   );
 });
 
-// COOP/COEP はサーバーが付与するので、キャッシュから返す際も保持される。
-// ネットワーク優先、失敗時にキャッシュフォールバック。
-self.addEventListener('fetch', (e) => {
-  if (e.request.method !== 'GET') return;
+self.addEventListener("fetch", (e) => {
+  if (e.request.method !== "GET") return;
   e.respondWith(
     fetch(e.request)
       .then(res => {
