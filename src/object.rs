@@ -6,7 +6,7 @@ use crate::{
     list::ListError,
     timestamp::Field,
     data_struct::DataStruct,
-}
+};
 
 pub type Dice = (i8, u8, i8); // (count, sides, modifier)
 

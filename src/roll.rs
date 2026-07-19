@@ -124,6 +124,10 @@ impl FailureOrSuccess {
 }
 pub enum SaneOrInsane {Sane, Insane}
 impl SaneOrInsane {
+    pub fn get(target: u8, rolled: u8) -> Self {
+        if target < rolled {Self::Sane}
+        else {Self::Insane}
+    }
     pub fn display(self, lang: Lang) -> &'static str {
         match (self, lang) {
             (Self::Sane,        Lang::En(_)) => "stay sane",
@@ -135,6 +139,11 @@ impl SaneOrInsane {
 }
 pub enum DevelopedOrUndeveloped {Developed, Undeveloped}
 impl DevelopedOrUndeveloped {
+    pub fn get(target: u8, rolled: u8) -> Self {
+        if rolled > 96 {Self::Developed}
+        else if target < rolled {Self::Developed}
+        else {Self::Undeveloped}
+    }
     pub fn display(self, lang: Lang) -> &'static str {
         match (self, lang) {
             (Self::Developed,   Lang::En(_)) => "developed",
@@ -145,49 +154,65 @@ impl DevelopedOrUndeveloped {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum Difficulty {Regular, Hard, Extreme, Critical, Fumble, Failure}
-impl Difficulty {
-    pub fn get(target: u8, rolled: u8) -> Self {
-        if rolled == 1               {Self::Critical}
-        else if rolled <= target / 5 {Self::Extreme}
-        else if rolled <= target / 2 {Self::Hard}
-        else if rolled <= target     {Self::Regular}
-        else if rolled >= if target < 50 {96} else {100} {Self::Fumble}
-        else                         {Self::Failure}
-    }
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
+pub enum SuccessLevel {Regular, Hard, Extreme}
+impl SuccessLevel {
     pub fn display(self, lang: Lang) -> &'static str {
         match (self, lang) {
-            (Self::Fumble,      Lang::En(_)) => "fumble",
-            (Self::Fumble,      Lang::Ja)    => "致命的失敗",
-            (Self::Failure,     Lang::En(_)) => "failure",
-            (Self::Failure,     Lang::Ja)    => "失敗",
-            (Self::Regular,     Lang::En(_)) => "regular success",
-            (Self::Regular,     Lang::Ja)    => "レギュラー成功",
-            (Self::Hard,        Lang::En(_)) => "hard success",
-            (Self::Hard,        Lang::Ja)    => "ハード成功",
-            (Self::Extreme,     Lang::En(_)) => "extreme success",
-            (Self::Extreme,     Lang::Ja)    => "イクストリーム成功",
-            (Self::Critical,    Lang::En(_)) => "critical success",
-            (Self::Critical,    Lang::Ja)    => "クリティカル成功",
+            (Self::Regular, Lang::En(_)) => "regular success",
+            (Self::Regular, Lang::Ja)    => "レギュラー成功",
+            (Self::Hard,    Lang::En(_)) => "hard success",
+            (Self::Hard,    Lang::Ja)    => "ハード成功",
+            (Self::Extreme, Lang::En(_)) => "extreme success",
+            (Self::Extreme, Lang::Ja)    => "イクストリーム成功",
         }
     }
 }
 
-pub fn roll_skill(target: u32, level: i8, difficulty: Option<Difficulty>) -> (rolled, Difficulty) {
-    let rolled = dice::percent_roll(level);
-    (
-        rolled,
-        Difficulty::get(target, rolled)
-    )
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Difficulty {Success(SuccessLevel), Critical, Fumble, Failure}
+impl Difficulty {
+    pub fn get(target: u8, rolled: u8) -> Self {
+        if rolled == 1               {Self::Critical}
+        else if rolled <= target / 5 {Self::Success(SuccessLevel::Extreme)}
+        else if rolled <= target / 2 {Self::Success(SuccessLevel::Hard)}
+        else if rolled <= target     {Self::Success(SuccessLevel::Regular)}
+        else if rolled >= if target < 50 {96} else {100} {Self::Fumble}
+        else                         {Self::Failure}
+    }
+    pub fn meets(self, required: SuccessLevel) -> bool {
+        match self {
+            Self::Critical => true,
+            Self::Success(level) => level >= required,
+            _ => false,
+        }
+    }
+    pub fn display(self, lang: Lang) -> &'static str {
+        match (self, lang) {
+            (Self::Fumble,        Lang::En(_)) => "fumble",
+            (Self::Fumble,        Lang::Ja)    => "致命的失敗",
+            (Self::Failure,       Lang::En(_)) => "failure",
+            (Self::Failure,       Lang::Ja)    => "失敗",
+            (Self::Critical,      Lang::En(_)) => "critical success",
+            (Self::Critical,      Lang::Ja)    => "クリティカル成功",
+            (Self::Success(level), lang)       => level.display(lang),
+        }
+    }
 }
 
-pub fn roll_combined(target: (u32, u32), level: i8, difficulty: Option<Difficulty>) -> (rolled, (Difficulty, Difficulty)) {
+pub fn roll_skill(target: u8, level: i8) -> (u8, Difficulty) {
+    let rolled = dice::percent_roll(level);
+    (rolled, Difficulty::get(target, rolled))
+}
+
+pub fn roll_combined(target: (u8, u8), level: i8) -> (u8, (Difficulty, Difficulty)) {
     let rolled = dice::percent_roll(level);
     (
         rolled,
-        Difficulty::get(target.0, rolled),
-        Difficulty::get(target.0, rolled)
+        (
+            Difficulty::get(target.0, rolled),
+            Difficulty::get(target.1, rolled),
+        ),
     )
 }
 
