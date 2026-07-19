@@ -1,8 +1,9 @@
-use core::primitive::{u32, f64};
+use core::primitive::{u32, i8};
 use alloc::{vec::Vec, vec};
-use rand::{rng, RngExt};
-use crate::Lang;
-use crate::object::{dice, Dice, Characteristic, Skill};
+use crate::{
+    Lang,
+    object::{dice, Dice, Characteristic, Skill},
+};
 
 pub enum BulletSetCap { Auto, Specified(u32) }
 
@@ -115,34 +116,40 @@ impl FailedCasting {
 pub enum FailureOrSuccess {Failure, Success}
 impl FailureOrSuccess {
     pub fn display(self, lang: Lang) -> &'static str {
-        (Self::Failure, Lang::En(_)) => "Failure",
-        (Self::Success, Lang::Ja)    => "失敗",
-        (Self::Failure, Lang::En(_)) => "Success",
-        (Self::Success, Lang::Ja)    => "成功",
+        match (self, lang) {
+            (Self::Failure, Lang::En(_)) => "Failure",
+            (Self::Failure, Lang::Ja)    => "失敗",
+            (Self::Success, Lang::En(_)) => "Success",
+            (Self::Success, Lang::Ja)    => "成功",
+        }
     }
 }
 pub enum SaneOrInsane {Sane, Insane}
 impl SaneOrInsane {
     pub fn display(self, lang: Lang) -> &'static str {
-        (Self::Sane,        Lang::En(_)) => "stay sane",
-        (Self::Sane,        Lang::Ja)    => "発狂しない",
-        (Self::Insane,      Lang::En(_)) => "go insane",
-        (Self::Insane,      Lang::Ja)    => "発狂",
+        match (self, lang) {
+            (Self::Sane,        Lang::En(_)) => "stay sane",
+            (Self::Sane,        Lang::Ja)    => "発狂しない",
+            (Self::Insane,      Lang::En(_)) => "go insane",
+            (Self::Insane,      Lang::Ja)    => "発狂",
+        }
     }
 }
 pub enum DevelopedOrUndeveloped {Developed, Undeveloped}
 impl DevelopedOrUndeveloped {
     pub fn display(self, lang: Lang) -> &'static str {
-        (Self::Developed,   Lang::En(_)) => "developed",
-        (Self::Developed,   Lang::Ja)    => "上達",
-        (Self::Undeveloped, Lang::En(_)) => "undeveloped",
-        (Self::Undeveloped, Lang::Ja)    => "上達しない",
+        match (self, lang) {
+            (Self::Developed,   Lang::En(_)) => "developed",
+            (Self::Developed,   Lang::Ja)    => "上達",
+            (Self::Undeveloped, Lang::En(_)) => "undeveloped",
+            (Self::Undeveloped, Lang::Ja)    => "上達しない",
+        }
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub enum JudgeResult {Regular, Hard, Extreme, Critical, Fumble, Failure}
-impl JudgeResult {
+pub enum Difficulty {Regular, Hard, Extreme, Critical, Fumble, Failure}
+impl Difficulty {
     pub fn get(target: u8, rolled: u8) -> Self {
         if rolled == 1               {Self::Critical}
         else if rolled <= target / 5 {Self::Extreme}
@@ -151,7 +158,7 @@ impl JudgeResult {
         else if rolled >= if target < 50 {96} else {100} {Self::Fumble}
         else                         {Self::Failure}
     }
-    pub fn display(self) -> &'static str {
+    pub fn display(self, lang: Lang) -> &'static str {
         match (self, lang) {
             (Self::Fumble,      Lang::En(_)) => "fumble",
             (Self::Fumble,      Lang::Ja)    => "致命的失敗",
@@ -169,53 +176,21 @@ impl JudgeResult {
     }
 }
 
-pub struct DiceRoll {
-    roll_select:   Roll,
-    select:        Vec<DiceRollSelect>,
-    bonus_dice:    i32,
-    level:         Level,
-    target_select: (crate::object::Characteristic, crate::object::Skill),
-    dice_terms:    Vec<Dice>, // Dice = (count: i8, sides: u8, modifier: i8)
-    result:        RollResult,
+pub fn roll_skill(target: u32, level: i8, difficulty: Option<Difficulty>) -> (rolled, Difficulty) {
+    let rolled = dice::percent_roll(level);
+    (
+        rolled,
+        Difficulty::get(target, rolled)
+    )
 }
 
-impl SkillRoll {
-    /// - bonus_dice の絶対値が 100 超 → Err
-    /// - difficulty == None かつ bonus_dice == 0 → 出目のみ（level=None）
-    /// - difficulty == Some(0) → None 扱い
-    /// - Hard → target / 2、Extreme → target / 5、Critical → target = 1
-    pub fn roll(
-        target: u32,
-        bonus_dice: i32,
-        difficulty: Difficulty,
-    ) -> Result<SkillRollResult, SkillRollError> {
-        if bonus_dice.unsigned_abs() > 100 {
-            return Err(SkillRollError::BonusDiceOutOfRange);
-        }
-
-        let effective_target: u32 = match difficulty {
-            Difficulty::Hard     => target / 2,
-            Difficulty::Extreme  => target / 5,
-            Difficulty::Critical => 1,
-            Difficulty::None     => target,
-        };
-
-        let (total, _dice_candidates) = percent_roll(bonus_dice);
-
-        let _level = dice::JudgeResult::get(effective_target as u8, total as u8);
-
-        Ok(SkillRollResult)
-    }
-}
-
-// 1回の1d100を2技能値に対してそれぞれ判定する
-pub fn combined_roll(target: (u32, u32)) -> RollResult {
-    let (total, _) = percent_roll(0);
-    let judges = vec![
-        RollJudge::judge(total, target.0, None),
-        RollJudge::judge(total, target.1, None),
-    ];
-    RollResult { roll_total: vec![total as i16], roll_judge: Some(judges) }
+pub fn roll_combined(target: (u32, u32), level: i8, difficulty: Option<Difficulty>) -> (rolled, (Difficulty, Difficulty)) {
+    let rolled = dice::percent_roll(level);
+    (
+        rolled,
+        Difficulty::get(target.0, rolled),
+        Difficulty::get(target.0, rolled)
+    )
 }
 
 /// https://cthulhuwiki.chaosium.com/rules/sanity.html#bouts-of-madness-table
@@ -235,34 +210,28 @@ pub enum MadnessRealTime {
 }
 
 impl MadnessRealTime {
-    pub fn get(&self, _index: u8) -> Self {
-        todo!()
-    }
-    pub fn index(&self) -> u8 {
-        *self as u8 + 1
-    }
-    pub fn label(&self, lang: Lang) -> &'static str {
+    pub fn display(&self, lang: Lang) -> &'static str {
         match (self, lang) {
-            (Self::Amnesia,                Lang::En(_)) => "Amnesia",
-            (Self::Amnesia,                Lang::Ja) => "健忘症",
-            (Self::PsychosomaticDisability,Lang::En(_)) => "Psychosomatic Disability",
-            (Self::PsychosomaticDisability,Lang::Ja) => "身体症状症",
-            (Self::Violence,               Lang::En(_)) => "Violence",
-            (Self::Violence,               Lang::Ja) => "暴力衝動",
-            (Self::Paranoia,               Lang::En(_)) => "Paranoia",
-            (Self::Paranoia,               Lang::Ja) => "偏執症",
-            (Self::SignificantPerson,      Lang::En(_)) => "Significant Person",
-            (Self::SignificantPerson,      Lang::Ja) => "重要な人々",
-            (Self::Faint,                  Lang::En(_)) => "Faint",
-            (Self::Faint,                  Lang::Ja) => "失神",
-            (Self::FleeInPanic,            Lang::En(_)) => "Flee in Panic",
-            (Self::FleeInPanic,            Lang::Ja) => "パニックになって逃亡する",
-            (Self::PhysicalHysterics,      Lang::En(_)) => "Physical Hysterics or Emotional Outburst",
-            (Self::PhysicalHysterics,      Lang::Ja) => "身体的ヒステリーもしくは感情爆発",
-            (Self::Phobia,                 Lang::En(_)) => "Phobia",
-            (Self::Phobia,                 Lang::Ja) => "恐怖症",
-            (Self::Mania,                  Lang::En(_)) => "Mania",
-            (Self::Mania,                  Lang::Ja) => "マニア",
+            (Self::Amnesia,                 Lang::En(_)) => "Amnesia",
+            (Self::Amnesia,                 Lang::Ja)    => "健忘症",
+            (Self::PsychosomaticDisability, Lang::En(_)) => "Psychosomatic Disability",
+            (Self::PsychosomaticDisability, Lang::Ja)    => "身体症状症",
+            (Self::Violence,                Lang::En(_)) => "Violence",
+            (Self::Violence,                Lang::Ja)    => "暴力衝動",
+            (Self::Paranoia,                Lang::En(_)) => "Paranoia",
+            (Self::Paranoia,                Lang::Ja)    => "偏執症",
+            (Self::SignificantPerson,       Lang::En(_)) => "Significant Person",
+            (Self::SignificantPerson,       Lang::Ja)    => "重要な人々",
+            (Self::Faint,                   Lang::En(_)) => "Faint",
+            (Self::Faint,                   Lang::Ja)    => "失神",
+            (Self::FleeInPanic,             Lang::En(_)) => "Flee in Panic",
+            (Self::FleeInPanic,             Lang::Ja)    => "パニックになって逃亡する",
+            (Self::PhysicalHysterics,       Lang::En(_)) => "Physical Hysterics or Emotional Outburst",
+            (Self::PhysicalHysterics,       Lang::Ja)    => "身体的ヒステリーもしくは感情爆発",
+            (Self::Phobia,                  Lang::En(_)) => "Phobia",
+            (Self::Phobia,                  Lang::Ja)    => "恐怖症",
+            (Self::Mania,                   Lang::En(_)) => "Mania",
+            (Self::Mania,                   Lang::Ja)    => "マニア",
         }
     }
 }
@@ -283,34 +252,28 @@ pub enum MadnessSummary {
 }
 
 impl MadnessSummary {
-    pub fn get(&self, _index: u8) -> Self {
-        todo!()
-    }
-    pub fn index(&self) -> u8 {
-        *self as u8 + 1
-    }
-    pub fn label(&self, lang: Lang) -> &'static str {
+    pub fn display(&self, lang: Lang) -> &'static str {
         match (self, lang) {
-            (Self::Amnesia,          Lang::En(_)) => "Amnesia",
-            (Self::Amnesia,          Lang::Ja)    => "健忘症",
-            (Self::Robbed,           Lang::En(_)) => "Robbed",
-            (Self::Robbed,           Lang::Ja)    => "盗難",
-            (Self::Battered,         Lang::En(_)) => "Battered",
-            (Self::Battered,         Lang::Ja)    => "暴行",
-            (Self::Violence,         Lang::En(_)) => "Violence",
-            (Self::Violence,         Lang::Ja)    => "暴力",
-            (Self::IdeologyBeliefs,  Lang::En(_)) => "Ideology/Beliefs",
-            (Self::IdeologyBeliefs,  Lang::Ja)    => "イデオロギー／信念",
-            (Self::SignificantPeople,Lang::En(_)) => "Significant People",
-            (Self::SignificantPeople,Lang::Ja)    => "重要な人々",
-            (Self::Institutionalized,Lang::En(_)) => "Institutionalized",
-            (Self::Institutionalized,Lang::Ja)    => "収容",
-            (Self::FleeInPanic,      Lang::En(_)) => "Flee in Panic",
-            (Self::FleeInPanic,      Lang::Ja)    => "パニック",
-            (Self::Phobia,           Lang::En(_)) => "Phobia",
-            (Self::Phobia,           Lang::Ja)    => "恐怖症",
-            (Self::Mania,            Lang::En(_)) => "Mania",
-            (Self::Mania,            Lang::Ja)    => "マニア",
+            (Self::Amnesia,           Lang::En(_)) => "Amnesia",
+            (Self::Amnesia,           Lang::Ja)    => "健忘症",
+            (Self::Robbed,            Lang::En(_)) => "Robbed",
+            (Self::Robbed,            Lang::Ja)    => "盗難",
+            (Self::Battered,          Lang::En(_)) => "Battered",
+            (Self::Battered,          Lang::Ja)    => "暴行",
+            (Self::Violence,          Lang::En(_)) => "Violence",
+            (Self::Violence,          Lang::Ja)    => "暴力",
+            (Self::IdeologyBeliefs,   Lang::En(_)) => "Ideology/Beliefs",
+            (Self::IdeologyBeliefs,   Lang::Ja)    => "イデオロギー／信念",
+            (Self::SignificantPeople, Lang::En(_)) => "Significant People",
+            (Self::SignificantPeople, Lang::Ja)    => "重要な人々",
+            (Self::Institutionalized, Lang::En(_)) => "Institutionalized",
+            (Self::Institutionalized, Lang::Ja)    => "収容",
+            (Self::FleeInPanic,       Lang::En(_)) => "Flee in Panic",
+            (Self::FleeInPanic,       Lang::Ja)    => "パニック",
+            (Self::Phobia,            Lang::En(_)) => "Phobia",
+            (Self::Phobia,            Lang::Ja)    => "恐怖症",
+            (Self::Mania,             Lang::En(_)) => "Mania",
+            (Self::Mania,             Lang::Ja)    => "マニア",
         }
     }
 }
@@ -329,13 +292,7 @@ pub enum FailedCastingMinor {
 }
 
 impl FailedCastingMinor {
-    pub fn get(&self, _index: u8) -> Self {
-        todo!()
-    }
-    pub fn index(&self) -> u8 {
-        *self as u8 + 1
-    }
-    pub fn label(&self, lang: Lang) -> &'static str {
+    pub fn display(&self, lang: Lang) -> &'static str {
         match (self, lang) {
             (Self::BlurredVision,          Lang::En(_)) => "Blurred vision or temporary blindness",
             (Self::BlurredVision,          Lang::Ja)    => "視界のかすみ、または一時的な失明",
@@ -371,13 +328,7 @@ pub enum FailedCastingMajor {
 }
 
 impl FailedCastingMajor {
-    pub fn get(&self, _index: u8) -> Self {
-        todo!()
-    }
-    pub fn index(&self) -> u8 {
-        *self as u8 + 1
-    }
-    pub fn label(&self, lang: Lang) -> &'static str {
+    pub fn display(&self, lang: Lang) -> &'static str {
         match (self, lang) {
             (Self::Earthquake,           Lang::En(_)) => "The earth shakes and walls crack and crumble",
             (Self::Earthquake,           Lang::Ja)    => "大地が震え、壁に亀裂が入って崩れる",
@@ -505,13 +456,7 @@ pub enum Phobia {
 }
 
 impl Phobia {
-    pub fn get(&self, _index: u8) -> Self {
-        todo!()
-    }
-    pub fn index(&self) -> u8 {
-        *self as u8 + 1
-    }
-    pub fn label(&self, lang: Lang) -> &'static str {
+    pub fn display(&self, lang: Lang) -> &'static str {
         match (self, lang) {
             (Self::Ablutophobia,       Lang::En(_)) => "Abluto",
             (Self::Ablutophobia,       Lang::Ja)    => "入浴",
@@ -823,13 +768,7 @@ pub enum Mania {
 }
 
 impl Mania {
-    pub fn get(&self, _index: u8) -> Self {
-        todo!()
-    }
-    pub fn index(&self) -> u8 {
-        *self as u8 + 1
-    }
-    pub fn label(&self, lang: Lang) -> &'static str {
+    pub fn display(&self, lang: Lang) -> &'static str {
         match (self, lang) {
             (Self::Ablutomania,      Lang::En(_)) => "Abluto",
             (Self::Ablutomania,      Lang::Ja)    => "洗浄",

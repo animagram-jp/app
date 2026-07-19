@@ -1,14 +1,12 @@
 use core::{primitive::{u8, i8, i32}, array::from_fn};
 use alloc::string::String;
 use arbitrary_int::{u9, i10};
-use crate::Lang;
-use crate::list::ListError;
-use crate::timestamp::Field;
-use crate::data_struct::DataStruct;
-
-// ============================================================
-// Dice, dice::{label, roll}
-// ============================================================
+use crate::{
+    Lang,
+    list::ListError,
+    timestamp::Field,
+    data_struct::DataStruct,
+}
 
 pub type Dice = (i8, u8, i8); // (count, sides, modifier)
 
@@ -805,7 +803,6 @@ impl Sanity {
 pub struct Build; // Build: i8 | STR, SIZ -> i8
 
 impl Build {
-
     pub fn read(character: &DataStruct) -> i8 {
         character.get(SecondaryAttribute::Build.base_id()).ok()
             .and_then(|b| b.first().copied())
@@ -845,7 +842,7 @@ impl DamageBonus {
     }
 
     pub fn label(character: &DataStruct) -> String {
-        dice::label(&[Self::read(character)])
+        dice::display(&[Self::read(character)])
     }
 
     pub fn derive(character: &DataStruct) -> Dice {
