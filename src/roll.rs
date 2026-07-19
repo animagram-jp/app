@@ -5,8 +5,6 @@ use crate::{
     object::{dice, Dice, Characteristic, Skill},
 };
 
-pub enum BulletSetCap { Auto, Specified(u32) }
-
 pub enum Roll {
     DiceRoll,
     SkillRoll,
