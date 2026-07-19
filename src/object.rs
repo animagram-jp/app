@@ -76,11 +76,6 @@ pub mod dice {
             else                         {Self::Failure}
         }
     }
-
-    pub fn judge(target: u8, level: i8) -> JudgeResult {
-        let rolled = percent_roll(level);
-        JudgeResult::get(target, rolled)
-    }
 }
 
 // ============================================================

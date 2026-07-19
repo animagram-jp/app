@@ -1,65 +1,8 @@
+use core::primitive::{u32, f64};
 use alloc::{vec::Vec, vec};
 use rand::{rng, RngExt};
 use crate::Lang;
 use crate::object::{dice, Dice, Characteristic, Skill};
-
-// ============================================================
-// Percent Roll (1d100 + Bonus/Penalty Dice)
-// ============================================================
-
-pub fn percent_roll(bonus: i32) -> (u32, Vec<u32>) {
-    let mut rng = rng();
-    let roll_tens = |r: &mut _| {
-        let d: u32 = RngExt::random_range(r, 1..=10u32);
-        if d == 10 { 0 } else { d * 10 }
-    };
-    let ones: u32 = {
-        let d: u32 = rng.random_range(1..=10u32);
-        if d == 10 { 0 } else { d }
-    };
-    let count = (bonus.unsigned_abs() + 1) as usize;
-    let tens_list: Vec<u32> = (0..count).map(|_| roll_tens(&mut rng)).collect();
-    let dice_list: Vec<u32> = tens_list
-        .iter()
-        .map(|&t| { let v = t + ones; if v == 0 { 100 } else { v } })
-        .collect();
-    let total = if bonus >= 0 {
-        *dice_list.iter().min().unwrap()
-    } else {
-        *dice_list.iter().max().unwrap()
-    };
-    (total, dice_list)
-}
-
-// ============================================================
-// todo: 未定義型のスタブ（各型が確定次第、対応モジュールに移動する）
-// ============================================================
-
-pub type Count = u16;
-pub type Side  = u16;
-
-pub struct DiceModifier(pub i16);
-pub struct Skills<T>(pub Vec<T>);
-pub struct Characteristics<T>(pub Vec<T>);
-pub struct SkillModifier(pub i32);
-
-pub enum SkillOrCharacteristic {
-    Skill(crate::object::Skill),
-    Characteristic(crate::object::Characteristic),
-}
-
-pub enum SuccessLevel { Regular, Hard, Extreme, Critical }
-
-pub struct SkillRoll;
-pub struct SkillRollResult;
-
-#[derive(Debug)]
-pub enum SkillRollError { BonusDiceOutOfRange }
-
-pub enum Difficulty { None, Hard, Extreme, Critical }
-
-pub enum DiceRollSelect {}
-pub enum Level { Regular, Hard, Extreme }
 
 pub enum BulletSetCap { Auto, Specified(u32) }
 
@@ -68,85 +11,94 @@ pub enum BulletSetCap { Auto, Specified(u32) }
 // ============================================================
 
 pub enum Roll {
-    /// 任意ダイス式ロール。dice_terms は object::Dice = (count, sides, modifier) のリスト。
-    DiceRoll(Vec<Dice>),
-    SkillRoll(Skills<Skill>, Option<SuccessLevel>, Option<i16>), // option(i16)とは補正値(+-i)のこと
-    CharacteristicRoll(Characteristics<Characteristic>, Option<SuccessLevel>, SkillModifier),
-    SanityRoll(),
-    BoutOfMadness(BoutScene),
-    PushedRoll(SkillOrCharacteristic, Option<SuccessLevel>, Option<i16>), // todo: pushでも新規技能はありうるので、履歴利用はソートサジェストだけにする
-    CombinedSkillRoll(SkillOrCharacteristic, SkillOrCharacteristic),
-    PhobiaAndMania(Impulse),
-    // todo: 射撃時の連射判定, 射撃時のボーナス・ペナルティダイスのセレクタガイド
-    // AutoFireRoll, ロジックが煩雑・そこまで使わないので一時コメントアウト
-    FailedCasting(FailureDepth),
+    DiceRoll,
+    SkillRoll,
+    CharacteristicRoll,
+    SanityRoll,
+    BoutOfMadness,
+    PushedRoll,
+    CombinedSkillRoll,
+    PhobiaAndMania,
+    FailedCasting,
     DevelopmentCheck,
 }
 
 impl Roll {
-    pub fn label(self, lang: Lang) -> &'static str {
+    pub fn display(self, lang: Lang) -> &'static str {
         match (self, lang) {
-            (Self::DiceRoll(_),            Lang::En(_)) => "Dice Roll (nDn +-n)",
-            (Self::DiceRoll(_),            Lang::Ja) => "ダイスロール (nDn +-n)",
-            (Self::SkillRoll(..),          Lang::En(_)) => "Skill Roll",
-            (Self::SkillRoll(..),          Lang::Ja) => "技能ロール",
-            (Self::CharacteristicRoll(..), Lang::En(_)) => "Characteristic Roll",
-            (Self::CharacteristicRoll(..), Lang::Ja) => "能力値ロール",
-            (Self::SanityRoll(),           Lang::En(_)) => "Sanity Roll",
-            (Self::SanityRoll(),           Lang::Ja) => "正気度ロール",
-            (Self::BoutOfMadness(_),       Lang::En(_)) => "Bout of Madness",
-            (Self::BoutOfMadness(_),       Lang::Ja) => "狂気の発作",
-            (Self::PushedRoll(..),         Lang::En(_)) => "Pushed Roll",
-            (Self::PushedRoll(..),         Lang::Ja) => "プッシュロール",
-            (Self::CombinedSkillRoll(..),  Lang::En(_)) => "Combined Skill Roll",
-            (Self::CombinedSkillRoll(..),  Lang::Ja) => "組み合わせ技能ロール",
-            (Self::PhobiaAndMania(_),      Lang::En(_)) => "Phobia and Mania",
-            (Self::PhobiaAndMania(_),      Lang::Ja) => "恐怖症とマニア",
-            // (Self::AutoFireRoll,       Lang::Ja) => "自動火器の連射判定",
-            // (Self::AutoFireRoll,       Lang::En(_)) => "Automatic Fire Roll",
-            (Self::FailedCasting(_),       Lang::En(_)) => "Failed Casting",
-            (Self::FailedCasting(_),       Lang::Ja) => "呪文失敗",
-            (Self::DevelopmentCheck,       Lang::En(_)) => "Development Check",
-            (Self::DevelopmentCheck,       Lang::Ja) => "上達チェック",
+            (Self::DiceRoll,           Lang::En(_)) => "Dice Roll (nDn +-n)",
+            (Self::DiceRoll,              Lang::Ja) => "ダイスロール (nDn +-n)",
+            (Self::SkillRoll,          Lang::En(_)) => "Skill Roll",
+            (Self::SkillRoll,             Lang::Ja) => "技能ロール",
+            (Self::CharacteristicRoll, Lang::En(_)) => "Characteristic Roll",
+            (Self::CharacteristicRoll,    Lang::Ja) => "能力値ロール",
+            (Self::SanityRoll,         Lang::En(_)) => "Sanity Roll",
+            (Self::SanityRoll,            Lang::Ja) => "正気度ロール",
+            (Self::BoutOfMadness,      Lang::En(_)) => "Bout of Madness",
+            (Self::BoutOfMadness,         Lang::Ja) => "狂気の発作",
+            (Self::PushedRoll,         Lang::En(_)) => "Pushed Roll",
+            (Self::PushedRoll,            Lang::Ja) => "プッシュロール",
+            (Self::CombinedSkillRoll,  Lang::En(_)) => "Combined Skill Roll",
+            (Self::CombinedSkillRoll,     Lang::Ja) => "組み合わせ技能ロール",
+            (Self::PhobiaAndMania,     Lang::En(_)) => "Phobia and Mania",
+            (Self::PhobiaAndMania,        Lang::Ja) => "恐怖症とマニア",
+            (Self::FailedCasting,      Lang::En(_)) => "Failed Casting",
+            (Self::FailedCasting,         Lang::Ja) => "呪文失敗",
+            (Self::DevelopmentCheck,   Lang::En(_)) => "Development Check",
+            (Self::DevelopmentCheck,      Lang::Ja) => "上達チェック",
         }
     }
-
-    // NOTE: BoutOfMadness, FailedCasting はバリアント引数を持つため静的スライスに含められない
-    // pub fn all() -> &'static [Roll] { ... }
+    pub fn list() -> &'static [Roll] {
+        &[
+            Roll::DiceRoll,
+            Roll::SkillRoll,
+            Roll::CharacteristicRoll,
+            Roll::SanityRoll,
+            Roll::BoutOfMadness,
+            Roll::PushedRoll,
+            Roll::CombinedSkillRoll,
+            Roll::PhobiaAndMania,
+            Roll::FailedCasting,
+            Roll::DevelopmentCheck,
+        ]
+    }
 }
 
-pub enum BoutScene { RealTime, Summary }
-impl BoutScene {
-    pub fn label(self, lang: Lang) -> &'static str {
+pub enum BoutOfMadness {RealTime, Summary}
+
+impl BoutOfMadness {
+    pub fn display(self, lang: Lang) -> &'static str {
         match(self, lang) {
             (Self::RealTime, Lang::En(_)) => "real time",
-            (Self::RealTime, Lang::Ja) => "リアルタイム",
+            (Self::RealTime, Lang::Ja)    => "リアルタイム",
             (Self::Summary,  Lang::En(_)) => "summary",
-            (Self::Summary,  Lang::Ja) => "サマリー",                                          
+            (Self::Summary,  Lang::Ja)    => "サマリー",
         }
     }
 }
 
-pub enum Impulse { Phobia, Mania }
-impl Impulse {
-    pub fn label(self, lang: Lang) -> &'static str {
+pub enum PhobiaAndMania {Phobia, Mania}
+
+impl PhobiaAndMania {
+    pub fn display(self, lang: Lang) -> &'static str {
         match(self, lang) {
             (Self::Phobia, Lang::En(_)) => "Phobia",
-            (Self::Phobia, Lang::Ja) => "恐怖症",
+            (Self::Phobia, Lang::Ja)    => "恐怖症",
             (Self::Mania,  Lang::En(_)) => "Mania",
-            (Self::Mania,  Lang::Ja) => "マニア",                                          
+            (Self::Mania,  Lang::Ja)    => "マニア",
         }
     }
 }
 
-pub enum FailureDepth { Minor, Major }
-impl FailureDepth {
-    pub fn label(self, lang: Lang) -> &'static str {
+pub enum FailedCasting {Minor, Major}
+
+impl FailedCasting {
+    pub fn display(self, lang: Lang) -> &'static str {
         match(self, lang) {
-            (Self::Minor, Lang::En(_)) => "minor",
-            (Self::Minor, Lang::Ja) => "小",
+            (Self::Minor, Lang::En(_))  => "minor",
+            (Self::Minor, Lang::Ja)     => "小",
             (Self::Major,  Lang::En(_)) => "major",
-            (Self::Major,  Lang::Ja) => "大",                                          
+            (Self::Major,  Lang::Ja)    => "大",
         }
     }
 }
@@ -155,14 +107,12 @@ impl FailureDepth {
 // ロール結果 (RollResult, RollError, RollJudge)
 // ============================================================
 
-// --- 狂気の発作表 結果 (Bout of Madness Result)---
 pub struct BoutOfMadnessResult {
     scene: BoutScene,
-    total: u8,    // n_d_n(1, 10)
-    duration: u8, // n_d_n(1, 10) 持続時間
+    total: u8,    // Dice(1,10,0)
+    duration: u8, // Dice(1,10,0)
 }
 
-// --- ロール結果 (Roll Result) ---
 pub struct RollResult {
     roll_total: Vec<i16>,
     roll_judge: Option<Vec<RollJudge>>,
@@ -170,7 +120,7 @@ pub struct RollResult {
 
 impl RollResult {
     pub fn display(&self) {
-        // "[{}: {}] {} {}"
+        // format!("[{}: {}] {} {}")
         todo!()
     }
 }
@@ -225,17 +175,17 @@ impl RollJudge {
             (Self::Hard,        Lang::En(_)) => "hard success",
             (Self::Hard,        Lang::Ja) => "ハード成功",
             (Self::Extreme,     Lang::En(_)) => "extreme success",
-            (Self::Extreme,     Lang::Ja) => "イクストリーム成功",  
+            (Self::Extreme,     Lang::Ja) => "イクストリーム成功",
             (Self::Critical,    Lang::En(_)) => "critical success",
-            (Self::Critical,    Lang::Ja) => "クリティカル成功",  
+            (Self::Critical,    Lang::Ja) => "クリティカル成功",
             (Self::Sane,        Lang::En(_)) => "stay sane",
-            (Self::Sane,        Lang::Ja) => "発狂しない",  
+            (Self::Sane,        Lang::Ja) => "発狂しない",
             (Self::Insane,      Lang::En(_)) => "go insane",
-            (Self::Insane,      Lang::Ja) => "発狂",  
+            (Self::Insane,      Lang::Ja) => "発狂",
             (Self::Developed,   Lang::En(_)) => "developed",
             (Self::Developed,   Lang::Ja) => "上達",
             (Self::Undeveloped, Lang::En(_)) => "undeveloped",
-            (Self::Undeveloped, Lang::Ja) => "上達しない",                                            
+            (Self::Undeveloped, Lang::Ja) => "上達しない",
         }
     }
 }

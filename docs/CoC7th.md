@@ -15,7 +15,7 @@ Softwear for playing Call of Cthulhu 7th Edition
 ## Notice
 
 ```
-"Call of Cthulhu" is a trademark of Chaosium Inc. 
+"Call of Cthulhu" is a trademark of Chaosium Inc.
 This project is an independent, unofficial work and is not affiliated with, endorsed by, or sponsored by Chaosium Inc.
 『クトゥルフ神話TRPG』は Chaosium Inc. の著作物です。
 『新クトゥルフ神話TRPG』は、株式会社アークライトによる翻案のもと株式会社KADOKAWAが発行しています。
@@ -102,7 +102,7 @@ Pushed Roll — 失敗後の再挑戦ロール
 PushedRoll,
 Combined Skill Roll — 2技能(能力値含む)を1ロールで同時判定
 1. select[Skill]
-2. select[Skill] 
+2. select[Skill]
 3. 出力: "[技能1 技能2] 実値1 実値2 出目 判定1 判定2" (判定1,2: 普通のSkill Rollと同様)。「部分的成功」みたいな組み合わせロール特有の用語は、rulebookに実は無いので、それは扱わない
 
 Development Check - 上達チェック
@@ -315,4 +315,11 @@ impl AgeCategory {
         }
     }
 }
+
+// ============================================================
+// --- Roll ---
+// ============================================================
+
+            (Self::AutoFireRoll,    Lang::Ja) => "自動火器の連射判定",
+            (Self::AutoFireRoll, Lang::En(_)) => "Automatic Fire Roll",
 ```

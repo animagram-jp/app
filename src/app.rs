@@ -1,7 +1,6 @@
-use core::option::Option::{Some, None};
+use core::{primitive::{f64, bool}, option::Option::{Some, None}};
 use alloc::vec::Vec;
-use wasm_bindgen::prelude::wasm_bindgen;
-use wasm_bindgen::JsValue;
+use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
 use serde::Serialize;
 use serde_wasm_bindgen::Serializer;
 use crate::js_client::{Command, EventType, Device, detect_device, PointerState, detect_gesture, CanvasEvent};
