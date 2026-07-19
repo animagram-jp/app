@@ -1,10 +1,11 @@
-use core::primitive::{u32, i8};
-use alloc::{vec::Vec, vec};
+use core::primitive::i8;
 use crate::{
     Lang,
-    object::{dice, Dice, Characteristic, Skill},
+    object::dice,
 };
+use app_macros::{List, Id};
 
+#[derive(List)]
 pub enum Roll {
     DiceRoll,
     SkillRoll,
@@ -43,21 +44,8 @@ impl Roll {
             (Self::DevelopmentCheck,      Lang::Ja) => "上達チェック",
         }
     }
-    pub fn list() -> &'static [Roll] {
-        &[
-            Roll::DiceRoll,
-            Roll::SkillRoll,
-            Roll::CharacteristicRoll,
-            Roll::SanityRoll,
-            Roll::BoutOfMadness,
-            Roll::PushedRoll,
-            Roll::CombinedSkillRoll,
-            Roll::PhobiaAndMania,
-            Roll::FailedCasting,
-            Roll::DevelopmentCheck,
-        ]
-    }
 }
+#[derive(List)]
 pub enum BoutOfMadness {RealTime, Summary}
 impl BoutOfMadness {
     pub fn display(self, lang: Lang) -> &'static str {
@@ -68,13 +56,8 @@ impl BoutOfMadness {
             (Self::Summary,  Lang::Ja)    => "サマリー",
         }
     }
-    pub fn list() -> &'static [BoutOfMadness] {
-        &[
-            BoutOfMadness::RealTime,
-            BoutOfMadness::Summary,
-        ]
-    }
 }
+#[derive(List)]
 pub enum PhobiaAndMania {Phobia, Mania}
 impl PhobiaAndMania {
     pub fn display(self, lang: Lang) -> &'static str {
@@ -85,13 +68,8 @@ impl PhobiaAndMania {
             (Self::Mania,  Lang::Ja)    => "マニア",
         }
     }
-    pub fn list() -> &'static [PhobiaAndMania] {
-        &[
-            PhobiaAndMania::Phobia,
-            PhobiaAndMania::Mania,
-        ]
-    }
 }
+#[derive(List)]
 pub enum FailedCasting {Minor, Major}
 impl FailedCasting {
     pub fn display(self, lang: Lang) -> &'static str {
@@ -101,13 +79,6 @@ impl FailedCasting {
             (Self::Major,  Lang::En(_)) => "major",
             (Self::Major,  Lang::Ja)    => "大",
         }
-    }
-    pub fn list() -> &'static [FailedCasting] {
-        // todo: enumのlist()を[Self]のtraitで一括実装出来ないか検討
-        &[
-            FailedCasting::Minor,
-            FailedCasting::Major,
-        ]
     }
 }
 
@@ -374,7 +345,7 @@ impl FailedCastingMajor {
 }
 
 /// ルールブック 日本語訳版 156頁
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, List, Id, app_macros::Roll)]
 pub enum Phobia {
     Ablutophobia,
     Acrophobia,
@@ -686,7 +657,7 @@ impl Phobia {
 }
 
 /// ルールブック 日本語訳版 157頁
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, List, Id, app_macros::Roll)]
 pub enum Mania {
     Ablutomania,
     Aboulomania,

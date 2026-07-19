@@ -28,8 +28,6 @@ pub enum Command {
 }
 
 impl Serialize for Command {
-    // opは元のu8のまま保持し、フィールドと同じ階層にフラットに並べる
-    // (例: {"operation":11,"id":"...","x":1.0,"y":2.0})。
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let mut map = serializer.serialize_map(None)?;
         match self {
@@ -278,13 +276,12 @@ pub struct PointerState {
     current_x:  f64,    // default: 0.0
     current_y:  f64,    // default: 0.0
     start_time: f64,    // default: 0.0
-    drag_offset: (f64, f64), // PointerDown時の (pointer_px - カード左上px)
-    drag_px:     (f64, f64), // Drag中のカード左上px座標(一時)
-    is_dragging: bool,       // Dragジェスチャが1回以上発火した
+    drag_offset: (f64, f64), // (pointer_px - target base px) when PointerDown
+    drag_px:     (f64, f64), // target base px when is_dragging == true
+    is_dragging: bool,
 }
 
 impl PointerState {
-    // payloadから必要な値を全て引数で受け取り、新しい状態を返す
     pub fn update(self, event_type: &EventType, x: f64, y: f64, time: f64) -> Self {
         match event_type {
             EventType::PointerDown => Self {
@@ -335,12 +332,12 @@ pub fn detect_gesture(state: &mut PointerState, prev_state: &PointerState, event
     let dt = current_time - state.start_time;
     let distance = (dx * dx + dy * dy).sqrt();
 
-    // long press: 時間長い + 座標ブレ小さい
+    // long press: long time + short distance
     if dt > 251.0 && distance < 9.0 {
         return Some(Gesture::LongPress);
     }
 
-    // swipe: PointerUp時のみ + velocity > 0.5 px/ms + duration < 250ms
+    // swipe: when PointerUp + velocity > 0.5 px/ms + duration < 250ms
     if matches!(event_type, EventType::PointerUp) && dt > 0.0 {
         let velocity = distance / dt;
         if velocity > 0.5 && distance > 50.0 && dt < 250.0 {
@@ -352,7 +349,7 @@ pub fn detect_gesture(state: &mut PointerState, prev_state: &PointerState, event
         }
     }
 
-    // drag: PointerMove中に距離が閾値超え → 差分を返す
+    // drag: when PointerMove + long distance → return offset
     if matches!(event_type, EventType::PointerMove) && distance > 10.0 {
         state.is_dragging = true;
         return Some(Gesture::Drag { x: state.current_x, y: state.current_y });

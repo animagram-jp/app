@@ -1,5 +1,5 @@
 use core::{option::Option::{self, Some, None}, marker::Copy, clone::Clone, todo};
-use alloc::{vec::Vec, vec, string::String};
+use alloc::{vec::Vec, vec};
 use arbitrary_int::u2;
 use crate::Lang;
 use crate::js_client::{Command, EventType, Gesture, dom::{Id, Tag}, CanvasEvent, PointerState};

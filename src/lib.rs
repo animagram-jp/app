@@ -38,10 +38,11 @@ pub enum Lang {En(En), Ja}
 pub enum En {Us}
 
 impl Lang {
-    fn label(self) -> &'static str {
+    fn display(self) -> &'static str {
         match self {
             Self::En(En::Us) => "en-US",
-            Self::Ja => "ja",
+            Self::En(_)      => "En",
+            Self::Ja         => "ja",
         }
     }
 }

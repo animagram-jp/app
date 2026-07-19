@@ -1,0 +1,15 @@
+[package]
+name = "app_macros"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+description = "Derive macros for app."
+license = "Apache-2.0"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = { version = "2", features = ["full"] }
+quote = "1"
+proc-macro2 = "1"
