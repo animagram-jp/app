@@ -30,19 +30,18 @@ cargo test
 # wasm-pack compile
 wasm-pack build --target web --out-dir public/app --out-name app
 
-# file_store: OPFS integration tests（Dedicated Worker）
+# file_store: Opfs integration tests
 wasm-pack test --headless --firefox
 
 # copy from animagram/css
 cp -i ../css/css/*.css /public/css/
 ```
 
-- [Fire Fox: installation](https://support.mozilla.org/ja/kb/install-firefox-linux)
-
 ```bash
 # --- Setup for wasm-bindgen-test ---
 # updated_at: 2026-07
 # fire fox installation
+# See https://support.mozilla.org/ja/kb/install-firefox-linux
 sudo install -d -m 0755 /etc/apt/keyrings
 curl -fsSL https://packages.mozilla.org/apt/repo-signing-key.gpg | sudo tee /etc/apt/keyrings/packages.mozilla.org.asc > /dev/null
 sudo tee /etc/apt/sources.list.d/mozilla.sources > /dev/null <<< $'Types: deb\nURIs: https://packages.mozilla.org/apt\nSuites: mozilla\nComponents: main\nSigned-By: /etc/apt/keyrings/packages.mozilla.org.asc'
@@ -114,13 +113,6 @@ Debug link is:
 instanceは、null(未入力)をlistの out of range で表現し、メモリ占有量の発散を防ぐ。
 
 ```
-┌───────────┐
-│ FileStore │
-└───────────┘
-┌───────────┐
-│ List      │
-└───────────┘
-
 ┌──────────────────────┐OutOfRange┌──────────┐
 │ instance             │--------->│          │request
 │ (VariableList, List) │<---------│          │<------┌────────┐
