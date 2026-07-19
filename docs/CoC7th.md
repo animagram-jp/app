@@ -322,4 +322,114 @@ impl AgeCategory {
 
             (Self::AutoFireRoll,    Lang::Ja) => "自動火器の連射判定",
             (Self::AutoFireRoll, Lang::En(_)) => "Automatic Fire Roll",
+
+// ============================================================
+// 自動火器射撃判定 (Full Auto Roll)
+// ============================================================
+
+#[derive(Debug)]
+pub enum FullAutoWarning {
+    BulletsClamped { original: u32 },
+    BrokenNumberNegated,
+    BulletSetCapClampedLow { clamped_to: u32 },
+    BulletSetCapClampedHigh { clamped_to: u32, low_skill: bool },
+}
+
+#[derive(Debug)]
+pub enum FullAutoError {
+    NoBullets,
+    NoSkill,
+    BonusDiceOutOfRange,
+    BulletSetCapNonPositive,
+}
+
+pub enum BulletSetCap {
+    Auto,
+    Specified(u32),
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum ResultLevel { Regular, Hard, Extreme, Critical, Fumble, Failure }
+impl ResultLevel {
+    pub fn from_values(_total: u32, _skill: u32) -> Self { Self::Failure }
+}
+
+#[derive(Debug)]
+pub struct VolleyResult {
+    pub stage: u32,
+    pub stage_changed: bool,
+    pub loop_index: u32,
+    pub total: u32,
+    pub dice_candidates: Vec<u32>,
+    pub level: ResultLevel,
+    pub hit: u32,
+    pub impale: u32,
+    pub jammed: bool,
+}
+
+#[derive(Debug)]
+pub struct FullAutoResult {
+    pub warnings: Vec<FullAutoWarning>,
+    pub bonus_dice: i32,
+    pub volleys: Vec<VolleyResult>,
+    pub hit_total: u32,
+    pub impale_total: u32,
+    pub remaining_bullets: u32,
+    pub stopped_by_difficulty: bool,
+    pub jammed: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum StopAt { None, Regular, Hard, Extreme }
+
+/// - bullet_count > 100 → クランプ+warning
+/// - bullet_count == 0 / skill == 0 → Err
+/// - broken_number < 0 → 絶対値補正+warning
+/// - bonus_dice 絶対値 > 2 → Err
+/// - BulletSetCap::Specified(0) → Err
+/// - BulletSetCap::Specified(1〜2) → 下限3にクランプ+warning
+/// - skill <= 39 → BulletSetCap 上限は3固定
+/// - skill >= 40 → BulletSetCap 上限は skill/10
+/// - ジャム（total >= broken_number） → 即時終了
+/// - 難易度段階: レギュラー→ハード→イクストリーム→クリティカル の4段階
+pub fn full_auto(
+    bullet_count: u32,
+    skill: u32,
+    broken_number: i32,
+    bonus_dice: i32,
+    stop_at: StopAt,
+    bullet_set_cap: Option<BulletSetCap>,
+) -> Result<FullAutoResult, FullAutoError> {
+    todo!()
+}
+
+fn bullet_result(
+    bullet_count: u32,
+    level: ResultLevel,
+    skill: u32,
+    bullet_set: u32,
+    is_last: bool,
+    stage: u32,
+) -> (u32, u32, u32) {
+    let hit_base = if skill < 30 { 1 } else { bullet_set / 2 };
+    let is_hit = match stage {
+        0 => matches!(level, ResultLevel::Hard | ResultLevel::Regular),
+        1 => matches!(level, ResultLevel::Hard),
+        2 => false,
+        _ => matches!(level, ResultLevel::Critical),
+    };
+    let is_impale = match stage {
+        0..=2 => matches!(level, ResultLevel::Critical | ResultLevel::Extreme),
+        _     => false,
+    };
+    if is_hit {
+        if is_last { let h = (bullet_count + 1) / 2; (h, 0, bullet_count) }
+        else       { (hit_base, 0, bullet_set) }
+    } else if is_impale {
+        if is_last { let i = bullet_count / 2; (bullet_count - i, i, bullet_count) }
+        else       { let i = bullet_set / 2; (bullet_set - i, i, bullet_set) }
+    } else {
+        (0, 0, bullet_set.min(bullet_count))
+    }
+}
 ```

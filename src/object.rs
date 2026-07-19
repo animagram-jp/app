@@ -16,7 +16,7 @@ pub mod dice {
     use super::Dice;
     use rand::RngExt as _;
 
-    pub fn label(dice: &[Dice]) -> String {
+    pub fn display(dice: &[Dice]) -> String {
         let s = dice.iter().map(|&(count, sides, modifier)| {
             let dice_str = if count == 0 || sides == 0 {
                 String::new()
@@ -32,7 +32,6 @@ pub mod dice {
         }).collect::<String>();
         s.trim_start_matches('+').to_string()
     }
-
     pub fn roll(dice: &[Dice]) -> i32 {
         dice.iter().map(|&(count, sides, modifier)| {
             let rolled = if count != 0 && sides > 0 {
@@ -47,7 +46,6 @@ pub mod dice {
             rolled + modifier as i32
         }).sum()
     }
-
     pub fn percent_roll(level: i8) -> u8 {
         let mut rng = rand::rng();
         let ones: u8 = rng.random_range(0..=9u8);
@@ -61,20 +59,6 @@ pub mod dice {
             rng.random_range(0..=9u8) + offset
         };
         tens * 10 + ones
-    }
-
-    #[derive(Debug, Clone, Copy, PartialEq)]
-    pub enum JudgeResult {Regular, Hard, Extreme, Critical, Fumble, Failure}
-
-    impl JudgeResult {
-        pub fn get(target: u8, rolled: u8) -> Self {
-            if rolled == 1               {Self::Critical}
-            else if rolled <= target / 5 {Self::Extreme}
-            else if rolled <= target / 2 {Self::Hard}
-            else if rolled <= target     {Self::Regular}
-            else if rolled >= if target < 50 {96} else {100} {Self::Fumble}
-            else                         {Self::Failure}
-        }
     }
 }
 
