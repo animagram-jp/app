@@ -16,7 +16,8 @@ section {
 /* .css-list の項目間隔は --_gap で利用側から上書きする */
 .css-list {
     --_gap: 0.25rem;
-    
+}
+
 body>header {
     padding-top: 0.5rem;
 }
@@ -99,15 +100,15 @@ output article span { /* toast icon */
 }
 
 article.info {
-    background: var(--color-neutral-solid-gray-300);
+    background: rgb(var(--rgb-light-gray));
 }
 
 article.success {
-    background: var(--color-semantic-success-1);
+    background: rgb(var(--rgb-success));
 }
 
 article.warning {
-    background: var(--color-semantic-warning-yellow-2);
+    background: rgb(var(--rgb-accent-yellow));
 }
 
 /* --- CoC7th (html記述順) ─── */
@@ -153,11 +154,7 @@ article.warning {
 }
 
 #header_button-5 {
-    --button-color: var(--color-primitive-green-600);
-    --button-hover-color: var(--color-primitive-green-700);
-    --button-active-color: var(--color-primitive-green-900);
-    --button-outline-hover-bg-color: var(--color-primitive-green-200);
-    --button-outline-active-bg-color: var(--color-primitive-green-300);
+    --rgb-emphasis: var(--rgb-accent-green);
     position: relative;
     color: transparent;
 }
@@ -174,14 +171,14 @@ article.warning {
     margin: auto;
     border-radius: 50%;
     background-color: transparent;
-    border: 1.5px solid var(--color-neutral-white);
-    color: var(--color-neutral-white);
+    border: 1.5px solid rgb(var(--rgb-white));
+    color: rgb(var(--rgb-white));
     font-size: 0.9em;
     line-height: 1;
 }
 
 main>section {
-    border: 1px solid var(--color-neutral-solid-gray-300);
+    border: 1px solid rgb(var(--rgb-light-gray));
     margin: 0.25rem 0 0;
 }
 
@@ -203,9 +200,9 @@ main>section {
 }
 
 #main_section-1_section-6>article {
-    --color-layer-1: var(--color-neutral-white);
-    --color-layer-2: var(--color-neutral-solid-gray-50);
-    --color-layer-3: var(--color-neutral-solid-gray-100);
+    --color-layer-1: var(--color-background);
+    --color-layer-2: color-mix(in srgb, var(--color-background) 95%, rgb(var(--rgb-ink)));
+    --color-layer-3: color-mix(in srgb, var(--color-background) 90%, rgb(var(--rgb-ink)));
     --line-height-1: 0.2rem;
     --line-height-2: 0.1rem;
     --line-height-3: 0rem;
