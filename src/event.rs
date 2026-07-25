@@ -75,7 +75,13 @@ impl Handler {
         self.characters.close();
     }
     pub fn initial_draw(&self) -> (Vec<Event>, Vec<Command>) {
-        (Vec::new(), Vec::new())
+        let commands = vec![
+            Command::RemoveAttribute {
+                id:        Id::new(&[(Tag::Body, None)]).encode(),
+                attribute: "hidden".to_string(),
+            },
+        ];
+        (Vec::new(), commands)
     }
     pub fn process(&mut self, event: &CanvasEvent, _pointer_state: &PointerState) -> (Vec<Event>, Vec<Command>) {
         let id = &event.id;
