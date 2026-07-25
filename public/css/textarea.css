@@ -1,88 +1,82 @@
-.dads-textarea {
+.css-textarea {
   display: inline-flex;
   box-sizing: border-box;
   width: 100%;
   max-width: 100%;
-  border: 1px solid var(--color-neutral-solid-gray-600);
-  background-color: var(--color-neutral-white);
-  padding: calc(12 / 16 * 1rem) calc(16 / 16 * 1rem);
-  border-radius: calc(8 / 16 * 1rem);
-  color: var(--color-neutral-solid-gray-900);
+  border: 1px solid var(--color-muted);
+  background-color: var(--color-background);
+  padding: calc(12 / 16 * 1rem) 1rem;
+  border-radius: 0.5rem;
+  color: rgb(var(--rgb-ink));
   font-weight: normal;
-  font-size: var(--dads-size-md-font-size);
+  font-size: 1rem;
   line-height: 1.6;
   font-family: var(--font-family-sans);
   letter-spacing: 0.02em;
   resize: vertical;
 }
 
-.dads-textarea[dads-size="sm"] {
-  font-size: var(--dads-size-sm-font-size);
+.css-textarea[css-size="sm"] {
+  font-size: 1rem;
   line-height: 1.5;
 }
 
-.dads-textarea:not([dads-size]),
-.dads-textarea[dads-size="md"] {
-  font-size: var(--dads-size-md-font-size);
+.css-textarea:not([css-size]),
+.css-textarea[css-size="md"] {
+  font-size: 1rem;
   line-height: 1.6;
 }
 
-.dads-textarea[dads-size="lg"] {
-  font-size: var(--dads-size-lg-font-size);
-  line-height: 1.7;
+.css-textarea[css-size="lg"] {
+  font-size: var(--css-typography-text-normal-2-font-size);
+  line-height: var(--css-typography-text-normal-2-line-height);
 }
 
-.dads-textarea:read-only:not(:disabled) {
+.css-textarea:read-only:not(:disabled) {
   border-style: dashed;
 }
 
-.dads-textarea:focus-visible {
-  outline: calc(4 / 16 * 1rem) solid var(--color-neutral-black);
-  outline-offset: calc(2 / 16 * 1rem);
-  box-shadow: 0 0 0 calc(2 / 16 * 1rem) var(--color-primitive-yellow-300);
-}
-
 @media (hover: hover) {
-  .dads-textarea:not(:read-only):hover {
-    border-color: var(--color-neutral-black);
+  .css-textarea:not(:read-only):hover {
+    border-color: rgb(var(--rgb-border));
   }
 }
 
-.dads-textarea:is(:user-invalid, [aria-invalid="true"]) {
-  border-color: var(--color-semantic-error-1);
+.css-textarea:is(:user-invalid, [aria-invalid="true"]) {
+  border-color: rgb(var(--rgb-error));
 }
 
 @media (hover: hover) {
-  .dads-textarea:is(:user-invalid, [aria-invalid="true"]):hover {
-    border-color: var(--color-primitive-red-1000);
+  .css-textarea:is(:user-invalid, [aria-invalid="true"]):hover {
+    border-color: rgb(var(--rgb-error));
   }
 }
 
-.dads-textarea:is(:disabled, [aria-disabled="true"]),
-.dads-textarea:is(:disabled, [aria-disabled="true"]):hover {
-  border-color: var(--color-neutral-solid-gray-300);
-  background-color: var(--color-neutral-solid-gray-50);
-  color: var(--color-neutral-solid-gray-420);
+.css-textarea:is(:disabled, [aria-disabled="true"]),
+.css-textarea:is(:disabled, [aria-disabled="true"]):hover {
+  border-color: rgb(var(--rgb-light-gray));
+  background-color: rgb(var(--rgb-light-gray) / 0.3);
+  color: var(--color-muted);
   resize: none;
 }
 
 @media (forced-colors: active) {
-  .dads-textarea[aria-disabled="true"],
-  .dads-textarea[aria-disabled="true"]:hover {
+  .css-textarea[aria-disabled="true"],
+  .css-textarea[aria-disabled="true"]:hover {
     border-color: GrayText;
     color: GrayText;
   }
 }
 
-.dads-textarea-counter {
+.css-textarea-counter {
   display: block;
-  margin-top: calc(8 / 16 * 1rem);
-  color: var(--color-neutral-solid-gray-600);
-  font-size: calc(16 / 16 * 1rem);
-  line-height: 1;
-  letter-spacing: 0.02em;
+  margin-top: 0.5rem;
+  color: var(--color-muted);
+  font-size: var(--css-typography-text-flush-2-font-size);
+  line-height: var(--css-typography-text-flush-2-line-height);
+  letter-spacing: var(--css-typography-text-flush-2-letter-spacing);
 }
 
-.dads-textarea-counter[data-exceeded] {
-  color: var(--color-semantic-error-1);
+.css-textarea-counter[css-exceeded] {
+  color: rgb(var(--rgb-error));
 }

@@ -1,187 +1,187 @@
-.dads-h {
+.css-h {
   margin: 0;
-  color: var(--color-neutral-solid-gray-800);
+  color: rgb(var(--rgb-ink));
   font-family: var(--font-family-sans);
 }
 
-.dads-h[dads-size="64"],
-hgroup[dads-size="64"] .dads-h {
-  --_shoulder-size: calc(28 / 16 * 1rem);
-  --_shoulder-line-height: 1.5;
-  --_shoulder-letter-spacing: 0.01em;
+.css-h[css-size="display-1"],
+hgroup[css-size="display-1"] .css-h {
+  --_shoulder-size: var(--css-typography-heading-4-font-size);
+  --_shoulder-line-height: var(--css-typography-heading-4-line-height);
+  --_shoulder-letter-spacing: var(--css-typography-heading-4-letter-spacing);
   font-weight: bold;
-  font-size: calc(64 / 16 * 1rem);
-  line-height: 1.4;
-  letter-spacing: 0;
+  font-size: var(--css-typography-display-1-font-size);
+  line-height: var(--css-typography-display-1-line-height);
+  letter-spacing: var(--css-typography-display-1-letter-spacing);
 }
 
-.dads-h[dads-size="57"],
-hgroup[dads-size="57"] .dads-h {
-  --_shoulder-size: calc(24 / 16 * 1rem);
-  --_shoulder-line-height: 1.5;
-  --_shoulder-letter-spacing: 0.02em;
+.css-h[css-size="display-2"],
+hgroup[css-size="display-2"] .css-h {
+  --_shoulder-size: var(--css-typography-heading-6-font-size);
+  --_shoulder-line-height: var(--css-typography-heading-6-line-height);
+  --_shoulder-letter-spacing: var(--css-typography-heading-6-letter-spacing);
   font-weight: bold;
-  font-size: calc(57 / 16 * 1rem);
-  line-height: 1.4;
-  letter-spacing: 0;
+  font-size: var(--css-typography-display-2-font-size);
+  line-height: var(--css-typography-display-2-line-height);
+  letter-spacing: var(--css-typography-display-2-letter-spacing);
 }
 
-.dads-h[dads-size="45"],
-hgroup[dads-size="45"] .dads-h {
-  --_shoulder-size: calc(22 / 16 * 1rem);
-  --_shoulder-line-height: 1.5;
-  --_shoulder-letter-spacing: 0.02em;
+.css-h[css-size="heading-1"],
+hgroup[css-size="heading-1"] .css-h {
+  --_shoulder-size: var(--css-typography-heading-7-font-size);
+  --_shoulder-line-height: var(--css-typography-heading-7-line-height);
+  --_shoulder-letter-spacing: var(--css-typography-heading-7-letter-spacing);
   font-weight: bold;
-  font-size: calc(45 / 16 * 1rem);
-  line-height: 1.4;
-  letter-spacing: 0;
+  font-size: var(--css-typography-heading-1-font-size);
+  line-height: var(--css-typography-heading-1-line-height);
+  letter-spacing: var(--css-typography-heading-1-letter-spacing);
 }
 
-.dads-h[dads-size="36"],
-hgroup[dads-size="36"] .dads-h {
-  --_shoulder-size: calc(20 / 16 * 1rem);
-  --_shoulder-line-height: 1.5;
-  --_shoulder-letter-spacing: 0.02em;
+.css-h[css-size="heading-2"],
+hgroup[css-size="heading-2"] .css-h {
+  --_shoulder-size: var(--css-typography-heading-8-font-size);
+  --_shoulder-line-height: var(--css-typography-heading-8-line-height);
+  --_shoulder-letter-spacing: var(--css-typography-heading-8-letter-spacing);
   font-weight: bold;
-  font-size: calc(36 / 16 * 1rem);
-  line-height: 1.4;
-  letter-spacing: 0.01em;
+  font-size: var(--css-typography-heading-2-font-size);
+  line-height: var(--css-typography-heading-2-line-height);
+  letter-spacing: var(--css-typography-heading-2-letter-spacing);
 }
 
-.dads-h[dads-size="32"],
-hgroup[dads-size="32"] .dads-h {
-  --_shoulder-size: calc(18 / 16 * 1rem);
-  --_shoulder-line-height: 1.6;
-  --_shoulder-letter-spacing: 0.02em;
+.css-h[css-size="heading-3"],
+hgroup[css-size="heading-3"] .css-h {
+  --_shoulder-size: var(--css-typography-heading-9-font-size);
+  --_shoulder-line-height: var(--css-typography-heading-9-line-height);
+  --_shoulder-letter-spacing: var(--css-typography-heading-9-letter-spacing);
   font-weight: bold;
-  font-size: calc(32 / 16 * 1rem);
-  line-height: 1.5;
-  letter-spacing: 0.01em;
+  font-size: var(--css-typography-heading-3-font-size);
+  line-height: var(--css-typography-heading-3-line-height);
+  letter-spacing: var(--css-typography-heading-3-letter-spacing);
 }
 
-.dads-h[dads-size="28"],
-hgroup[dads-size="28"] .dads-h {
-  --_shoulder-size: calc(16 / 16 * 1rem);
-  --_shoulder-line-height: 1.7;
-  --_shoulder-letter-spacing: 0.02em;
+.css-h[css-size="heading-4"],
+hgroup[css-size="heading-4"] .css-h {
+  --_shoulder-size: var(--css-typography-text-normal-2-font-size);
+  --_shoulder-line-height: var(--css-typography-text-normal-2-line-height);
+  --_shoulder-letter-spacing: var(--css-typography-text-normal-2-letter-spacing);
   font-weight: bold;
-  font-size: calc(28 / 16 * 1rem);
-  line-height: 1.5;
-  letter-spacing: 0.01em;
+  font-size: var(--css-typography-heading-4-font-size);
+  line-height: var(--css-typography-heading-4-line-height);
+  letter-spacing: var(--css-typography-heading-4-letter-spacing);
 }
 
-.dads-h[dads-size="24"],
-hgroup[dads-size="24"] .dads-h {
-  --_shoulder-size: calc(16 / 16 * 1rem);
-  --_shoulder-line-height: 1.7;
-  --_shoulder-letter-spacing: 0.02em;
+.css-h[css-size="heading-6"],
+hgroup[css-size="heading-6"] .css-h {
+  --_shoulder-size: var(--css-typography-text-normal-2-font-size);
+  --_shoulder-line-height: var(--css-typography-text-normal-2-line-height);
+  --_shoulder-letter-spacing: var(--css-typography-text-normal-2-letter-spacing);
   font-weight: bold;
-  font-size: calc(24 / 16 * 1rem);
-  line-height: 1.5;
-  letter-spacing: 0.02em;
+  font-size: var(--css-typography-heading-6-font-size);
+  line-height: var(--css-typography-heading-6-line-height);
+  letter-spacing: var(--css-typography-heading-6-letter-spacing);
 }
 
-.dads-h[dads-size="20"],
-hgroup[dads-size="20"] .dads-h {
-  --_shoulder-size: calc(16 / 16 * 1rem);
-  --_shoulder-line-height: 1.7;
-  --_shoulder-letter-spacing: 0.02em;
+.css-h[css-size="heading-8"],
+hgroup[css-size="heading-8"] .css-h {
+  --_shoulder-size: var(--css-typography-text-normal-2-font-size);
+  --_shoulder-line-height: var(--css-typography-text-normal-2-line-height);
+  --_shoulder-letter-spacing: var(--css-typography-text-normal-2-letter-spacing);
   font-weight: bold;
-  font-size: calc(20 / 16 * 1rem);
-  line-height: 1.5;
-  letter-spacing: 0.02em;
+  font-size: var(--css-typography-heading-8-font-size);
+  line-height: var(--css-typography-heading-8-line-height);
+  letter-spacing: var(--css-typography-heading-8-letter-spacing);
 }
 
-.dads-h[dads-size="18"],
-hgroup[dads-size="18"] .dads-h {
-  --_shoulder-size: calc(16 / 16 * 1rem);
-  --_shoulder-line-height: 1.7;
-  --_shoulder-letter-spacing: 0.02em;
+.css-h[css-size="heading-9"],
+hgroup[css-size="heading-9"] .css-h {
+  --_shoulder-size: var(--css-typography-text-normal-2-font-size);
+  --_shoulder-line-height: var(--css-typography-text-normal-2-line-height);
+  --_shoulder-letter-spacing: var(--css-typography-text-normal-2-letter-spacing);
   font-weight: bold;
-  font-size: calc(18 / 16 * 1rem);
-  line-height: 1.6;
-  letter-spacing: 0.02em;
+  font-size: var(--css-typography-heading-9-font-size);
+  line-height: var(--css-typography-heading-9-line-height);
+  letter-spacing: var(--css-typography-heading-9-letter-spacing);
 }
 
-.dads-h[dads-size="16"],
-hgroup[dads-size="16"] .dads-h {
-  --_shoulder-size: calc(16 / 16 * 1rem);
-  --_shoulder-line-height: 1.7;
-  --_shoulder-letter-spacing: 0.02em;
+.css-h[css-size="text-normal-2"],
+hgroup[css-size="text-normal-2"] .css-h {
+  --_shoulder-size: var(--css-typography-text-normal-2-font-size);
+  --_shoulder-line-height: var(--css-typography-text-normal-2-line-height);
+  --_shoulder-letter-spacing: var(--css-typography-text-normal-2-letter-spacing);
   font-weight: bold;
-  font-size: calc(16 / 16 * 1rem);
-  line-height: 1.7;
-  letter-spacing: 0.02em;
+  font-size: var(--css-typography-text-normal-2-font-size);
+  line-height: var(--css-typography-text-normal-2-line-height);
+  letter-spacing: var(--css-typography-text-normal-2-letter-spacing);
 }
 
-.dads-h[data-chip],
-hgroup[data-chip] .dads-h {
+.css-h[css-chip],
+hgroup[css-chip] .css-h {
   position: relative;
   padding-left: calc(1em / 3 + 0.5em);
 }
 
-.dads-h[data-chip]::before,
-hgroup[data-chip] .dads-h::before {
+.css-h[css-chip]::before,
+hgroup[css-chip] .css-h::before {
   position: absolute;
   top: 0.2em;
   bottom: 0.1em;
   left: 0;
   width: calc(1em / 3);
-  background-color: var(--color-primitive-blue-900);
+  background-color: var(--color-emphasis);
   content: "";
 }
 
 @supports (top: 1lh) {
-  .dads-h[data-chip]::before,
-  hgroup[data-chip] .dads-h::before {
+  .css-h[css-chip]::before,
+  hgroup[css-chip] .css-h::before {
     top: calc(0.5lh - 0.45em);
     bottom: calc(0.5lh - 0.55em);
   }
 }
 
-hgroup[data-chip]:has(.dads-h-shoulder) .dads-h::before {
+hgroup[css-chip]:has(.css-h-shoulder) .css-h::before {
   top: calc((var(--_shoulder-size) * (var(--_shoulder-line-height) - 1)) / 2);
 }
 
 @media (forced-colors: active) {
-  .dads-h[data-chip]::before,
-  hgroup[data-chip] .dads-h::before {
+  .css-h[css-chip]::before,
+  hgroup[css-chip] .css-h::before {
     background-color: CanvasText;
   }
 }
 
-.dads-h[data-rule],
-hgroup[data-rule] .dads-h {
-  border-bottom: solid var(--color-primitive-blue-900);
+.css-h[css-rule],
+hgroup[css-rule] .css-h {
+  border-bottom: solid var(--color-emphasis);
 }
 
-.dads-h[data-rule="8"],
-hgroup[data-rule="8"] .dads-h {
-  border-bottom-width: calc(8 / 16 * 1rem);
-  padding-bottom: calc(32 / 16 * 1rem);
+.css-h[css-rule="8"],
+hgroup[css-rule="8"] .css-h {
+  border-bottom-width: 0.5rem;
+  padding-bottom: calc(20 / 16 * 1rem);
 }
 
-.dads-h[data-rule="6"],
-hgroup[data-rule="6"] .dads-h {
+.css-h[css-rule="6"],
+hgroup[css-rule="6"] .css-h {
   border-bottom-width: calc(6 / 16 * 1rem);
-  padding-bottom: calc(24 / 16 * 1rem);
+  padding-bottom: 1rem;
 }
 
-.dads-h[data-rule="4"],
-hgroup[data-rule="4"] .dads-h {
-  border-bottom-width: calc(4 / 16 * 1rem);
-  padding-bottom: calc(16 / 16 * 1rem);
+.css-h[css-rule="4"],
+hgroup[css-rule="4"] .css-h {
+  border-bottom-width: 0.25rem;
+  padding-bottom: calc(12 / 16 * 1rem);
 }
 
-.dads-h[data-rule="2"],
-hgroup[data-rule="2"] .dads-h {
-  border-bottom-width: calc(2 / 16 * 1rem);
-  padding-bottom: calc(8 / 16 * 1rem);
+.css-h[css-rule="2"],
+hgroup[css-rule="2"] .css-h {
+  border-bottom-width: 0.125rem;
+  padding-bottom: 0.5rem;
 }
 
-.dads-h-shoulder {
+.css-h-shoulder {
   margin: 0;
-  color: var(--color-neutral-solid-gray-800);
+  color: rgb(var(--rgb-ink));
   font-family: var(--font-family-sans);
   font-weight: bold;
   font-size: var(--_shoulder-size);

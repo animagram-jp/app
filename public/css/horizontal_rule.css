@@ -1,0 +1,26 @@
+.css-hr {
+  margin: 0;
+  border: 0;
+  border-top: 1px solid var(--color-emphasis);
+  opacity: 1;
+}
+
+.css-hr[css-type="dashed"] {
+  border-top-style: dashed;
+}
+
+.css-hr[css-width="1"] {
+  border-top-width: 1px;
+}
+
+.css-hr[css-width="2"] {
+  border-top-width: 2px;
+}
+
+.css-hr[css-width="3"] {
+  border-top-width: 3px;
+}
+
+.css-hr[css-width="4"] {
+  border-top-width: 4px;
+}

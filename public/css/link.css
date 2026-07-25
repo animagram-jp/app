@@ -1,31 +1,36 @@
-.dads-link:any-link {
-  color: var(--color-primitive-blue-1000);
+.css-link:any-link {
+  color: var(--color-emphasis);
   text-decoration: underline;
   text-decoration-thickness: calc(1 / 16 * 1rem);
   text-underline-offset: calc(3 / 16 * 1rem);
 }
 
-.dads-link:visited {
-  color: var(--color-primitive-magenta-900);
+.css-link:visited {
+  color: rgb(var(--rgb-accent-purple));
 }
 
 @media (hover: hover) {
-  .dads-link:hover {
-    color: var(--color-primitive-blue-900);
+  .css-link:hover {
+    color: var(--color-emphasis-hover);
     text-decoration-thickness: calc(3 / 16 * 1rem);
   }
 }
 
-.dads-link:active {
-  color: var(--color-primitive-orange-800);
+.css-link:active {
+  color: rgb(var(--rgb-accent-orange));
   text-decoration-thickness: calc(1 / 16 * 1rem);
 }
 
-.dads-link:focus-visible {
-  outline: calc(4 / 16 * 1rem) solid var(--color-neutral-black);
-  outline-offset: calc(2 / 16 * 1rem);
-  border-radius: calc(4 / 16 * 1rem);
-  background-color: var(--color-primitive-yellow-300);
-  box-shadow: 0 0 0 calc(2 / 16 * 1rem) var(--color-primitive-yellow-300);
+.css-link:focus-visible {
+  outline: 0.125rem solid rgb(var(--rgb-border));
+  outline-offset: 0.125rem;
+  border-radius: 0.25rem;
+  background-color: rgb(var(--rgb-focus));
+  box-shadow: 0 0 0 0.125rem rgb(var(--rgb-focus));
 }
 
+.css-link__icon {
+  flex-shrink: 0;
+  vertical-align: -0.15em;
+  margin-left: 0.25rem;
+}

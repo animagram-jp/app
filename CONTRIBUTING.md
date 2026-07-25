@@ -34,7 +34,7 @@ wasm-pack build --target web --out-dir public/app --out-name app
 wasm-pack test --headless --firefox
 
 # copy from animagram/css
-cp -i ../css/css/*.css /public/css/
+cp -f ../css/css/*.css ./public/css/
 ```
 
 ```bash

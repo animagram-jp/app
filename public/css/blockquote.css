@@ -1,16 +1,16 @@
-.dads-blockquote {
-  margin: 0 calc(40 / 16 * 1rem);
-  border-left: 8px solid var(--color-neutral-solid-gray-536);
-  padding-top: calc(8 / 16 * 1rem);
-  padding-right: calc(16 / 16 * 1rem);
-  padding-bottom: calc(8 / 16 * 1rem);
-  padding-left: calc(24 / 16 * 1rem);
+.css-blockquote {
+  margin: 0 2.5rem;
+  border-left: 8px solid var(--color-muted);
+  padding-top: 0.5rem;
+  padding-right: 1rem;
+  padding-bottom: 0.5rem;
+  padding-left: 1.5rem;
 }
 
-.dads-blockquote > *:first-child {
+.css-blockquote > *:first-child {
   margin-top: 0 !important;
 }
 
-.dads-blockquote > *:last-child {
+.css-blockquote > *:last-child {
   margin-bottom: 0 !important;
 }

@@ -1,4 +1,4 @@
-.dads-radio {
+.css-radio {
   position: relative;
   display: inline-flex;
   align-items: center;
@@ -6,48 +6,51 @@
   width: fit-content;
   padding-top: var(--_padding-block);
   padding-bottom: var(--_padding-block);
-  color: var(--color-neutral-solid-gray-800);
-  font-size: var(--_label-font-size, 1rem);
-  line-height: 1;
+  color: rgb(var(--rgb-ink));
+  font-size: var(--_label-font-size, var(--css-typography-text-flush-2-font-size));
+  line-height: var(--css-typography-text-flush-2-line-height);
+  font-family: var(--font-family-sans);
+  font-weight: normal;
+  letter-spacing: 0;
 }
 
-.dads-radio[dads-size="sm"] {
-  --_gap: calc(4 / 16 * 1rem);
-  --_radio-size: calc(24 / 16 * 1rem);
+.css-radio[css-size="sm"] {
+  --_gap: 0.25rem;
+  --_radio-size: 1.5rem;
   --_radio-outer-size: calc(20 / 16 * 1rem);
   --_radio-inner-size: calc(10 / 16 * 1rem);
-  --_radio-border-width: calc(2 / 16 * 1rem);
-  --_label-font-size: 1rem;
+  --_radio-border-width: 0.125rem;
+  --_label-font-size: var(--css-typography-text-flush-2-font-size);
   --_padding-block: calc(10 / 16 * 1rem);
 }
 
-.dads-radio:not([dads-size]),
-.dads-radio[dads-size="md"] {
-  --_gap: calc(8 / 16 * 1rem);
-  --_radio-size: calc(32 / 16 * 1rem);
+.css-radio:not([css-size]),
+.css-radio[css-size="md"] {
+  --_gap: 0.5rem;
+  --_radio-size: 2rem;
   --_radio-outer-size: calc(26 / 16 * 1rem);
   --_radio-inner-size: calc(12 / 16 * 1rem);
-  --_radio-border-width: calc(2 / 16 * 1rem);
-  --_label-font-size: 1rem;
+  --_radio-border-width: 0.125rem;
+  --_label-font-size: var(--css-typography-text-flush-2-font-size);
   --_padding-block: calc(11 / 16 * 1rem);
 }
 
-.dads-radio[dads-size="lg"] {
+.css-radio[css-size="lg"] {
   --_gap: calc(12 / 16 * 1rem);
   --_radio-size: calc(44 / 16 * 1rem);
   --_radio-outer-size: calc(36 / 16 * 1rem);
-  --_radio-inner-size: calc(16 / 16 * 1rem);
+  --_radio-inner-size: 1rem;
   --_radio-border-width: calc(3 / 16 * 1rem);
-  --_label-font-size: 1rem;
+  --_label-font-size: var(--css-typography-text-flush-2-font-size);
   --_padding-block: calc(10 / 16 * 1rem);
 }
 
-.dads-radio > input {
-  --_base-color: var(--color-neutral-white);
-  --_accent-color: var(--color-primitive-blue-900);
-  --_accent-hover-color: var(--color-primitive-blue-1100);
-  --_border-color: var(--color-neutral-solid-gray-600);
-  --_border-hover-color: var(--color-neutral-black);
+.css-radio > input {
+  --_base-color: var(--color-background);
+  --_accent-color: var(--color-emphasis);
+  --_accent-hover-color: var(--color-emphasis-hover);
+  --_border-color: var(--color-muted);
+  --_border-hover-color: rgb(var(--rgb-border));
 
   position: relative;
   flex-shrink: 0;
@@ -61,7 +64,7 @@
 }
 
 @media (hover: hover) {
-  .dads-radio::before {
+  .css-radio::before {
     position: absolute;
     top: 50%;
     left: calc((var(--_radio-size) - var(--_radio-outer-size)) / -2);
@@ -73,34 +76,34 @@
     pointer-events: none;
   }
 
-  .dads-radio:has(> input:not(:focus, :disabled, [aria-disabled="true"]):hover)::before {
-    background-color: var(--color-neutral-solid-gray-420);
+  .css-radio:has(> input:not(:focus, :disabled, [aria-disabled="true"]):hover)::before {
+    background-color: rgb(var(--rgb-ink) / var(--alpha-highlight-weak));
   }
 }
 
-.dads-radio > input:focus {
-  outline: calc(4 / 16 * 1rem) solid var(--color-neutral-black);
-  outline-offset: calc(2 / 16 * 1rem);
-  box-shadow: 0 0 0 calc(2 / 16 * 1rem) var(--color-primitive-yellow-300);
+.css-radio > input:focus {
+  outline: 0.125rem solid rgb(var(--rgb-border));
+  outline-offset: 0.125rem;
+  box-shadow: 0 0 0 0.125rem rgb(var(--rgb-focus));
 }
 
 @media (hover: hover) {
-  .dads-radio > input:not(:disabled, [aria-disabled="true"]):hover {
+  .css-radio > input:not(:disabled, [aria-disabled="true"]):hover {
     border-color: var(--_border-hover-color);
   }
 }
 
-.dads-radio > input:checked {
+.css-radio > input:checked {
   border-color: var(--_accent-color);
 }
 
 @media (hover: hover) {
-  .dads-radio > input:checked:not(:disabled, [aria-disabled="true"]):hover {
+  .css-radio > input:checked:not(:disabled, [aria-disabled="true"]):hover {
     border-color: var(--_accent-hover-color);
   }
 }
 
-.dads-radio > input:checked::before {
+.css-radio > input:checked::before {
   position: absolute;
   inset: 0;
   margin: auto;
@@ -112,7 +115,7 @@
 }
 
 @media (hover: hover) {
-  .dads-radio > input:checked:not(
+  .css-radio > input:checked:not(
       :disabled,
       [aria-disabled="true"]
     ):hover::before {
@@ -120,31 +123,31 @@
   }
 }
 
-.dads-radio > input[aria-invalid="true"] {
-  --_accent-color: var(--color-semantic-error-1);
-  --_accent-hover-color: var(--color-primitive-red-1000);
-  --_border-color: var(--color-semantic-error-1);
-  --_border-hover-color: var(--color-primitive-red-1000);
+.css-radio > input[aria-invalid="true"] {
+  --_accent-color: rgb(var(--rgb-error));
+  --_accent-hover-color: rgb(var(--rgb-error));
+  --_border-color: rgb(var(--rgb-error));
+  --_border-hover-color: rgb(var(--rgb-error));
 }
 
-.dads-radio > input:is(:disabled, [aria-disabled="true"]) {
-  --_base-color: var(--color-neutral-solid-gray-50);
-  --_accent-color: var(--color-neutral-solid-gray-300);
-  --_accent-hover-color: var(--color-neutral-solid-gray-300);
-  --_border-color: var(--color-neutral-solid-gray-300);
-  --_border-hover-color: var(--color-neutral-solid-gray-300);
+.css-radio > input:is(:disabled, [aria-disabled="true"]) {
+  --_base-color: rgb(var(--rgb-light-gray) / 0.3);
+  --_accent-color: rgb(var(--rgb-light-gray));
+  --_accent-hover-color: rgb(var(--rgb-light-gray));
+  --_border-color: rgb(var(--rgb-light-gray));
+  --_border-hover-color: rgb(var(--rgb-light-gray));
 }
 
 @media (forced-colors: active) {
-  .dads-radio > input,
-  .dads-radio > input[aria-invalid="true"] {
+  .css-radio > input,
+  .css-radio > input[aria-invalid="true"] {
     --_accent-color: Highlight;
     --_accent-hover-color: Highlight;
     --_border-color: ButtonText;
     --_border-hover-color: ButtonText;
   }
 
-  .dads-radio > input:is(:disabled, [aria-disabled="true"]) {
+  .css-radio > input:is(:disabled, [aria-disabled="true"]) {
     --_accent-color: GrayText;
     --_accent-hover-color: GrayText;
     --_border-color: GrayText;

@@ -1,23 +1,22 @@
-*,
-::before,
-::after {
-    line-height: 1.5;
-}
-
 html {
     overflow-x: hidden;
 }
 
 body {
-    --color-body-background: var(--color-neutral-white);
     height: 100%;
     max-width: 100%;
-    margin-top: 0;
     overflow-x: hidden;
-    background: var(--color-body-background);
     font-size: 16px;
 }
 
+section {
+    margin: 2rem 0;
+}
+
+/* .css-list の項目間隔は --_gap で利用側から上書きする */
+.css-list {
+    --_gap: 0.25rem;
+    
 body>header {
     padding-top: 0.5rem;
 }

@@ -1,4 +1,4 @@
-.dads-checkbox {
+.css-checkbox {
   position: relative;
   display: inline-flex;
   align-items: center;
@@ -6,47 +6,47 @@
   width: fit-content;
   padding-top: var(--_padding-block);
   padding-bottom: var(--_padding-block);
-  color: var(--color-neutral-solid-gray-800);
-  font-size: var(--_label-font-size, 1rem);
-  line-height: 1;
+  color: rgb(var(--rgb-ink));
+  font-size: var(--_label-font-size, var(--css-typography-text-flush-2-font-size));
+  line-height: var(--css-typography-text-flush-2-line-height);
   font-family: var(--font-family-sans);
   font-weight: normal;
   letter-spacing: 0;
 }
 
-.dads-checkbox[dads-size="sm"] {
-  --_gap: calc(4 / 16 * 1rem);
-  --_checkbox-size: calc(24 / 16 * 1rem);
+.css-checkbox[css-size="sm"] {
+  --_gap: 0.25rem;
+  --_checkbox-size: 1.5rem;
   --_checkbox-input-size: calc(20 / 16 * 1rem);
-  --_checkbox-border-width: calc(2 / 16 * 1rem);
+  --_checkbox-border-width: 0.125rem;
   --_checkbox-scale: 1;
-  --_label-font-size: 1rem;
+  --_label-font-size: var(--css-typography-text-flush-2-font-size);
   --_padding-block: calc(10 / 16 * 1rem);
 }
 
-.dads-checkbox:not([dads-size]),
-.dads-checkbox[dads-size="md"] {
-  --_gap: calc(8 / 16 * 1rem);
-  --_checkbox-size: calc(32 / 16 * 1rem);
+.css-checkbox:not([css-size]),
+.css-checkbox[css-size="md"] {
+  --_gap: 0.5rem;
+  --_checkbox-size: 2rem;
   --_checkbox-input-size: calc(26 / 16 * 1rem);
-  --_checkbox-border-width: calc(2 / 16 * 1rem);
+  --_checkbox-border-width: 0.125rem;
   --_checkbox-scale: calc(20 / 14);
-  --_label-font-size: 1rem;
+  --_label-font-size: var(--css-typography-text-flush-2-font-size);
   --_padding-block: calc(11 / 16 * 1rem);
 }
 
-.dads-checkbox[dads-size="lg"] {
-  --_gap: calc(8 / 16 * 1rem);
+.css-checkbox[css-size="lg"] {
+  --_gap: 0.5rem;
   --_checkbox-size: calc(44 / 16 * 1rem);
   --_checkbox-input-size: calc(36 / 16 * 1rem);
   --_checkbox-border-width: calc(3 / 16 * 1rem);
   --_checkbox-scale: calc(27 / 14);
-  --_label-font-size: 1rem;
+  --_label-font-size: var(--css-typography-text-flush-2-font-size);
   --_padding-block: calc(10 / 16 * 1rem);
 }
 
 @media (hover: hover) {
-  .dads-checkbox::before {
+  .css-checkbox::before {
     position: absolute;
     top: 50%;
     left: calc((var(--_checkbox-size) - var(--_checkbox-input-size, calc(var(--_checkbox-size) * 0.75))) / -2);
@@ -58,18 +58,18 @@
     pointer-events: none;
   }
 
-  .dads-checkbox:has(> input:not(:focus, :disabled, [aria-disabled="true"]):hover)::before {
-    background-color: var(--color-neutral-solid-gray-420);
+  .css-checkbox:has(> input:not(:focus, :disabled, [aria-disabled="true"]):hover)::before {
+    background-color: rgb(var(--rgb-ink) / var(--alpha-highlight-weak));
   }
 }
 
-.dads-checkbox > input {
-  --_base-color: var(--color-neutral-white);
-  --_accent-color: var(--color-primitive-blue-900);
-  --_accent-hover-color: var(--color-primitive-blue-1100);
-  --_border-color: var(--color-neutral-solid-gray-600);
-  --_border-hover-color: var(--color-neutral-black);
-  --_check-color: var(--color-neutral-white);
+.css-checkbox > input {
+  --_base-color: var(--color-background);
+  --_accent-color: var(--color-emphasis);
+  --_accent-hover-color: var(--color-emphasis-hover);
+  --_border-color: var(--color-muted);
+  --_border-hover-color: rgb(var(--rgb-border));
+  --_check-color: rgb(var(--rgb-white));
 
   position: relative;
   flex-shrink: 0;
@@ -83,25 +83,25 @@
   border: var(--_checkbox-border-width) solid var(--_border-color);
 }
 
-.dads-checkbox > input:focus {
-  outline: calc(4 / 16 * 1rem) solid var(--color-neutral-black);
-  outline-offset: calc(2 / 16 * 1rem);
-  box-shadow: 0 0 0 calc(2 / 16 * 1rem) var(--color-primitive-yellow-300);
+.css-checkbox > input:focus {
+  outline: 0.125rem solid rgb(var(--rgb-border));
+  outline-offset: 0.125rem;
+  box-shadow: 0 0 0 0.125rem rgb(var(--rgb-focus));
 }
 
 @media (hover: hover) {
-  .dads-checkbox > input:not(:disabled, [aria-disabled="true"]):hover {
+  .css-checkbox > input:not(:disabled, [aria-disabled="true"]):hover {
     border-color: var(--_border-hover-color);
   }
 }
 
-.dads-checkbox > input:is(:checked, :indeterminate) {
+.css-checkbox > input:is(:checked, :indeterminate) {
   border-color: var(--_accent-color);
   background-color: var(--_accent-color);
 }
 
 @media (hover: hover) {
-  .dads-checkbox > input:is(:checked, :indeterminate):not(
+  .css-checkbox > input:is(:checked, :indeterminate):not(
       :disabled,
       [aria-disabled="true"]
     ):hover {
@@ -110,7 +110,7 @@
   }
 }
 
-.dads-checkbox > input::before {
+.css-checkbox > input::before {
   display: none;
   width: calc(14 / 16 * 1rem);
   height: calc(14 / 16 * 1rem);
@@ -120,36 +120,36 @@
   content: "";
 }
 
-.dads-checkbox > input:checked::before {
+.css-checkbox > input:checked::before {
   display: block;
   clip-path: path(
     "M5.6,11.2L12.65,4.15L11.25,2.75L5.6,8.4L2.75,5.55L1.35,6.95L5.6,11.2Z"
   );
 }
 
-.dads-checkbox > input:indeterminate::before {
+.css-checkbox > input:indeterminate::before {
   display: block;
   clip-path: path("M2,6h10v2H2Z");
 }
 
-.dads-checkbox > input[aria-invalid="true"] {
-  --_accent-color: var(--color-semantic-error-1);
-  --_accent-hover-color: var(--color-primitive-red-1000);
-  --_border-color: var(--color-semantic-error-1);
-  --_border-hover-color: var(--color-primitive-red-1000);
+.css-checkbox > input[aria-invalid="true"] {
+  --_accent-color: rgb(var(--rgb-error));
+  --_accent-hover-color: rgb(var(--rgb-error));
+  --_border-color: rgb(var(--rgb-error));
+  --_border-hover-color: rgb(var(--rgb-error));
 }
 
-.dads-checkbox > input:is(:disabled, [aria-disabled="true"]) {
-  --_base-color: var(--color-neutral-solid-gray-50);
-  --_accent-color: var(--color-neutral-solid-gray-300);
-  --_accent-hover-color: var(--color-neutral-solid-gray-300);
-  --_border-color: var(--color-neutral-solid-gray-300);
-  --_border-hover-color: var(--color-neutral-solid-gray-300);
+.css-checkbox > input:is(:disabled, [aria-disabled="true"]) {
+  --_base-color: rgb(var(--rgb-light-gray) / 0.3);
+  --_accent-color: rgb(var(--rgb-light-gray));
+  --_accent-hover-color: rgb(var(--rgb-light-gray));
+  --_border-color: rgb(var(--rgb-light-gray));
+  --_border-hover-color: rgb(var(--rgb-light-gray));
 }
 
 @media (forced-colors: active) {
-  .dads-checkbox > input,
-  .dads-checkbox > input[aria-invalid="true"] {
+  .css-checkbox > input,
+  .css-checkbox > input[aria-invalid="true"] {
     --_accent-color: Highlight;
     --_accent-hover-color: Highlight;
     --_border-color: ButtonText;
@@ -157,7 +157,7 @@
     --_check-color: HighlightText;
   }
 
-  .dads-checkbox > input:is(:disabled, [aria-disabled="true"]) {
+  .css-checkbox > input:is(:disabled, [aria-disabled="true"]) {
     --_accent-color: GrayText;
     --_accent-hover-color: GrayText;
     --_border-color: GrayText;

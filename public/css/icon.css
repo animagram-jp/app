@@ -1,0 +1,25 @@
+.css-icon {
+    --_size: 1rem;
+    --_stripe: 2px;
+    --_gap: 3px;
+    align-items: center;
+}
+
+.css-icon::before {
+    position: relative;
+    margin-right: 0.5rem;
+}
+
+.css-icon[icon-type="hatch"]::before {
+    content: "";
+    display: inline-block;
+    width: var(--_size);
+    height: var(--_size);
+    background-image: repeating-linear-gradient(
+        -45deg,
+        currentcolor 0,
+        currentcolor var(--_stripe),
+        transparent var(--_stripe),
+        transparent calc(var(--_stripe) + var(--_gap))
+    );
+}
