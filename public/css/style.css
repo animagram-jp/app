@@ -18,31 +18,26 @@ html {
     overflow-x: hidden;
 }
 
-/*
- * data-theme: active light/dark toggle for this demo page (set by the
- * inline script in index.html). Overrides prefers-color-scheme either way.
- */
 :root[data-theme="dark"] {
     --rgb-ink: var(--rgb-white);
     --rgb-border: var(--rgb-white);
-    --color-background: rgb(var(--rgb-black));
+    --rgb-background: rgb(var(--rgb-black));
     --rgb-emphasis: var(--rgb-accent-sky);
-    --color-emphasis-fill: rgb(var(--rgb-accent-blue));
+    --rgb-emphasis-fill: rgb(var(--rgb-accent-blue));
 }
 
 :root[data-theme="light"] {
     --rgb-ink: var(--rgb-black);
+    --rgb-background: var(--rgb-white);
     --rgb-border: var(--rgb-black);
-    --color-background: rgb(var(--rgb-white));
     --rgb-emphasis: var(--rgb-accent-blue);
-    --color-emphasis-fill: var(--color-emphasis);
+    --rgb-emphasis-fill: var(--rgb-emphasis);
 }
 
 body {
     height: 100%;
     max-width: 100%;
     overflow-x: hidden;
-    font-size: 16px;
 }
 
 section {

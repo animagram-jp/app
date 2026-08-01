@@ -1,211 +1,215 @@
 /* ---------------------------------------------------------------- */
-/* css-search-box                                                  */
-/* label wrapper that positions the search icon over css-input     */
+/* search-box                                                        */
+/* label wrapper that positions the search icon over input           */
 /* ---------------------------------------------------------------- */
 
-label.css-search-box {
-  position: relative;
-  display: inline flex;
-  flex-grow: 1;
-}
+@layer css.components {
 
-label.css-search-box > svg {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 1rem;
-  z-index: 1;
-  margin: auto 0;
-  width: 1.5rem;
-  height: 1.5rem;
-  color: var(--color-muted);
-  pointer-events: none;
-}
+    label[data-search-box] {
+        position: relative;
+        display: inline flex;
+        flex-grow: 1;
+    }
 
-@media (forced-colors: active) {
-  label.css-search-box > svg {
-    color: CanvasText;
-  }
-}
+    label[data-search-box] > svg {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 1rem;
+        z-index: 1;
+        margin: auto 0;
+        width: 1.5rem;
+        height: 1.5rem;
+        color: var(--color-muted);
+        pointer-events: none;
+    }
 
-label.css-search-box > .css-input {
-  flex-grow: 1;
-  width: 8rem;
-  padding-left: 3rem;
-}
+    @media (forced-colors: active) {
+        label[data-search-box] > svg {
+            color: CanvasText;
+        }
+    }
 
-/* when preceded by css-search-box-scope, remove left rounding and collapse border */
-.css-search-box-scope + label.css-search-box > .css-input {
-  margin-left: calc(-1 / 16 * 1rem);
-  border-top-left-radius: 0;
-  border-bottom-left-radius: 0;
-}
+    label[data-search-box] > input[type="search"] {
+        flex-grow: 1;
+        width: 8rem;
+        padding-left: 3rem;
+    }
 
-/* ---------------------------------------------------------------- */
-/* css-search-box-scope                                            */
-/* label wrapper for the scope select preceding css-search-box     */
-/* ---------------------------------------------------------------- */
+    /* when preceded by search-box-scope, remove left rounding and collapse border */
+    label[data-search-box-scope] + label[data-search-box] > input[type="search"] {
+        margin-left: calc(-1 / 16 * 1rem);
+        border-top-left-radius: 0;
+        border-bottom-left-radius: 0;
+    }
 
-label.css-search-box-scope {
-  position: relative;
-  display: inline flex;
-  flex-shrink: 0;
-  color: rgb(var(--rgb-ink));
-  font-weight: normal;
-  font-size: var(--css-typography-text-flush-2-font-size);
-  line-height: var(--css-typography-text-flush-2-line-height);
-  font-family: var(--font-family-sans);
-  letter-spacing: var(--css-typography-text-flush-2-letter-spacing);
-}
+    /* ---------------------------------------------------------------- */
+    /* search-box-scope                                                  */
+    /* label wrapper for the scope select preceding search-box           */
+    /* ---------------------------------------------------------------- */
 
-label.css-search-box-scope > span {
-  position: absolute;
-  top: calc(50% - 1.25rem);
-  left: calc(17 / 16 * 1rem);
-  color: rgb(var(--rgb-ink));
-  pointer-events: none;
-  z-index: 2;
-}
+    label[data-search-box-scope] {
+        position: relative;
+        display: inline flex;
+        flex-shrink: 0;
+        color: rgb(var(--rgb-ink));
+        font-weight: normal;
+        font-size: var(--md-font-size);
+        line-height: var(--md-line-height);
+        font-family: var(--font-family-sans);
+        letter-spacing: var(--md-letter-spacing);
+    }
 
-label.css-search-box-scope > select {
-  appearance: none;
-  display: flex;
-  align-items: center;
-  overflow: hidden;
-  box-sizing: border-box;
-  width: calc(160 / 16 * 1rem);
-  border-radius: 0.5rem 0 0 0.5rem;
-  border: 1px solid var(--color-muted);
-  background-color: rgb(var(--rgb-light-gray) / 0.3);
-  padding-top: calc(20 / 16 * 1rem);
-  padding-right: 2.5rem;
-  padding-bottom: 0;
-  padding-left: 1rem;
-  color: rgb(var(--rgb-ink));
-  font: inherit;
-  font-size: var(--css-typography-text-flush-1-font-size);
-  line-height: var(--css-typography-text-flush-1-line-height);
-  letter-spacing: var(--css-typography-text-flush-1-letter-spacing);
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
+    label[data-search-box-scope] > span {
+        position: absolute;
+        top: calc(50% - 1.25rem);
+        left: calc(17 / 16 * 1rem);
+        color: rgb(var(--rgb-ink));
+        pointer-events: none;
+        z-index: 2;
+    }
 
-label.css-search-box-scope[css-size="sm"] > select {
-  height: var(--css-size-sm-height);
-}
+    label[data-search-box-scope] > select {
+        appearance: none;
+        display: flex;
+        align-items: center;
+        overflow: hidden;
+        box-sizing: border-box;
+        width: calc(160 / 16 * 1rem);
+        border-radius: 0.5rem 0 0 0.5rem;
+        border: 1px solid var(--color-muted);
+        background-color: rgb(var(--rgb-light-gray) / 0.3);
+        padding-top: calc(20 / 16 * 1rem);
+        padding-right: 2.5rem;
+        padding-bottom: 0;
+        padding-left: 1rem;
+        color: rgb(var(--rgb-ink));
+        font: inherit;
+        font-size: var(--md-font-size);
+        line-height: var(--md-line-height);
+        letter-spacing: var(--md-letter-spacing);
+        white-space: nowrap;
+        text-overflow: ellipsis;
+    }
 
-label.css-search-box-scope[css-size="sm"]::after {
-  right: 0.5rem;
-  width: 0.5rem;
-  height: 0.5rem;
-}
+    label[data-search-box-scope][data-size="sm"] > select {
+        height: var(--sm-box-height);
+    }
 
-label.css-search-box-scope:not([css-size]) > select,
-label.css-search-box-scope[css-size="md"] > select {
-  height: var(--css-size-md-height);
-}
+    label[data-search-box-scope][data-size="sm"]::after {
+        right: 0.5rem;
+        width: 0.5rem;
+        height: 0.5rem;
+    }
 
-label.css-search-box-scope[css-size="lg"] > select {
-  height: var(--css-size-lg-height);
-}
+    label[data-search-box-scope]:not([data-size]) > select,
+    label[data-search-box-scope][data-size="md"] > select {
+        height: var(--md-box-height);
+    }
 
-@supports (appearance: base-select) {
-  label.css-search-box-scope > select {
-    appearance: base-select;
-  }
+    label[data-search-box-scope][data-size="lg"] > select {
+        height: var(--lg-box-height);
+    }
 
-  label.css-search-box-scope > select::picker-icon {
-    display: none;
-  }
+    @supports (appearance: base-select) {
+        label[data-search-box-scope] > select {
+            appearance: base-select;
+        }
 
-  label.css-search-box-scope > select::picker(select) {
-    appearance: base-select;
-    border: 1px solid var(--color-muted);
-    box-shadow: var(--elevation-1);
-    padding: 1rem 0;
-  }
-}
+        label[data-search-box-scope] > select::picker-icon {
+            display: none;
+        }
 
-label.css-search-box-scope::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  right: 1rem;
-  bottom: 0;
-  z-index: 1;
-  margin: auto 0;
-  width: calc(10 / 16 * 1rem);
-  height: calc(10 / 16 * 1rem);
-  border-right: 0.125rem solid currentcolor;
-  border-bottom: 0.125rem solid currentcolor;
-  transform: translateY(calc(-2 / 16 * 1rem)) rotate(45deg);
-  pointer-events: none;
-}
+        label[data-search-box-scope] > select::picker(select) {
+            appearance: base-select;
+            border: 1px solid var(--color-muted);
+            box-shadow: var(--elevation-1);
+            padding: 1rem 0;
+        }
+    }
 
-label.css-search-box-scope:has(> select:open)::after {
-  transform: translateY(0.125rem) rotate(225deg);
-}
+    label[data-search-box-scope]::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        right: 1rem;
+        bottom: 0;
+        z-index: 1;
+        margin: auto 0;
+        width: calc(10 / 16 * 1rem);
+        height: calc(10 / 16 * 1rem);
+        border-right: 0.125rem solid currentcolor;
+        border-bottom: 0.125rem solid currentcolor;
+        transform: translateY(calc(-2 / 16 * 1rem)) rotate(45deg);
+        pointer-events: none;
+    }
 
-label.css-search-box-scope > select:focus-visible {
-  position: relative;
-  z-index: 1;
-  outline: 0.125rem solid rgb(var(--rgb-border));
-  outline-offset: 0.125rem;
-  box-shadow: 0 0 0 0.125rem rgb(var(--rgb-focus));
-}
+    label[data-search-box-scope]:has(> select:open)::after {
+        transform: translateY(0.125rem) rotate(225deg);
+    }
 
-@media (hover: hover) {
-  label.css-search-box-scope > select:hover {
-    border-color: rgb(var(--rgb-border));
-  }
-}
+    label[data-search-box-scope] > select:focus-visible {
+        position: relative;
+        z-index: 1;
+        outline: 0.125rem solid rgb(var(--rgb-border));
+        outline-offset: 0.125rem;
+        box-shadow: 0 0 0 0.125rem rgb(var(--rgb-focus));
+    }
 
-label.css-search-box-scope option {
-  display: flex;
-  align-items: center;
-  box-sizing: border-box;
-  min-height: calc(44 / 16 * 1rem);
-  padding: calc(10 / 16 * 1rem) 1rem;
-  color: rgb(var(--rgb-ink));
-}
+    @media (hover: hover) {
+        label[data-search-box-scope] > select:hover {
+            border-color: rgb(var(--rgb-border));
+        }
+    }
 
-label.css-search-box-scope option::checkmark {
-  display: none;
-}
+    label[data-search-box-scope] option {
+        display: flex;
+        align-items: center;
+        box-sizing: border-box;
+        min-height: calc(44 / 16 * 1rem);
+        padding: calc(10 / 16 * 1rem) 1rem;
+        color: rgb(var(--rgb-ink));
+    }
 
-@media (hover: hover) {
-  label.css-search-box-scope option:hover {
-    background-color: rgb(var(--rgb-light-gray) / 0.3);
-    text-decoration: underline;
-    text-decoration-thickness: calc(1 / 16 * 1rem);
-    text-underline-offset: calc(3 / 16 * 1rem);
-  }
-}
+    label[data-search-box-scope] option::checkmark {
+        display: none;
+    }
 
-label.css-search-box-scope option:checked {
-  font-weight: bold;
-  background-color: rgb(var(--rgb-emphasis) / 15%);
-  color: var(--color-emphasis);
-}
+    @media (hover: hover) {
+        label[data-search-box-scope] option:hover {
+            background-color: rgb(var(--rgb-light-gray) / 0.3);
+            text-decoration: underline;
+            text-decoration-thickness: calc(1 / 16 * 1rem);
+            text-underline-offset: calc(3 / 16 * 1rem);
+        }
+    }
 
-@media (hover: hover) {
-  label.css-search-box-scope option:checked:hover {
-    background-color: rgb(var(--rgb-emphasis) / 8%);
-    color: var(--color-emphasis-hover);
-  }
-}
+    label[data-search-box-scope] option:checked {
+        font-weight: bold;
+        background-color: rgb(var(--rgb-emphasis) / 15%);
+        color: var(--color-emphasis);
+    }
 
-label.css-search-box-scope option:focus-visible {
-  border-radius: 0;
-  outline: 0.25rem solid rgb(var(--rgb-border));
-  outline-offset: calc(-4 / 16 * 1rem);
-  box-shadow: none;
-}
+    @media (hover: hover) {
+        label[data-search-box-scope] option:checked:hover {
+            background-color: rgb(var(--rgb-emphasis) / 8%);
+            color: var(--color-emphasis-hover);
+        }
+    }
 
-label.css-search-box-scope option:not(:checked):focus-visible {
-  background-color: rgb(var(--rgb-focus));
-}
+    label[data-search-box-scope] option:focus-visible {
+        border-radius: 0;
+        outline: 0.25rem solid rgb(var(--rgb-border));
+        outline-offset: calc(-4 / 16 * 1rem);
+        box-shadow: none;
+    }
 
-label.css-search-box-scope option:checked:focus-visible {
-  box-shadow: inset 0 0 0 calc(6 / 16 * 1rem) rgb(var(--rgb-focus));
+    label[data-search-box-scope] option:not(:checked):focus-visible {
+        background-color: rgb(var(--rgb-focus));
+    }
+
+    label[data-search-box-scope] option:checked:focus-visible {
+        box-shadow: inset 0 0 0 calc(6 / 16 * 1rem) rgb(var(--rgb-focus));
+    }
+
 }

@@ -1,38 +1,42 @@
-.css-field-label {
-  display: block;
-  margin: 0 0 0.5rem 0;
-  padding: 0;
-  color: rgb(var(--rgb-ink));
-  font-weight: bold;
-  font-size: var(--css-typography-text-normal-2-font-size);
-  line-height: var(--css-typography-text-normal-2-line-height);
-  font-family: var(--font-family-sans);
-  letter-spacing: var(--css-typography-text-normal-2-letter-spacing);
-}
+@layer css.components {
 
-.css-field-requirement {
-  margin-left: 0.25rem;
-  font-weight: normal;
-  color: var(--color-emphasis);
-  font-size: var(--css-typography-text-normal-2-font-size);
-}
+    :is(label[for], legend) {
+        display: block;
+        margin: 0 0 0.5rem 0;
+        padding: 0;
+        color: rgb(var(--rgb-ink));
+        font-weight: bold;
+        font-size: var(--md-font-size);
+        line-height: var(--md-line-height);
+        font-family: var(--font-family-sans);
+        letter-spacing: var(--md-letter-spacing);
+    }
 
-.css-field-support {
-  display: block;
-  margin: 0 0 0.5rem 0;
-  color: var(--color-muted);
-  font-size: var(--css-typography-text-normal-2-font-size);
-  line-height: var(--css-typography-text-normal-2-line-height);
-  font-family: var(--font-family-sans);
-  letter-spacing: var(--css-typography-text-normal-2-letter-spacing);
-}
+    :is(label[for], legend) > [data-requirement] {
+        margin-left: 0.25rem;
+        font-weight: normal;
+        color: var(--color-emphasis);
+        font-size: var(--md-font-size);
+    }
 
-.css-field-error {
-  display: block;
-  margin: 0.5rem 0 0 0;
-  color: rgb(var(--rgb-error));
-  font-size: var(--css-typography-text-tight-3-font-size);
-  line-height: var(--css-typography-text-tight-3-line-height);
-  font-family: var(--font-family-sans);
-  letter-spacing: var(--css-typography-text-tight-3-letter-spacing);
+    p[data-type="support"] {
+        display: block;
+        margin: 0 0 0.5rem 0;
+        color: var(--color-muted);
+        font-size: var(--md-font-size);
+        line-height: var(--md-line-height);
+        font-family: var(--font-family-sans);
+        letter-spacing: var(--md-letter-spacing);
+    }
+
+    p[data-type="error"] {
+        display: block;
+        margin: 0.5rem 0 0 0;
+        color: rgb(var(--rgb-error));
+        font-size: var(--md-font-size);
+        line-height: var(--md-line-height);
+        font-family: var(--font-family-sans);
+        letter-spacing: var(--md-letter-spacing);
+    }
+
 }

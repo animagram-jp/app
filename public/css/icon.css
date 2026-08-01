@@ -1,25 +1,29 @@
-.css-icon {
-    --_size: 1rem;
-    --_stripe: 2px;
-    --_gap: 3px;
-    align-items: center;
-}
+@layer css.components {
 
-.css-icon::before {
-    position: relative;
-    margin-right: 0.5rem;
-}
+    [icon-type] {
+        --size: 1rem;
+        --stripe: 2px;
+        --gap: 3px;
+        align-items: center;
+    }
 
-.css-icon[icon-type="hatch"]::before {
-    content: "";
-    display: inline-block;
-    width: var(--_size);
-    height: var(--_size);
-    background-image: repeating-linear-gradient(
-        -45deg,
-        currentcolor 0,
-        currentcolor var(--_stripe),
-        transparent var(--_stripe),
-        transparent calc(var(--_stripe) + var(--_gap))
-    );
+    [icon-type]::before {
+        position: relative;
+        margin-right: 0.5rem;
+    }
+
+    [icon-type="hatch"]::before {
+        content: "";
+        display: inline-block;
+        width: var(--size);
+        height: var(--size);
+        background-image: repeating-linear-gradient(
+            -45deg,
+            currentcolor 0,
+            currentcolor var(--stripe),
+            transparent var(--stripe),
+            transparent calc(var(--stripe) + var(--gap))
+        );
+    }
+
 }

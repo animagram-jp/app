@@ -1,178 +1,189 @@
-.css-button {
+/* <button>
+        inline
+        <svg></svg></button> */
+
+@layer css.components {
+
+    button {
+        --color-wash-hover: rgb(var(--rgb-ink) / var(--alpha-highlight-weak));
+        --color-wash-active: rgb(var(--rgb-ink) / var(--alpha-highlight-strong));
+        align-items: center;
+        display: inline flex;
+        font-family: var(--font-family-sans);
+        font-weight: bold;
+        justify-content: center;
+        text-decoration: none;
+    }
+
+    button:not([data-size]),
+    button[data-size="md"] {
+        font-size: var(--md-font-size);
+        letter-spacing: var(--md-letter-spacing);
+        line-height: var(--md-line-height);
+        text-underline-offset: 0.25rem;
+    }
+
+    button:disabled,
+    button:disabled:hover,
+    button[aria-disabled="true"],
+    button[aria-disabled="true"]:hover {
+        cursor: default;
+        text-decoration: none!important;
+    }
+
+    /* disabled, high-contrast mode: border/text collapse to the UA's GrayText
+    * across all three types identically. */
+    @media (forced-colors: active) {
+        button:disabled,
+        button[aria-disabled="true"] {
+            border-color: GrayText;
+            color: GrayText;
+        }
+    }
+
     /*
-    * To overwrite these tags, define --color-emphasize, ...
+    * focus-visible ring is identical across all three types: same outline +
+    * box-shadow, type-independent. Only data-type="text" adds its own background
+    * (below) since its normal-state background is transparent, not a surface
+    * color the ring can sit legibly on top of otherwise.
     */
-    --color-wash-hover: rgb(var(--rgb-ink) / var(--alpha-highlight-weak));
-    --color-wash-active: rgb(var(--rgb-ink) / var(--alpha-highlight-strong));
-    --color-border: rgb(var(--rgb-border));
-    display: inline flex;
-    align-items: center;
-    justify-content: center;
-    column-gap: 0.25rem;
-    box-sizing: border-box;
-    max-width: 100%;
-    font-weight: bold;
-    font-size: var(--css-typography-text-flush-2-font-size);
-    line-height: var(--css-typography-text-flush-2-line-height);
-    font-family: var(--font-family-sans);
-    letter-spacing: var(--css-typography-text-flush-2-letter-spacing);
-    text-decoration: none;
-    text-underline-offset: calc(3 / 16 * 1rem);
-}
+    button:focus-visible {
+        outline: 0.125rem solid var(--color-border);
+        outline-offset: 0.125rem;
+        box-shadow: 0 0 0 0.125rem var(--color-focus);
+    }
 
-.css-button:disabled,
-.css-button[aria-disabled="true"] {
-  cursor: default;
-  text-decoration: none;
-}
+    button[data-type="fill"] {
+        border: 4px double transparent;
+        background-color: var(--color-emphasis-fill);
+        color: rgb(var(--rgb-white));
+    }
 
-/*
- * focus-visible ring is identical across all three types: same outline +
- * box-shadow, type-independent. Only css-type="text" adds its own background
- * (below) since its normal-state background is transparent, not a surface
- * color the ring can sit legibly on top of otherwise.
- */
-.css-button:focus-visible {
-  outline: 0.125rem solid var(--color-border);
-  outline-offset: 0.125rem;
-  box-shadow: 0 0 0 0.125rem rgb(var(--rgb-focus));
-}
+    @media (hover: hover) {
+        button[data-type="fill"]:hover {
+            background-color: var(--color-emphasis-fill-hover);
+            text-decoration: underline;
+            text-decoration-thickness: calc(1 / 16 * 1rem);
+        }
+    }
 
-/* disabled, high-contrast mode: border/text collapse to the UA's GrayText
- * across all three types identically. */
-@media (forced-colors: active) {
-  .css-button:disabled,
-  .css-button[aria-disabled="true"] {
-    border-color: GrayText;
-    color: GrayText;
-  }
-}
+    button[data-type="fill"]:active {
+        background-color: var(--color-emphasis-fill-active);
+        text-decoration: underline;
+    }
 
-.css-button[css-type="fill"] {
-  border: 4px double transparent;
-  background-color: var(--color-emphasis-fill);
-  color: rgb(var(--rgb-white));
-}
+    button[data-type="fill"]:disabled,
+    button[data-type="fill"][aria-disabled="true"] {
+        background-color: rgb(var(--rgb-light-gray));
+        color: rgb(var(--rgb-white));
+    }
 
-@media (hover: hover) {
-  .css-button[css-type="fill"]:hover {
-    background-color: var(--color-emphasis-fill-hover);
-    text-decoration: underline;
-    text-decoration-thickness: calc(1 / 16 * 1rem);
-  }
-}
+    button[data-type="outline"] {
+        border: 1px solid currentcolor;
+        background-color: var(--color-background);
+        color: var(--color-emphasis);
+    }
 
-.css-button[css-type="fill"]:active {
-  background-color: var(--color-emphasis-fill-active);
-  text-decoration: underline;
-}
+    @media (hover: hover) {
+        button[data-type="outline"]:hover {
+            background-color: var(--color-wash-hover);
+            text-decoration: underline;
+            text-decoration-thickness: calc(1 / 16 * 1rem);
+        }
+    }
 
-.css-button[css-type="fill"]:disabled,
-.css-button[css-type="fill"][aria-disabled="true"] {
-  background-color: rgb(var(--rgb-light-gray));
-  color: rgb(var(--rgb-white));
-}
+    button[data-type="outline"]:active {
+        background-color: var(--color-wash-active);
+        text-decoration: underline;
+    }
 
-.css-button[css-type="outline"] {
-  border: 1px solid currentcolor;
-  background-color: var(--color-background);
-  color: var(--color-emphasis);
-}
+    button[data-type="outline"]:disabled,
+    button[data-type="outline"][aria-disabled="true"] {
+        background-color: var(--color-background);
+        color: var(--color-muted);
+    }
 
-@media (hover: hover) {
-  .css-button[css-type="outline"]:hover {
-    background-color: var(--color-wash-hover);
-    text-decoration: underline;
-    text-decoration-thickness: calc(1 / 16 * 1rem);
-  }
-}
+    button[data-type="text"] {
+        border: 0;
+        background-color: transparent;
+        color: var(--color-emphasis);
+        text-decoration: underline;
+    }
 
-.css-button[css-type="outline"]:active {
-  background-color: var(--color-wash-active);
-  text-decoration: underline;
-}
+    @media (hover: hover) {
+        button[data-type="text"]:hover {
+            background-color: var(--color-wash-hover);
+            text-decoration-thickness: calc(3 / 16 * 1rem);
+        }
+    }
 
-.css-button[css-type="outline"]:disabled,
-.css-button[css-type="outline"][aria-disabled="true"] {
-  background-color: var(--color-background);
-  color: var(--color-muted);
-}
+    button[data-type="text"]:active {
+        background-color: var(--color-wash-active);
+    }
 
-.css-button[css-type="text"] {
-  border: 0;
-  background-color: transparent;
-  color: var(--color-emphasis);
-  text-decoration: underline;
-}
+    button[data-type="text"]:focus-visible {
+        background-color: rgb(var(--rgb-focus));
+        color: rgb(var(--rgb-black));
+    }
 
-@media (hover: hover) {
-  .css-button[css-type="text"]:hover {
-    background-color: var(--color-wash-hover);
-    text-decoration-thickness: calc(3 / 16 * 1rem);
-  }
-}
+    button[data-type="text"]:disabled,
+    button[data-type="text"][aria-disabled="true"] {
+        background-color: transparent;
+        color: var(--color-muted);
+        text-decoration-thickness: revert;
+    }
 
-.css-button[css-type="text"]:active {
-  background-color: var(--color-wash-active);
-}
+    button[data-size="lg"] {
+        min-height: var(--lg-box-height);
+        border-radius: 0.5rem;
+        padding-block: calc((var(--lg-box-height) - var(--lg-line-height)) / 2);
+        padding-inline: 1rem;
+    }
 
-.css-button[css-type="text"]:focus-visible {
-  background-color: rgb(var(--rgb-focus));
-  color: rgb(var(--rgb-black));
-}
+    button:not([data-size]),
+    button[data-size="md"] {
+        min-height: var(--md-box-height);
+        border-radius: 0.5rem;
+        padding-block: calc((var(--md-box-height) - var(--md-line-height)) / 2);
+        padding-inline: 1rem;
+    }
 
-.css-button[css-type="text"]:disabled,
-.css-button[css-type="text"][aria-disabled="true"] {
-  background-color: transparent;
-  color: var(--color-muted);
-  text-decoration-thickness: revert;
-}
+    /*
+    * sm/xs are visually smaller than the 44px minimum touch target, so both
+    * get a same-size invisible ::after to pad the hit area back out without
+    * affecting layout.
+    */
+    button[data-size="sm"],
+    button[data-size="xs"] {
+        position: relative;
+    }
 
-.css-button[css-size="lg"] {
-  min-height: var(--css-size-lg-height);
-  border-radius: 0.5rem;
-  padding: 0.75rem 1rem;
-}
+    button[data-size="sm"]::after,
+    button[data-size="xs"]::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        margin: auto;
+        height: calc(44 / 16 * 1rem);
+    }
 
-.css-button:not([css-size]),
-.css-button[css-size="md"] {
-  min-height: var(--css-size-md-height);
-  border-radius: 0.5rem;
-  padding: 0.5rem 1rem;
-}
+    button[data-size="sm"] {
+        min-height: var(--sm-box-height);
+        border-radius: calc(6 / 16 * 1rem);
+        padding-block: calc((var(--sm-box-height) - var(--sm-line-height)) / 2);
+        padding-inline: 0.75rem;
+    }
 
-/*
- * sm/xs are visually smaller than the 44px minimum touch target, so both
- * get a same-size invisible ::after to pad the hit area back out without
- * affecting layout.
- */
-.css-button[css-size="sm"],
-.css-button[css-size="xs"] {
-  position: relative;
-}
+    button[data-size="xs"] {
+        min-height: var(--xs-box-height);
+        border-radius: 0.25rem;
+        padding-block: calc((var(--xs-box-height) - var(--sm-line-height)) / 2);
+        padding-inline: 0.5rem;
+        font-size: var(--sm-font-size);
+    }
 
-.css-button[css-size="sm"]::after,
-.css-button[css-size="xs"]::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  margin: auto;
-  height: calc(44 / 16 * 1rem);
-}
+    button svg {
+        flex-shrink: 0;
+    }
 
-.css-button[css-size="sm"] {
-  min-height: var(--css-size-sm-height);
-  border-radius: calc(6 / 16 * 1rem);
-  padding: 0.125rem 0.75rem;
-}
-
-.css-button[css-size="xs"] {
-  min-height: var(--css-size-xs-height);
-  border-radius: 0.25rem;
-  padding: var(--css-size-xs-padding-block) var(--css-size-xs-padding-inline);
-  font-size: var(--css-typography-text-flush-3-font-size);
-}
-
-.css-button__icon {
-  flex-shrink: 0;
 }

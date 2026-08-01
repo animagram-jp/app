@@ -1,141 +1,147 @@
-.list-box-trigger {
-  anchor-name: --list-box-trigger;
-  position: relative;
-  display: inline flex;
-  align-items: center;
-  box-sizing: border-box;
-  height: var(--css-size-md-height);
-  padding-inline-start: 1rem;
-  padding-inline-end: 3rem;
-  border-radius: 0.5rem;
-  border: 1px solid var(--color-muted);
-  background-color: transparent;
-  color: rgb(var(--rgb-ink));
-  font: inherit;
-  line-height: 1;
-  letter-spacing: 0.02em;
-  cursor: pointer;
-}
+@layer css.components {
 
-.list-box-trigger::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  right: 1rem;
-  bottom: 0;
-  margin: auto 0;
-  width: calc(10 / 16 * 1rem);
-  height: calc(10 / 16 * 1rem);
-  border-right: 0.125rem solid currentcolor;
-  border-bottom: 0.125rem solid currentcolor;
-  transform: translateY(calc(-2 / 16 * 1rem)) rotate(45deg);
-}
+    button[aria-haspopup="listbox"] {
+        anchor-name: --list-box-trigger;
+        position: relative;
+        display: inline flex;
+        align-items: center;
+        box-sizing: border-box;
+        height: var(--md-box-height);
+        padding-inline-start: 1rem;
+        padding-inline-end: 3rem;
+        border-radius: 0.5rem;
+        border: 1px solid var(--color-muted);
+        background-color: transparent;
+        color: rgb(var(--rgb-ink));
+        font: inherit;
+        line-height: 1;
+        letter-spacing: 0.02em;
+        cursor: pointer;
+    }
 
-.list-box-trigger[css-size="sm"] {
-  height: var(--css-size-sm-height);
-  padding-inline-end: calc(30 / 16 * 1rem);
-}
+    button[aria-haspopup="listbox"]::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        right: 1rem;
+        bottom: 0;
+        margin: auto 0;
+        width: calc(10 / 16 * 1rem);
+        height: calc(10 / 16 * 1rem);
+        border-right: 0.125rem solid currentcolor;
+        border-bottom: 0.125rem solid currentcolor;
+        transform: translateY(calc(-2 / 16 * 1rem)) rotate(45deg);
+    }
 
-.list-box-trigger[css-size="sm"]::after {
-  right: 0.5rem;
-  width: 0.5rem;
-  height: 0.5rem;
-}
+    button[aria-haspopup="listbox"][data-size="sm"] {
+        height: var(--sm-box-height);
+        padding-inline-end: calc(30 / 16 * 1rem);
+    }
 
-.list-box-trigger:not([css-size]),
-.list-box-trigger[css-size="md"] {
-  height: var(--css-size-md-height);
-}
+    button[aria-haspopup="listbox"][data-size="sm"]::after {
+        right: 0.5rem;
+        width: 0.5rem;
+        height: 0.5rem;
+    }
 
-.list-box-trigger[css-size="lg"] {
-  height: var(--css-size-lg-height);
-}
+    button[aria-haspopup="listbox"]:not([data-size]),
+    button[aria-haspopup="listbox"][data-size="md"] {
+        height: var(--md-box-height);
+    }
 
-.list-box:popover-open + .list-box-trigger::after {
-  transform: translateY(0.125rem) rotate(225deg);
-}
+    button[aria-haspopup="listbox"][data-size="lg"] {
+        height: var(--lg-box-height);
+    }
 
-@media (hover: hover) {
-  .list-box-trigger:hover {
-    background-color: rgb(var(--rgb-light-gray));
-    border-color: rgb(var(--rgb-border));
-    text-decoration: underline;
-    text-underline-offset: calc(3 / 16 * 1rem);
-  }
-}
+    [role="listbox"]:popover-open + button[aria-haspopup="listbox"]::after {
+        transform: translateY(0.125rem) rotate(225deg);
+    }
 
-.list-box-trigger:focus-visible {
-  outline: 0.125rem solid rgb(var(--rgb-border));
-  outline-offset: 0.125rem;
-  background-color: rgb(var(--rgb-focus));
-  box-shadow: 0 0 0 0.125rem rgb(var(--rgb-focus));
-}
+    @media (hover: hover) {
+        button[aria-haspopup="listbox"]:hover {
+            background-color: rgb(var(--rgb-light-gray) / 0.3);
+            border-color: rgb(var(--rgb-border));
+            text-decoration: underline;
+            text-underline-offset: calc(3 / 16 * 1rem);
+        }
+    }
 
-.list-box {
-  position-anchor: --list-box-trigger;
-  position-area: block-end span-inline-start;
-  margin: 0;
-  margin-block-start: 0.25rem;
-  box-sizing: border-box;
-  width: max-content;
-  max-height: calc((8 + 44 * 6.5) / 16 * 1rem);
-  overflow-y: auto;
-  border-radius: 0.5rem;
-  border: 1px solid var(--color-muted);
-  background-color: var(--color-background);
-  padding: 0.5rem 0;
-  box-shadow: var(--elevation-1);
-  list-style-type: none;
-  color: rgb(var(--rgb-ink));
-  font-weight: normal;
-  font-size: var(--css-typography-text-flush-2-font-size);
-  line-height: var(--css-typography-text-flush-2-line-height);
-  letter-spacing: var(--css-typography-text-flush-2-letter-spacing);
-}
+    button[aria-haspopup="listbox"]:focus-visible {
+        outline: 0.125rem solid rgb(var(--rgb-border));
+        outline-offset: 0.125rem;
+        background-color: rgb(var(--rgb-focus));
+        color: rgb(var(--rgb-black));
+        box-shadow: 0 0 0 0.125rem rgb(var(--rgb-focus));
+    }
 
-.list-box [role="option"],
-.list-box [role="presentation"] {
-  display: flex;
-  align-items: center;
-  column-gap: 0.5rem;
-  box-sizing: border-box;
-  width: 100%;
-  min-height: calc(44 / 16 * 1rem);
-  padding: calc(10 / 16 * 1rem) 1rem;
-  color: inherit;
-  font: inherit;
-  letter-spacing: inherit;
-  cursor: default;
-}
+    [role="listbox"] {
+        position-anchor: --list-box-trigger;
+        position-area: block-end span-inline-start;
+        margin: 0;
+        margin-block-start: 0.25rem;
+        box-sizing: border-box;
+        width: max-content;
+        max-height: calc((8 + 44 * 6.5) / 16 * 1rem);
+        overflow-y: auto;
+        border-radius: 0.5rem;
+        border: 1px solid var(--color-muted);
+        background-color: var(--color-background);
+        padding: 0.5rem 0;
+        box-shadow: var(--elevation-1);
+        list-style-type: none;
+        color: rgb(var(--rgb-ink));
+        font-weight: normal;
+        font-size: var(--md-font-size);
+        line-height: var(--md-line-height);
+        letter-spacing: var(--md-letter-spacing);
+    }
 
-.list-box [role="option"]::before {
-  content: "";
-  display: inline-block;
-  width: 1em;
-  flex-shrink: 0;
-}
+    [role="listbox"] [role="option"],
+    [role="listbox"] [role="presentation"] {
+        display: flex;
+        align-items: center;
+        column-gap: 0.5rem;
+        box-sizing: border-box;
+        width: 100%;
+        min-height: calc(44 / 16 * 1rem);
+        padding: calc(10 / 16 * 1rem) 1rem;
+        color: inherit;
+        font: inherit;
+        letter-spacing: inherit;
+        cursor: default;
+    }
 
-.list-box [role="option"][aria-selected="true"]::before {
-  content: "✓";
-}
+    [role="listbox"] [role="option"]::before {
+        content: "";
+        display: inline-block;
+        width: 1em;
+        flex-shrink: 0;
+    }
 
-.list-box [role="option"] button {
-  all: unset;
-  flex: 1;
-  cursor: pointer;
-}
+    [role="listbox"] [role="option"][aria-selected="true"]::before {
+        content: "✓";
+    }
 
-@media (hover: hover) {
-  .list-box [role="option"]:hover {
-    background-color: rgb(var(--rgb-light-gray));
-  }
-}
+    [role="listbox"] [role="option"] button {
+        all: unset;
+        flex: 1;
+        cursor: pointer;
+    }
 
-.list-box [role="option"]:focus-visible,
-.list-box [role="option"] button:focus-visible {
-  position: relative;
-  z-index: 1;
-  outline: 0.125rem solid rgb(var(--rgb-border));
-  outline-offset: 0.125rem;
-  background-color: rgb(var(--rgb-focus));
+    @media (hover: hover) {
+        [role="listbox"] [role="option"]:hover {
+            background-color: rgb(var(--rgb-light-gray) / 0.3);
+        }
+    }
+
+    [role="listbox"] [role="option"]:focus-visible,
+    [role="listbox"] [role="option"] button:focus-visible {
+        position: relative;
+        z-index: 1;
+        outline: 0.125rem solid rgb(var(--rgb-border));
+        outline-offset: 0.125rem;
+        background-color: rgb(var(--rgb-focus));
+        color: rgb(var(--rgb-black));
+    }
+
 }

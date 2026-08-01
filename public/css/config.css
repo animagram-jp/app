@@ -1,337 +1,274 @@
-:root {
-    /*
-     * Source: Color Universal Design Recommended Color Set ver.3
-     * CUDO (Color Universal Design Organization)
-     * https://cudo.jp/wp-content/uploads/2016/07/CUD%E6%8E%A8%E5%A5%A8%E9%85%8D%E8%89%B2%E3%82%BB%E3%83%83%E3%83%88%E3%82%AC%E3%82%A4%E3%83%89%E3%83%96%E3%83%83%E3%82%AF.pdf
-     * Per-color comments: JPMA color chip no. (Munsell notation), CMYK
-     */
+@layer css.config {
 
-    /* Accent colors: high-saturation colors for small areas like signage and graphs */
-    --rgb-accent-red: 255 40 0; /* G08-50V (8.75R 5/12), CMYK 0,75,95,0 (or 0.75,90,0) */
-    --rgb-accent-yellow: 250 245 0; /* G27-85V (7.5Y 8.5/12), CMYK 0,0,100,0 */
-    --rgb-accent-green: 53 161 107; /* G47-60T (7.5G 6/10), CMYK 75,0,65,0 */
-    --rgb-accent-blue: 0 65 255; /* G77-40V (7.5PB 4/12), CMYK 100,45,0,0 */
-    --rgb-accent-sky: 102 204 255; /* G69-70P (10B 7/18), CMYK 55,0,0,0 */
-    --rgb-accent-pink: 255 153 160; /* G02-70T (2.5R 7/10), CMYK 0,55,35,0 */
-    --rgb-accent-orange: 255 153 0; /* G15-65X (5YR 6.5/14), CMYK 0,45,100,0 */
-    --rgb-accent-purple: 154 0 121; /* G89-40T (10P 4/10), CMYK 30,95,0,0 */
-    --rgb-accent-brown: 102 51 0; /* G09-30L (10R 3/6), CMYK 55,90,100,0 */
-
-    /* Base colors: low-saturation colors for large areas like maps and diagrams */
-    --rgb-base-light-pink: 255 209 209; /* G05-80L (5R 8/6), CMYK 0,25,15,0 */
-    --rgb-base-cream: 255 255 153; /* G25-90H (5Y 9/4), CMYK 0,0,40,0 */
-    --rgb-base-light-yellow-green: 203 242 102; /* G32-80P (2.5GY 8/8), CMYK 25,0,80,0 */
-    --rgb-base-light-sky: 180 235 250; /* G69-80H (10B 8/4), CMYK 30,0,0,0 */
-    --rgb-base-beige: 237 197 143; /* G19-75L (10YR 7.5/6), CMYK 0,25,45,0 */
-    --rgb-base-light-green: 135 231 176; /* G42-70H (2.5G 7/4), CMYK 45,0,45,0 */
-    --rgb-base-light-purple: 199 178 222; /* G82-70H (2.5P 7/4), CMYK 25,30,0,0 */
-
-    /* Achromatic colors */
-    --rgb-white: 255 255 255; /* GN93 (N9.3), CMYK 0,0,0,0 */
-    --rgb-light-gray: 200 200 203; /* G75-80B (5PB 8/1), CMYK 15,10,10,0 */
-    --rgb-gray: 127 135 143; /* G75-50D (5PB 5/2), CMYK 18,10,0,55 */
-    --rgb-black: 0 0 0; /* GN-15 (N1.5), CMYK 50,50,50,100 (or 0,0,0,100) */
-
-    color-scheme: light dark;
-    /*
-     * Status colors: for non-text use only — border, icon, background fill.
-     * FAQ: text/symbols should always be black or white, never an accent color.
-     * Kept at full CUD saturation, NOT darkened for WCAG's non-text 3:1 —
-     * yellow in particular is high-luminance by nature (contrast vs white is
-     * only 1.16), and darkening it to force 3:1 fights the CUD set's own
-     * design intent (high-chroma colors for small, eye-catching signage/
-     * graph marks). Per the same FAQ, any element using these colors as a
-     * border/icon/fill MUST be paired with a solid --rgb-ink (black/white)
-     * outline so it stays legible against --color-background regardless of hue.
-     */
-    --rgb-success: var(--rgb-accent-green);
-    --rgb-error: var(--rgb-accent-red);
-    --rgb-focus: var(--rgb-accent-yellow);
-
-    /*
-     * Semantic layer: components reference only these role tokens.
-     * Light/dark mode differences are absorbed here, not at the primitive layer.
-     */
-    --rgb-ink: var(--rgb-black); /* body text */
-    --rgb-border: var(--rgb-black); /* borders — required alongside any base-color fill (low contrast against white); max-contrast since e.g. focus-visible outlines want maximum visibility, not a subtle line */
-    --color-background: rgb(var(--rgb-white));
-    --rgb-emphasis: var(--rgb-accent-blue); /* emphasis — blue reads reliably for P/D-type color vision */
-    --color-emphasis: rgb(var(--rgb-emphasis));
-    /*
-     * --color-emphasis-fill: background for white-text-on-color use (fill
-     * buttons). Same as --color-emphasis in light mode, but dark mode's
-     * --rgb-emphasis (accent-sky) is too light for white text at 4.5:1
-     * (measured 1.8:1) — overridden to blue below, which clears it (6.56:1)
-     * without needing a separate darken ratio.
-     */
-    --color-emphasis-fill: var(--color-emphasis);
-
-    /*
-     * --ratio-emphasis-*: color-mix ratios of --color-emphasis(-fill) against
-     * black, shared by light/dark so only the ratios (not the mix method)
-     * need revisiting if a brand color makes it look off; a perceptual space
-     * (oklch) may be worth switching to at that point.
-     */
-    --ratio-emphasis-hover: 74%;
-    --ratio-emphasis-active: 50%;
-    --color-emphasis-hover: color-mix(in srgb, var(--color-emphasis) var(--ratio-emphasis-hover), black);
-    --color-emphasis-active: color-mix(in srgb, var(--color-emphasis) var(--ratio-emphasis-active), black);
-    --color-emphasis-fill-hover: color-mix(in srgb, var(--color-emphasis-fill) var(--ratio-emphasis-hover), black);
-    --color-emphasis-fill-active: color-mix(in srgb, var(--color-emphasis-fill) var(--ratio-emphasis-active), black);
-
-    /*
-     * Hover/active highlight for outline/text variants: a translucent wash
-     * of --rgb-ink over the button's own background, not a tint of
-     * --rgb-emphasis. An emphasis-colored wash sits too close in luminance to
-     * the emphasis-colored text once darkened toward a dark background, and
-     * fails contrast against it. --rgb-ink inverts between schemes already,
-     * so one alpha ramp works for both: it darkens a light surface and lightens a dark one.
-     */
-    --alpha-highlight-weak: 8%;
-    --alpha-highlight-strong: 16%;
-
-    /*
-     * --color-muted: de-emphasized text (support/helper copy) that still
-     * meets AA (4.5:1) against --color-background. Derived from --rgb-ink
-     * via color-mix so it inverts automatically in dark mode, unlike a fixed
-     * gray primitive.
-     */
-    --ratio-muted: 55%;
-    --color-muted: color-mix(in srgb, rgb(var(--rgb-ink)) var(--ratio-muted), var(--color-background));
-}
-
-@media (prefers-color-scheme: dark) {
     :root {
-        --rgb-ink: var(--rgb-white);
-        --rgb-border: var(--rgb-white);
-        --color-background: rgb(var(--rgb-black));
-        --rgb-emphasis: var(--rgb-accent-sky); /* brighter sky-blue reads better than blue on a dark ground */
-        --color-emphasis-fill: rgb(var(--rgb-accent-blue)); /* accent-sky fails 4.5:1 for white text; blue clears it */
+        /*
+        * Source: Color Universal Design Recommended Color Set ver.3
+        * CUDO (Color Universal Design Organization)
+        * https://cudo.jp/wp-content/uploads/2016/07/CUD%E6%8E%A8%E5%A5%A8%E9%85%8D%E8%89%B2%E3%82%BB%E3%83%83%E3%83%88%E3%82%AC%E3%82%A4%E3%83%89%E3%83%96%E3%83%83%E3%82%AF.pdf
+        * Per-color comments: JPMA color chip no. (Munsell notation), CMYK
+        */
+
+        /* Accent colors: high-saturation colors for small areas like signage and graphs */
+        --rgb-accent-red: 255 40 0;     /* G08-50V (8.75R 5/12), CMYK 0,75,95,0 (or 0.75,90,0) */
+        --rgb-accent-yellow: 250 245 0; /* G27-85V (7.5Y 8.5/12), CMYK 0,0,100,0 */
+        --rgb-accent-green: 53 161 107; /* G47-60T (7.5G 6/10), CMYK 75,0,65,0 */
+        --rgb-accent-blue: 0 65 255;    /* G77-40V (7.5PB 4/12), CMYK 100,45,0,0 */
+        --rgb-accent-sky: 102 204 255;  /* G69-70P (10B 7/18), CMYK 55,0,0,0 */
+        --rgb-accent-pink: 255 153 160; /* G02-70T (2.5R 7/10), CMYK 0,55,35,0 */
+        --rgb-accent-orange: 255 153 0; /* G15-65X (5YR 6.5/14), CMYK 0,45,100,0 */
+        --rgb-accent-purple: 154 0 121; /* G89-40T (10P 4/10), CMYK 30,95,0,0 */
+        --rgb-accent-brown: 102 51 0;   /* G09-30L (10R 3/6), CMYK 55,90,100,0 */
+
+        /* Base colors: low-saturation colors for large areas like maps and diagrams */
+        --rgb-base-light-pink: 255 209 209;   /* G05-80L (5R 8/6), CMYK 0,25,15,0 */
+        --rgb-base-cream: 255 255 153;        /* G25-90H (5Y 9/4), CMYK 0,0,40,0 */
+        --rgb-base-light-yellow-green: 203 242 102; /* G32-80P (2.5GY 8/8), CMYK 25,0,80,0 */
+        --rgb-base-light-sky: 180 235 250;    /* G69-80H (10B 8/4), CMYK 30,0,0,0 */
+        --rgb-base-beige: 237 197 143;        /* G19-75L (10YR 7.5/6), CMYK 0,25,45,0 */
+        --rgb-base-light-green: 135 231 176;  /* G42-70H (2.5G 7/4), CMYK 45,0,45,0 */
+        --rgb-base-light-purple: 199 178 222; /* G82-70H (2.5P 7/4), CMYK 25,30,0,0 */
+
+        /* Achromatic colors */
+        --rgb-white: 255 255 255;      /* GN93 (N9.3), CMYK 0,0,0,0 */
+        --rgb-light-gray: 200 200 203; /* G75-80B (5PB 8/1), CMYK 15,10,10,0 */
+        --rgb-gray: 127 135 143;       /* G75-50D (5PB 5/2), CMYK 18,10,0,55 */
+        --rgb-black: 0 0 0;            /* GN-15 (N1.5), CMYK 50,50,50,100 (or 0,0,0,100) */
+
+        color-scheme: light dark;
+
+        /*
+        * Status colors: for non-text use only — border, icon, background fill.
+        * FAQ: text/symbols should always be black or white, never an accent color.
+        * Kept at full CUD saturation, NOT darkened for WCAG's non-text 3:1 —
+        * yellow in particular is high-luminance by nature (contrast vs white is
+        * only 1.16), and darkening it to force 3:1 fights the CUD set's own
+        * design intent (high-chroma colors for small, eye-catching signage/
+        * graph marks). Per the same FAQ, any element using these colors as a
+        * border/icon/fill MUST be paired with a solid --rgb-ink (black/white)
+        * outline so it stays legible against --color-background regardless of hue.
+        */
+        --rgb-success: var(--rgb-accent-green);
+        --rgb-error: var(--rgb-accent-red);
+        --rgb-focus: var(--rgb-accent-yellow);
+
+        /*
+        * Semantic layer: components reference only these role tokens.
+        * Light/dark mode differences are absorbed here, not at the primitive layer.
+        */
+        --rgb-ink: var(--rgb-black);
+        --rgb-background: var(--rgb-white);
+        /* borders — required alongside any base-color fill (low contrast against white); max-contrast since e.g. focus-visible outlines want maximum visibility, not a subtle line */
+        --rgb-border: var(--rgb-black);
+        /* emphasis — blue reads reliably for P/D-type color vision */
+        --rgb-emphasis: var(--rgb-accent-blue);
+        --rgb-emphasis-fill: var(--rgb-emphasis);
+
+        /*
+        * Hover/active highlight for outline/text variants: a translucent wash
+        * of --rgb-ink over the button's own background, not a tint of
+        * --rgb-emphasis. An emphasis-colored wash sits too close in luminance to
+        * the emphasis-colored text once darkened toward a dark background, and
+        * fails contrast against it. --rgb-ink inverts between schemes already,
+        * so one alpha ramp works for both: it darkens a light surface and lightens a dark one.
+        */
+        --alpha-highlight-weak: 8%;
+        --alpha-highlight-strong: 16%;
     }
-}
 
-:root {
-    --font-family-sans: "IBM Plex Sans", "BIZ UDGothic", "Noto Sans JP","Hiragino Sans", sans-serif;
-    --font-family-mono: "Noto Sans Mono", "Noto Sans JP", monospace;
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --rgb-ink: var(--rgb-white);
+            --rgb-background: var(--rgb-black);
+            --rgb-border: var(--rgb-white);
+            /* brighter sky-blue reads better than blue on a dark ground */
+            --rgb-emphasis: var(--rgb-accent-sky);
+            /* accent-sky fails 4.5:1 for white text; blue clears it */
+            --rgb-emphasis-fill: rgb(var(--rgb-accent-blue));
+        }
+    }
 
-    --css-typography-display-1-font-size: 4rem;
-    --css-typography-display-1-line-height: 1.4;
-    --css-typography-display-1-letter-spacing: 0;
+    :root {
+        --xs-box-height: 1.75rem;
+        --xs-font-size: 0.85rem;
+        --xs-letter-spacing: 0.02rem;
+        --xs-line-height: 1.5rem;
 
-    --css-typography-display-2-font-size: calc(57 / 16 * 1rem);
-    --css-typography-display-2-line-height: 1.4;
-    --css-typography-display-2-letter-spacing: 0;
+        --sm-box-height: 2.5rem;
+        --sm-font-size: 0.85rem;
+        --sm-letter-spacing: 0.02em;
+        --sm-line-height: 1.5rem;
 
-    --css-typography-display-3-font-size: 3rem;
-    --css-typography-display-3-line-height: 1.4;
-    --css-typography-display-3-letter-spacing: 0;
+        --md-box-height: 3rem;
+        --md-font-size: 1rem;
+        --md-letter-spacing: 0;
+        --md-line-height: 1.5rem;
 
-    --css-typography-heading-1-font-size: calc(45 / 16 * 1rem);
-    --css-typography-heading-1-line-height: 1.4;
-    --css-typography-heading-1-letter-spacing: 0;
+        --lg-box-height: 3.5rem;
+        --lg-font-size: 1.15rem;
+        --lg-letter-spacing: 0;
+        --lg-line-height: 1.725rem;
 
-    --css-typography-heading-2-font-size: calc(36 / 16 * 1rem);
-    --css-typography-heading-2-line-height: 1.4;
-    --css-typography-heading-2-letter-spacing: 0.01em;
+        --xl-box-height: 4rem;
+        --xl-font-size: 1.5rem;
+        --xl-letter-spacing: 0;
+        --xl-line-height: 2.25rem;
 
-    --css-typography-heading-3-font-size: 2rem;
-    --css-typography-heading-3-line-height: 1.5;
-    --css-typography-heading-3-letter-spacing: 0.01em;
+        --2xl-box-height: 4.75rem;
+        --2xl-font-size: 2rem;
+        --2xl-letter-spacing: 0;
+        --2xl-line-height: 3rem;
 
-    --css-typography-heading-4-font-size: calc(28 / 16 * 1rem);
-    --css-typography-heading-4-line-height: 1.5;
-    --css-typography-heading-4-letter-spacing: 0.01em;
+        --font-family-sans: "IBM Plex Sans", "BIZ UDGothic", "Noto Sans JP", "Hiragino Sans", sans-serif;
+        --font-family-mono: "Noto Sans Mono", "Noto Sans JP", monospace;
 
-    --css-typography-heading-5-font-size: calc(26 / 16 * 1rem);
-    --css-typography-heading-5-line-height: 1.5;
-    --css-typography-heading-5-letter-spacing: 0.02em;
+        --elevation-1:
+            0 2px 8px 1px rgb(var(--rgb-black) / 0.1), 0 1px 5px 0 rgb(var(--rgb-black) / 0.3);
+        --elevation-2:
+            0 2px 12px 2px rgb(var(--rgb-black) / 0.1), 0 1px 6px 0 rgb(var(--rgb-black) / 0.3);
+    }
 
-    --css-typography-heading-6-font-size: 1.5rem;
-    --css-typography-heading-6-line-height: 1.5;
-    --css-typography-heading-6-letter-spacing: 0.02em;
+    *,
+    ::before,
+    ::after {
+        box-sizing: border-box;
+    }
 
-    --css-typography-heading-7-font-size: calc(22 / 16 * 1rem);
-    --css-typography-heading-7-line-height: 1.5;
-    --css-typography-heading-7-letter-spacing: 0.02em;
+    html {
+        scrollbar-gutter: stable;
+        font-family: var(--font-family-sans);
+    }
 
-    --css-typography-heading-8-font-size: calc(20 / 16 * 1rem);
-    --css-typography-heading-8-line-height: 1.5;
-    --css-typography-heading-8-letter-spacing: 0.02em;
+    @media print {
+        html {
+            font-size: 14pt;
+        }
+    }
 
-    --css-typography-heading-9-font-size: calc(18 / 16 * 1rem);
-    --css-typography-heading-9-line-height: 1.6;
-    --css-typography-heading-9-letter-spacing: 0.02em;
+    html:has(:modal) {
+        overflow: clip;
+        scrollbar-gutter: auto;
+    }
 
-    --css-typography-text-normal-1-font-size: calc(17 / 16 * 1rem);
-    --css-typography-text-normal-1-line-height: 1.7;
-    --css-typography-text-normal-1-letter-spacing: 0.02em;
+    body {
+        --color-ink: rgb(var(--rgb-ink));
+        --color-background: rgb(var(--rgb-background));
+        --color-emphasis: rgb(var(--rgb-emphasis));
 
-    --css-typography-text-normal-2-font-size: 1rem;
-    --css-typography-text-normal-2-line-height: 1.7;
-    --css-typography-text-normal-2-letter-spacing: 0.02em;
+        /*
+        * --color-emphasis-fill: background for white-text-on-color use (fill
+        * buttons). Same as --color-emphasis in light mode, but dark mode's
+        * --rgb-emphasis (accent-sky) is too light for white text at 4.5:1
+        * (measured 1.8:1) — overridden to blue below, which clears it (6.56:1)
+        * without needing a separate darken ratio.
+        */
+        --color-emphasis-fill: rgb(var(--rgb-emphasis-fill));
+        --color-focus: rgb(var(--rgb-focus));
+        --color-border: rgb(var(--rgb-border));
 
-    --css-typography-text-normal-3-font-size: 1rem;
-    --css-typography-text-normal-3-line-height: 1.75;
-    --css-typography-text-normal-3-letter-spacing: 0.02em;
+        /*
+        * --ratio-emphasis-*: color-mix ratios of --color-emphasis(-fill) against
+        * black, shared by light/dark so only the ratios (not the mix method)
+        * need revisiting if a brand color makes it look off; a perceptual space
+        * (oklch) may be worth switching to at that point.
+        */
+        --ratio-emphasis-hover: 74%;
+        --ratio-emphasis-active: 50%;
+        --color-emphasis-hover: color-mix(in srgb, var(--color-emphasis) var(--ratio-emphasis-hover), black);
+        --color-emphasis-active: color-mix(in srgb, var(--color-emphasis) var(--ratio-emphasis-active), black);
+        --color-emphasis-fill-hover: color-mix(in srgb, var(--color-emphasis-fill) var(--ratio-emphasis-hover), black);
+        --color-emphasis-fill-active: color-mix(in srgb, var(--color-emphasis-fill) var(--ratio-emphasis-active), black);
 
-    --css-typography-text-tight-1-font-size: calc(17 / 16 * 1rem);
-    --css-typography-text-tight-1-line-height: 1.3;
-    --css-typography-text-tight-1-letter-spacing: 0;
+        /*
+        * --color-muted: de-emphasized text (support/helper copy) that still
+        * meets AA (4.5:1) against --color-background. Derived from --rgb-ink
+        * via color-mix so it inverts automatically in dark mode, unlike a fixed
+        * gray primitive.
+        */
+        --ratio-muted: 55%;
+        --color-muted: color-mix(in srgb, rgb(var(--rgb-ink)) var(--ratio-muted), var(--color-background));
 
-    --css-typography-text-tight-2-font-size: calc(17 / 16 * 1rem);
-    --css-typography-text-tight-2-line-height: 1.2;
-    --css-typography-text-tight-2-letter-spacing: 0;
+        margin: 0;
+        color: var(--color-ink);
+        background: var(--color-background);
+    }
 
-    --css-typography-text-tight-3-font-size: 1rem;
-    --css-typography-text-tight-3-line-height: 1.3;
-    --css-typography-text-tight-3-letter-spacing: 0;
+    body:has(:modal) {
+        overflow: auto;
+        scrollbar-gutter: stable;
+    }
 
-    --css-typography-text-tight-4-font-size: 1rem;
-    --css-typography-text-tight-4-line-height: 1.2;
-    --css-typography-text-tight-4-letter-spacing: 0;
+    [hidden],
+    .hidden {
+        display: none !important;
+    }
 
-    --css-typography-text-tight-5-font-size: calc(14 / 16 * 1rem);
-    --css-typography-text-tight-5-line-height: 1.3;
-    --css-typography-text-tight-5-letter-spacing: 0;
+    :where(a):any-link {
+        color: var(--color-emphasis);
+        text-decoration: underline;
+        text-decoration-thickness: 0.0625rem;
+        text-underline-offset: 0.1875rem;
+    }
 
-    --css-typography-text-tight-6-font-size: calc(14 / 16 * 1rem);
-    --css-typography-text-tight-6-line-height: 1.2;
-    --css-typography-text-tight-6-letter-spacing: 0;
+    :where(a):visited {
+        color: rgb(var(--rgb-accent-purple));
+    }
 
-    --css-typography-text-flush-1-font-size: calc(17 / 16 * 1rem);
-    --css-typography-text-flush-1-line-height: 1;
-    --css-typography-text-flush-1-letter-spacing: 0.02em;
+    @media (hover: hover) {
+        :where(a):hover {
+            color: var(--color-emphasis-hover);
+            text-decoration-thickness: 0.1875rem;
+        }
+    }
 
-    --css-typography-text-flush-2-font-size: 1rem;
-    --css-typography-text-flush-2-line-height: 1;
-    --css-typography-text-flush-2-letter-spacing: 0.02em;
+    :where(a):active {
+        color: var(--color-emphasis-active);
+        text-decoration-thickness: 0.0625rem;
+    }
 
-    --css-typography-text-flush-3-font-size: calc(14 / 16 * 1rem);
-    --css-typography-text-flush-3-line-height: 1;
-    --css-typography-text-flush-3-letter-spacing: 0.02em;
+    :focus-visible {
+        outline: 0.125rem solid var(--color-border);
+        outline-offset: 0.125rem;
+        border-radius: 0.25rem;
+        box-shadow: 0 0 0 0.125rem var(--color-focus);
+    }
 
-    --css-typography-monospace-1-font-size: calc(17 / 16 * 1rem);
-    --css-typography-monospace-1-line-height: 1.5;
-    --css-typography-monospace-1-letter-spacing: 0;
+    .visually-hidden {
+        clip: rect(0 0 0 0) !important;
+        clip-path: inset(50%) !important;
+        height: 1px !important;
+        overflow: hidden !important;
+        position: absolute !important;
+        white-space: nowrap !important;
+        width: 1px !important;
+    }
 
-    --css-typography-monospace-2-font-size: 1rem;
-    --css-typography-monospace-2-line-height: 1.5;
-    --css-typography-monospace-2-letter-spacing: 0;
+    :where(.focus-outline):focus-visible {
+        outline: 0.125rem solid var(--color-border) !important;
+        outline-offset: 0.125rem !important;
+        border-radius: 0.25rem !important;
+        background-color: var(--color-focus) !important;
+        box-shadow: 0 0 0 0.125rem var(--color-focus) !important;
+    }
 
-    --css-typography-monospace-3-font-size: calc(14 / 16 * 1rem);
-    --css-typography-monospace-3-line-height: 1.5;
-    --css-typography-monospace-3-letter-spacing: 0;
+    @supports selector(:has(*)) {
+        :where(.focus-within-outline):focus-visible,
+        :where(.focus-within-outline):has(:focus-visible) {
+            outline: 0.125rem solid var(--color-border) !important;
+            outline-offset: 0.125rem !important;
+            border-radius: 0.25rem !important;
+            background-color: var(--color-focus) !important;
+            box-shadow: 0 0 0 0.125rem var(--color-focus) !important;
+        }
+    }
 
-    --css-size-xs-height: 1.75rem;
-    --css-size-xs-padding-block: 0.125rem;
-    --css-size-xs-padding-inline: 0.5rem;
+    @supports not selector(:has(*)) {
+        :where(.focus-within-outline):focus-within {
+            outline: 0.125rem solid var(--color-border) !important;
+            outline-offset: 0.125rem !important;
+            border-radius: 0.25rem !important;
+            background-color: var(--color-focus) !important;
+            box-shadow: 0 0 0 0.125rem var(--color-focus) !important;
+        }
+    }
 
-    --css-size-sm-height: 2.5rem;
-    --css-size-md-height: 3rem;
-    --css-size-lg-height: 3.5rem;
-
-    --elevation-1:
-        0 2px 8px 1px rgb(var(--rgb-black) / 0.1), 0 1px 5px 0 rgb(var(--rgb-black) / 0.3);
-    --elevation-2:
-        0 2px 12px 2px rgb(var(--rgb-black) / 0.1), 0 1px 6px 0 rgb(var(--rgb-black) / 0.3);
-}
-
-*, ::before, ::after {
-    box-sizing: border-box;
-    line-height: 1.5;
-}
-
-[hidden], .hidden {
-  display: none !important;
-}
-
-body {
-    --color-ink: rgb(var(--rgb-ink));
-    margin: 0;
-    background: var(--color-background);
-    color: var(--color-ink);
-}
-
-html {
-  scrollbar-gutter: stable;
-  font-family: var(--font-family-sans);
-}
-
-html:has(:modal) {
-  overflow: clip;
-  scrollbar-gutter: auto;
-}
-
-body:has(:modal) {
-  overflow: auto;
-  scrollbar-gutter: stable;
-}
-
-:where(a):any-link {
-  color: var(--color-emphasis);
-  text-decoration: underline;
-  text-decoration-thickness: calc(1 / 16 * 1rem);
-  text-underline-offset: calc(3 / 16 * 1rem);
-}
-
-:where(a):visited {
-  color: rgb(var(--rgb-accent-purple));
-}
-
-@media (hover: hover) {
-  :where(a):hover {
-    color: var(--color-emphasis-hover);
-    text-decoration-thickness: calc(3 / 16 * 1rem);
-  }
-}
-
-:where(a):active {
-  color: rgb(var(--rgb-accent-orange));
-  text-decoration-thickness: calc(1 / 16 * 1rem);
-}
-
-:focus-visible {
-  outline: 0.125rem solid rgb(var(--rgb-border));
-  outline-offset: 0.125rem;
-  border-radius: 0.25rem;
-  box-shadow: 0 0 0 0.125rem rgb(var(--rgb-focus));
-}
-
-.css-visually-hidden {
-  clip: rect(0 0 0 0) !important;
-  clip-path: inset(50%) !important;
-  height: 1px !important;
-  overflow: hidden !important;
-  position: absolute !important;
-  white-space: nowrap !important;
-  width: 1px !important;
-}
-
-:where(.css-focus-outline):focus-visible {
-  outline: 0.125rem solid rgb(var(--rgb-border)) !important;
-  outline-offset: 0.125rem !important;
-  border-radius: 0.25rem !important;
-  background-color: rgb(var(--rgb-focus)) !important;
-  box-shadow: 0 0 0 0.125rem rgb(var(--rgb-focus)) !important;
-}
-
-@supports selector(:has(*)) {
-  :where(.css-focus-within-outline):focus-visible,
-  :where(.css-focus-within-outline):has(:focus-visible) {
-    outline: 0.125rem solid rgb(var(--rgb-border)) !important;
-    outline-offset: 0.125rem !important;
-    border-radius: 0.25rem !important;
-    background-color: rgb(var(--rgb-focus)) !important;
-    box-shadow: 0 0 0 0.125rem rgb(var(--rgb-focus)) !important;
-  }
-}
-
-@supports not selector(:has(*)) {
-  :where(.css-focus-within-outline):focus-within {
-    outline: 0.125rem solid rgb(var(--rgb-border)) !important;
-    outline-offset: 0.125rem !important;
-    border-radius: 0.25rem !important;
-    background-color: rgb(var(--rgb-focus)) !important;
-    box-shadow: 0 0 0 0.125rem rgb(var(--rgb-focus)) !important;
-  }
 }

@@ -1,26 +1,30 @@
-.css-hr {
-  margin: 0;
-  border: 0;
-  border-top: 1px solid var(--color-emphasis);
-  opacity: 1;
-}
+@layer css.components {
 
-.css-hr[css-type="dashed"] {
-  border-top-style: dashed;
-}
+    hr {
+        margin: 0;
+        border: 0;
+        border-top: 1px solid var(--color-emphasis);
+        opacity: 1;
+    }
 
-.css-hr[css-width="1"] {
-  border-top-width: 1px;
-}
+    hr[data-type="dashed"] {
+        border-top-style: dashed;
+    }
 
-.css-hr[css-width="2"] {
-  border-top-width: 2px;
-}
+    hr[data-width="1"] {
+        border-top-width: 1px;
+    }
 
-.css-hr[css-width="3"] {
-  border-top-width: 3px;
-}
+    hr[data-width="2"] {
+        border-top-width: 2px;
+    }
 
-.css-hr[css-width="4"] {
-  border-top-width: 4px;
+    hr[data-width="3"] {
+        border-top-width: 3px;
+    }
+
+    hr[data-width="4"] {
+        border-top-width: 4px;
+    }
+
 }

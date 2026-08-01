@@ -1,205 +1,206 @@
-.css-table {
-  --_border-color: var(--color-muted);
-  --_padding: calc(20 / 16 * 1rem) 0.5rem;
-  margin: 0;
-  max-width: 100%;
-  border-collapse: collapse;
-  color: rgb(var(--rgb-ink));
-  font-weight: normal;
-  font-size: var(--css-typography-text-normal-2-font-size);
-  line-height: var(--css-typography-text-normal-2-line-height);
-  font-family: var(--font-family-sans);
-  letter-spacing: var(--css-typography-text-normal-2-letter-spacing);
-}
+@layer css.components {
 
-.css-table[css-type="dense"] {
-  --_padding: 0.75rem 0.1rem;
-  line-height: var(--css-typography-text-tight-3-line-height);
-}
+    table {
+        --border-color: var(--color-muted);
+        --padding: calc(20 / 16 * 1rem) 0.5rem;
+        margin: 0;
+        max-width: 100%;
+        border-collapse: collapse;
+        color: rgb(var(--rgb-ink));
+        font-weight: normal;
+        font-size: var(--md-font-size);
+        line-height: var(--md-line-height);
+        font-family: var(--font-family-sans);
+        letter-spacing: var(--md-letter-spacing);
+    }
 
-.css-table caption {
-  font-weight: bold;
-  font-size: var(--css-typography-text-normal-1-font-size);
-  text-align: left;
-  margin-bottom: 1rem;
-}
+    table[data-type="dense"] {
+        --padding: 0.75rem 0.1rem;
+        line-height: var(--md-line-height);
+    }
 
-.css-table :is(td, th) {
-  padding: var(--_padding);
-  text-align: left;
-  vertical-align: baseline;
-}
+    table caption {
+        font-weight: bold;
+        font-size: var(--md-font-size);
+        text-align: left;
+        margin-bottom: 1rem;
+    }
 
-.css-table th {
-  font-weight: bold;
-}
+    table :is(td, th) {
+        padding: var(--padding);
+        text-align: left;
+        vertical-align: baseline;
+    }
 
-.css-table thead th {
-  --_border-color: var(--color-muted);
-  background-color: rgb(var(--rgb-light-gray) / 0.3);
-  color: rgb(var(--rgb-ink));
-}
+    table th {
+        font-weight: bold;
+    }
 
-.css-table tbody th {
-  --_border-color: var(--color-muted);
-  background-color: rgb(var(--rgb-light-gray) / 0.3);
-  color: rgb(var(--rgb-ink));
-}
+    table thead th {
+        --border-color: var(--color-muted);
+        background-color: rgb(var(--rgb-light-gray) / 0.3);
+        color: rgb(var(--rgb-ink));
+    }
 
-/* Stripe */
+    table tbody th {
+        --border-color: var(--color-muted);
+        background-color: rgb(var(--rgb-light-gray) / 0.3);
+        color: rgb(var(--rgb-ink));
+    }
 
-.css-table[css-stripe] {
-  --_border-color: var(--color-muted);
-}
+    /* Stripe */
 
-.css-table[css-stripe] tr:nth-child(even) {
-  background-color: rgb(var(--rgb-light-gray) / 0.2);
-}
+    table[data-stripe] {
+        --border-color: var(--color-muted);
+    }
 
-/* Hover highlight */
+    table[data-stripe] tr:nth-child(even) {
+        background-color: rgb(var(--rgb-light-gray) / 0.2);
+    }
 
-.css-table[css-hover] {
-  --_border-color: var(--color-muted);
-}
+    /* Hover highlight */
 
-@media (hover: hover) {
-  .css-table[css-hover] tr:hover {
-    background-color: rgb(var(--rgb-emphasis) / 8%);
-  }
-}
+    table[data-hover] {
+        --border-color: var(--color-muted);
+    }
 
-/* With checkbox */
+    @media (hover: hover) {
+        table[data-hover] tr:hover {
+            background-color: rgb(var(--rgb-emphasis) / 8%);
+        }
+    }
 
-.css-table[css-selectable] {
-  --_border-color: var(--color-muted);
-}
+    /* With checkbox */
 
-.css-table[css-selectable] tr:has(:checked) {
-  background-color: rgb(var(--rgb-emphasis) / 15%);
-}
+    table[data-selectable] {
+        --border-color: var(--color-muted);
+    }
 
-@supports (selector(:has(.x))) {
-  .css-table td:has(.css-checkbox:only-child, .css-radio:only-child),
-  .css-table th:has(.css-checkbox:only-child, .css-radio:only-child) {
-    position: relative;
-    box-sizing: border-box;
-    width: 2.5rem;
-    padding: 0;
-  }
+    table[data-selectable] tr:has(:checked) {
+        background-color: rgb(var(--rgb-emphasis) / 15%);
+    }
 
-  .css-table td > :is(.css-checkbox:only-child, .css-radio:only-child),
-  .css-table th > :is(.css-checkbox:only-child, .css-radio:only-child) {
-    position: absolute;
-    inset: 0;
-    display: grid;
-    justify-content: center;
-    width: auto;
-    padding-top: calc(10 / 16 * 1rem);
-  }
-}
+    @supports (selector(:has(.x))) {
+        table :is(td, th):has(> label:only-child > input:is([type="checkbox"]:not([role="switch"]), [type="radio"])) {
+            position: relative;
+            box-sizing: border-box;
+            width: 2.5rem;
+            padding: 0;
+        }
 
-/* Sort */
+        table :is(td, th) > label:only-child:has(> input:is([type="checkbox"]:not([role="switch"]), [type="radio"])) {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: fit-content;
+        }
+    }
 
-.css-table th[css-sort] {
-  --_border-color: var(--color-muted);
-  background-color: rgb(var(--rgb-light-gray) / 0.3);
-  padding: 0.75rem 1rem;
-  color: rgb(var(--rgb-ink));
-  white-space: nowrap;
-}
+    /* Sort */
 
-.css-table[css-type="dense"] th[css-sort] {
-  padding-top: 0;
-  padding-bottom: 0;
-}
+    table th[data-sort] {
+        --border-color: var(--color-muted);
+        background-color: rgb(var(--rgb-light-gray) / 0.3);
+        padding: 0.75rem 1rem;
+        color: rgb(var(--rgb-ink));
+        white-space: nowrap;
+    }
 
-.css-sort {
-  display: inline flex;
-  flex-direction: column;
-  vertical-align: middle;
-  margin-inline-start: 0.25rem;
-}
+    table[data-type="dense"] th[data-sort] {
+        padding-top: 0;
+        padding-bottom: 0;
+    }
 
-:is(.css-sort-up, .css-sort-down) {
-  display: block;
-  width: 1.5rem;
-  height: 0.75rem;
-  border: 0;
-  background-color: transparent;
-  padding: 0;
-  color: var(--color-muted);
-  cursor: pointer;
-}
+    th[data-sort] > div {
+        display: inline flex;
+        flex-direction: column;
+        vertical-align: middle;
+        margin-inline-start: 0.25rem;
+    }
 
-:is(.css-sort-up, .css-sort-down)::after {
-  content: "";
-  display: block;
-  width: 100%;
-  height: 100%;
-  background-color: currentcolor;
-  mask-repeat: no-repeat;
-  mask-position: center;
-  mask-size: contain;
-}
+    button[data-sort-direction] {
+        display: block;
+        width: 1.5rem;
+        height: 0.75rem;
+        border: 0;
+        background-color: transparent;
+        padding: 0;
+        color: var(--color-muted);
+        cursor: pointer;
+    }
 
-.css-sort-up::after {
-  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 12'%3E%3Cpath d='M2 10l10-9 10 9H2z'/%3E%3C/svg%3E");
-}
+    button[data-sort-direction]::after {
+        content: "";
+        display: block;
+        width: 100%;
+        height: 100%;
+        background-color: currentcolor;
+        mask-repeat: no-repeat;
+        mask-position: center;
+        mask-size: contain;
+    }
 
-.css-sort-down::after {
-  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 12'%3E%3Cpath d='M2 2l10 9 10-9H2z'/%3E%3C/svg%3E");
-}
+    button[data-sort-direction="up"]::after {
+        mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 12'%3E%3Cpath d='M2 10l10-9 10 9H2z'/%3E%3C/svg%3E");
+    }
 
-.css-table th[css-sort][aria-sort="ascending"] .css-sort-up,
-.css-table th[css-sort][aria-sort="descending"] .css-sort-down {
-  color: rgb(var(--rgb-ink));
-}
+    button[data-sort-direction="down"]::after {
+        mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 12'%3E%3Cpath d='M2 2l10 9 10-9H2z'/%3E%3C/svg%3E");
+    }
 
-:is(.css-sort-up, .css-sort-down):hover {
-  color: rgb(var(--rgb-ink));
-}
+    th[data-sort][aria-sort="ascending"] button[data-sort-direction="up"],
+    th[data-sort][aria-sort="descending"] button[data-sort-direction="down"] {
+        color: rgb(var(--rgb-ink));
+    }
 
-:is(.css-sort-up, .css-sort-down):focus-visible {
-  outline: 0.125rem solid rgb(var(--rgb-border));
-  outline-offset: 0.125rem;
-  border-radius: 0.125rem;
-  background-color: rgb(var(--rgb-focus));
-  box-shadow: 0 0 0 0.125rem rgb(var(--rgb-focus));
-}
+    button[data-sort-direction]:hover {
+        color: rgb(var(--rgb-ink));
+    }
 
-/* Utilities */
+    button[data-sort-direction]:focus-visible {
+        outline: 0.125rem solid rgb(var(--rgb-border));
+        outline-offset: 0.125rem;
+        border-radius: 0.125rem;
+        background-color: rgb(var(--rgb-focus));
+        box-shadow: 0 0 0 0.125rem rgb(var(--rgb-focus));
+    }
 
-.css-table[css-border=""] :where(td, th) {
-  border: 1px solid var(--_border-color);
-}
+    /* Utilities */
 
-.css-table[css-border~="top"] :where(td, th) {
-  border-top: 1px solid var(--_border-color);
-}
+    table[data-border=""] :where(td, th) {
+        border: 1px solid var(--border-color);
+    }
 
-.css-table[css-border~="right"] :where(td, th) {
-  border-right: 1px solid var(--_border-color);
-}
+    table[data-border~="top"] :where(td, th) {
+        border-top: 1px solid var(--border-color);
+    }
 
-.css-table[css-border~="bottom"] :where(td, th) {
-  border-bottom: 1px solid var(--_border-color);
-}
+    table[data-border~="right"] :where(td, th) {
+        border-right: 1px solid var(--border-color);
+    }
 
-.css-table[css-border~="left"] :where(td, th) {
-  border-left: 1px solid var(--_border-color);
-}
+    table[data-border~="bottom"] :where(td, th) {
+        border-bottom: 1px solid var(--border-color);
+    }
 
-/* Header cell's black border should take precedence over [css-border] */
-.css-table thead tr:last-of-type th {
-  border-bottom: 1px solid rgb(var(--rgb-border));
-}
+    table[data-border~="left"] :where(td, th) {
+        border-left: 1px solid var(--border-color);
+    }
 
-.css-table tbody th:last-of-type {
-  border-right: 1px solid rgb(var(--rgb-border));
-}
+    /* Header cell's black border should take precedence over [data-border] */
+    table thead tr:last-of-type th {
+        border-bottom: 1px solid rgb(var(--rgb-border));
+    }
 
-@media (width >= 40rem) {
-  .css-table {
-    --_padding: calc(20 / 16 * 1rem) 1rem;
-  }
+    table tbody th:last-of-type {
+        border-right: 1px solid rgb(var(--rgb-border));
+    }
+
+    @media (width >= 40rem) {
+        table {
+            --padding: calc(20 / 16 * 1rem) 1rem;
+        }
+    }
+
 }

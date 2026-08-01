@@ -1,96 +1,105 @@
-.css-select {
-    vertical-align: middle;
-    box-sizing: border-box;
-    border-radius: 0.5rem;
-    border: 1px solid var(--color-muted);
-    background-color: var(--color-background);
-    background-image:
-        linear-gradient(45deg,  transparent 50%, rgb(var(--rgb-ink)) 50%),
-        linear-gradient(135deg, rgb(var(--rgb-ink)) 50%, transparent 50%);
-    background-repeat: no-repeat;
-    background-position:
-        calc(100% - 1.5rem) 50%,
-        calc(100% - 1rem) 50%;
-    background-size: 0.5rem 0.5rem;
-    padding-right: 2.5rem;
-    padding-left: 1rem;
-    color: rgb(var(--rgb-ink));
-    font: inherit;
-    line-height: var(--css-typography-text-flush-2-line-height);
-    letter-spacing: inherit;
-    appearance: none;
-}
+/* <select multiple>
+        <option></option></select> */
 
-.css-select[css-size="sm"] {
-  height: var(--css-size-sm-height);
-}
+@layer css.components {
 
-.css-select:not([css-size]),
-.css-select[css-size="md"] {
-  height: var(--css-size-md-height);
-}
+    select:not([data-search-box-scope] select) {
+        vertical-align: middle;
+        box-sizing: border-box;
+        border-radius: 0.5rem;
+        border: 1px solid var(--color-muted);
+        background-color: var(--color-background);
+        background-image:
+            linear-gradient(45deg,  transparent 50%, rgb(var(--rgb-ink)) 50%),
+            linear-gradient(135deg, rgb(var(--rgb-ink)) 50%, transparent 50%);
+        background-repeat: no-repeat;
+        background-position:
+            calc(100% - 1.5rem) 50%,
+            calc(100% - 1rem) 50%;
+        background-size: 0.5rem 0.5rem;
+        padding-right: 2.5rem;
+        color: rgb(var(--rgb-ink));
+        font: inherit;
+        line-height: var(--md-line-height);
+        letter-spacing: inherit;
+        appearance: none;
+    }
 
-.css-select[css-size="lg"] {
-  height: var(--css-size-lg-height);
-}
+    select[data-size="lg"]:not([data-search-box-scope] select) {
+        height: var(--lg-box-height);
+        padding-left: 1rem;
+    }
 
-@media (hover: hover) {
-  .css-select:hover {
-    border-color: rgb(var(--rgb-border));
-  }
-}
+    select:not([data-size], [data-search-box-scope] select),
+    select[data-size="md"]:not([data-search-box-scope] select) {
+        height: var(--md-box-height);
+        padding-left: 1rem;
+    }
 
-.css-select:is(:user-invalid, [aria-invalid="true"]) {
-  border-color: rgb(var(--rgb-error));
-}
+    select[data-size="sm"]:not([data-search-box-scope] select) {
+        height: var(--sm-box-height);
+        padding-left: 0.75rem;
+    }
 
-@media (hover: hover) {
-  .css-select:is(:user-invalid, [aria-invalid="true"]):hover {
-    border-color: rgb(var(--rgb-error));
-  }
-}
+    @media (hover: hover) {
+        select:not([data-search-box-scope] select):hover {
+            border-color: rgb(var(--rgb-border));
+        }
+    }
 
-.css-select:is(:disabled, [aria-disabled="true"]),
-.css-select:is(:disabled, [aria-disabled="true"]):hover {
-  border: 1px solid rgb(var(--rgb-light-gray));
-  background-color: rgb(var(--rgb-light-gray) / 0.3);
-  background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M12 6 21 15 19 17 12 10 5 17 3 15Z' fill='%23949494'/></svg>");
-  color: var(--color-muted);
-}
+    select:not([data-search-box-scope] select):is(:user-invalid, [aria-invalid="true"]) {
+        border-color: rgb(var(--rgb-error));
+    }
 
-@media (forced-colors: active) {
-  .css-select {
-    color: ButtonText;
-    border-color: ButtonText;
-    background-image: none;
-  }
+    @media (hover: hover) {
+        select:not([data-search-box-scope] select):is(:user-invalid, [aria-invalid="true"]):hover {
+            border-color: rgb(var(--rgb-error));
+        }
+    }
 
-  .css-select:is(:disabled, [aria-disabled="true"]),
-  .css-select:is(:disabled, [aria-disabled="true"]):hover {
-    border-color: GrayText;
-    color: GrayText;
-    background-image: none;
-  }
-}
+    select:not([data-search-box-scope] select):is(:disabled, [aria-disabled="true"]),
+    select:not([data-search-box-scope] select):is(:disabled, [aria-disabled="true"]):hover {
+        border: 1px solid rgb(var(--rgb-light-gray));
+        background-color: rgb(var(--rgb-light-gray) / 0.3);
+        background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M12 6 21 15 19 17 12 10 5 17 3 15Z' fill='%23949494'/></svg>");
+        color: var(--color-muted);
+    }
 
-.css-select:open {
-    background-image:
-        linear-gradient(135deg,  transparent 50%, rgb(var(--rgb-ink)) 50%),
-        linear-gradient(45deg, rgb(var(--rgb-ink)) 50%, transparent 50%);
-}
+    @media (forced-colors: active) {
+        select:not([data-search-box-scope] select) {
+            color: ButtonText;
+            border-color: ButtonText;
+            background-image: none;
+        }
 
-.css-select[multiple] {
-  appearance: auto;
-  background-image: none;
-  padding: 0.25rem 0;
-  height: auto;
-}
+        select:not([data-search-box-scope] select):is(:disabled, [aria-disabled="true"]),
+        select:not([data-search-box-scope] select):is(:disabled, [aria-disabled="true"]):hover {
+            border-color: GrayText;
+            color: GrayText;
+            background-image: none;
+        }
+    }
 
-.css-select[multiple] option {
-  padding: calc(6 / 16 * 1rem) 1rem;
-  border-radius: 0.25rem;
-}
+    select:not([data-search-box-scope] select):open {
+        background-image:
+            linear-gradient(135deg,  transparent 50%, rgb(var(--rgb-ink)) 50%),
+            linear-gradient(45deg, rgb(var(--rgb-ink)) 50%, transparent 50%);
+    }
 
-.css-select[multiple] option:checked {
-  background: rgb(var(--rgb-emphasis) / 15%);
+    select[multiple]:not([data-search-box-scope] select) {
+        appearance: auto;
+        background-image: none;
+        padding: 0.25rem 0;
+        height: auto;
+    }
+
+    select[multiple]:not([data-search-box-scope] select) option {
+        padding: calc(6 / 16 * 1rem) 1rem;
+        border-radius: 0.25rem;
+    }
+
+    select[multiple]:not([data-search-box-scope] select) option:checked {
+        background: rgb(var(--rgb-emphasis) / 15%);
+    }
+
 }
