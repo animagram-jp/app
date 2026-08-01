@@ -170,7 +170,7 @@ hgroup[css-rule="6"] .css-h {
 .css-h[css-rule="4"],
 hgroup[css-rule="4"] .css-h {
   border-bottom-width: 0.25rem;
-  padding-bottom: calc(12 / 16 * 1rem);
+  padding-bottom: 0.75rem;
 }
 
 .css-h[css-rule="2"],

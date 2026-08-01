@@ -1,5 +1,41 @@
+@font-face {
+    font-family: "IBM Plex Sans";
+    src: url("../font/IBMPlexSans-Regular.woff2") format("woff2");
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "IBM Plex Sans";
+    src: url("../font/IBMPlexSans-SemiBold.woff2") format("woff2");
+    font-weight: 600 700;
+    font-style: normal;
+    font-display: swap;
+}
+
 html {
     overflow-x: hidden;
+}
+
+/*
+ * data-theme: active light/dark toggle for this demo page (set by the
+ * inline script in index.html). Overrides prefers-color-scheme either way.
+ */
+:root[data-theme="dark"] {
+    --rgb-ink: var(--rgb-white);
+    --rgb-border: var(--rgb-white);
+    --color-background: rgb(var(--rgb-black));
+    --rgb-emphasis: var(--rgb-accent-sky);
+    --color-emphasis-fill: rgb(var(--rgb-accent-blue));
+}
+
+:root[data-theme="light"] {
+    --rgb-ink: var(--rgb-black);
+    --rgb-border: var(--rgb-black);
+    --color-background: rgb(var(--rgb-white));
+    --rgb-emphasis: var(--rgb-accent-blue);
+    --color-emphasis-fill: var(--color-emphasis);
 }
 
 body {
@@ -11,11 +47,6 @@ body {
 
 section {
     margin: 2rem 0;
-}
-
-/* .css-list の項目間隔は --_gap で利用側から上書きする */
-.css-list {
-    --_gap: 0.25rem;
 }
 
 body>header {
@@ -150,11 +181,12 @@ article.warning {
 .list-box-trigger>span { /* todo: 必要なブロックであるか? 要調査 */
     display: inline-block;
     width: 1em;
-    margin-inline-end: calc(8 / 16 * 1rem);
+    margin-inline-end: 0.5rem;
 }
 
 #header_button-5 {
-    --rgb-emphasis: var(--rgb-accent-green);
+    --color-emphasis: rgb(var(--rgb-accent-green));
+    --color-emphasis-fill: rgb(var(--rgb-accent-green));
     position: relative;
     color: transparent;
 }

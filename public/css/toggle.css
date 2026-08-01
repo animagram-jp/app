@@ -1,0 +1,109 @@
+/* toggle: input widget that allows users to choose one of two values: on or off.  */
+
+/*  <label css-type="thumb-only" css-size="md">
+        <span>label text</span>
+        <input type="checkbox" role="switch"></label> */
+
+@layer css.components {
+
+    label:has(> input[type="checkbox"][role="switch"])[css-size="sm"] {
+        --_height: var(--css-size-sm-height);
+        --_border-width: 0.125rem;
+    }
+
+    label:has(> input[type="checkbox"][role="switch"]):not([css-size]),
+    label:has(> input[type="checkbox"][role="switch"])[css-size="md"] {
+        --_height: var(--css-size-md-height);
+        --_border-width: 0.125rem;
+    }
+
+    label:has(> input[type="checkbox"][role="switch"])[css-size="lg"] {
+        --_height: var(--css-size-lg-height);
+        --_border-width: 0.1875rem;
+    }
+
+    /* label: lays out an optional leading <span> alongside the track */
+    label:has(> input[type="checkbox"][role="switch"]) {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        vertical-align: middle;
+        cursor: pointer;
+    }
+
+    label:has(> input[type="checkbox"][role="switch"])[css-type="label-above"] {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.25rem;
+    }
+
+    /* track: the input itself is the track; its ::after is the thumb */
+    label:has(> input[type="checkbox"][role="switch"]) > input[type="checkbox"] {
+        --_padding: calc(var(--_border-width) * 2);
+        --_thumb-size: calc(var(--_height) - var(--_padding) * 2);
+        --_travel: var(--_thumb-size);
+
+        appearance: none;
+        position: relative;
+        flex-shrink: 0;
+        width: calc(var(--_padding) * 2 + var(--_thumb-size) + var(--_travel));
+        height: var(--_height);
+        margin: 0;
+        border: var(--_border-width) solid var(--color-ink);
+        border-radius: calc(var(--_height) / 2);
+        background-color: var(--color-muted);
+        cursor: pointer;
+        transition: background-color 150ms ease;
+    }
+
+    label:has(> input[type="checkbox"][role="switch"]) > input[type="checkbox"]:checked {
+        background: var(--color-emphasis-active);
+    }
+
+    /* thumb */
+    label:has(> input[type="checkbox"][role="switch"]) > input[type="checkbox"]::after {
+        content: "OFF";
+        position: absolute;
+        top: 50%;
+        left: var(--_padding);
+        translate: 0 -50%;
+        width: var(--_thumb-size);
+        height: var(--_thumb-size);
+        border: var(--_border-width) solid var(--color-ink);
+        border-radius: 50%;
+        background: var(--color-background);
+        box-shadow: var(--elevation-1);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: calc(var(--_thumb-size) * 0.35);
+        font-weight: bold;
+        color: var(--color-muted);
+        transition: transform 150ms ease;
+    }
+
+    label:has(> input[type="checkbox"][role="switch"]) > input[type="checkbox"]:checked::after {
+        content: "ON";
+        transform: translateX(var(--_travel));
+        color: rgb(var(--rgb-ink));
+    }
+
+    label:has(> input[type="checkbox"][role="switch"]) > input[type="checkbox"]:focus-visible {
+        outline: 0.125rem solid rgb(var(--rgb-focus));
+        outline-offset: 0.125rem;
+    }
+
+    /* thumb-only: track background/label are inert, only the thumb responds to clicks */
+    label:has(> input[type="checkbox"][role="switch"])[css-type="thumb-only"] {
+        pointer-events: none;
+    }
+
+    label:has(> input[type="checkbox"][role="switch"])[css-type="thumb-only"] > input[type="checkbox"] {
+        pointer-events: none;
+    }
+
+    label:has(> input[type="checkbox"][role="switch"])[css-type="thumb-only"] > input[type="checkbox"]::after {
+        pointer-events: auto;
+    }
+
+}

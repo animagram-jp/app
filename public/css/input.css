@@ -1,20 +1,17 @@
 .css-input {
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: textfield;
-  box-sizing: border-box;
-  width: 12rem;
-  max-width: 100%;
-  border: 1px solid var(--color-muted);
-  background-color: var(--color-background);
-  padding: calc(12 / 16 * 1rem) 1rem;
-  border-radius: 0.5rem;
-  color: rgb(var(--rgb-ink));
-  font-weight: normal;
-  font-size: var(--css-typography-text-normal-2-font-size);
-  line-height: var(--css-typography-text-normal-2-line-height);
-  font-family: var(--font-family-sans);
-  letter-spacing: var(--css-typography-text-normal-2-letter-spacing);
+    appearance: none;
+    width: 12rem;
+    max-width: 100%;
+    border: 1px solid var(--color-muted);
+    background-color: var(--color-background);
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    color: rgb(var(--rgb-ink));
+    font-weight: normal;
+    font-size: var(--css-typography-text-normal-2-font-size);
+    line-height: var(--css-typography-text-normal-2-line-height);
+    font-family: var(--font-family-sans);
+    letter-spacing: var(--css-typography-text-normal-2-letter-spacing);
 }
 
 .css-input[css-size="sm"] {
@@ -69,7 +66,7 @@
 }
 
 .css-input-number {
-  display: inline-flex;
+  display: inline flex;
   align-items: stretch;
   box-sizing: border-box;
   width: 12rem;
@@ -104,7 +101,7 @@
   box-sizing: border-box;
   border: none;
   background: transparent;
-  padding: calc(12 / 16 * 1rem) 0;
+  padding: 0.75rem 0;
   color: inherit;
   font: inherit;
   letter-spacing: inherit;

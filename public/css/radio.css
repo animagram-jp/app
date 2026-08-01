@@ -1,6 +1,6 @@
 .css-radio {
   position: relative;
-  display: inline-flex;
+  display: inline flex;
   align-items: center;
   gap: var(--_gap);
   width: fit-content;
@@ -29,14 +29,14 @@
   --_gap: 0.5rem;
   --_radio-size: 2rem;
   --_radio-outer-size: calc(26 / 16 * 1rem);
-  --_radio-inner-size: calc(12 / 16 * 1rem);
+  --_radio-inner-size: 0.75rem;
   --_radio-border-width: 0.125rem;
   --_label-font-size: var(--css-typography-text-flush-2-font-size);
   --_padding-block: calc(11 / 16 * 1rem);
 }
 
 .css-radio[css-size="lg"] {
-  --_gap: calc(12 / 16 * 1rem);
+  --_gap: 0.75rem;
   --_radio-size: calc(44 / 16 * 1rem);
   --_radio-outer-size: calc(36 / 16 * 1rem);
   --_radio-inner-size: 1rem;

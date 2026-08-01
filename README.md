@@ -10,15 +10,15 @@ Apps from animagram, made by Andyou.
 
 | App     | Version  | Status    | Date       | Description |
 |---------|----------|-----------|------------|-------------|
-| CoC 7th | 2026.7.1 | Scheduled | 2026-07-31 | 1st release |
+| CoC 7th | 2026.8.1 | Scheduled | 2026-08-31 | 1st release |
 
-This project uses [Calendar Versioning](https://calver.org/) with the 
-scheme `YYYY.0M.MICRO` (full year, zero-padded month, and a sequential 
+This project uses [Calendar Versioning](https://calver.org/) with the
+scheme `YYYY.0M.MICRO` (full year, zero-padded month, and a sequential
 micro version within each month).
 
 ---
 
-[English](#version) | [日本語](#ja) 
+[English](#version) | [日本語](#ja)
 
 ## CoC7th - Call of Cthulhu 7th edition playing engine
 
@@ -42,7 +42,7 @@ Copyright (c) 2026 Andyou <andyou@animagram.jp>
 
 ## Notice
 
-"Call of Cthulhu" is a trademark of Chaosium Inc. 
+"Call of Cthulhu" is a trademark of Chaosium Inc.
 This project is an independent, unofficial work and is not affiliated with, endorsed by, or sponsored by Chaosium Inc.
 『クトゥルフ神話TRPG』は Chaosium Inc. の著作物です。
 『新クトゥルフ神話TRPG』は、株式会社アークライトによる翻案のもと株式会社KADOKAWAが発行しています。

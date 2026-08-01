@@ -5,7 +5,7 @@
 
 label.css-search-box {
   position: relative;
-  display: inline-flex;
+  display: inline flex;
   flex-grow: 1;
 }
 
@@ -48,7 +48,7 @@ label.css-search-box > .css-input {
 
 label.css-search-box-scope {
   position: relative;
-  display: inline-flex;
+  display: inline flex;
   flex-shrink: 0;
   color: rgb(var(--rgb-ink));
   font-weight: normal;
@@ -62,7 +62,7 @@ label.css-search-box-scope > span {
   position: absolute;
   top: calc(50% - 1.25rem);
   left: calc(17 / 16 * 1rem);
-  color: var(--color-muted);
+  color: rgb(var(--rgb-ink));
   pointer-events: none;
   z-index: 2;
 }

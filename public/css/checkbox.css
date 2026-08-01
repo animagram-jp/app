@@ -1,6 +1,6 @@
 .css-checkbox {
   position: relative;
-  display: inline-flex;
+  display: inline flex;
   align-items: center;
   gap: var(--_gap);
   width: fit-content;

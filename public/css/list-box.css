@@ -1,7 +1,7 @@
 .list-box-trigger {
   anchor-name: --list-box-trigger;
   position: relative;
-  display: inline-flex;
+  display: inline flex;
   align-items: center;
   box-sizing: border-box;
   height: var(--css-size-md-height);

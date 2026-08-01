@@ -5,7 +5,7 @@
     --color-wash-hover: rgb(var(--rgb-ink) / var(--alpha-highlight-weak));
     --color-wash-active: rgb(var(--rgb-ink) / var(--alpha-highlight-strong));
     --color-border: rgb(var(--rgb-border));
-    display: inline-flex;
+    display: inline flex;
     align-items: center;
     justify-content: center;
     column-gap: 0.25rem;
@@ -73,27 +73,27 @@
   color: rgb(var(--rgb-white));
 }
 
-.css-button[css-type="outlined"] {
+.css-button[css-type="outline"] {
   border: 1px solid currentcolor;
   background-color: var(--color-background);
   color: var(--color-emphasis);
 }
 
 @media (hover: hover) {
-  .css-button[css-type="outlined"]:hover {
+  .css-button[css-type="outline"]:hover {
     background-color: var(--color-wash-hover);
     text-decoration: underline;
     text-decoration-thickness: calc(1 / 16 * 1rem);
   }
 }
 
-.css-button[css-type="outlined"]:active {
+.css-button[css-type="outline"]:active {
   background-color: var(--color-wash-active);
   text-decoration: underline;
 }
 
-.css-button[css-type="outlined"]:disabled,
-.css-button[css-type="outlined"][aria-disabled="true"] {
+.css-button[css-type="outline"]:disabled,
+.css-button[css-type="outline"][aria-disabled="true"] {
   background-color: var(--color-background);
   color: var(--color-muted);
 }
@@ -131,7 +131,7 @@
 .css-button[css-size="lg"] {
   min-height: var(--css-size-lg-height);
   border-radius: 0.5rem;
-  padding: calc(12 / 16 * 1rem) 1rem;
+  padding: 0.75rem 1rem;
 }
 
 .css-button:not([css-size]),
@@ -163,7 +163,7 @@
 .css-button[css-size="sm"] {
   min-height: var(--css-size-sm-height);
   border-radius: calc(6 / 16 * 1rem);
-  padding: 0.125rem calc(12 / 16 * 1rem);
+  padding: 0.125rem 0.75rem;
 }
 
 .css-button[css-size="xs"] {

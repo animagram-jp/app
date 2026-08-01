@@ -1,5 +1,5 @@
 .css-chip-label {
-  display: inline-flex;
+  display: inline flex;
   vertical-align: middle;
   grid-template-columns: auto auto;
   align-items: baseline;
@@ -17,7 +17,7 @@
   color: var(--color-emphasis);
 }
 
-.css-chip-label[css-type="outlined"] {
+.css-chip-label[css-type="outline"] {
   border: 1px solid var(--color-emphasis);
   background-color: var(--color-background);
   color: var(--color-emphasis);

@@ -1,0 +1,90 @@
+/* Disclosure: interactive headings that function as controls that enable users to reveal or hide their contents */
+
+/* <details class="css-disclosure">
+        <summary>
+            <h2>disclosure heading</h2></summary>
+        <p>これはダミーテキストです。ダミーテキストは、デザインやレイアウトの作成時に使用される仮の文章です。</p>
+    </details> */
+
+.css-disclosure {
+  --_icon-size: calc(20 / 16 * 1rem);
+  border-bottom: 1px solid var(--color-border);
+}
+
+@media (min-width: 48rem) {
+  .css-disclosure {
+    --_icon-size: 2rem;
+  }
+}
+
+.css-disclosure>summary {
+  position: relative;
+  display: block;
+  padding: 0.5rem 0.5rem 0.5rem
+    calc(var(--_icon-size) + 0.75rem);
+  color: var(--color-neutral-solid-gray-800);
+  font-weight: normal;
+  font-size: 1rem;
+  line-height: 1.7;
+  font-family: var(--font-family-sans);
+  letter-spacing: 0.02em;
+  cursor: default;
+}
+
+.css-disclosure>summary::marker {
+  content: "";
+}
+
+.css-disclosure>summary::-webkit-details-marker {
+  display: none;
+}
+
+@media (min-width: 48rem) {
+  .css-disclosure>summary {
+    padding: 1rem 1rem 1rem
+      calc(var(--_icon-size) + calc(20 / 16 * 1rem));
+    font-size: calc(18 / 16 * 1rem);
+    line-height: 1.6;
+  }
+}
+
+@media (hover: hover) {
+  .css-disclosure>summary:hover:not(:focus-visible) {
+    background-color: var(--color-neutral-solid-gray-50);
+  }
+}
+
+.css-disclosure>summary:focus-visible {
+  outline: 0.25rem solid var(--color-neutral-black);
+  outline-offset: 0.125rem;
+  border-radius: 0.25rem;
+  background-color: var(--color-primitive-yellow-300);
+  box-shadow: 0 0 0 0.125rem var(--color-primitive-yellow-300);
+}
+
+.css-disclosure>summary::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0.125rem;
+  bottom: 0;
+  margin: auto 0;
+  display: inline-block;
+  box-sizing: border-box;
+  width: calc(10 / 16 * 1rem);
+  height: calc(10 / 16 * 1rem);
+  border-right: 0.125rem solid currentcolor;
+  border-bottom: 0.125rem solid currentcolor;
+  color: var(--color-primitive-blue-1000);
+  transform: translateY(calc(-2 / 16 * 1rem)) rotate(45deg);
+}
+
+@media (min-width: 48rem) {
+  .css-disclosure>summary::before {
+    left: calc(6 / 16 * 1rem);
+  }
+}
+
+.css-disclosure[open]>summary::before {
+  transform: translateY(calc(2 / 16 * 1rem)) rotate(225deg);
+}
