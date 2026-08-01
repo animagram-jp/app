@@ -83,7 +83,7 @@
             /* brighter sky-blue reads better than blue on a dark ground */
             --rgb-emphasis: var(--rgb-accent-sky);
             /* accent-sky fails 4.5:1 for white text; blue clears it */
-            --rgb-emphasis-fill: rgb(var(--rgb-accent-blue));
+            --rgb-emphasis-fill: var(--rgb-accent-blue);
         }
     }
 
