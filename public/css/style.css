@@ -64,7 +64,9 @@ dialog table {
     table-layout: fixed;
 }
 
-.dads-h {
+h1,
+h2,
+h3 {
     padding-top: 1rem;
 }
 
@@ -173,7 +175,7 @@ article.warning {
     position-anchor: --header_button-2;
 }
 
-.list-box-trigger>span { /* todo: 必要なブロックであるか? 要調査 */
+button[aria-haspopup="listbox"]>span { /* todo: 必要なブロックであるか? 要調査 */
     display: inline-block;
     width: 1em;
     margin-inline-end: 0.5rem;
@@ -273,8 +275,8 @@ main>section {
     color: revert;
 }
 
-#main_section-2_fieldset-2 :is(input, .dads-input, .dads-input-number),
-#main_section-2_fieldset-5 .dads-input {
+#main_section-2_fieldset-2 :is(input, [data-input-number]),
+#main_section-2_fieldset-5 input {
     width: 17rem;
 }
 
@@ -408,7 +410,7 @@ main>section {
     font-size: 1rem;
 }
 
-#main_section-2_fieldset-5 td:nth-child(2):has(.list-box-trigger) .dads-input:not(.hidden) {
+#main_section-2_fieldset-5 td:nth-child(2):has(button[aria-haspopup="listbox"]) input:not(.hidden) {
     display: revert;
     border-right: none;
     border-top-right-radius: 0;
@@ -417,7 +419,7 @@ main>section {
     width: 4rem;
 }
 
-#main_section-2_fieldset-5 td:nth-child(2):has(.dads-input:not(.hidden)) .list-box-trigger {
+#main_section-2_fieldset-5 td:nth-child(2):has(input:not(.hidden)) button[aria-haspopup="listbox"] {
     font-size: 0;
     padding-left: 0;
     border-top-left-radius: 0;
@@ -449,7 +451,7 @@ main>section {
     position-anchor: --main_section-2_fieldset-5_table_tbody_tr-55_td-1_button;
 }
 
-#main_section-2_fieldset-5_table_tbody_tr-55 .dads-input {
+#main_section-2_fieldset-5_table_tbody_tr-55 input {
     width: 6rem;
 }
 
