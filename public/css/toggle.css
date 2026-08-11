@@ -42,15 +42,15 @@
         gap: 0.25rem;
     }
 
-    /* track: the input itself is the track; its ::after is the thumb */
+    /* track: the input itself is the track; its ::after is the knob */
     label:has(> input[type="checkbox"][role="switch"]) > input[type="checkbox"] {
         --padding: calc(var(--border-width) * 2);
-        --thumb-size: calc(var(--height) - var(--padding) * 2);
+        --knob-size: calc(var(--height) - var(--padding) * 2);
 
         appearance: none;
         position: relative;
         flex-shrink: 0;
-        width: calc(var(--padding) * 2 + var(--thumb-size) * 2);
+        width: calc(var(--padding) * 2 + var(--knob-size) * 2);
         height: var(--height);
         margin: 0;
         border: var(--border-width) solid var(--color-ink);
@@ -64,15 +64,15 @@
         background: var(--color-emphasis-active);
     }
 
-    /* thumb */
+    /* knob */
     label:has(> input[type="checkbox"][role="switch"]) > input[type="checkbox"]::after {
         content: "OFF";
         position: absolute;
         top: 50%;
         left: var(--padding);
         translate: 0 -50%;
-        width: var(--thumb-size);
-        height: var(--thumb-size);
+        width: var(--knob-size);
+        height: var(--knob-size);
         border: var(--border-width) solid var(--color-ink);
         border-radius: 50%;
         background: var(--color-background);
@@ -80,7 +80,7 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        font-size: calc(var(--thumb-size) * 0.35);
+        font-size: calc(var(--knob-size) * 0.35);
         font-weight: bold;
         color: var(--color-muted);
         transition: transform 150ms ease;
@@ -88,7 +88,7 @@
 
     label:has(> input[type="checkbox"][role="switch"]) > input[type="checkbox"]:checked::after {
         content: "ON";
-        transform: translateX(var(--thumb-size));
+        transform: translateX(var(--knob-size));
         color: rgb(var(--rgb-ink));
     }
 
@@ -97,16 +97,16 @@
         outline-offset: 0.125rem;
     }
 
-    /* thumb-only: track background/label are inert, only the thumb responds to clicks */
-    label:has(> input[type="checkbox"][role="switch"])[data-type="thumb-only"] {
+    /* knob-only: track background/label are inert, only the knob responds to clicks */
+    label:has(> input[type="checkbox"][role="switch"])[data-type="knob-only"] {
         pointer-events: none;
     }
 
-    label:has(> input[type="checkbox"][role="switch"])[data-type="thumb-only"] > input[type="checkbox"] {
+    label:has(> input[type="checkbox"][role="switch"])[data-type="knob-only"] > input[type="checkbox"] {
         pointer-events: none;
     }
 
-    label:has(> input[type="checkbox"][role="switch"])[data-type="thumb-only"] > input[type="checkbox"]::after {
+    label:has(> input[type="checkbox"][role="switch"])[data-type="knob-only"] > input[type="checkbox"]::after {
         pointer-events: auto;
     }
 
