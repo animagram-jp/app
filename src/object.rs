@@ -2375,7 +2375,12 @@ impl Science {
         }
     }
 
-    pub const fn base_percent(&self) -> u16 { 1 }
+    pub const fn base_percent(&self) -> u16 {
+        match self {
+            Self::Mathematics => 10,
+            _ => 1,
+        }
+    }
 
     pub fn name(&self, lang: Lang) -> Option<&'static str> {
         match (self, lang) {
