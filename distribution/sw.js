@@ -1,17 +1,17 @@
 const VERSION = "{version}";
 const PRECACHE = [
-    "./",
-    "./init.js",
-    "./worker.js",
-    "./manifest.json",
-    "./icon.png",
-    "./app/app_bg.wasm",
-    "./app/app.js",
-    "./css/config.css",
-    "./css/button.css",
-    "./css/style.css",
-    "./font/IBMPlexSans-Regular.woff2",
-    "./font/IBMPlexSans-SemiBold.woff2",
+    "/",
+    "/init.js",
+    "/worker.js",
+    "/manifest.json",
+    "/icon.png",
+    "/app/app_bg.wasm",
+    "/app/app.js",
+    "/css/config.css",
+    "/css/button.css",
+    "/css/style.css",
+    "/font/IBMPlexSans-Regular.woff2",
+    "/font/IBMPlexSans-SemiBold.woff2",
 ];
 
 self.addEventListener("install", (e) => {
