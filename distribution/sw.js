@@ -1,4 +1,4 @@
-const VERSION = "calendar-v1";
+const VERSION = "{version}";
 const PRECACHE = [
     "./",
     "./init.js",
