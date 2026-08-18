@@ -20,7 +20,7 @@
     <link rel="stylesheet" href="css/textarea.css">
     <link rel="stylesheet" href="css/select.css">
     <link rel="stylesheet" href="css/style.css">
-    <!-- <script>if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");</script> -->
+    <script>if ("serviceWorker" in navigator) {navigator.serviceWorker.register("sw.js").catch((err) => console.warn("SW registration failed:", err));};</script>
     <!-- <link rel="manifest" href="manifest.json"> -->
     <script src="init.js" type="module"></script></head>
 
