@@ -2,9 +2,8 @@ const VERSION = "{version}";
 const PRECACHE = [
     "/",
     "/init.js?v=${version}",
+    "/manifest.json",
     "/worker.js?v=${version}",
-    "/manifest.json?v=${version}",
-    "/image/animagram.png?v=${version}",
     "/app/app_bg.wasm?v=${version}",
     "/app/app.js?v=${version}",
     "/css/config.css?v=${version}",
@@ -12,6 +11,7 @@ const PRECACHE = [
     "/css/style.css?v=${version}",
     "/font/IBMPlexSans-Regular.woff2?v=${version}",
     "/font/IBMPlexSans-SemiBold.woff2?v=${version}",
+    "/image/animagram.png?v=${version}",
 ];
 
 self.addEventListener("install", (e) => {
