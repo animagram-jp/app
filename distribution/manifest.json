@@ -1,16 +1,16 @@
 {
-    "id": "/",
+    "id": "./",
     "name": "app",
     "short_name": "app",
     "description": "Gui application system for editing and reading structured data.",
-    "start_url": "/",
-    "scope": "/",
+    "start_url": "./",
+    "scope": "./",
     "display": "standalone",
     "background_color": "#f2f2f2",
-    "theme_color": "#5B2F91",
+    "theme_color": "#7F878F",
     "icons": [
         {
-            "src": "/image/animagram.png?v=${version}",
+            "src": "./image/animagram.png?v=${version}",
             "sizes": "512x512",
             "type": "image/png",
             "purpose": "maskable"
