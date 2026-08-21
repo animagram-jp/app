@@ -28,13 +28,13 @@ Gui application system for editing and reading structured data. Handles event lo
 cargo test
 
 # wasm-pack compile
-wasm-pack build --target web --out-dir public/app --out-name app
+wasm-pack build --target web --out-dir distribution/app --out-name app
 
 # file_store: Opfs integration tests
 wasm-pack test --headless --firefox
 
 # copy from animagram/css
-cp -f ../css/css/*.css ./public/css/
+cp -f ../css/css/*.css ./distribution/css/
 ```
 
 ```bash

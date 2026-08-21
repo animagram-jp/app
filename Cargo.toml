@@ -10,7 +10,7 @@ description = "Gui application for editing and reading structured data."
 license = "Apache-2.0"
 repository = "https://github.com/animagram-jp/app"
 readme = "CONTRIBUTING.md"
-exclude = ["examples/", "public/", "docs/"]
+exclude = ["examples/", "distribution/", "docs/"]
 
 [lib]
 crate-type = ["cdylib", "rlib"]
