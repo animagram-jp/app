@@ -1,8 +1,8 @@
 use core::{
-    primitive::{u8, u32, f64}, 
-    mem::size_of, 
-    option::Option::{self, Some, None}, 
-    result::Result::{self, Ok, Err}, 
+    primitive::{u8, u32, f64},
+    mem::size_of,
+    option::Option::{self, Some, None},
+    result::Result::{self, Ok, Err},
     clone::Clone
 };
 use alloc::{collections::BTreeMap, vec::Vec};
@@ -11,7 +11,7 @@ use crate::timestamp::{self, Timezone};
 
 const ID_IDENTITY:   u32 = 1;
 const ID_CREATED_AT: u32 = 2;
-const ID_UPDATED_AT: u32 = 3;
+const ID_MODIFIED_AT: u32 = 3;
 
 #[derive(Debug)]
 pub enum DataStructError {
@@ -40,8 +40,8 @@ impl DataStruct {
             values: VariableList::new(),
         };
         let _ = data_struct.set(ID_IDENTITY,   &id.to_le_bytes(), None);
-        let _ = data_struct.set(ID_CREATED_AT, &t.to_le_bytes(), None);
-        let _ = data_struct.set(ID_UPDATED_AT, &t.to_le_bytes(), None);
+        let _ = data_struct.set(ID_CREATED_AT,  &t.to_le_bytes(), None);
+        let _ = data_struct.set(ID_MODIFIED_AT, &t.to_le_bytes(), None);
         data_struct
     }
 
@@ -84,10 +84,10 @@ impl DataStruct {
                 SetOutcome::Created(new_id)
             }
         };
-        if schema_id != ID_UPDATED_AT {
+        if schema_id != ID_MODIFIED_AT {
             if let Some(t) = time {
                 let ts = timestamp::from_ut(t, true, &Timezone::AsiaTokyo);
-                self.set(ID_UPDATED_AT, &ts.to_le_bytes(), None)?;
+                self.set(ID_MODIFIED_AT, &ts.to_le_bytes(), None)?;
             }
         }
         Ok(outcome)
@@ -105,7 +105,7 @@ impl DataStruct {
     }
 
     /// 固定N件のschema_idをまとめてset/deleteする(Some=set, None=delete)。
-    /// updated_atは全体で一度だけ更新する。途中で失敗した場合はselfを変更しない(all-or-nothing)。
+    /// modified_atは全体で一度だけ更新する。途中で失敗した場合はselfを変更しない(all-or-nothing)。
     pub fn set_many<const N: usize>(&mut self, entries: [(u32, Option<&[u8]>); N], time: Option<f64>) -> Result<(), ListError> {
         let mut staged = self.clone();
         for (schema_id, value) in entries {
@@ -120,7 +120,7 @@ impl DataStruct {
         }
         if let Some(t) = time {
             let ts = timestamp::from_ut(t, true, &Timezone::AsiaTokyo);
-            staged.set(ID_UPDATED_AT, &ts.to_le_bytes(), None)?;
+            staged.set(ID_MODIFIED_AT, &ts.to_le_bytes(), None)?;
         }
         *self = staged;
         Ok(())
