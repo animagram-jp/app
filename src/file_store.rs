@@ -22,7 +22,7 @@
 //!   leave a prefix of an unacknowledged batch visible after reopen.
 
 use core::{primitive::{u8, u32}, option::Option::{self, Some, None}, result::Result::{self, Ok}, cmp::PartialEq, clone::Clone};
-use alloc::{collections::{BTreeMap, BTreeSet}, vec::Vec, vec, string::String, fmt, fmt::{Display, Formatter}, format};
+use alloc::{collections::{BTreeMap, BTreeSet}, vec::Vec, vec, string::{String, ToString}, fmt, fmt::{Display, Formatter}, format};
 use js_sys;
 use wasm_bindgen::{JsCast, JsValue};
 use wasm_bindgen_futures::JsFuture;

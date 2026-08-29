@@ -3,6 +3,8 @@
 !CONTRIBUTING.md
 !docs/*.md
 
+*.fxsnapshot
+
 Cargo.lock
 **/target
 **/distribution/app/
