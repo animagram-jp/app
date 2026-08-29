@@ -1,0 +1,4 @@
+# for `wasm_bindgen_test_configure!(run_in_dedicated_worker)`
+# requires: `cargo install wasm-bindgen-cli`, chrome or firefox
+[target.wasm32-unknown-unknown]
+runner = "wasm-bindgen-test-runner"
