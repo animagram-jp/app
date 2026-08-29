@@ -1,5 +1,13 @@
 use core::{primitive::{u8, i8, i32}, array::from_fn};
-use alloc::string::String;
+// `no_std` のため `String` 以外もここで明示的に入れる。
+use alloc::{
+    string::{String, ToString},
+    borrow::ToOwned,
+    boxed::Box,
+    vec::Vec,
+    vec,
+    format,
+};
 use arbitrary_int::{u9, i10};
 use crate::{
     Lang,
@@ -11,8 +19,28 @@ use crate::{
 pub type Dice = (i8, u8, i8); // (count, sides, modifier)
 
 pub mod dice {
+    // `no_std` のため入れ子 module にも alloc の prelude を入れる。
+    // 外側の `use` はここへ届かない。
+    use alloc::{string::{String, ToString}, format};
+
     use super::Dice;
     use rand::RngExt as _;
+
+    /// seed 付きの `SmallRng` を作る。
+    ///
+    /// `rand::rng()` は `#[cfg(feature = "thread_rng")]` であり
+    /// `thread_rng = ["std", ..]` のため `no_std` では使えない。
+    /// `sys_rng` feature の `SysRng` で seed を取り `SmallRng` を回す。
+    /// `SysRng` 自身は fallible (`TryRng`) で `RngExt` が付かないため、
+    /// 直接 `random_range` を呼ぶことはできない。
+    fn rng() -> rand::rngs::SmallRng {
+        use rand::{SeedableRng as _, TryRng as _};
+
+        let mut seed = [0u8; 32];
+        let mut sys  = rand::rngs::SysRng::default();
+        sys.try_fill_bytes(&mut seed).unwrap();
+        rand::rngs::SmallRng::from_seed(seed)
+    }
 
     pub fn display(dice: &[Dice]) -> String {
         let s = dice.iter().map(|&(count, sides, modifier)| {
@@ -33,7 +61,7 @@ pub mod dice {
     pub fn roll(dice: &[Dice]) -> i32 {
         dice.iter().map(|&(count, sides, modifier)| {
             let rolled = if count != 0 && sides > 0 {
-                let mut rng = rand::rng();
+                let mut rng = rng();
                 let sum: i32 = (0..count.unsigned_abs())
                     .map(|_| rng.random_range(1..=sides as i32))
                     .sum();
@@ -45,7 +73,7 @@ pub mod dice {
         }).sum()
     }
     pub fn percent_roll(level: i8) -> u8 {
-        let mut rng = rand::rng();
+        let mut rng = rng();
         let ones: u8 = rng.random_range(0..=9u8);
         let offset: u8 = if ones == 0 { 1 } else { 0 };
         let rolls_count = 1 + level.unsigned_abs() as usize;

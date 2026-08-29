@@ -10,7 +10,7 @@
     "theme_color": "#7F878F",
     "icons": [
         {
-            "src": "./image/animagram.png?v=${version}",
+            "src": "./image/animagram.png?v={version}",
             "sizes": "512x512",
             "type": "image/png",
             "purpose": "maskable"

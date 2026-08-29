@@ -853,7 +853,7 @@ mod tests {
 }
 
 // ============================================================
-// OPFS integration tests (`wasm-pack test --headless --firefox`)
+// OPFS integration tests (headless browser)
 // ============================================================
 
 #[cfg(all(test, target_arch = "wasm32"))]

@@ -1,6 +1,8 @@
 name: "Deploy to GitHub Pages"
 
 on:
+    push:
+        tags: ["v*"]
     workflow_dispatch:
 
 permissions:
@@ -21,18 +23,76 @@ jobs:
         steps:
             - name: "git checkout"
               uses: actions/checkout@v7
+              with:
+                  fetch-depth: 0
+
+            - name: "resolve version"
+              run: |
+                  if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+                      VERSION="${GITHUB_REF_NAME}"
+                  else
+                      VERSION="$(git describe --tags --always)"
+                  fi
+                  echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
 
             - name: "add wasm32 target"
               run: rustup target add wasm32-unknown-unknown
 
-            - name: "install wasm-pack"
-              run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+            - name: "install nightly toolchain (for -Z build-std)"
+              run: |
+                  rustup toolchain install nightly --component rust-src
+                  rustup override set nightly
 
-            - name: "cargo test"
-              run: cargo test
+            - name: "install wasm-bindgen-cli"
+              run: cargo install wasm-bindgen-cli --version 0.2.127
 
-            - name: "wasm-pack build"
-              run: wasm-pack build --target web --out-dir distribution/app --out-name app
+            - name: "install wasm-tools"
+              run: cargo install wasm-tools
+
+            - name: "cargo test (doctest only; --lib requires a browser runner)"
+              run: cargo test --doc
+
+            # 手順の詳細と理由は docs/build.md を参照。
+            # worker 構成 (SharedArrayBuffer + talc アロケータ) はここでしか
+            # 使わない特殊なビルドで、通常の `wasm-pack build` では出せない。
+
+            - name: "cargo build (wasm32, worker 構成)"
+              run: |
+                  RUSTFLAGS="-Ctarget-feature=+atomics,+bulk-memory -Clink-arg=--import-memory -Clink-arg=--max-memory=134217728" \
+                  cargo build --release --target wasm32-unknown-unknown -Zbuild-std=std,panic_abort
+
+            - name: "wasm-bindgen"
+              run: |
+                  wasm-bindgen --target web --out-dir distribution/app --out-name app \
+                    target/wasm32-unknown-unknown/release/app.wasm
+
+            - name: "remove wasm-bindgen package boilerplate (no suppression flag exists)"
+              # wasm-bindgen が out-dir に README.md / LICENSE を必ず生成する
+              # (抑制オプション無し)。Pages で配信する必要が無いので削除する。
+              # 生成されなくなった場合に備え -f で失敗させない。
+              run: rm -f distribution/app/README.md distribution/app/LICENSE
+
+            - name: "patch memory import to shared (wasm-bindgen だけでは shared 化できない)"
+              run: |
+                  wasm-tools print distribution/app/app_bg.wasm -o /tmp/app.wat
+                  sed -i -E 's/\(import "\.\/app_bg\.js" "memory" \(memory \(;0;\) ([0-9]+) ([0-9]+)\)\)/(import ".\/app_bg.js" "memory" (memory (;0;) \1 \2 shared))/' /tmp/app.wat
+                  grep -q 'shared' /tmp/app.wat
+                  wasm-tools parse /tmp/app.wat -o distribution/app/app_bg.wasm
+                  wasm-tools validate --features=threads,bulk-memory distribution/app/app_bg.wasm
+
+            - name: "patch TextDecoder.decode for SharedArrayBuffer (仕様上直接渡せないため)"
+              run: |
+                  grep -q 'cachedTextDecoder.decode(getUint8ArrayMemory0().subarray(ptr, ptr + len));' distribution/app/app.js
+                  perl -0pi -e 's/return cachedTextDecoder\.decode\(getUint8ArrayMemory0\(\)\.subarray\(ptr, ptr \+ len\)\);/const view = getUint8ArrayMemory0().subarray(ptr, ptr + len);\n    return cachedTextDecoder.decode(\n        view.buffer instanceof SharedArrayBuffer ? view.slice() : view\n    );/' distribution/app/app.js
+
+            - name: "inject version into distribution files"
+              # sw.js の VERSION 定数がビルドごとに変わらないと、ブラウザが
+              # 新しい Service Worker への更新を検知できない
+              # (byte 単位比較のため)。PRECACHE / index.html / manifest.json
+              # の ?v={version} も同様にキャッシュバスティング用。
+              run: |
+                  sed -i "s/{version}/${VERSION}/g" \
+                      distribution/sw.js distribution/index.html distribution/manifest.json
 
             - name: "setup Github Pages"
               uses: actions/configure-pages@v6

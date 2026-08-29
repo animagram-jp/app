@@ -1,38 +1,182 @@
-use core::{option::Option::{self, Some, None}, marker::Copy, clone::Clone, todo};
+// app repository の `src/event.rs` に対応する。
+//
+// `Event` と `Handler` を持つ。加えて、イベントフレームの解釈である
+// `decode_event` と event 番号の定数をここへ置いた。app repository では
+// `CanvasEvent::decode` が `src/js_client.rs` にあるが、この経路では
+// 解釈結果が `Event` そのものであり、`Event` の定義と分けられないためである。
+
+use core::{
+    primitive::{u8, u32, f64},
+    option::Option::{self, Some, None},
+    matches,
+};
 use alloc::{vec::Vec, vec};
+#[cfg(feature = "worker")]
+use alloc::format;
 use arbitrary_int::u2;
+
 use crate::Lang;
-use crate::js_client::{Command, EventType, Gesture, dom::{Id, Tag}, CanvasEvent, PointerState};
+use crate::js_client::{
+    Command, CanvasEvent, EventType, KeyName, Gesture, PointerState, dom, name,
+};
+#[cfg(feature = "worker")]
+use crate::js_client::ERROR_STORE_LOST;
+use crate::arena::Decoder;
+#[cfg(feature = "worker")]
 use crate::file_store::FileStore;
 use crate::data_struct::DataStruct;
-use crate::object::{
-    Dice, dice,
-    Character, Profile, Characteristic, SecondaryAttribute, Skill, Possession, Backstory, Memo,
-    LanguageOwn, ArtAndCraft, Fighting, Firearms, Pilot, Science, Survival,
-    HitPoints, MagicPoints, Luck, Sanity, Build, DamageBonus, MoveRate, OccupationSkillPoints, InterestSkillPoints,
-    ArtAndCraftCustom, FightingCustom, FirearmsCustom, LanguageOther, PilotCustom, ScienceCustom, SurvivalCustom,
-};
+
+// ============================================================
+// constant
+// ============================================================
+
+/// 失敗しうる操作を続けて試す回数。
+///
+/// `FileStore` の `save` / `discard` / `compact` はいずれも同じ
+/// `FileSystemSyncAccessHandle` を叩き、同じ理由で失敗する。閾値を
+/// 操作ごとに分ける理由が無いため、ひとつに揃えてある。
+///
+/// `InvalidState` は「ハンドルが閉じている」だけでなく「書き込み自体が
+/// 何らかの理由で失敗した」も含む (whatwg/fs の仕様)。前者は復帰に
+/// `FileStore::new` の `await` が要り `run_loop` の中では待てないが、
+/// 後者は一過性であり、そのまま呼び直せば済む。失敗しても未保存の
+/// 差分は保持されるため、再試行でデータは失われない。
+///
+/// この回数を続けて失敗した場合はハンドルの失効とみなし、
+/// `ERROR_STORE_LOST` を送って worker を作り直す。
+#[cfg(feature = "worker")]
+const RETRY_LIMIT: u8 = 3;
+
+// ============================================================
+// receive (event frame)
+// ============================================================
+//
+// event 番号は JavaScript 側 (init.js の send) と対応。
+// 値を追加/変更する際は両方を揃えて更新する。
+//
+// app repository では `CanvasEvent::decode` が `JsValue` から
+// `get_js_str` / `get_js_f64` でフィールドを引く。ここではバイト列を
+// 前から順に読むため、フィールドの順序が protocol の一部になる。
+
+/// pointer / key / input / change / focus など DOM 由来のイベント。
+pub const EVENT_CANVAS: u8 = 1;
+/// `resize` イベント。
+pub const EVENT_VIEWPORT: u8 = 2;
+/// `scroll` イベント。
+pub const EVENT_SCROLL: u8 = 3;
+// 4 と 5 は `FileStoreValue` / `FileStoreError` が使っていた。
+// `FileStore` を worker の init で直接開く形にしたため空いている。
+// 後続の番号は詰めない。`init.js` と揃える必要があり、既存の番号を
+// ずらすと双方を同時に直す羽目になるためである。
+/// 描画パラメータを設定する。
+pub const EVENT_SET_PARAMETER: u8 = 6;
+/// 1 フレーム描画してトリプルバッファへ公開する。
+pub const EVENT_RENDER: u8 = 7;
+/// `run_loop` を終了させる。
+pub const EVENT_SHUTDOWN: u8 = 8;
 
 // ============================================================
 // Event
 // ============================================================
 
+/// JavaScript から Wasm へ届く入力。
+///
+/// app repository の `Event` に対応する。相違点は 3 つである。
+///
+/// 1. `Event::Ready` を持たない。`Handler::ready` が同期であり、
+///    起動を待つ状態を持たないためである。
+/// 2. `Viewport` / `Scroll` を持つ。app repository では `CanvasEvent` の
+///    `event_type` が `Resize` / `Scroll` を兼ねるが、payload の形が
+///    異なるため variant に分けた。
+/// 3. `SetParameter` / `Render` / `Shutdown` を持つ。アリーナ由来の
+///    3 つを同じ enum に統合したためである。
 pub enum Event {
-    Ready,
+    /// DOM 由来のイベント。
     Canvas(CanvasEvent),
+    /// 認識済みのジェスチャ。`dispatch` が自ら積む。
     Gesture(Gesture),
+    /// `resize` イベント。
+    Viewport { width: f64, height: f64 },
+    /// `scroll` イベント。
+    Scroll { id: dom::Id, x: f64, y: f64 },
+    /// 描画パラメータを設定する。
+    SetParameter { value: u32 },
+    /// 1 フレーム描画してトリプルバッファへ公開する。
+    Render,
+    /// `run_loop` を終了させる。
+    Shutdown,
+}
+
+/// JavaScript から届いた 1 イベントフレームを解釈する。壊れていれば None。
+///
+/// app repository の `CanvasEvent::decode` は欠けたフィールドを
+/// `unwrap_or_default` で補うが、ここでは長さが足りなければ None を返し、
+/// `App::process` がそのフレームを捨てる。
+///
+/// ```
+/// # use app::event::{decode_event, Event, EVENT_RENDER, EVENT_SHUTDOWN};
+/// assert!(matches!(decode_event(&[EVENT_RENDER]), Some(Event::Render)));
+/// assert!(matches!(decode_event(&[EVENT_SHUTDOWN]), Some(Event::Shutdown)));
+/// // 未知の event 番号は None。
+/// assert!(decode_event(&[200]).is_none());
+/// // 空フレームも None。
+/// assert!(decode_event(&[]).is_none());
+/// ```
+pub fn decode_event(frame: &[u8]) -> Option<Event> {
+    let mut decoder = Decoder::new(frame);
+    let kind = decoder.u8()?;
+    Some(match kind {
+        EVENT_CANVAS => Event::Canvas(CanvasEvent {
+            event_type: EventType::decode_u8(decoder.u8()?),
+            id:         decoder.id()?,
+            key:        KeyName::decode_u8(decoder.u8()?),
+            value:      decoder.string()?,
+            x:          decoder.f32()? as f64,
+            y:          decoder.f32()? as f64,
+            time:       decoder.f64()?,
+        }),
+        EVENT_VIEWPORT => Event::Viewport {
+            width:  decoder.f32()? as f64,
+            height: decoder.f32()? as f64,
+        },
+        EVENT_SCROLL => Event::Scroll {
+            id: decoder.id()?,
+            x:  decoder.f32()? as f64,
+            y:  decoder.f32()? as f64,
+        },
+        EVENT_SET_PARAMETER => Event::SetParameter { value: decoder.u32()? },
+        EVENT_RENDER   => Event::Render,
+        EVENT_SHUTDOWN => Event::Shutdown,
+        _ => return None,
+    })
 }
 
 // ============================================================
-// viewport state
+// event handler
 // ============================================================
+//
+// 以下は app repository の `src/event.rs` に既にある項目である。
+// signature のみを置き、中身は省略する。取り込み時にはこれらを削除し、
+// 既存の定義をそのまま使う。
+//
+// 中身が変わるのは 2 つである。
+//
+// - `Handler::ready` が `async fn` から同期の関数になる。
+// - `Handler::close` がコマンド列を返す。
+//
+// 加えて `process_file_store` / `process_viewport` / `process_scroll` の
+// 3 つを新設する。
 
+/// キャラクターシートの表示状態。中身は app repository の
+/// `CharacterSheet` と同じ。
 pub enum CharacterSheet {
+    /// 閲覧のみ。
     Immutable,
+    /// 編集可。
     Editable,
 }
 
-#[derive(Clone, Copy)]
+/// 表示中のダイアログ。中身は app repository の `Dialog` と同じ。
 pub enum Dialog {
     None,
     Drawer, // #drawer
@@ -40,236 +184,206 @@ pub enum Dialog {
     Input  { step: u8, value: u32 }, // #main_modal 入力UI表示状態
 }
 
-// ============================================================
-// event handler
-// ============================================================
-
-const CHARACTER_SCHEMA_NAME: &str = "characters";
-
+/// セッションログ。中身は app repository の `Log` と同じ。
 pub struct Log;
 
+/// 永続化する store の名前。中身は app repository の
+/// `CHARACTER_SCHEMA_NAME` と同じ。
+#[cfg(feature = "worker")]
+const CHARACTER_SCHEMA_NAME: &str = "characters";
+
+/// 画面状態を保持し、イベントをコマンド列へ変換する。
+///
+/// フィールドは app repository の `Handler` と同じである。`characters` も
+/// `FileStore` をそのまま持つ。OPFS は `FileSystemSyncAccessHandle` という
+/// 同期ハンドルを返し、取得さえ済めば `get` / `set` / `save` は同期で
+/// 呼べるため、往復にする必要が無い。
 pub struct Handler {
     character_sheet: CharacterSheet,
-    dialog:     Dialog,
-    lang:       Lang,
-    last_toast: u2,
-    character:  DataStruct,
-    characters: FileStore,
-    logs:       Vec<Log>,
+    dialog:          Dialog,
+    lang:            Lang,
+    last_toast:      u2,
+    character:       DataStruct,
+    /// `worker` feature でのみ持つ。OPFS の `FileSystemSyncAccessHandle` は
+    /// dedicated worker でしか取得できないため、main thread 構成では
+    /// フィールドごと存在しない。`save` を呼ぶコードは型検査で弾かれる。
+    #[cfg(feature = "worker")]
+    characters:      FileStore,
+    logs:            Vec<Log>,
+    /// `characters` への操作が続けて失敗した回数。成功すると 0 に戻る。
+    #[cfg(feature = "worker")]
+    store_failures:  u8,
 }
 
 impl Handler {
+    /// viewport の寸法を受けて初期状態を作る。
+    ///
+    /// app repository と同じく `async fn` である。`FileStore::new` は OPFS の
+    /// ハンドル取得に `await` を要するが、`await` できるのはここだけで足りる。
+    ///
+    /// `run_loop` は `memory_atomic_wait32` で thread ごとブロックするため、
+    /// その中では JavaScript のイベントループが回らず Promise が解決しない。
+    /// したがって `await` は `run_loop` に入る前に済ませる。worker の init
+    /// フェーズがその場所であり、`FileStore::new` の doc もそう指示している。
+    ///
+    /// 継続的にコールバックが来る WebAPI (WebSocket / WebRTC / WebGPU) は
+    /// この形では扱えない。それらは JavaScript 側に置き、イベントリング
+    /// 越しに `Event` として届ける。`FileStore` が例外なのは、OPFS が
+    /// 同期ハンドルを返し、取得後は `run_loop` の中から直接呼べるためである。
+    /// 取得に失敗した場合は panic する。app repository の `Handler::ready` が
+    /// `unwrap_or_else(|e| panic!(..))` するのと同じ扱いである。panic は
+    /// `#[panic_handler]` が `Command::Error` として JavaScript へ送る。
     pub async fn ready(_viewport_width: f64, _viewport_height: f64) -> Self {
         Self {
             character_sheet: CharacterSheet::Immutable,
-            dialog:     Dialog::None,
-            lang:       Lang::Ja,
-            last_toast: u2::new(1), // todo last_toastをnext_toastにrenameするか検討
-            character:  DataStruct::new(0, 0.0, 256),
-            characters: FileStore::new(CHARACTER_SCHEMA_NAME).await
-                .unwrap_or_else(|e| panic!("FileStore::new failed: {}", e)),
-            logs:       Vec::new(),
+            dialog:          Dialog::None,
+            lang:            Lang::Ja,
+            last_toast:      u2::new(1),
+            character:       DataStruct::new(0, 0.0, 256),
+            #[cfg(feature = "worker")]
+            characters:      FileStore::new(CHARACTER_SCHEMA_NAME).await
+                .unwrap_or_else(|e| panic!("FileStore::new failed: {e}")),
+            logs:            Vec::new(),
+            #[cfg(feature = "worker")]
+            store_failures:  0,
         }
     }
-    pub fn close(&self) {
+
+    /// 終了時のコマンド列を返す。
+    ///
+    /// app repository の `Handler::close` は `FileStore::close` を呼ぶだけで
+    /// 戻り値を持たない。ここでは `FileStore` の呼び出しを
+    /// `Command::FileStoreSet` として送る必要があるため、コマンド列を返す。
+    ///
+    pub fn close(&self) -> Vec<Command> {
+        #[cfg(feature = "worker")]
         self.characters.close();
+        vec![]
     }
+
+    /// 未保存の変更を書き出す。
+    ///
+    /// 失敗しても未保存の差分は `FileStore` 側に残るため、次の呼び出しで
+    /// 書き直せる。`RETRY_LIMIT` 回続けて失敗した場合だけ、ハンドルが
+    /// 失効したとみなして `ERROR_STORE_LOST` を返す。
+    ///
+    /// ハンドルの再取得は wasm 内で完結しない。`FileStore::new` は
+    /// `navigator.storage.getDirectory()` から `createSyncAccessHandle()` まで
+    /// すべて `await` を要し、`run_loop` は thread ごとブロックしているため
+    /// Promise が解決しない。したがって復帰は worker の作り直しに委ねる。
+    /// `ERROR_STORE_LOST` は `FATAL_FROM` 以上であり、JavaScript 側が
+    /// `restart()` する。新しい worker の `App::init` が開き直す。
+    ///
+    /// 直前の `save` が成功した時点までは残る。`FileStore` は log ベースで
+    /// あり、確定していない末尾は次回の `save` が切り落とすためである。
+    #[cfg(feature = "worker")]
+    pub fn save(&mut self) -> Vec<Command> {
+        match self.characters.save() {
+            Ok(()) => {
+                self.store_failures = 0;
+                vec![]
+            }
+            Err(_) if self.store_failures + 1 < RETRY_LIMIT => {
+                // 一過性の書き込み失敗とみなす。差分は保持されている。
+                self.store_failures += 1;
+                vec![]
+            }
+            Err(e) => {
+                self.store_failures = 0;
+                vec![Command::Error {
+                    code:    ERROR_STORE_LOST,
+                    message: format!("file store save failed: {e}"),
+                }]
+            }
+        }
+    }
+
+    /// viewport の寸法変更を処理する。
+    ///
+    /// app repository では `CanvasEvent` の `EventType::Resize` として
+    /// `process` が受けるが、payload の形が異なるため分けた。
+    pub fn process_viewport(
+        &mut self,
+        _width: f64,
+        _height: f64,
+    ) -> (Vec<Event>, Vec<Command>) {
+        (vec![], vec![])
+    }
+
+    /// `scroll` を処理する。
+    ///
+    /// app repository では `CanvasEvent` の `EventType::Scroll` として
+    /// `process` が受けるが、payload の形が異なるため分けた。
+    pub fn process_scroll(
+        &mut self,
+        _id: &dom::Id,
+        _x: f64,
+        _y: f64,
+    ) -> (Vec<Event>, Vec<Command>) {
+        (vec![], vec![])
+    }
+
+    /// 起動直後の描画。中身は app repository の `initial_draw` と同じ。
+    ///
+    /// `body` の `hidden` を外して画面を見せる。`Handler::ready` の
+    /// `await` で `FileStore` は取得済みであり、待つものが無い。
+    /// app repository は `attribute` を `String` で持つが、ここでは
+    /// `Name` の添字である。
     pub fn initial_draw(&self) -> (Vec<Event>, Vec<Command>) {
         let commands = vec![
             Command::RemoveAttribute {
-                id:        Id::new(&[(Tag::Body, None)]).encode(),
-                attribute: "hidden".to_string(),
+                id:        dom::Id::new(&[(dom::Tag::Body, None)]),
+                attribute: name::HIDDEN,
             },
         ];
-        (Vec::new(), commands)
+        (vec![], commands)
     }
-    pub fn process(&mut self, event: &CanvasEvent, _pointer_state: &PointerState) -> (Vec<Event>, Vec<Command>) {
-        let id = &event.id;
-        let commands = if matches!(event.event_type, EventType::Click)
-            && id == &Id::new(&[(Tag::Header, None), (Tag::Button, Some(3))]) {
-            match self.character_sheet {
-                CharacterSheet::Immutable => {
-                    self.character_sheet = CharacterSheet::Editable;
-                    vec![
-                        Command::RemoveClass {
-                            id:    Id::new(&[(Tag::Main, None), (Tag::Section, Some(1))]).encode(),
-                            value: "hidden".to_string(),
-                        },
-                        Command::AddClass {
-                            id:    Id::new(&[(Tag::Main, None), (Tag::Section, Some(2))]).encode(),
-                            value: "hidden".to_string(),
-                        },
-                    ]
-                }
-                CharacterSheet::Editable => {
-                    self.character_sheet = CharacterSheet::Immutable;
-                    vec![
-                        Command::RemoveClass {
-                            id:    Id::new(&[(Tag::Main, None), (Tag::Section, Some(2))]).encode(),
-                            value: "hidden".to_string(),
-                        },
-                        Command::AddClass {
-                            id:    Id::new(&[(Tag::Main, None), (Tag::Section, Some(1))]).encode(),
-                            value: "hidden".to_string(),
-                        },
-                    ]
-                }
+
+    /// DOM 由来のイベントを処理する。中身は app repository の `process` と同じ。
+    ///
+    /// header の 3 番目のボタンで、キャラクターシートの閲覧と編集を
+    /// 入れ替える。app repository が `id` を `Id::encode` で文字列に
+    /// するのに対し、ここでは `dom::Id` のまま持つ。
+    pub fn process(
+        &mut self,
+        event: &CanvasEvent,
+        _state: &PointerState,
+    ) -> (Vec<Event>, Vec<Command>) {
+        let toggle = dom::Id::new(&[
+            (dom::Tag::Header, None),
+            (dom::Tag::Button, Some(3)),
+        ]);
+        if !matches!(event.event_type, EventType::Click) || event.id != toggle {
+            return (vec![], vec![]);
+        }
+
+        let section = |n| dom::Id::new(&[
+            (dom::Tag::Main, None),
+            (dom::Tag::Section, Some(n)),
+        ]);
+        let (shown, hidden) = match self.character_sheet {
+            CharacterSheet::Immutable => {
+                self.character_sheet = CharacterSheet::Editable;
+                (1, 2)
             }
-        } else {
-            Vec::new()
+            CharacterSheet::Editable => {
+                self.character_sheet = CharacterSheet::Immutable;
+                (2, 1)
+            }
         };
-        (Vec::new(), commands)
-    }
-    pub fn process_gesture(&mut self, _gesture: &Gesture, _pointer_state: &PointerState) -> (Vec<Event>, Vec<Command>) {
-        (Vec::new(), Vec::new())
-    }
-}
-
-// ============================================================
-// internal helper
-// ============================================================
-
-/// mapping object::{Objects}::read() <-> dom::Id
-fn map_id(item: &Character, parent: &Id, n: u32) -> Vec<Id> {
-    match parent {
-        p if p == &Id::new(&[(Tag::Section, Some(1))]) => {
-            let section_n = match item {
-                Character::Profile         => 2,
-                Character::Characteristic  => 3,
-                Character::SecondaryAttribute => 4,
-                Character::Skill      => 5,
-                Character::Possession => 6,
-                Character::Backstory  => 7,
-                Character::Memo       => 8,
-            };
-            let base: Vec<(Tag, Option<u32>)> = vec![
-                (Tag::Main,    None),
-                (Tag::Section, Some(1)),
-                (Tag::Section, Some(section_n)),
-                (Tag::Span,    Some(n)),
-            ];
-            vec![
-                Id::new(&[base.as_slice(), &[(Tag::Span, Some(1))]].concat()),  // label
-                Id::new(&[base.as_slice(), &[(Tag::Span, Some(2))]].concat()),  // value
-            ]
-        }
-        p if p == &Id::new(&[(Tag::Section, Some(2))]) => {
-            let fieldset_n = match item {
-                Character::Profile         => 2,
-                Character::Characteristic  => 3,
-                Character::SecondaryAttribute => 4,
-                Character::Skill      => 5,
-                Character::Possession => 6,
-                Character::Backstory  => 7,
-                Character::Memo       => 8,
-            };
-            let tr: Vec<(Tag, Option<u32>)> = vec![
-                (Tag::Modal,    None),
-                (Tag::Fieldset, Some(fieldset_n)),
-                (Tag::Table,    None),
-                (Tag::Tr,       Some(n)),
-            ];
-            let s = tr.as_slice();
-            match item {
-                Character::Profile => vec![
-                    // [0] th, [1] input
-                    Id::new(&[s, &[(Tag::Th,    None   )]].concat()),
-                    Id::new(&[s, &[(Tag::Input, None   )]].concat()),
-                ],
-                Character::Characteristic => vec![
-                    // [0] th, [1] input-1(初期値), [2] input-2(変動), [3] input-3(補正), [4] span(合計)
-                    Id::new(&[s, &[(Tag::Th,    None   )]].concat()),
-                    Id::new(&[s, &[(Tag::Input, Some(1))]].concat()),
-                    Id::new(&[s, &[(Tag::Input, Some(2))]].concat()),
-                    Id::new(&[s, &[(Tag::Input, Some(3))]].concat()),
-                    Id::new(&[s, &[(Tag::Span,  None   )]].concat()),
-                ],
-                Character::Skill => vec![
-                    // [0] th, [1] span-1(base), [2] input-1(職業), [3] input-2(興味), [4] input-3(補正), [5] span-2(合計), [6] td-1_select
-                    Id::new(&[s, &[(Tag::Th,     None   )]].concat()),
-                    Id::new(&[s, &[(Tag::Span,   Some(1))]].concat()),
-                    Id::new(&[s, &[(Tag::Input,  Some(1))]].concat()),
-                    Id::new(&[s, &[(Tag::Input,  Some(2))]].concat()),
-                    Id::new(&[s, &[(Tag::Input,  Some(3))]].concat()),
-                    Id::new(&[s, &[(Tag::Span,   Some(2))]].concat()),
-                    Id::new(&[s, &[(Tag::Td, Some(1)), (Tag::Select, None)]].concat()),
-                ],
-                _ => todo!(),
-            }
-        }
-        _ => todo!(),
-    }
-}
-
-/// 各SkillのCustomスロット(indirect id list)を走査し、既に使用中のschema_idを収集する。
-/// Customへ新規idを割り当てる前にHandlerが一度だけ実行し、使用状況を把握するために使う。
-/// 使用状況を別途メタデータとして持たず、都度character自体を走査して求める。
-fn used_custom_ids(character: &DataStruct) -> Vec<u32> {
-    const LIST_IDS: [u32; 7] = [
-        ArtAndCraftCustom::list_id(),
-        FightingCustom::list_id(),
-        FirearmsCustom::list_id(),
-        LanguageOther::list_id(),
-        PilotCustom::list_id(),
-        ScienceCustom::list_id(),
-        SurvivalCustom::list_id(),
-    ];
-    let mut used = Vec::new();
-    for list_id in LIST_IDS {
-        let Ok(bytes) = character.get(list_id) else { continue; };
-        let count = bytes.len() / 8; // (numeric_id, name_id) = u32 * 2 ペアごと
-        for i in 0..count {
-            if let [Some(ids)] = character.get_indirect::<1, 2>(list_id, [i]) {
-                used.extend(ids.into_iter().filter(|&id| id != 0));
-            }
-        }
-    }
-    used
-}
-
-// --- toast ---
-
-pub enum Toast { Saved, Discarded, Synced }
-
-impl Toast {
-    fn icon(&self) -> &'static str {
-        match self {
-            Self::Saved     => "💾",
-            Self::Discarded => "🗑️",
-            Self::Synced    => "☁️",
-        }
+        let commands = vec![
+            Command::RemoveClass { id: section(shown),  value: name::HIDDEN },
+            Command::AddClass    { id: section(hidden), value: name::HIDDEN },
+        ];
+        (vec![], commands)
     }
 
-    fn label(&self, lang: Lang) -> &'static str {
-        match (self, lang) {
-            (Self::Saved,     Lang::En(_)) => "Saved",
-            (Self::Saved,     Lang::Ja)    => "保存しました",
-            (Self::Discarded, Lang::En(_)) => "Discarded",
-            (Self::Discarded, Lang::Ja)    => "破棄しました",
-            (Self::Synced,    Lang::En(_)) => "Synced",
-            (Self::Synced,    Lang::Ja)    => "同期しました",
-        }
-    }
-
-    fn css_class(&self) -> &'static str {
-        match self {
-            Self::Saved     => "success",
-            Self::Discarded => "warning",
-            Self::Synced    => "info"
-        }
-    }
-
-    pub fn commands(&self, state: &mut Handler) -> Vec<Command> {
-        let n = if state.last_toast == u2::new(1) { u2::new(2) } else { u2::new(1) };
-        state.last_toast = n;
-        let article = Id::new(&[(Tag::Output, None), (Tag::Article, Some(n.value() as u32))]);
-        let span    = Id::new(&[(Tag::Output, None), (Tag::Article, Some(n.value() as u32)), (Tag::Span, None)]);
-        let p       = Id::new(&[(Tag::Output, None), (Tag::Article, Some(n.value() as u32)), (Tag::P,    None)]);
-        vec![
-            Command::SetText  { id: span.encode(),    value: self.icon().to_string() },
-            Command::SetText  { id: p.encode(),        value: self.label(state.lang).to_string() },
-            Command::AddClass { id: article.encode(),  value: self.css_class().to_string() },
-            Command::JsFn     { id: article.encode(),  name: "show".to_string() },
-        ]
+    /// ジェスチャを処理する。中身は app repository の `process_gesture` と同じ。
+    pub fn process_gesture(
+        &mut self,
+        _gesture: &Gesture,
+        _state: &PointerState,
+    ) -> (Vec<Event>, Vec<Command>) {
+        (vec![], vec![])
     }
 }

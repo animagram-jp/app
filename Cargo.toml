@@ -5,7 +5,7 @@ members = [".", "crates/app_macros"]
 name = "app"
 version = "0.1.0"
 edition = "2024"
-rust-version = "1.85"
+rust-version = "1.85" # 1.100.0-nightly
 description = "Gui application for editing and reading structured data."
 license = "Apache-2.0"
 repository = "https://github.com/animagram-jp/app"
@@ -16,12 +16,12 @@ exclude = ["examples/", "distribution/", "docs/"]
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-app_macros = { path = "crates/app_macros" }
-arbitrary-int = "2.1"
-wasm-bindgen = "0.2"
-wasm-bindgen-futures = "0.4"
-js-sys = "0.3"
-web-sys = { version = "0.3", features = [
+app_macros    = { path = "crates/app_macros" }
+arbitrary-int = "2"
+wasm-bindgen         = { version = "0.2", default-features = false }
+wasm-bindgen-futures = { version = "0.4", default-features = false }
+js-sys               = { version = "0.3", default-features = false }
+web-sys = { version = "0.3", default-features = false, features = [
     "WorkerGlobalScope",
     "WorkerNavigator",
     "StorageManager",
@@ -32,18 +32,27 @@ web-sys = { version = "0.3", features = [
     "FileSystemSyncAccessHandle",
     "DomException",
 ] }
-serde = { version = "1", features = ["derive"] }
-serde-wasm-bindgen = "0.6"
-rand = "0.10"
-log = { version = "0.4", default-features = false, optional = true }
+serde = { version = "1", default-features = false, features = ["derive", "alloc"] }
+rand  = { version = "0.10", default-features = false, features = ["alloc", "sys_rng"] }
+log   = { version = "0.4", default-features = false, optional = true }
+libm  = { version = "0.2", default-features = false }
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-getrandom = { version = "0.4", features = ["wasm_js"] }
-dlmalloc  = { version = "0.2", features = ["global"] }
+getrandom     = { version = "0.4", default-features = false, features = ["wasm_js"] }
+talc          = { version = "5.1", default-features = false }
+spinning_top  = { version = "0.3", default-features = false }
 
 [features]
-default    = []
-logging    = ["dep:log"]
+default = ["worker"]
+logging = ["dep:log"]
+worker = [] # for dedicated worker. Alse required RUSTFLAGS -Ctarget-feature=+atomics
+
+[profile.release]
+panic         = "abort"
+lto           = "fat"
+strip         = true
+opt-level     = "z"
+codegen-units = 1

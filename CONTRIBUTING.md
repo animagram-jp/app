@@ -21,32 +21,84 @@ Gui application system for editing and reading structured data. Handles event lo
 
 ---
 
+## Todo
+
+- [ ] `THREAD === "main"` へ落ちた場合の着地。現状は 1 回だけの自動
+      reload ([`distribution/init.js`](./distribution/init.js)) で
+      `THREAD === "worker"` への復帰を試みるのみ。reload しても
+      `crossOriginIsolated` が false のまま (COOP/COEP を出せない配信、
+      あるいはブラウザが対応しない) の場合、`worker` feature 有効ビルド
+      では `Handler::ready` の `FileStore::new(...).await` が
+      `FileSystemSyncAccessHandle` を要求し、main thread では取得できず
+      panic する ([`src/event.rs`](./src/event.rs))。この場合は真っ白い
+      画面のまま無反応になる。`Handler::ready` を main では `FileStore`
+      無しの分岐にして起動自体は継続できるようにする対応を検討する
+      (ただし永続化なしで使い続けることになるため、利用者への告知が要る)。
+      詳細は [`docs/build.md`](./docs/build.md) の COOP/COEP の節を参照。
+
+---
+
 ## Commands
 
-```bash
-# unit test
-cargo test
-
-# wasm-pack compile
-wasm-pack build --target web --out-dir distribution/app --out-name app
-
-# file_store: Opfs integration tests
-wasm-pack test --headless --firefox
-
-# copy from animagram/css
-cp -f ../css/css/*.css ./distribution/css/
-```
+worker 構成 (既定, `worker` feature 有効) は dedicated worker +
+SharedArrayBuffer + `talc` アロケータを使う。`--target web` の
+wasm-bindgen 出力は標準では memory を自己完結で持つため、共有メモリで
+使うには手動で memory import 化と shared 化を後段で行う必要がある。
+手順の詳細と理由は [`docs/build.md`](./docs/build.md) を参照。
 
 ```bash
-# --- Setup for wasm-bindgen-test ---
-# modified_at: 2026-07
-# fire fox installation
+# --- Setup firefox, geckodriver, wasm-bindgen-cli (wasm-bindgen-test) ---
+#
 # See https://support.mozilla.org/ja/kb/install-firefox-linux
+# One-liner commands are the following:
 sudo install -d -m 0755 /etc/apt/keyrings
 curl -fsSL https://packages.mozilla.org/apt/repo-signing-key.gpg | sudo tee /etc/apt/keyrings/packages.mozilla.org.asc > /dev/null
 sudo tee /etc/apt/sources.list.d/mozilla.sources > /dev/null <<< $'Types: deb\nURIs: https://packages.mozilla.org/apt\nSuites: mozilla\nComponents: main\nSigned-By: /etc/apt/keyrings/packages.mozilla.org.asc'
 sudo tee /etc/apt/preferences.d/mozilla > /dev/null <<< $'Package: *\nPin: origin packages.mozilla.org\nPin-Priority: 1000'
-sudo apt update && sudo apt install firefox
+sudo apt update && sudo apt install firefox geckodriver wasm-bindgen-cli
+
+# docTest
+cargo test --doc
+
+# unit test
+cargo test --lib
+
+# unit test (wasm32 + headless browser)
+geckodriver --port 4444 & GECKODRIVER_REMOTE=http://127.0.0.1:4444 cargo test --target wasm32-unknown-unknown --lib --tests && pkill -f "geckodriver --port 4444"
+
+# --- build (wasm on dedicated worker) ---
+
+# 1. Build WebAssembly
+#    +atomics,+bulk-memory: enables shared memory and memory.copy.
+#    --import-memory: imports external memory.
+#    --max-memory=134217728: per talc allocator (128MiB, 2048 pages, `distribution/init.js:MEMORY_MAXIMUM_PAGES`)
+RUSTFLAGS="-Ctarget-feature=+atomics,+bulk-memory -Clink-arg=--import-memory -Clink-arg=--max-memory=134217728" cargo build --release --target wasm32-unknown-unknown -Zbuild-std=std,panic_abort
+
+# 2. Generate glue JS scripts
+wasm-bindgen --target web --out-dir distribution/app --out-name app target/wasm32-unknown-unknown/release/app.wasm
+
+# 3. Patch shared flag with wasm-tools
+#
+#   cargo install wasm-tools
+#   replace app_bg.wasm: (import "./app_bg.js" "memory" (memory (;0;) {min} {max})) to (import "./app_bg.js" "memory" (memory (;0;) {min} {max} shared)).
+wasm-tools print distribution/app/app_bg.wasm -o /tmp/app.wat
+wasm-tools parse /tmp/app.wat -o distribution/app/app_bg.wasm
+wasm-tools validate --features=threads,bulk-memory distribution/app/app_bg.wasm
+
+# 4. Patch app.js:cachedTextDecoder.decode
+#    (TypeError: TextDecoder.decode()... can't be a SharedArrayBuffer).
+#    Replace
+#    distribution/app/app.js:
+#      return cachedTextDecoder.decode(getUint8ArrayMemory0().subarray(ptr, ptr + len));
+#    to:
+#      const view = getUint8ArrayMemory0().subarray(ptr, ptr + len);
+#      return cachedTextDecoder.decode(
+#          view.buffer instanceof SharedArrayBuffer ? view.slice() : view
+#      );
+
+
+# copy from animagram/css
+cp -f ../css/css/*.css ./distribution/css/
 ```
 
 OPFS files are in:
