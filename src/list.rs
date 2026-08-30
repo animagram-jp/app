@@ -1,11 +1,13 @@
+use alloc::{collections::BTreeMap, vec, vec::Vec};
 use core::{
-    mem::size_of, option::Option::{Some, None}, 
-    result::Result::{self, Ok, Err}, marker::Copy, 
-    cmp::PartialEq, 
-    default::Default, 
-    clone::Clone
+    clone::Clone,
+    cmp::PartialEq,
+    default::Default,
+    marker::Copy,
+    mem::size_of,
+    option::Option::{None, Some},
+    result::Result::{self, Err, Ok},
 };
-use alloc::{collections::BTreeMap, vec::Vec, vec};
 
 #[derive(Debug)]
 pub enum SetOutcome {
@@ -57,28 +59,44 @@ pub struct List<T: Copy + Default + PartialEq> {
 
 impl<T: Copy + Default + PartialEq> List<T> {
     pub fn new() -> Self {
-        Self { data: vec![T::default()] } // [0] = vacant sentinel (0-value)
+        Self {
+            data: vec![T::default()],
+        } // [0] = vacant sentinel (0-value)
     }
 
     pub fn get(&self, identity: &u32) -> Result<&T, ListError> {
         let i = *identity as usize;
         let v = self.data.get(i).ok_or(ListError::OutOfBounds)?;
-        if *v == T::default() { return Err(ListError::NotExist); } // 0-value = vacant
+        if *v == T::default() {
+            return Err(ListError::NotExist);
+        } // 0-value = vacant
         Ok(v)
     }
 
     /// reuse_vacant: if true and identity=0, reuse first vacant slot
     /// allow_sparse: if true and identity != 0, extend data with default slots if out of range
-    pub fn set(&mut self, identity: &u32, value: T, reuse_vacant: bool, allow_sparse: bool) -> Result<SetOutcome, ListError> {
+    pub fn set(
+        &mut self,
+        identity: &u32,
+        value: T,
+        reuse_vacant: bool,
+        allow_sparse: bool,
+    ) -> Result<SetOutcome, ListError> {
         if *identity != 0 {
             let i = *identity as usize;
             if i >= self.data.len() {
-                if !allow_sparse { return Err(ListError::OutOfBounds); }
+                if !allow_sparse {
+                    return Err(ListError::OutOfBounds);
+                }
                 self.data.resize(i + 1, T::default()); // fill gaps with 0-value (vacant)
             }
             let is_new = self.data[i] == T::default(); // 0-value = vacant
             self.data[i] = value;
-            if is_new { Ok(SetOutcome::Created(*identity)) } else { Ok(SetOutcome::Updated(*identity)) }
+            if is_new {
+                Ok(SetOutcome::Created(*identity))
+            } else {
+                Ok(SetOutcome::Updated(*identity))
+            }
         } else {
             let vacant = if reuse_vacant {
                 (1..self.data.len()).find(|&i| self.data[i] == T::default()) // 0-value = vacant
@@ -86,16 +104,27 @@ impl<T: Copy + Default + PartialEq> List<T> {
                 None
             };
             match vacant {
-                Some(i) => { self.data[i] = value; Ok(SetOutcome::Created(i as u32)) }
-                None    => { let i = self.data.len(); self.data.push(value); Ok(SetOutcome::Created(i as u32)) }
+                Some(i) => {
+                    self.data[i] = value;
+                    Ok(SetOutcome::Created(i as u32))
+                }
+                None => {
+                    let i = self.data.len();
+                    self.data.push(value);
+                    Ok(SetOutcome::Created(i as u32))
+                }
             }
         }
     }
 
     pub fn delete(&mut self, identity: &u32) -> Result<(), ListError> {
-        if *identity == 0 { return Err(ListError::NotExist); }
+        if *identity == 0 {
+            return Err(ListError::NotExist);
+        }
         let i = *identity as usize;
-        if i >= self.data.len() { return Err(ListError::OutOfBounds); }
+        if i >= self.data.len() {
+            return Err(ListError::OutOfBounds);
+        }
         self.data[i] = T::default(); // 0-value = vacant
         Ok(())
     }
@@ -148,17 +177,15 @@ impl VariableList {
     pub fn new_from_bytes(index: &[u8], data: &[u8]) -> Self {
         let sz = size_of::<usize>();
         Self {
-            index: index.chunks_exact(sz)
+            index: index
+                .chunks_exact(sz)
                 .map(|b| usize::from_ne_bytes(b.try_into().unwrap()))
                 .collect(),
             data: data.to_vec(),
         }
     }
 
-    pub fn get<'a>(
-        &'a self,
-        identity: &u32,
-    ) -> Result<&'a [u8], ListError> {
+    pub fn get<'a>(&'a self, identity: &u32) -> Result<&'a [u8], ListError> {
         let index_s = *identity as usize * 2;
         let s = *self.index.get(index_s).ok_or(ListError::OutOfBounds)?;
         let e = *self.index.get(index_s + 1).ok_or(ListError::OutOfBounds)?;
@@ -185,11 +212,13 @@ impl VariableList {
             let index_s = *identity as usize * 2;
             let index_e = index_s + 2;
             if index_e > self.index.len() {
-                if !allow_sparse { return Err(ListError::OutOfBounds); }
+                if !allow_sparse {
+                    return Err(ListError::OutOfBounds);
+                }
                 self.index.resize(index_e, 0);
             }
             let old_start = self.index[index_s];
-            let old_end   = self.index[index_s + 1];
+            let old_end = self.index[index_s + 1];
             let is_new = old_start == 0 && old_end == 0;
             if !is_new && value.len() <= old_end - old_start {
                 self.data[old_start..old_start + value.len()].copy_from_slice(value);
@@ -200,14 +229,18 @@ impl VariableList {
                 self.data.extend_from_slice(value);
                 self.index[index_s..index_e].copy_from_slice(&[start, end]);
             }
-            if is_new { Ok(SetOutcome::Created(*identity)) } else { Ok(SetOutcome::Updated(*identity)) }
+            if is_new {
+                Ok(SetOutcome::Created(*identity))
+            } else {
+                Ok(SetOutcome::Updated(*identity))
+            }
         } else {
             if intern {
                 let count = self.index.len() / 2;
                 for i in 1..count {
                     let index_s = i * 2;
                     let start = self.index[index_s];
-                    let end   = self.index[index_s + 1];
+                    let end = self.index[index_s + 1];
                     if (start != 0 || end != 0) && &self.data[start..end] == value {
                         return Ok(SetOutcome::Updated(i as u32));
                     }
@@ -223,10 +256,7 @@ impl VariableList {
         }
     }
 
-    pub fn delete(
-        &mut self,
-        identity: &u32,
-    ) -> Result<(), ListError> {
+    pub fn delete(&mut self, identity: &u32) -> Result<(), ListError> {
         if *identity == 0 {
             return Err(ListError::NotExist);
         }
@@ -258,9 +288,9 @@ impl VariableList {
     /// assert_eq!(vl.get(&1).unwrap(), &[4u8, 5, 6]);
     /// ```
     pub fn compact(&mut self) -> Result<BTreeMap<u32, u32>, VariableListError> {
-        let mut new_index       = vec![0, 0];
+        let mut new_index = vec![0, 0];
         let mut new_data: Vec<u8> = Vec::new();
-        let mut remap        = BTreeMap::new();
+        let mut remap = BTreeMap::new();
         let count = self.index.len() / 2;
         for i in 1..count {
             let index_s = i * 2;
@@ -268,8 +298,11 @@ impl VariableList {
                 continue;
             }
             let start = self.index[index_s];
-            let end   = self.index[index_s + 1];
-            let slice = self.data.get(start..end).ok_or(VariableListError::Compact)?;
+            let end = self.index[index_s + 1];
+            let slice = self
+                .data
+                .get(start..end)
+                .ok_or(VariableListError::Compact)?;
             let new_start = new_data.len();
             new_data.extend_from_slice(slice);
             let new_end = new_data.len();
@@ -279,7 +312,7 @@ impl VariableList {
             remap.insert(i as u32, new_id as u32);
         }
         self.index = new_index;
-        self.data  = new_data;
+        self.data = new_data;
         Ok(remap)
     }
 }

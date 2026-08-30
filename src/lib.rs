@@ -95,21 +95,21 @@
     feature(stdarch_wasm_atomic_wait)
 )]
 
-extern crate core;
 extern crate alloc;
+extern crate core;
 #[cfg(test)]
 extern crate std;
 
-pub mod list;
-pub mod timestamp;
-pub mod js_client;
-pub mod file_store;
-pub mod data_struct;
 pub mod app;
+pub mod arena;
+pub mod data_struct;
+pub mod event;
+pub mod file_store;
+pub mod js_client;
+pub mod list;
 pub mod object;
 pub mod roll;
-pub mod event;
-pub mod arena;
+pub mod timestamp;
 
 // ============================================================
 // Global Allocator
@@ -123,7 +123,7 @@ pub mod arena;
 // talc はスレッド構成向けに spinlock ベースのロックを公式サポートする
 // ため、こちらを使う。
 #[cfg(target_arch = "wasm32")]
-use talc::{wasm::*, sync::TalcLock};
+use talc::{sync::TalcLock, wasm::*};
 
 #[cfg(target_arch = "wasm32")]
 #[global_allocator]
@@ -135,17 +135,22 @@ static ALLOCATOR: TalcLock<spinning_top::RawSpinlock, WasmGrowAndClaim, WasmBinn
 // ============================================================
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Lang {En(En), Ja}
+pub enum Lang {
+    En(En),
+    Ja,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum En {Us}
+pub enum En {
+    Us,
+}
 
 impl Lang {
     fn display(self) -> &'static str {
         match self {
             Self::En(En::Us) => "en-US",
-            Self::En(_)      => "En",
-            Self::Ja         => "ja",
+            Self::En(_) => "En",
+            Self::Ja => "ja",
         }
     }
 }
@@ -182,16 +187,19 @@ impl Lang {
 #[cfg(all(target_arch = "wasm32", not(test)))]
 #[panic_handler]
 fn panic(info: &core::panic::PanicInfo) -> ! {
-    use alloc::format;
-    use crate::js_client::ERROR_PANIC;
     use crate::arena::report_error;
+    use crate::js_client::ERROR_PANIC;
+    use alloc::format;
 
     let location = match info.location() {
         Some(location) => format!("{}:{}", location.file(), location.line()),
-        None           => alloc::string::String::from("unknown"),
+        None => alloc::string::String::from("unknown"),
     };
 
-    report_error(ERROR_PANIC, &format!("panic at {location}: {}", info.message()));
+    report_error(
+        ERROR_PANIC,
+        &format!("panic at {location}: {}", info.message()),
+    );
 
     core::arch::wasm32::unreachable()
 }

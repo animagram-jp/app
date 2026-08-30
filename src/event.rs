@@ -1,30 +1,26 @@
-// app repository の `src/event.rs` に対応する。
-//
-// `Event` と `Handler` を持つ。加えて、イベントフレームの解釈である
-// `decode_event` と event 番号の定数をここへ置いた。app repository では
-// `CanvasEvent::decode` が `src/js_client.rs` にあるが、この経路では
-// 解釈結果が `Event` そのものであり、`Event` の定義と分けられないためである。
-
+use alloc::{vec, vec::Vec};
+use arbitrary_int::u2;
 use core::{
-    primitive::{u8, u32, f64},
-    option::Option::{self, Some, None},
     matches,
+    option::Option::{self, None, Some},
+    primitive::{f64, u8, u32},
 };
-use alloc::{vec::Vec, vec};
+
+use crate::{
+    Lang,
+    arena::Decoder,
+    data_struct::DataStruct,
+    js_client::{CanvasEvent, Command, EventType, Gesture, KeyName, PointerState, dom, name},
+};
+
 #[cfg(feature = "worker")]
 use alloc::format;
-use arbitrary_int::u2;
 
-use crate::Lang;
-use crate::js_client::{
-    Command, CanvasEvent, EventType, KeyName, Gesture, PointerState, dom, name,
-};
-#[cfg(feature = "worker")]
-use crate::js_client::ERROR_STORE_LOST;
-use crate::arena::Decoder;
 #[cfg(feature = "worker")]
 use crate::file_store::FileStore;
-use crate::data_struct::DataStruct;
+
+#[cfg(feature = "worker")]
+use crate::js_client::ERROR_STORE_LOST;
 
 // ============================================================
 // constant
@@ -128,24 +124,26 @@ pub fn decode_event(frame: &[u8]) -> Option<Event> {
     Some(match kind {
         EVENT_CANVAS => Event::Canvas(CanvasEvent {
             event_type: EventType::decode_u8(decoder.u8()?),
-            id:         decoder.id()?,
-            key:        KeyName::decode_u8(decoder.u8()?),
-            value:      decoder.string()?,
-            x:          decoder.f32()? as f64,
-            y:          decoder.f32()? as f64,
-            time:       decoder.f64()?,
+            id: decoder.id()?,
+            key: KeyName::decode_u8(decoder.u8()?),
+            value: decoder.string()?,
+            x: decoder.f32()? as f64,
+            y: decoder.f32()? as f64,
+            time: decoder.f64()?,
         }),
         EVENT_VIEWPORT => Event::Viewport {
-            width:  decoder.f32()? as f64,
+            width: decoder.f32()? as f64,
             height: decoder.f32()? as f64,
         },
         EVENT_SCROLL => Event::Scroll {
             id: decoder.id()?,
-            x:  decoder.f32()? as f64,
-            y:  decoder.f32()? as f64,
+            x: decoder.f32()? as f64,
+            y: decoder.f32()? as f64,
         },
-        EVENT_SET_PARAMETER => Event::SetParameter { value: decoder.u32()? },
-        EVENT_RENDER   => Event::Render,
+        EVENT_SET_PARAMETER => Event::SetParameter {
+            value: decoder.u32()?,
+        },
+        EVENT_RENDER => Event::Render,
         EVENT_SHUTDOWN => Event::Shutdown,
         _ => return None,
     })
@@ -179,9 +177,9 @@ pub enum CharacterSheet {
 /// 表示中のダイアログ。中身は app repository の `Dialog` と同じ。
 pub enum Dialog {
     None,
-    Drawer, // #drawer
+    Drawer,                          // #drawer
     Select { step: u8, index: u32 }, // #main_modal セレクトUI表示状態
-    Input  { step: u8, value: u32 }, // #main_modal 入力UI表示状態
+    Input { step: u8, value: u32 },  // #main_modal 入力UI表示状態
 }
 
 /// セッションログ。中身は app repository の `Log` と同じ。
@@ -200,19 +198,19 @@ const CHARACTER_SCHEMA_NAME: &str = "characters";
 /// 呼べるため、往復にする必要が無い。
 pub struct Handler {
     character_sheet: CharacterSheet,
-    dialog:          Dialog,
-    lang:            Lang,
-    last_toast:      u2,
-    character:       DataStruct,
+    dialog: Dialog,
+    lang: Lang,
+    last_toast: u2,
+    character: DataStruct,
     /// `worker` feature でのみ持つ。OPFS の `FileSystemSyncAccessHandle` は
     /// dedicated worker でしか取得できないため、main thread 構成では
     /// フィールドごと存在しない。`save` を呼ぶコードは型検査で弾かれる。
     #[cfg(feature = "worker")]
-    characters:      FileStore,
-    logs:            Vec<Log>,
+    characters: FileStore,
+    logs: Vec<Log>,
     /// `characters` への操作が続けて失敗した回数。成功すると 0 に戻る。
     #[cfg(feature = "worker")]
-    store_failures:  u8,
+    store_failures: u8,
 }
 
 impl Handler {
@@ -236,16 +234,17 @@ impl Handler {
     pub async fn ready(_viewport_width: f64, _viewport_height: f64) -> Self {
         Self {
             character_sheet: CharacterSheet::Immutable,
-            dialog:          Dialog::None,
-            lang:            Lang::Ja,
-            last_toast:      u2::new(1),
-            character:       DataStruct::new(0, 0.0, 256),
+            dialog: Dialog::None,
+            lang: Lang::Ja,
+            last_toast: u2::new(1),
+            character: DataStruct::new(0, 0.0, 256),
             #[cfg(feature = "worker")]
-            characters:      FileStore::new(CHARACTER_SCHEMA_NAME).await
+            characters: FileStore::new(CHARACTER_SCHEMA_NAME)
+                .await
                 .unwrap_or_else(|e| panic!("FileStore::new failed: {e}")),
-            logs:            Vec::new(),
+            logs: Vec::new(),
             #[cfg(feature = "worker")]
-            store_failures:  0,
+            store_failures: 0,
         }
     }
 
@@ -291,7 +290,7 @@ impl Handler {
             Err(e) => {
                 self.store_failures = 0;
                 vec![Command::Error {
-                    code:    ERROR_STORE_LOST,
+                    code: ERROR_STORE_LOST,
                     message: format!("file store save failed: {e}"),
                 }]
             }
@@ -302,11 +301,7 @@ impl Handler {
     ///
     /// app repository では `CanvasEvent` の `EventType::Resize` として
     /// `process` が受けるが、payload の形が異なるため分けた。
-    pub fn process_viewport(
-        &mut self,
-        _width: f64,
-        _height: f64,
-    ) -> (Vec<Event>, Vec<Command>) {
+    pub fn process_viewport(&mut self, _width: f64, _height: f64) -> (Vec<Event>, Vec<Command>) {
         (vec![], vec![])
     }
 
@@ -330,12 +325,10 @@ impl Handler {
     /// app repository は `attribute` を `String` で持つが、ここでは
     /// `Name` の添字である。
     pub fn initial_draw(&self) -> (Vec<Event>, Vec<Command>) {
-        let commands = vec![
-            Command::RemoveAttribute {
-                id:        dom::Id::new(&[(dom::Tag::Body, None)]),
-                attribute: name::HIDDEN,
-            },
-        ];
+        let commands = vec![Command::RemoveAttribute {
+            id: dom::Id::new(&[(dom::Tag::Body, None)]),
+            attribute: name::HIDDEN,
+        }];
         (vec![], commands)
     }
 
@@ -349,18 +342,12 @@ impl Handler {
         event: &CanvasEvent,
         _state: &PointerState,
     ) -> (Vec<Event>, Vec<Command>) {
-        let toggle = dom::Id::new(&[
-            (dom::Tag::Header, None),
-            (dom::Tag::Button, Some(3)),
-        ]);
+        let toggle = dom::Id::new(&[(dom::Tag::Header, None), (dom::Tag::Button, Some(3))]);
         if !matches!(event.event_type, EventType::Click) || event.id != toggle {
             return (vec![], vec![]);
         }
 
-        let section = |n| dom::Id::new(&[
-            (dom::Tag::Main, None),
-            (dom::Tag::Section, Some(n)),
-        ]);
+        let section = |n| dom::Id::new(&[(dom::Tag::Main, None), (dom::Tag::Section, Some(n))]);
         let (shown, hidden) = match self.character_sheet {
             CharacterSheet::Immutable => {
                 self.character_sheet = CharacterSheet::Editable;
@@ -372,8 +359,14 @@ impl Handler {
             }
         };
         let commands = vec![
-            Command::RemoveClass { id: section(shown),  value: name::HIDDEN },
-            Command::AddClass    { id: section(hidden), value: name::HIDDEN },
+            Command::RemoveClass {
+                id: section(shown),
+                value: name::HIDDEN,
+            },
+            Command::AddClass {
+                id: section(hidden),
+                value: name::HIDDEN,
+            },
         ];
         (vec![], commands)
     }

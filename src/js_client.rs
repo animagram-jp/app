@@ -17,17 +17,17 @@
 // なお `CanvasEvent::decode` は `crate::event::decode_event` に統合した。
 // `dom::Id` の直列化は `crate::arena` の `Encoder::id` / `Decoder::id` が担う。
 
+use alloc::{string::String, vec::Vec};
 use core::{
-    primitive::{u8, u16, u32, i32, f32, f64, bool},
-    option::Option::{self, Some, None},
-    marker::Copy,
     clone::Clone,
-    cmp::{PartialEq, Eq},
-    fmt::Debug,
+    cmp::{Eq, PartialEq},
     default::Default,
+    fmt::Debug,
+    marker::Copy,
     matches,
+    option::Option::{self, None, Some},
+    primitive::{bool, f32, f64, i32, u8, u16, u32},
 };
-use alloc::{vec::Vec, string::String};
 
 use crate::arena::Encoder;
 
@@ -137,41 +137,45 @@ impl ErrorCode {
 ///    同じ enum に統合したためである。
 pub enum Command {
     /// `el.textContent = d.string() ?? ""; break;`
-    SetText         { id: dom::Id, value: String },
+    SetText { id: dom::Id, value: String },
     /// `el.value = d.string() ?? ""; break;`
-    SetValue        { id: dom::Id, value: String },
+    SetValue { id: dom::Id, value: String },
     /// `el.setAttribute(NAMES[d.u16()], d.string() ?? ""); break;`
-    SetAttribute    { id: dom::Id, attribute: Name, value: String },
+    SetAttribute {
+        id: dom::Id,
+        attribute: Name,
+        value: String,
+    },
     /// `el.removeAttribute(NAMES[d.u16()]); break;`
     RemoveAttribute { id: dom::Id, attribute: Name },
     /// `el.classList.add(NAMES[d.u16()]); break;`
-    AddClass        { id: dom::Id, value: Name },
+    AddClass { id: dom::Id, value: Name },
     /// `el.classList.remove(NAMES[d.u16()]); break;`
-    RemoveClass     { id: dom::Id, value: Name },
+    RemoveClass { id: dom::Id, value: Name },
     /// `el.style.width = d.u32() + "px"; break;`
-    SetWidth        { id: dom::Id, px: u32 },
+    SetWidth { id: dom::Id, px: u32 },
     /// `el.style.height = d.u32() + "px"; break;`
-    SetHeight       { id: dom::Id, px: u32 },
+    SetHeight { id: dom::Id, px: u32 },
     /// `el.style.zIndex = d.i32(); break;`
-    SetZIndex       { id: dom::Id, z: i32 },
+    SetZIndex { id: dom::Id, z: i32 },
     /// `el.style.background = d.string(); break;`
-    SetBackground   { id: dom::Id, value: String },
+    SetBackground { id: dom::Id, value: String },
     /// `el.style.translate = `${d.f32()}px ${d.f32()}px`; break;`
-    SetTranslate    { id: dom::Id, x: f32, y: f32 },
+    SetTranslate { id: dom::Id, x: f32, y: f32 },
     /// `el.style.cursor = NAMES[d.u16()] ?? ""; break;`
-    SetCursor       { id: dom::Id, value: Name },
+    SetCursor { id: dom::Id, value: Name },
     /// `el.showModal(); break;`
-    ShowModal       { id: dom::Id },
+    ShowModal { id: dom::Id },
     /// `el.close(); break;`
-    CloseModal      { id: dom::Id },
+    CloseModal { id: dom::Id },
     /// `el.focus(); break;`
-    Focus           { id: dom::Id },
+    Focus { id: dom::Id },
     /// `jsFn[NAMES[d.u16()]]?.(el); break;`
-    JsFn            { id: dom::Id, name: Name },
+    JsFn { id: dom::Id, name: Name },
     /// トリプルバッファへ新しいフレームを公開した。
     FrameReady,
     /// 回復不能な異常を報告する。JavaScript 側は worker を作り直す。
-    Error           { code: ErrorCode, message: String },
+    Error { code: ErrorCode, message: String },
 }
 
 /// コマンド 1 件をバイト列へ追記する。
@@ -202,7 +206,11 @@ pub fn encode_command(commands: &mut Vec<u8>, command: &Command) {
             encoder.id(id);
             encoder.str(value);
         }
-        Command::SetAttribute { ref id, attribute, ref value } => {
+        Command::SetAttribute {
+            ref id,
+            attribute,
+            ref value,
+        } => {
             encoder.u8(OPERATION_SET_ATTRIBUTE);
             encoder.id(id);
             encoder.u16(attribute.0);
@@ -368,7 +376,11 @@ pub enum Device {
 
 /// `pointer_coarse` から入力装置を判定する。中身は app repository と同じ。
 pub fn detect_device(pointer_coarse: bool) -> Device {
-    if pointer_coarse { Device::Touch } else { Device::Mouse }
+    if pointer_coarse {
+        Device::Touch
+    } else {
+        Device::Mouse
+    }
 }
 
 /// イベント種別。variant は app repository の `EventType` と同じ。
@@ -424,22 +436,22 @@ impl EventType {
     /// ```
     pub fn decode_u8(value: u8) -> Self {
         match value {
-            1  => Self::Submit,
-            2  => Self::Click,
-            3  => Self::ContextMenu,
-            4  => Self::KeyDown,
-            5  => Self::Input,
-            6  => Self::Change,
-            7  => Self::FocusIn,
-            8  => Self::FocusOut,
-            9  => Self::Resize,
+            1 => Self::Submit,
+            2 => Self::Click,
+            3 => Self::ContextMenu,
+            4 => Self::KeyDown,
+            5 => Self::Input,
+            6 => Self::Change,
+            7 => Self::FocusIn,
+            8 => Self::FocusOut,
+            9 => Self::Resize,
             10 => Self::Scroll,
             11 => Self::Drop,
             12 => Self::PointerDown,
             13 => Self::PointerUp,
             14 => Self::PointerMove,
             15 => Self::PointerCancel,
-            _  => Self::Other,
+            _ => Self::Other,
         }
     }
 
@@ -513,14 +525,14 @@ impl KeyName {
 /// pointer の追跡状態。中身は app repository の `PointerState` と同じ。
 #[derive(Default, Clone, Copy)]
 pub struct PointerState {
-    is_down:    bool,   // default: false
-    start_x:    f64,    // default: 0.0
-    start_y:    f64,    // default: 0.0
-    current_x:  f64,    // default: 0.0
-    current_y:  f64,    // default: 0.0
-    start_time: f64,    // default: 0.0
+    is_down: bool,           // default: false
+    start_x: f64,            // default: 0.0
+    start_y: f64,            // default: 0.0
+    current_x: f64,          // default: 0.0
+    current_y: f64,          // default: 0.0
+    start_time: f64,         // default: 0.0
     drag_offset: (f64, f64), // (pointer_px - target base px) when PointerDown
-    drag_px:     (f64, f64), // target base px when is_dragging == true
+    drag_px: (f64, f64),     // target base px when is_dragging == true
     is_dragging: bool,
 }
 
@@ -529,14 +541,14 @@ impl PointerState {
     pub fn update(self, event_type: &EventType, x: f64, y: f64, time: f64) -> Self {
         match event_type {
             EventType::PointerDown => Self {
-                is_down:     true,
-                start_x:     x,
-                start_y:     y,
-                current_x:   x,
-                current_y:   y,
-                start_time:  time,
+                is_down: true,
+                start_x: x,
+                start_y: y,
+                current_x: x,
+                current_y: y,
+                start_time: time,
                 drag_offset: (0.0, 0.0),
-                drag_px:     (0.0, 0.0),
+                drag_px: (0.0, 0.0),
                 is_dragging: false,
             },
             EventType::PointerMove => Self {
@@ -603,7 +615,11 @@ pub fn detect_gesture(
         let velocity = distance / dt;
         if velocity > 0.5 && distance > 50.0 && dt < 250.0 {
             return Some(if libm::fabs(dx) > libm::fabs(dy) {
-                if dx > 0.0 { Gesture::SwipeRight } else { Gesture::SwipeLeft }
+                if dx > 0.0 {
+                    Gesture::SwipeRight
+                } else {
+                    Gesture::SwipeLeft
+                }
             } else if dy > 0.0 {
                 Gesture::SwipeDown
             } else {
@@ -615,7 +631,10 @@ pub fn detect_gesture(
     // drag: when PointerMove + long distance → return offset
     if matches!(event_type, EventType::PointerMove) && distance > 10.0 {
         state.is_dragging = true;
-        return Some(Gesture::Drag { x: state.current_x, y: state.current_y });
+        return Some(Gesture::Drag {
+            x: state.current_x,
+            y: state.current_y,
+        });
     }
 
     None
@@ -631,15 +650,15 @@ pub fn detect_gesture(
 /// `Id::encode` / `Id::decode` (文字列) はそのまま残すが、共有アリーナ経由の
 /// 直列化には `Encoder::id` / `Decoder::id` を用いる。
 pub mod dom {
+    use alloc::vec::Vec;
     use core::{
-        primitive::{u8, u32},
-        option::Option,
-        cmp::PartialEq,
         clone::Clone,
+        cmp::PartialEq,
         fmt::Debug,
         iter::Iterator,
+        option::Option,
+        primitive::{u8, u32},
     };
-    use alloc::vec::Vec;
 
     /// element の tag。variant は app repository の `Tag` と同じ。
     #[derive(Debug, Clone, PartialEq)]
@@ -671,13 +690,13 @@ pub mod dom {
         /// ```
         pub fn encode_u8(&self) -> u8 {
             match self {
-                Self::Body    => 1,
-                Self::Main    => 2,
-                Self::Modal   => 3,
-                Self::Header  => 4,
+                Self::Body => 1,
+                Self::Main => 2,
+                Self::Modal => 3,
+                Self::Header => 4,
                 Self::Section => 5,
-                Self::Button  => 6,
-                Self::Other   => 0,
+                Self::Button => 6,
+                Self::Other => 0,
             }
         }
 
@@ -729,9 +748,14 @@ pub mod dom {
     impl Id {
         /// tag と連番の列から id を作る。中身は app repository と同じ。
         pub fn new(segs: &[(Tag, Option<u32>)]) -> Self {
-            Self(segs.iter()
-                .map(|(tag, n)| Segment { tag: tag.clone(), n: *n })
-                .collect())
+            Self(
+                segs.iter()
+                    .map(|(tag, n)| Segment {
+                        tag: tag.clone(),
+                        n: *n,
+                    })
+                    .collect(),
+            )
         }
 
         // pub fn decode(id: &str) -> Self { .. }

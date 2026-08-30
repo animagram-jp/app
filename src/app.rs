@@ -1,20 +1,19 @@
+use alloc::{collections::VecDeque, string::ToString, vec, vec::Vec};
 use core::{
-    primitive::{u8, u32, f64, bool},
-    option::Option::{Some, None},
     default::Default,
     iter::Extend,
+    option::Option::{None, Some},
+    primitive::{bool, f64, u8, u32},
 };
-use alloc::{vec::Vec, vec, collections::VecDeque, string::ToString};
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::wasm_bindgen;
 
-use crate::js_client::{
-    Command, EventType, ERROR_DECODE,
-    PointerState, detect_gesture, encode_command,
-};
+use crate::arena::{APP, ARENA, COMMAND_CAPACITY, EVENT_CAPACITY, RUNNING, emit};
 use crate::event::{Event, Handler, decode_event};
-use crate::arena::{ARENA, APP, RUNNING, EVENT_CAPACITY, COMMAND_CAPACITY, emit};
+use crate::js_client::{
+    Command, ERROR_DECODE, EventType, PointerState, detect_gesture, encode_command,
+};
 
 // ============================================================
 // App
@@ -29,10 +28,10 @@ use crate::arena::{ARENA, APP, RUNNING, EVENT_CAPACITY, COMMAND_CAPACITY, emit};
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 pub struct App {
     pointer_state: PointerState,
-    events:        VecDeque<Event>,
-    handler:       Handler,
-    commands:      Vec<u8>,
-    parameter:     u32,
+    events: VecDeque<Event>,
+    handler: Handler,
+    commands: Vec<u8>,
+    parameter: u32,
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
@@ -61,21 +60,17 @@ impl App {
     /// 両立できないためである。`poll` / `run_loop` は `APP` 越しに駆動する。
     /// JavaScript 側 (`init.js` の `attach` / `worker.js`) はこの戻り値を
     /// 使わず `await` するだけである。
-    pub async fn init(
-        _pointer_coarse: bool,
-        viewport_width: f64,
-        viewport_height: f64,
-    ) {
+    pub async fn init(_pointer_coarse: bool, viewport_width: f64, viewport_height: f64) {
         // PointerState はこのファイルでは中身を省いた unit struct だが、
         // app repository では実フィールドを持つ。取り込み時にそのまま
         // 動くよう `default()` を残す。
         #[allow(clippy::default_constructed_unit_structs)]
         let mut app = App {
             pointer_state: PointerState::default(),
-            events:        VecDeque::with_capacity(EVENT_CAPACITY),
-            handler:       Handler::ready(viewport_width, viewport_height).await,
-            commands:      Vec::with_capacity(COMMAND_CAPACITY),
-            parameter:     0,
+            events: VecDeque::with_capacity(EVENT_CAPACITY),
+            handler: Handler::ready(viewport_width, viewport_height).await,
+            commands: Vec::with_capacity(COMMAND_CAPACITY),
+            parameter: 0,
         };
 
         // app repository は `Event::Ready` を積み、`dispatch` が
@@ -94,7 +89,9 @@ impl App {
         }
 
         #[allow(clippy::deref_addrof)]
-        unsafe { *(&raw mut APP) = Some(app) };
+        unsafe {
+            *(&raw mut APP) = Some(app)
+        };
     }
 
     /// 終了処理のコマンド列を生成する。
@@ -160,10 +157,13 @@ impl App {
         // デコードに失敗したフレームは捨てる。1 フレーム落ちるだけで
         // 復旧できるため、報告はするが再起動は求めない。
         let Some(event) = decode_event(frame) else {
-            encode_command(&mut self.commands, &Command::Error {
-                code:    ERROR_DECODE,
-                message: "event frame is malformed".to_string(),
-            });
+            encode_command(
+                &mut self.commands,
+                &Command::Error {
+                    code: ERROR_DECODE,
+                    message: "event frame is malformed".to_string(),
+                },
+            );
             return;
         };
 
@@ -200,7 +200,11 @@ impl App {
     /// `Event::Gesture` の 3 つを分けるだけである。ここでは `Event` の
     /// variant が増えた分だけ分岐が増える。
     fn dispatch(&mut self, event: Event) -> (Vec<Event>, Vec<Command>) {
-        let Self { handler, pointer_state, .. } = self;
+        let Self {
+            handler,
+            pointer_state,
+            ..
+        } = self;
 
         match event {
             Event::Canvas(canvas_event) => {
@@ -221,9 +225,9 @@ impl App {
                     // app repository と同じく、PointerMove / PointerUp /
                     // PointerCancel はジェスチャに解決しなければ捨てる。
                     None => match canvas_event.event_type {
-                        EventType::PointerMove |
-                        EventType::PointerUp   |
-                        EventType::PointerCancel => (vec![], vec![]),
+                        EventType::PointerMove
+                        | EventType::PointerUp
+                        | EventType::PointerCancel => (vec![], vec![]),
                         _ => handler.process(&canvas_event, pointer_state),
                     },
                 }

@@ -21,19 +21,28 @@
 //!   the next `save()`. Atomicity is per record, not per batch: a crash may
 //!   leave a prefix of an unacknowledged batch visible after reopen.
 
-use core::{primitive::{u8, u32}, option::Option::{self, Some, None}, result::Result::{self, Ok}, cmp::PartialEq, clone::Clone};
-use alloc::{collections::{BTreeMap, BTreeSet}, vec::Vec, vec, string::{String, ToString}, fmt, fmt::{Display, Formatter}, format};
+use alloc::{
+    collections::{BTreeMap, BTreeSet},
+    fmt,
+    fmt::{Display, Formatter},
+    format,
+    string::{String, ToString},
+    vec,
+    vec::Vec,
+};
+use core::{
+    clone::Clone,
+    cmp::PartialEq,
+    option::Option::{self, None, Some},
+    primitive::{u8, u32},
+    result::Result::{self, Ok},
+};
 use js_sys;
 use wasm_bindgen::{JsCast, JsValue};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{
-    WorkerGlobalScope,
-    FileSystemDirectoryHandle,
-    FileSystemGetFileOptions,
-    FileSystemSyncAccessHandle,
-    FileSystemReadWriteOptions,
-    FileSystemFileHandle,
-    DomException,
+    DomException, FileSystemDirectoryHandle, FileSystemFileHandle, FileSystemGetFileOptions,
+    FileSystemReadWriteOptions, FileSystemSyncAccessHandle, WorkerGlobalScope,
 };
 
 // ============================================================
@@ -61,28 +70,42 @@ fn fletcher32(data: &[u8]) -> u32 {
 
 /// Mutation kind a log record carries.
 #[derive(Clone, PartialEq, Debug)]
-enum Operation { Set, Delete }
+enum Operation {
+    Set,
+    Delete,
+}
 
 /// One decoded record of the snap/log wire format (layout in module docs).
 struct LogRecord {
     operation: Operation,
-    id:        u32,
-    data:      Vec<u8>,
+    id: u32,
+    data: Vec<u8>,
 }
 
 impl LogRecord {
     fn set(id: u32, data: Vec<u8>) -> Self {
-        Self { operation: Operation::Set, id, data }
+        Self {
+            operation: Operation::Set,
+            id,
+            data,
+        }
     }
     fn delete(id: u32) -> Self {
-        Self { operation: Operation::Delete, id, data: Vec::new() }
+        Self {
+            operation: Operation::Delete,
+            id,
+            data: Vec::new(),
+        }
     }
 
     /// Serialize to the wire format, trailing checksum included.
     fn to_bytes(&self) -> Vec<u8> {
         let length = self.data.len() as u32;
         let mut header = [0u8; 9];
-        header[0] = match self.operation { Operation::Set => 1, Operation::Delete => 2 };
+        header[0] = match self.operation {
+            Operation::Set => 1,
+            Operation::Delete => 2,
+        };
         header[1..5].copy_from_slice(&self.id.to_le_bytes());
         header[5..9].copy_from_slice(&length.to_le_bytes());
         let checksum = fletcher32(&header).wrapping_add(fletcher32(&self.data));
@@ -98,17 +121,34 @@ impl LogRecord {
     /// buffer, an unknown op byte, or a checksum mismatch — every case means
     /// the same thing to the caller: the valid log ends here.
     fn from_bytes(buffer: &[u8]) -> Option<(Self, usize)> {
-        if buffer.len() < 9 { return None; }
-        let operation = match buffer[0] { 1 => Operation::Set, 2 => Operation::Delete, _ => return None };
-        let id     = u32::from_le_bytes(buffer[1..5].try_into().unwrap());
+        if buffer.len() < 9 {
+            return None;
+        }
+        let operation = match buffer[0] {
+            1 => Operation::Set,
+            2 => Operation::Delete,
+            _ => return None,
+        };
+        let id = u32::from_le_bytes(buffer[1..5].try_into().unwrap());
         let length = u32::from_le_bytes(buffer[5..9].try_into().unwrap()) as usize;
-        let total  = 9 + length + 4;
-        if buffer.len() < total { return None; }
-        let data     = buffer[9..9 + length].to_vec();
+        let total = 9 + length + 4;
+        if buffer.len() < total {
+            return None;
+        }
+        let data = buffer[9..9 + length].to_vec();
         let expected = fletcher32(&buffer[..9]).wrapping_add(fletcher32(&data));
-        let stored   = u32::from_le_bytes(buffer[9 + length..total].try_into().unwrap());
-        if expected != stored { return None; }
-        Some((Self { operation, id, data }, total))
+        let stored = u32::from_le_bytes(buffer[9 + length..total].try_into().unwrap());
+        if expected != stored {
+            return None;
+        }
+        Some((
+            Self {
+                operation,
+                id,
+                data,
+            },
+            total,
+        ))
     }
 }
 
@@ -123,8 +163,12 @@ fn apply_log(memory: &mut BTreeMap<u32, Vec<u8>>, log: &[u8]) -> usize {
         match LogRecord::from_bytes(&log[shift..]) {
             Some((record, consumed)) => {
                 match record.operation {
-                    Operation::Set    => { memory.insert(record.id, record.data); }
-                    Operation::Delete => { memory.remove(&record.id); }
+                    Operation::Set => {
+                        memory.insert(record.id, record.data);
+                    }
+                    Operation::Delete => {
+                        memory.remove(&record.id);
+                    }
                 }
                 shift += consumed;
             }
@@ -191,9 +235,14 @@ impl Display for FileStoreError {
 /// dedicated classifier (see `classify_get_file_handle`).
 fn classify(context: &str, error: JsValue) -> FileStoreError {
     if let Some(exception) = error.dyn_ref::<DomException>() {
-        let message = format!("{}: {} ({})", context, exception.message(), exception.name());
+        let message = format!(
+            "{}: {} ({})",
+            context,
+            exception.message(),
+            exception.name()
+        );
         return match exception.name().as_str() {
-            "InvalidStateError"  => FileStoreError::InvalidState(message),
+            "InvalidStateError" => FileStoreError::InvalidState(message),
             "QuotaExceededError" => FileStoreError::QuotaExceeded(message),
             _ => FileStoreError::Unknown(message),
         };
@@ -226,10 +275,10 @@ fn classify(context: &str, error: JsValue) -> FileStoreError {
 /// # Ok(()) }
 /// ```
 pub struct FileStore {
-    snap:    FileSystemSyncAccessHandle,
-    log:     FileSystemSyncAccessHandle,
+    snap: FileSystemSyncAccessHandle,
+    log: FileSystemSyncAccessHandle,
     /// Whole current state, including unsaved mutations.
-    memory:  BTreeMap<u32, Vec<u8>>,
+    memory: BTreeMap<u32, Vec<u8>>,
     /// Last issued id (in-process monotonic; see `issue_id`).
     next_id: u32,
     /// Flush-confirmed end of the log. The record prefix `[0, log_end)` is
@@ -259,15 +308,15 @@ impl FileStore {
             .await
             .map_err(|e| classify("getDirectory", e))?;
 
-        let dir     = root.unchecked_ref::<FileSystemDirectoryHandle>();
+        let dir = root.unchecked_ref::<FileSystemDirectoryHandle>();
         let options = FileSystemGetFileOptions::new();
         options.set_create(true);
 
         let snap = open(dir, &format!("{}.snap", filename), &options).await?;
-        let log  = open(dir, &format!("{}.log",  filename), &options).await?;
+        let log = open(dir, &format!("{}.log", filename), &options).await?;
 
         let snap_bytes = read_all(&snap)?;
-        let log_bytes  = read_all(&log)?;
+        let log_bytes = read_all(&log)?;
         // The validated prefix length is the best available truth for the
         // committed extent after a crash; a torn tail beyond it stays in
         // place until the first save() cuts it off.
@@ -275,7 +324,10 @@ impl FileStore {
         let next_id = memory.keys().copied().max().unwrap_or(0);
 
         Ok(Self {
-            snap, log, memory, next_id,
+            snap,
+            log,
+            memory,
+            next_id,
             log_end: log_end as u32,
             unsaved: BTreeSet::new(),
             deleted: BTreeSet::new(),
@@ -390,17 +442,18 @@ impl FileStore {
         // Precondition repair: anything past the flush-confirmed end is torn
         // garbage or an unconfirmed batch — cut it off so the batch below
         // never lands after bytes that would stop replay on the next open.
-        let size = self.log.get_size()
-            .map_err(|e| classify("get_size", e))? as u32;
+        let size = self.log.get_size().map_err(|e| classify("get_size", e))? as u32;
         if size < self.log_end {
             // Never truncate upward: extending zero-fills the gap, and a
             // shrunken log means the single-writer premise is already broken.
             return Err(FileStoreError::Unknown(format!(
-                "log shrank below the validated end ({} < {})", size, self.log_end
+                "log shrank below the validated end ({} < {})",
+                size, self.log_end
             )));
         }
         if size > self.log_end {
-            self.log.truncate_with_u32(self.log_end)
+            self.log
+                .truncate_with_u32(self.log_end)
                 .map_err(|e| classify("log truncate", e))?;
         }
 
@@ -410,7 +463,9 @@ impl FileStore {
         // Lift next_id over caller-supplied ids so in-process issuance stays
         // monotonic even when callers set() ids they made up themselves.
         for id in &set_ids {
-            if *id > self.next_id { self.next_id = *id; }
+            if *id > self.next_id {
+                self.next_id = *id;
+            }
         }
         self.unsaved.clear();
         self.deleted.clear();
@@ -438,7 +493,7 @@ impl FileStore {
     /// ```
     pub fn discard(&mut self) -> Result<(), FileStoreError> {
         let snap_bytes = read_all(&self.snap)?;
-        let log_bytes  = read_all(&self.log)?;
+        let log_bytes = read_all(&self.log)?;
         let (memory, _) = build_memory(&snap_bytes, self.confirmed(&log_bytes)?);
         self.memory = memory;
         self.unsaved.clear();
@@ -453,7 +508,9 @@ impl FileStore {
         let end = self.log_end as usize;
         if log_bytes.len() < end {
             return Err(FileStoreError::Unknown(format!(
-                "log shrank below the validated end ({} < {})", log_bytes.len(), end
+                "log shrank below the validated end ({} < {})",
+                log_bytes.len(),
+                end
             )));
         }
         Ok(&log_bytes[..end])
@@ -496,23 +553,23 @@ impl FileStore {
     /// must not leave `log_end` pointing past the truncated file.
     pub fn compact(&mut self) -> Result<(), FileStoreError> {
         let snap_bytes = read_all(&self.snap)?;
-        let log_bytes  = read_all(&self.log)?;
+        let log_bytes = read_all(&self.log)?;
         let (committed, _) = build_memory(&snap_bytes, self.confirmed(&log_bytes)?);
 
-        let new_snap: Vec<u8> = committed.iter()
-            .flat_map(|(&id, data)| {
-                LogRecord::set(id, data.clone()).to_bytes()
-            })
+        let new_snap: Vec<u8> = committed
+            .iter()
+            .flat_map(|(&id, data)| LogRecord::set(id, data.clone()).to_bytes())
             .collect();
 
-        self.snap.truncate_with_u32(0)
+        self.snap
+            .truncate_with_u32(0)
             .map_err(|e| classify("snap truncate", e))?;
         append(&self.snap, 0, &new_snap)?;
-        self.log.truncate_with_u32(0)
+        self.log
+            .truncate_with_u32(0)
             .map_err(|e| classify("log truncate", e))?;
         self.log_end = 0;
-        self.log.flush()
-            .map_err(|e| classify("log flush", e))?;
+        self.log.flush().map_err(|e| classify("log flush", e))?;
         Ok(())
     }
 }
@@ -533,21 +590,24 @@ fn at(shift: u32) -> FileSystemReadWriteOptions {
 /// reading — impossible under the single-writer premise — so it is reported
 /// as an error rather than looping forever.
 fn read_all(handle: &FileSystemSyncAccessHandle) -> Result<Vec<u8>, FileStoreError> {
-    let size = handle.get_size()
-        .map_err(|e| classify("get_size", e))? as usize;
-    if size == 0 { return Ok(vec![]); }
+    let size = handle.get_size().map_err(|e| classify("get_size", e))? as usize;
+    if size == 0 {
+        return Ok(vec![]);
+    }
     let mut buffer = vec![0u8; size];
 
     // Short read: one call may return fewer bytes than requested; advance
     // the offset until the buffer is full.
     let mut read = 0usize;
     while read < size {
-        let r = handle.read_with_u8_array_and_options(&mut buffer[read..], &at(read as u32))
+        let r = handle
+            .read_with_u8_array_and_options(&mut buffer[read..], &at(read as u32))
             .map_err(|e| classify("read", e))? as usize;
         if r == 0 {
             return Err(FileStoreError::Unknown(format!(
                 "read: reached EOF at offset {} before filling requested size {} \
-                 (file shrank since get_size?)", read, size
+                 (file shrank since get_size?)",
+                read, size
             )));
         }
         read += r;
@@ -563,23 +623,30 @@ fn read_all(handle: &FileSystemSyncAccessHandle) -> Result<Vec<u8>, FileStoreErr
 /// partial writes are expected and the reported byte count is authoritative.
 /// A write of 0 is not expected (a failure with unknown progress surfaces as
 /// `Err` instead), but is treated as an error to rule out an infinite loop.
-fn append(handle: &FileSystemSyncAccessHandle, base: u32, data: &[u8]) -> Result<(), FileStoreError> {
+fn append(
+    handle: &FileSystemSyncAccessHandle,
+    base: u32,
+    data: &[u8],
+) -> Result<(), FileStoreError> {
     let mut written = 0usize;
     while written < data.len() {
-        let w = handle.write_with_u8_array_and_options(
-            &mut data[written..].to_vec(),
-            &at(base + written as u32),
-        ).map_err(|e| classify("write", e))? as usize;
+        let w = handle
+            .write_with_u8_array_and_options(
+                &mut data[written..].to_vec(),
+                &at(base + written as u32),
+            )
+            .map_err(|e| classify("write", e))? as usize;
         if w == 0 {
             return Err(FileStoreError::Unknown(format!(
-                "write: no progress at offset {} (requested {}, got 0)", written, data.len() - written
+                "write: no progress at offset {} (requested {}, got 0)",
+                written,
+                data.len() - written
             )));
         }
         written += w;
     }
 
-    handle.flush()
-        .map_err(|e| classify("flush", e))?;
+    handle.flush().map_err(|e| classify("flush", e))?;
     Ok(())
 }
 
@@ -598,9 +665,9 @@ fn classify_get_file_handle(context: &str, error: JsValue) -> FileStoreError {
 /// Open `filename` inside `dir` and take its `SyncAccessHandle`
 /// (an exclusive lock on the file).
 async fn open(
-    dir:      &FileSystemDirectoryHandle,
+    dir: &FileSystemDirectoryHandle,
     filename: &str,
-    options:  &FileSystemGetFileOptions,
+    options: &FileSystemGetFileOptions,
 ) -> Result<FileSystemSyncAccessHandle, FileStoreError> {
     let file_handle = JsFuture::from(dir.get_file_handle_with_options(filename, options))
         .await
@@ -611,7 +678,7 @@ async fn open(
     let handle = JsFuture::from(
         file_handle
             .unchecked_ref::<FileSystemFileHandle>()
-            .create_sync_access_handle()
+            .create_sync_access_handle(),
     )
     .await
     .map_err(|e| classify(&format!("createSyncAccessHandle {}", filename), e))?;
@@ -633,8 +700,11 @@ mod test_data {
 
     #[cfg(not(target_arch = "wasm32"))]
     fn dataset() -> String {
-        std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/examples/log_records.tsv"))
-            .expect("examples/log_records.tsv")
+        std::fs::read_to_string(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/examples/log_records.tsv"
+        ))
+        .expect("examples/log_records.tsv")
     }
     // The OPFS suite runs in a browser where std::fs is unavailable at
     // runtime; embed the same file at compile time instead.
@@ -652,14 +722,16 @@ mod test_data {
             .filter_map(|line| {
                 let mut columns = line.split('\t');
                 let scenario = columns.next()?;
-                let op       = columns.next()?;
-                let id: u32  = columns.next()?.parse().expect("id column");
-                let payload  = columns.next().unwrap_or("");
-                if scenario != name { return None; }
+                let op = columns.next()?;
+                let id: u32 = columns.next()?.parse().expect("id column");
+                let payload = columns.next().unwrap_or("");
+                if scenario != name {
+                    return None;
+                }
                 Some(match op {
-                    "set"    => LogRecord::set(id, payload.as_bytes().to_vec()),
+                    "set" => LogRecord::set(id, payload.as_bytes().to_vec()),
                     "delete" => LogRecord::delete(id),
-                    other    => panic!("unknown op {:?} in dataset", other),
+                    other => panic!("unknown op {:?} in dataset", other),
                 })
             })
             .collect();
@@ -669,7 +741,10 @@ mod test_data {
 
     /// Concatenated wire bytes of a scenario — a snap/log file image.
     pub fn scenario_bytes(name: &str) -> Vec<u8> {
-        scenario(name).iter().flat_map(|record| record.to_bytes()).collect()
+        scenario(name)
+            .iter()
+            .flat_map(|record| record.to_bytes())
+            .collect()
     }
 
     /// In-memory oracle: the state an ideal store holds after applying
@@ -678,8 +753,12 @@ mod test_data {
         let mut memory = BTreeMap::new();
         for record in records {
             match record.operation {
-                Operation::Set    => { memory.insert(record.id, record.data.clone()); }
-                Operation::Delete => { memory.remove(&record.id); }
+                Operation::Set => {
+                    memory.insert(record.id, record.data.clone());
+                }
+                Operation::Delete => {
+                    memory.remove(&record.id);
+                }
             }
         }
         memory
@@ -692,8 +771,8 @@ mod test_data {
 
 #[cfg(all(test, not(target_arch = "wasm32")))]
 mod tests {
-    use super::*;
     use super::test_data::*;
+    use super::*;
 
     // ── fletcher32 — known-answer vectors ────────────────────
 
@@ -721,9 +800,9 @@ mod tests {
         let bytes = record.to_bytes();
         let (decoded, consumed) = LogRecord::from_bytes(&bytes).unwrap();
         assert_eq!(decoded.operation, Operation::Set);
-        assert_eq!(decoded.id,        record.id);
-        assert_eq!(decoded.data,      record.data);
-        assert_eq!(consumed,          bytes.len());
+        assert_eq!(decoded.id, record.id);
+        assert_eq!(decoded.data, record.data);
+        assert_eq!(consumed, bytes.len());
     }
 
     #[test]
@@ -732,7 +811,7 @@ mod tests {
         let bytes = record.to_bytes();
         let (decoded, consumed) = LogRecord::from_bytes(&bytes).unwrap();
         assert_eq!(decoded.operation, Operation::Delete);
-        assert_eq!(decoded.id,        record.id);
+        assert_eq!(decoded.id, record.id);
         assert!(decoded.data.is_empty());
         assert_eq!(consumed, bytes.len());
     }
@@ -795,14 +874,17 @@ mod tests {
     fn build_memory_set_then_delete() {
         let records = scenario("set_delete"); // set 1, set 2, delete 1
         let (memory, _) = build_memory(&[], &scenario_bytes("set_delete"));
-        assert!(!memory.contains_key(&records[0].id));        // deleted id is gone
-        assert_eq!(memory[&records[1].id], records[1].data);  // untouched id survives
+        assert!(!memory.contains_key(&records[0].id)); // deleted id is gone
+        assert_eq!(memory[&records[1].id], records[1].data); // untouched id survives
     }
 
     #[test]
     fn build_memory_overwrite_keeps_last() {
         let records = scenario("overwrite"); // set 1 twice with different payloads
-        assert_ne!(records[0].data, records[1].data, "dataset must distinguish the writes");
+        assert_ne!(
+            records[0].data, records[1].data,
+            "dataset must distinguish the writes"
+        );
         let (memory, _) = build_memory(&[], &scenario_bytes("overwrite"));
         assert_eq!(memory[&records[1].id], records[1].data);
     }
@@ -813,8 +895,8 @@ mod tests {
         let mut log = scenario_bytes("pair");
         *log.last_mut().unwrap() ^= 0xFF; // corrupt the trailing record
         let (memory, _) = build_memory(&[], &log);
-        assert_eq!(memory[&records[0].id], records[0].data);  // prefix applied
-        assert!(!memory.contains_key(&records[1].id));        // corrupt tail ignored
+        assert_eq!(memory[&records[0].id], records[0].data); // prefix applied
+        assert!(!memory.contains_key(&records[1].id)); // corrupt tail ignored
     }
 
     #[test]
@@ -829,13 +911,16 @@ mod tests {
 
     #[test]
     fn build_memory_log_overlays_snap() {
-        let snap = scenario("snap");    // set 1, set 2
-        let log  = scenario("overlay"); // overwrite 1, delete 2, add 3
-        assert_ne!(snap[0].data, log[0].data, "dataset must make the overwrite observable");
+        let snap = scenario("snap"); // set 1, set 2
+        let log = scenario("overlay"); // overwrite 1, delete 2, add 3
+        assert_ne!(
+            snap[0].data, log[0].data,
+            "dataset must make the overwrite observable"
+        );
         let (memory, _) = build_memory(&scenario_bytes("snap"), &scenario_bytes("overlay"));
-        assert_eq!(memory[&log[0].id], log[0].data);  // overwritten by the log
-        assert!(!memory.contains_key(&log[1].id));    // deleted by the log
-        assert_eq!(memory[&log[2].id], log[2].data);  // added by the log
+        assert_eq!(memory[&log[0].id], log[0].data); // overwritten by the log
+        assert!(!memory.contains_key(&log[1].id)); // deleted by the log
+        assert_eq!(memory[&log[2].id], log[2].data); // added by the log
     }
 
     #[test]
@@ -844,8 +929,12 @@ mod tests {
         // feeding that image back through build_memory must reproduce the
         // exact same state.
         let (memory, _) = build_memory(&scenario_bytes("snap"), &scenario_bytes("overlay"));
-        assert!(!memory.is_empty(), "dataset must make the round trip non-vacuous");
-        let snap: Vec<u8> = memory.iter()
+        assert!(
+            !memory.is_empty(),
+            "dataset must make the round trip non-vacuous"
+        );
+        let snap: Vec<u8> = memory
+            .iter()
             .flat_map(|(&id, data)| LogRecord::set(id, data.clone()).to_bytes())
             .collect();
         assert_eq!(build_memory(&snap, &[]).0, memory);
@@ -863,8 +952,8 @@ mod opfs_tests {
     //! `FileSystemSyncAccessHandle` requires). Exported functions are
     //! verified against the in-memory oracle built from the same dataset,
     //! not against inline expectations.
-    use super::*;
     use super::test_data::*;
+    use super::*;
     use wasm_bindgen_test::*;
 
     wasm_bindgen_test_configure!(run_in_dedicated_worker);
@@ -873,7 +962,7 @@ mod opfs_tests {
     fn apply(store: &mut FileStore, records: &[LogRecord]) {
         for record in records {
             match record.operation {
-                Operation::Set    => store.set(record.id, record.data.clone()),
+                Operation::Set => store.set(record.id, record.data.clone()),
                 Operation::Delete => store.delete(record.id),
             }
         }
@@ -885,7 +974,8 @@ mod opfs_tests {
             assert_eq!(
                 store.get(record.id),
                 state.get(&record.id).map(|data| data.as_slice()),
-                "id {}", record.id
+                "id {}",
+                record.id
             );
         }
     }
@@ -899,10 +989,14 @@ mod opfs_tests {
             .await
             .unwrap();
         let dir = root.unchecked_ref::<FileSystemDirectoryHandle>();
-        let handle = open(dir, filename, &FileSystemGetFileOptions::new()).await.unwrap();
+        let handle = open(dir, filename, &FileSystemGetFileOptions::new())
+            .await
+            .unwrap();
         let size = handle.get_size().unwrap() as u32;
         let mut torn = scenario_bytes("single")[..7].to_vec();
-        handle.write_with_u8_array_and_options(&mut torn, &at(size)).unwrap();
+        handle
+            .write_with_u8_array_and_options(&mut torn, &at(size))
+            .unwrap();
         handle.flush().unwrap();
         handle.close();
     }
@@ -971,7 +1065,7 @@ mod opfs_tests {
 
         let committed_state = oracle(&committed);
         assert_ids_match(&store, &committed_state, &committed); // survivors restored
-        assert_ids_match(&store, &committed_state, &pending);   // pending fully undone
+        assert_ids_match(&store, &committed_state, &pending); // pending fully undone
         store.close();
     }
 
@@ -1060,7 +1154,7 @@ mod opfs_tests {
     #[wasm_bindgen_test]
     async fn issue_id_monotonic_within_process() {
         let mut store = FileStore::new("opfs_test_issue_id").await.unwrap();
-        let first  = store.issue_id();
+        let first = store.issue_id();
         let second = store.issue_id();
         assert!(first < second);
         store.close();
