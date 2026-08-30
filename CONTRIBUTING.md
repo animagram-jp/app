@@ -41,7 +41,7 @@ Gui application system for editing and reading structured data. Handles event lo
 ## Commands
 
 worker 構成 (既定, `worker` feature 有効) は dedicated worker +
-SharedArrayBuffer + `talc` アロケータを使う。`--target web` の
+SharedArrayBuffer + `talc` アロケーターを使う。`--target web` の
 wasm-bindgen 出力は標準では memory を自己完結で持つため、共有メモリで
 使うには手動で memory import 化と shared 化を後段で行う必要がある。
 手順の詳細と理由は [`docs/build.md`](./docs/build.md) を参照。
