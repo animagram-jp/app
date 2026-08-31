@@ -10,7 +10,7 @@ Apps from animagram, made by Andyou.
 
 | App     | Version  | Status    | Date       | Description |
 |---------|----------|-----------|------------|-------------|
-| CoC 7th | 2026.8.1 | Scheduled | 2026-08-31 | 1st release |
+| CoC 7th | 2026.9.1 | Scheduled | 2026-09-30 | 1st release |
 
 This project uses [Calendar Versioning](https://calver.org/) with the
 scheme `YYYY.0M.MICRO` (full year, zero-padded month, and a sequential
