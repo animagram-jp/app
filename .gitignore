@@ -1,7 +1,6 @@
 /*.md
 !README.md
 !CONTRIBUTING.md
-!docs/*.md
 
 .claude/
 *.fxsnapshot
@@ -10,4 +9,4 @@ Cargo.lock
 **/target
 **/distribution/app/
 
-docs/character.json
+reference/character.json
