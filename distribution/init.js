@@ -1,22 +1,13 @@
-// init.js は worker と コマンドとイベントをやり取りし、 JavaScript オブジェクトの配列として受け取る。
-// この参考実装はその往復を、SharedArrayBuffer 上の固定長スロットの
-// リングバッファに載せたバイト列に置き換える。
+// init.js
 //
-// `start` で起動し、`execute` で 1 コマンドを適用し、`send` でイベントを送り、`bind` で DOM イベントを購読する。
+// start()
+// drain() iter.execute()
+// send(Event)
+// bind()
 //
-// 定数の値は `./arena.rs`、operation 番号は `./js_client.rs`、
-// event 番号は `./event.rs` と一対一で対応する。
-// 一方だけを変更してはならない。
-//
-// Wasm を動かす thread は 2 種類を想定する。
-//
-// | Thread | Arena | Command |
-// |-|-|-|
-// | dedicated worker | WebAssembly.Memory(shared=true)  | `arena.run_loop` |
-// | main thread      | WebAssembly.Memory(shared=false) | `arena.poll`     |
-//
-// SharedArrayBuffer を使うには Cross-Origin-Opener-Policy と
-// Cross-Origin-Embedder-Policy が必要である。
+// MUST sync CONSTANTS with arena.rs
+// MUST sync OPERATION with js_client.rs
+// MUST sync Event with event.rs
 
 const params = new URLSearchParams(location.search);
 if (params.has("eruda")) {
@@ -26,79 +17,44 @@ if (params.has("eruda")) {
     document.body.appendChild(s);
 }
 
-// ============================================================
-// arena layout
-// ============================================================
-//
-// 値は `./arena.rs` と一対一で対応する。一方だけを変更してはならない。
+// === arena layout ===
 
-/** イベントリング (JavaScript -> Wasm) の制御ブロック位置。 */
 const EVENT_CONTROL = 0;
-/** イベントリングのスロット領域の開始位置。 */
-const EVENT_PAYLOAD = 128;
-/** イベントリングの 1 スロットの byte 数。 */
-const EVENT_SLOT = 4096;
-/** イベントリングのスロット数。2 の冪であること。 */
+const EVENT_PAYLOAD = 128; /** range start */
+const EVENT_SLOT = 4096; /* bytes per slot */
 const EVENT_SLOT_COUNT = 64;
 
-/** コマンドリング (Wasm -> JavaScript) の制御ブロック位置。 */
 const COMMAND_CONTROL = 262272;
-/** コマンドリングのスロット領域の開始位置。 */
-const COMMAND_PAYLOAD = 262400;
-/** コマンドリングの 1 スロットの byte 数。 */
-const COMMAND_SLOT = 4096;
-/** コマンドリングのスロット数。2 の冪であること。 */
+const COMMAND_PAYLOAD = 262400; /** range start */
+const COMMAND_SLOT = 4096; /* bytes per slot */
 const COMMAND_SLOT_COUNT = 64;
 
-/** トリプルバッファの共有状態語の位置。 */
 const CELL_STATE = 524544;
-/** トリプルバッファの本体領域の開始位置。 */
-const CELL_PAYLOAD = 524608;
-/** 1 バッファの byte 数。320 * 240 * 4 (RGBA)。 */
-const CELL_SIZE = 307200;
-/** バッファ数。書き手 1 枚、読み手 1 枚、受け渡し用 1 枚。 */
-const CELL_COUNT = 3;
+const CELL_PAYLOAD = 524608; /** range start */
+const CELL_SIZE = 307200;/** 320 * 240 * 4 (RGBA) */
+const CELL_COUNT = 3; /** buffer for write, read, shared */
+const ARENA_SIZE = 1446208; /* bytes per slot */
 
-/** 共有アリーナ全体の byte 数。 */
-const ARENA_SIZE = 1446208;
-
-/** 書き込みシーケンスの制御ブロック内オフセット。 */
 const CONTROL_WRITE_OFFSET = 0;
-/**
- * 読み出しシーケンスの制御ブロック内オフセット (byte)。
- *
- * 書き込み側と 64 byte 離すことで、両者が別の cache line に載り
- * false sharing を避ける。
- */
 const CONTROL_READ_OFFSET = 64;
-/** スロット先頭に置く長さ前置語の byte 数。 */
 const LENGTH_PREFIX = 4;
 
-/** 受け渡し中のバッファ添字を取り出すマスク。 */
 const CELL_INDEX_MASK = 0b11;
-/** 未読の新しいフレームが存在することを示すビット。 */
-const CELL_DIRTY = 0b100;
+const CELL_DIRTY = 0b100; /** exsist flag of unread frame */
 
-/** Wasm を動かす thread。"worker" または "main"。 */
 const THREAD = crossOriginIsolated ? "worker" : "main";
 
-// ============================================================
-// arena state
-// ============================================================
+// === arena state ===
 
 /**
- * Wasm 側 (`talc` アロケータ) がヒープ拡張のため `memory.grow` を呼ぶ。
- * `initial` と同じ値を `maximum` に固定すると growth が一切できず、
- * 最初のアロケーション要求で失敗し続ける。Rust 側のビルド
- * (`-Clink-arg=--max-memory=134217728`, 128MiB = 2048 ページ) と揃える。
+ *  MUST Sync with talc allocator -Clink-arg=--max-memory=134217728, 128MiB = 2048 pages
  */
 const MEMORY_MAXIMUM_PAGES = 2048;
 
 /**
- * モジュール全体で共有する状態。
+ * Common state all over the module
  *
- * typed array view は `memory.buffer` が差し替わるたびに作り直す必要がある。
- * `buffer` に前回の buffer を保持し、`view` で同一性を確認する。
+ * typed array view must be regenerated when memory.buffer changes.
  */
 const S = {
     memory: new WebAssembly.Memory({
@@ -113,8 +69,7 @@ const S = {
     uint8: null,
     uint8Clamped: null,
     dataView: null,
-    // 初期状態は書き手が back=0、共有枠が 2、読み手が front=1。
-    cellFront: 1,
+    cellFront: 1,  // new: write back=0, read front=1, shared 2
     eventScratch: new Uint8Array(EVENT_SLOT),
     commandScratch: new Uint8Array(COMMAND_SLOT),
     kick: () => {},
@@ -122,27 +77,15 @@ const S = {
 };
 
 let worker = null;
-/** Start listening Event を一度だけ登録するためのフラグ。 */
 let bound = false;
 start();
 
 /**
  * Entrypoint: start listening commands and events.
- *
- * app repository では worker を作って `postMessage({type:"init"})` を送り、
- * `"ready"` の返信を待って `bind` する。ここでは worker に
- * SharedArrayBuffer を渡し、worker 側が `run_loop` に入る。以降の往復は
- * `postMessage` を通らず、リングバッファ経由になる。
- *
- * thread が "main" の場合は worker を作らず、`worker` は null のままとなる。
- * 生成した Worker は戻り値ではなくモジュール変数 `worker` に入る。
  */
+
 /**
- * `THREAD === "main"` へ落ちた際に 1 回だけ再読み込みを試みたかを
- * 記録する。`sessionStorage` を使うのは、reload 後も同じタブ内で
- * 値が残ってほしいが、他のタブやセッションをまたいで引きずりたくは
- * ないため。無限リロードを防ぐのが目的で、境界を超えて漏れても実害は
- * 無い (単に 1 回分のリトライ機会を失うだけ)。
+ * Record flag of retry of loading when fallback to THREAD === "main"
  */
 const MAIN_RELOAD_KEY = "app:main-thread-reload-attempted";
 
@@ -172,9 +115,6 @@ async function tryRecoverToWorkerThread() {
 
 function start() {
     if (THREAD === "main") {
-        // Service Worker 登録待ちで一度だけ reload し、worker 経路への
-        // 復帰を試みる。reload する場合はここで抜け、後続の attach() は
-        // 次のロードに委ねる。
         tryRecoverToWorkerThread().then((reloading) => {
             if (!reloading) attach();
         });
@@ -184,17 +124,10 @@ function start() {
     const w = new Worker("./worker.js", { type: "module" });
     worker = w;
 
-    // app repository では "execute" / "error" / "ready" の 3 種を
-    // postMessage で受ける。コマンド本体はリング経由になるが、
-    // `ARENA` の線形メモリ内オフセット (`S.base`) は worker が
-    // `arena_pointer()` を呼ぶまで分からないため、"ready" で受け取る。
-    // それまで `pump` はリングの位置を計算できないため待つ。
     w.addEventListener("message", (e) => {
         if (e.data.type === "error") { restart(); }
         if (e.data.type === "ready") {
             S.base = e.data.base;
-            // worker 経路に無事乗れたので、次回また main へ落ちた際は
-            // 改めてリトライできるようにしておく。
             sessionStorage.removeItem(MAIN_RELOAD_KEY);
             pump();
         }
@@ -205,8 +138,6 @@ function start() {
         restart();
     });
 
-    // 共有アリーナと初期パラメータを渡す。worker 側はこれを受けて
-    // App::init し、run_loop に入る。
     w.postMessage({
         type: "init",
         payload: {
@@ -217,29 +148,13 @@ function start() {
         },
     });
 
-    // `bind` は DOM のイベント購読であり `S.base` に依存しないため、
-    // "ready" を待たずに済ませてよい。`pump` は `S.base` が要るため
-    // 上の "ready" ハンドラ側で呼ぶ。
     bind();
 }
 
 /**
- * worker を作り直す。共有アリーナは初期化し直す。
- *
- * リングのシーケンスとトリプルバッファの状態語は共有アリーナ上にあり、
- * worker を捨てても値が残る。作り直した Wasm は書き込み側の添字を 0 から
- * 数え直すため、初期化しないと JavaScript 側が持つ読み出し位置および
- * `cellFront` とずれる。
- *
- * thread ごとに初期化の担い手が違う。
- *
- * - worker: 新しい worker が `initialize` を呼ぶ (worker.js の手順)。
- *   ここでは古い worker を捨て、JavaScript 側の状態だけ戻す。
- * - main: 作り直す worker が居ないため、この場で `initialize` を呼ぶ。
- *   Wasm instance は生きているので `attach` はやり直さない。
- *
- * 再入を防ぐ。`restart` 中に届いた `Command::Error` で二重に走ると、
- * 初期化の途中でリングを触ることになる。
+ * recreate arena
+ * - worker: worker.initialize
+ * - main: initialize, not attach
  */
 let restarting = false;
 function restart() {
@@ -252,7 +167,6 @@ function restart() {
     S.cellFront = 1;
 
     if (THREAD === "main") {
-        // Wasm は生きている。アリーナだけ初期状態へ戻す。
         S.exports?.initialize();
         S.base = S.exports?.arena_pointer() ?? S.base;
         bind();
@@ -264,34 +178,27 @@ function restart() {
     restarting = false;
 }
 
+// === Excute(commands) ===
+
 /**
- *  Excute commands recieved from app.
- *
- *  app repository では 1 コマンドが JavaScript オブジェクトとして届き、
- *  `cmd.id` を `getElementById` で引く。ここでは 1 コマンドがバイト列として
- *  届き、`id` はセグメント列である。`decodeId` が文字列に組み立て直す。
- *
- *  switch 分岐と case の番号は app repository と同じである。
+ *  Excute command (1 octets) recieved from app.
  *
  *  @param {number}  operation - js_client.rs:OPERATION_*
- *  @param {Decoder} d         - operation に続く payload を読む
+ *  @param {Decoder} d         - payload
  */
 function execute(operation, d) {
     // FrameReady / Error は要素を持たない。id を読む前に分岐する。
     switch (operation) {
-        case 20: {
+        case 20: { // FrameReady
             const code = d.u8();
             const message = d.string() ?? "";
             console.error(`[wasm] ${ERROR_CODES[code] ?? code}:`, message);
-            // 復旧可能なものは報告だけで続行する。停止しているものだけ
-            // 作り直す。放置すると以降無反応になるためである。
             if (code >= FATAL_FROM) restart();
             return;
         }
-        case 19: {
+        case 19: { // Error 
             S.cellFront = cellAcquire(S.int32, (S.base + CELL_STATE) >> 2, S.cellFront);
             const offset = S.base + CELL_PAYLOAD + S.cellFront * CELL_SIZE;
-            // subarray はコピーを作らない。ピクセル列をそのまま渡す。
             S.onFrame?.(S.uint8Clamped.subarray(offset, offset + CELL_SIZE));
             return;
         }
@@ -319,7 +226,6 @@ function execute(operation, d) {
     }
 }
 
-/** コマンドリングが空になるまで `execute` を回す。 */
 function drain() {
     view();
     for (;;) {
@@ -357,10 +263,6 @@ const ROOTS = ["header", "main", "modal", "form", "output", "section"]
 /**
  * Send Event to app
  *
- * app repository では `postMessage({type:"event", payload:{..}})` で
- * オブジェクトを送る。ここではイベントリングへバイト列を書く。
- * フィールドの並びは `event.rs` の `decode_event` と揃える。
- *
  * @param {*} e - Web APIs Event
  * @returns
  */
@@ -381,7 +283,7 @@ function send(e) {
 }
 
 /**
- * イベントリングへ 1 フレーム書き、Wasm を起こす。
+ * Write 1 event and kick App.
  *
  * @param {Uint8Array} frame
  * @returns {boolean} 送れたかどうか
@@ -395,9 +297,7 @@ function push(frame) {
     );
     if (!pushed) return false;
 
-    // 非共有メモリでは Atomics.notify は何もしない。
     Atomics.notify(S.int32, (S.base + EVENT_CONTROL) >> 2);
-    // worker では notify で足りる。main thread では poll を呼ぶ。
     S.kick();
     return true;
 }
