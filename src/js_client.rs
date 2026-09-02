@@ -1429,6 +1429,30 @@ fn two_point_distance(x0: f64, y0: f64, x1: f64, y1: f64) -> f64 {
 ///
 /// `detect_gesture` と同じく「`Event` 1 個から `Gesture` を導出する」形を
 /// 保つ。役割の入れ替わり自体はジェスチャを発行しない。
+///
+/// # `touch-action` をネイティブに委ねる場合
+///
+/// キャンバス側が `touch-action: none` を指定せず、ブラウザにピンチ
+/// ズーム/パンを渡すことも選べる。その場合ブラウザがジェスチャを
+/// 認識した時点で対象の pointer に `pointercancel` を送ってくる
+/// (Pointer Events の仕様上の挙動)。`on_up` は `PointerUp` /
+/// `PointerCancel` を区別だけして同じ経路を通るため、途中で
+/// 権限がブラウザ側へ渡っても 2 本指セッションは `PinchEnd` /
+/// `DragCancel` として正しく閉じ、残った指へ正しく resync する。
+/// `handle` を呼ぶかどうか自体 (`send` 側で listener を付けるか、
+/// `touch-action` をどう指定するか) は呼び出し側の裁量であり、ここでは
+/// 「どんな順序でイベントが来ても壊れない」ことだけを保証する。
+///
+/// 具体的には、既に primary/secondary として追跡中の `pointer_id` へ
+/// `PointerDown` が重複して届いても (down/up の対応がブラウザ側の
+/// ジェスチャ引き継ぎで崩れた場合を想定)、新しい指としては扱わない
+/// (`on_down` を参照)。同じ id が primary と secondary の両方に入ると、
+/// 以降の `is_primary` / `is_secondary` 判定が両方 true になり、
+/// 2 本指のつもりが実体は 1 本指という壊れた状態になる。
+///
+/// 追跡していない `pointer_id` の `PointerMove` / `PointerUp` /
+/// `PointerCancel` は常に無視する (3 本目以降と同じ経路)。`PointerDown`
+/// 自体が届かなかった指を扱おうとしないので、これも安全側に倒れる。
 #[derive(Debug, Default)]
 pub struct TouchTracker {
     primary_state: PointerState,
@@ -1474,6 +1498,18 @@ impl TouchTracker {
     }
 
     fn on_down(&mut self, id: u32, x: f64, y: f64, time: f64) {
+        if self.two_fingers.primary_id() == Some(id) || self.two_fingers.secondary_id() == Some(id)
+        {
+            // 既に追跡中の id への重複 `PointerDown`。`touch-action` を
+            // ネイティブに委ねた場合、ジェスチャの認識・引き渡し中に
+            // ブラウザが down/up の対応を崩して送ってくることがあり
+            // うる。新しい指として扱うと同じ id が primary と secondary
+            // の両方に入り、`is_primary` / `is_secondary` が同時に true
+            // になって以降の判定が壊れる。新規の指としては扱わず、
+            // 位置の更新だけ反映する。
+            self.two_fingers = self.two_fingers.touch_move(id, x, y);
+            return;
+        }
         if self.two_fingers.primary_id().is_none() {
             self.primary_state = self
                 .primary_state
@@ -1918,6 +1954,61 @@ mod touch_tracker_tests {
         assert_eq!(got[0..5], [None, None, None, None, None]);
         assert_eq!(
             got[6],
+            Some(Gesture::Pinch {
+                scale: 0.2,
+                center_x: 150.0,
+                center_y: 100.0
+            })
+        );
+    }
+
+    /// 追跡中の id への重複 `PointerDown` は新しい指として扱わない。
+    /// `touch-action` をネイティブに委ねると、ブラウザがジェスチャを
+    /// 引き継ぐ過程で down/up の対応が崩れて再送されることを想定した
+    /// 防御 (`TouchTracker` の doc を参照)。
+    ///
+    /// もし重複 down が `primary_state` を作り直してしまうなら、`start`
+    /// が重複 down の位置 (105,100) にずれ、直後の move ((115,100)) は
+    /// 距離 10px で `drag_start_px` (10px) を超えず `Drag` にならない。
+    /// 元の `start` (100,100) が保たれていれば距離は 15px になり
+    /// `Drag` が出る。
+    #[test]
+    fn duplicate_pointer_down_does_not_reset_primary_state() {
+        let th = Thresholds::MOUSE;
+        let got = run(
+            &[
+                (EventType::PointerDown, 1, 100.0, 100.0, 0.0),
+                (EventType::PointerDown, 1, 105.0, 100.0, 10.0), // 重複 down (同じ id)
+                (EventType::PointerMove, 1, 115.0, 100.0, 50.0),
+                (EventType::PointerUp, 1, 115.0, 100.0, 100.0),
+            ],
+            &th,
+        );
+        assert_eq!(got[1], None); // 重複 down 自体は何も発行しない。
+        assert_eq!(got[2], Some(Gesture::Drag { x: 115.0, y: 100.0 }));
+        assert_eq!(got[3], Some(Gesture::DragEnd));
+    }
+
+    /// 追跡中の id への重複 `PointerDown` が `secondary` を埋めてしまうと、
+    /// 直後に触れる本物の 2 本目の指が「3 本目以降」として無視され、
+    /// pinch/pan が一切判定できなくなる。重複 down が `secondary` を
+    /// 占有していなければ、本物の 2 本目が正しく `secondary` に入り
+    /// pinch まで確定するはずである。
+    #[test]
+    fn duplicate_pointer_down_does_not_block_genuine_second_finger() {
+        let th = Thresholds::MOUSE;
+        let got = run(
+            &[
+                (EventType::PointerDown, 1, 100.0, 100.0, 0.0),
+                (EventType::PointerDown, 1, 100.0, 100.0, 5.0), // 重複 down (同じ id、同じ座標)
+                (EventType::PointerDown, 2, 200.0, 100.0, 5.0), // 本物の 2 本目
+                (EventType::PointerMove, 1, 140.0, 100.0, 50.0),
+                (EventType::PointerMove, 2, 160.0, 100.0, 60.0),
+            ],
+            &th,
+        );
+        assert_eq!(
+            got[4],
             Some(Gesture::Pinch {
                 scale: 0.2,
                 center_x: 150.0,
