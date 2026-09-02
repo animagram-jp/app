@@ -1,4 +1,5 @@
 use alloc::{format, string::String, vec::Vec};
+
 use arbitrary_int::traits::Integer;
 
 // timestamp (64 bits)
@@ -10,7 +11,7 @@ use arbitrary_int::traits::Integer;
 
 pub struct Field {
     pub position: u32,
-    pub mask: u64,
+    pub mask:     u64,
 }
 
 impl Field {
@@ -24,44 +25,17 @@ impl Field {
     }
 }
 
-const YEAR: Field = Field {
-    position: 51,
-    mask: (1 << 13) - 1,
-}; // u13, bit 51~63
-const MONTH: Field = Field {
-    position: 46,
-    mask: (1 << 5) - 1,
-}; // u5, bit 46~50
-const DAY: Field = Field {
-    position: 41,
-    mask: (1 << 5) - 1,
-}; // u5, bit 41~45
-const HOUR: Field = Field {
-    position: 35,
-    mask: (1 << 6) - 1,
-}; // u6, bit 35~40
-const MINUTE: Field = Field {
-    position: 29,
-    mask: (1 << 6) - 1,
-}; // u6, bit 29~34
-const SECOND: Field = Field {
-    position: 23,
-    mask: (1 << 6) - 1,
-}; // u6, bit 23~28
-const DECISECOND: Field = Field {
-    position: 19,
-    mask: (1 << 4) - 1,
-}; // u4, bit 19~22
+const YEAR: Field = Field { position: 51, mask: (1 << 13) - 1 }; // u13, bit 51~63
+const MONTH: Field = Field { position: 46, mask: (1 << 5) - 1 }; // u5, bit 46~50
+const DAY: Field = Field { position: 41, mask: (1 << 5) - 1 }; // u5, bit 41~45
+const HOUR: Field = Field { position: 35, mask: (1 << 6) - 1 }; // u6, bit 35~40
+const MINUTE: Field = Field { position: 29, mask: (1 << 6) - 1 }; // u6, bit 29~34
+const SECOND: Field = Field { position: 23, mask: (1 << 6) - 1 }; // u6, bit 23~28
+const DECISECOND: Field = Field { position: 19, mask: (1 << 4) - 1 }; // u4, bit 19~22
 // 1 = true (year~second is utc value) and 0 = false (iana local value)
-const IS_UTC: Field = Field {
-    position: 18,
-    mask: (1 << 1) - 1,
-}; // bit 18
+const IS_UTC: Field = Field { position: 18, mask: (1 << 1) - 1 }; // bit 18
 // id of IANA Time Zone Database
-const TIMEZONE: Field = Field {
-    position: 8,
-    mask: (1 << 10) - 1,
-}; // bit 8~17
+const TIMEZONE: Field = Field { position: 8, mask: (1 << 10) - 1 }; // bit 8~17
 // const PADDING:    Field = Field { position:  0, mask: (1 <<  8) - 1 }; // bit 0~7
 
 pub enum Timezone {
@@ -164,11 +138,7 @@ pub fn from_ut(ut: f64, is_utc: bool, tz: &Timezone) -> u64 {
 
     let mut year = 1970i64;
     loop {
-        let dy = if year % 4 == 0 && (year % 100 != 0 || year % 400 == 0) {
-            366
-        } else {
-            365
-        };
+        let dy = if year % 4 == 0 && (year % 100 != 0 || year % 400 == 0) { 366 } else { 365 };
         if days < dy {
             break;
         }
@@ -186,9 +156,7 @@ pub fn from_ut(ut: f64, is_utc: bool, tz: &Timezone) -> u64 {
     }
     let day = days + 1;
 
-    pack(
-        year, month, day, hour, minute, second, decisecond, is_utc_bit, tz_id,
-    )
+    pack(year, month, day, hour, minute, second, decisecond, is_utc_bit, tz_id)
 }
 
 pub fn new(
@@ -306,9 +274,7 @@ pub fn add_years(timestamps: &[u64], n: i64) -> Vec<u64> {
             let (year, month, day, hour, minute, second, decisecond, is_utc, tz) = unpack(ts);
             let year = year + n;
             let day = day.min(days_in_month(year, month));
-            pack(
-                year, month, day, hour, minute, second, decisecond, is_utc, tz,
-            )
+            pack(year, month, day, hour, minute, second, decisecond, is_utc, tz)
         })
         .collect()
 }
@@ -333,9 +299,7 @@ pub fn sub_years(timestamps: &[u64], n: i64) -> Vec<u64> {
             let (year, month, day, hour, minute, second, decisecond, is_utc, tz) = unpack(ts);
             let year = year - n;
             let day = day.min(days_in_month(year, month));
-            pack(
-                year, month, day, hour, minute, second, decisecond, is_utc, tz,
-            )
+            pack(year, month, day, hour, minute, second, decisecond, is_utc, tz)
         })
         .collect()
 }
@@ -362,9 +326,7 @@ pub fn add_months(timestamps: &[u64], n: i64) -> Vec<u64> {
             let (year_add, month) = ((month - 1) / 12, (month - 1) % 12 + 1);
             let year = year + year_add;
             let day = day.min(days_in_month(year, month));
-            pack(
-                year, month, day, hour, minute, second, decisecond, is_utc, tz,
-            )
+            pack(year, month, day, hour, minute, second, decisecond, is_utc, tz)
         })
         .collect()
 }
@@ -390,9 +352,7 @@ pub fn sub_months(timestamps: &[u64], n: i64) -> Vec<u64> {
             let total = year * 12 + (month - 1) - n;
             let (year, month) = (total / 12, total % 12 + 1);
             let day = day.min(days_in_month(year, month));
-            pack(
-                year, month, day, hour, minute, second, decisecond, is_utc, tz,
-            )
+            pack(year, month, day, hour, minute, second, decisecond, is_utc, tz)
         })
         .collect()
 }
@@ -429,9 +389,7 @@ pub fn add_days(timestamps: &[u64], n: i64) -> Vec<u64> {
                     year += 1;
                 }
             }
-            pack(
-                year, month, day, hour, minute, second, decisecond, is_utc, tz,
-            )
+            pack(year, month, day, hour, minute, second, decisecond, is_utc, tz)
         })
         .collect()
 }
@@ -467,9 +425,7 @@ pub fn sub_days(timestamps: &[u64], n: i64) -> Vec<u64> {
                 day = days_in_month(year, month);
             }
             day -= remaining;
-            pack(
-                year, month, day, hour, minute, second, decisecond, is_utc, tz,
-            )
+            pack(year, month, day, hour, minute, second, decisecond, is_utc, tz)
         })
         .collect()
 }
@@ -508,9 +464,7 @@ pub fn add_hours(timestamps: &[u64], n: i64) -> Vec<u64> {
                     year += 1;
                 }
             }
-            pack(
-                year, month, day, hour, minute, second, decisecond, is_utc, tz,
-            )
+            pack(year, month, day, hour, minute, second, decisecond, is_utc, tz)
         })
         .collect()
 }
@@ -551,9 +505,7 @@ pub fn sub_hours(timestamps: &[u64], n: i64) -> Vec<u64> {
                 }
             }
             hour -= remaining;
-            pack(
-                year, month, day, hour, minute, second, decisecond, is_utc, tz,
-            )
+            pack(year, month, day, hour, minute, second, decisecond, is_utc, tz)
         })
         .collect()
 }
@@ -594,9 +546,7 @@ pub fn add_minutes(timestamps: &[u64], n: i64) -> Vec<u64> {
                     year += 1;
                 }
             }
-            pack(
-                year, month, day, hour, minute, second, decisecond, is_utc, tz,
-            )
+            pack(year, month, day, hour, minute, second, decisecond, is_utc, tz)
         })
         .collect()
 }
@@ -651,9 +601,7 @@ pub fn sub_minutes(timestamps: &[u64], n: i64) -> Vec<u64> {
                 }
             }
             minute -= remaining;
-            pack(
-                year, month, day, hour, minute, second, decisecond, is_utc, tz,
-            )
+            pack(year, month, day, hour, minute, second, decisecond, is_utc, tz)
         })
         .collect()
 }

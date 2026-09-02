@@ -15,6 +15,10 @@ use alloc::{
     string::{String, ToString},
     vec::Vec,
 };
+// atomics を持つ構成 (worker) でのみ使う。main thread 向けの
+// 非共有メモリ構成では待機も通知も行わない。
+#[cfg(all(target_arch = "wasm32", target_feature = "atomics"))]
+use core::arch::wasm32::{memory_atomic_notify, memory_atomic_wait32};
 use core::{
     cell::{Cell, UnsafeCell},
     convert::TryInto,
@@ -26,16 +30,13 @@ use core::{
     sync::atomic::{AtomicU32, Ordering},
 };
 
-// atomics を持つ構成 (worker) でのみ使う。main thread 向けの
-// 非共有メモリ構成では待機も通知も行わない。
-#[cfg(all(target_arch = "wasm32", target_feature = "atomics"))]
-use core::arch::wasm32::{memory_atomic_notify, memory_atomic_wait32};
-
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::wasm_bindgen;
 
-use crate::app::App;
-use crate::js_client::{Command, ERROR_COMMAND_OVERFLOW, ErrorCode, dom, encode_command};
+use crate::{
+    app::App,
+    js_client::{Command, ERROR_COMMAND_OVERFLOW, ErrorCode, dom, encode_command},
+};
 
 // ============================================================
 // arena layout
@@ -107,7 +108,7 @@ pub const COMMAND_CAPACITY: usize = 16 * 1024;
 /// `impl Arena` に閉じており、利用者は添字やオフセットを知らない。
 #[repr(C, align(64))]
 pub struct Arena {
-    bytes: UnsafeCell<[u8; ARENA_SIZE]>,
+    bytes:     UnsafeCell<[u8; ARENA_SIZE]>,
     /// トリプルバッファのうち、書き手が専有しているバッファの添字。
     ///
     /// 共有する必要がないため、アリーナ本体ではなくこちらに持つ。
@@ -117,10 +118,8 @@ pub struct Arena {
 // 単一の書き手と単一の読み手を前提とし、同期はアリーナ内の AtomicU32 が担う。
 unsafe impl Sync for Arena {}
 
-pub static ARENA: Arena = Arena {
-    bytes: UnsafeCell::new([0; ARENA_SIZE]),
-    cell_back: Cell::new(0),
-};
+pub static ARENA: Arena =
+    Arena { bytes: UnsafeCell::new([0; ARENA_SIZE]), cell_back: Cell::new(0) };
 
 /// `poll` / `run_loop` が駆動する App。
 ///
@@ -156,14 +155,10 @@ impl Arena {
 
     /// 全リングの制御ブロックとトリプルバッファの状態語を初期化する。
     pub fn initialize(&self) {
-        self.control_at(EVENT_CONTROL, CONTROL_WRITE_OFFSET)
-            .store(0, Ordering::Relaxed);
-        self.control_at(EVENT_CONTROL, CONTROL_READ_OFFSET)
-            .store(0, Ordering::Relaxed);
-        self.control_at(COMMAND_CONTROL, CONTROL_WRITE_OFFSET)
-            .store(0, Ordering::Relaxed);
-        self.control_at(COMMAND_CONTROL, CONTROL_READ_OFFSET)
-            .store(0, Ordering::Relaxed);
+        self.control_at(EVENT_CONTROL, CONTROL_WRITE_OFFSET).store(0, Ordering::Relaxed);
+        self.control_at(EVENT_CONTROL, CONTROL_READ_OFFSET).store(0, Ordering::Relaxed);
+        self.control_at(COMMAND_CONTROL, CONTROL_WRITE_OFFSET).store(0, Ordering::Relaxed);
+        self.control_at(COMMAND_CONTROL, CONTROL_READ_OFFSET).store(0, Ordering::Relaxed);
         // 書き手が back=0 を専有し、読み手が front=1、共有枠が 2、dirty は未設定。
         self.cell_state().store(2, Ordering::Release);
     }
@@ -255,25 +250,17 @@ impl Arena {
 
     /// イベントリングの書き込みシーケンス。`run_loop` の待機条件に用いる。
     pub fn event_write_seq(&self) -> u32 {
-        self.control_at(EVENT_CONTROL, CONTROL_WRITE_OFFSET)
-            .load(Ordering::Acquire)
+        self.control_at(EVENT_CONTROL, CONTROL_WRITE_OFFSET).load(Ordering::Acquire)
     }
 
     /// イベントリングの読み出しシーケンス。
     pub fn event_read_seq(&self) -> u32 {
-        self.control_at(EVENT_CONTROL, CONTROL_READ_OFFSET)
-            .load(Ordering::Relaxed)
+        self.control_at(EVENT_CONTROL, CONTROL_READ_OFFSET).load(Ordering::Relaxed)
     }
 
     /// コマンドリングへ 1 フレーム追加する。満杯なら false。
     pub fn command_push(&self, frame: &[u8]) -> bool {
-        self.ring_push(
-            COMMAND_CONTROL,
-            COMMAND_PAYLOAD,
-            COMMAND_SLOT,
-            COMMAND_SLOT_COUNT,
-            frame,
-        )
+        self.ring_push(COMMAND_CONTROL, COMMAND_PAYLOAD, COMMAND_SLOT, COMMAND_SLOT_COUNT, frame)
     }
 
     /// 書き手が専有しているバッファを可変スライスとして取り出す。
@@ -445,13 +432,7 @@ pub fn report_error(code: ErrorCode, message: &str) {
     };
 
     let mut frame = Vec::with_capacity(message.len() + OVERHEAD);
-    encode_command(
-        &mut frame,
-        &Command::Error {
-            code,
-            message: message.to_string(),
-        },
-    );
+    encode_command(&mut frame, &Command::Error { code, message: message.to_string() });
     let _ = emit(&frame);
 }
 
@@ -544,7 +525,7 @@ impl<'a> Encoder<'a> {
 
 /// イベントを読み出す際の位置を保持する。
 pub struct Decoder<'a> {
-    bytes: &'a [u8],
+    bytes:    &'a [u8],
     position: usize,
 }
 
@@ -601,11 +582,7 @@ impl<'a> Decoder<'a> {
             let number = self.u32()?;
             segments.push(dom::Segment {
                 tag,
-                n: if number == u32::MAX {
-                    None
-                } else {
-                    Some(number)
-                },
+                n: if number == u32::MAX { None } else { Some(number) },
             });
         }
         Some(dom::Id(segments))

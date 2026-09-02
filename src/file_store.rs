@@ -37,6 +37,7 @@ use core::{
     primitive::{u8, u32},
     result::Result::{self, Ok},
 };
+
 use js_sys;
 use wasm_bindgen::{JsCast, JsValue};
 use wasm_bindgen_futures::JsFuture;
@@ -78,24 +79,16 @@ enum Operation {
 /// One decoded record of the snap/log wire format (layout in module docs).
 struct LogRecord {
     operation: Operation,
-    id: u32,
-    data: Vec<u8>,
+    id:        u32,
+    data:      Vec<u8>,
 }
 
 impl LogRecord {
     fn set(id: u32, data: Vec<u8>) -> Self {
-        Self {
-            operation: Operation::Set,
-            id,
-            data,
-        }
+        Self { operation: Operation::Set, id, data }
     }
     fn delete(id: u32) -> Self {
-        Self {
-            operation: Operation::Delete,
-            id,
-            data: Vec::new(),
-        }
+        Self { operation: Operation::Delete, id, data: Vec::new() }
     }
 
     /// Serialize to the wire format, trailing checksum included.
@@ -141,14 +134,7 @@ impl LogRecord {
         if expected != stored {
             return None;
         }
-        Some((
-            Self {
-                operation,
-                id,
-                data,
-            },
-            total,
-        ))
+        Some((Self { operation, id, data }, total))
     }
 }
 
@@ -235,12 +221,7 @@ impl Display for FileStoreError {
 /// dedicated classifier (see `classify_get_file_handle`).
 fn classify(context: &str, error: JsValue) -> FileStoreError {
     if let Some(exception) = error.dyn_ref::<DomException>() {
-        let message = format!(
-            "{}: {} ({})",
-            context,
-            exception.message(),
-            exception.name()
-        );
+        let message = format!("{}: {} ({})", context, exception.message(), exception.name());
         return match exception.name().as_str() {
             "InvalidStateError" => FileStoreError::InvalidState(message),
             "QuotaExceededError" => FileStoreError::QuotaExceeded(message),
@@ -275,10 +256,10 @@ fn classify(context: &str, error: JsValue) -> FileStoreError {
 /// # Ok(()) }
 /// ```
 pub struct FileStore {
-    snap: FileSystemSyncAccessHandle,
-    log: FileSystemSyncAccessHandle,
+    snap:    FileSystemSyncAccessHandle,
+    log:     FileSystemSyncAccessHandle,
     /// Whole current state, including unsaved mutations.
-    memory: BTreeMap<u32, Vec<u8>>,
+    memory:  BTreeMap<u32, Vec<u8>>,
     /// Last issued id (in-process monotonic; see `issue_id`).
     next_id: u32,
     /// Flush-confirmed end of the log. The record prefix `[0, log_end)` is
@@ -452,9 +433,7 @@ impl FileStore {
             )));
         }
         if size > self.log_end {
-            self.log
-                .truncate_with_u32(self.log_end)
-                .map_err(|e| classify("log truncate", e))?;
+            self.log.truncate_with_u32(self.log_end).map_err(|e| classify("log truncate", e))?;
         }
 
         append(&self.log, self.log_end, &batch)?;
@@ -561,13 +540,9 @@ impl FileStore {
             .flat_map(|(&id, data)| LogRecord::set(id, data.clone()).to_bytes())
             .collect();
 
-        self.snap
-            .truncate_with_u32(0)
-            .map_err(|e| classify("snap truncate", e))?;
+        self.snap.truncate_with_u32(0).map_err(|e| classify("snap truncate", e))?;
         append(&self.snap, 0, &new_snap)?;
-        self.log
-            .truncate_with_u32(0)
-            .map_err(|e| classify("log truncate", e))?;
+        self.log.truncate_with_u32(0).map_err(|e| classify("log truncate", e))?;
         self.log_end = 0;
         self.log.flush().map_err(|e| classify("log flush", e))?;
         Ok(())
@@ -676,9 +651,7 @@ async fn open(
     // Per spec createSyncAccessHandle never throws TypeError (DOMExceptions
     // only), so the common classifier is sufficient on this path.
     let handle = JsFuture::from(
-        file_handle
-            .unchecked_ref::<FileSystemFileHandle>()
-            .create_sync_access_handle(),
+        file_handle.unchecked_ref::<FileSystemFileHandle>().create_sync_access_handle(),
     )
     .await
     .map_err(|e| classify(&format!("createSyncAccessHandle {}", filename), e))?;
@@ -700,11 +673,8 @@ mod test_data {
 
     #[cfg(not(target_arch = "wasm32"))]
     fn dataset() -> String {
-        std::fs::read_to_string(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/examples/log_records.tsv"
-        ))
-        .expect("examples/log_records.tsv")
+        std::fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/examples/log_records.tsv"))
+            .expect("examples/log_records.tsv")
     }
     // The OPFS suite runs in a browser where std::fs is unavailable at
     // runtime; embed the same file at compile time instead.
@@ -741,10 +711,7 @@ mod test_data {
 
     /// Concatenated wire bytes of a scenario — a snap/log file image.
     pub fn scenario_bytes(name: &str) -> Vec<u8> {
-        scenario(name)
-            .iter()
-            .flat_map(|record| record.to_bytes())
-            .collect()
+        scenario(name).iter().flat_map(|record| record.to_bytes()).collect()
     }
 
     /// In-memory oracle: the state an ideal store holds after applying
@@ -771,8 +738,7 @@ mod test_data {
 
 #[cfg(all(test, not(target_arch = "wasm32")))]
 mod tests {
-    use super::test_data::*;
-    use super::*;
+    use super::{test_data::*, *};
 
     // ── fletcher32 — known-answer vectors ────────────────────
 
@@ -881,10 +847,7 @@ mod tests {
     #[test]
     fn build_memory_overwrite_keeps_last() {
         let records = scenario("overwrite"); // set 1 twice with different payloads
-        assert_ne!(
-            records[0].data, records[1].data,
-            "dataset must distinguish the writes"
-        );
+        assert_ne!(records[0].data, records[1].data, "dataset must distinguish the writes");
         let (memory, _) = build_memory(&[], &scenario_bytes("overwrite"));
         assert_eq!(memory[&records[1].id], records[1].data);
     }
@@ -913,10 +876,7 @@ mod tests {
     fn build_memory_log_overlays_snap() {
         let snap = scenario("snap"); // set 1, set 2
         let log = scenario("overlay"); // overwrite 1, delete 2, add 3
-        assert_ne!(
-            snap[0].data, log[0].data,
-            "dataset must make the overwrite observable"
-        );
+        assert_ne!(snap[0].data, log[0].data, "dataset must make the overwrite observable");
         let (memory, _) = build_memory(&scenario_bytes("snap"), &scenario_bytes("overlay"));
         assert_eq!(memory[&log[0].id], log[0].data); // overwritten by the log
         assert!(!memory.contains_key(&log[1].id)); // deleted by the log
@@ -929,10 +889,7 @@ mod tests {
         // feeding that image back through build_memory must reproduce the
         // exact same state.
         let (memory, _) = build_memory(&scenario_bytes("snap"), &scenario_bytes("overlay"));
-        assert!(
-            !memory.is_empty(),
-            "dataset must make the round trip non-vacuous"
-        );
+        assert!(!memory.is_empty(), "dataset must make the round trip non-vacuous");
         let snap: Vec<u8> = memory
             .iter()
             .flat_map(|(&id, data)| LogRecord::set(id, data.clone()).to_bytes())
@@ -952,9 +909,9 @@ mod opfs_tests {
     //! `FileSystemSyncAccessHandle` requires). Exported functions are
     //! verified against the in-memory oracle built from the same dataset,
     //! not against inline expectations.
-    use super::test_data::*;
-    use super::*;
     use wasm_bindgen_test::*;
+
+    use super::{test_data::*, *};
 
     wasm_bindgen_test_configure!(run_in_dedicated_worker);
 
@@ -985,18 +942,12 @@ mod opfs_tests {
     /// first: the SyncAccessHandle lock is exclusive.
     async fn inject_torn_tail(filename: &str) {
         let worker: WorkerGlobalScope = js_sys::global().dyn_into().unwrap();
-        let root = JsFuture::from(worker.navigator().storage().get_directory())
-            .await
-            .unwrap();
+        let root = JsFuture::from(worker.navigator().storage().get_directory()).await.unwrap();
         let dir = root.unchecked_ref::<FileSystemDirectoryHandle>();
-        let handle = open(dir, filename, &FileSystemGetFileOptions::new())
-            .await
-            .unwrap();
+        let handle = open(dir, filename, &FileSystemGetFileOptions::new()).await.unwrap();
         let size = handle.get_size().unwrap() as u32;
         let mut torn = scenario_bytes("single")[..7].to_vec();
-        handle
-            .write_with_u8_array_and_options(&mut torn, &at(size))
-            .unwrap();
+        handle.write_with_u8_array_and_options(&mut torn, &at(size)).unwrap();
         handle.flush().unwrap();
         handle.close();
     }

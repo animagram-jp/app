@@ -1,6 +1,8 @@
-use crate::{Lang, object::dice};
-use app_macros::{Id, List};
 use core::primitive::i8;
+
+use app_macros::{Id, List};
+
+use crate::{Lang, object::dice};
 
 #[derive(List)]
 pub enum Roll {
@@ -108,11 +110,7 @@ pub enum SaneOrInsane {
 }
 impl SaneOrInsane {
     pub fn get(target: u8, rolled: u8) -> Self {
-        if target < rolled {
-            Self::Sane
-        } else {
-            Self::Insane
-        }
+        if target < rolled { Self::Sane } else { Self::Insane }
     }
     pub fn display(self, lang: Lang) -> &'static str {
         match (self, lang) {
@@ -216,13 +214,7 @@ pub fn roll_skill(target: u8, level: i8) -> (u8, Difficulty) {
 
 pub fn roll_combined(target: (u8, u8), level: i8) -> (u8, (Difficulty, Difficulty)) {
     let rolled = dice::percent_roll(level);
-    (
-        rolled,
-        (
-            Difficulty::get(target.0, rolled),
-            Difficulty::get(target.1, rolled),
-        ),
-    )
+    (rolled, (Difficulty::get(target.0, rolled), Difficulty::get(target.1, rolled)))
 }
 
 /// https://cthulhuwiki.chaosium.com/rules/sanity.html#bouts-of-madness-table

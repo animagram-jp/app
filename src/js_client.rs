@@ -135,46 +135,76 @@ impl ErrorCode {
 /// 3. `FrameReady` / `Error` を持つ。アリーナ由来の 2 つを
 ///    同じ enum に統合したためである。
 pub enum Command {
-    /// `el.textContent = d.string() ?? ""; break;`
-    SetText { id: dom::Id, value: String },
-    /// `el.value = d.string() ?? ""; break;`
-    SetValue { id: dom::Id, value: String },
-    /// `el.setAttribute(NAMES[d.u16()], d.string() ?? ""); break;`
-    SetAttribute {
-        id: dom::Id,
-        attribute: Name,
+    SetText {
+        id:    dom::Id,
         value: String,
     },
-    /// `el.removeAttribute(NAMES[d.u16()]); break;`
-    RemoveAttribute { id: dom::Id, attribute: Name },
-    /// `el.classList.add(NAMES[d.u16()]); break;`
-    AddClass { id: dom::Id, value: Name },
-    /// `el.classList.remove(NAMES[d.u16()]); break;`
-    RemoveClass { id: dom::Id, value: Name },
-    /// `el.style.width = d.u32() + "px"; break;`
-    SetWidth { id: dom::Id, px: u32 },
-    /// `el.style.height = d.u32() + "px"; break;`
-    SetHeight { id: dom::Id, px: u32 },
-    /// `el.style.zIndex = d.i32(); break;`
-    SetZIndex { id: dom::Id, z: i32 },
-    /// `el.style.background = d.string(); break;`
-    SetBackground { id: dom::Id, value: String },
-    /// `el.style.translate = `${d.f32()}px ${d.f32()}px`; break;`
-    SetTranslate { id: dom::Id, x: f32, y: f32 },
-    /// `el.style.cursor = NAMES[d.u16()] ?? ""; break;`
-    SetCursor { id: dom::Id, value: Name },
-    /// `el.showModal(); break;`
-    ShowModal { id: dom::Id },
-    /// `el.close(); break;`
-    CloseModal { id: dom::Id },
-    /// `el.focus(); break;`
-    Focus { id: dom::Id },
-    /// `jsFn[NAMES[d.u16()]]?.(el); break;`
-    JsFn { id: dom::Id, name: Name },
+    SetValue {
+        id:    dom::Id,
+        value: String,
+    },
+    SetAttribute {
+        id:        dom::Id,
+        attribute: Name,
+        value:     String,
+    },
+    RemoveAttribute {
+        id:        dom::Id,
+        attribute: Name,
+    },
+    AddClass {
+        id:    dom::Id,
+        value: Name,
+    },
+    RemoveClass {
+        id:    dom::Id,
+        value: Name,
+    },
+    SetWidth {
+        id: dom::Id,
+        px: u32,
+    },
+    SetHeight {
+        id: dom::Id,
+        px: u32,
+    },
+    SetZIndex {
+        id: dom::Id,
+        z:  i32,
+    },
+    SetBackground {
+        id:    dom::Id,
+        value: String,
+    },
+    SetTranslate {
+        id: dom::Id,
+        x:  f32,
+        y:  f32,
+    },
+    SetCursor {
+        id:    dom::Id,
+        value: Name,
+    },
+    ShowModal {
+        id: dom::Id,
+    },
+    CloseModal {
+        id: dom::Id,
+    },
+    Focus {
+        id: dom::Id,
+    },
+    JsFn {
+        id:   dom::Id,
+        name: Name,
+    },
     /// トリプルバッファへ新しいフレームを公開した。
     FrameReady,
     /// 回復不能な異常を報告する。JavaScript 側は worker を作り直す。
-    Error { code: ErrorCode, message: String },
+    Error {
+        code:    ErrorCode,
+        message: String,
+    },
 }
 
 /// コマンド 1 件をバイト列へ追記する。
@@ -205,11 +235,7 @@ pub fn encode_command(commands: &mut Vec<u8>, command: &Command) {
             encoder.id(id);
             encoder.str(value);
         }
-        Command::SetAttribute {
-            ref id,
-            attribute,
-            ref value,
-        } => {
+        Command::SetAttribute { ref id, attribute, ref value } => {
             encoder.u8(OPERATION_SET_ATTRIBUTE);
             encoder.id(id);
             encoder.u16(attribute.0);
@@ -303,17 +329,17 @@ pub struct CanvasEvent {
     /// イベント種別。
     pub event_type: EventType,
     /// 発生元の要素。
-    pub id: dom::Id,
+    pub id:         dom::Id,
     /// 押されたキー。
-    pub key: KeyName,
+    pub key:        KeyName,
     /// 要素の `value`。
-    pub value: String,
+    pub value:      String,
     /// `clientX` の値。
-    pub x: f64,
+    pub x:          f64,
     /// `clientY` の値。
-    pub y: f64,
+    pub y:          f64,
     /// `timeStamp` の値。
-    pub time: f64,
+    pub time:       f64,
     /// `PointerEvent.pointerId`。pointer 系以外のイベントでは 0
     /// (`init.js` の `send` が `e.pointerId ?? 0` で送る)。複数指の
     /// 追跡に使う ([`TouchTracker`] を参照)。
@@ -381,11 +407,7 @@ pub enum Device {
 
 /// `pointer_coarse` から入力装置を判定する。中身は app repository と同じ。
 pub fn detect_device(pointer_coarse: bool) -> Device {
-    if pointer_coarse {
-        Device::Touch
-    } else {
-        Device::Mouse
-    }
+    if pointer_coarse { Device::Touch } else { Device::Mouse }
 }
 
 /// イベント種別。variant は app repository の `EventType` と同じ。
@@ -551,46 +573,46 @@ impl KeyName {
 #[derive(Debug, Clone, Copy)]
 pub struct Thresholds {
     /// 長押しと見なす最短時間 (ms)。
-    pub long_press_ms: f64,
+    pub long_press_ms:      f64,
     /// 長押し中に許容する座標のブレ (px)。これを超えたら長押しを取り消す。
     pub long_press_slop_px: f64,
     /// ドラッグ開始と見なす移動距離 (px)。
-    pub drag_start_px: f64,
+    pub drag_start_px:      f64,
     /// スワイプと見なす最短距離 (px)。
-    pub swipe_min_px: f64,
+    pub swipe_min_px:       f64,
     /// スワイプと見なす最低速度 (px/ms)。
     pub swipe_min_velocity: f64,
     /// スワイプと見なす最長時間 (ms)。これを超えたらドラッグ扱い。
-    pub swipe_max_ms: f64,
+    pub swipe_max_ms:       f64,
     /// タップと見なす最長時間 (ms)。
-    pub tap_max_ms: f64,
+    pub tap_max_ms:         f64,
     /// タップ中に許容する座標のブレ (px)。
-    pub tap_slop_px: f64,
+    pub tap_slop_px:        f64,
 }
 
 impl Thresholds {
     /// マウス向けの既定値。元実装の数値をそのまま引き継いでいる。
     pub const MOUSE: Self = Self {
-        long_press_ms: 251.0,
+        long_press_ms:      251.0,
         long_press_slop_px: 9.0,
-        drag_start_px: 10.0,
-        swipe_min_px: 50.0,
+        drag_start_px:      10.0,
+        swipe_min_px:       50.0,
         swipe_min_velocity: 0.5,
-        swipe_max_ms: 250.0,
-        tap_max_ms: 250.0,
-        tap_slop_px: 9.0,
+        swipe_max_ms:       250.0,
+        tap_max_ms:         250.0,
+        tap_slop_px:        9.0,
     };
 
     /// タッチ向けの既定値。ブレ許容と開始距離をマウスより広く取る。
     pub const TOUCH: Self = Self {
-        long_press_ms: 500.0,
+        long_press_ms:      500.0,
         long_press_slop_px: 16.0,
-        drag_start_px: 16.0,
-        swipe_min_px: 50.0,
+        drag_start_px:      16.0,
+        swipe_min_px:       50.0,
         swipe_min_velocity: 0.5,
-        swipe_max_ms: 300.0,
-        tap_max_ms: 300.0,
-        tap_slop_px: 16.0,
+        swipe_max_ms:       300.0,
+        tap_max_ms:         300.0,
+        tap_slop_px:        16.0,
     };
 
     /// 装置に応じた既定値を返す。
@@ -617,26 +639,26 @@ impl Default for Thresholds {
 /// 判定前に消さない。
 #[derive(Debug, Default, Clone, Copy)]
 pub struct PointerState {
-    is_down: bool,
-    start_x: f64,
-    start_y: f64,
-    current_x: f64,
-    current_y: f64,
-    start_time: f64,
+    is_down:          bool,
+    start_x:          f64,
+    start_y:          f64,
+    current_x:        f64,
+    current_y:        f64,
+    start_time:       f64,
     /// 直近の `PointerMove` の座標・時刻 (無ければ `PointerDown` のそれ)。
     /// swipe の速度を「離す直前の実際の動き」から計算するために持つ。
-    last_move_x: f64,
-    last_move_y: f64,
-    last_move_time: f64,
+    last_move_x:      f64,
+    last_move_y:      f64,
+    last_move_time:   f64,
     /// `PointerDown` 時の (pointer_px - 対象の左上 px)。
-    drag_offset: (f64, f64),
+    drag_offset:      (f64, f64),
     /// ドラッグ中の対象左上 px (一時値)。
-    drag_px: (f64, f64),
-    is_dragging: bool,
+    drag_px:          (f64, f64),
+    is_dragging:      bool,
     /// 長押しを発火済みか。連続発火を防ぐラッチ。
     long_press_fired: bool,
     /// 直前の終了が `PointerCancel` だったか。
-    cancelled: bool,
+    cancelled:        bool,
 }
 
 impl PointerState {
@@ -647,20 +669,20 @@ impl PointerState {
     pub fn update(self, event_type: &EventType, x: f64, y: f64, time: f64) -> Self {
         match event_type {
             EventType::PointerDown => Self {
-                is_down: true,
-                start_x: x,
-                start_y: y,
-                current_x: x,
-                current_y: y,
-                start_time: time,
-                last_move_x: x,
-                last_move_y: y,
-                last_move_time: time,
-                drag_offset: (0.0, 0.0),
-                drag_px: (0.0, 0.0),
-                is_dragging: false,
+                is_down:          true,
+                start_x:          x,
+                start_y:          y,
+                current_x:        x,
+                current_y:        y,
+                start_time:       time,
+                last_move_x:      x,
+                last_move_y:      y,
+                last_move_time:   time,
+                drag_offset:      (0.0, 0.0),
+                drag_px:          (0.0, 0.0),
+                is_dragging:      false,
                 long_press_fired: false,
-                cancelled: false,
+                cancelled:        false,
             },
             EventType::PointerMove => Self {
                 current_x: x,
@@ -670,20 +692,12 @@ impl PointerState {
                 last_move_time: time,
                 ..self
             },
-            EventType::PointerUp => Self {
-                is_down: false,
-                current_x: x,
-                current_y: y,
-                cancelled: false,
-                ..self
-            },
-            EventType::PointerCancel => Self {
-                is_down: false,
-                current_x: x,
-                current_y: y,
-                cancelled: true,
-                ..self
-            },
+            EventType::PointerUp => {
+                Self { is_down: false, current_x: x, current_y: y, cancelled: false, ..self }
+            }
+            EventType::PointerCancel => {
+                Self { is_down: false, current_x: x, current_y: y, cancelled: true, ..self }
+            }
             _ => self,
         }
     }
@@ -738,11 +752,7 @@ pub enum Gesture {
     /// 画面を拡大縮小する処理はここの責務ではない ([`TwoFingerState::fold`]
     /// の doc を参照)。`Drag` が座標を報告するだけで移動そのものは
     /// 行わないのと同じ立て付けである。
-    Pinch {
-        scale: f64,
-        center_x: f64,
-        center_y: f64,
-    },
+    Pinch { scale: f64, center_x: f64, center_y: f64 },
     /// つまみ操作の終了 (どちらかの指が離れた)。
     PinchEnd,
 }
@@ -794,11 +804,7 @@ fn detect_on_release(
     // ドラッグしていたなら、終了種別を返して確定させる。
     if prev_state.is_dragging {
         state.is_dragging = false;
-        return Some(if state.cancelled {
-            Gesture::DragCancel
-        } else {
-            Gesture::DragEnd
-        });
+        return Some(if state.cancelled { Gesture::DragCancel } else { Gesture::DragEnd });
     }
 
     // キャンセルはここで打ち切る。タップにもスワイプにもしない。
@@ -837,11 +843,7 @@ fn detect_on_release(
         let dx = state.current_x - state.start_x;
         let dy = state.current_y - state.start_y;
         return Some(if libm::fabs(dx) > libm::fabs(dy) {
-            if dx > 0.0 {
-                Gesture::SwipeRight
-            } else {
-                Gesture::SwipeLeft
-            }
+            if dx > 0.0 { Gesture::SwipeRight } else { Gesture::SwipeLeft }
         } else if dy > 0.0 {
             Gesture::SwipeDown
         } else {
@@ -899,10 +901,7 @@ fn detect_on_move(
 
     // 既にドラッグ中なら継続する。
     if state.is_dragging {
-        return Some(Gesture::Drag {
-            x: state.current_x,
-            y: state.current_y,
-        });
+        return Some(Gesture::Drag { x: state.current_x, y: state.current_y });
     }
 
     // まだドラッグに入っていない場合、swipe になりうる動きは譲る。
@@ -916,16 +915,14 @@ fn detect_on_move(
     }
 
     state.is_dragging = true;
-    Some(Gesture::Drag {
-        x: state.current_x,
-        y: state.current_y,
-    })
+    Some(Gesture::Drag { x: state.current_x, y: state.current_y })
 }
 
 #[cfg(test)]
 mod gesture_tests {
-    use super::*;
     use alloc::vec::Vec;
+
+    use super::*;
 
     /// `app.rs` と同じ順序 (update → detect_gesture) でイベント列を流す。
     fn run(events: &[(EventType, f64, f64, f64)], th: &Thresholds) -> Vec<Gesture> {
@@ -1039,10 +1036,7 @@ mod gesture_tests {
             ],
             &th,
         );
-        assert_eq!(
-            got,
-            [Gesture::Drag { x: 150.0, y: 100.0 }, Gesture::DragCancel]
-        );
+        assert_eq!(got, [Gesture::Drag { x: 150.0, y: 100.0 }, Gesture::DragCancel]);
     }
 
     // --- tap ---
@@ -1066,10 +1060,7 @@ mod gesture_tests {
     fn long_press_fires_on_release() {
         let th = Thresholds::MOUSE;
         let got = run(
-            &[
-                (EventType::PointerDown, 10.0, 10.0, 0.0),
-                (EventType::PointerUp, 10.0, 10.0, 400.0),
-            ],
+            &[(EventType::PointerDown, 10.0, 10.0, 0.0), (EventType::PointerUp, 10.0, 10.0, 400.0)],
             &th,
         );
         assert_eq!(got, [Gesture::LongPress]);
@@ -1114,13 +1105,7 @@ mod gesture_tests {
             ],
             &th,
         );
-        assert_eq!(
-            got,
-            [
-                Gesture::Drag { x: 40.0, y: 10.0 },
-                Gesture::Drag { x: 40.0, y: 10.0 }
-            ]
-        );
+        assert_eq!(got, [Gesture::Drag { x: 40.0, y: 10.0 }, Gesture::Drag { x: 40.0, y: 10.0 }]);
     }
 
     // --- 装置別閾値 ---
@@ -1136,10 +1121,8 @@ mod gesture_tests {
 
     #[test]
     fn same_input_differs_by_device() {
-        let events = [
-            (EventType::PointerDown, 10.0, 10.0, 0.0),
-            (EventType::PointerUp, 10.0, 10.0, 300.0),
-        ];
+        let events =
+            [(EventType::PointerDown, 10.0, 10.0, 0.0), (EventType::PointerUp, 10.0, 10.0, 300.0)];
         assert_eq!(run(&events, &Thresholds::MOUSE), [Gesture::LongPress]);
         assert_eq!(run(&events, &Thresholds::TOUCH), []);
     }
@@ -1176,22 +1159,16 @@ mod gesture_tests {
 /// 2 本指のうち一方の追跡状態。
 #[derive(Debug, Clone, Copy)]
 struct TouchPoint {
-    id: u32,
-    start_x: f64,
-    start_y: f64,
+    id:        u32,
+    start_x:   f64,
+    start_y:   f64,
     current_x: f64,
     current_y: f64,
 }
 
 impl TouchPoint {
     const fn new(id: u32, x: f64, y: f64) -> Self {
-        Self {
-            id,
-            start_x: x,
-            start_y: y,
-            current_x: x,
-            current_y: y,
-        }
+        Self { id, start_x: x, start_y: y, current_x: x, current_y: y }
     }
 
     fn displacement(&self) -> (f64, f64) {
@@ -1234,11 +1211,7 @@ enum FoldedInput {
     /// 2 本の指がほぼ平行に動いている。1 本指パイプラインへ渡す合成座標。
     AsSinglePoint { x: f64, y: f64 },
     /// 2 本の指が逆向きに動いている。pinch として確定。
-    Pinch {
-        scale: f64,
-        center_x: f64,
-        center_y: f64,
-    },
+    Pinch { scale: f64, center_x: f64, center_y: f64 },
     /// 1 本指のみ、または判定材料が揃っていない。
     None,
 }
@@ -1249,9 +1222,9 @@ enum FoldedInput {
 /// 不要と判断)。
 #[derive(Debug, Clone, Copy, Default)]
 struct TwoFingerState {
-    primary: Option<TouchPoint>,
+    primary:   Option<TouchPoint>,
     secondary: Option<TouchPoint>,
-    mode: TwoFingerMode,
+    mode:      TwoFingerMode,
 }
 
 impl TwoFingerState {
@@ -1259,10 +1232,7 @@ impl TwoFingerState {
     #[must_use]
     fn touch_down(self, id: u32, x: f64, y: f64) -> Self {
         match (self.primary, self.secondary) {
-            (None, _) => Self {
-                primary: Some(TouchPoint::new(id, x, y)),
-                ..self
-            },
+            (None, _) => Self { primary: Some(TouchPoint::new(id, x, y)), ..self },
             (Some(_), None) => Self {
                 secondary: Some(TouchPoint::new(id, x, y)),
                 mode: TwoFingerMode::Undetermined,
@@ -1277,20 +1247,12 @@ impl TwoFingerState {
     fn touch_move(self, id: u32, x: f64, y: f64) -> Self {
         if self.primary.is_some_and(|p| p.id == id) {
             Self {
-                primary: self.primary.map(|p| TouchPoint {
-                    current_x: x,
-                    current_y: y,
-                    ..p
-                }),
+                primary: self.primary.map(|p| TouchPoint { current_x: x, current_y: y, ..p }),
                 ..self
             }
         } else if self.secondary.is_some_and(|s| s.id == id) {
             Self {
-                secondary: self.secondary.map(|s| TouchPoint {
-                    current_x: x,
-                    current_y: y,
-                    ..s
-                }),
+                secondary: self.secondary.map(|s| TouchPoint { current_x: x, current_y: y, ..s }),
                 ..self
             }
         } else {
@@ -1308,21 +1270,14 @@ impl TwoFingerState {
         if self.primary.is_some_and(|p| p.id == id) {
             (
                 Self {
-                    primary: self.secondary,
+                    primary:   self.secondary,
                     secondary: None,
-                    mode: TwoFingerMode::Undetermined,
+                    mode:      TwoFingerMode::Undetermined,
                 },
                 ended_mode,
             )
         } else if self.secondary.is_some_and(|s| s.id == id) {
-            (
-                Self {
-                    secondary: None,
-                    mode: TwoFingerMode::Undetermined,
-                    ..self
-                },
-                ended_mode,
-            )
+            (Self { secondary: None, mode: TwoFingerMode::Undetermined, ..self }, ended_mode)
         } else {
             (self, TwoFingerMode::Undetermined)
         }
@@ -1368,11 +1323,8 @@ impl TwoFingerState {
                 return FoldedInput::None;
             }
             let dot = d1.0 * d2.0 + d1.1 * d2.1;
-            self.mode = if dot < PINCH_DOT_THRESHOLD {
-                TwoFingerMode::Pinch
-            } else {
-                TwoFingerMode::Pan
-            };
+            self.mode =
+                if dot < PINCH_DOT_THRESHOLD { TwoFingerMode::Pinch } else { TwoFingerMode::Pan };
         }
 
         match self.mode {
@@ -1389,7 +1341,7 @@ impl TwoFingerState {
                 let current_distance =
                     two_point_distance(p.current_x, p.current_y, s.current_x, s.current_y);
                 FoldedInput::Pinch {
-                    scale: current_distance / start_distance,
+                    scale:    current_distance / start_distance,
                     center_x: (p.current_x + s.current_x) / 2.0,
                     center_y: (p.current_y + s.current_y) / 2.0,
                 }
@@ -1456,8 +1408,8 @@ fn two_point_distance(x0: f64, y0: f64, x1: f64, y1: f64) -> f64 {
 #[derive(Debug, Default)]
 pub struct TouchTracker {
     primary_state: PointerState,
-    two_fingers: TwoFingerState,
-    pan_state: Option<PointerState>,
+    two_fingers:   TwoFingerState,
+    pan_state:     Option<PointerState>,
 }
 
 impl TouchTracker {
@@ -1511,9 +1463,7 @@ impl TouchTracker {
             return;
         }
         if self.two_fingers.primary_id().is_none() {
-            self.primary_state = self
-                .primary_state
-                .update(&EventType::PointerDown, x, y, time);
+            self.primary_state = self.primary_state.update(&EventType::PointerDown, x, y, time);
         }
         self.two_fingers = self.two_fingers.touch_down(id, x, y);
     }
@@ -1540,16 +1490,8 @@ impl TouchTracker {
 
         // 1 本指のまま。既存のパイプラインで判定する。
         let prev = self.primary_state;
-        self.primary_state = self
-            .primary_state
-            .update(&EventType::PointerMove, x, y, time);
-        detect_gesture(
-            &mut self.primary_state,
-            &prev,
-            &EventType::PointerMove,
-            time,
-            thresholds,
-        )
+        self.primary_state = self.primary_state.update(&EventType::PointerMove, x, y, time);
+        detect_gesture(&mut self.primary_state, &prev, &EventType::PointerMove, time, thresholds)
     }
 
     fn on_up(
@@ -1622,15 +1564,9 @@ impl TouchTracker {
     fn fold_and_emit(&mut self, time: f64, thresholds: &Thresholds) -> Option<Gesture> {
         match self.two_fingers.fold() {
             FoldedInput::None => None,
-            FoldedInput::Pinch {
-                scale,
-                center_x,
-                center_y,
-            } => Some(Gesture::Pinch {
-                scale,
-                center_x,
-                center_y,
-            }),
+            FoldedInput::Pinch { scale, center_x, center_y } => {
+                Some(Gesture::Pinch { scale, center_x, center_y })
+            }
             FoldedInput::AsSinglePoint { x, y } => match self.pan_state {
                 None => {
                     self.pan_state =
@@ -1662,9 +1598,8 @@ mod two_finger_tests {
     /// されず残留する)。
     #[test]
     fn waits_for_both_fingers_before_classifying() {
-        let mut state = TwoFingerState::default()
-            .touch_down(1, 100.0, 100.0)
-            .touch_down(2, 200.0, 100.0);
+        let mut state =
+            TwoFingerState::default().touch_down(1, 100.0, 100.0).touch_down(2, 200.0, 100.0);
 
         // primary だけが動く。secondary の変位は (0,0) のまま。
         state = state.touch_move(1, 110.0, 100.0);
@@ -1673,27 +1608,18 @@ mod two_finger_tests {
         assert_eq!(state.fold(), FoldedInput::None);
 
         // secondary も動き、両者が閾値を超えて初めて確定する。
-        state = state
-            .touch_move(1, 150.0, 100.0)
-            .touch_move(2, 150.0, 100.0);
+        state = state.touch_move(1, 150.0, 100.0).touch_move(2, 150.0, 100.0);
         assert_eq!(
             state.fold(),
-            FoldedInput::Pinch {
-                scale: 0.0,
-                center_x: 150.0,
-                center_y: 100.0
-            }
+            FoldedInput::Pinch { scale: 0.0, center_x: 150.0, center_y: 100.0 }
         );
     }
 
     #[test]
     fn symmetric_pinch_in_reduces_scale() {
-        let mut state = TwoFingerState::default()
-            .touch_down(1, 100.0, 100.0)
-            .touch_down(2, 200.0, 100.0);
-        state = state
-            .touch_move(1, 140.0, 100.0)
-            .touch_move(2, 160.0, 100.0);
+        let mut state =
+            TwoFingerState::default().touch_down(1, 100.0, 100.0).touch_down(2, 200.0, 100.0);
+        state = state.touch_move(1, 140.0, 100.0).touch_move(2, 160.0, 100.0);
         match state.fold() {
             FoldedInput::Pinch { scale, .. } => assert!(scale < 1.0, "scale = {scale}"),
             other => panic!("expected Pinch, got {other:?}"),
@@ -1702,12 +1628,9 @@ mod two_finger_tests {
 
     #[test]
     fn symmetric_pinch_out_increases_scale() {
-        let mut state = TwoFingerState::default()
-            .touch_down(1, 140.0, 100.0)
-            .touch_down(2, 160.0, 100.0);
-        state = state
-            .touch_move(1, 100.0, 100.0)
-            .touch_move(2, 200.0, 100.0);
+        let mut state =
+            TwoFingerState::default().touch_down(1, 140.0, 100.0).touch_down(2, 160.0, 100.0);
+        state = state.touch_move(1, 100.0, 100.0).touch_move(2, 200.0, 100.0);
         match state.fold() {
             FoldedInput::Pinch { scale, .. } => assert!(scale > 1.0, "scale = {scale}"),
             other => panic!("expected Pinch, got {other:?}"),
@@ -1718,34 +1641,23 @@ mod two_finger_tests {
     /// 合成点) になる。
     #[test]
     fn parallel_motion_is_pan_not_pinch() {
-        let mut state = TwoFingerState::default()
-            .touch_down(1, 100.0, 100.0)
-            .touch_down(2, 200.0, 100.0);
-        state = state
-            .touch_move(1, 120.0, 100.0)
-            .touch_move(2, 220.0, 100.0);
-        assert_eq!(
-            state.fold(),
-            FoldedInput::AsSinglePoint { x: 170.0, y: 100.0 }
-        );
+        let mut state =
+            TwoFingerState::default().touch_down(1, 100.0, 100.0).touch_down(2, 200.0, 100.0);
+        state = state.touch_move(1, 120.0, 100.0).touch_move(2, 220.0, 100.0);
+        assert_eq!(state.fold(), FoldedInput::AsSinglePoint { x: 170.0, y: 100.0 });
     }
 
     /// 一度確定したら、その後の入力で符号が変わっても再判定しない。
     #[test]
     fn mode_latches_after_commit() {
-        let mut state = TwoFingerState::default()
-            .touch_down(1, 100.0, 100.0)
-            .touch_down(2, 200.0, 100.0);
-        state = state
-            .touch_move(1, 140.0, 100.0)
-            .touch_move(2, 160.0, 100.0);
+        let mut state =
+            TwoFingerState::default().touch_down(1, 100.0, 100.0).touch_down(2, 200.0, 100.0);
+        state = state.touch_move(1, 140.0, 100.0).touch_move(2, 160.0, 100.0);
         assert!(matches!(state.fold(), FoldedInput::Pinch { .. }));
 
         // 内積の符号だけで見ればもう pinch ではない動きだが、ラッチして
         // いるため pan には切り替わらない。
-        state = state
-            .touch_move(1, 140.0, 100.0)
-            .touch_move(2, 140.0, 100.0);
+        state = state.touch_move(1, 140.0, 100.0).touch_move(2, 140.0, 100.0);
         assert!(matches!(state.fold(), FoldedInput::Pinch { .. }));
     }
 
@@ -1764,12 +1676,9 @@ mod two_finger_tests {
     /// 再判定待ちに戻る。
     #[test]
     fn primary_release_promotes_secondary() {
-        let mut state = TwoFingerState::default()
-            .touch_down(1, 100.0, 100.0)
-            .touch_down(2, 200.0, 100.0);
-        state = state
-            .touch_move(1, 140.0, 100.0)
-            .touch_move(2, 160.0, 100.0);
+        let mut state =
+            TwoFingerState::default().touch_down(1, 100.0, 100.0).touch_down(2, 200.0, 100.0);
+        state = state.touch_move(1, 140.0, 100.0).touch_move(2, 160.0, 100.0);
         assert!(matches!(state.fold(), FoldedInput::Pinch { .. }));
 
         let (next, ended_mode) = state.touch_up(1);
@@ -1785,29 +1694,24 @@ mod two_finger_tests {
     /// 確定状態を引きずらず改めて判定する。
     #[test]
     fn new_session_reclassifies_independently() {
-        let mut state = TwoFingerState::default()
-            .touch_down(1, 100.0, 100.0)
-            .touch_down(2, 200.0, 100.0);
-        state = state
-            .touch_move(1, 140.0, 100.0)
-            .touch_move(2, 160.0, 100.0);
+        let mut state =
+            TwoFingerState::default().touch_down(1, 100.0, 100.0).touch_down(2, 200.0, 100.0);
+        state = state.touch_move(1, 140.0, 100.0).touch_move(2, 160.0, 100.0);
         assert!(matches!(state.fold(), FoldedInput::Pinch { .. }));
 
         // 両方離れて、今度はパンとして新しいセッションを始める。
         state = state.touch_up(2).0.touch_up(1).0;
         state = state.touch_down(3, 0.0, 0.0).touch_down(4, 50.0, 0.0);
         state = state.touch_move(3, 0.0, 50.0).touch_move(4, 50.0, 50.0);
-        assert_eq!(
-            state.fold(),
-            FoldedInput::AsSinglePoint { x: 25.0, y: 50.0 }
-        );
+        assert_eq!(state.fold(), FoldedInput::AsSinglePoint { x: 25.0, y: 50.0 });
     }
 }
 
 #[cfg(test)]
 mod touch_tracker_tests {
-    use super::*;
     use alloc::vec::Vec;
+
+    use super::*;
 
     /// `App::dispatch` と同じ順序で 1 イベントずつ `handle` に流す。
     fn run(events: &[(EventType, u32, f64, f64, f64)], th: &Thresholds) -> Vec<Option<Gesture>> {
@@ -1855,11 +1759,7 @@ mod touch_tracker_tests {
                 None,
                 None,
                 None, // primary 単独では Drag も何も出ない (凍結中)
-                Some(Gesture::Pinch {
-                    scale: 0.0,
-                    center_x: 150.0,
-                    center_y: 100.0
-                }),
+                Some(Gesture::Pinch { scale: 0.0, center_x: 150.0, center_y: 100.0 }),
             ]
         );
     }
@@ -1921,14 +1821,7 @@ mod touch_tracker_tests {
             ],
             &th,
         );
-        assert_eq!(
-            got[3],
-            Some(Gesture::Pinch {
-                scale: 0.2,
-                center_x: 150.0,
-                center_y: 100.0
-            })
-        );
+        assert_eq!(got[3], Some(Gesture::Pinch { scale: 0.2, center_x: 150.0, center_y: 100.0 }));
         assert_eq!(got[4], Some(Gesture::PinchEnd));
         assert_eq!(got[5], None);
         assert_eq!(got[6], Some(Gesture::Tap));
@@ -1952,14 +1845,7 @@ mod touch_tracker_tests {
             &th,
         );
         assert_eq!(got[0..5], [None, None, None, None, None]);
-        assert_eq!(
-            got[6],
-            Some(Gesture::Pinch {
-                scale: 0.2,
-                center_x: 150.0,
-                center_y: 100.0
-            })
-        );
+        assert_eq!(got[6], Some(Gesture::Pinch { scale: 0.2, center_x: 150.0, center_y: 100.0 }));
     }
 
     /// 追跡中の id への重複 `PointerDown` は新しい指として扱わない。
@@ -2007,14 +1893,7 @@ mod touch_tracker_tests {
             ],
             &th,
         );
-        assert_eq!(
-            got[4],
-            Some(Gesture::Pinch {
-                scale: 0.2,
-                center_x: 150.0,
-                center_y: 100.0
-            })
-        );
+        assert_eq!(got[4], Some(Gesture::Pinch { scale: 0.2, center_x: 150.0, center_y: 100.0 }));
     }
 }
 
@@ -2108,7 +1987,7 @@ pub mod dom {
         /// セグメントの tag。
         pub tag: Tag,
         /// 同一 tag 内の連番。1 つだけなら None。
-        pub n: Option<u32>,
+        pub n:   Option<u32>,
     }
 
     impl Segment {
@@ -2126,14 +2005,7 @@ pub mod dom {
     impl Id {
         /// tag と連番の列から id を作る。中身は app repository と同じ。
         pub fn new(segs: &[(Tag, Option<u32>)]) -> Self {
-            Self(
-                segs.iter()
-                    .map(|(tag, n)| Segment {
-                        tag: tag.clone(),
-                        n: *n,
-                    })
-                    .collect(),
-            )
+            Self(segs.iter().map(|(tag, n)| Segment { tag: tag.clone(), n: *n }).collect())
         }
 
         // pub fn decode(id: &str) -> Self { .. }
