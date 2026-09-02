@@ -719,6 +719,20 @@ pub enum Gesture {
     DragEnd,
     /// ドラッグ中断 (`pointercancel`)。ドロップを取り消す。
     DragCancel,
+    /// 2 本指のつまみ操作。継続中は毎フレーム発火する。
+    ///
+    /// `scale` は 2 本指の開始距離に対する現在距離の比であり、
+    /// `center_x` / `center_y` は 2 本指の現在の中点である。実際に
+    /// 画面を拡大縮小する処理はここの責務ではない ([`TwoFingerState::fold`]
+    /// の doc を参照)。`Drag` が座標を報告するだけで移動そのものは
+    /// 行わないのと同じ立て付けである。
+    Pinch {
+        scale: f64,
+        center_x: f64,
+        center_y: f64,
+    },
+    /// つまみ操作の終了 (どちらかの指が離れた)。
+    PinchEnd,
 }
 
 /// pointer 状態の遷移からジェスチャを認識する。
@@ -1116,6 +1130,413 @@ mod gesture_tests {
         ];
         assert_eq!(run(&events, &Thresholds::MOUSE), [Gesture::LongPress]);
         assert_eq!(run(&events, &Thresholds::TOUCH), []);
+    }
+}
+
+// ============================================================
+// gesture: two-finger (pinch / pan)
+// ============================================================
+//
+// 2 本指の入力を、逆向きの変位なら pinch (`scale`)、平行な変位なら
+// pan (1 本指パイプラインへ渡す合成点) に振り分ける。実際に scale/pan
+// を画面へ適用する処理はここの責務ではない。`Gesture::Pinch` は認識
+// 結果 (scale と中心座標) を報告するだけであり、`Drag` が座標を報告
+// するだけで実際の移動を行わないのと同じ立て付けである。
+//
+// pan 側の合成点をどう 1 本指パイプラインへ渡すか (合成用の
+// `PointerState` をどこで持ち、`pointer_id` をどう protocol へ足すか)
+// は、`App` 側の配線がまだ無いため未着手である。ここにあるのは
+// pan/pinch の判定と `TwoFingerState` の追跡だけである。
+//
+// 検証用スケッチだった設計との差分は 3 点。
+//
+// 1. 内積の符号だけで毎フレーム判定していたため、変位ベクトルが
+//    `(0,0)` (指がまだ動いていない) の間は常に内積が 0 になり、
+//    pinch の閾値未満にならず pan 側に倒れていた。人間の指は完全に
+//    同時・対称には動かないため、片方の指だけが先に動いた瞬間を
+//    2 本指パンと誤認してしまう。これを避けるため、両方の指の変位が
+//    `TWO_FINGER_COMMIT_PX` を超えるまで判定を保留する。
+// 2. 判定を毎フレーム再計算していたため、閾値付近で pan/pinch が
+//    往復しうる不安定な設計だった。一度確定したら、2 本指セッション
+//    が終わる (どちらかの指が離れる) まで `TwoFingerMode` にラッチする。
+// 3. `distance` が `#[cfg(feature = "std")]` でガードされ、この crate
+//    (no_std) では未定義だった。既存の `PointerState::distance` と
+//    同じく `libm::sqrt` を直接使う。
+
+// `App` / protocol への配線 (`pointer_id` の追加、`App::dispatch` の
+// 2 本指ルーティング) はまだ無いため、以下は crate 内のどこからも
+// 呼ばれていない。配線が入るまで `#[allow(dead_code)]` を付けておく。
+
+/// 2 本指のうち一方の追跡状態。
+#[derive(Debug, Clone, Copy)]
+#[allow(dead_code)]
+struct TouchPoint {
+    start_x: f64,
+    start_y: f64,
+    current_x: f64,
+    current_y: f64,
+}
+
+#[allow(dead_code)]
+impl TouchPoint {
+    const fn new(x: f64, y: f64) -> Self {
+        Self {
+            start_x: x,
+            start_y: y,
+            current_x: x,
+            current_y: y,
+        }
+    }
+
+    fn displacement(&self) -> (f64, f64) {
+        (self.current_x - self.start_x, self.current_y - self.start_y)
+    }
+}
+
+/// pan/pinch の確定状態。一度確定したら、2 本指セッションが終わるまで
+/// ラッチする ([`TwoFingerState::fold`] の doc を参照)。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[allow(dead_code)]
+enum TwoFingerMode {
+    /// まだ確定していない。両方の指の変位が `TWO_FINGER_COMMIT_PX` を
+    /// 超えるまでこのまま。
+    #[default]
+    Undetermined,
+    /// 2 本指パンとして確定。
+    Pan,
+    /// pinch として確定。
+    Pinch,
+}
+
+/// 各指がこの距離 (px) 動くまで pan/pinch を確定しない。
+///
+/// 変位ベクトルが `(0,0)` のままだと内積が常に 0 になり、片方の指だけ
+/// 先に動いた瞬間が pan 側 (内積が pinch 閾値未満にならない) に誤って
+/// 倒れる。両方が動くまで待つことでこれを避ける。
+#[allow(dead_code)]
+const TWO_FINGER_COMMIT_PX: f64 = 8.0;
+
+/// pinch と判定する際の、変位ベクトルの内積の閾値。
+///
+/// 内積が正 (順向き) でも小さければ「ほぼ直交」であり、pinch 側に
+/// 倒しても実害が小さい。0.0 (符号だけで判定) から始めて実機で調整
+/// する想定。
+#[allow(dead_code)]
+const PINCH_DOT_THRESHOLD: f64 = 0.0;
+
+/// 畳み込み結果。[`TwoFingerState::fold`] へ渡す「仮想の 1 点」か、
+/// pinch として確定した scale と中心座標のどちらか。
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[allow(dead_code)]
+enum FoldedInput {
+    /// 2 本の指がほぼ平行に動いている。1 本指パイプラインへ渡す合成座標。
+    AsSinglePoint { x: f64, y: f64 },
+    /// 2 本の指が逆向きに動いている。pinch として確定。
+    Pinch {
+        scale: f64,
+        center_x: f64,
+        center_y: f64,
+    },
+    /// 1 本指のみ、または判定材料が揃っていない。
+    None,
+}
+
+/// 2 本指ジェスチャの追跡状態。`primary` が埋まっていない状態で
+/// `secondary` だけ埋まることはない (1 本目が離れたら 2 本目を
+/// `primary` へ繰り上げる)。3 本目以降は無視する (zoom 用途では
+/// 不要と判断)。
+#[derive(Debug, Clone, Copy, Default)]
+#[allow(dead_code)]
+struct TwoFingerState {
+    primary: Option<TouchPoint>,
+    secondary: Option<TouchPoint>,
+    mode: TwoFingerMode,
+}
+
+#[allow(dead_code)]
+impl TwoFingerState {
+    /// 指が 1 本追加で触れた。3 本目以降は無視する。
+    #[must_use]
+    fn touch_down(self, x: f64, y: f64) -> Self {
+        match (self.primary, self.secondary) {
+            (None, _) => Self {
+                primary: Some(TouchPoint::new(x, y)),
+                ..self
+            },
+            (Some(_), None) => Self {
+                secondary: Some(TouchPoint::new(x, y)),
+                mode: TwoFingerMode::Undetermined,
+                ..self
+            },
+            (Some(_), Some(_)) => self,
+        }
+    }
+
+    /// `primary` 側の指が動いた。
+    #[must_use]
+    fn move_primary(self, x: f64, y: f64) -> Self {
+        Self {
+            primary: self.primary.map(|p| TouchPoint {
+                current_x: x,
+                current_y: y,
+                ..p
+            }),
+            ..self
+        }
+    }
+
+    /// `secondary` 側の指が動いた。
+    #[must_use]
+    fn move_secondary(self, x: f64, y: f64) -> Self {
+        Self {
+            secondary: self.secondary.map(|p| TouchPoint {
+                current_x: x,
+                current_y: y,
+                ..p
+            }),
+            ..self
+        }
+    }
+
+    /// `primary` 側の指が離れた。`secondary` があれば `primary` へ
+    /// 繰り上げる。
+    #[must_use]
+    fn release_primary(self) -> Self {
+        Self {
+            primary: self.secondary,
+            secondary: None,
+            mode: TwoFingerMode::Undetermined,
+        }
+    }
+
+    /// `secondary` 側の指が離れた。
+    #[must_use]
+    fn release_secondary(self) -> Self {
+        Self {
+            secondary: None,
+            mode: TwoFingerMode::Undetermined,
+            ..self
+        }
+    }
+
+    /// 現在の pan/pinch の確定状態。指が離れたときにこれが `Pinch` なら
+    /// `Gesture::PinchEnd` を出す (呼び出し側の責務)。
+    #[must_use]
+    const fn mode(&self) -> TwoFingerMode {
+        self.mode
+    }
+
+    /// 現在の 2 本指の状態から、畳み込み結果を導出する。
+    ///
+    /// 2 本とも揃っていなければ `FoldedInput::None`。揃っていても、
+    /// 両方の指の変位が `TWO_FINGER_COMMIT_PX` を超えるまでは判定を
+    /// 保留し `FoldedInput::None` を返す (doc 冒頭の 1. を参照)。
+    /// 一度 `Pan` / `Pinch` を確定したら、2 本指セッションが終わる
+    /// まで再判定しない (doc 冒頭の 2. を参照)。
+    #[must_use]
+    fn fold(&mut self) -> FoldedInput {
+        let (Some(p), Some(s)) = (self.primary, self.secondary) else {
+            return FoldedInput::None;
+        };
+
+        if self.mode == TwoFingerMode::Undetermined {
+            let d1 = p.displacement();
+            let d2 = s.displacement();
+            let moved1 = libm::sqrt(d1.0 * d1.0 + d1.1 * d1.1) > TWO_FINGER_COMMIT_PX;
+            let moved2 = libm::sqrt(d2.0 * d2.0 + d2.1 * d2.1) > TWO_FINGER_COMMIT_PX;
+            if !(moved1 && moved2) {
+                return FoldedInput::None;
+            }
+            let dot = d1.0 * d2.0 + d1.1 * d2.1;
+            self.mode = if dot < PINCH_DOT_THRESHOLD {
+                TwoFingerMode::Pinch
+            } else {
+                TwoFingerMode::Pan
+            };
+        }
+
+        match self.mode {
+            TwoFingerMode::Undetermined => FoldedInput::None,
+            TwoFingerMode::Pan => FoldedInput::AsSinglePoint {
+                x: (p.current_x + s.current_x) / 2.0,
+                y: (p.current_y + s.current_y) / 2.0,
+            },
+            TwoFingerMode::Pinch => {
+                let start_distance = two_point_distance(p.start_x, p.start_y, s.start_x, s.start_y);
+                if start_distance <= 0.0 {
+                    return FoldedInput::None;
+                }
+                let current_distance =
+                    two_point_distance(p.current_x, p.current_y, s.current_x, s.current_y);
+                FoldedInput::Pinch {
+                    scale: current_distance / start_distance,
+                    center_x: (p.current_x + s.current_x) / 2.0,
+                    center_y: (p.current_y + s.current_y) / 2.0,
+                }
+            }
+        }
+    }
+}
+
+/// 2 点間の距離 (px)。`PointerState::distance` と同じ式。
+#[allow(dead_code)]
+fn two_point_distance(x0: f64, y0: f64, x1: f64, y1: f64) -> f64 {
+    let dx = x1 - x0;
+    let dy = y1 - y0;
+    libm::sqrt(dx * dx + dy * dy)
+}
+
+#[cfg(test)]
+mod two_finger_tests {
+    use super::*;
+
+    /// 片方の指だけが先に動いても、もう片方が動くまで確定しない。
+    /// 動いていない指の変位ベクトルは `(0,0)` であり、内積が常に 0 に
+    /// なるため「符号だけで毎フレーム判定する」実装だと pan 側に誤って
+    /// 倒れ、1 本指パイプラインへ合成点を渡してしまう
+    /// (`is_dragging` が立ち、その後 pinch へ切り替わっても終了処理
+    /// されず残留する)。
+    #[test]
+    fn waits_for_both_fingers_before_classifying() {
+        let mut state = TwoFingerState::default()
+            .touch_down(100.0, 100.0)
+            .touch_down(200.0, 100.0);
+
+        // primary だけが動く。secondary の変位は (0,0) のまま。
+        state = state.move_primary(110.0, 100.0);
+        assert_eq!(state.fold(), FoldedInput::None);
+        state = state.move_primary(130.0, 100.0);
+        assert_eq!(state.fold(), FoldedInput::None);
+
+        // secondary も動き、両者が閾値を超えて初めて確定する。
+        state = state
+            .move_primary(150.0, 100.0)
+            .move_secondary(150.0, 100.0);
+        assert_eq!(
+            state.fold(),
+            FoldedInput::Pinch {
+                scale: 0.0,
+                center_x: 150.0,
+                center_y: 100.0
+            }
+        );
+    }
+
+    #[test]
+    fn symmetric_pinch_in_reduces_scale() {
+        let mut state = TwoFingerState::default()
+            .touch_down(100.0, 100.0)
+            .touch_down(200.0, 100.0);
+        state = state
+            .move_primary(140.0, 100.0)
+            .move_secondary(160.0, 100.0);
+        match state.fold() {
+            FoldedInput::Pinch { scale, .. } => assert!(scale < 1.0, "scale = {scale}"),
+            other => panic!("expected Pinch, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn symmetric_pinch_out_increases_scale() {
+        let mut state = TwoFingerState::default()
+            .touch_down(140.0, 100.0)
+            .touch_down(160.0, 100.0);
+        state = state
+            .move_primary(100.0, 100.0)
+            .move_secondary(200.0, 100.0);
+        match state.fold() {
+            FoldedInput::Pinch { scale, .. } => assert!(scale > 1.0, "scale = {scale}"),
+            other => panic!("expected Pinch, got {other:?}"),
+        }
+    }
+
+    /// 両指がほぼ同じ向き・同じ距離動けば pan (1 本指パイプラインへの
+    /// 合成点) になる。
+    #[test]
+    fn parallel_motion_is_pan_not_pinch() {
+        let mut state = TwoFingerState::default()
+            .touch_down(100.0, 100.0)
+            .touch_down(200.0, 100.0);
+        state = state
+            .move_primary(120.0, 100.0)
+            .move_secondary(220.0, 100.0);
+        assert_eq!(
+            state.fold(),
+            FoldedInput::AsSinglePoint { x: 170.0, y: 100.0 }
+        );
+    }
+
+    /// 一度確定したら、その後の入力で符号が変わっても再判定しない。
+    #[test]
+    fn mode_latches_after_commit() {
+        let mut state = TwoFingerState::default()
+            .touch_down(100.0, 100.0)
+            .touch_down(200.0, 100.0);
+        state = state
+            .move_primary(140.0, 100.0)
+            .move_secondary(160.0, 100.0);
+        assert!(matches!(state.fold(), FoldedInput::Pinch { .. }));
+
+        // 内積の符号だけで見ればもう pinch ではない動きだが、ラッチして
+        // いるため pan には切り替わらない。
+        state = state
+            .move_primary(140.0, 100.0)
+            .move_secondary(140.0, 100.0);
+        assert!(matches!(state.fold(), FoldedInput::Pinch { .. }));
+    }
+
+    /// 3 本目以降は無視する。
+    #[test]
+    fn third_finger_is_ignored() {
+        let state = TwoFingerState::default()
+            .touch_down(100.0, 100.0)
+            .touch_down(200.0, 100.0)
+            .touch_down(300.0, 100.0);
+        assert_eq!(state.primary.unwrap().start_x, 100.0);
+        assert_eq!(state.secondary.unwrap().start_x, 200.0);
+    }
+
+    /// 1 本目が離れたら 2 本目が `primary` へ繰り上がり、モードは
+    /// 再判定待ちに戻る。
+    #[test]
+    fn primary_release_promotes_secondary() {
+        let mut state = TwoFingerState::default()
+            .touch_down(100.0, 100.0)
+            .touch_down(200.0, 100.0);
+        state = state
+            .move_primary(140.0, 100.0)
+            .move_secondary(160.0, 100.0);
+        assert!(matches!(state.fold(), FoldedInput::Pinch { .. }));
+        assert_eq!(state.mode(), TwoFingerMode::Pinch);
+
+        state = state.release_primary();
+        assert_eq!(state.mode(), TwoFingerMode::Undetermined);
+        assert_eq!(state.primary.unwrap().start_x, 200.0);
+        assert!(state.secondary.is_none());
+        // 1 本指しか残っていないので確定しない。
+        assert_eq!(state.fold(), FoldedInput::None);
+    }
+
+    /// セッションが終わって新しい 2 本指セッションが始まれば、前回の
+    /// 確定状態を引きずらず改めて判定する。
+    #[test]
+    fn new_session_reclassifies_independently() {
+        let mut state = TwoFingerState::default()
+            .touch_down(100.0, 100.0)
+            .touch_down(200.0, 100.0);
+        state = state
+            .move_primary(140.0, 100.0)
+            .move_secondary(160.0, 100.0);
+        assert!(matches!(state.fold(), FoldedInput::Pinch { .. }));
+
+        // 両方離れて、今度はパンとして新しいセッションを始める。
+        state = state.release_secondary().release_primary();
+        state = state.touch_down(0.0, 0.0).touch_down(50.0, 0.0);
+        state = state.move_primary(0.0, 50.0).move_secondary(50.0, 50.0);
+        assert_eq!(
+            state.fold(),
+            FoldedInput::AsSinglePoint { x: 25.0, y: 50.0 }
+        );
     }
 }
 
