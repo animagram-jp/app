@@ -135,42 +135,76 @@ impl ErrorCode {
 /// 3. `FrameReady` / `Error` を持つ。アリーナ由来の 2 つを
 ///    同じ enum に統合したためである。
 pub enum Command {
-    /// `el.textContent = d.string() ?? ""; break;`
-    SetText { id: dom::Id, value: String },
-    /// `el.value = d.string() ?? ""; break;`
-    SetValue { id: dom::Id, value: String },
-    /// `el.setAttribute(NAMES[d.u16()], d.string() ?? ""); break;`
-    SetAttribute { id: dom::Id, attribute: Name, value: String },
-    /// `el.removeAttribute(NAMES[d.u16()]); break;`
-    RemoveAttribute { id: dom::Id, attribute: Name },
-    /// `el.classList.add(NAMES[d.u16()]); break;`
-    AddClass { id: dom::Id, value: Name },
-    /// `el.classList.remove(NAMES[d.u16()]); break;`
-    RemoveClass { id: dom::Id, value: Name },
-    /// `el.style.width = d.u32() + "px"; break;`
-    SetWidth { id: dom::Id, px: u32 },
-    /// `el.style.height = d.u32() + "px"; break;`
-    SetHeight { id: dom::Id, px: u32 },
-    /// `el.style.zIndex = d.i32(); break;`
-    SetZIndex { id: dom::Id, z: i32 },
-    /// `el.style.background = d.string(); break;`
-    SetBackground { id: dom::Id, value: String },
-    /// `el.style.translate = `${d.f32()}px ${d.f32()}px`; break;`
-    SetTranslate { id: dom::Id, x: f32, y: f32 },
-    /// `el.style.cursor = NAMES[d.u16()] ?? ""; break;`
-    SetCursor { id: dom::Id, value: Name },
-    /// `el.showModal(); break;`
-    ShowModal { id: dom::Id },
-    /// `el.close(); break;`
-    CloseModal { id: dom::Id },
-    /// `el.focus(); break;`
-    Focus { id: dom::Id },
-    /// `jsFn[NAMES[d.u16()]]?.(el); break;`
-    JsFn { id: dom::Id, name: Name },
+    SetText {
+        id:    dom::Id,
+        value: String,
+    },
+    SetValue {
+        id:    dom::Id,
+        value: String,
+    },
+    SetAttribute {
+        id:        dom::Id,
+        attribute: Name,
+        value:     String,
+    },
+    RemoveAttribute {
+        id:        dom::Id,
+        attribute: Name,
+    },
+    AddClass {
+        id:    dom::Id,
+        value: Name,
+    },
+    RemoveClass {
+        id:    dom::Id,
+        value: Name,
+    },
+    SetWidth {
+        id: dom::Id,
+        px: u32,
+    },
+    SetHeight {
+        id: dom::Id,
+        px: u32,
+    },
+    SetZIndex {
+        id: dom::Id,
+        z:  i32,
+    },
+    SetBackground {
+        id:    dom::Id,
+        value: String,
+    },
+    SetTranslate {
+        id: dom::Id,
+        x:  f32,
+        y:  f32,
+    },
+    SetCursor {
+        id:    dom::Id,
+        value: Name,
+    },
+    ShowModal {
+        id: dom::Id,
+    },
+    CloseModal {
+        id: dom::Id,
+    },
+    Focus {
+        id: dom::Id,
+    },
+    JsFn {
+        id:   dom::Id,
+        name: Name,
+    },
     /// トリプルバッファへ新しいフレームを公開した。
     FrameReady,
     /// 回復不能な異常を報告する。JavaScript 側は worker を作り直す。
-    Error { code: ErrorCode, message: String },
+    Error {
+        code:    ErrorCode,
+        message: String,
+    },
 }
 
 /// コマンド 1 件をバイト列へ追記する。
