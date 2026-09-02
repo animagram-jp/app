@@ -278,6 +278,7 @@ function send(e) {
     encoder.f32(e.clientX ?? 0);
     encoder.f32(e.clientY ?? 0);
     encoder.f64(e.timeStamp ?? 0);
+    encoder.u32(e.pointerId ?? 0);
 
     push(encoder.frame());
 }

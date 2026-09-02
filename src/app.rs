@@ -12,8 +12,7 @@ use wasm_bindgen::prelude::wasm_bindgen;
 use crate::arena::{APP, ARENA, COMMAND_CAPACITY, EVENT_CAPACITY, RUNNING, emit};
 use crate::event::{Event, Handler, decode_event};
 use crate::js_client::{
-    Command, ERROR_DECODE, EventType, PointerState, Thresholds, detect_device, detect_gesture,
-    encode_command,
+    Command, ERROR_DECODE, EventType, Thresholds, TouchTracker, detect_device, encode_command,
 };
 
 // ============================================================
@@ -28,7 +27,10 @@ use crate::js_client::{
 /// 2. `parameter` を持つ。`Event::SetParameter` が設定し、描画が読む。
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 pub struct App {
-    pointer_state: PointerState,
+    /// 複数指のポインタ入力を `Gesture` へ落とす。`pointer_id` ごとの
+    /// primary/secondary の割り振りと、pan/pinch の判定を持つ
+    /// (`js_client::TouchTracker` を参照)。
+    touch: TouchTracker,
     /// `pointer_coarse` から装置ごとに決めたジェスチャ判定の閾値。
     /// `init` 時に 1 度だけ決め、以降は変わらない。
     thresholds: Thresholds,
@@ -65,12 +67,8 @@ impl App {
     /// JavaScript 側 (`init.js` の `attach` / `worker.js`) はこの戻り値を
     /// 使わず `await` するだけである。
     pub async fn init(pointer_coarse: bool, viewport_width: f64, viewport_height: f64) {
-        // PointerState はこのファイルでは中身を省いた unit struct だが、
-        // app repository では実フィールドを持つ。取り込み時にそのまま
-        // 動くよう `default()` を残す。
-        #[allow(clippy::default_constructed_unit_structs)]
         let mut app = App {
-            pointer_state: PointerState::default(),
+            touch: TouchTracker::default(),
             thresholds: Thresholds::for_device(detect_device(pointer_coarse)),
             events: VecDeque::with_capacity(EVENT_CAPACITY),
             handler: Handler::ready(viewport_width, viewport_height).await,
@@ -207,39 +205,33 @@ impl App {
     fn dispatch(&mut self, event: Event) -> (Vec<Event>, Vec<Command>) {
         let Self {
             handler,
-            pointer_state,
+            touch,
             thresholds,
             ..
         } = self;
 
         match event {
             Event::Canvas(canvas_event) => {
-                let prev_state = *pointer_state;
-                *pointer_state = pointer_state.update(
+                match touch.handle(
                     &canvas_event.event_type,
+                    canvas_event.pointer_id,
                     canvas_event.x,
                     canvas_event.y,
                     canvas_event.time,
-                );
-                match detect_gesture(
-                    pointer_state,
-                    &prev_state,
-                    &canvas_event.event_type,
-                    canvas_event.time,
                     thresholds,
                 ) {
-                    Some(gesture) => handler.process_gesture(&gesture, pointer_state),
+                    Some(gesture) => handler.process_gesture(&gesture, touch.active_state()),
                     // app repository と同じく、PointerMove / PointerUp /
                     // PointerCancel はジェスチャに解決しなければ捨てる。
                     None => match canvas_event.event_type {
                         EventType::PointerMove
                         | EventType::PointerUp
                         | EventType::PointerCancel => (vec![], vec![]),
-                        _ => handler.process(&canvas_event, pointer_state),
+                        _ => handler.process(&canvas_event, touch.active_state()),
                     },
                 }
             }
-            Event::Gesture(gesture) => handler.process_gesture(&gesture, pointer_state),
+            Event::Gesture(gesture) => handler.process_gesture(&gesture, touch.active_state()),
             Event::Viewport { width, height } => handler.process_viewport(width, height),
             Event::Scroll { id, x, y } => handler.process_scroll(&id, x, y),
             Event::SetParameter { value } => {

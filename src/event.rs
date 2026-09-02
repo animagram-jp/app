@@ -130,6 +130,7 @@ pub fn decode_event(frame: &[u8]) -> Option<Event> {
             x: decoder.f32()? as f64,
             y: decoder.f32()? as f64,
             time: decoder.f64()?,
+            pointer_id: decoder.u32()?,
         }),
         EVENT_VIEWPORT => Event::Viewport {
             width: decoder.f32()? as f64,
