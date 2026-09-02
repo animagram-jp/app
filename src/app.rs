@@ -21,20 +21,9 @@ use crate::{
 // App
 // ============================================================
 
-/// イベントの取り込みからコマンド列の生成までを保持する。
-///
-/// app repository の `App` (`src/app.rs`) との相違点は 2 つである。
-///
-/// 1. `commands` を持ち、コマンドを `JsValue` ではなくバイト列として蓄える。
-/// 2. `parameter` を持つ。`Event::SetParameter` が設定し、描画が読む。
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 pub struct App {
-    /// 複数指のポインタ入力を `Gesture` へ落とす。`pointer_id` ごとの
-    /// primary/secondary の割り振りと、pan/pinch の判定を持つ
-    /// (`js_client::TouchTracker` を参照)。
     touch:      TouchTracker,
-    /// `pointer_coarse` から装置ごとに決めたジェスチャ判定の閾値。
-    /// `init` 時に 1 度だけ決め、以降は変わらない。
     thresholds: Thresholds,
     events:     VecDeque<Event>,
     handler:    Handler,
@@ -111,21 +100,7 @@ impl App {
         }
     }
 
-    /// JavaScript から届いた 1 イベントフレームを処理する。
-    ///
-    /// app repository の `App::process` は `JsValue` を受け取り
-    /// `CanvasEvent::decode` で解釈し、`Vec<Command>` を
-    /// `serde_wasm_bindgen` で直列化して返す。ここでは `&[u8]` を受け取り
-    /// `decode_event` で解釈し、結果は `commands` に溜める。
-    ///
-    /// フレーム構造は `[event:u8][payload...]` である。
-    ///
-    /// `App::init` は dedicated worker 上でしか呼べないため、以下は
-    /// `no_run` である (型と呼び出しのみ検査する)。
-    ///
-    /// `App::init` は戻り値を持たず、`static mut APP` へ格納する
-    /// (`poll` / `run_loop` が駆動する App を JavaScript が保持しない
-    /// ための設計、[`App::init`] の doc を参照)。
+    /// process(Event) and FIFO queue command (layout `[event:u8][payload...]`)
     ///
     /// ```no_run
     /// # async fn example() {
@@ -140,9 +115,6 @@ impl App {
     /// assert_eq!(app.commands()[0], OPERATION_ERROR);
     /// # }
     /// ```
-    ///
-    /// キューは FIFO である。`dispatch` が返す派生イベントは末尾へ積まれ、
-    /// 返した順に処理される。
     ///
     /// ```no_run
     /// # async fn example() {
@@ -172,19 +144,8 @@ impl App {
             return;
         };
 
-        // app repository では PointerState の更新と detect_gesture を
-        // process が直接行うが、ここでは event が pointer 以外も運ぶため
-        // dispatch 側へ移した。
         self.events.push_back(event);
 
-        // FIFO で回す。app repository は `Vec` の `push` / `pop` であり
-        // LIFO だが、`dispatch` が返す派生イベントが元のイベントを
-        // 追い越す。現状は `Handler` が空の `Vec<Event>` しか返さない
-        // ため差が出ないが、往復の応答 (WebSocket など) が派生イベントを
-        // 生むと順序が崩れる。
-        //
-        // 取り出しは `pop_front` である。`Vec::remove(0)` は毎回
-        // 要素をずらすため、キューの長さに比例した時間がかかる。
         while let Some(event) = self.events.pop_front() {
             let (new_events, new_commands) = self.dispatch(event);
             self.events.extend(new_events);
@@ -194,16 +155,10 @@ impl App {
         }
     }
 
-    /// コマンド出力バッファを空にする。`commands` の取り出し後に呼ぶ。
     pub fn clear(&mut self) {
         self.commands.clear();
     }
 
-    /// 1 イベントを `Handler` へ振り分ける。
-    ///
-    /// app repository の `App::dispatch` は `Event::Ready` / `Event::Canvas` /
-    /// `Event::Gesture` の 3 つを分けるだけである。ここでは `Event` の
-    /// variant が増えた分だけ分岐が増える。
     fn dispatch(&mut self, event: Event) -> (Vec<Event>, Vec<Command>) {
         let Self { handler, touch, thresholds, .. } = self;
 
@@ -218,8 +173,7 @@ impl App {
                     thresholds,
                 ) {
                     Some(gesture) => handler.process_gesture(&gesture, touch.active_state()),
-                    // app repository と同じく、PointerMove / PointerUp /
-                    // PointerCancel はジェスチャに解決しなければ捨てる。
+                    // ignore PointerMove / PointerUp / PointerCancel
                     None => match canvas_event.event_type {
                         EventType::PointerMove
                         | EventType::PointerUp
@@ -236,11 +190,7 @@ impl App {
                 (vec![], vec![])
             }
             Event::Render => {
-                // 実際の描画はここで行う。書き込み先はアリーナが専有している
-                // バッファであり、`self.parameter` を読んで埋め、書き終えたら
-                // `frame_commit` で公開する。WebGPU で直接描く構成では
-                // この経路そのものが不要になる。
-                // 専有中のバッファは frame_commit まで他が触れない。
+                // CPU render
                 let _destination = unsafe { ARENA.frame_back_mut() };
                 ARENA.frame_commit();
                 (vec![], vec![Command::FrameReady])

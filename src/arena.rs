@@ -1,15 +1,10 @@
-// 共有アリーナ。app repository に対応するファイルは無く、新規である。
-//
-// 持つのは 4 つである。
+// Arena
 //
 // 1. アリーナのレイアウト定数。`./init.js` と一対一で対応する。
 // 2. `Arena` 本体。イベントリング、コマンドリング、トリプルバッファ。
 // 3. entry point。`arena_pointer` / `initialize` / `poll` / `run_loop`。
 // 4. `Encoder` / `Decoder`。バイト列の読み書き。
 // 5. 異常報告。`report_error` と panic hook。
-//
-// レイアウトと同期はすべて `impl Arena` に閉じており、`crate::app` などの
-// 利用者は添字やオフセットを知らない。
 
 use alloc::{
     string::{String, ToString},

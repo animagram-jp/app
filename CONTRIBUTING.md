@@ -82,6 +82,8 @@ wasm-bindgen --target web --out-dir distribution/app --out-name app target/wasm3
 #   cargo install wasm-tools
 #   replace app_bg.wasm: (import "./app_bg.js" "memory" (memory (;0;) {min} {max})) to (import "./app_bg.js" "memory" (memory (;0;) {min} {max} shared)).
 wasm-tools print distribution/app/app_bg.wasm -o /tmp/app.wat
+sed -i -E 's/\(import "\.\/app_bg\.js" "memory" \(memory \(;0;\) ([0-9]+) ([0-9]+)\)\)/(import ".\/app_bg.js" "memory" (memory (;0;) \1 \2 shared))/' /tmp/app.wat
+grep -q 'shared' /tmp/app.wat
 wasm-tools parse /tmp/app.wat -o distribution/app/app_bg.wasm
 wasm-tools validate --features=threads,bulk-memory distribution/app/app_bg.wasm
 

@@ -1,22 +1,3 @@
-// app repository の `src/js_client.rs` に対応する。
-//
-// このファイルの項目は 2 群に分かれる。
-//
-// 1. 共有アリーナ経由に伴って新設 / 変更するもの。
-//    `Command` / `encode_command` / operation 番号 / `Name` / `name` /
-//    `EventType::decode_u8` / `KeyName::decode_u8` /
-//    `dom::Tag::encode_u8` / `dom::Tag::decode_u8`。
-//
-// 2. app repository に既にあり、経路の検討に必要な signature だけを
-//    置いたもの。中身は省略してある。取り込み時にはこれらを削除し、
-//    既存の定義をそのまま使う。
-//    `Device` / `detect_device` / `PointerState` / `Gesture` /
-//    `detect_gesture` / `EventType` と `KeyName` の variant /
-//    `dom::Tag` / `dom::Segment` / `dom::Id`。
-//
-// なお `CanvasEvent::decode` は `crate::event::decode_event` に統合した。
-// `dom::Id` の直列化は `crate::arena` の `Encoder::id` / `Decoder::id` が担う。
-
 use alloc::{string::String, vec::Vec};
 use core::{
     clone::Clone,
@@ -30,68 +11,48 @@ use core::{
 
 use crate::arena::Encoder;
 
-// ============================================================
-// send operation
-// ============================================================
+// === send operation ===
 //
-// operation 番号は JavaScript 側 (init.js の execute) の switch 分岐と対応。
-// 値を追加/変更する際は両方を揃えて更新する。
-//
-// app repository の `Serialize for Command` が用いる 1〜16 をそのまま
-// 引き継ぎ、17 以降を追加している。
+// see distribution/init.js execute operation
 
-/// 要素の `textContent` を設定する。
+/// case  1: el.textContent = d.string() ?? ""; break;
 pub const OPERATION_SET_TEXT: u8 = 1;
-/// 要素の `value` を設定する。
+/// case  2: el.value = d.string() ?? ""; break;
 pub const OPERATION_SET_VALUE: u8 = 2;
-/// 属性を設定する。
+/// case  3: el.setAttribute(NAMES[d.u16()], d.string() ?? ""); break;
 pub const OPERATION_SET_ATTRIBUTE: u8 = 3;
-/// 属性を削除する。
+/// case  4: el.removeAttribute(NAMES[d.u16()]); break;
 pub const OPERATION_REMOVE_ATTRIBUTE: u8 = 4;
-/// class を追加する。
+/// case  5: el.classList.add(NAMES[d.u16()]); break;
 pub const OPERATION_ADD_CLASS: u8 = 5;
-/// class を削除する。
+/// case  6: el.classList.remove(NAMES[d.u16()]); break;
 pub const OPERATION_REMOVE_CLASS: u8 = 6;
-/// `style.width` を設定する。
+/// case  7: el.style.width = d.u32() + "px"; break;
 pub const OPERATION_SET_WIDTH: u8 = 7;
-/// `style.height` を設定する。
+/// case  8: el.style.height = d.u32() + "px"; break;
 pub const OPERATION_SET_HEIGHT: u8 = 8;
-/// `style.zIndex` を設定する。
+/// case  9: el.style.zIndex = d.i32(); break;
 pub const OPERATION_SET_Z_INDEX: u8 = 9;
-/// `style.background` を設定する。
+/// case 10: el.style.background = d.string(); break;
 pub const OPERATION_SET_BACKGROUND: u8 = 10;
-/// `style.translate` を設定する。
+/// case 11: el.style.translate = `${d.f32()}px ${d.f32()}px`; break;
 pub const OPERATION_SET_TRANSLATE: u8 = 11;
-/// `style.cursor` を設定する。
+/// case 12: el.style.cursor = NAMES[d.u16()] ?? ""; break;
 pub const OPERATION_SET_CURSOR: u8 = 12;
-/// `dialog` 要素を `showModal` で開く。
+/// case 13: el.showModal(); break;
 pub const OPERATION_SHOW_MODAL: u8 = 13;
-/// `dialog` 要素を `close` で閉じる。
+/// case 14: el.close(); break;
 pub const OPERATION_CLOSE_MODAL: u8 = 14;
-/// 要素に `focus` する。
+/// case 15: el.focus(); break;
 pub const OPERATION_FOCUS: u8 = 15;
-/// JavaScript 側の名前付き関数を呼ぶ。
+/// case 16: jsFn[NAMES[d.u16()]]?.(el); break;
 pub const OPERATION_JS_FN: u8 = 16;
-// 17 と 18 は `FileStoreGet` / `FileStoreSet` が使っていた。
-// OPFS は `FileSystemSyncAccessHandle` という同期ハンドルを返し、
-// worker の init で取得すれば `run_loop` の中から直接呼べるため、
-// 往復にする必要が無い。番号は詰めず空けてある (`init.js` と揃える)。
-/// トリプルバッファへ新しいフレームを公開した。
+
 pub const OPERATION_FRAME_READY: u8 = 19;
-/// Wasm 側で回復不能な異常が起きたことを報告する。
-///
-/// JavaScript 側はこれを受けて worker を作り直す。`FileStoreError` が
-/// `Handler` に届く回復可能なエラーであるのに対し、こちらは
-/// `run_loop` を止めて再起動へ向かう片道の通知である。
+
 pub const OPERATION_ERROR: u8 = 20;
 
-/// `Command::Error` が運ぶ異常の種別。
-///
-/// JavaScript 側 `init.js` の `ERROR_CODES` 配列と順序を揃える。
-/// 詳細は `message` が運ぶ。
-///
-/// 番号は再起動の要否で 2 群に分かれる。`FATAL_FROM` 以上が
-/// 「Wasm 側が停止しており、作り直さないと以降無反応になる」ものである。
+/// Command::Error, init.js ERROR_CODES
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct ErrorCode(pub u8);
 
@@ -103,17 +64,10 @@ pub const ERROR_DECODE: ErrorCode = ErrorCode(1);
 /// コマンドリングが満杯でフレームを捨てた。画面が実際の状態からずれる。
 pub const ERROR_COMMAND_OVERFLOW: ErrorCode = ErrorCode(2);
 
-/// panic hook が捕らえた panic。thread は停止している。
 pub const ERROR_PANIC: ErrorCode = ErrorCode(128);
-/// `FileStore` の書き込みが繰り返し失敗した。ハンドルが失効している。
-///
-/// 再取得には `FileStore::new` の `await` が要り、`run_loop` の中では
-/// 待てない。worker を作り直し、新しい `App::init` に開き直させる。
 pub const ERROR_STORE_LOST: ErrorCode = ErrorCode(129);
 
 impl ErrorCode {
-    /// 再起動を要するなら true。
-    ///
     /// ```
     /// # use app::js_client::{ERROR_DECODE, ERROR_PANIC};
     /// assert!(!ERROR_DECODE.is_fatal());
@@ -124,16 +78,7 @@ impl ErrorCode {
     }
 }
 
-/// Wasm から JavaScript へ送る指示。
-///
-/// app repository の `Command` に対応する。相違点は 3 つである。
-///
-/// 1. `id` を `String` ではなく `dom::Id` で持つ。直列化の際に
-///    `Id::encode` を呼ばず、セグメント列をそのままバイト列にする。
-/// 2. 属性名、class 名、cursor 値、JavaScript 関数名を `String` ではなく
-///    `Name` で持つ。JavaScript 側の静的文字列配列の添字である。
-/// 3. `FrameReady` / `Error` を持つ。アリーナ由来の 2 つを
-///    同じ enum に統合したためである。
+/// Command from Wasm to JavaScript thread
 pub enum Command {
     SetText {
         id:    dom::Id,
@@ -211,8 +156,6 @@ pub enum Command {
 ///
 /// フレーム構造は `[operation:u8][payload...]` である。要素を持つ
 /// operation は `id` を長さ前置のセグメント列として続ける。
-///
-/// app repository では `Serialize for Command` が同じ役割を担う。
 ///
 /// ```
 /// # use app::js_client::{encode_command, Command, dom, OPERATION_FOCUS};
@@ -321,10 +264,7 @@ pub fn encode_command(commands: &mut Vec<u8>, command: &Command) {
 
 /// DOM 由来のイベントの内容。
 ///
-/// app repository の `CanvasEvent` に `pointer_id` を足したもの。他は
-/// 同じ構成である。`decode` の入力が `JsValue` から `&[u8]` に変わる
-/// だけで、フィールドは変えていない。デコードそのものは
-/// `crate::event::decode_event` が担う。
+/// crate::event::decode_event
 pub struct CanvasEvent {
     /// イベント種別。
     pub event_type: EventType,
@@ -350,18 +290,10 @@ pub struct CanvasEvent {
 // name (static string index)
 // ============================================================
 
-/// 静的文字列の識別子。JavaScript 側の文字列配列の添字である。
-///
-/// app repository は属性名や class 名を `String` で持ち、そのまま
-/// JavaScript へ渡す。ここでは実行時に生成されない文字列を添字に
-/// 置き換え、フレーム長を 2 byte に抑える。
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct Name(pub u16);
 
-/// 事前に登録した静的文字列の識別子。
-///
-/// 属性名、class 名、cursor 値、JavaScript 関数名、永続化キーを含む。
-/// JavaScript 側 `init.js` の `NAMES` 配列と順序を揃える。
+/// init.js::NAMES
 pub mod name {
     use super::Name;
 
@@ -399,62 +331,36 @@ pub mod name {
 /// 入力装置の種別。中身は app repository の `Device` と同じ。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Device {
-    /// touch 入力。
     Touch,
-    /// mouse 入力。
     Mouse,
 }
 
-/// `pointer_coarse` から入力装置を判定する。中身は app repository と同じ。
 pub fn detect_device(pointer_coarse: bool) -> Device {
     if pointer_coarse { Device::Touch } else { Device::Mouse }
 }
 
-/// イベント種別。variant は app repository の `EventType` と同じ。
-///
-/// `decode` (文字列から) はそのまま残し、`decode_u8` を追加する。
-/// JavaScript 側が文字列ではなく番号を送るためである。
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum EventType {
-    /// `submit`。
     Submit,
-    /// `click`。
     Click,
-    /// `contextmenu`。
     ContextMenu,
-    /// `keydown`。
     KeyDown,
-    /// `input`。
     Input,
-    /// `change`。
     Change,
-    /// `focusin`。
     FocusIn,
-    /// `focusout`。
     FocusOut,
-    /// `resize`。
     Resize,
-    /// `scroll`。
     Scroll,
-    /// `drop`。
     Drop,
-    /// `pointerdown`。
     PointerDown,
-    /// `pointerup`。
     PointerUp,
-    /// `pointermove`。
     PointerMove,
-    /// `pointercancel`。
     PointerCancel,
-    /// 上記以外。
     Other,
 }
 
 impl EventType {
-    /// 番号からイベント種別を得る。未知の番号は `Other` とする。
-    ///
-    /// 番号は app repository の `EventType::decode` の分岐順に対応する。
-    /// `init.js` の `EVENT_TYPES` 配列と順序を揃える。
+    /// init.js EVENT_TYPES
     ///
     /// ```
     /// # use app::js_client::EventType;
@@ -481,41 +387,22 @@ impl EventType {
             _ => Self::Other,
         }
     }
-
-    // pub fn decode(event_type: &str) -> Self { .. }
-    // 中身は app repository と同じ。
 }
 
-/// キー名。variant は app repository の `KeyName` と同じ。
-///
-/// `decode` (文字列から) はそのまま残し、`decode_u8` を追加する。
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum KeyName {
-    /// `ArrowUp`。
     ArrowUp,
-    /// `ArrowDown`。
     ArrowDown,
-    /// `ArrowLeft`。
     ArrowLeft,
-    /// `ArrowRight`。
     ArrowRight,
-    /// `Enter`。
     Enter,
-    /// `Escape`。
     Escape,
-    /// `Tab`。
     Tab,
-    /// `Backspace`。
     Backspace,
-    /// 上記以外。
     Other,
 }
 
 impl KeyName {
-    /// 番号からキー名を得る。未知の番号は `Other` とする。
-    ///
-    /// 番号は app repository の `KeyName::decode` の分岐順に対応する。
-    ///
     /// ```
     /// # use app::js_client::KeyName;
     /// assert_eq!(KeyName::decode_u8(5), KeyName::Enter);
@@ -534,42 +421,13 @@ impl KeyName {
             _ => Self::Other,
         }
     }
-
-    // pub fn decode(key_name: &str) -> Self { .. }
-    // 中身は app repository と同じ。
 }
 
 // ============================================================
 // gesture: tap, long press, swipe (up,down,left,right), drag
 // See ./docs/Gesture.md
 // ============================================================
-//
-// 元実装 (旧 `detect_gesture`) は 3 点の欠陥を持っていた。
-//
-// 1. `update` の `PointerUp` 分岐が `..Self::default()` で `is_down` と
-//    `start_x/y` / `start_time` を同時にゼロクリアしていたため、直後の
-//    `detect_gesture` 冒頭の `if !state.is_down { .. return None; }` で
-//    必ず抜け、`Swipe*` 系の分岐に制御が到達しなかった。
-// 2. `PointerMove` / `PointerUp` でしか判定しないため、押したまま指を
-//    動かさない長押しが発火しなかった (タイマー未実装)。
-// 3. `Drag` の閾値 (`distance > 10.0`) が `Swipe` の閾値 (`> 50.0`) より
-//    先に成立するため、素早いフリックが `PointerMove` の時点で `Drag`
-//    として確定してしまい、swipe に到達しなかった。
-//
-// 以下はこれらを修正した版である。`update` は `PointerUp` /
-// `PointerCancel` でも座標・時刻・`drag_offset` / `drag_px` を保持し、
-// `is_down` と `is_dragging` のフラグだけを倒す。`detect_gesture` は
-// 終了イベントと移動イベントで判定を分け、`Drag` は「速度が swipe 閾値
-// 未満」または「既に drag 中」のときだけ発火させる。長押しはタイマーを
-// 増設せず、`PointerMove` / `PointerUp` の中で経過時間を見て判定し、
-// 一度発火したら `long_press_fired` でラッチして連続発火を防ぐ。
-// `PointerCancel` は `DragEnd` ではなく `DragCancel` を返し、正常終了と
-// 区別する。
 
-/// ジェスチャ判定の閾値。すべて CSS px と ms。
-///
-/// 装置ごとに閾値を分ける。指の接触面はマウスカーソルより広く、押下中の
-/// 座標のブレも大きいため、タッチでは許容を広げる。
 #[derive(Debug, Clone, Copy)]
 pub struct Thresholds {
     /// 長押しと見なす最短時間 (ms)。
@@ -591,7 +449,6 @@ pub struct Thresholds {
 }
 
 impl Thresholds {
-    /// マウス向けの既定値。元実装の数値をそのまま引き継いでいる。
     pub const MOUSE: Self = Self {
         long_press_ms:      251.0,
         long_press_slop_px: 9.0,
@@ -603,7 +460,6 @@ impl Thresholds {
         tap_slop_px:        9.0,
     };
 
-    /// タッチ向けの既定値。ブレ許容と開始距離をマウスより広く取る。
     pub const TOUCH: Self = Self {
         long_press_ms:      500.0,
         long_press_slop_px: 16.0,
@@ -615,7 +471,6 @@ impl Thresholds {
         tap_slop_px:        16.0,
     };
 
-    /// 装置に応じた既定値を返す。
     #[must_use]
     pub const fn for_device(device: Device) -> Self {
         match device {
@@ -631,12 +486,6 @@ impl Default for Thresholds {
     }
 }
 
-/// pointer の追跡状態。中身は app repository の `PointerState` と同じ。
-///
-/// `PointerUp` / `PointerCancel` でも座標・時刻・`drag_offset` / `drag_px`
-/// を保持する。消すのは `is_down` と `is_dragging` のフラグだけである。
-/// 判定はこの直後に `detect_gesture` が行うため、そこで必要な値を
-/// 判定前に消さない。
 #[derive(Debug, Default, Clone, Copy)]
 pub struct PointerState {
     is_down:          bool,
@@ -662,9 +511,6 @@ pub struct PointerState {
 }
 
 impl PointerState {
-    /// pointer 状態を 1 イベント分進める。
-    ///
-    /// 元実装と異なり、`PointerUp` / `PointerCancel` でも座標・時刻を残す。
     #[must_use]
     pub fn update(self, event_type: &EventType, x: f64, y: f64, time: f64) -> Self {
         match event_type {
@@ -709,38 +555,25 @@ impl PointerState {
         libm::sqrt(dx * dx + dy * dy)
     }
 
-    /// 現在座標。[`TouchTracker`] が 2 本指セッション終了時に、合成
-    /// ポインタへ送る `PointerUp` の座標を作るのに使う。
+    /// 現在座標。[`TouchTracker`] が 2 本指セッション終了時に、合成ポインタへ送る `PointerUp` の座標を作るのに使う。
     #[must_use]
     pub const fn current(&self) -> (f64, f64) {
         (self.current_x, self.current_y)
     }
 }
 
-/// 認識したジェスチャ。variant は app repository の `Gesture` に `Tap` と
-/// `DragCancel` を追加したもの。
-///
-/// `Tap` が無いと、押して離しただけの操作が `None` に落ちて呼び出し側で
-/// 区別できない。`DragCancel` は `PointerCancel` による中断で、`DragEnd`
-/// と同一視すると割り込み時にドロップを取り消せない。
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Gesture {
-    /// 単純なタップ / クリック。
-    Tap,
-    /// 長押し。押下したまま `long_press_ms` を超えた時点で 1 度だけ発火する。
-    /// 動かさずに保持した場合、実際の発火は次の `PointerMove` /
-    /// `PointerUp` まで遅延する ([`detect_gesture`] の doc を参照)。
+    Tap, // includes click
     LongPress,
-    /// 上方向のスワイプ。
     SwipeUp,
-    /// 下方向のスワイプ。
     SwipeDown,
-    /// 左方向のスワイプ。
     SwipeLeft,
-    /// 右方向のスワイプ。
     SwipeRight,
-    /// ドラッグ中。
-    Drag { x: f64, y: f64 },
+    Drag {
+        x: f64,
+        y: f64,
+    }, // in dragging
     /// ドラッグ終了 (`pointerup`)。スナップ処理はここで行う。
     DragEnd,
     /// ドラッグ中断 (`pointercancel`)。ドロップを取り消す。
@@ -748,11 +581,12 @@ pub enum Gesture {
     /// 2 本指のつまみ操作。継続中は毎フレーム発火する。
     ///
     /// `scale` は 2 本指の開始距離に対する現在距離の比であり、
-    /// `center_x` / `center_y` は 2 本指の現在の中点である。実際に
-    /// 画面を拡大縮小する処理はここの責務ではない ([`TwoFingerState::fold`]
-    /// の doc を参照)。`Drag` が座標を報告するだけで移動そのものは
-    /// 行わないのと同じ立て付けである。
-    Pinch { scale: f64, center_x: f64, center_y: f64 },
+    /// `center_x` / `center_y` は 2 本指の現在の中点。
+    Pinch {
+        scale:    f64,
+        center_x: f64,
+        center_y: f64,
+    },
     /// つまみ操作の終了 (どちらかの指が離れた)。
     PinchEnd,
 }
@@ -1054,7 +888,7 @@ mod gesture_tests {
         assert_eq!(got, [Gesture::Tap]);
     }
 
-    // --- long press: 元実装では発火しなかった経路 ---
+    // --- long press ---
 
     #[test]
     fn long_press_fires_on_release() {
@@ -1133,28 +967,10 @@ mod gesture_tests {
 // ============================================================
 //
 // 2 本指の入力を、逆向きの変位なら pinch (`scale`)、平行な変位なら
-// pan (1 本指パイプラインへ渡す合成点) に振り分ける。実際に scale/pan
-// を画面へ適用する処理はここの責務ではない。`Gesture::Pinch` は認識
-// 結果 (scale と中心座標) を報告するだけであり、`Drag` が座標を報告
-// するだけで実際の移動を行わないのと同じ立て付けである。
+// pan (1 本指パイプラインへ渡す合成点) に振り分ける。
 //
 // `TouchTracker` が `pointer_id` ごとに指を primary/secondary へ振り分け、
 // `App::dispatch` から呼ばれる (`app.rs` を参照)。
-//
-// 検証用スケッチだった設計との差分は 3 点。
-//
-// 1. 内積の符号だけで毎フレーム判定していたため、変位ベクトルが
-//    `(0,0)` (指がまだ動いていない) の間は常に内積が 0 になり、
-//    pinch の閾値未満にならず pan 側に倒れていた。人間の指は完全に
-//    同時・対称には動かないため、片方の指だけが先に動いた瞬間を
-//    2 本指パンと誤認してしまう。これを避けるため、両方の指の変位が
-//    `TWO_FINGER_COMMIT_PX` を超えるまで判定を保留する。
-// 2. 判定を毎フレーム再計算していたため、閾値付近で pan/pinch が
-//    往復しうる不安定な設計だった。一度確定したら、2 本指セッション
-//    が終わる (どちらかの指が離れる) まで `TwoFingerMode` にラッチする。
-// 3. `distance` が `#[cfg(feature = "std")]` でガードされ、この crate
-//    (no_std) では未定義だった。既存の `PointerState::distance` と
-//    同じく `libm::sqrt` を直接使う。
 
 /// 2 本指のうち一方の追跡状態。
 #[derive(Debug, Clone, Copy)]
@@ -1901,11 +1717,6 @@ mod touch_tracker_tests {
 // dom (rust item <=> element id)
 // ============================================================
 
-/// Rust item と element id の対応。中身は app repository の `dom` と同じ。
-///
-/// `Tag` に `encode_u8` / `decode_u8` を追加する点のみ異なる。
-/// `Id::encode` / `Id::decode` (文字列) はそのまま残すが、共有アリーナ経由の
-/// 直列化には `Encoder::id` / `Decoder::id` を用いる。
 pub mod dom {
     use alloc::vec::Vec;
     use core::{
@@ -1920,25 +1731,43 @@ pub mod dom {
     /// element の tag。variant は app repository の `Tag` と同じ。
     #[derive(Debug, Clone, PartialEq)]
     pub enum Tag {
-        /// `body`。
         Body,
-        /// `main`。
         Main,
-        /// `dialog id="*modal*"`。
-        Modal,
-        /// `header`。
         Header,
-        /// `section`。
         Section,
-        /// `button`。
         Button,
-        /// 上記以外。
+        H1,
+        H2,
+        H3,
+        Ul,
+        Li,
+        Span,
+        Dl,
+        Dt,
+        Dd,
+        Ol,
+        P,
+        Textarea,
+        Drawer, // <dialog id="*drawer*">
+        Modal,  // <dialog id="*modal*">
+        Form,
+        Input,
+        Fieldset,
+        Table,
+        Thead,
+        Tbody,
+        Tr,
+        Th,
+        Td,
+        Select,
+        Footer,
+        Output,
+        Article,
         Other,
-        // 残りの variant は app repository と同じ。
     }
 
     impl Tag {
-        /// tag を番号に直す。`init.js` の `TAGS` 配列の添字である。
+        /// init.js::TAGS
         ///
         /// ```
         /// # use app::js_client::dom::Tag;
@@ -1957,8 +1786,6 @@ pub mod dom {
             }
         }
 
-        /// 番号から tag を得る。未知の番号は `Other` とする。
-        ///
         /// ```
         /// # use app::js_client::dom::Tag;
         /// assert_eq!(Tag::decode_u8(1), Tag::Body);
@@ -1975,27 +1802,12 @@ pub mod dom {
                 _ => Self::Other,
             }
         }
-
-        // pub fn decode(s: &str) -> Self { .. }
-        // pub fn encode(&self) -> &'static str { .. }
-        // 中身は app repository と同じ。
     }
 
-    /// id の 1 セグメント。中身は app repository の `Segment` と同じ。
     #[derive(Debug, Clone, PartialEq)]
     pub struct Segment {
-        /// セグメントの tag。
         pub tag: Tag,
-        /// 同一 tag 内の連番。1 つだけなら None。
         pub n:   Option<u32>,
-    }
-
-    impl Segment {
-        // pub fn new(tag: Tag) -> Self { .. }
-        // pub fn numbered(tag: Tag, n: u32) -> Self { .. }
-        // pub fn decode(s: &str) -> Self { .. }
-        // pub fn encode(&self) -> String { .. }
-        // 中身は app repository と同じ。
     }
 
     /// element id。中身は app repository の `Id` と同じ。
@@ -2003,14 +1815,8 @@ pub mod dom {
     pub struct Id(pub Vec<Segment>);
 
     impl Id {
-        /// tag と連番の列から id を作る。中身は app repository と同じ。
         pub fn new(segs: &[(Tag, Option<u32>)]) -> Self {
             Self(segs.iter().map(|(tag, n)| Segment { tag: tag.clone(), n: *n }).collect())
         }
-
-        // pub fn decode(id: &str) -> Self { .. }
-        // pub fn encode(&self) -> String { .. }
-        // pub fn last_tag(&self) -> Option<&Tag> { .. }
-        // 中身は app repository と同じ。
     }
 }
