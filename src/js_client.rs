@@ -618,6 +618,11 @@ pub struct PointerState {
     current_x: f64,
     current_y: f64,
     start_time: f64,
+    /// 直近の `PointerMove` の座標・時刻 (無ければ `PointerDown` のそれ)。
+    /// swipe の速度を「離す直前の実際の動き」から計算するために持つ。
+    last_move_x: f64,
+    last_move_y: f64,
+    last_move_time: f64,
     /// `PointerDown` 時の (pointer_px - 対象の左上 px)。
     drag_offset: (f64, f64),
     /// ドラッグ中の対象左上 px (一時値)。
@@ -643,6 +648,9 @@ impl PointerState {
                 current_x: x,
                 current_y: y,
                 start_time: time,
+                last_move_x: x,
+                last_move_y: y,
+                last_move_time: time,
                 drag_offset: (0.0, 0.0),
                 drag_px: (0.0, 0.0),
                 is_dragging: false,
@@ -652,6 +660,9 @@ impl PointerState {
             EventType::PointerMove => Self {
                 current_x: x,
                 current_y: y,
+                last_move_x: x,
+                last_move_y: y,
+                last_move_time: time,
                 ..self
             },
             EventType::PointerUp => Self {
@@ -776,7 +787,23 @@ fn detect_on_release(
     let distance = state.distance();
 
     // swipe: 速い + 遠い + 短い。
-    let velocity = distance / dt;
+    //
+    // 速度は `start` からの平均ではなく、直近の `PointerMove` から
+    // `current` までの区間で計算する。平均だと、序盤に大きく動いた後
+    // 指を止めたまま保持してから離した場合でも、距離が大きいままなので
+    // 速度が閾値を超え続け、実際には止まっていたのに swipe と誤判定
+    // されうる。直近区間で計算すれば、動きが止まっていた分だけ
+    // `move_dt` が伸びて速度は自然に下がる。`PointerMove` が一度も
+    // 無ければ `last_move_*` は `start` と同じなので、平均と一致する
+    // (`swipe_without_move_event` はこの経路)。
+    let move_dt = current_time - state.last_move_time;
+    let velocity = if move_dt > 0.0 {
+        let mdx = state.current_x - state.last_move_x;
+        let mdy = state.current_y - state.last_move_y;
+        libm::sqrt(mdx * mdx + mdy * mdy) / move_dt
+    } else {
+        0.0
+    };
     if velocity > thresholds.swipe_min_velocity
         && distance > thresholds.swipe_min_px
         && dt < thresholds.swipe_max_ms
@@ -915,6 +942,40 @@ mod gesture_tests {
             &th,
         );
         assert_eq!(got, [Gesture::SwipeRight]);
+    }
+
+    /// 継続して動いたまま離せば、複数の `PointerMove` を挟んでも swipe。
+    #[test]
+    fn swipe_fires_when_motion_continues_to_release() {
+        let th = Thresholds::MOUSE;
+        let got = run(
+            &[
+                (EventType::PointerDown, 0.0, 0.0, 0.0),
+                (EventType::PointerMove, 100.0, 0.0, 50.0),
+                (EventType::PointerMove, 200.0, 0.0, 100.0),
+                (EventType::PointerUp, 260.0, 0.0, 120.0),
+            ],
+            &th,
+        );
+        assert_eq!(got, [Gesture::SwipeRight]);
+    }
+
+    /// 序盤に大きく速く動いた後、指を止めたまま保持してから離した場合は
+    /// swipe にならない。`start` からの平均速度だけで判定すると、距離が
+    /// 大きいままなので閾値を超え続け、実際には止まっていたのに swipe と
+    /// 誤判定される (`0..20ms` で 150px 動いた後、`249ms` まで static)。
+    #[test]
+    fn swipe_does_not_fire_after_stopping_before_release() {
+        let th = Thresholds::MOUSE;
+        let got = run(
+            &[
+                (EventType::PointerDown, 0.0, 0.0, 0.0),
+                (EventType::PointerMove, 150.0, 0.0, 20.0),
+                (EventType::PointerUp, 150.0, 0.0, 249.0),
+            ],
+            &th,
+        );
+        assert_eq!(got, []);
     }
 
     // --- drag ---

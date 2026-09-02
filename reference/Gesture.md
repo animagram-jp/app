@@ -1,221 +1,111 @@
-// This file includes untranslated text (ja).
-
 # Gesture
 
 Reference data for `js_client::detect_gesture()`
 
-## Hammer.js 定数一覧
+## 対象ライブラリの選定
 
-### ジェスチャー認識閾値（人間の動作特性由来）
+- Hammer.js
+- @use-gesture
 
-#### Tap — `src/recognizers/tap.js`
+両ライブラリとも「定数」は独立したテーブルではなく、認識アルゴリズム（distance / velocity / duration の閾値比較）に埋め込まれた値である。以下は `js_client.rs` の `Thresholds` / `detect_gesture` に、両ライブラリの値を px・ms 単位に揃えて統合したもの。
 
-| 定数 (defaults key) | 値 | 単位 |
-|---|---|---|
-| `interval` | 300 | ms（マルチタップ間の最大間隔） |
-| `time` | 250 | ms（指を押し下げていられる最大時間） |
-| `threshold` | 9 | px（タップ中の許容移動距離） |
-| `posThreshold` | 10 | px（マルチタップの位置ズレ許容量） |
-| `taps` | 1 | 回（認識に必要なタップ数） |
-| `pointers` | 1 | 本（使用ポインタ数） |
+`detect_gesture` は `PointerState` と `Event` 1 個だけから `Gesture` を導出する関数であり、タイマー等の第二の入口は持たない。`app.rs` の `dispatch` が `Event` を FIFO キューで捌く都度確定型アーキテクチャのため、時間経過そのものを表す `Event` は存在しない。`LongPress` もこの制約の中で、既存の `PointerMove` / `PointerUp` の判定に組み込んでいる（詳細は後述）。
 
-> `time: 250` と `press.time: 251` は意図的に1ms差をつけてあり、tap と press を排他的に区別するための設計。
+## Hammer.js / @use-gesture 共通の関数と定数
 
-#### Press — `src/recognizers/press.js`
+両ライブラリの最下層（Hammer.js: `src/inputjs/get-distance.js` 等、@use-gesture:
+`packages/core/src/utils/maths.ts` 等）が共通して持つ演算と、両者の閾値定数を
+px・ms 単位に揃えたもの。
 
-| 定数 | 値 | 単位 |
-|---|---|---|
-| `time` | 251 | ms（長押し認識の最短保持時間） |
-| `threshold` | 9 | px（許容移動距離） |
-| `pointers` | 1 | 本 |
+```
+# 共通演算（両ライブラリの最下層が実装している内容を単位統一の擬似コードにしたもの）
+distance(p0, p1)  = sqrt((p1.x - p0.x)^2 + (p1.y - p0.y)^2)   # px
+velocity(p0, p1)  = distance(p0, p1) / (p1.t - p0.t)          # px/ms
+angle(p0, p1)     = atan2(p1.y - p0.y, p1.x - p0.x) * 180/pi  # deg
+direction(dx, dy) = abs(dx) > abs(dy)
+                       ? (dx > 0 ? RIGHT : LEFT)
+                       : (dy > 0 ? DOWN  : UP)
 
-#### Swipe — `src/recognizers/swipe.js`
+# 共通定数（px・msに単位統一。出典は各ライブラリの下記キー）
+tap_max_ms          = 250   # Hammer.js: tap.time
+tap_slop_px         = 9     # Hammer.js: tap.threshold        (use-gesture: tapsThreshold = 3)
+long_press_ms       = 251   # Hammer.js: press.time           (tap.timeと1ms差で排他)
+long_press_slop_px  = 9     # Hammer.js: press.threshold
+drag_start_px       = 10    # Hammer.js: pan.threshold        (use-gesture: axisThreshold = 0)
+swipe_min_px        = 50    # use-gesture: DEFAULT_SWIPE_DISTANCE (Hammer.js: swipe.threshold = 10)
+swipe_min_velocity  = 0.5   # use-gesture: DEFAULT_SWIPE_VELOCITY (Hammer.js: swipe.velocity = 0.3)
+swipe_max_ms        = 250   # use-gesture: DEFAULT_SWIPE_DURATION (Hammer.jsに対応項目なし)
+```
 
-| 定数 | 値 | 単位 |
-|---|---|---|
-| `threshold` | 10 | px（スワイプ認識の最小移動距離） |
-| `velocity` | 0.3 | px/ms（スワイプ認識の最低速度 = 300 px/s） |
-| `pointers` | 1 | 本 |
-| `direction` | `DIRECTION_ALL` | — |
+## 統合後の判定アルゴリズム（`js_client.rs` 準拠）
 
-#### Pan — `src/recognizers/pan.js`
+すべて **px**（CSS px）と **ms** に単位を統一する。velocity は px/ms（Hammer.js表記の `px/s` は `/1000` して揃えてある）。
 
-| 定数 | 値 | 単位 |
-|---|---|---|
-| `threshold` | 10 | px（パン開始の最小移動距離） |
-| `pointers` | 1 | 本 |
-| `direction` | `DIRECTION_ALL` | — |
+### 状態遷移
 
-#### Pinch — `src/recognizers/pinch.js`
+```
+PointerDown → start_x/y, start_time, last_move_x/y/time を記録, is_down = true
+PointerMove → current_x/y, last_move_x/y/time を更新
+PointerUp/Cancel → current_x/y, cancelled フラグを更新, is_down = false
+                   （座標・時刻は消さない。判定はこの直後に行う）
+```
 
-| 定数 | 値 | 単位 |
-|---|---|---|
-| `threshold` | 0 | —（scale変化があれば即認識） |
-| `pointers` | 2 | 本 |
+`last_move_x/y/time` は直近の `PointerMove` の座標・時刻（無ければ `PointerDown` のそれ）。swipe の速度計算窓（後述）に使う。
 
-#### Rotate — `src/recognizers/rotate.js`
+### 判定順（`detect_gesture`）
 
-| 定数 | 値 | 単位 |
-|---|---|---|
-| `threshold` | 0 | deg（回転があれば即認識） |
-| `pointers` | 2 | 本 |
+1. **終了イベント** (`PointerUp` / `PointerCancel`) → `detect_on_release`
+   1. ドラッグ中だった (`prev_state.is_dragging`) → `DragEnd` / `DragCancel` で確定
+   2. `cancelled` → 何も返さない（tap/swipeに昇格させない）
+   3. `velocity > swipe_min_velocity && distance > swipe_min_px && dt < swipe_max_ms` → `Swipe{Up,Down,Left,Right}`（dx/dyの絶対値が大きい方向で4方向判定。`velocity` と `distance` の計算窓は異なる。後述）
+   4. `long_press_fired` 済み → 何も返さない（tapを重ねない）
+   5. `dt > long_press_ms && distance < long_press_slop_px` → `LongPress`（動かないまま保持時間を超えて離したケース。`PointerMove`が一度も来ていないため、ここが最後の判定機会）
+   6. `dt < tap_max_ms && distance < tap_slop_px` → `Tap`
+2. **移動イベント** (`PointerMove`) → `detect_on_move`
+   1. `!long_press_fired && !is_dragging && distance < long_press_slop_px && dt > long_press_ms` → `LongPress`（動かないまま保持時間を超えた後、わずかに動いた最初の`PointerMove`で確定。ラッチして以後は発火しない）
+   2. `distance <= drag_start_px` → 何もしない
+   3. 既に `is_dragging` → `Drag{x,y}` を継続発火
+   4. まだswipeになりうる速度・距離なら確定を保留（`PointerUp`側に譲る）
+   5. それ以外 → `is_dragging = true` にして `Drag{x,y}` 発火
 
----
+`LongPress`はタイマー駆動ではなく、上記2箇所（release/move）に分散して埋め込まれている。指を完全に静止させたまま保持し続けた場合、実際の発火は次に`PointerMove`か`PointerUp`が届いた瞬間まで遅延する。これは「1 Event → 1 Gesture」という関数の形を保つための制約であり、フレームループやタイマーからの明示的な追加呼び出しは行わない。
 
-### 入力処理系
+### velocity の計算窓
 
-#### `src/inputjs/input-consts.js`
+`detect_on_release` の swipe 判定で、`distance`（方向判定にも使う）と `velocity` は異なる区間から計算する。
 
-| 定数 | 値 | 備考 |
-|---|---|---|
-| `COMPUTE_INTERVAL` | 25 | ms（velocity等の再計算間隔） |
-| `INPUT_START` | 1 | bitmask |
-| `INPUT_MOVE` | 2 | bitmask |
-| `INPUT_END` | 4 | bitmask |
-| `INPUT_CANCEL` | 8 | bitmask |
-| `DIRECTION_NONE` | 1 | bitmask |
-| `DIRECTION_LEFT` | 2 | bitmask |
-| `DIRECTION_RIGHT` | 4 | bitmask |
-| `DIRECTION_UP` | 8 | bitmask |
-| `DIRECTION_DOWN` | 16 | bitmask |
-| `DIRECTION_HORIZONTAL` | `LEFT \| RIGHT` = 6 | bitmask |
-| `DIRECTION_VERTICAL` | `UP \| DOWN` = 24 | bitmask |
-| `DIRECTION_ALL` | 30 | bitmask |
+- `distance` / 方向 (`dx`, `dy`) : `start` → `current`（ジェスチャ全体の変位）
+- `velocity` : `last_move` → `current`（直近の `PointerMove` からの区間）
 
-#### `src/input/touchmouse.js`
+`start` からの平均だけで速度を出すと、序盤に大きく速く動いた後に指を止めたまま保持してから離した場合、距離が大きいままなので平均速度が閾値を超え続け、実際には止まっていたのに swipe と誤判定される。直近区間（`last_move` → `current`）で計算すれば、動きが止まっていた分だけ区間の時間 (`move_dt = current_time - last_move_time`) が伸びて速度は自然に下がる。`PointerMove` が一度も来ていない場合は `last_move` は `start` と等しいため、この式は従来の平均計算と一致する（`swipe_without_move_event` のケース）。
 
-| 定数 | 値 | 単位 |
-|---|---|---|
-| `DEDUP_TIMEOUT` | 2500 | ms（touch後の合成mouseイベント除去ウィンドウ） |
-| `DEDUP_DISTANCE` | 25 | px（合成イベント判定の座標許容誤差） |
+これは Hammer.js `COMPUTE_INTERVAL`（velocity の再計算間隔、25ms）や @use-gesture
+`BEFORE_LAST_KINEMATICS_DELAY`（最終イベント直前の運動量計算を有効とみなす時間差の閾値、32ms。「pointerup とその直前の pointermove の時間差がこれ以上なら『止まってから離した』と判断して velocity=0 を確定する」）と同じ問題意識に基づく。両ライブラリは複数サンプルの窓や明示的なゼロ化で対処するが、本実装は 1 Event = 1 Gesture の制約下で「速度計算に使う 2 点を `last_move`/`current` に変える」だけで同じ効果を得ている（`last_move` から動いていなければ距離 0 になり、自動的に velocity が下がるため、明示的なゼロ化は不要）。`detect_on_move` 側の deferral 判定（項目 2.4）は `start` からの平均のままで、この窓の変更は release 側のみに適用してある。
 
----
+### 閾値（`Thresholds`）— px / ms に統一
 
-### Recognizer ステート — `src/recognizerjs/recognizer-consts.js`
+| フィールド | 由来 | Hammer.js値 | @use-gesture値 | 採用値（MOUSE / TOUCH） |
+|---|---|---|---|---|
+| `tap_max_ms` | tap.time | 250ms | — | 250 / 300 |
+| `tap_slop_px` | tap.threshold | 9px | tapsThreshold: 3px | 9 / 16 |
+| `long_press_ms` | press.time | 251ms（tapと1ms差で排他） | dragDelay: 180ms | 251 / 500 |
+| `long_press_slop_px` | press.threshold | 9px | — | 9 / 16 |
+| `drag_start_px` | pan.threshold | 10px | axisThreshold: 0px | 10 / 16 |
+| `swipe_min_px` | swipe.threshold | 10px | swipeDistance: 50px | 50 / 50 |
+| `swipe_min_velocity` | swipe.velocity | 0.3px/ms（300px/s） | swipeVelocity: 0.5px/ms（500px/s） | 0.5 / 0.5 |
+| `swipe_max_ms` | ― （Hammer.jsに対応する項目なし） | — | swipeDuration: 250ms | 250 / 300 |
 
-| 定数 | 値 | 備考 |
-|---|---|---|
-| `STATE_POSSIBLE` | 1 | bitmask |
-| `STATE_BEGAN` | 2 | bitmask |
-| `STATE_CHANGED` | 4 | bitmask |
-| `STATE_ENDED` | 8 | bitmask |
-| `STATE_RECOGNIZED` | `STATE_ENDED` = 8 | エイリアス |
-| `STATE_CANCELLED` | 16 | bitmask |
-| `STATE_FAILED` | 32 | bitmask |
+- `swipe_min_velocity` と `swipe_min_px` は @use-gesture のより保守的な値（誤発火が少ない）を採用。
+- `TOUCH`はタッチの接触面の広さ・座標ブレを考慮し、ブレ許容系（`*_slop_px`, `drag_start_px`）と時間系（`long_press_ms`, `tap_max_ms`, `swipe_max_ms`）を`MOUSE`より広げている。Hammer.js/@use-gestureともにデバイス別の既定値分岐は持たないため、ここは実装側の独自拡張。
+- pinch/rotate/pan(2本指)・wheel系はどちらのライブラリにも定数はあるが、`detect_gesture`は単一ポインタのtap/press/swipe/dragのみを扱うため対象外（2本指ジェスチャーの検討は別途進めている。追加する場合は本表と同じ形式で追記する）。
 
----
+### 除外した値（今回の関数の対象外）
 
-### Manager — `src/manager.js`
+- Hammer.js: pinch/rotate（2ポインタ）、`STATE_*`（内部状態機械のbitmask）、`DIRECTION_*`（bitmask定数、本実装ではenum variantで代替済み）、`COMPUTE_INTERVAL`（velocity再計算間隔、本実装は毎イベント計算のため不要）、`DEDUP_TIMEOUT`/`DEDUP_DISTANCE`（touch/mouse合成イベント除去、PointerEvent統一により不要）
+- @use-gesture: pinch/rotate/wheel/keyboard系一式、`BEFORE_LAST_KINEMATICS_DELAY`（velocity計算の内部実装詳細。上記の通り windowを変えることで同じ効果を得ているため定数としては未採用）、`LINE_HEIGHT`/`PAGE_HEIGHT`（wheel専用）
 
-| 定数 | 値 | 備考 |
-|---|---|---|
-| `STOP` | 1 | セッション停止フラグ |
-| `FORCED_STOP` | 2 | 強制停止フラグ |
+## 実装
 
----
+実装本体は [`js_client.rs`](../src/js_client.rs) の `Thresholds` / `PointerState` / `detect_gesture`（内部で `detect_on_release` / `detect_on_move` に分岐）を参照。`Thresholds::MOUSE` / `Thresholds::TOUCH` が上表の採用値に対応する。呼び出し元は [`app.rs`](../src/app.rs) の `App::dispatch` で、`Event::Canvas` 受信の都度 `PointerState::update` → `detect_gesture` の順に呼ぶ以外の経路は無い。閾値は `App::init` が `pointer_coarse` から `detect_device` / `Thresholds::for_device` で 1 度だけ決め、以降は変わらない。
 
-### TouchAction — `src/touchactionjs/touchaction-Consts.js`
-
-文字列定数のみ（CSS `touch-action` プロパティ値のラッパー）。数値なし。
-
----
-
-### px直接計算ロジック（最低層）
-
-以下のファイルは座標・距離・速度・角度をpxやrad単位で直接演算する実装層。定数値は持たず、入力値をそのまま計算する。
-
-- `src/inputjs/compute-delta-xy.js`
-- `src/inputjs/compute-input-data.js`
-- `src/inputjs/get-angle.js`
-- `src/inputjs/get-center.js`
-- `src/inputjs/get-delta-xy.js` ※ファイルが存在する場合
-- `src/inputjs/get-direction.js`
-- `src/inputjs/get-distance.js`
-- `src/inputjs/get-rotation.js`
-- `src/inputjs/get-scale.js`
-- `src/inputjs/get-velocity.js`
-
-## @use-gesture 定数一覧
-
-### ジェスチャー認識閾値（人間の動作特性由来）
-
-#### Drag — `packages/core/src/config/dragConfigResolver.ts`
-
-| 定数 | 値 | 単位 |
-|---|---|---|
-| `DEFAULT_PREVENT_SCROLL_DELAY` | 250 | ms（スクロール抑制を確定するまでの待機時間） |
-| `DEFAULT_DRAG_DELAY` | 180 | ms（ドラッグ開始を遅延認識する時間、長押し判定用） |
-| `DEFAULT_SWIPE_VELOCITY` | 0.5 | px/ms（スワイプ認識の最低速度 = 500 px/s） |
-| `DEFAULT_SWIPE_DISTANCE` | 50 | px（スワイプ認識の最小移動距離） |
-| `DEFAULT_SWIPE_DURATION` | 250 | ms（スワイプとして認識される最大ジェスチャー時間） |
-| `DEFAULT_KEYBOARD_DISPLACEMENT` | 10 | px（矢印キー1回押しによる移動量） |
-| `tapsThreshold` (default) | 3 | px（タップ判定の移動距離許容量） |
-| `DEFAULT_DRAG_AXIS_THRESHOLD` | mouse:0, touch:0, pen:8 | px（軸ロック判定の閾値、デバイス別） |
-
-#### Pinch — `packages/core/src/config/pinchConfigResolver.ts`
-
-| 定数・default値 | 値 | 単位 |
-|---|---|---|
-| `threshold` (lockDirection時) | [0.1, 3] | [scale倍率, deg]（軸ロック時のpinch/rotate判定閾値） |
-| `threshold` (通常) | 0 | —（変化があれば即認識） |
-
-#### Coordinates（pan/scroll/wheel共通） — `packages/core/src/config/coordinatesConfigResolver.ts`
-
-| 定数 | 値 | 単位 |
-|---|---|---|
-| `DEFAULT_AXIS_THRESHOLD` | 0 | px（軸方向ロック判定閾値のデフォルト） |
-
-#### Rubberband（共通） — `packages/core/src/config/commonConfigResolver.ts`
-
-| 定数 | 値 | 備考 |
-|---|---|---|
-| `DEFAULT_RUBBERBAND` | 0.15 | 係数（バウンド外での減衰率、`rubberband: true`時） |
-
----
-
-### エンジン内部
-
-#### Engine — `packages/core/src/engines/Engine.ts`
-
-| 定数 | 値 | 単位 |
-|---|---|---|
-| `BEFORE_LAST_KINEMATICS_DELAY` | 32 | ms（最終イベント直前の運動量計算を有効とみなす時間差の閾値） |
-
-> ドラッグ終了時にvelocityが常に[0,0]になる問題を防ぐための値。pointerupとその直前のpointermoveの時間差がこれ以上なら「止まってから離した」と判断してvelocity=0を確定する。
-
-#### PinchEngine — `packages/core/src/engines/PinchEngine.ts`
-
-| 定数 | 値 | 備考 |
-|---|---|---|
-| `SCALE_ANGLE_RATIO_INTENT_DEG` | 30 | deg（pinchとrotateを区別する意図判定の角度閾値） |
-| `PINCH_WHEEL_RATIO` | 100 | ホイールイベントをpinch scaleに変換する係数 |
-
-#### TimeoutStore — `packages/core/src/TimeoutStore.ts`
-
-| 定数 | 値 | 単位 |
-|---|---|---|
-| `ms` (default) | 140 | ms（タイムアウト登録時のデフォルト待機時間） |
-
----
-
-### ホイール正規化 — `packages/core/src/utils/events.ts`
-
-| 定数 | 値 | 備考 |
-|---|---|---|
-| `LINE_HEIGHT` | 40 | px（`deltaMode=1`時のline単位→px換算値、Firefox対応） |
-| `PAGE_HEIGHT` | 800 | px（`deltaMode=2`時のpage単位→px換算値） |
-
----
-
-### キーボード操作マップ — `packages/core/src/engines/DragEngine.ts`
-
-文字列→ベクトル変換のマップ定数。数値は `DEFAULT_KEYBOARD_DISPLACEMENT` を受け取って乗算するため、ここに固有の数値はなし。
-
----
-
-### px直接計算ロジック（最低層）
-
-- `packages/core/src/utils/maths.ts`
-- `packages/core/src/utils/events.ts`（`pointerValues`, `touchDistanceAngle`, `distanceAngle`）
-- `packages/core/src/engines/CoordinatesEngine.ts`
-- `packages/core/src/engines/PinchEngine.ts`（scale/angle計算部）
+テストは `js_client.rs` 内の `mod gesture_tests` を参照。
