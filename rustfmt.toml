@@ -1,0 +1,17 @@
+edition = "2024"
+max_width = 100
+use_small_heuristics = "Max"
+newline_style = "Unix"
+
+# `cargo +nightly fmt`
+unstable_features = true
+
+group_imports = "StdExternalCrate"
+imports_granularity = "Crate"
+
+reorder_modules = false
+
+struct_field_align_threshold = 20
+
+chain_width = 100
+fn_call_width = 100
