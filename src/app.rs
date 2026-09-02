@@ -12,7 +12,8 @@ use wasm_bindgen::prelude::wasm_bindgen;
 use crate::arena::{APP, ARENA, COMMAND_CAPACITY, EVENT_CAPACITY, RUNNING, emit};
 use crate::event::{Event, Handler, decode_event};
 use crate::js_client::{
-    Command, ERROR_DECODE, EventType, PointerState, detect_gesture, encode_command,
+    Command, ERROR_DECODE, EventType, PointerState, Thresholds, detect_device, detect_gesture,
+    encode_command,
 };
 
 // ============================================================
@@ -28,6 +29,9 @@ use crate::js_client::{
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 pub struct App {
     pointer_state: PointerState,
+    /// `pointer_coarse` から装置ごとに決めたジェスチャ判定の閾値。
+    /// `init` 時に 1 度だけ決め、以降は変わらない。
+    thresholds: Thresholds,
     events: VecDeque<Event>,
     handler: Handler,
     commands: Vec<u8>,
@@ -60,13 +64,14 @@ impl App {
     /// 両立できないためである。`poll` / `run_loop` は `APP` 越しに駆動する。
     /// JavaScript 側 (`init.js` の `attach` / `worker.js`) はこの戻り値を
     /// 使わず `await` するだけである。
-    pub async fn init(_pointer_coarse: bool, viewport_width: f64, viewport_height: f64) {
+    pub async fn init(pointer_coarse: bool, viewport_width: f64, viewport_height: f64) {
         // PointerState はこのファイルでは中身を省いた unit struct だが、
         // app repository では実フィールドを持つ。取り込み時にそのまま
         // 動くよう `default()` を残す。
         #[allow(clippy::default_constructed_unit_structs)]
         let mut app = App {
             pointer_state: PointerState::default(),
+            thresholds: Thresholds::for_device(detect_device(pointer_coarse)),
             events: VecDeque::with_capacity(EVENT_CAPACITY),
             handler: Handler::ready(viewport_width, viewport_height).await,
             commands: Vec::with_capacity(COMMAND_CAPACITY),
@@ -203,6 +208,7 @@ impl App {
         let Self {
             handler,
             pointer_state,
+            thresholds,
             ..
         } = self;
 
@@ -220,6 +226,7 @@ impl App {
                     &prev_state,
                     &canvas_event.event_type,
                     canvas_event.time,
+                    thresholds,
                 ) {
                     Some(gesture) => handler.process_gesture(&gesture, pointer_state),
                     // app repository と同じく、PointerMove / PointerUp /

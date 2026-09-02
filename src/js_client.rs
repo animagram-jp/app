@@ -24,7 +24,6 @@ use core::{
     default::Default,
     fmt::Debug,
     marker::Copy,
-    matches,
     option::Option::{self, None, Some},
     primitive::{bool, f32, f64, i32, u8, u16, u32},
 };
@@ -367,6 +366,7 @@ pub mod name {
 // - `dom::Id` の直列化は `Encoder::id` / `Decoder::id` が担う。
 
 /// 入力装置の種別。中身は app repository の `Device` と同じ。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Device {
     /// touch 入力。
     Touch,
@@ -513,31 +513,127 @@ impl KeyName {
 }
 
 // ============================================================
-// gesture: long press, swipe (up,down,left,right), drag
+// gesture: tap, long press, swipe (up,down,left,right), drag
 // See ./docs/Gesture.md
 // ============================================================
+//
+// 元実装 (旧 `detect_gesture`) は 3 点の欠陥を持っていた。
+//
+// 1. `update` の `PointerUp` 分岐が `..Self::default()` で `is_down` と
+//    `start_x/y` / `start_time` を同時にゼロクリアしていたため、直後の
+//    `detect_gesture` 冒頭の `if !state.is_down { .. return None; }` で
+//    必ず抜け、`Swipe*` 系の分岐に制御が到達しなかった。
+// 2. `PointerMove` / `PointerUp` でしか判定しないため、押したまま指を
+//    動かさない長押しが発火しなかった (タイマー未実装)。
+// 3. `Drag` の閾値 (`distance > 10.0`) が `Swipe` の閾値 (`> 50.0`) より
+//    先に成立するため、素早いフリックが `PointerMove` の時点で `Drag`
+//    として確定してしまい、swipe に到達しなかった。
+//
+// 以下はこれらを修正した版である。`update` は `PointerUp` /
+// `PointerCancel` でも座標・時刻・`drag_offset` / `drag_px` を保持し、
+// `is_down` と `is_dragging` のフラグだけを倒す。`detect_gesture` は
+// 終了イベントと移動イベントで判定を分け、`Drag` は「速度が swipe 閾値
+// 未満」または「既に drag 中」のときだけ発火させる。長押しはタイマーを
+// 増設せず、`PointerMove` / `PointerUp` の中で経過時間を見て判定し、
+// 一度発火したら `long_press_fired` でラッチして連続発火を防ぐ。
+// `PointerCancel` は `DragEnd` ではなく `DragCancel` を返し、正常終了と
+// 区別する。
 
-// pointerdown:   is_down = true, 座標・時刻記録, タイマー起動
-// pointermove:   座標がブレていたら長押しキャンセル (指がズレた)
-// pointerup:     経過時間で click か 長押し か判定
-// pointercancel: 全部リセット (割り込まれた時)
+/// ジェスチャ判定の閾値。すべて CSS px と ms。
+///
+/// 装置ごとに閾値を分ける。指の接触面はマウスカーソルより広く、押下中の
+/// 座標のブレも大きいため、タッチでは許容を広げる。
+#[derive(Debug, Clone, Copy)]
+pub struct Thresholds {
+    /// 長押しと見なす最短時間 (ms)。
+    pub long_press_ms: f64,
+    /// 長押し中に許容する座標のブレ (px)。これを超えたら長押しを取り消す。
+    pub long_press_slop_px: f64,
+    /// ドラッグ開始と見なす移動距離 (px)。
+    pub drag_start_px: f64,
+    /// スワイプと見なす最短距離 (px)。
+    pub swipe_min_px: f64,
+    /// スワイプと見なす最低速度 (px/ms)。
+    pub swipe_min_velocity: f64,
+    /// スワイプと見なす最長時間 (ms)。これを超えたらドラッグ扱い。
+    pub swipe_max_ms: f64,
+    /// タップと見なす最長時間 (ms)。
+    pub tap_max_ms: f64,
+    /// タップ中に許容する座標のブレ (px)。
+    pub tap_slop_px: f64,
+}
+
+impl Thresholds {
+    /// マウス向けの既定値。元実装の数値をそのまま引き継いでいる。
+    pub const MOUSE: Self = Self {
+        long_press_ms: 251.0,
+        long_press_slop_px: 9.0,
+        drag_start_px: 10.0,
+        swipe_min_px: 50.0,
+        swipe_min_velocity: 0.5,
+        swipe_max_ms: 250.0,
+        tap_max_ms: 250.0,
+        tap_slop_px: 9.0,
+    };
+
+    /// タッチ向けの既定値。ブレ許容と開始距離をマウスより広く取る。
+    pub const TOUCH: Self = Self {
+        long_press_ms: 500.0,
+        long_press_slop_px: 16.0,
+        drag_start_px: 16.0,
+        swipe_min_px: 50.0,
+        swipe_min_velocity: 0.5,
+        swipe_max_ms: 300.0,
+        tap_max_ms: 300.0,
+        tap_slop_px: 16.0,
+    };
+
+    /// 装置に応じた既定値を返す。
+    #[must_use]
+    pub const fn for_device(device: Device) -> Self {
+        match device {
+            Device::Mouse => Self::MOUSE,
+            Device::Touch => Self::TOUCH,
+        }
+    }
+}
+
+impl Default for Thresholds {
+    fn default() -> Self {
+        Self::MOUSE
+    }
+}
 
 /// pointer の追跡状態。中身は app repository の `PointerState` と同じ。
-#[derive(Default, Clone, Copy)]
+///
+/// `PointerUp` / `PointerCancel` でも座標・時刻・`drag_offset` / `drag_px`
+/// を保持する。消すのは `is_down` と `is_dragging` のフラグだけである。
+/// 判定はこの直後に `detect_gesture` が行うため、そこで必要な値を
+/// 判定前に消さない。
+#[derive(Debug, Default, Clone, Copy)]
 pub struct PointerState {
-    is_down: bool,           // default: false
-    start_x: f64,            // default: 0.0
-    start_y: f64,            // default: 0.0
-    current_x: f64,          // default: 0.0
-    current_y: f64,          // default: 0.0
-    start_time: f64,         // default: 0.0
-    drag_offset: (f64, f64), // (pointer_px - target base px) when PointerDown
-    drag_px: (f64, f64),     // target base px when is_dragging == true
+    is_down: bool,
+    start_x: f64,
+    start_y: f64,
+    current_x: f64,
+    current_y: f64,
+    start_time: f64,
+    /// `PointerDown` 時の (pointer_px - 対象の左上 px)。
+    drag_offset: (f64, f64),
+    /// ドラッグ中の対象左上 px (一時値)。
+    drag_px: (f64, f64),
     is_dragging: bool,
+    /// 長押しを発火済みか。連続発火を防ぐラッチ。
+    long_press_fired: bool,
+    /// 直前の終了が `PointerCancel` だったか。
+    cancelled: bool,
 }
 
 impl PointerState {
-    /// pointer 状態を 1 イベント分進める。中身は app repository と同じ。
+    /// pointer 状態を 1 イベント分進める。
+    ///
+    /// 元実装と異なり、`PointerUp` / `PointerCancel` でも座標・時刻を残す。
+    #[must_use]
     pub fn update(self, event_type: &EventType, x: f64, y: f64, time: f64) -> Self {
         match event_type {
             EventType::PointerDown => Self {
@@ -550,24 +646,53 @@ impl PointerState {
                 drag_offset: (0.0, 0.0),
                 drag_px: (0.0, 0.0),
                 is_dragging: false,
+                long_press_fired: false,
+                cancelled: false,
             },
             EventType::PointerMove => Self {
                 current_x: x,
                 current_y: y,
                 ..self
             },
-            EventType::PointerUp | EventType::PointerCancel => Self {
-                is_dragging: false,
-                ..Self::default()
+            EventType::PointerUp => Self {
+                is_down: false,
+                current_x: x,
+                current_y: y,
+                cancelled: false,
+                ..self
+            },
+            EventType::PointerCancel => Self {
+                is_down: false,
+                current_x: x,
+                current_y: y,
+                cancelled: true,
+                ..self
             },
             _ => self,
         }
     }
+
+    /// 押下開始からの移動距離 (px)。
+    fn distance(&self) -> f64 {
+        let dx = self.current_x - self.start_x;
+        let dy = self.current_y - self.start_y;
+        libm::sqrt(dx * dx + dy * dy)
+    }
 }
 
-/// 認識したジェスチャ。variant は app repository の `Gesture` と同じ。
+/// 認識したジェスチャ。variant は app repository の `Gesture` に `Tap` と
+/// `DragCancel` を追加したもの。
+///
+/// `Tap` が無いと、押して離しただけの操作が `None` に落ちて呼び出し側で
+/// 区別できない。`DragCancel` は `PointerCancel` による中断で、`DragEnd`
+/// と同一視すると割り込み時にドロップを取り消せない。
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Gesture {
-    /// 長押し。
+    /// 単純なタップ / クリック。
+    Tap,
+    /// 長押し。押下したまま `long_press_ms` を超えた時点で 1 度だけ発火する。
+    /// 動かさずに保持した場合、実際の発火は次の `PointerMove` /
+    /// `PointerUp` まで遅延する ([`detect_gesture`] の doc を参照)。
     LongPress,
     /// 上方向のスワイプ。
     SwipeUp,
@@ -579,65 +704,358 @@ pub enum Gesture {
     SwipeRight,
     /// ドラッグ中。
     Drag { x: f64, y: f64 },
-    /// ドラッグ終了。
+    /// ドラッグ終了 (`pointerup`)。スナップ処理はここで行う。
     DragEnd,
+    /// ドラッグ中断 (`pointercancel`)。ドロップを取り消す。
+    DragCancel,
 }
 
-/// pointer 状態の遷移からジェスチャを認識する。中身は app repository と同じ。
+/// pointer 状態の遷移からジェスチャを認識する。
 ///
-/// `(dx * dx + dy * dy).sqrt()` は `f64::sqrt` が `std` の inherent method で
-/// core に無いため、`libm::sqrt` に替えてある。値は同じである。
+/// `is_down == false` でも、`PointerUp` / `PointerCancel` なら終了時
+/// ジェスチャ (`DragEnd` / `Swipe*` / `Tap` / `LongPress`) の判定へ進む。
+///
+/// # 判定順
+///
+/// 1. 終了イベント (`PointerUp` / `PointerCancel`)
+///    - ドラッグ中なら `DragEnd` / `DragCancel`
+///    - 速い + 遠い + 短い なら `Swipe*`
+///    - 長押し発火済みなら何も返さない (発火済みのため)
+///    - 保持時間超過 + ブレ小 なら `LongPress`（動かないまま離した場合）
+///    - 短い + ブレ小 なら `Tap`
+/// 2. 移動イベント (`PointerMove`)
+///    - 保持時間超過 + ブレ小 かつ未発火なら `LongPress`
+///      （動かないまま保持時間を超え、その後わずかに動いた場合）
+///    - 既にドラッグ中、または swipe 条件を満たさない移動なら `Drag`
+///
+/// `LongPress` はタイマーを持たない。動かないまま保持され続けた場合は
+/// 次の `PointerMove` / `PointerUp` まで発火が遅延する。
+#[must_use]
 pub fn detect_gesture(
     state: &mut PointerState,
     prev_state: &PointerState,
     event_type: &EventType,
     current_time: f64,
+    thresholds: &Thresholds,
 ) -> Option<Gesture> {
-    if !state.is_down {
-        if prev_state.is_dragging {
-            return Some(Gesture::DragEnd);
+    match event_type {
+        EventType::PointerUp | EventType::PointerCancel => {
+            detect_on_release(state, prev_state, current_time, thresholds)
         }
+        EventType::PointerMove => detect_on_move(state, current_time, thresholds),
+        _ => None,
+    }
+}
+
+/// 終了イベントの判定。
+fn detect_on_release(
+    state: &mut PointerState,
+    prev_state: &PointerState,
+    current_time: f64,
+    thresholds: &Thresholds,
+) -> Option<Gesture> {
+    // ドラッグしていたなら、終了種別を返して確定させる。
+    if prev_state.is_dragging {
+        state.is_dragging = false;
+        return Some(if state.cancelled {
+            Gesture::DragCancel
+        } else {
+            Gesture::DragEnd
+        });
+    }
+
+    // キャンセルはここで打ち切る。タップにもスワイプにもしない。
+    if state.cancelled {
         return None;
     }
 
-    let dx = state.current_x - state.start_x;
-    let dy = state.current_y - state.start_y;
     let dt = current_time - state.start_time;
-    let distance = libm::sqrt(dx * dx + dy * dy);
+    if dt <= 0.0 {
+        return None;
+    }
+    let distance = state.distance();
 
-    // long press: long time + short distance
-    if dt > 251.0 && distance < 9.0 {
+    // swipe: 速い + 遠い + 短い。
+    let velocity = distance / dt;
+    if velocity > thresholds.swipe_min_velocity
+        && distance > thresholds.swipe_min_px
+        && dt < thresholds.swipe_max_ms
+    {
+        let dx = state.current_x - state.start_x;
+        let dy = state.current_y - state.start_y;
+        return Some(if libm::fabs(dx) > libm::fabs(dy) {
+            if dx > 0.0 {
+                Gesture::SwipeRight
+            } else {
+                Gesture::SwipeLeft
+            }
+        } else if dy > 0.0 {
+            Gesture::SwipeDown
+        } else {
+            Gesture::SwipeUp
+        });
+    }
+
+    // 長押しは `detect_on_move` で既に発火済み。ここで tap を重ねて返さない。
+    if state.long_press_fired {
+        return None;
+    }
+
+    // long press: 指を動かさないまま保持時間を超えて離した場合、
+    // `PointerMove` が一度も来ていないため `detect_on_move` 側では
+    // 拾えていない。ここが最後の判定機会になる。
+    if dt > thresholds.long_press_ms && distance < thresholds.long_press_slop_px {
         return Some(Gesture::LongPress);
     }
 
-    // swipe: when PointerUp + velocity > 0.5 px/ms + duration < 250ms
-    if matches!(event_type, EventType::PointerUp) && dt > 0.0 {
-        let velocity = distance / dt;
-        if velocity > 0.5 && distance > 50.0 && dt < 250.0 {
-            return Some(if libm::fabs(dx) > libm::fabs(dy) {
-                if dx > 0.0 {
-                    Gesture::SwipeRight
-                } else {
-                    Gesture::SwipeLeft
-                }
-            } else if dy > 0.0 {
-                Gesture::SwipeDown
-            } else {
-                Gesture::SwipeUp
-            });
-        }
+    // tap: 短い + ブレ小。
+    if dt < thresholds.tap_max_ms && distance < thresholds.tap_slop_px {
+        return Some(Gesture::Tap);
     }
 
-    // drag: when PointerMove + long distance → return offset
-    if matches!(event_type, EventType::PointerMove) && distance > 10.0 {
-        state.is_dragging = true;
+    None
+}
+
+/// 移動イベントの判定。
+fn detect_on_move(
+    state: &mut PointerState,
+    current_time: f64,
+    thresholds: &Thresholds,
+) -> Option<Gesture> {
+    if !state.is_down {
+        return None;
+    }
+
+    let distance = state.distance();
+
+    // long press: 動いていない状態で保持時間を超えたら、この `PointerMove`
+    // で確定させる。指を完全に静止させたままなら次の `PointerUp` で
+    // `detect_on_release` が拾う。
+    if !state.long_press_fired
+        && !state.is_dragging
+        && distance < thresholds.long_press_slop_px
+        && current_time - state.start_time > thresholds.long_press_ms
+    {
+        state.long_press_fired = true;
+        return Some(Gesture::LongPress);
+    }
+
+    if distance <= thresholds.drag_start_px {
+        return None;
+    }
+
+    // 既にドラッグ中なら継続する。
+    if state.is_dragging {
         return Some(Gesture::Drag {
             x: state.current_x,
             y: state.current_y,
         });
     }
 
-    None
+    // まだドラッグに入っていない場合、swipe になりうる動きは譲る。
+    let dt = current_time - state.start_time;
+    if dt > 0.0 && dt < thresholds.swipe_max_ms {
+        let velocity = distance / dt;
+        if velocity > thresholds.swipe_min_velocity && distance > thresholds.swipe_min_px {
+            // まだ確定させない。PointerUp で swipe か drag かを決める。
+            return None;
+        }
+    }
+
+    state.is_dragging = true;
+    Some(Gesture::Drag {
+        x: state.current_x,
+        y: state.current_y,
+    })
+}
+
+#[cfg(test)]
+mod gesture_tests {
+    use super::*;
+    use alloc::vec::Vec;
+
+    /// `app.rs` と同じ順序 (update → detect_gesture) でイベント列を流す。
+    fn run(events: &[(EventType, f64, f64, f64)], th: &Thresholds) -> Vec<Gesture> {
+        let mut state = PointerState::default();
+        let mut out = Vec::new();
+        for (event_type, x, y, time) in events {
+            let prev = state;
+            state = state.update(event_type, *x, *y, *time);
+            if let Some(g) = detect_gesture(&mut state, &prev, event_type, *time, th) {
+                out.push(g);
+            }
+        }
+        out
+    }
+
+    // --- swipe: 元実装では到達不能だった経路 ---
+
+    #[test]
+    fn swipe_right_fires() {
+        let th = Thresholds::MOUSE;
+        let got = run(
+            &[
+                (EventType::PointerDown, 100.0, 100.0, 0.0),
+                (EventType::PointerMove, 200.0, 100.0, 50.0),
+                (EventType::PointerUp, 260.0, 100.0, 100.0),
+            ],
+            &th,
+        );
+        assert_eq!(got, [Gesture::SwipeRight]);
+    }
+
+    #[test]
+    fn swipe_without_move_event() {
+        let th = Thresholds::MOUSE;
+        let got = run(
+            &[
+                (EventType::PointerDown, 100.0, 100.0, 0.0),
+                (EventType::PointerUp, 260.0, 100.0, 100.0),
+            ],
+            &th,
+        );
+        assert_eq!(got, [Gesture::SwipeRight]);
+    }
+
+    // --- drag ---
+
+    #[test]
+    fn slow_move_is_drag() {
+        let th = Thresholds::MOUSE;
+        let got = run(
+            &[
+                (EventType::PointerDown, 100.0, 100.0, 0.0),
+                (EventType::PointerMove, 150.0, 100.0, 400.0),
+                (EventType::PointerMove, 200.0, 100.0, 800.0),
+                (EventType::PointerUp, 200.0, 100.0, 900.0),
+            ],
+            &th,
+        );
+        assert_eq!(
+            got,
+            [
+                Gesture::Drag { x: 150.0, y: 100.0 },
+                Gesture::Drag { x: 200.0, y: 100.0 },
+                Gesture::DragEnd,
+            ]
+        );
+    }
+
+    #[test]
+    fn cancel_is_distinct_from_end() {
+        let th = Thresholds::MOUSE;
+        let got = run(
+            &[
+                (EventType::PointerDown, 100.0, 100.0, 0.0),
+                (EventType::PointerMove, 150.0, 100.0, 400.0),
+                (EventType::PointerCancel, 150.0, 100.0, 500.0),
+            ],
+            &th,
+        );
+        assert_eq!(
+            got,
+            [Gesture::Drag { x: 150.0, y: 100.0 }, Gesture::DragCancel]
+        );
+    }
+
+    // --- tap ---
+
+    #[test]
+    fn quick_press_is_tap() {
+        let th = Thresholds::MOUSE;
+        let got = run(
+            &[
+                (EventType::PointerDown, 100.0, 100.0, 0.0),
+                (EventType::PointerUp, 101.0, 100.0, 50.0),
+            ],
+            &th,
+        );
+        assert_eq!(got, [Gesture::Tap]);
+    }
+
+    // --- long press: 元実装では発火しなかった経路 ---
+
+    #[test]
+    fn long_press_fires_on_release() {
+        let th = Thresholds::MOUSE;
+        let got = run(
+            &[
+                (EventType::PointerDown, 10.0, 10.0, 0.0),
+                (EventType::PointerUp, 10.0, 10.0, 400.0),
+            ],
+            &th,
+        );
+        assert_eq!(got, [Gesture::LongPress]);
+    }
+
+    #[test]
+    fn long_press_fires_on_move_after_hold() {
+        let th = Thresholds::MOUSE;
+        let got = run(
+            &[
+                (EventType::PointerDown, 10.0, 10.0, 0.0),
+                (EventType::PointerMove, 11.0, 10.0, 300.0),
+            ],
+            &th,
+        );
+        assert_eq!(got, [Gesture::LongPress]);
+    }
+
+    #[test]
+    fn long_press_does_not_repeat() {
+        let th = Thresholds::MOUSE;
+        let got = run(
+            &[
+                (EventType::PointerDown, 10.0, 10.0, 0.0),
+                (EventType::PointerMove, 11.0, 10.0, 300.0),
+                (EventType::PointerMove, 11.0, 10.0, 400.0),
+                (EventType::PointerUp, 11.0, 10.0, 500.0),
+            ],
+            &th,
+        );
+        assert_eq!(got, [Gesture::LongPress]);
+    }
+
+    #[test]
+    fn long_press_suppressed_while_dragging() {
+        let th = Thresholds::MOUSE;
+        let got = run(
+            &[
+                (EventType::PointerDown, 10.0, 10.0, 0.0),
+                (EventType::PointerMove, 40.0, 10.0, 100.0),
+                (EventType::PointerMove, 40.0, 10.0, 400.0),
+            ],
+            &th,
+        );
+        assert_eq!(
+            got,
+            [
+                Gesture::Drag { x: 40.0, y: 10.0 },
+                Gesture::Drag { x: 40.0, y: 10.0 }
+            ]
+        );
+    }
+
+    // --- 装置別閾値 ---
+
+    #[test]
+    fn touch_thresholds_are_looser() {
+        let mouse = Thresholds::for_device(Device::Mouse);
+        let touch = Thresholds::for_device(Device::Touch);
+        assert!(touch.long_press_ms > mouse.long_press_ms);
+        assert!(touch.long_press_slop_px > mouse.long_press_slop_px);
+        assert!(touch.drag_start_px > mouse.drag_start_px);
+    }
+
+    #[test]
+    fn same_input_differs_by_device() {
+        let events = [
+            (EventType::PointerDown, 10.0, 10.0, 0.0),
+            (EventType::PointerUp, 10.0, 10.0, 300.0),
+        ];
+        assert_eq!(run(&events, &Thresholds::MOUSE), [Gesture::LongPress]);
+        assert_eq!(run(&events, &Thresholds::TOUCH), []);
+    }
 }
 
 // ============================================================
