@@ -187,19 +187,16 @@ impl Lang {
 #[cfg(all(target_arch = "wasm32", not(test)))]
 #[panic_handler]
 fn panic(info: &core::panic::PanicInfo) -> ! {
-    use crate::arena::report_error;
-    use crate::js_client::ERROR_PANIC;
     use alloc::format;
+
+    use crate::{arena::report_error, js_client::ERROR_PANIC};
 
     let location = match info.location() {
         Some(location) => format!("{}:{}", location.file(), location.line()),
         None => alloc::string::String::from("unknown"),
     };
 
-    report_error(
-        ERROR_PANIC,
-        &format!("panic at {location}: {}", info.message()),
-    );
+    report_error(ERROR_PANIC, &format!("panic at {location}: {}", info.message()));
 
     core::arch::wasm32::unreachable()
 }

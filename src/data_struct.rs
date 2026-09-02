@@ -1,5 +1,3 @@
-use crate::list::{List, ListError, SetOutcome, VariableList, VariableListError};
-use crate::timestamp::{self, Timezone};
 use alloc::{collections::BTreeMap, vec::Vec};
 use core::{
     clone::Clone,
@@ -7,6 +5,11 @@ use core::{
     option::Option::{self, None, Some},
     primitive::{f64, u8, u32},
     result::Result::{self, Err, Ok},
+};
+
+use crate::{
+    list::{List, ListError, SetOutcome, VariableList, VariableListError},
+    timestamp::{self, Timezone},
 };
 
 const ID_IDENTITY: u32 = 1;
@@ -19,8 +22,8 @@ pub enum DataStructError {
     /// list_id への書き込み失敗時、書き込もうとしていたidを保持する
     IndirectWrite {
         list_id: u32,
-        ids: Vec<u32>,
-        source: ListError,
+        ids:     Vec<u32>,
+        source:  ListError,
     },
 }
 
@@ -33,18 +36,14 @@ impl From<ListError> for DataStructError {
 #[derive(Clone)]
 pub struct DataStruct {
     schema_size: u32,
-    index: List<u32>,     // schema_id → variable_id, 1-based (0 = vacant)
-    values: VariableList, // variable_id → bytes
+    index:       List<u32>,    // schema_id → variable_id, 1-based (0 = vacant)
+    values:      VariableList, // variable_id → bytes
 }
 
 impl DataStruct {
     pub fn new(id: u32, time: f64, schema_size: u32) -> Self {
         let t = timestamp::from_ut(time, true, &Timezone::AsiaTokyo);
-        let mut data_struct = Self {
-            schema_size,
-            index: List::new(),
-            values: VariableList::new(),
-        };
+        let mut data_struct = Self { schema_size, index: List::new(), values: VariableList::new() };
         let _ = data_struct.set(ID_IDENTITY, &id.to_le_bytes(), None);
         let _ = data_struct.set(ID_CREATED_AT, &t.to_le_bytes(), None);
         let _ = data_struct.set(ID_MODIFIED_AT, &t.to_le_bytes(), None);
@@ -60,11 +59,7 @@ impl DataStruct {
         let index_len = (self.schema_size as usize + 1) * 4;
         let offset = schema_id as usize * 4;
         let variable_id = u32::from_le_bytes(
-            instance
-                .get(offset..offset + 4)
-                .ok_or(ListError::OutOfBounds)?
-                .try_into()
-                .unwrap(),
+            instance.get(offset..offset + 4).ok_or(ListError::OutOfBounds)?.try_into().unwrap(),
         );
         if variable_id == 0 {
             return Err(ListError::NotExist);
@@ -81,9 +76,7 @@ impl DataStruct {
         if s == 0 && e == 0 {
             return Err(ListError::NotExist);
         }
-        instance
-            .get(vl_data_start + s..vl_data_start + e)
-            .ok_or(ListError::OutOfBounds)
+        instance.get(vl_data_start + s..vl_data_start + e).ok_or(ListError::OutOfBounds)
     }
 
     pub fn get(&self, schema_id: u32) -> Result<&[u8], ListError> {
@@ -198,12 +191,11 @@ impl DataStruct {
                 written_ids.push(*id);
             }
         }
-        self.set(list_id, &list, None)
-            .map_err(|source| DataStructError::IndirectWrite {
-                list_id,
-                ids: written_ids,
-                source,
-            })?;
+        self.set(list_id, &list, None).map_err(|source| DataStructError::IndirectWrite {
+            list_id,
+            ids: written_ids,
+            source,
+        })?;
         Ok(())
     }
 
@@ -212,9 +204,7 @@ impl DataStruct {
         for i in 0..self.index.data.len() as u32 {
             if let Ok(&v) = self.index.get(&i) {
                 if let Some(&new_id) = remap.get(&v) {
-                    self.index
-                        .set(&i, new_id, false, false)
-                        .map_err(VariableListError::List)?;
+                    self.index.set(&i, new_id, false, false).map_err(VariableListError::List)?;
                 }
             }
         }
@@ -229,12 +219,8 @@ impl DataStruct {
             let v = self.index.data.get(i).copied().unwrap_or(0);
             out.extend_from_slice(&v.to_le_bytes());
         }
-        let vl_index_bytes: Vec<u8> = self
-            .values
-            .index
-            .iter()
-            .flat_map(|&v| v.to_le_bytes())
-            .collect();
+        let vl_index_bytes: Vec<u8> =
+            self.values.index.iter().flat_map(|&v| v.to_le_bytes()).collect();
         let slice_at = vl_index_bytes.len() as u32;
         out.extend_from_slice(&slice_at.to_le_bytes());
         out.extend_from_slice(&vl_index_bytes);

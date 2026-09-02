@@ -59,9 +59,7 @@ pub struct List<T: Copy + Default + PartialEq> {
 
 impl<T: Copy + Default + PartialEq> List<T> {
     pub fn new() -> Self {
-        Self {
-            data: vec![T::default()],
-        } // [0] = vacant sentinel (0-value)
+        Self { data: vec![T::default()] } // [0] = vacant sentinel (0-value)
     }
 
     pub fn get(&self, identity: &u32) -> Result<&T, ListError> {
@@ -163,14 +161,14 @@ impl<T: Copy + Default + PartialEq> List<T> {
 #[derive(Clone)]
 pub struct VariableList {
     pub index: Vec<usize>,
-    pub data: Vec<u8>,
+    pub data:  Vec<u8>,
 }
 
 impl VariableList {
     pub fn new() -> Self {
         Self {
             index: vec![0, 0], // id=0 sentinel
-            data: Vec::new(),
+            data:  Vec::new(),
         }
     }
 
@@ -181,7 +179,7 @@ impl VariableList {
                 .chunks_exact(sz)
                 .map(|b| usize::from_ne_bytes(b.try_into().unwrap()))
                 .collect(),
-            data: data.to_vec(),
+            data:  data.to_vec(),
         }
     }
 
@@ -299,10 +297,7 @@ impl VariableList {
             }
             let start = self.index[index_s];
             let end = self.index[index_s + 1];
-            let slice = self
-                .data
-                .get(start..end)
-                .ok_or(VariableListError::Compact)?;
+            let slice = self.data.get(start..end).ok_or(VariableListError::Compact)?;
             let new_start = new_data.len();
             new_data.extend_from_slice(slice);
             let new_end = new_data.len();

@@ -9,10 +9,12 @@ use core::{
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::wasm_bindgen;
 
-use crate::arena::{APP, ARENA, COMMAND_CAPACITY, EVENT_CAPACITY, RUNNING, emit};
-use crate::event::{Event, Handler, decode_event};
-use crate::js_client::{
-    Command, ERROR_DECODE, EventType, Thresholds, TouchTracker, detect_device, encode_command,
+use crate::{
+    arena::{APP, ARENA, COMMAND_CAPACITY, EVENT_CAPACITY, RUNNING, emit},
+    event::{Event, Handler, decode_event},
+    js_client::{
+        Command, ERROR_DECODE, EventType, Thresholds, TouchTracker, detect_device, encode_command,
+    },
 };
 
 // ============================================================
@@ -30,14 +32,14 @@ pub struct App {
     /// 複数指のポインタ入力を `Gesture` へ落とす。`pointer_id` ごとの
     /// primary/secondary の割り振りと、pan/pinch の判定を持つ
     /// (`js_client::TouchTracker` を参照)。
-    touch: TouchTracker,
+    touch:      TouchTracker,
     /// `pointer_coarse` から装置ごとに決めたジェスチャ判定の閾値。
     /// `init` 時に 1 度だけ決め、以降は変わらない。
     thresholds: Thresholds,
-    events: VecDeque<Event>,
-    handler: Handler,
-    commands: Vec<u8>,
-    parameter: u32,
+    events:     VecDeque<Event>,
+    handler:    Handler,
+    commands:   Vec<u8>,
+    parameter:  u32,
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
@@ -68,12 +70,12 @@ impl App {
     /// 使わず `await` するだけである。
     pub async fn init(pointer_coarse: bool, viewport_width: f64, viewport_height: f64) {
         let mut app = App {
-            touch: TouchTracker::default(),
+            touch:      TouchTracker::default(),
             thresholds: Thresholds::for_device(detect_device(pointer_coarse)),
-            events: VecDeque::with_capacity(EVENT_CAPACITY),
-            handler: Handler::ready(viewport_width, viewport_height).await,
-            commands: Vec::with_capacity(COMMAND_CAPACITY),
-            parameter: 0,
+            events:     VecDeque::with_capacity(EVENT_CAPACITY),
+            handler:    Handler::ready(viewport_width, viewport_height).await,
+            commands:   Vec::with_capacity(COMMAND_CAPACITY),
+            parameter:  0,
         };
 
         // app repository は `Event::Ready` を積み、`dispatch` が
@@ -163,7 +165,7 @@ impl App {
             encode_command(
                 &mut self.commands,
                 &Command::Error {
-                    code: ERROR_DECODE,
+                    code:    ERROR_DECODE,
                     message: "event frame is malformed".to_string(),
                 },
             );
@@ -203,12 +205,7 @@ impl App {
     /// `Event::Gesture` の 3 つを分けるだけである。ここでは `Event` の
     /// variant が増えた分だけ分岐が増える。
     fn dispatch(&mut self, event: Event) -> (Vec<Event>, Vec<Command>) {
-        let Self {
-            handler,
-            touch,
-            thresholds,
-            ..
-        } = self;
+        let Self { handler, touch, thresholds, .. } = self;
 
         match event {
             Event::Canvas(canvas_event) => {

@@ -1,26 +1,24 @@
+#[cfg(feature = "worker")]
+use alloc::format;
 use alloc::{vec, vec::Vec};
-use arbitrary_int::u2;
 use core::{
     matches,
     option::Option::{self, None, Some},
     primitive::{f64, u8, u32},
 };
 
+use arbitrary_int::u2;
+
+#[cfg(feature = "worker")]
+use crate::file_store::FileStore;
+#[cfg(feature = "worker")]
+use crate::js_client::ERROR_STORE_LOST;
 use crate::{
     Lang,
     arena::Decoder,
     data_struct::DataStruct,
     js_client::{CanvasEvent, Command, EventType, Gesture, KeyName, PointerState, dom, name},
 };
-
-#[cfg(feature = "worker")]
-use alloc::format;
-
-#[cfg(feature = "worker")]
-use crate::file_store::FileStore;
-
-#[cfg(feature = "worker")]
-use crate::js_client::ERROR_STORE_LOST;
 
 // ============================================================
 // constant
@@ -124,26 +122,23 @@ pub fn decode_event(frame: &[u8]) -> Option<Event> {
     Some(match kind {
         EVENT_CANVAS => Event::Canvas(CanvasEvent {
             event_type: EventType::decode_u8(decoder.u8()?),
-            id: decoder.id()?,
-            key: KeyName::decode_u8(decoder.u8()?),
-            value: decoder.string()?,
-            x: decoder.f32()? as f64,
-            y: decoder.f32()? as f64,
-            time: decoder.f64()?,
+            id:         decoder.id()?,
+            key:        KeyName::decode_u8(decoder.u8()?),
+            value:      decoder.string()?,
+            x:          decoder.f32()? as f64,
+            y:          decoder.f32()? as f64,
+            time:       decoder.f64()?,
             pointer_id: decoder.u32()?,
         }),
-        EVENT_VIEWPORT => Event::Viewport {
-            width: decoder.f32()? as f64,
-            height: decoder.f32()? as f64,
-        },
+        EVENT_VIEWPORT => {
+            Event::Viewport { width: decoder.f32()? as f64, height: decoder.f32()? as f64 }
+        }
         EVENT_SCROLL => Event::Scroll {
             id: decoder.id()?,
-            x: decoder.f32()? as f64,
-            y: decoder.f32()? as f64,
+            x:  decoder.f32()? as f64,
+            y:  decoder.f32()? as f64,
         },
-        EVENT_SET_PARAMETER => Event::SetParameter {
-            value: decoder.u32()?,
-        },
+        EVENT_SET_PARAMETER => Event::SetParameter { value: decoder.u32()? },
         EVENT_RENDER => Event::Render,
         EVENT_SHUTDOWN => Event::Shutdown,
         _ => return None,
@@ -199,19 +194,19 @@ const CHARACTER_SCHEMA_NAME: &str = "characters";
 /// 呼べるため、往復にする必要が無い。
 pub struct Handler {
     character_sheet: CharacterSheet,
-    dialog: Dialog,
-    lang: Lang,
-    last_toast: u2,
-    character: DataStruct,
+    dialog:          Dialog,
+    lang:            Lang,
+    last_toast:      u2,
+    character:       DataStruct,
     /// `worker` feature でのみ持つ。OPFS の `FileSystemSyncAccessHandle` は
     /// dedicated worker でしか取得できないため、main thread 構成では
     /// フィールドごと存在しない。`save` を呼ぶコードは型検査で弾かれる。
     #[cfg(feature = "worker")]
-    characters: FileStore,
-    logs: Vec<Log>,
+    characters:      FileStore,
+    logs:            Vec<Log>,
     /// `characters` への操作が続けて失敗した回数。成功すると 0 に戻る。
     #[cfg(feature = "worker")]
-    store_failures: u8,
+    store_failures:  u8,
 }
 
 impl Handler {
@@ -291,7 +286,7 @@ impl Handler {
             Err(e) => {
                 self.store_failures = 0;
                 vec![Command::Error {
-                    code: ERROR_STORE_LOST,
+                    code:    ERROR_STORE_LOST,
                     message: format!("file store save failed: {e}"),
                 }]
             }
@@ -327,7 +322,7 @@ impl Handler {
     /// `Name` の添字である。
     pub fn initial_draw(&self) -> (Vec<Event>, Vec<Command>) {
         let commands = vec![Command::RemoveAttribute {
-            id: dom::Id::new(&[(dom::Tag::Body, None)]),
+            id:        dom::Id::new(&[(dom::Tag::Body, None)]),
             attribute: name::HIDDEN,
         }];
         (vec![], commands)
@@ -360,14 +355,8 @@ impl Handler {
             }
         };
         let commands = vec![
-            Command::RemoveClass {
-                id: section(shown),
-                value: name::HIDDEN,
-            },
-            Command::AddClass {
-                id: section(hidden),
-                value: name::HIDDEN,
-            },
+            Command::RemoveClass { id: section(shown), value: name::HIDDEN },
+            Command::AddClass { id: section(hidden), value: name::HIDDEN },
         ];
         (vec![], commands)
     }
