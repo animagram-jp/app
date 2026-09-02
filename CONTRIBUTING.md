@@ -95,7 +95,11 @@ wasm-tools validate --features=threads,bulk-memory distribution/app/app_bg.wasm
 #      return cachedTextDecoder.decode(
 #          view.buffer instanceof SharedArrayBuffer ? view.slice() : view
 #      );
+grep -q 'cachedTextDecoder.decode(getUint8ArrayMemory0().subarray(ptr, ptr + len));' distribution/app/app.js
+perl -0pi -e 's/return cachedTextDecoder\.decode\(getUint8ArrayMemory0\(\)\.subarray\(ptr, ptr \+ len\)\);/const view = getUint8ArrayMemory0().subarray(ptr, ptr + len);\n    return cachedTextDecoder.decode(\n        view.buffer instanceof SharedArrayBuffer ? view.slice() : view\n    );/' distribution/app/app.js
 
+# auto formatter
+cargo +nightly fmt
 
 # copy from animagram/css
 cp -f ../css/css/*.css ./distribution/css/
@@ -179,6 +183,7 @@ instanceは、null(未入力)をlistの out of range で表現し、メモリ占
 
 ## Html
 
+- ID, フォーマット規則は[ORG_CONTRIBUTING.md](./ORG_CONTRIBUTING.md)に従う。
 - index.htmlの1ファイル完結。
 - FOUC防止のためbodyにhidden atrributeを書く。初期表示しないタグは.hiddenクラスを書く。
 - テキストは言語に左右されず、一切変化しないのみ書く。aria-labelは必要なものだけ英語で書いておく。

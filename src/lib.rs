@@ -1,14 +1,4 @@
-// SharedArrayBuffer 上の共有アリーナを介した WebAssembly <-> JavaScript 通信。
-//
-// 従来 `App::process` は `JsValue` を受け取り、`Command` の Vec を
-// `serde_wasm_bindgen` で JavaScript オブジェクトの配列に直して返している。
-// この参考実装はその往復を、共有アリーナ上の固定長スロットのリングバッファに
-// 載せたバイト列に置き換える。目的は次の 2 点である。
-//
-// 1. コマンド 1 件ごとの JavaScript オブジェクト生成を無くす。
-// 2. 描画結果 (ピクセル列) をコピーせずに JavaScript へ渡す。
-//
-// Wasm を動かす thread は 2 種類を想定する。
+// thread = "worker" | "main":
 //
 // | Thread | Memory | Command |
 // |-|-|-|
@@ -18,26 +8,6 @@
 // worker は `atomics` target feature (共有メモリと `memory.atomic.wait32`) を
 // 必要とする。main thread は同じアリーナ配置を非共有メモリ上で使い、
 // main thread から `poll` を同期呼び出しする。
-//
-// あわせて crate 全体を `#![no_std]` (core + alloc のみ) で構成する。
-// 共有アリーナへの移行で `serde_wasm_bindgen` が不要になるため、
-// `std` を要求する依存が無くなり `no_std` が成立する。詳細は後述。
-//
-// ============================================================
-// ファイル構成
-// ============================================================
-//
-// app repository の `src/` と対応する filename へ分割してある。
-// 取り込みの際は、同名ファイルの該当箇所へ移せばよい。
-//
-// | file | 内容 | app repository での対応 |
-// |-|-|-|
-// | `lib.rs`       | module 宣言 / allocator / panic handler | `src/lib.rs` |
-// | `app.rs`       | `App`                               | `src/app.rs` |
-// | `js_client.rs` | `Command` / `CanvasEvent` / `dom` 他 | `src/js_client.rs` |
-// | `event.rs`     | `Event` / `Handler`                  | `src/event.rs` |
-// | `arena.rs`     | 共有アリーナと entry point           | 新規 |
-// | `init.js`      | JavaScript 側                        | `init.js` |
 //
 // `arena.rs` だけは app repository に対応先が無い。共有アリーナのレイアウト、
 // リングバッファ、トリプルバッファ、`Encoder` / `Decoder`、および

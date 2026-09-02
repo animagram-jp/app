@@ -1,5 +1,3 @@
-# Arena
-
 # panic handler
 
 `#[panic_handler]` を実装する。
@@ -128,35 +126,84 @@ RUSTFLAGS="-Ctarget-feature=+atomics,+bulk-memory" cargo build --release --targe
 cargo build --release --target wasm32-unknown-unknown --no-default-features
 ```
 
-### test の走らせ方
+# ビルド手順 (worker 構成)
 
-`wasm-bindgen-test` (`file_store.rs` の 13 本) は対象を絞る必要がある。
+`worker` feature (既定で有効) は dedicated worker + SharedArrayBuffer +
+`talc` アロケータを使う。`--target web` の wasm-bindgen 出力は標準では
+memory を自己完結で持つため、共有メモリで使うには以下の手順で
+memory import 化と shared 化を後段で行う必要がある。
 
-```
-cargo install wasm-bindgen-cli
-
-cargo test --target wasm32-unknown-unknown --lib --tests   # OPFS の test
-cargo test --doc                                           # doctest (ホスト)
-```
+## 1. Rust を wasm にビルドする
 
 ```bash
-# wsl
-geckodriver --port 4444 &
-GECKODRIVER_REMOTE=http://127.0.0.1:4444 \
-  cargo test --target wasm32-unknown-unknown --lib --tests
+RUSTFLAGS="-Ctarget-feature=+atomics,+bulk-memory -Clink-arg=--import-memory -Clink-arg=--max-memory=134217728" \
+cargo build --release --target wasm32-unknown-unknown -Zbuild-std=std,panic_abort
 ```
 
-## ファイル
+- `+atomics,+bulk-memory`: 共有メモリと `memory.copy` 系命令を有効化する。
+- `--import-memory`: memory を wasm モジュール自己完結ではなく外部 import にする。
+  これが無いと `distribution/app/app.js` の `init()` に `memory` を渡しても
+  無視され、main thread と worker が別々のメモリを持ってしまう。
+- `--max-memory=134217728` (128MiB = 2048 ページ): `talc` アロケータが
+  `memory.grow` でヒープを伸ばせる上限。`distribution/init.js` の
+  `MEMORY_MAXIMUM_PAGES` と値を揃えること (揃っていないと growth が
+  途中で失敗し、アロケーション失敗が起こる)。
+- `-Clink-arg=--shared-memory` は**付けない**。付けると wasm-bindgen が
+  自動スレッド化処理を試みて `__wasm_init_tls` を要求し失敗する
+  (Rust std のこのターゲットでは生成されない合成シンボルで、
+  現状のツールチェインでは解決できない)。shared 化は手順 3 で行う。
 
-| file | app repository での対応 | 備考 |
-|-|-|-|
-| `Cargo.toml` | `Cargo.toml` | 丸ごと差し替え |
-| `src/lib.rs` | `src/lib.rs` | module 宣言 / allocator / `#[panic_handler]` |
-| `src/arena.rs` | 新規 | `install_panic_hook` を除去 |
-| `src/app.rs` | `src/app.rs` | アリーナ版 |
-| `src/js_client.rs` | `src/js_client.rs` | アリーナ版。app 側 16 バリアントを包含 |
-| `src/event.rs` | `src/event.rs` | アリーナ版 + app 側 `Handler` + `Store` |
-| `init.js` | `init.js` | アリーナ版 |
-| `src/object.rs` | `src/object.rs` | alloc prelude / `rand` 差し替え |
-| `src/file_store.rs` | `src/file_store.rs` | alloc prelude |
-| `crates/app_macros/src/lib.rs` | `crates/app_macros/src/lib.rs` | `derive(Roll)` の `rand` 差し替え |
+## 2. wasm-bindgen で JS グルーコードを生成する
+
+```bash
+wasm-bindgen --target web --out-dir distribution/app --out-name app \
+  target/wasm32-unknown-unknown/release/app.wasm
+```
+
+`--import-memory` の効果で `app.js` の `init()` (`default` export) が
+第 2 引数 (または `{ memory }`) として `WebAssembly.Memory` を受け取る
+形になる。これが無いと `memory` パラメータの受け口自体が生成されない。
+
+## 3. memory import に shared フラグを立てる
+
+手順 1 で `--shared-memory` を使わなかったため、生成された
+`app_bg.wasm` の memory import は shared ではない。`wasm-tools` で
+watに変換し、該当行だけ手で `shared` を足して戻す。
+
+```bash
+# cargo install wasm-tools
+
+wasm-tools print distribution/app/app_bg.wasm -o /tmp/app.wat
+# /tmp/app.wat 内の
+#   (import "./app_bg.js" "memory" (memory (;0;) 39 2048))
+# を
+#   (import "./app_bg.js" "memory" (memory (;0;) 39 2048 shared))
+# に書き換える (min/max の数値はビルドのたびに変わりうるので、行の
+# 数値ではなく `(import "./app_bg.js" "memory"` で検索する)。
+wasm-tools parse /tmp/app.wat -o distribution/app/app_bg.wasm
+wasm-tools validate --features=threads,bulk-memory distribution/app/app_bg.wasm
+```
+
+## 4. `distribution/app/app.js` の TextDecoder 呼び出しをパッチする
+
+wasm-bindgen が生成する `decodeText` (`&str` を JS 文字列に変換する
+内部関数) は `TextDecoder.decode()` に `SharedArrayBuffer` 裏付けの
+`Uint8Array` をそのまま渡す。`TextDecoder.decode()` は仕様上これを
+拒否する (`TypeError: ... can't be a SharedArrayBuffer`)。
+
+`app.js` 内の
+
+```js
+return cachedTextDecoder.decode(getUint8ArrayMemory0().subarray(ptr, ptr + len));
+```
+
+を
+
+```js
+const view = getUint8ArrayMemory0().subarray(ptr, ptr + len);
+return cachedTextDecoder.decode(
+    view.buffer instanceof SharedArrayBuffer ? view.slice() : view
+);
+```
+
+に置き換える。手順 1〜3 を再実行するたびにこのパッチも当て直す必要がある。

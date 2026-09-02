@@ -2,23 +2,22 @@
 
 Reference data for `js_client::detect_gesture()`
 
-## 対象ライブラリの選定
+## References
 
-- Hammer.js
-- @use-gesture
+- [hammerjs](https://github.com/hammerjs/hammer.js/)
+- [use-gesture](https://github.com/pmndrs/use-gesture)
 
-両ライブラリとも「定数」は独立したテーブルではなく、認識アルゴリズム（distance / velocity / duration の閾値比較）に埋め込まれた値である。以下は `js_client.rs` の `Thresholds` / `detect_gesture` に、両ライブラリの値を px・ms 単位に揃えて統合したもの。
+判定アルゴリズム（distance / velocity / duration の閾値比較）に埋め込まれた値を、 `gesture_fixed.rs` の `Thresholds` / `detect_gesture` に、両ライブラリの値をpx・ms単位に揃えて統合した。
 
 `detect_gesture` は `PointerState` と `Event` 1 個だけから `Gesture` を導出する関数であり、タイマー等の第二の入口は持たない。`app.rs` の `dispatch` が `Event` を FIFO キューで捌く都度確定型アーキテクチャのため、時間経過そのものを表す `Event` は存在しない。`LongPress` もこの制約の中で、既存の `PointerMove` / `PointerUp` の判定に組み込んでいる（詳細は後述）。
 
-## Hammer.js / @use-gesture 共通の関数と定数
+## Hammer.js, use-gesture 共通の関数と定数
 
-両ライブラリの最下層（Hammer.js: `src/inputjs/get-distance.js` 等、@use-gesture:
-`packages/core/src/utils/maths.ts` 等）が共通して持つ演算と、両者の閾値定数を
-px・ms 単位に揃えたもの。
+- Hammer.js: `src/inputjs/get-distance.js` 
+- use-gesture: `packages/core/src/utils/maths.ts`, etc.
 
 ```
-# 共通演算（両ライブラリの最下層が実装している内容を単位統一の擬似コードにしたもの）
+# 疑似コード
 distance(p0, p1)  = sqrt((p1.x - p0.x)^2 + (p1.y - p0.y)^2)   # px
 velocity(p0, p1)  = distance(p0, p1) / (p1.t - p0.t)          # px/ms
 angle(p0, p1)     = atan2(p1.y - p0.y, p1.x - p0.x) * 180/pi  # deg
@@ -26,7 +25,7 @@ direction(dx, dy) = abs(dx) > abs(dy)
                        ? (dx > 0 ? RIGHT : LEFT)
                        : (dy > 0 ? DOWN  : UP)
 
-# 共通定数（px・msに単位統一。出典は各ライブラリの下記キー）
+# Constants（unit: px, ms, px/ms）
 tap_max_ms          = 250   # Hammer.js: tap.time
 tap_slop_px         = 9     # Hammer.js: tap.threshold        (use-gesture: tapsThreshold = 3)
 long_press_ms       = 251   # Hammer.js: press.time           (tap.timeと1ms差で排他)
@@ -37,9 +36,24 @@ swipe_min_velocity  = 0.5   # use-gesture: DEFAULT_SWIPE_VELOCITY (Hammer.js: sw
 swipe_max_ms        = 250   # use-gesture: DEFAULT_SWIPE_DURATION (Hammer.jsに対応項目なし)
 ```
 
-## 統合後の判定アルゴリズム（`js_client.rs` 準拠）
+## detect_gesture
 
-すべて **px**（CSS px）と **ms** に単位を統一する。velocity は px/ms（Hammer.js表記の `px/s` は `/1000` して揃えてある）。
+```rust
+use js_client::{
+    PointerState, 
+    Thresholds::{MOUSE, TOUCH}, 
+    detect_gesture, 
+    detect_on_release, 
+    detect_on_move,
+    gesture_tests,
+};
+
+// app::App::init()
+use js_client::{pointer_coarse, detect_device, Thresholds::for_device};
+
+// app::App::dispatch(Event::Canvas)
+use js_client::{PointerState::update, detect_gesture};
+```
 
 ### 状態遷移
 
@@ -103,9 +117,3 @@ PointerUp/Cancel → current_x/y, cancelled フラグを更新, is_down = false
 
 - Hammer.js: pinch/rotate（2ポインタ）、`STATE_*`（内部状態機械のbitmask）、`DIRECTION_*`（bitmask定数、本実装ではenum variantで代替済み）、`COMPUTE_INTERVAL`（velocity再計算間隔、本実装は毎イベント計算のため不要）、`DEDUP_TIMEOUT`/`DEDUP_DISTANCE`（touch/mouse合成イベント除去、PointerEvent統一により不要）
 - @use-gesture: pinch/rotate/wheel/keyboard系一式、`BEFORE_LAST_KINEMATICS_DELAY`（velocity計算の内部実装詳細。上記の通り windowを変えることで同じ効果を得ているため定数としては未採用）、`LINE_HEIGHT`/`PAGE_HEIGHT`（wheel専用）
-
-## 実装
-
-実装本体は [`js_client.rs`](../src/js_client.rs) の `Thresholds` / `PointerState` / `detect_gesture`（内部で `detect_on_release` / `detect_on_move` に分岐）を参照。`Thresholds::MOUSE` / `Thresholds::TOUCH` が上表の採用値に対応する。呼び出し元は [`app.rs`](../src/app.rs) の `App::dispatch` で、`Event::Canvas` 受信の都度 `PointerState::update` → `detect_gesture` の順に呼ぶ以外の経路は無い。閾値は `App::init` が `pointer_coarse` から `detect_device` / `Thresholds::for_device` で 1 度だけ決め、以降は変わらない。
-
-テストは `js_client.rs` 内の `mod gesture_tests` を参照。
