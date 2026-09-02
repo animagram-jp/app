@@ -189,17 +189,17 @@ function restart() {
 function execute(operation, d) {
     // FrameReady / Error は要素を持たない。id を読む前に分岐する。
     switch (operation) {
-        case 20: { // FrameReady
+        case 17: { // FrameReady
+            S.cellFront = cellAcquire(S.int32, (S.base + CELL_STATE) >> 2, S.cellFront);
+            const offset = S.base + CELL_PAYLOAD + S.cellFront * CELL_SIZE;
+            S.onFrame?.(S.uint8Clamped.subarray(offset, offset + CELL_SIZE));
+            return;
+        }
+        case 18: { // Error
             const code = d.u8();
             const message = d.string() ?? "";
             console.error(`[wasm] ${ERROR_CODES[code] ?? code}:`, message);
             if (code >= FATAL_FROM) restart();
-            return;
-        }
-        case 19: { // Error 
-            S.cellFront = cellAcquire(S.int32, (S.base + CELL_STATE) >> 2, S.cellFront);
-            const offset = S.base + CELL_PAYLOAD + S.cellFront * CELL_SIZE;
-            S.onFrame?.(S.uint8Clamped.subarray(offset, offset + CELL_SIZE));
             return;
         }
     }
@@ -398,9 +398,9 @@ const EVENT_SHUTDOWN = 8;
  * 添字 + 1 が番号である。`js_client.rs` の `EventType::decode_u8` と順序を揃える。
  */
 const EVENT_TYPES = [
-    "submit", "click", "contextmenu", "keydown", "input", "change",
-    "focusin", "focusout", "resize", "scroll", "drop",
-    "pointerdown", "pointerup", "pointermove", "pointercancel",
+    "change", "click", "contextmenu", "drop", "focusin", "focusout",
+    "input", "keydown", "pointercancel", "pointerdown", "pointermove",
+    "pointerup", "resize", "scroll", "submit",
 ];
 
 /**
@@ -409,8 +409,8 @@ const EVENT_TYPES = [
  * 添字 + 1 が番号である。`js_client.rs` の `KeyName::decode_u8` と順序を揃える。
  */
 const KEY_NAMES = [
-    "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight",
-    "Enter", "Escape", "Tab", "Backspace",
+    "ArrowDown", "ArrowLeft", "ArrowRight", "ArrowUp",
+    "Backspace", "Enter", "Escape", "Tab",
 ];
 
 /**
@@ -418,7 +418,12 @@ const KEY_NAMES = [
  *
  * 添字が番号である。`js_client.rs` の `dom::Tag::encode_u8` と順序を揃える。
  */
-const TAGS = ["", "body", "main", "modal", "header", "section", "button"];
+const TAGS = [
+    "", "article", "body", "button", "dd", "dl", "drawer", "dt",
+    "fieldset", "footer", "form", "h1", "h2", "h3", "header", "input",
+    "li", "main", "modal", "ol", "output", "p", "section", "select",
+    "span", "table", "tbody", "td", "textarea", "th", "thead", "tr", "ul",
+];
 
 /**
  * `Name` の番号に対応する静的文字列。
@@ -426,8 +431,7 @@ const TAGS = ["", "body", "main", "modal", "header", "section", "button"];
  * 添字が番号である。`js_client.rs` の `name` モジュールと順序を揃える。
  */
 const NAMES = [
-    "hidden", "disabled", "active", "grab", "default",
-    "show", "hide",
+    "active", "default", "disabled", "grab", "hidden", "hide", "show",
 ];
 
 /**

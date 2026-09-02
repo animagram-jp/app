@@ -48,9 +48,9 @@ pub const OPERATION_FOCUS: u8 = 15;
 /// case 16: jsFn[NAMES[d.u16()]]?.(el); break;
 pub const OPERATION_JS_FN: u8 = 16;
 
-pub const OPERATION_FRAME_READY: u8 = 19;
+pub const OPERATION_FRAME_READY: u8 = 17;
 
-pub const OPERATION_ERROR: u8 = 20;
+pub const OPERATION_ERROR: u8 = 18;
 
 /// Command::Error, init.js ERROR_CODES
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -297,20 +297,20 @@ pub struct Name(pub u16);
 pub mod name {
     use super::Name;
 
-    /// `hidden` 属性。
-    pub const HIDDEN: Name = Name(0);
-    /// `disabled` 属性。
-    pub const DISABLED: Name = Name(1);
     /// `active` class。
-    pub const ACTIVE: Name = Name(2);
+    pub const ACTIVE: Name = Name(0);
+    /// `default` cursor。
+    pub const CURSOR_DEFAULT: Name = Name(1);
+    /// `disabled` 属性。
+    pub const DISABLED: Name = Name(2);
     /// `grab` cursor。
     pub const CURSOR_GRAB: Name = Name(3);
-    /// `default` cursor。
-    pub const CURSOR_DEFAULT: Name = Name(4);
-    /// `init.js` の `jsFn.show`。
-    pub const FN_SHOW: Name = Name(5);
+    /// `hidden` 属性。
+    pub const HIDDEN: Name = Name(4);
     /// `init.js` の `jsFn.hide`。
-    pub const FN_HIDE: Name = Name(6);
+    pub const FN_HIDE: Name = Name(5);
+    /// `init.js` の `jsFn.show`。
+    pub const FN_SHOW: Name = Name(6);
 }
 
 // ============================================================
@@ -341,21 +341,21 @@ pub fn detect_device(pointer_coarse: bool) -> Device {
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum EventType {
-    Submit,
+    Change,
     Click,
     ContextMenu,
-    KeyDown,
-    Input,
-    Change,
+    Drop,
     FocusIn,
     FocusOut,
+    Input,
+    KeyDown,
+    PointerCancel,
+    PointerDown,
+    PointerMove,
+    PointerUp,
     Resize,
     Scroll,
-    Drop,
-    PointerDown,
-    PointerUp,
-    PointerMove,
-    PointerCancel,
+    Submit,
     Other,
 }
 
@@ -364,26 +364,26 @@ impl EventType {
     ///
     /// ```
     /// # use app::js_client::EventType;
-    /// assert_eq!(EventType::decode_u8(12), EventType::PointerDown);
+    /// assert_eq!(EventType::decode_u8(10), EventType::PointerDown);
     /// assert_eq!(EventType::decode_u8(200), EventType::Other);
     /// ```
     pub fn decode_u8(value: u8) -> Self {
         match value {
-            1 => Self::Submit,
+            1 => Self::Change,
             2 => Self::Click,
             3 => Self::ContextMenu,
-            4 => Self::KeyDown,
-            5 => Self::Input,
-            6 => Self::Change,
-            7 => Self::FocusIn,
-            8 => Self::FocusOut,
-            9 => Self::Resize,
-            10 => Self::Scroll,
-            11 => Self::Drop,
-            12 => Self::PointerDown,
-            13 => Self::PointerUp,
-            14 => Self::PointerMove,
-            15 => Self::PointerCancel,
+            4 => Self::Drop,
+            5 => Self::FocusIn,
+            6 => Self::FocusOut,
+            7 => Self::Input,
+            8 => Self::KeyDown,
+            9 => Self::PointerCancel,
+            10 => Self::PointerDown,
+            11 => Self::PointerMove,
+            12 => Self::PointerUp,
+            13 => Self::Resize,
+            14 => Self::Scroll,
+            15 => Self::Submit,
             _ => Self::Other,
         }
     }
@@ -391,33 +391,33 @@ impl EventType {
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum KeyName {
-    ArrowUp,
     ArrowDown,
     ArrowLeft,
     ArrowRight,
+    ArrowUp,
+    Backspace,
     Enter,
     Escape,
     Tab,
-    Backspace,
     Other,
 }
 
 impl KeyName {
     /// ```
     /// # use app::js_client::KeyName;
-    /// assert_eq!(KeyName::decode_u8(5), KeyName::Enter);
+    /// assert_eq!(KeyName::decode_u8(6), KeyName::Enter);
     /// assert_eq!(KeyName::decode_u8(200), KeyName::Other);
     /// ```
     pub fn decode_u8(value: u8) -> Self {
         match value {
-            1 => Self::ArrowUp,
-            2 => Self::ArrowDown,
-            3 => Self::ArrowLeft,
-            4 => Self::ArrowRight,
-            5 => Self::Enter,
-            6 => Self::Escape,
-            7 => Self::Tab,
-            8 => Self::Backspace,
+            1 => Self::ArrowDown,
+            2 => Self::ArrowLeft,
+            3 => Self::ArrowRight,
+            4 => Self::ArrowUp,
+            5 => Self::Backspace,
+            6 => Self::Enter,
+            7 => Self::Escape,
+            8 => Self::Tab,
             _ => Self::Other,
         }
     }
@@ -1731,38 +1731,38 @@ pub mod dom {
     /// element の tag。variant は app repository の `Tag` と同じ。
     #[derive(Debug, Clone, PartialEq)]
     pub enum Tag {
+        Article,
         Body,
-        Main,
-        Header,
-        Section,
         Button,
+        Dd,
+        Dl,
+        Drawer, // <dialog id="*drawer*">
+        Dt,
+        Fieldset,
+        Footer,
+        Form,
         H1,
         H2,
         H3,
-        Ul,
-        Li,
-        Span,
-        Dl,
-        Dt,
-        Dd,
-        Ol,
-        P,
-        Textarea,
-        Drawer, // <dialog id="*drawer*">
-        Modal,  // <dialog id="*modal*">
-        Form,
+        Header,
         Input,
-        Fieldset,
-        Table,
-        Thead,
-        Tbody,
-        Tr,
-        Th,
-        Td,
-        Select,
-        Footer,
+        Li,
+        Main,
+        Modal, // <dialog id="*modal*">
+        Ol,
         Output,
-        Article,
+        P,
+        Section,
+        Select,
+        Span,
+        Table,
+        Tbody,
+        Td,
+        Textarea,
+        Th,
+        Thead,
+        Tr,
+        Ul,
         Other,
     }
 
@@ -1771,34 +1771,86 @@ pub mod dom {
         ///
         /// ```
         /// # use app::js_client::dom::Tag;
-        /// assert_eq!(Tag::Body.encode_u8(), 1);
+        /// assert_eq!(Tag::Article.encode_u8(), 1);
         /// assert_eq!(Tag::Other.encode_u8(), 0);
         /// ```
         pub fn encode_u8(&self) -> u8 {
             match self {
-                Self::Body => 1,
-                Self::Main => 2,
-                Self::Modal => 3,
-                Self::Header => 4,
-                Self::Section => 5,
-                Self::Button => 6,
+                Self::Article => 1,
+                Self::Body => 2,
+                Self::Button => 3,
+                Self::Dd => 4,
+                Self::Dl => 5,
+                Self::Drawer => 6,
+                Self::Dt => 7,
+                Self::Fieldset => 8,
+                Self::Footer => 9,
+                Self::Form => 10,
+                Self::H1 => 11,
+                Self::H2 => 12,
+                Self::H3 => 13,
+                Self::Header => 14,
+                Self::Input => 15,
+                Self::Li => 16,
+                Self::Main => 17,
+                Self::Modal => 18,
+                Self::Ol => 19,
+                Self::Output => 20,
+                Self::P => 21,
+                Self::Section => 22,
+                Self::Select => 23,
+                Self::Span => 24,
+                Self::Table => 25,
+                Self::Tbody => 26,
+                Self::Td => 27,
+                Self::Textarea => 28,
+                Self::Th => 29,
+                Self::Thead => 30,
+                Self::Tr => 31,
+                Self::Ul => 32,
                 Self::Other => 0,
             }
         }
 
         /// ```
         /// # use app::js_client::dom::Tag;
-        /// assert_eq!(Tag::decode_u8(1), Tag::Body);
+        /// assert_eq!(Tag::decode_u8(1), Tag::Article);
         /// assert_eq!(Tag::decode_u8(200), Tag::Other);
         /// ```
         pub fn decode_u8(value: u8) -> Self {
             match value {
-                1 => Self::Body,
-                2 => Self::Main,
-                3 => Self::Modal,
-                4 => Self::Header,
-                5 => Self::Section,
-                6 => Self::Button,
+                1 => Self::Article,
+                2 => Self::Body,
+                3 => Self::Button,
+                4 => Self::Dd,
+                5 => Self::Dl,
+                6 => Self::Drawer,
+                7 => Self::Dt,
+                8 => Self::Fieldset,
+                9 => Self::Footer,
+                10 => Self::Form,
+                11 => Self::H1,
+                12 => Self::H2,
+                13 => Self::H3,
+                14 => Self::Header,
+                15 => Self::Input,
+                16 => Self::Li,
+                17 => Self::Main,
+                18 => Self::Modal,
+                19 => Self::Ol,
+                20 => Self::Output,
+                21 => Self::P,
+                22 => Self::Section,
+                23 => Self::Select,
+                24 => Self::Span,
+                25 => Self::Table,
+                26 => Self::Tbody,
+                27 => Self::Td,
+                28 => Self::Textarea,
+                29 => Self::Th,
+                30 => Self::Thead,
+                31 => Self::Tr,
+                32 => Self::Ul,
                 _ => Self::Other,
             }
         }
