@@ -56,7 +56,6 @@ self.addEventListener("fetch", (e) => {
     const url = new URL(req.url);
     if (url.origin !== self.location.origin) return;
 
-    // "./" は index.html のナビゲーションを指すのでnavigateもここに含める。
     const isPrecached = PRECACHE_URLS.has(url.href) ||
         (req.mode === "navigate" && PRECACHE_URLS.has(new URL("./", self.location.href).href));
     if (!isPrecached) return;
