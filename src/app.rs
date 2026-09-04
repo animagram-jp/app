@@ -33,7 +33,7 @@ pub struct App {
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 impl App {
-    /// 非同期コンストラクタ。app repository の `App::init` と同じ形である。
+    /// 非同期コンストラクタ。
     ///
     /// `Handler::ready(..).await` が `FileStore::new` を待つ。`await` が
     /// 要るのはここだけで、以降 `get` / `set` / `save` は同期に呼べる。
@@ -67,8 +67,7 @@ impl App {
             parameter:  0,
         };
 
-        // app repository は `Event::Ready` を積み、`dispatch` が
-        // `initial_draw` を呼ぶ。ここでは待つ状態が無いため直接呼ぶ。
+        // 待つ状態が無いため `dispatch` を介さず直接呼ぶ。
         let (_events, commands) = app.handler.initial_draw();
         for command in &commands {
             encode_command(&mut app.commands, command);
@@ -86,18 +85,6 @@ impl App {
         unsafe {
             *(&raw mut APP) = Some(app)
         };
-    }
-
-    /// 終了処理のコマンド列を生成する。
-    ///
-    /// app repository の `App::close` は `Handler::close` を呼ぶだけで
-    /// 戻り値を持たない。ここでは `Handler::close` が返すコマンド列を
-    /// `commands` へ書き出し、JavaScript 側が `commands` で取り出す。
-    pub fn close(&mut self) {
-        self.commands.clear();
-        for command in &self.handler.close() {
-            encode_command(&mut self.commands, command);
-        }
     }
 
     /// process(Event) and FIFO queue command (layout `[event:u8][payload...]`)

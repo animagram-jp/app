@@ -434,19 +434,12 @@ pub fn report_error(error: CommandError) {
 }
 
 // panic を `Command::Error` として JavaScript へ送る処理は `lib.rs` の
-// `#[panic_handler]` にある。
+// `#[panic_handler]` にある。共有アリーナが既にあるため、panic の内容を
+// そのまま JavaScript へ運べる。
 //
-// app repository の `src/lib.rs` はこれに相当するものを持たない
-// (`debug_log!` と `#[panic_handler]` は両方コメントアウトされている)。
-// そのため panic は `RuntimeError: unreachable` になり、メッセージも
-// 発生位置も失われる。ここでは共有アリーナが既にあるため、panic の
-// 内容をそのまま JavaScript へ運べる。
-//
-// `no_std` では `std::panic::set_hook` が使えないため、当初この位置に
-// あった `install_panic_hook` は `#[panic_handler]` へ置き換えてある。
-// 登録が compile 時になったので `initialize` からの呼び出しは無くなり、
-// 二重登録の考慮も要らなくなった。`#[panic_handler]` は crate graph 全体で
-// 1 つだけであり、`cdylib` 本体である `lib.rs` が持つのが適切である。
+// `no_std` では `std::panic::set_hook` が使えないため `#[panic_handler]`
+// を使う。`#[panic_handler]` は crate graph 全体で 1 つだけであり、
+// `cdylib` 本体である `lib.rs` が持つのが適切である。
 //
 // handler が走った後 thread は停止する。停止した worker は JavaScript 側が
 // `terminate` して作り直す。
@@ -510,7 +503,6 @@ impl<'a> Encoder<'a> {
     /// `dom::Id` を `[count:u8]([tag:u8][number:u32])*` として追記する。
     ///
     /// `Segment::n` が `None` の場合は番号に `u32::MAX` を置く。
-    /// app repository が `Id::encode` で組み立てる文字列より短くなる。
     pub fn id(&mut self, value: &dom::Id) {
         self.u8(value.0.len() as u8);
         for segment in &value.0 {
