@@ -1,5 +1,3 @@
-#[cfg(feature = "worker")]
-use alloc::format;
 use alloc::{vec, vec::Vec};
 use core::{
     matches,
@@ -12,7 +10,7 @@ use arbitrary_int::u2;
 #[cfg(feature = "worker")]
 use crate::file_store::FileStore;
 #[cfg(feature = "worker")]
-use crate::js_client::ERROR_STORE_LOST;
+use crate::js_client::CommandError;
 use crate::{
     Lang,
     arena::Decoder,
@@ -37,7 +35,7 @@ use crate::{
 /// 差分は保持されるため、再試行でデータは失われない。
 ///
 /// この回数を続けて失敗した場合はハンドルの失効とみなし、
-/// `ERROR_STORE_LOST` を送って worker を作り直す。
+/// `CommandError::FileStore` を送って worker を作り直す。
 #[cfg(feature = "worker")]
 const RETRY_LIMIT: u8 = 3;
 
@@ -260,13 +258,14 @@ impl Handler {
     ///
     /// 失敗しても未保存の差分は `FileStore` 側に残るため、次の呼び出しで
     /// 書き直せる。`RETRY_LIMIT` 回続けて失敗した場合だけ、ハンドルが
-    /// 失効したとみなして `ERROR_STORE_LOST` を返す。
+    /// 失効したとみなして `Command::Error { error: CommandError::FileStore(e) }`
+    /// を返す。
     ///
     /// ハンドルの再取得は wasm 内で完結しない。`FileStore::new` は
     /// `navigator.storage.getDirectory()` から `createSyncAccessHandle()` まで
     /// すべて `await` を要し、`run_loop` は thread ごとブロックしているため
     /// Promise が解決しない。したがって復帰は worker の作り直しに委ねる。
-    /// `ERROR_STORE_LOST` は `FATAL_FROM` 以上であり、JavaScript 側が
+    /// `CommandError::FileStore` は `is_serious()` が真であり、JavaScript 側が
     /// `restart()` する。新しい worker の `App::init` が開き直す。
     ///
     /// 直前の `save` が成功した時点までは残る。`FileStore` は log ベースで
@@ -285,10 +284,7 @@ impl Handler {
             }
             Err(e) => {
                 self.store_failures = 0;
-                vec![Command::Error {
-                    code:    ERROR_STORE_LOST,
-                    message: format!("file store save failed: {e}"),
-                }]
+                vec![Command::Error { error: CommandError::FileStore(e) }]
             }
         }
     }

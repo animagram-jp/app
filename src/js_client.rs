@@ -1,15 +1,18 @@
-use alloc::{string::String, vec::Vec};
+use alloc::{
+    string::{String, ToString},
+    vec::Vec,
+};
 use core::{
     clone::Clone,
     cmp::{Eq, PartialEq},
     default::Default,
-    fmt::Debug,
+    fmt::{self, Debug, Display, Formatter},
     marker::Copy,
     option::Option::{self, None, Some},
     primitive::{bool, f32, f64, i32, u8, u16, u32},
 };
 
-use crate::arena::Encoder;
+use crate::{arena::Encoder, file_store::FileStoreError};
 
 // === send operation ===
 //
@@ -52,29 +55,58 @@ pub const OPERATION_FRAME_READY: u8 = 17;
 
 pub const OPERATION_ERROR: u8 = 18;
 
-/// Command::Error, init.js ERROR_CODES
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub struct ErrorCode(pub u8);
+/// `Command::Error` が運ぶ異常の内容。発生源ごとに variant を持つ。
+///
+/// 新しい発生源を追加するときはここに variant を足す。`is_serious` /
+/// `wire_code` の match が非網羅になり、対応漏れはコンパイルエラーで
+/// 検出される — 空いている番号を探して定数を足す旧 `ErrorCode` 方式とは
+/// 違い、対応を暗黙のままにできない。
+#[derive(Debug)]
+pub enum CommandError {
+    /// イベントフレームのデコードに失敗した。1 フレーム捨てれば済む。
+    Decode,
+    /// コマンドリングが満杯でフレームを捨てた。画面が実際の状態からずれる。
+    CommandOverflow,
+    /// `#[panic_handler]` が捕捉した panic。
+    Panic { location: String, message: String },
+    /// `FileStore` に起因する異常。detail は `FileStoreError` 自身が運ぶ。
+    FileStore(FileStoreError),
+}
 
-/// これ以上の番号は再起動を要する。
-pub const FATAL_FROM: u8 = 128;
+impl Display for CommandError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
 
-/// イベントフレームのデコードに失敗した。1 フレーム捨てれば済む。
-pub const ERROR_DECODE: ErrorCode = ErrorCode(1);
-/// コマンドリングが満杯でフレームを捨てた。画面が実際の状態からずれる。
-pub const ERROR_COMMAND_OVERFLOW: ErrorCode = ErrorCode(2);
+impl From<FileStoreError> for CommandError {
+    fn from(error: FileStoreError) -> Self {
+        CommandError::FileStore(error)
+    }
+}
 
-pub const ERROR_PANIC: ErrorCode = ErrorCode(128);
-pub const ERROR_STORE_LOST: ErrorCode = ErrorCode(129);
-
-impl ErrorCode {
+impl CommandError {
     /// ```
-    /// # use app::js_client::{ERROR_DECODE, ERROR_PANIC};
-    /// assert!(!ERROR_DECODE.is_fatal());
-    /// assert!(ERROR_PANIC.is_fatal());
+    /// # use app::js_client::CommandError;
+    /// assert!(!CommandError::Decode.is_serious());
+    /// assert!(CommandError::Panic { location: "".into(), message: "".into() }.is_serious());
     /// ```
-    pub fn is_fatal(self) -> bool {
-        self.0 >= FATAL_FROM
+    pub fn is_serious(&self) -> bool {
+        match self {
+            CommandError::Decode | CommandError::CommandOverflow => false,
+            CommandError::Panic { .. } | CommandError::FileStore(_) => true,
+        }
+    }
+
+    /// JavaScript へ渡す固定の識別子。`distribution/init.js` の
+    /// `ERROR_NAMES` と対応を保つ。
+    pub(crate) fn wire_code(&self) -> u8 {
+        match self {
+            CommandError::Decode => 1,
+            CommandError::CommandOverflow => 2,
+            CommandError::Panic { .. } => 3,
+            CommandError::FileStore(_) => 4,
+        }
     }
 }
 
@@ -145,10 +177,10 @@ pub enum Command {
     },
     /// トリプルバッファへ新しいフレームを公開した。
     FrameReady,
-    /// 回復不能な異常を報告する。JavaScript 側は worker を作り直す。
+    /// 異常を報告する。`error.is_serious()` なら JavaScript 側は worker を
+    /// 作り直す。
     Error {
-        code:    ErrorCode,
-        message: String,
+        error: CommandError,
     },
 }
 
@@ -250,12 +282,19 @@ pub fn encode_command(commands: &mut Vec<u8>, command: &Command) {
         Command::FrameReady => {
             encoder.u8(OPERATION_FRAME_READY);
         }
-        Command::Error { code, ref message } => {
-            encoder.u8(OPERATION_ERROR);
-            encoder.u8(code.0);
-            encoder.str(message);
-        }
+        Command::Error { ref error } => encode_error(&mut encoder, error, &error.to_string()),
     }
+}
+
+/// `Command::Error` 1 件をバイト列へ追記する。`encode_command` の
+/// `Error` 腕と `arena::report_error` の両方から呼ぶ — `report_error` は
+/// 固定長スロットに収めるため `message` を事前に切り詰めて渡す必要があり、
+/// `error.to_string()` を直接埋め込む単純な腕にできないためである。
+pub(crate) fn encode_error(encoder: &mut Encoder, error: &CommandError, message: &str) {
+    encoder.u8(OPERATION_ERROR);
+    encoder.u8(error.is_serious() as u8);
+    encoder.u8(error.wire_code());
+    encoder.str(message);
 }
 
 // ============================================================

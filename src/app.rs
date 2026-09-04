@@ -1,4 +1,4 @@
-use alloc::{collections::VecDeque, string::ToString, vec, vec::Vec};
+use alloc::{collections::VecDeque, vec, vec::Vec};
 use core::{
     default::Default,
     iter::Extend,
@@ -13,7 +13,7 @@ use crate::{
     arena::{APP, ARENA, COMMAND_CAPACITY, EVENT_CAPACITY, RUNNING, emit},
     event::{Event, Handler, decode_event},
     js_client::{
-        Command, ERROR_DECODE, EventType, Thresholds, TouchTracker, detect_device, encode_command,
+        Command, CommandError, EventType, Thresholds, TouchTracker, detect_device, encode_command,
     },
 };
 
@@ -134,13 +134,7 @@ impl App {
         // デコードに失敗したフレームは捨てる。1 フレーム落ちるだけで
         // 復旧できるため、報告はするが再起動は求めない。
         let Some(event) = decode_event(frame) else {
-            encode_command(
-                &mut self.commands,
-                &Command::Error {
-                    code:    ERROR_DECODE,
-                    message: "event frame is malformed".to_string(),
-                },
-            );
+            encode_command(&mut self.commands, &Command::Error { error: CommandError::Decode });
             return;
         };
 

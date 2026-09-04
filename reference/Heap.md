@@ -64,7 +64,7 @@ Wasm からの要求は `OPERATION_*` としてコマンドリングへ出す。
 閾値は操作ごとに分けずひとつに揃えてある。
 失敗しても未保存の差分は `FileStore` 側に残るため、再試行でデータは
 失われない。それでも駄目ならハンドルの失効とみなし、
-`ERROR_STORE_LOST` (129, `FATAL_FROM` 以上) を送る。
+`Command::Error { error: CommandError::FileStore(e) }` (`is_serious()` が真) を送る。
 
 **復帰は wasm 内で完結しない。** 再取得は必ず `FileStore::new` を通り、
 `getDirectory()` → `getFileHandle()` → `createSyncAccessHandle()` の

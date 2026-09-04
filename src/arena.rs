@@ -30,7 +30,7 @@ use wasm_bindgen::prelude::wasm_bindgen;
 
 use crate::{
     app::App,
-    js_client::{Command, ERROR_COMMAND_OVERFLOW, ErrorCode, dom, encode_command},
+    js_client::{CommandError, dom, encode_error},
 };
 
 // ============================================================
@@ -348,7 +348,7 @@ pub fn poll() {
         if !commands.is_empty() && !emit(commands) {
             // リングが満杯でコマンドを落とした。画面が実際の状態から
             // ずれるため、黙って続けず JavaScript へ報告する。
-            report_error(ERROR_COMMAND_OVERFLOW, "command ring is full");
+            report_error(CommandError::CommandOverflow);
         }
     }
 }
@@ -407,27 +407,29 @@ pub fn emit(frame: &[u8]) -> bool {
 /// リングが満杯の場合は何もしない。ここで再帰的に報告しても同じ理由で
 /// 失敗するだけである。JavaScript 側は worker の `error` イベントでも
 /// 再起動できるため、報告の取りこぼしは復旧を妨げない。
-pub fn report_error(code: ErrorCode, message: &str) {
+pub fn report_error(error: CommandError) {
     // 1 スロットに収める。panic のメッセージは長さに上限が無く、
     // 溢れると `ring_push` に弾かれて報告そのものが消える。
-    // `[operation:u8][code:u8][length:u32]` と長さ前置語の分を引く。
-    const OVERHEAD: usize = LENGTH_PREFIX + 1 + 1 + 4;
+    // `[operation:u8][serious:u8][code:u8][length:u32]` と長さ前置語の分を引く。
+    const OVERHEAD: usize = LENGTH_PREFIX + 1 + 1 + 1 + 4;
     let limit = COMMAND_SLOT - OVERHEAD;
 
-    let message = if message.len() <= limit {
-        message
+    let full_message = error.to_string();
+    let message = if full_message.len() <= limit {
+        &full_message[..]
     } else {
         // UTF-8 の境界で切る。`split_at` は境界以外で panic するため、
         // 手前の境界まで下がる。panic hook から呼ばれるので再帰は禁物。
         let mut end = limit;
-        while end > 0 && !message.is_char_boundary(end) {
+        while end > 0 && !full_message.is_char_boundary(end) {
             end -= 1;
         }
-        &message[..end]
+        &full_message[..end]
     };
 
     let mut frame = Vec::with_capacity(message.len() + OVERHEAD);
-    encode_command(&mut frame, &Command::Error { code, message: message.to_string() });
+    let mut encoder = Encoder::new(&mut frame);
+    encode_error(&mut encoder, &error, message);
     let _ = emit(&frame);
 }
 
