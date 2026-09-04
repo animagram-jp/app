@@ -3435,29 +3435,6 @@ pub enum Weapon {
 }
 
 impl Weapon {
-    // pub fn label(&self, lang: Lang) -> &'static &str {
-    //     match (self, lang) {
-    //         (Self::Name,            Lang::En(_)) => "Weapon",
-    //         (Self::Name,            Lang::Ja) => "武器",
-    //         (Self::Regular,         Lang::En(_)) => "Regular",
-    //         (Self::Regular,         Lang::Ja) => "レギュラー",
-    //         (Self::Hard,            Lang::En(_)) => "Hard",
-    //         (Self::Hard,            Lang::Ja) => "ハード",
-    //         (Self::Extreme,         Lang::En(_)) => "Extreme",
-    //         (Self::Extreme,         Lang::Ja) => "イクストリーム",
-    //         (Self::Damage,          Lang::En(_)) => "Damage",
-    //         (Self::Damage,          Lang::Ja) => "ダメージ",
-    //         (Self::Range,           Lang::En(_)) => "Range",
-    //         (Self::Range,           Lang::Ja) => "射程",
-    //         (Self::AttacksPerRound, Lang::En(_)) => "Attacks",
-    //         (Self::AttacksPerRound, Lang::Ja) => "攻撃回数",
-    //         (Self::Ammunition,      Lang::En(_)) => "Ammo",
-    //         (Self::Ammunition,      Lang::Ja) => "装弾数",
-    //         (Self::Malfunction,     Lang::En(_)) => "Malfunction",
-    //         (Self::Malfunction,     Lang::Ja) => "故障",
-    //     }
-    // }
-
     pub fn label(&self, lang: Lang) -> &str {
         match (self, lang) {
             (Self::BowAndArrows, Lang::En(_)) => "Bow and Arrows",

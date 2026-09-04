@@ -59,18 +59,6 @@ impl App {
         };
     }
 
-    /// 終了処理のコマンド列を生成する。
-    ///
-    /// app repository の `App::close` は `Handler::close` を呼ぶだけで
-    /// 戻り値を持たない。ここでは `Handler::close` が返すコマンド列を
-    /// `commands` へ書き出し、JavaScript 側が `commands` で取り出す。
-    pub fn close(&mut self) {
-        self.commands.clear();
-        for command in &self.handler.close() {
-            encode_command(&mut self.commands, command);
-        }
-    }
-
     /// process(Event) and FIFO queue command (layout `[event:u8][payload...]`)
     ///
     /// ```no_run

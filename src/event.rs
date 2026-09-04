@@ -46,9 +46,7 @@ const RETRY_LIMIT: u8 = 3;
 // event 番号は JavaScript 側 (init.js の send) と対応。
 // 値を追加/変更する際は両方を揃えて更新する。
 //
-// app repository では `CanvasEvent::decode` が `JsValue` から
-// `get_js_str` / `get_js_f64` でフィールドを引く。ここではバイト列を
-// 前から順に読むため、フィールドの順序が protocol の一部になる。
+// バイト列を前から順に読むため、フィールドの順序が protocol の一部になる。
 
 /// pointer / key / input / change / focus など DOM 由来のイベント。
 pub const EVENT_CANVAS: u8 = 1;
@@ -56,10 +54,8 @@ pub const EVENT_CANVAS: u8 = 1;
 pub const EVENT_VIEWPORT: u8 = 2;
 /// `scroll` イベント。
 pub const EVENT_SCROLL: u8 = 3;
-// 4 と 5 は `FileStoreValue` / `FileStoreError` が使っていた。
-// `FileStore` を worker の init で直接開く形にしたため空いている。
-// 後続の番号は詰めない。`init.js` と揃える必要があり、既存の番号を
-// ずらすと双方を同時に直す羽目になるためである。
+// 4, 5 は空いている。番号は詰めない。`init.js` と揃える必要があり、
+// 既存の番号をずらすと双方を同時に直す羽目になるためである。
 /// 描画パラメータを設定する。
 pub const EVENT_SET_PARAMETER: u8 = 6;
 /// 1 フレーム描画してトリプルバッファへ公開する。
@@ -73,15 +69,12 @@ pub const EVENT_SHUTDOWN: u8 = 8;
 
 /// JavaScript から Wasm へ届く入力。
 ///
-/// app repository の `Event` に対応する。相違点は 3 つである。
-///
-/// 1. `Event::Ready` を持たない。`Handler::ready` が同期であり、
-///    起動を待つ状態を持たないためである。
-/// 2. `Viewport` / `Scroll` を持つ。app repository では `CanvasEvent` の
-///    `event_type` が `Resize` / `Scroll` を兼ねるが、payload の形が
-///    異なるため variant に分けた。
-/// 3. `SetParameter` / `Render` / `Shutdown` を持つ。アリーナ由来の
-///    3 つを同じ enum に統合したためである。
+/// `Ready` を持たない。`App::init` が `Handler::ready` を直接 `await` して
+/// から dispatch ループに入るため、起動完了を dispatch 側で待つ状態が要らない。
+/// `Viewport` / `Scroll` は `Canvas` の `event_type` としても表現できるが、
+/// payload の形が異なるため別 variant に分けてある。`SetParameter` /
+/// `Render` / `Shutdown` はアリーナ由来のイベントを同じ enum に統合した
+/// ものである。
 pub enum Event {
     /// DOM 由来のイベント。
     Canvas(CanvasEvent),
@@ -101,8 +94,7 @@ pub enum Event {
 
 /// JavaScript から届いた 1 イベントフレームを解釈する。壊れていれば None。
 ///
-/// app repository の `CanvasEvent::decode` は欠けたフィールドを
-/// `unwrap_or_default` で補うが、ここでは長さが足りなければ None を返し、
+/// 長さが足りなければ欠けたフィールドを補わず None を返し、
 /// `App::process` がそのフレームを捨てる。
 ///
 /// ```
@@ -146,21 +138,8 @@ pub fn decode_event(frame: &[u8]) -> Option<Event> {
 // ============================================================
 // event handler
 // ============================================================
-//
-// 以下は app repository の `src/event.rs` に既にある項目である。
-// signature のみを置き、中身は省略する。取り込み時にはこれらを削除し、
-// 既存の定義をそのまま使う。
-//
-// 中身が変わるのは 2 つである。
-//
-// - `Handler::ready` が `async fn` から同期の関数になる。
-// - `Handler::close` がコマンド列を返す。
-//
-// 加えて `process_file_store` / `process_viewport` / `process_scroll` の
-// 3 つを新設する。
 
-/// キャラクターシートの表示状態。中身は app repository の
-/// `CharacterSheet` と同じ。
+/// キャラクターシートの表示状態。
 pub enum CharacterSheet {
     /// 閲覧のみ。
     Immutable,
@@ -168,7 +147,7 @@ pub enum CharacterSheet {
     Editable,
 }
 
-/// 表示中のダイアログ。中身は app repository の `Dialog` と同じ。
+/// 表示中のダイアログ。
 pub enum Dialog {
     None,
     Drawer,                          // #drawer
@@ -176,20 +155,18 @@ pub enum Dialog {
     Input { step: u8, value: u32 },  // #main_modal 入力UI表示状態
 }
 
-/// セッションログ。中身は app repository の `Log` と同じ。
+/// セッションログ。
 pub struct Log;
 
-/// 永続化する store の名前。中身は app repository の
-/// `CHARACTER_SCHEMA_NAME` と同じ。
+/// 永続化する store の名前。
 #[cfg(feature = "worker")]
 const CHARACTER_SCHEMA_NAME: &str = "characters";
 
 /// 画面状態を保持し、イベントをコマンド列へ変換する。
 ///
-/// フィールドは app repository の `Handler` と同じである。`characters` も
-/// `FileStore` をそのまま持つ。OPFS は `FileSystemSyncAccessHandle` という
-/// 同期ハンドルを返し、取得さえ済めば `get` / `set` / `save` は同期で
-/// 呼べるため、往復にする必要が無い。
+/// `characters` は `FileStore` をそのまま持つ。OPFS は
+/// `FileSystemSyncAccessHandle` という同期ハンドルを返し、取得さえ済めば
+/// `get` / `set` / `save` は同期で呼べるため、往復にする必要が無い。
 pub struct Handler {
     character_sheet: CharacterSheet,
     dialog:          Dialog,
@@ -210,7 +187,7 @@ pub struct Handler {
 impl Handler {
     /// viewport の寸法を受けて初期状態を作る。
     ///
-    /// app repository と同じく `async fn` である。`FileStore::new` は OPFS の
+    /// `async fn` である。`FileStore::new` は OPFS の
     /// ハンドル取得に `await` を要するが、`await` できるのはここだけで足りる。
     ///
     /// `run_loop` は `memory_atomic_wait32` で thread ごとブロックするため、
@@ -222,9 +199,8 @@ impl Handler {
     /// この形では扱えない。それらは JavaScript 側に置き、イベントリング
     /// 越しに `Event` として届ける。`FileStore` が例外なのは、OPFS が
     /// 同期ハンドルを返し、取得後は `run_loop` の中から直接呼べるためである。
-    /// 取得に失敗した場合は panic する。app repository の `Handler::ready` が
-    /// `unwrap_or_else(|e| panic!(..))` するのと同じ扱いである。panic は
-    /// `#[panic_handler]` が `Command::Error` として JavaScript へ送る。
+    /// 取得に失敗した場合は panic する。panic は `#[panic_handler]` が
+    /// `Command::Error` として JavaScript へ送る。
     pub async fn ready(_viewport_width: f64, _viewport_height: f64) -> Self {
         Self {
             character_sheet: CharacterSheet::Immutable,
@@ -244,10 +220,8 @@ impl Handler {
 
     /// 終了時のコマンド列を返す。
     ///
-    /// app repository の `Handler::close` は `FileStore::close` を呼ぶだけで
-    /// 戻り値を持たない。ここでは `FileStore` の呼び出しを
-    /// `Command::FileStoreSet` として送る必要があるため、コマンド列を返す。
-    ///
+    /// `Vec<Command>` を返すのは `App::dispatch` の戻り値の形に揃えるため
+    /// であり、現状は常に空を返す。
     pub fn close(&self) -> Vec<Command> {
         #[cfg(feature = "worker")]
         self.characters.close();
@@ -290,17 +264,11 @@ impl Handler {
     }
 
     /// viewport の寸法変更を処理する。
-    ///
-    /// app repository では `CanvasEvent` の `EventType::Resize` として
-    /// `process` が受けるが、payload の形が異なるため分けた。
     pub fn process_viewport(&mut self, _width: f64, _height: f64) -> (Vec<Event>, Vec<Command>) {
         (vec![], vec![])
     }
 
     /// `scroll` を処理する。
-    ///
-    /// app repository では `CanvasEvent` の `EventType::Scroll` として
-    /// `process` が受けるが、payload の形が異なるため分けた。
     pub fn process_scroll(
         &mut self,
         _id: &dom::Id,
@@ -310,12 +278,10 @@ impl Handler {
         (vec![], vec![])
     }
 
-    /// 起動直後の描画。中身は app repository の `initial_draw` と同じ。
+    /// 起動直後の描画。
     ///
     /// `body` の `hidden` を外して画面を見せる。`Handler::ready` の
     /// `await` で `FileStore` は取得済みであり、待つものが無い。
-    /// app repository は `attribute` を `String` で持つが、ここでは
-    /// `Name` の添字である。
     pub fn initial_draw(&self) -> (Vec<Event>, Vec<Command>) {
         let commands = vec![Command::RemoveAttribute {
             id:        dom::Id::new(&[(dom::Tag::Body, None)]),
@@ -324,11 +290,10 @@ impl Handler {
         (vec![], commands)
     }
 
-    /// DOM 由来のイベントを処理する。中身は app repository の `process` と同じ。
+    /// DOM 由来のイベントを処理する。
     ///
     /// header の 3 番目のボタンで、キャラクターシートの閲覧と編集を
-    /// 入れ替える。app repository が `id` を `Id::encode` で文字列に
-    /// するのに対し、ここでは `dom::Id` のまま持つ。
+    /// 入れ替える。
     pub fn process(
         &mut self,
         event: &CanvasEvent,
@@ -357,7 +322,7 @@ impl Handler {
         (vec![], commands)
     }
 
-    /// ジェスチャを処理する。中身は app repository の `process_gesture` と同じ。
+    /// ジェスチャを処理する。
     pub fn process_gesture(
         &mut self,
         _gesture: &Gesture,

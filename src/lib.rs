@@ -82,13 +82,3 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
 
     core::arch::wasm32::unreachable()
 }
-
-// === log ===
-
-// macro_rules! debug_log {
-//     ($($arg:tt)*) => {{
-//         web_sys::console::error_1(
-//             &wasm_bindgen::JsValue::from_str(&format!($($arg)*))
-//         );
-//     }};
-// }

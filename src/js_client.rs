@@ -59,8 +59,7 @@ pub const OPERATION_ERROR: u8 = 18;
 ///
 /// 新しい発生源を追加するときはここに variant を足す。`is_serious` /
 /// `wire_code` の match が非網羅になり、対応漏れはコンパイルエラーで
-/// 検出される — 空いている番号を探して定数を足す旧 `ErrorCode` 方式とは
-/// 違い、対応を暗黙のままにできない。
+/// 検出される。
 #[derive(Debug)]
 pub enum CommandError {
     /// イベントフレームのデコードに失敗した。1 フレーム捨てれば済む。
@@ -352,22 +351,7 @@ pub mod name {
     pub const FN_SHOW: Name = Name(6);
 }
 
-// ============================================================
-// 既存項目 (signature のみ)
-// ============================================================
-//
-// 以下は app repository の `src/js_client.rs` に既にある項目である。
-// 経路の検討に必要な signature のみを置き、中身は省略する。
-// 取り込み時にはこれらを削除し、既存の定義をそのまま使う。
-//
-// 中身が変わるのは 3 つだけである。
-//
-// - `EventType::decode_u8` / `KeyName::decode_u8` / `Tag::encode_u8` /
-//   `Tag::decode_u8` を追加する。文字列ではなく番号で受け渡すため。
-// - `CanvasEvent::decode` は `crate::event::decode_event` に統合する。
-// - `dom::Id` の直列化は `Encoder::id` / `Decoder::id` が担う。
-
-/// 入力装置の種別。中身は app repository の `Device` と同じ。
+/// 入力装置の種別。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Device {
     Touch,
@@ -1767,7 +1751,7 @@ pub mod dom {
         primitive::{u8, u32},
     };
 
-    /// element の tag。variant は app repository の `Tag` と同じ。
+    /// element の tag。
     #[derive(Debug, Clone, PartialEq)]
     pub enum Tag {
         Article,
@@ -1901,7 +1885,7 @@ pub mod dom {
         pub n:   Option<u32>,
     }
 
-    /// element id。中身は app repository の `Id` と同じ。
+    /// element id。
     #[derive(Debug, Clone, PartialEq)]
     pub struct Id(pub Vec<Segment>);
 
