@@ -71,14 +71,14 @@ impl Lang {
 fn panic(info: &core::panic::PanicInfo) -> ! {
     use alloc::format;
 
-    use crate::{arena::report_error, js_client::ERROR_PANIC};
+    use crate::{arena::report_error, js_client::CommandError};
 
     let location = match info.location() {
         Some(location) => format!("{}:{}", location.file(), location.line()),
         None => alloc::string::String::from("unknown"),
     };
 
-    report_error(ERROR_PANIC, &format!("panic at {location}: {}", info.message()));
+    report_error(CommandError::Panic { location, message: format!("{}", info.message()) });
 
     core::arch::wasm32::unreachable()
 }

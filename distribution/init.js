@@ -196,10 +196,11 @@ function execute(operation, d) {
             return;
         }
         case 18: { // Error
+            const serious = d.u8() !== 0;
             const code = d.u8();
             const message = d.string() ?? "";
-            console.error(`[wasm] ${ERROR_CODES[code] ?? code}:`, message);
-            if (code >= FATAL_FROM) restart();
+            console.error(`[wasm] ${ERROR_NAMES[code] ?? code}:`, message);
+            if (serious) restart();
             return;
         }
     }
@@ -435,20 +436,18 @@ const NAMES = [
 ];
 
 /**
- * 異常の種別。
+ * 異常の種別 (ログ表示用)。
  *
- * 添字が番号である。`js_client.rs` の `ERROR_*` と順序を揃える。
- * 0 は未使用。
+ * 添字が番号である。`js_client.rs` の `CommandError::wire_code` と揃える。
+ * 再起動を要するかどうかはこの番号からは判定しない — wasm 側が
+ * `Command::Error` の `serious` バイトとして明示的に送る。0 は未使用。
  */
-const ERROR_CODES = {
+const ERROR_NAMES = {
     1: "decode",
     2: "command-overflow",
-    128: "panic",
-    129: "store-lost",
+    3: "panic",
+    4: "file-store",
 };
-
-/** これ以上の番号は再起動を要する。`js_client.rs` の `FATAL_FROM` と揃える。 */
-const FATAL_FROM = 128;
 
 
 
