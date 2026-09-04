@@ -47,19 +47,61 @@ function withCoi(res) {
     });
 }
 
+const PRECACHE_URLS = new Set(PRECACHE.map((u) => new URL(u, self.location.href).href));
+
 self.addEventListener("fetch", (e) => {
-    if (e.request.method !== "GET") return;
+    const req = e.request;
+    if (req.method !== "GET") return;
+
+    const url = new URL(req.url);
+    if (url.origin !== self.location.origin) return;
+
+    // "./" は index.html のナビゲーションを指すのでnavigateもここに含める。
+    const isPrecached = PRECACHE_URLS.has(url.href) ||
+        (req.mode === "navigate" && PRECACHE_URLS.has(new URL("./", self.location.href).href));
+    if (!isPrecached) return;
+
+    if (req.mode === "navigate") {
+        e.respondWith(
+            fetch(req).then((rawRes) => {
+                const res = withCoi(rawRes);
+                const copy = res.clone();
+                e.waitUntil(caches.open(VERSION).then((c) => c.put(req, copy)));
+                return res;
+            }).catch(() => caches.match(req).then((r) => r ?? caches.match("./")))
+        );
+        return;
+    }
+
     e.respondWith(
-        fetch(e.request)
-        .then(res => {
-            if (res.type === "opaque") return res;
-            if (res.ok) {
-                const clone = res.clone();
-                caches.open(VERSION)
-                    .then(c => c.put(e.request, clone))
-                    .catch(err => console.warn(`sw: cache put failed for ${e.request.url}`, err));
-            }
-            return withCoi(res);
-        }).catch(() => caches.match(e.request).then(res => res && withCoi(res)))
+    caches.match(req).then((hit) => {
+      if (hit) return hit;
+      return fetch(req).then((rawRes) => {
+        const res = withCoi(rawRes);
+        if (res.ok) {
+          const copy = res.clone();
+          e.waitUntil(caches.open(VERSION).then((c) => c.put(req, copy)));
+        }
+        return res;
+      });
+    })
+  );
+});
+
+self.addEventListener("message", (e) => {
+    if (e.data?.type !== "PREFETCH") return;
+    const requester = e.source;
+    e.waitUntil(
+    caches.open(VERSION).then(async (c) => {
+        const list = e.data.urls ?? [];
+        let done = 0;
+        for (const u of list) {
+            try {
+                await c.add(u);
+            } catch (_) {}
+            done += 1;
+            requester?.postMessage({ type: "PREFETCH_PROGRESS", done, total: list.length });
+        }
+    })
     );
 });
