@@ -33,30 +33,6 @@ pub struct App {
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 impl App {
-    /// 非同期コンストラクタ。
-    ///
-    /// `Handler::ready(..).await` が `FileStore::new` を待つ。`await` が
-    /// 要るのはここだけで、以降 `get` / `set` / `save` は同期に呼べる。
-    ///
-    /// worker では `run_loop` に入る前にこれを済ませる。`run_loop` は
-    /// `memory_atomic_wait32` で thread ごとブロックし、その間 JavaScript の
-    /// イベントループが回らないため Promise が解決しないからである。
-    ///
-    /// 呼べるのは dedicated worker 上に限る。`FileStore::new` が要求する
-    /// `FileSystemSyncAccessHandle` は worker でしか取得できない。
-    ///
-    /// `App` を `static mut APP` へ格納する。`Result` を返さないのは、
-    /// `wasm_bindgen` の境界を越える誤り型が `JsValue` へ変換できる必要が
-    /// あり、`FileStoreError` にその変換が無いためである。panic は
-    /// `#[panic_handler]` が `Command::Error` として JavaScript へ送り、
-    /// worker が作り直される。起動時に store を開けない状態は続行できない
-    /// ので、これでよい。
-    ///
-    /// 戻り値を持たないのは `App` が `Clone` を持たず (`Handler` が
-    /// `FileStore` を抱える)、`APP` への格納と JavaScript への返却を
-    /// 両立できないためである。`poll` / `run_loop` は `APP` 越しに駆動する。
-    /// JavaScript 側 (`init.js` の `attach` / `worker.js`) はこの戻り値を
-    /// 使わず `await` するだけである。
     pub async fn init(pointer_coarse: bool, viewport_width: f64, viewport_height: f64) {
         let mut app = App {
             touch:      TouchTracker::default(),
@@ -67,15 +43,11 @@ impl App {
             parameter:  0,
         };
 
-        // 待つ状態が無いため `dispatch` を介さず直接呼ぶ。
         let (_events, commands) = app.handler.initial_draw();
         for command in &commands {
             encode_command(&mut app.commands, command);
         }
 
-        // `poll` / `run_loop` から取り出せるように commands を先に emit
-        // してから APP へ格納する。emit 後は commands を空にしておく
-        // (次の process が積む分と混ざらないようにする)。
         if !app.commands.is_empty() {
             emit(&app.commands);
             app.commands.clear();
