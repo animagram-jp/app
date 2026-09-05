@@ -23,27 +23,12 @@ html {
     overflow-x: hidden;
 }
 
-:root[data-theme="dark"] {
-    --rgb-ink: var(--rgb-white);
-    --rgb-border: var(--rgb-white);
-    --rgb-background: rgb(var(--rgb-black));
-    --rgb-emphasis: var(--rgb-accent-sky);
-    --rgb-emphasis-fill: rgb(var(--rgb-accent-blue));
-}
-
-:root[data-theme="light"] {
-    --rgb-ink: var(--rgb-black);
-    --rgb-background: var(--rgb-white);
-    --rgb-border: var(--rgb-black);
-    --rgb-emphasis: var(--rgb-accent-blue);
-    --rgb-emphasis-fill: var(--rgb-emphasis);
-}
-
 body {
-    min-height: 100dvh;
-    max-width: 100%;
-    overflow-x: hidden;
     font-family: var(--font-family-sans);
+    max-width: 100%;
+    min-height: 100dvh;
+    overflow-x: hidden;
+    padding: 0.25rem;
 }
 
 section {
@@ -54,8 +39,11 @@ body>header {
     padding-top: 0.5rem;
 }
 
-body>header,
-main {
+body>header, 
+body>section, 
+main, 
+aside, 
+body>footer {
     max-width: 60rem;
     margin: 0 auto;
 }
