@@ -74,15 +74,17 @@ input[inputmode="numeric"] {
     text-align: right;
 }
 
-output {
+[data-type="toast"] {
+    position: fixed;
     bottom: 1.5rem;
     right: 1.5rem;
     display: flex;
     flex-direction: column-reverse;
-    border: none;
+    gap: .75rem;
+    z-index: 100;
 }
 
-output article {
+[data-type="toast"] output {
     display: flex;
     align-items: baseline;
     border-radius: .375rem;
@@ -98,22 +100,23 @@ output article {
     translate: 1.5rem 0;
     transition: opacity .2s ease, translate .2s ease;
     pointer-events: none;
+    border: none;
 }
 
-output article.show {
+[data-type="toast"] output.show {
     opacity: 1;
     translate: 0 0;
     pointer-events: auto;
 }
 
-output article.hide {
+[data-type="toast"] output.hide {
     opacity: 0;
     translate: 1.5rem 0;
     transition-duration: .15s;
     pointer-events: none;
 }
 
-output article span { /* toast icon */
+[data-type="toast"] output span { /* toast icon */
     font-weight: 700;
     font-size: .8125rem;
     flex-shrink: 0;
@@ -121,15 +124,15 @@ output article span { /* toast icon */
     opacity: .7;
 }
 
-article.info {
+[data-type="toast"] output.info {
     background: rgb(var(--rgb-light-gray));
 }
 
-article.success {
+[data-type="toast"] output.success {
     background: rgb(var(--rgb-success));
 }
 
-article.warning {
+[data-type="toast"] output.warning {
     background: rgb(var(--rgb-accent-yellow));
 }
 
