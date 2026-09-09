@@ -241,20 +241,38 @@ function drain() {
     }
 }
 
+const toastCycles = new WeakMap();
+
+const cancelToastCycle = (el) => {
+    const cycle = toastCycles.get(el);
+    if (!cycle) return;
+    clearTimeout(cycle.timer);
+    cycle.controller.abort();
+};
+
 const jsFn = {
     show: (el) => {
-        el.classList.remove("hidden");
+        cancelToastCycle(el);
+        el.classList.remove("hidden", "hide");
         requestAnimationFrame(() => requestAnimationFrame(() => {
             el.classList.add("show");
-            setTimeout(() => {
-                el.classList.replace("show", "hide");
-                el.addEventListener("transitionend", () => el.classList.remove("hide"), { once: true });
-            }, 3000);
+            const timer = setTimeout(() => jsFn.hide(el), 3000);
+            toastCycles.set(el, { timer, controller: new AbortController() });
         }));
     },
     hide: (el) => {
+        cancelToastCycle(el);
+        const controller = new AbortController();
+        const finish = () => {
+            clearTimeout(fallback);
+            el.classList.replace("hide", "hidden");
+        };
         el.classList.replace("show", "hide");
-        el.addEventListener("transitionend", () => el.classList.remove("hide"), { once: true });
+        el.addEventListener("transitionend", finish, { once: true, signal: controller.signal });
+        // prefers-reduced-motion などで transition が一度も走らない場合の
+        // 保険。無いと transitionend が来ず要素が hide のまま固まる。
+        const fallback = setTimeout(finish, 250);
+        toastCycles.set(el, { timer: fallback, controller });
     },
 };
 
