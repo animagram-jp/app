@@ -35,6 +35,18 @@ const CONTROL_WRITE_OFFSET = 0;
 const CONTROL_READ_OFFSET = 64;
 const LENGTH_PREFIX = 4;
 
+// JavaScript -> Wasm
+const EVENT_RING = {
+    control: EVENT_CONTROL, payload: EVENT_PAYLOAD, slot: EVENT_SLOT, slotCount: EVENT_SLOT_COUNT,
+};
+// Wasm -> JavaScript
+const COMMAND_RING = {
+    control:   COMMAND_CONTROL,
+    payload:   COMMAND_PAYLOAD,
+    slot:      COMMAND_SLOT,
+    slotCount: COMMAND_SLOT_COUNT,
+};
+
 const THREAD = crossOriginIsolated ? "worker" : "main";
 
 // === arena state ===
@@ -69,20 +81,6 @@ const S = {
 let worker = null;
 let bound = false;
 start();
-
-// flag of retry of loading when fallback to THREAD === "main"
-const MAIN_RELOAD_KEY = "app:main-thread-reload-attempted";
-
-// one time retry
-async function tryRecoverToWorkerThread() {
-    if (sessionStorage.getItem(MAIN_RELOAD_KEY)) return false;
-    if (!("serviceWorker" in navigator)) return false;
-
-    sessionStorage.setItem(MAIN_RELOAD_KEY, "1");
-    await navigator.serviceWorker.ready.catch(() => {});
-    location.reload();
-    return true;
-}
 
 function start() {
     if (THREAD === "main") {
@@ -148,6 +146,70 @@ function restart() {
     restarting = false;
 }
 
+// === main thread ===
+
+// flag of retry of loading when fallback to THREAD === "main"
+const MAIN_RELOAD_KEY = "app:main-thread-reload-attempted";
+
+// one time retry
+async function tryRecoverToWorkerThread() {
+    if (sessionStorage.getItem(MAIN_RELOAD_KEY)) return false;
+    if (!("serviceWorker" in navigator)) return false;
+
+    sessionStorage.setItem(MAIN_RELOAD_KEY, "1");
+    await navigator.serviceWorker.ready.catch(() => {});
+    location.reload();
+    return true;
+}
+
+/**
+ * Boots Wasm right here when thread is "main".
+ *
+ * worker.js follows the same steps for the worker case.
+ *
+ * `App.init` awaits `FileStore::new`, which requires a dedicated worker
+ * (`FileSystemSyncAccessHandle` is only obtainable in a worker). So this
+ * path only works for a configuration without persistence. THREAD ===
+ * "main" is for when you only want to verify the arena layout and the
+ * command / event round trip.
+ */
+async function attach() {
+    const { default: init, App, arena_pointer, initialize, poll } =
+        await import("./app/app.js");
+    await init({ memory: S.memory });
+
+    S.exports = { arena_pointer, initialize, poll };
+    S.buffer = null;
+    initialize();
+    S.base = arena_pointer();
+
+    // On main thread nothing else drives Wasm, so run it on every send.
+    S.kick = () => { poll(); drain(); };
+
+    // `App.init` is async; without awaiting it, kick would run before
+    // initial_draw's commands are queued.
+    await App.init(
+        window.matchMedia("(pointer: coarse)").matches,
+        window.innerWidth,
+        window.innerHeight,
+    );
+    bind();
+    S.kick();
+}
+
+// === worker thread ===
+
+async function pump() {
+    for (;;) {
+        drain();
+        view();
+        const index = (S.base + COMMAND_RING.control) >> 2;
+        const write = Atomics.load(S.int32, index);
+        const result = Atomics.waitAsync(S.int32, index, write);
+        if (result.async) await result.value;
+    }
+}
+
 // === Excute(commands) ===
 
 /**
@@ -193,11 +255,7 @@ function execute(operation, d) {
 function drain() {
     view();
     for (;;) {
-        const length = ringPop(
-            S.int32, S.uint8, S.dataView,
-            S.base + COMMAND_CONTROL, S.base + COMMAND_PAYLOAD, COMMAND_SLOT, COMMAND_SLOT_COUNT,
-            S.commandScratch,
-        );
+        const length = ringPop(COMMAND_RING, S.commandScratch);
         if (length === 0) return;
         const d = new Decoder(S.commandScratch, 1, length);
         execute(S.commandScratch[0], d);
@@ -271,14 +329,9 @@ function send(e) {
  */
 function push(frame) {
     view();
-    const pushed = ringPush(
-        S.int32, S.uint8, S.dataView,
-        S.base + EVENT_CONTROL, S.base + EVENT_PAYLOAD, EVENT_SLOT, EVENT_SLOT_COUNT,
-        frame,
-    );
-    if (!pushed) return false;
+    if (!ringPush(EVENT_RING, frame)) return false;
 
-    Atomics.notify(S.int32, (S.base + EVENT_CONTROL) >> 2);
+    Atomics.notify(S.int32, (S.base + EVENT_RING.control) >> 2);
     S.kick();
     return true;
 }
@@ -325,24 +378,11 @@ function bind() {
     });
 }
 
-// listen function case thread == "worker"
-async function pump() {
-    for (;;) {
-        drain();
-        view();
-        const index = (S.base + COMMAND_CONTROL) >> 2;
-        const write = Atomics.load(S.int32, index);
-        const result = Atomics.waitAsync(S.int32, index, write);
-        if (result.async) await result.value;
-    }
-}
-
 // === event ===
 
 const EVENT_CANVAS = 1;
 const EVENT_RESIZE = 2;
 const EVENT_SCROLL = 3;
-/** `run_loop` を終了させる。 */
 const EVENT_SHUTDOWN = 8;
 
 /**
@@ -457,8 +497,8 @@ const FN_NAMES = [
 /**
  *  Error kind (for log). key == js_client.rs:CommandError::wire_code
  *
- *  再起動を要するかどうかはこの番号からは判定しない — wasm 側が
- *  `Command::Error` の `serious` バイトとして明示的に送る。0 は未使用。
+ *  Whether a restart is required is not decided by this code; wasm sends
+ *  it explicitly as the `serious` byte in `Command::Error`. 0 is unused.
  */
 const ERROR_NAMES = {
     1: "decode",
@@ -467,58 +507,20 @@ const ERROR_NAMES = {
     4: "file-store",
 };
 
-
-
-
 /**
- * thread が "main" の場合に Wasm をこの場で立ち上げる。
+ * Holds the destination and position while writing out a command.
  *
- * worker では worker.js が同じ手順を踏む。
- *
- * `App.init` は `FileStore::new` を await するため dedicated worker を要する
- * (`FileSystemSyncAccessHandle` が worker でしか取得できない)。したがって
- * この経路は永続化を伴わない構成でしか成立しない。THREAD === "main" を
- * 選べるのは、アリーナのレイアウトと command / event の往復だけを
- * 確かめたい場合である。
- */
-async function attach() {
-    const { default: init, App, arena_pointer, initialize, poll } =
-        await import("./app/app.js");
-    await init({ memory: S.memory });
-
-    S.exports = { arena_pointer, initialize, poll };
-    S.buffer = null;
-    initialize();
-    S.base = arena_pointer();
-
-    // main thread では Wasm を駆動する主体が居ないため、送信ごとに回す。
-    S.kick = () => { poll(); drain(); };
-
-    // `App.init` は async である。await しないと initial_draw の
-    // コマンドが積まれる前に kick が走る。
-    await App.init(
-        window.matchMedia("(pointer: coarse)").matches,
-        window.innerWidth,
-        window.innerHeight,
-    );
-    bind();
-    S.kick();
-}
-
-/**
- * コマンドを書き出す際の追記先と位置を保持する。
- *
- * `arena.rs` の `Encoder` と対称である。
+ * Mirrors `Encoder` in `arena.rs`.
  */
 class Encoder {
-    /** @param {Uint8Array} scratch - 書き込み先 */
+    /** @param {Uint8Array} scratch - write destination */
     constructor(scratch) {
         this.scratch = scratch;
         this.dataView = new DataView(scratch.buffer, scratch.byteOffset);
         this.position = 0;
     }
 
-    /** 書き終えた範囲を返す。 */
+    /** Returns the range written so far. */
     frame() { return this.scratch.subarray(0, this.position); }
 
     u8(value) { this.scratch[this.position++] = value; }
@@ -528,21 +530,21 @@ class Encoder {
     f32(value) { this.dataView.setFloat32(this.position, value, true); this.position += 4; }
     f64(value) { this.dataView.setFloat64(this.position, value, true); this.position += 8; }
 
-    /** 長さ前置付きで byte 列を追記する。 */
+    /** Appends a byte sequence, length-prefixed. */
     bytes(value) {
         this.u32(value.length);
         this.scratch.set(value, this.position);
         this.position += value.length;
     }
 
-    /** 長さ前置付きで文字列を UTF-8 として追記する。 */
+    /** Appends a string as UTF-8, length-prefixed. */
     str(value) { this.bytes(TEXT_ENCODER.encode(value)); }
 
     /**
-     * element id を `[count:u8]([tag:u8][number:u32])*` として追記する。
+     * Appends an element id as `[count:u8]([tag:u8][number:u32])*`.
      *
-     * `arena.rs` の `Encoder::id` / `Decoder::id` と同じ形式である。
-     * 連番が無いセグメントは番号に 0xFFFFFFFF を置く。
+     * Same format as `Encoder::id` / `Decoder::id` in `arena.rs`. A
+     * segment with no sequence number uses 0xFFFFFFFF.
      */
     id(value) {
         if (!value) { this.u8(0); return; }
@@ -559,15 +561,15 @@ class Encoder {
 }
 
 /**
- * イベントを読み出す際の位置を保持する。
+ * Holds the position while reading out an event.
  *
- * `arena.rs` の `Decoder` と対称である。範囲外を読んだ場合は undefined を返す。
+ * Mirrors `Decoder` in `arena.rs`. Reading past the end returns undefined.
  */
 class Decoder {
     /**
-     * @param {Uint8Array} scratch - 読み込み元
-     * @param {number}     start   - 読み始める位置
-     * @param {number}     end     - 読み終わる位置
+     * @param {Uint8Array} scratch - read source
+     * @param {number}     start   - position to start reading from
+     * @param {number}     end     - position to stop reading at
      */
     constructor(scratch, start, end) {
         this.scratch = scratch;
@@ -576,7 +578,7 @@ class Decoder {
         this.end = end;
     }
 
-    /** 現在位置から count byte 進められるか確かめる。 */
+    /** Checks whether `count` bytes can be advanced from the current position. */
     take(count) {
         if (this.position + count > this.end) return false;
         this.position += count;
@@ -590,14 +592,14 @@ class Decoder {
     f32() { return this.take(4) ? this.dataView.getFloat32(this.position - 4, true) : undefined; }
     f64() { return this.take(8) ? this.dataView.getFloat64(this.position - 8, true) : undefined; }
 
-    /** 長さ前置付きの byte 列を読む。 */
+    /** Reads a length-prefixed byte sequence. */
     bytes() {
         const length = this.u32();
         if (length === undefined || !this.take(length)) return undefined;
         return this.scratch.subarray(this.position - length, this.position);
     }
 
-    /** 長さ前置付きの文字列を UTF-8 として読む。 */
+    /** Reads a length-prefixed string as UTF-8. */
     string() {
         const bytes = this.bytes();
         return bytes === undefined ? undefined : TEXT_DECODER.decode(bytes);
@@ -612,10 +614,10 @@ const TEXT_DECODER = new TextDecoder();
 // ============================================================
 
 /**
- * buffer が差し替わっていれば typed array view を作り直して S を返す。
+ * Rebuilds the typed array views and returns S if the buffer changed.
  *
- * 非共有メモリは `memory.grow` で buffer が detach されるため、
- * 参照のたびに同一性を確認する。比較は 1 回のみである。
+ * Non-shared memory detaches `buffer` on `memory.grow`, so identity is
+ * checked on every reference. The comparison itself is a single check.
  *
  * @returns {object} S
  */
@@ -631,9 +633,9 @@ function view() {
 }
 
 /**
- * `Encoder::id` が書いた形式から element id を組み立てる。
+ * Rebuilds an element id from the format written by `Encoder::id`.
  *
- * `js_client.rs` の `dom::Id::encode` と同じ文字列を返す。
+ * Returns the same string as `dom::Id::encode` in `js_client.rs`.
  *
  * @param {Decoder} d
  * @returns {string} element id
@@ -651,69 +653,64 @@ function decodeId(d) {
 }
 
 /**
- * 単一書き手・単一読み手のリングへ 1 フレーム追加する。満杯なら false。
+ * Appends 1 frame to a single-writer, single-reader ring. False if full.
  *
- * payload の書き込みは非アトミックで良い。書き込みシーケンスの
- * `Atomics.store` が、それ以前の書き込みの可視性を読み手に対して保証する。
+ * Writing the payload need not be atomic; the `Atomics.store` of the
+ * write sequence guarantees visibility of the prior writes to the reader.
  *
- * @param {Int32Array} int32
- * @param {Uint8Array} uint8
- * @param {DataView}   dataView
- * @param {number}     control    - 制御ブロック位置
- * @param {number}     payload    - スロット領域の開始位置
- * @param {number}     slot       - 1 スロットの byte 数
- * @param {number}     slotCount  - スロット数
- * @param {Uint8Array} source     - 書き込むフレーム
- * @returns {boolean} 追加できたかどうか
+ * @param {{control: number, payload: number, slot: number, slotCount: number}} ring
+ * @param {Uint8Array} source - frame to write
+ * @returns {boolean} whether it was appended
  */
-function ringPush(int32, uint8, dataView, control, payload, slot, slotCount, source) {
+function ringPush(ring, source) {
+    const { slot, slotCount } = ring;
     if (source.length + LENGTH_PREFIX > slot) throw new RangeError("frame too large");
 
+    const control = S.base + ring.control;
+    const payload = S.base + ring.payload;
     const writeIndex = control >> 2;
     const readIndex = (control + CONTROL_READ_OFFSET) >> 2;
 
-    const write = Atomics.load(int32, writeIndex) >>> 0;
-    const read = Atomics.load(int32, readIndex) >>> 0;
+    const write = Atomics.load(S.int32, writeIndex) >>> 0;
+    const read = Atomics.load(S.int32, readIndex) >>> 0;
     if (((write - read) >>> 0) >= slotCount) return false;
 
     const offset = payload + (write & (slotCount - 1)) * slot;
-    dataView.setUint32(offset, source.length, true);
-    uint8.set(source, offset + LENGTH_PREFIX);
+    S.dataView.setUint32(offset, source.length, true);
+    S.uint8.set(source, offset + LENGTH_PREFIX);
 
-    // コミット。ここで初めて読み手にスロットが見える。
-    Atomics.store(int32, writeIndex, (write + 1) | 0);
+    // Commit. Only now does the slot become visible to the reader.
+    Atomics.store(S.int32, writeIndex, (write + 1) | 0);
     return true;
 }
 
 /**
- * リング先頭のフレームを destination へ写して長さを返す。空なら 0。
+ * Copies the front frame of the ring into destination and returns its
+ * length. 0 if empty.
  *
- * @param {Int32Array} int32
- * @param {Uint8Array} uint8
- * @param {DataView}   dataView
- * @param {number}     control     - 制御ブロック位置
- * @param {number}     payload     - スロット領域の開始位置
- * @param {number}     slot        - 1 スロットの byte 数
- * @param {number}     slotCount   - スロット数
- * @param {Uint8Array} destination - 写し先
- * @returns {number} 写した byte 数
+ * @param {{control: number, payload: number, slot: number, slotCount: number}} ring
+ * @param {Uint8Array} destination - copy destination
+ * @returns {number} bytes copied
  */
-function ringPop(int32, uint8, dataView, control, payload, slot, slotCount, destination) {
+function ringPop(ring, destination) {
+    const { slot, slotCount } = ring;
+    const control = S.base + ring.control;
+    const payload = S.base + ring.payload;
     const writeIndex = control >> 2;
     const readIndex = (control + CONTROL_READ_OFFSET) >> 2;
 
-    const read = Atomics.load(int32, readIndex) >>> 0;
-    const write = Atomics.load(int32, writeIndex) >>> 0;
+    const read = Atomics.load(S.int32, readIndex) >>> 0;
+    const write = Atomics.load(S.int32, writeIndex) >>> 0;
     if (read === write) return 0;
 
     const offset = payload + (read & (slotCount - 1)) * slot;
-    // 長さ前置語が壊れていてもスロット外へは出ない。
-    const length = Math.min(dataView.getUint32(offset, true), slot - LENGTH_PREFIX);
-    destination.set(uint8.subarray(offset + LENGTH_PREFIX, offset + LENGTH_PREFIX + length));
+    // Even if the length prefix is corrupt, this stays inside the slot.
+    const length = Math.min(S.dataView.getUint32(offset, true), slot - LENGTH_PREFIX);
+    destination.set(S.uint8.subarray(offset + LENGTH_PREFIX, offset + LENGTH_PREFIX + length));
 
-    Atomics.store(int32, readIndex, (read + 1) | 0);
-    // 満杯で待っている書き手を起こす。
-    Atomics.notify(int32, readIndex);
+    Atomics.store(S.int32, readIndex, (read + 1) | 0);
+    // Wakes a writer that is waiting on a full ring.
+    Atomics.notify(S.int32, readIndex);
     return length;
 }
 
