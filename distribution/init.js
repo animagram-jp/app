@@ -29,18 +29,11 @@ const COMMAND_PAYLOAD = 262400; /** range start */
 const COMMAND_SLOT = 4096; /* bytes per slot */
 const COMMAND_SLOT_COUNT = 64;
 
-const CELL_STATE = 524544;
-const CELL_PAYLOAD = 524608; /** range start */
-const CELL_SIZE = 307200;/** 320 * 240 * 4 (RGBA) */
-const CELL_COUNT = 3; /** buffer for write, read, shared */
-const ARENA_SIZE = 1446208; /* bytes per slot */
+const ARENA_SIZE = 524544; /* bytes per slot */
 
 const CONTROL_WRITE_OFFSET = 0;
 const CONTROL_READ_OFFSET = 64;
 const LENGTH_PREFIX = 4;
-
-const CELL_INDEX_MASK = 0b11;
-const CELL_DIRTY = 0b100; /** exsist flag of unread frame */
 
 const THREAD = crossOriginIsolated ? "worker" : "main";
 
@@ -67,42 +60,20 @@ const S = {
     buffer: null,
     int32: null,
     uint8: null,
-    uint8Clamped: null,
     dataView: null,
-    cellFront: 1,  // new: write back=0, read front=1, shared 2
     eventScratch: new Uint8Array(EVENT_SLOT),
     commandScratch: new Uint8Array(COMMAND_SLOT),
     kick: () => {},
-    onFrame: null,
 };
 
 let worker = null;
 let bound = false;
 start();
 
-/**
- * Entrypoint: start listening commands and events.
- */
-
-/**
- * Record flag of retry of loading when fallback to THREAD === "main"
- */
+// flag of retry of loading when fallback to THREAD === "main"
 const MAIN_RELOAD_KEY = "app:main-thread-reload-attempted";
 
-/**
- * main thread へ落ちる主な原因は、Service Worker がまだこのページを
- * 制御していない (初回アクセス、または登録が今回のナビゲーションに
- * 間に合わなかった) ことによる COOP/COEP 欠如である
- * (`distribution/sw.js` の `withCoi` を参照)。Service Worker の登録
- * (またはその完了) を待ってから 1 回だけ reload すれば、次の
- * ナビゲーションでは制御下に入り `crossOriginIsolated` が true になる
- * 見込みがある。
- *
- * 1 回で復帰しない場合 (COOP/COEP を出せない配信、あるいは
- * `serviceWorker` 自体が使えないブラウザなど) は無限リロードを避けて
- * `attach()` に委ねる。`Handler::ready` が `FileStore::new` を要求する
- * 構成では、これは起動失敗として現れる (CONTRIBUTING.md の Todo 参照)。
- */
+// one time retry
 async function tryRecoverToWorkerThread() {
     if (sessionStorage.getItem(MAIN_RELOAD_KEY)) return false;
     if (!("serviceWorker" in navigator)) return false;
@@ -164,7 +135,6 @@ function restart() {
     worker?.terminate();
     worker = null;
     S.buffer = null;
-    S.cellFront = 1;
 
     if (THREAD === "main") {
         S.exports?.initialize();
@@ -187,15 +157,8 @@ function restart() {
  *  @param {Decoder} d         - payload
  */
 function execute(operation, d) {
-    // FrameReady / Error は要素を持たない。id を読む前に分岐する。
     switch (operation) {
-        case 17: { // FrameReady
-            S.cellFront = cellAcquire(S.int32, (S.base + CELL_STATE) >> 2, S.cellFront);
-            const offset = S.base + CELL_PAYLOAD + S.cellFront * CELL_SIZE;
-            S.onFrame?.(S.uint8Clamped.subarray(offset, offset + CELL_SIZE));
-            return;
-        }
-        case 18: { // Error
+        case 18: {
             const serious = d.u8() !== 0;
             const code = d.u8();
             const message = d.string() ?? "";
@@ -210,20 +173,20 @@ function execute(operation, d) {
     switch (operation) {
         case  1: el.textContent = d.string() ?? ""; break;
         case  2: el.value = d.string() ?? ""; break;
-        case  3: el.setAttribute(NAMES[d.u16()], d.string() ?? ""); break;
-        case  4: el.removeAttribute(NAMES[d.u16()]); break;
-        case  5: el.classList.add(NAMES[d.u16()]); break;
-        case  6: el.classList.remove(NAMES[d.u16()]); break;
+        case  3: el.setAttribute(ATTRIBUTES[d.u16()], d.string() ?? ""); break;
+        case  4: el.removeAttribute(ATTRIBUTES[d.u16()]); break;
+        case  5: el.classList.add(CLASS_NAMES[d.u16()]); break;
+        case  6: el.classList.remove(CLASS_NAMES[d.u16()]); break;
         case  7: el.style.width = d.u32() + "px"; break;
         case  8: el.style.height = d.u32() + "px"; break;
         case  9: el.style.zIndex = d.i32(); break;
         case 10: el.style.background = d.string(); break;
         case 11: el.style.translate = `${d.f32()}px ${d.f32()}px`; break;
-        case 12: el.style.cursor = NAMES[d.u16()] ?? ""; break;
+        case 12: el.style.cursor = CURSOR_VALUES[d.u16()] ?? ""; break;
         case 13: el.showModal(); break;
         case 14: el.close(); break;
         case 15: el.focus(); break;
-        case 16: jsFn[NAMES[d.u16()]]?.(el); break;
+        case 16: jsFn[FN_NAMES[d.u16()]]?.(el); break;
     }
 }
 
@@ -269,8 +232,6 @@ const jsFn = {
         };
         el.classList.replace("show", "hide");
         el.addEventListener("transitionend", finish, { once: true, signal: controller.signal });
-        // prefers-reduced-motion などで transition が一度も走らない場合の
-        // 保険。無いと transitionend が来ず要素が hide のまま固まる。
         const fallback = setTimeout(finish, 250);
         toastCycles.set(el, { timer: fallback, controller });
     },
@@ -290,9 +251,9 @@ function send(e) {
 
     const encoder = new Encoder(S.eventScratch);
     encoder.u8(EVENT_CANVAS);
-    encoder.u8(EVENT_TYPES.indexOf(e.type) + 1);
+    encoder.u8(Math.max(EVENT_TYPES.indexOf(e.type), 0));
     encoder.id(e.target.id ?? "");
-    encoder.u8(KEY_NAMES.indexOf(e.key) + 1);
+    encoder.u8(Math.max(KEY_NAMES.indexOf(e.key), 0));
     encoder.str(e.target.value ?? "");
     encoder.f32(e.clientX ?? 0);
     encoder.f32(e.clientY ?? 0);
@@ -305,8 +266,8 @@ function send(e) {
 /**
  * Write 1 event and kick App.
  *
- * @param {Uint8Array} frame
- * @returns {boolean} 送れたかどうか
+ * @param {Uint8Array} - frame
+ * @returns {boolean} - result
  */
 function push(frame) {
     view();
@@ -324,9 +285,6 @@ function push(frame) {
 
 /** Start listening Event to send. */
 function bind() {
-    // 再起動時にも呼ばれる。listener は Wasm instance ではなく document に
-    // 付くため、worker を作り直しても残る。二重登録すると 1 イベントが
-    // 2 回送られるため、一度だけ登録する。
     if (bound) return;
     bound = true;
 
@@ -343,7 +301,7 @@ function bind() {
         clearTimeout(resizeTimer);
         resizeTimer = setTimeout(() => {
             const encoder = new Encoder(S.eventScratch);
-            encoder.u8(EVENT_VIEWPORT);
+            encoder.u8(EVENT_RESIZE);
             encoder.f32(window.innerWidth);
             encoder.f32(window.innerHeight);
             push(encoder.frame());
@@ -367,11 +325,7 @@ function bind() {
     });
 }
 
-/**
- * thread が "worker" の場合の受信ループ。
- *
- * main thread では `Atomics.wait` が使えないため `Atomics.waitAsync` を用いる。
- */
+// listen function case thread == "worker"
 async function pump() {
     for (;;) {
         drain();
@@ -383,82 +337,128 @@ async function pump() {
     }
 }
 
-// ============================================================
-// send operation
-// ============================================================
-//
-// operation 番号は Rust 側 (js_client.rs の Command) と対応。
-// 値を追加/変更する際は両方を揃えて更新する。
-// 番号は `execute` の switch 分岐に直接現れるため、定数は置かない。
-// app repository の init.js と同じ形である。
+// === event ===
 
-// ============================================================
-// receive (event frame)
-// ============================================================
-
-/** DOM 由来のイベント。 */
 const EVENT_CANVAS = 1;
-/** `resize` イベント。 */
-const EVENT_VIEWPORT = 2;
-/** `scroll` イベント。 */
+const EVENT_RESIZE = 2;
 const EVENT_SCROLL = 3;
-// 4 と 5 は FileStore の往復が使っていた。Wasm 側が worker の init で
-// OPFS を直接開く形にしたため空いている。番号は詰めない。
-/** 描画パラメータを設定する。 */
-const EVENT_SET_PARAMETER = 6;
-/** 1 フレーム描画してトリプルバッファへ公開する。 */
-const EVENT_RENDER = 7;
 /** `run_loop` を終了させる。 */
 const EVENT_SHUTDOWN = 8;
 
 /**
- * `EventType::decode_u8` の番号に対応する DOM event type。
- *
- * 添字 + 1 が番号である。`js_client.rs` の `EventType::decode_u8` と順序を揃える。
+ *  DOM event type. index == js_client.rs:EventType::decode_u8
  */
 const EVENT_TYPES = [
-    "change", "click", "contextmenu", "drop", "focusin", "focusout",
-    "input", "keydown", "pointercancel", "pointerdown", "pointermove",
-    "pointerup", "resize", "scroll", "submit",
+    null,
+    "change",
+    "click",
+    "contextmenu",
+    "drop",
+    "focusin",
+    "focusout",
+    "input",
+    "keydown",
+    "pointercancel",
+    "pointerdown",
+    "pointermove",
+    "pointerup",
+    "resize",
+    "scroll",
+    "submit",
 ];
 
 /**
- * `KeyName::decode_u8` の番号に対応するキー名。
- *
- * 添字 + 1 が番号である。`js_client.rs` の `KeyName::decode_u8` と順序を揃える。
+ *  Key name. index == js_client.rs:KeyName::decode_u8
  */
 const KEY_NAMES = [
-    "ArrowDown", "ArrowLeft", "ArrowRight", "ArrowUp",
-    "Backspace", "Enter", "Escape", "Tab",
+    null,
+    "ArrowDown",
+    "ArrowLeft",
+    "ArrowRight",
+    "ArrowUp",
+    "Backspace",
+    "Enter",
+    "Escape",
+    "Tab",
 ];
 
 /**
- * `Tag::encode_u8` の番号に対応する tag 名。
- *
- * 添字が番号である。`js_client.rs` の `dom::Tag::encode_u8` と順序を揃える。
+ *  Tag name. index == js_client.rs:dom::Tag::encode_u8
  */
 const TAGS = [
-    "", "article", "body", "button", "dd", "dl", "drawer", "dt",
-    "fieldset", "footer", "form", "h1", "h2", "h3", "header", "input",
-    "li", "main", "modal", "ol", "output", "p", "section", "select",
-    "span", "table", "tbody", "td", "textarea", "th", "thead", "tr", "ul",
+    "",
+    "article",
+    "body",
+    "button",
+    "dd",
+    "dl",
+    "drawer",
+    "dt",
+    "fieldset",
+    "footer",
+    "form",
+    "h1",
+    "h2",
+    "h3",
+    "header",
+    "input",
+    "li",
+    "main",
+    "modal",
+    "ol",
+    "output",
+    "p",
+    "section",
+    "select",
+    "span",
+    "table",
+    "tbody",
+    "td",
+    "textarea",
+    "th",
+    "thead",
+    "tr",
+    "ul",
 ];
 
 /**
- * `Name` の番号に対応する静的文字列。
- *
- * 添字が番号である。`js_client.rs` の `name` モジュールと順序を揃える。
+ *  HTML attribute name. index == js_client.rs:Attribute
  */
-const NAMES = [
-    "active", "default", "disabled", "grab", "hidden", "hide", "show",
+const ATTRIBUTES = [
+    "disabled",
+    "hidden",
 ];
 
 /**
- * 異常の種別 (ログ表示用)。
+ *  CSS class name. index == js_client.rs:ClassName
+ */
+const CLASS_NAMES = [
+    "hide",
+    "show",
+    "hidden",
+];
+
+/**
+ *  CSS `cursor` value. index == js_client.rs:CursorValue
+ */
+const CURSOR_VALUES = [
+    "default",
+    "grab",
+];
+
+/**
+ *  jsFn key. index == js_client.rs:FnName
+ */
+const FN_NAMES = [
+    "hide",
+    "show",
+];
+
+/**
+ *  Error kind (for log). key == js_client.rs:CommandError::wire_code
  *
- * 添字が番号である。`js_client.rs` の `CommandError::wire_code` と揃える。
- * 再起動を要するかどうかはこの番号からは判定しない — wasm 側が
- * `Command::Error` の `serious` バイトとして明示的に送る。0 は未使用。
+ *  再起動を要するかどうかはこの番号からは判定しない — wasm 側が
+ *  `Command::Error` の `serious` バイトとして明示的に送る。0 は未使用。
  */
 const ERROR_NAMES = {
     1: "decode",
@@ -490,7 +490,6 @@ async function attach() {
     S.buffer = null;
     initialize();
     S.base = arena_pointer();
-    S.cellFront = 1;
 
     // main thread では Wasm を駆動する主体が居ないため、送信ごとに回す。
     S.kick = () => { poll(); drain(); };
@@ -626,7 +625,6 @@ function view() {
         S.buffer = buffer;
         S.int32 = new Int32Array(buffer);
         S.uint8 = new Uint8Array(buffer);
-        S.uint8Clamped = new Uint8ClampedArray(buffer);
         S.dataView = new DataView(buffer);
     }
     return S;
@@ -719,36 +717,3 @@ function ringPop(int32, uint8, dataView, control, payload, slot, slotCount, dest
     return length;
 }
 
-/**
- * 公開されたバッファを受け取り、次に読むバッファの添字を返す。
- *
- * `exchange` 1 回のみでリトライを持たない。未読フレームが無ければ
- * 現在の添字を維持する。
- *
- * @param {Int32Array} int32
- * @param {number}     stateIndex - 共有状態語の Int32Array 上の添字
- * @param {number}     front      - 現在読んでいるバッファの添字
- * @returns {number} 次に読むバッファの添字
- */
-function cellAcquire(int32, stateIndex, front) {
-    const word = Atomics.load(int32, stateIndex) >>> 0;
-    if ((word & CELL_DIRTY) === 0) return front;
-    const previous = Atomics.exchange(int32, stateIndex, front) >>> 0;
-    return previous & CELL_INDEX_MASK;
-}
-
-/**
- * 書き終えたバッファを公開し、次に書くバッファの添字を返す。
- *
- * JavaScript 側が書き手になる場合に用いる。`arena.rs` の `cell_commit` と
- * 対称である。
- *
- * @param {Int32Array} int32
- * @param {number}     stateIndex - 共有状態語の Int32Array 上の添字
- * @param {number}     back       - 書き終えたバッファの添字
- * @returns {number} 次に書くバッファの添字
- */
-function cellCommit(int32, stateIndex, back) {
-    const previous = Atomics.exchange(int32, stateIndex, back | CELL_DIRTY) >>> 0;
-    return previous & CELL_INDEX_MASK;
-}

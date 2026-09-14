@@ -3,14 +3,14 @@ use core::{
     default::Default,
     iter::Extend,
     option::Option::{None, Some},
-    primitive::{bool, f64, u8, u32},
+    primitive::{bool, f64, u8},
 };
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::wasm_bindgen;
 
 use crate::{
-    arena::{APP, ARENA, COMMAND_CAPACITY, EVENT_CAPACITY, RUNNING, emit},
+    arena::{APP, COMMAND_CAPACITY, EVENT_CAPACITY, RUNNING, emit},
     event::{Event, Handler, decode_event},
     js_client::{
         Command, CommandError, EventType, Thresholds, TouchTracker, detect_device, encode_command,
@@ -28,7 +28,6 @@ pub struct App {
     events:     VecDeque<Event>,
     handler:    Handler,
     commands:   Vec<u8>,
-    parameter:  u32,
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
@@ -40,7 +39,6 @@ impl App {
             events:     VecDeque::with_capacity(EVENT_CAPACITY),
             handler:    Handler::ready(viewport_width, viewport_height).await,
             commands:   Vec::with_capacity(COMMAND_CAPACITY),
-            parameter:  0,
         };
 
         let (_events, commands) = app.handler.initial_draw();
@@ -72,21 +70,6 @@ impl App {
     /// // 空フレームはデコードに失敗し、Command::Error として報告される。
     /// app.process(&[]);
     /// assert_eq!(app.commands()[0], OPERATION_ERROR);
-    /// # }
-    /// ```
-    ///
-    /// ```no_run
-    /// # async fn example() {
-    /// # use app::app::App;
-    /// # use app::arena::APP;
-    /// # use app::event::EVENT_RENDER;
-    /// # use app::js_client::OPERATION_FRAME_READY;
-    /// App::init(false, 0.0, 0.0).await;
-    /// let app = unsafe { (*(&raw mut APP)).as_mut() }.unwrap();
-    /// app.clear();
-    /// app.process(&[EVENT_RENDER]);
-    /// // 描画して FrameReady まで届く。
-    /// assert_eq!(app.commands()[0], OPERATION_FRAME_READY);
     /// # }
     /// ```
     pub fn process(&mut self, frame: &[u8]) {
@@ -136,18 +119,8 @@ impl App {
                 }
             }
             Event::Gesture(gesture) => handler.process_gesture(&gesture, touch.active_state()),
-            Event::Viewport { width, height } => handler.process_viewport(width, height),
+            Event::Resize { width, height } => handler.process_viewport(width, height),
             Event::Scroll { id, x, y } => handler.process_scroll(&id, x, y),
-            Event::SetParameter { value } => {
-                self.parameter = value;
-                (vec![], vec![])
-            }
-            Event::Render => {
-                // CPU render
-                let _destination = unsafe { ARENA.frame_back_mut() };
-                ARENA.frame_commit();
-                (vec![], vec![Command::FrameReady])
-            }
             Event::Shutdown => {
                 unsafe { RUNNING = false };
                 (vec![], self.handler.close())

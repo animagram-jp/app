@@ -51,8 +51,6 @@ pub const OPERATION_FOCUS: u8 = 15;
 /// case 16: jsFn[NAMES[d.u16()]]?.(el); break;
 pub const OPERATION_JS_FN: u8 = 16;
 
-pub const OPERATION_FRAME_READY: u8 = 17;
-
 pub const OPERATION_ERROR: u8 = 18;
 
 /// `Command::Error` が運ぶ異常の内容。発生源ごとに variant を持つ。
@@ -121,20 +119,20 @@ pub enum Command {
     },
     SetAttribute {
         id:        dom::Id,
-        attribute: Name,
+        attribute: Attribute,
         value:     String,
     },
     RemoveAttribute {
         id:        dom::Id,
-        attribute: Name,
+        attribute: Attribute,
     },
     AddClass {
         id:    dom::Id,
-        value: Name,
+        value: ClassName,
     },
     RemoveClass {
         id:    dom::Id,
-        value: Name,
+        value: ClassName,
     },
     SetWidth {
         id: dom::Id,
@@ -159,7 +157,7 @@ pub enum Command {
     },
     SetCursor {
         id:    dom::Id,
-        value: Name,
+        value: CursorValue,
     },
     ShowModal {
         id: dom::Id,
@@ -172,10 +170,8 @@ pub enum Command {
     },
     JsFn {
         id:   dom::Id,
-        name: Name,
+        name: FnName,
     },
-    /// トリプルバッファへ新しいフレームを公開した。
-    FrameReady,
     /// 異常を報告する。`error.is_serious()` なら JavaScript 側は worker を
     /// 作り直す。
     Error {
@@ -212,23 +208,23 @@ pub fn encode_command(commands: &mut Vec<u8>, command: &Command) {
         Command::SetAttribute { ref id, attribute, ref value } => {
             encoder.u8(OPERATION_SET_ATTRIBUTE);
             encoder.id(id);
-            encoder.u16(attribute.0);
+            encoder.u16(attribute.encode_u16());
             encoder.str(value);
         }
         Command::RemoveAttribute { ref id, attribute } => {
             encoder.u8(OPERATION_REMOVE_ATTRIBUTE);
             encoder.id(id);
-            encoder.u16(attribute.0);
+            encoder.u16(attribute.encode_u16());
         }
         Command::AddClass { ref id, value } => {
             encoder.u8(OPERATION_ADD_CLASS);
             encoder.id(id);
-            encoder.u16(value.0);
+            encoder.u16(value.encode_u16());
         }
         Command::RemoveClass { ref id, value } => {
             encoder.u8(OPERATION_REMOVE_CLASS);
             encoder.id(id);
-            encoder.u16(value.0);
+            encoder.u16(value.encode_u16());
         }
         Command::SetWidth { ref id, px } => {
             encoder.u8(OPERATION_SET_WIDTH);
@@ -259,7 +255,7 @@ pub fn encode_command(commands: &mut Vec<u8>, command: &Command) {
         Command::SetCursor { ref id, value } => {
             encoder.u8(OPERATION_SET_CURSOR);
             encoder.id(id);
-            encoder.u16(value.0);
+            encoder.u16(value.encode_u16());
         }
         Command::ShowModal { ref id } => {
             encoder.u8(OPERATION_SHOW_MODAL);
@@ -276,10 +272,7 @@ pub fn encode_command(commands: &mut Vec<u8>, command: &Command) {
         Command::JsFn { ref id, name } => {
             encoder.u8(OPERATION_JS_FN);
             encoder.id(id);
-            encoder.u16(name.0);
-        }
-        Command::FrameReady => {
-            encoder.u8(OPERATION_FRAME_READY);
+            encoder.u16(name.encode_u16());
         }
         Command::Error { ref error } => encode_error(&mut encoder, error, &error.to_string()),
     }
@@ -325,30 +318,60 @@ pub struct CanvasEvent {
 }
 
 // ============================================================
-// name (static string index)
+// static string index (init.js の各テーブルと index を揃える)
 // ============================================================
 
+/// `init.js::ATTRIBUTES` の index。HTML 属性名。
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub struct Name(pub u16);
+pub enum Attribute {
+    Disabled,
+    Hidden,
+}
 
-/// init.js::NAMES
-pub mod name {
-    use super::Name;
+impl Attribute {
+    fn encode_u16(self) -> u16 {
+        self as u16
+    }
+}
 
-    /// `active` class。
-    pub const ACTIVE: Name = Name(0);
-    /// `default` cursor。
-    pub const CURSOR_DEFAULT: Name = Name(1);
-    /// `disabled` 属性。
-    pub const DISABLED: Name = Name(2);
-    /// `grab` cursor。
-    pub const CURSOR_GRAB: Name = Name(3);
-    /// `hidden` 属性。
-    pub const HIDDEN: Name = Name(4);
-    /// `init.js` の `jsFn.hide`。
-    pub const FN_HIDE: Name = Name(5);
-    /// `init.js` の `jsFn.show`。
-    pub const FN_SHOW: Name = Name(6);
+/// `init.js::CLASS_NAMES` の index。CSS クラス名。
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum ClassName {
+    Hide,
+    Show,
+    Hidden,
+}
+
+impl ClassName {
+    fn encode_u16(self) -> u16 {
+        self as u16
+    }
+}
+
+/// `init.js::CURSOR_VALUES` の index。CSS `cursor` の値。
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum CursorValue {
+    Default,
+    Grab,
+}
+
+impl CursorValue {
+    fn encode_u16(self) -> u16 {
+        self as u16
+    }
+}
+
+/// `init.js::FN_NAMES` の index。`init.js` の `jsFn` キー。
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum FnName {
+    Hide,
+    Show,
+}
+
+impl FnName {
+    fn encode_u16(self) -> u16 {
+        self as u16
+    }
 }
 
 /// 入力装置の種別。

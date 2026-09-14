@@ -1,7 +1,7 @@
 // Arena
 //
 // 1. アリーナのレイアウト定数。`./init.js` と一対一で対応する。
-// 2. `Arena` 本体。イベントリング、コマンドリング、トリプルバッファ。
+// 2. `Arena` 本体。イベントリングとコマンドリングをオフセットで区切って収める。
 // 3. entry point。`arena_pointer` / `initialize` / `poll` / `run_loop`。
 // 4. `Encoder` / `Decoder`。バイト列の読み書き。
 // 5. 異常報告。`report_error` と panic hook。
@@ -15,7 +15,7 @@ use alloc::{
 #[cfg(all(target_arch = "wasm32", target_feature = "atomics"))]
 use core::arch::wasm32::{memory_atomic_notify, memory_atomic_wait32};
 use core::{
-    cell::{Cell, UnsafeCell},
+    cell::UnsafeCell,
     convert::TryInto,
     debug_assert,
     marker::Sync,
@@ -58,19 +58,8 @@ pub const COMMAND_SLOT: usize = 4096;
 /// コマンドリングのスロット数。2 の冪であること。
 pub const COMMAND_SLOT_COUNT: u32 = 64;
 
-/// トリプルバッファの共有状態語の位置。
-pub const CELL_STATE: usize = 524_544;
-/// トリプルバッファの本体領域の開始位置。
-pub const CELL_PAYLOAD: usize = 524_608;
-/// 1 バッファの byte 数。320 * 240 * 4 (RGBA)。
-pub const CELL_SIZE: usize = 307_200;
-/// バッファ数。書き手 1 枚、読み手 1 枚、受け渡し用 1 枚。
-///
-/// `CELL_INDEX_MASK` が下位 2 bit で添字を持つため、4 枚が上限である。
-pub const CELL_COUNT: u32 = 3;
-
 /// 共有アリーナ全体の byte 数。
-pub const ARENA_SIZE: usize = 1_446_208;
+pub const ARENA_SIZE: usize = 524_544;
 
 /// 書き込みシーケンスの制御ブロック内オフセット。
 pub const CONTROL_WRITE_OFFSET: usize = 0;
@@ -82,11 +71,6 @@ pub const CONTROL_READ_OFFSET: usize = 64;
 /// スロット先頭に置く長さ前置語の byte 数。
 pub const LENGTH_PREFIX: usize = 4;
 
-/// 受け渡し中のバッファ添字を取り出すマスク。
-pub const CELL_INDEX_MASK: u32 = 0b11;
-/// 未読の新しいフレームが存在することを示すビット。
-pub const CELL_DIRTY: u32 = 0b100;
-
 /// イベントキューの初期容量。
 pub const EVENT_CAPACITY: usize = 64;
 /// コマンド出力バッファの初期容量。
@@ -96,25 +80,15 @@ pub const COMMAND_CAPACITY: usize = 16 * 1024;
 // arena state
 // ============================================================
 
-/// 共有アリーナ本体。64 byte 境界に整列させる。
-///
-/// 固定長のキューを 3 つ載せる。イベントリング、コマンドリング、
-/// そしてトリプルバッファである。レイアウトと同期はすべて
-/// `impl Arena` に閉じており、利用者は添字やオフセットを知らない。
 #[repr(C, align(64))]
 pub struct Arena {
-    bytes:     UnsafeCell<[u8; ARENA_SIZE]>,
-    /// トリプルバッファのうち、書き手が専有しているバッファの添字。
-    ///
-    /// 共有する必要がないため、アリーナ本体ではなくこちらに持つ。
-    cell_back: Cell<u32>,
+    bytes: UnsafeCell<[u8; ARENA_SIZE]>,
 }
 
 // 単一の書き手と単一の読み手を前提とし、同期はアリーナ内の AtomicU32 が担う。
 unsafe impl Sync for Arena {}
 
-pub static ARENA: Arena =
-    Arena { bytes: UnsafeCell::new([0; ARENA_SIZE]), cell_back: Cell::new(0) };
+pub static ARENA: Arena = Arena { bytes: UnsafeCell::new([0; ARENA_SIZE]) };
 
 /// `poll` / `run_loop` が駆動する App。
 ///
@@ -142,20 +116,12 @@ impl Arena {
         unsafe { AtomicU32::from_ptr((self.base() as usize + control + offset) as *mut u32) }
     }
 
-    /// トリプルバッファの共有状態語。
-    #[inline]
-    fn cell_state(&self) -> &AtomicU32 {
-        unsafe { AtomicU32::from_ptr((self.base() as usize + CELL_STATE) as *mut u32) }
-    }
-
-    /// 全リングの制御ブロックとトリプルバッファの状態語を初期化する。
+    /// 全リングの制御ブロックを初期化する。
     pub fn initialize(&self) {
         self.control_at(EVENT_CONTROL, CONTROL_WRITE_OFFSET).store(0, Ordering::Relaxed);
         self.control_at(EVENT_CONTROL, CONTROL_READ_OFFSET).store(0, Ordering::Relaxed);
         self.control_at(COMMAND_CONTROL, CONTROL_WRITE_OFFSET).store(0, Ordering::Relaxed);
         self.control_at(COMMAND_CONTROL, CONTROL_READ_OFFSET).store(0, Ordering::Relaxed);
-        // 書き手が back=0 を専有し、読み手が front=1、共有枠が 2、dirty は未設定。
-        self.cell_state().store(2, Ordering::Release);
     }
 
     /// 単一書き手・単一読み手のリングへ 1 フレーム追加する。満杯なら false。
@@ -257,50 +223,6 @@ impl Arena {
     pub fn command_push(&self, frame: &[u8]) -> bool {
         self.ring_push(COMMAND_CONTROL, COMMAND_PAYLOAD, COMMAND_SLOT, COMMAND_SLOT_COUNT, frame)
     }
-
-    /// 書き手が専有しているバッファを可変スライスとして取り出す。
-    ///
-    /// 呼び出し側は書き終えたら `frame_commit` を呼ぶ。
-    ///
-    /// # Safety
-    ///
-    /// `ARENA` は `static` であり `&self` しか取れないため、`&mut` を
-    /// 返せるのはトリプルバッファの規約に拠る。書き手が専有している
-    /// バッファ (`cell_back`) は、`frame_commit` で公開するまで他の
-    /// thread から触れられない。呼び出し側は次の 2 つを守ること。
-    ///
-    /// - 返るスライスは `frame_commit` を呼ぶまでのみ有効である。
-    /// - 同時に 2 つ以上を生存させない。
-    // 上記の規約により `&self` から `&mut` を返す。clippy::mut_from_ref は
-    // その規約を追えないため、ここでのみ抑止する。
-    #[allow(clippy::mut_from_ref)]
-    pub unsafe fn frame_back_mut(&self) -> &mut [u8] {
-        let index = self.cell_back.get();
-        let pointer = (self.base() as usize + CELL_PAYLOAD + index as usize * CELL_SIZE) as *mut u8;
-        unsafe { slice::from_raw_parts_mut(pointer, CELL_SIZE) }
-    }
-
-    /// 書き終えたバッファを公開し、次に書くバッファを専有する。
-    ///
-    /// `swap` 1 回のみでリトライを持たない。読み手が受け取らないまま
-    /// 次の公開が来た場合、未読のフレームは破棄される。
-    pub fn frame_commit(&self) {
-        let back = self.cell_back.get();
-        let previous = self.cell_state().swap(back | CELL_DIRTY, Ordering::AcqRel);
-        self.cell_back.set(previous & CELL_INDEX_MASK);
-    }
-
-    /// 公開されたバッファを受け取り、読み手の添字を進める。
-    ///
-    /// Wasm 側が読み手になる場合に用いる。`init.js` の `cellAcquire` と
-    /// 対称である。未読フレームが無ければ現在の添字を維持する。
-    #[allow(dead_code)]
-    pub fn frame_acquire(&self, front: u32) -> u32 {
-        if self.cell_state().load(Ordering::Acquire) & CELL_DIRTY == 0 {
-            return front;
-        }
-        self.cell_state().swap(front, Ordering::AcqRel) & CELL_INDEX_MASK
-    }
 }
 
 // ============================================================
@@ -320,9 +242,7 @@ pub fn arena_pointer() -> u32 {
 
 /// 共有アリーナを初期化する。JavaScript 側は最初にこれを呼ぶ。
 ///
-/// worker を作り直した際も再度呼ぶ。リングのシーケンスと
-/// トリプルバッファの状態語が初期値に戻り、JavaScript 側が持つ
-/// `cellFront` と揃う。
+/// worker を作り直した際も再度呼ぶ。リングのシーケンスが初期値に戻る。
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 pub fn initialize() {
     ARENA.initialize();
