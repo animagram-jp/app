@@ -198,8 +198,10 @@ instanceは、null(未入力)をlistの out of range で表現し、メモリ占
 
 - `distribution/css/`: [animagram-jp/css](../vendor/css) の `css/css/*.css` をそのままコピーしたミラー。手で編集しない。
 - `distribution/css-app/`: config.css(変数定義)、style.css、その他appの自作/未移行コンポーネント。
-  - input.css, table.css, list-box.css は css repo 側の属性契約 (`data-input-number`, `data-sort`/`data-hover`, `data-surround`/`data-sign` 等) が変わっており、単純差し替えができないため css-app に残置。1つずつマークアップ込みで移行予定。
+  - input.css, table.css は css repo 側の属性契約 (`data-input-number`, `data-sort`/`data-hover` 等) が変わっており、単純差し替えができないため css-app に残置。1つずつマークアップ込みで移行予定。
   - heading.css は css/css のものに移行済み（data-chip/data-rule は元々未使用で、サイズ既定値・margin/colorはvendorのdata_size.css/reset.css/base.cssで担保されるため無変更で移行可能だった）。
+  - list-box.css は css/listbox.css を使う形に移行済み。vendor側が実装していないシェブロン矢印・選択チェックマーク・オプションのpadding/タッチターゲットのみ css-app/list-box.css に残し、コンテナの背景/ボーダーやoption hover/focusはcss/listbox.cssに委譲。anchor-name/position-anchorは元々css-app/style.css側でIDごとに個別指定済みなので変更なし。
+  - `data_style.css` は `data-surround` 未指定の `<button>` をvendor既定で塗りつぶしスタイルにする。list-box.css/input.css/table.cssなど @layer css.components 系のapp独自スタイルは元々vendorの各layerより優先されるため無事だが、どのapp cssにも保護されていない素の`<button>`が1箇所(`#main_modal_button`)あり、旧来の見た目(枠なし)を保つため `data-surround="transparent"` を明示的に付与した。
 
 ## Javascript
 

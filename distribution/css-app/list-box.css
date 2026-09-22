@@ -1,7 +1,20 @@
+/*
+ * Supplements css/listbox.css (vendor), which doesn't implement:
+ * - the trigger's dropdown-chevron affordance
+ * - a checkmark for the currently-selected option (vendor's pattern is an
+ *   <input type="checkbox" data-sign="check"> per option; this app's markup
+ *   uses a plain <button> per option instead, so it keeps a CSS-only
+ *   checkmark on [aria-selected="true"] rather than rewriting the markup)
+ * - the option's padding / 44px touch-target sizing
+ *
+ * The popover container's background/border/box-shadow and the option
+ * hover/focus-visible treatment are left to css/listbox.css.
+ * anchor-name/position-anchor are per-instance in css-app/style.css, not here.
+ */
+
 @layer css.list-box {
 
     button[aria-haspopup="listbox"] {
-        anchor-name: --list-box-trigger;
         position: relative;
         display: inline flex;
         align-items: center;
@@ -75,41 +88,14 @@
         box-shadow: 0 0 0 0.125rem rgb(var(--rgb-focus));
     }
 
-    [role="listbox"] {
-        position-anchor: --list-box-trigger;
-        position-area: block-end span-inline-start;
-        margin: 0;
-        margin-block-start: 0.25rem;
-        box-sizing: border-box;
-        width: max-content;
-        max-height: calc((8 + 44 * 6.5) / 16 * 1rem);
-        overflow-y: auto;
-        border-radius: 0.5rem;
-        border: 1px solid var(--color-muted);
-        background-color: var(--color-background);
-        padding: 0.5rem 0;
-        box-shadow: var(--elevation-1);
-        list-style-type: none;
-        color: rgb(var(--rgb-ink));
-        font-weight: normal;
-        font-size: var(--md-font-size);
-        line-height: var(--md-line-height);
-        letter-spacing: var(--md-letter-spacing);
-    }
-
     [role="listbox"] [role="option"],
     [role="listbox"] [role="presentation"] {
         display: flex;
         align-items: center;
         column-gap: 0.5rem;
         box-sizing: border-box;
-        width: 100%;
         min-height: calc(44 / 16 * 1rem);
         padding: calc(10 / 16 * 1rem) 1rem;
-        color: inherit;
-        font: inherit;
-        letter-spacing: inherit;
-        cursor: default;
     }
 
     [role="listbox"] [role="option"]::before {
@@ -124,25 +110,8 @@
     }
 
     [role="listbox"] [role="option"] button {
-        all: unset;
         flex: 1;
         cursor: pointer;
-    }
-
-    @media (hover: hover) {
-        [role="listbox"] [role="option"]:hover {
-            background-color: rgb(var(--rgb-light-gray) / 0.3);
-        }
-    }
-
-    [role="listbox"] [role="option"]:focus-visible,
-    [role="listbox"] [role="option"] button:focus-visible {
-        position: relative;
-        z-index: 1;
-        outline: 0.125rem solid rgb(var(--rgb-border));
-        outline-offset: 0.125rem;
-        background-color: rgb(var(--rgb-focus));
-        color: rgb(var(--rgb-black));
     }
 
 }
