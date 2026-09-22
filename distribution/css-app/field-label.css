@@ -15,7 +15,7 @@
     :is(label[for], legend) > [data-requirement] {
         margin-left: 0.25rem;
         font-weight: normal;
-        color: var(--color-emphasis);
+        color: var(--color-emphasis-ink);
         font-size: var(--md-font-size);
     }
 

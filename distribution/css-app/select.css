@@ -99,7 +99,7 @@
     }
 
     select[multiple]:not([data-search-box-scope] select) option:checked {
-        background: rgb(var(--rgb-emphasis) / 15%);
+        background: color-mix(in srgb, var(--color-emphasis-ink) 15%, var(--color-background));
     }
 
 }

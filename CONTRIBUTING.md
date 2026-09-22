@@ -207,6 +207,7 @@ instanceは、null(未入力)をlistの out of range で表現し、メモリ占
   - `data-type="outline"/"fill"` は全箇所 `data-surround="outline"/"fill"` に置換(vendorのbutton/data_style.cssが読むのは data-surround のみ)。header_button-5の`--color-emphasis`/`--color-emphasis-fill`ローカル上書きも`--color-emphasis-ink`に更新。
   - table.css は css/table.css に移行済み。未サポートになった機能は敢えて維持せず削除: `data-sort`/`data-sort-direction`(ソート機能・矢印ボタン)、`data-hover`(行ホバー強調)、`data-selectable`のチェックボックスセル中央寄せは元々マークアップで未使用だったため実質的な機能欠落なし。`data-type="dense"` は3テーブルとも `data-size="sm"` に置き換え(他の要素と同じ data-size ボキャブラリに統一)。`data-border` は元々未使用のため、vendorのデフォルト(`sectioned`: thead下罫線+`th[scope=row]`の右罫線)がそのまま適用される。
   - `data_style.css` は `data-surround` 未指定の `<button>` をvendor既定で塗りつぶしスタイルにする。list-box.css/input.css/table.cssなど @layer css.components 系のapp独自スタイルは元々vendorの各layerより優先されるため無事だが、どのapp cssにも保護されていない素の`<button>`が1箇所(`#main_modal_button`)あり、旧来の見た目(枠なし)を保つため `data-surround="transparent"` を明示的に付与した。
+  - ブランドの emphasis 色(`--color-emphasis-ink`/`--color-emphasis-paper`)は [animagram-jp/css の `css/reference/style.css`](../vendor/css/reference/style.css) の値をそのまま採用し、config.css に一本化(`--rgb-theme-purple: 91 47 145` = #5B2F91)。同じorgのテーマカラーであり、css/base.cssの既定CUDパープルではなくこちらを正とする。旧来の青系トークン(`--rgb-emphasis`/`--color-emphasis`/`--color-emphasis-fill`)はconfig.css/field-label.css/select.css/search-box.cssから完全に置換し廃止。以後 `--color-emphasis-ink`(文字/アイコン・fillスタイルの背景)・`--color-emphasis-paper`(fillスタイルの文字)のみを使う。
 
 ## Javascript
 

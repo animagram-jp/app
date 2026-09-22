@@ -186,13 +186,13 @@
 
     label[data-search-box-scope] option:checked {
         font-weight: bold;
-        background-color: rgb(var(--rgb-emphasis) / 15%);
-        color: var(--color-emphasis);
+        background-color: color-mix(in srgb, var(--color-emphasis-ink) 15%, var(--color-background));
+        color: var(--color-emphasis-ink);
     }
 
     @media (hover: hover) {
         label[data-search-box-scope] option:checked:hover {
-            background-color: rgb(var(--rgb-emphasis) / 8%);
+            background-color: color-mix(in srgb, var(--color-emphasis-ink) 8%, var(--color-background));
             color: var(--color-emphasis-hover);
         }
     }
