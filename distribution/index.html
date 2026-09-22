@@ -19,9 +19,11 @@
     <link rel="stylesheet" href="./css/button.css?v={version}">
     <link rel="stylesheet" href="./css/radio.css?v={version}">
     <link rel="stylesheet" href="./css/heading.css?v={version}">
+    <link rel="stylesheet" href="./css/listbox.css?v={version}">
     <!-- css-app (app-specific; not yet migrated off the pre-redesign contract: -->
-    <!-- input data-input-number, table data-sort/data-hover, -->
-    <!-- list-box's plain data-size trigger all have no equivalent in vendor's new markup contract) -->
+    <!-- input data-input-number, table data-sort/data-hover have no equivalent -->
+    <!-- in vendor's new markup contract. list-box.css supplements css/listbox.css -->
+    <!-- with the chevron/checkmark/padding it doesn't implement.) -->
     <link rel="stylesheet" href="./css-app/config.css?v={version}">
     <link rel="stylesheet" href="./css-app/description_list.css?v={version}">
     <link rel="stylesheet" href="./css-app/field-label.css?v={version}">
@@ -1513,7 +1515,7 @@
                 <button id="main_modal_span_button-1" type="button">−</button>
                 <input id="main_modal_span_input" type="text" inputmode="numeric" placeholder="0" form="main_form">
                 <button id="main_modal_span_button-2" type="button">+</button></span>
-            <button id="main_modal_button" type="submit" form="main_form">→</button></dialog>
+            <button id="main_modal_button" type="submit" form="main_form" data-surround="transparent">→</button></dialog>
         <form id="main_form" method="dialog"></form></main>
 
     <form id="form" method="dialog"></form>
