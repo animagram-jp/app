@@ -1,3 +1,31 @@
+/* Brand emphasis color, overriding css/base.css's default CUD accent purple. */
+:root {
+    --rgb-theme-purple: 91 47 145; /* Project theme color (#5B2F91). */
+
+    --color-emphasis-ink:   rgb(var(--rgb-theme-purple));
+    --color-emphasis-paper: color-mix(in srgb, rgb(var(--rgb-theme-purple)) 27%, rgb(0,0,0));
+}
+@media (prefers-color-scheme: dark) {
+    :root {
+        --color-emphasis-ink:   color-mix(in srgb, rgb(var(--rgb-theme-purple)) 38%, rgb(255,255,255));
+        --color-emphasis-paper: color-mix(in srgb, rgb(var(--rgb-theme-purple)) 74%, rgb(255,255,255));
+    }
+}
+@media (forced-colors: none) {
+    :root[data-color-scheme="light"],
+    :root[data-color-scheme="light-high-contrast"],
+    :root[data-color-scheme="light-less-contrast"] {
+        --color-emphasis-ink:   rgb(var(--rgb-theme-purple));
+        --color-emphasis-paper: color-mix(in srgb, rgb(var(--rgb-theme-purple)) 27%, rgb(0,0,0));
+    }
+    :root[data-color-scheme="dark"],
+    :root[data-color-scheme="dark-high-contrast"],
+    :root[data-color-scheme="dark-less-contrast"] {
+        --color-emphasis-ink:   color-mix(in srgb, rgb(var(--rgb-theme-purple)) 38%, rgb(255,255,255));
+        --color-emphasis-paper: color-mix(in srgb, rgb(var(--rgb-theme-purple)) 74%, rgb(255,255,255));
+    }
+}
+
 @font-face {
     font-family: "IBM Plex Sans";
     src: url("../font/IBMPlexSans-Regular.woff2") format("woff2");

@@ -1,0 +1,328 @@
+@layer
+    css.reset,
+    css.base,
+    css.data_style,
+    css.data_size,
+    css.data_sign,
+    css.data_group,
+    
+    css.input,
+    css.button,
+    css.checkbox,
+    css.toggle,
+    css.radio,
+    css.heading,
+    css.list,
+    css.search, /* dependency: input, group */
+    css.table,
+    css.slider,
+    css.step,
+    css.listbox, /* order dependency: radio, list-box */
+    css.error,
+    css.toast;
+
+@layer css.base {
+
+    /*
+    * Source: Color Universal Design Recommended Color Set ver.3
+    * CUDO (Color Universal Design Organization)
+    * https://cudo.jp/wp-content/uploads/2016/07/CUD%E6%8E%A8%E5%A5%A8%E9%85%8D%E8%89%B2%E3%82%BB%E3%83%83%E3%83%88%E3%82%AC%E3%82%A4%E3%83%89%E3%83%96%E3%83%83%E3%82%AF.pdf
+    * Per-color comments: JPMA color chip no. (Munsell notation), CMYK
+    */
+    :root {
+
+        /* Accent colors: high-saturation colors for small areas like signage and graphs */
+        --rgb-accent-red:    255  40   0; /* G08-50V (8.75R 5/12),  CMYK 0,75,95,0 (or 0.75,90,0) */
+        --rgb-accent-yellow: 250 245   0; /* G27-85V (7.5Y 8.5/12), CMYK 0,0,100,0 */
+        --rgb-accent-green:   53 161 107; /* G47-60T (7.5G 6/10),   CMYK 75,0,65,0 */
+        --rgb-accent-blue:     0  65 255; /* G77-40V (7.5PB 4/12),  CMYK 100,45,0,0 */
+        --rgb-accent-sky:    102 204 255; /* G69-70P (10B 7/18),    CMYK 55,0,0,0 */
+        --rgb-accent-pink:   255 153 160; /* G02-70T (2.5R 7/10),   CMYK 0,55,35,0 */
+        --rgb-accent-orange: 255 153   0; /* G15-65X (5YR 6.5/14),  CMYK 0,45,100,0 */
+        --rgb-accent-purple: 154   0 121; /* G89-40T (10P 4/10),    CMYK 30,95,0,0 */
+        --rgb-accent-brown:  102  51   0; /* G09-30L (10R 3/6),     CMYK 55,90,100,0 */
+
+        /* Base colors: low-saturation colors for large areas like maps and diagrams */
+        --rgb-base-light-pink:         255 209 209; /* G05-80L (5R 8/6),     CMYK 0,25,15,0 */
+        --rgb-base-cream:              255 255 153; /* G25-90H (5Y 9/4),     CMYK 0,0,40,0 */
+        --rgb-base-light-yellow-green: 203 242 102; /* G32-80P (2.5GY 8/8),  CMYK 25,0,80,0 */
+        --rgb-base-light-sky:          180 235 250; /* G69-80H (10B 8/4),    CMYK 30,0,0,0 */
+        --rgb-base-beige:              237 197 143; /* G19-75L (10YR 7.5/6), CMYK 0,25,45,0 */
+        --rgb-base-light-green:        135 231 176; /* G42-70H (2.5G 7/4),   CMYK 45,0,45,0 */
+        --rgb-base-light-purple:       199 178 222; /* G82-70H (2.5P 7/4),   CMYK 25,30,0,0 */
+
+        /* Achromatic colors */
+        --rgb-white:      255 255 255; /* GN93 (N9.3),       CMYK 0,0,0,0 */
+        --rgb-light-gray: 200 200 203; /* G75-80B (5PB 8/1), CMYK 15,10,10,0 */
+        --rgb-gray:       127 135 143; /* G75-50D (5PB 5/2), CMYK 18,10,0,55 */
+        --rgb-black:        0   0   0; /* GN-15 (N1.5),      CMYK 50,50,50,100 (or 0,0,0,100) */
+    }
+
+    :root {
+        color-scheme: light dark;
+
+        --color-ink:       rgb(var(--rgb-black));
+        --color-paper:     rgb(var(--rgb-white));
+        --color-ink-mix:   color-mix(in srgb, var(--color-ink) 60%, var(--color-paper));
+        --color-paper-mix: color-mix(in srgb, var(--color-ink) 16%, var(--color-paper));
+
+        --color-error:           rgb(var(--rgb-accent-red));
+        --color-highlight-ink:   color-mix(in srgb, rgb(var(--rgb-accent-yellow)) 46%, rgb(0,0,0));
+        --color-highlight-paper: rgb(var(--rgb-accent-yellow));
+        --color-success:         color-mix(in srgb, rgb(var(--rgb-accent-green)) 78%, rgb(0,0,0));
+        --color-visited: color-mix(in srgb, rgb(var(--rgb-accent-purple)) 74%, rgb(0,0,0));
+
+        --color-emphasis-ink:     rgb(var(--rgb-accent-purple));
+        --color-emphasis-paper:   color-mix(in srgb, rgb(var(--rgb-accent-purple)) 46%, rgb(0,0,0));
+        --color-emphasis-ink-mix: color-mix(in srgb, var(--color-emphasis-ink) 50%, var(--color-ink));
+
+        --color-focus: var(--color-emphasis-ink);
+    }
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --color-ink:              rgb(var(--rgb-white));
+            --color-paper:            rgb(var(--rgb-black));
+            --color-highlight-ink:    rgb(var(--rgb-accent-yellow));
+            --color-highlight-paper:  color-mix(in srgb, rgb(var(--rgb-accent-yellow)) 41%, rgb(0,0,0));
+            --color-visited:          color-mix(in srgb, rgb(var(--rgb-accent-purple)) 19%, rgb(255,255,255));
+            --color-emphasis-ink:     color-mix(in srgb, rgb(var(--rgb-accent-purple)) 35%, rgb(255,255,255));
+            --color-emphasis-paper:   color-mix(in srgb, rgb(var(--rgb-accent-purple)) 71%, rgb(255,255,255));
+        }
+    }
+    @media (prefers-contrast: more) {
+        :root {
+            --color-ink-mix: color-mix(in srgb, var(--color-ink) 66%, var(--color-paper));
+        }
+    }
+    @media (prefers-contrast: less) {
+        :root {
+            --color-ink:       rgb(43,43,43);
+            --color-paper:     rgb(243,243,243);
+            --color-ink-mix:   rgb(111,111,111);
+            --color-paper-mix: rgb(147,147,147);
+        }
+    }
+    @media (prefers-contrast: less) and (prefers-color-scheme: dark) {
+        :root {
+            --color-ink:       rgb(243,243,243);
+            --color-paper:     rgb(43,43,43);
+            --color-ink-mix:   rgb(147,147,147);
+            --color-paper-mix: rgb(111,111,111);
+        }
+    }
+    @media (forced-colors: none) {
+        :root[data-color-scheme="light"],
+        :root[data-color-scheme="light-less-contrast"],
+        :root[data-color-scheme="light-high-contrast"] {
+            color-scheme: light;
+        }
+        :root[data-color-scheme="dark"],
+        :root[data-color-scheme="dark-less-contrast"],
+        :root[data-color-scheme="dark-high-contrast"] {
+            color-scheme: dark;
+        }
+        :root[data-color-scheme="light"] {
+            --color-ink:            rgb(var(--rgb-black));
+            --color-paper:          rgb(var(--rgb-white));
+            --color-emphasis-ink:   rgb(var(--rgb-accent-purple));
+            --color-emphasis-paper: color-mix(in srgb, rgb(var(--rgb-accent-purple)) 46%, rgb(0,0,0));
+        }
+        :root[data-color-scheme="dark"] {
+            --color-ink:             rgb(var(--rgb-white));
+            --color-paper:           rgb(var(--rgb-black));
+            --color-highlight-ink:   rgb(var(--rgb-accent-yellow));
+            --color-highlight-paper: color-mix(in srgb, rgb(var(--rgb-accent-yellow)) 41%, rgb(0,0,0));
+            --color-visited:         color-mix(in srgb, rgb(var(--rgb-accent-purple)) 19%, rgb(255,255,255));
+            --color-emphasis-ink:    color-mix(in srgb, rgb(var(--rgb-accent-purple)) 35%, rgb(255,255,255));
+            --color-emphasis-paper:  color-mix(in srgb, rgb(var(--rgb-accent-purple)) 71%, rgb(255,255,255));
+        }
+        :root[data-color-scheme="light-high-contrast"] {
+            --color-ink:            rgb(var(--rgb-black));
+            --color-paper:          rgb(var(--rgb-white));
+            --color-ink-mix:        color-mix(in srgb, var(--color-ink) 66%, var(--color-paper));
+            --color-emphasis-ink:   rgb(var(--rgb-accent-purple));
+            --color-emphasis-paper: color-mix(in srgb, rgb(var(--rgb-accent-purple)) 46%, rgb(0,0,0));
+        }
+        :root[data-color-scheme="dark-high-contrast"] {
+            --color-ink:             rgb(var(--rgb-white));
+            --color-paper:           rgb(var(--rgb-black));
+            --color-ink-mix:         color-mix(in srgb, var(--color-ink) 66%, var(--color-paper));
+            --color-highlight-ink:   rgb(var(--rgb-accent-yellow));
+            --color-highlight-paper: color-mix(in srgb, rgb(var(--rgb-accent-yellow)) 41%, rgb(0,0,0));
+            --color-visited:         color-mix(in srgb, rgb(var(--rgb-accent-purple)) 19%, rgb(255,255,255));
+            --color-emphasis-ink:    color-mix(in srgb, rgb(var(--rgb-accent-purple)) 35%, rgb(255,255,255));
+            --color-emphasis-paper:  color-mix(in srgb, rgb(var(--rgb-accent-purple)) 71%, rgb(255,255,255));
+        }
+        :root[data-color-scheme="light-less-contrast"] {
+            --color-ink:            rgb(43,43,43);
+            --color-paper:          rgb(243,243,243);
+            --color-ink-mix:        rgb(111,111,111);
+            --color-paper-mix:      rgb(147,147,147);
+            --color-emphasis-ink:   rgb(var(--rgb-accent-purple));
+            --color-emphasis-paper: color-mix(in srgb, rgb(var(--rgb-accent-purple)) 46%, rgb(0,0,0));
+        }
+        :root[data-color-scheme="dark-less-contrast"] {
+            --color-ink:            rgb(243,243,243);
+            --color-paper:          rgb(43,43,43);
+            --color-ink-mix:        rgb(147,147,147);
+            --color-paper-mix:      rgb(111,111,111);
+            --color-highlight-ink:   rgb(var(--rgb-accent-yellow));
+            --color-highlight-paper: color-mix(in srgb, rgb(var(--rgb-accent-yellow)) 41%, rgb(0,0,0));
+            --color-visited:         color-mix(in srgb, rgb(var(--rgb-accent-purple)) 19%, rgb(255,255,255));
+            --color-emphasis-ink:    color-mix(in srgb, rgb(var(--rgb-accent-purple)) 35%, rgb(255,255,255));
+            --color-emphasis-paper:  color-mix(in srgb, rgb(var(--rgb-accent-purple)) 71%, rgb(255,255,255));
+        }
+    }
+    @media (forced-colors: active) {
+        :root {
+            --color-ink:   CanvasText;
+            --color-paper: Canvas;
+        }
+    }
+    @media print {
+        :root {
+            --color-ink:            rgb(var(--rgb-black));
+            --color-paper:          rgb(var(--rgb-white));
+            --color-emphasis-ink:   rgb(var(--rgb-accent-purple));
+            --color-emphasis-paper: color-mix(in srgb, rgb(var(--rgb-accent-purple)) 46%, rgb(0,0,0));
+            --color-visited:        color-mix(in srgb, rgb(var(--rgb-accent-purple)) 74%, rgb(0,0,0));
+        }
+    }
+
+    :root {
+        --xs-border-radius:  0.325rem;
+        --xs-border-width:   0.0625rem;
+        --xs-box-height:     1.75rem;
+        --xs-font-size:      0.85rem;
+        --xs-letter-spacing: 0.02rem;
+        --xs-line-height:    1.5rem;
+
+        --sm-border-radius:  0.325rem;
+        --sm-border-width:   0.125rem;
+        --sm-box-height:     2.5rem;
+        --sm-font-size:      0.85rem;
+        --sm-letter-spacing: 0.02rem;
+        --sm-line-height:    1.5rem;
+
+        --md-border-radius:  0.325rem;
+        --md-border-width:   0.125rem;
+        --md-box-height:     3rem;
+        --md-font-size:      1rem;
+        --md-letter-spacing: 0;
+        --md-line-height:    1.5rem;
+
+        --lg-border-radius:  0.325rem;
+        --lg-border-width:   0.125rem;
+        --lg-box-height:     3.5rem;
+        --lg-font-size:      1.15rem;
+        --lg-letter-spacing: 0;
+        --lg-line-height:    1.725rem;
+
+        --xl-border-radius:  0.325rem;
+        --xl-border-width:   0.125rem;
+        --xl-box-height:     4rem;
+        --xl-font-size:      1.5rem;
+        --xl-letter-spacing: 0;
+        --xl-line-height:    2.25rem;
+
+        --2xl-border-radius:  0.325rem;
+        --2xl-border-width:   0.125rem;
+        --2xl-box-height:     4.75rem;
+        --2xl-font-size:      2rem;
+        --2xl-letter-spacing: 0;
+        --2xl-line-height:    3rem;
+
+        --font-family-sans-serif: ui-sans-serif, system-ui, sans-serif;
+        --font-family-serif:      ui-serif, serif;
+        --font-family-monospace:  ui-monospace, monospace;
+
+        font-family: var(--font-family-sans-serif);
+    }
+
+    ::placeholder {
+        color: var(--color-ink-mix);
+    }
+
+    html {
+        scrollbar-gutter: stable;
+    }
+
+    @media print {
+        html {
+            font-size: 14pt;
+        }
+    }
+
+    html:has(:modal) {
+        overflow: clip;
+        scrollbar-gutter: auto;
+    }
+
+    body {
+        color: var(--color-ink);
+        background: var(--color-paper);
+        margin: 0;
+    }
+
+    body:has(:modal) {
+        overflow: auto;
+        scrollbar-gutter: stable;
+    }
+
+    label:has(> *) {
+        display: inline flow-root;
+    }
+
+    [hidden],
+    .hidden {
+        display: none !important;
+    }
+
+    mark {
+        background-color: color-mix(in srgb, var(--color-highlight-ink) 70%, var(--color-paper));
+        color: var(--color-paper);
+    }
+    ::selection {
+        background-color: var(--color-highlight-ink);
+        color: var(--color-paper);
+    }
+    [data-surround="fill"] ::selection,
+    [data-surround="fill"]::selection {
+        background-color: var(--color-highlight-paper);
+        color: var(--color-ink);
+    }
+
+    code, pre, kbd, samp, var,
+    input:where(
+        [type="tel"],
+        [type="number"],
+        [type="password"],
+        [inputmode="numeric"]
+    ) {
+        font-family: var(--font-family-monospace);
+        font-style: normal;
+    }
+
+    /*  reset.css unsets the UA italic, so it is restored here rather than
+        removed. Japanese, Chinese and Korean faces have no true italic and
+        get synthesised obliques, so the emphasis is carried by the citation
+        being a distinct element instead. Matching on the cite itself, not an
+        ancestor, keeps an English citation inside a Japanese page italic. */
+
+    cite {
+        font-style: italic;
+    }
+    cite:is(:lang(ja), :lang(zh), :lang(ko)) {
+        font-style: normal;
+    }
+
+    .visually-hidden {
+        clip: rect(0 0 0 0) !important;
+        clip-path: inset(50%) !important;
+        height: 1px !important;
+        overflow: hidden !important;
+        position: absolute !important;
+        white-space: nowrap !important;
+        width: 1px !important;
+    }
+}

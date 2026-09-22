@@ -1,0 +1,436 @@
+/*  Usage:
+
+    <input type="range" min="0" max="100" step="10" value="20">
+*/
+
+@layer css.slider {
+
+    /* === track === */
+
+    input[type="range"] {
+        background-color: var(--color-paper);
+        display:          inline-block;
+        inline-size:      100%;
+        max-inline-size:  100%;
+        touch-action:     manipulation;
+        vertical-align:   middle;
+    }
+
+    input[type="range"]:not(:is(
+        :disabled,
+        [aria-disabled="true"]
+    )) {
+        cursor: pointer;
+    }
+
+    /* --- track: webkit, blink --- */
+
+    input[type="range"]::-webkit-slider-runnable-track {
+        background-color: var(--color-ink-mix);
+    }
+
+    /* --- track: gecko --- */
+
+    input[type="range"]::-moz-range-track {
+        background-color: var(--color-ink-mix);
+    }
+
+    /* === thumb === */
+
+    /* --- thumb: webkit, blink --- */
+
+    input[type="range"]::-webkit-slider-thumb {
+        appearance:       none;
+        background-color: var(--color-paper);
+        border-color:     var(--color-ink);
+        border-radius:    50%;
+        border-style:     solid;
+        box-sizing:       border-box;
+    }
+
+    input[type="range"]:not(:is(
+        :disabled,
+        [aria-disabled="true"]
+    ))::-webkit-slider-thumb {
+        cursor: pointer;
+    }
+
+    /* --- thumb: gecko --- */
+
+    input[type="range"]::-moz-range-thumb {
+        appearance:       none;
+        background-color: var(--color-paper);
+        border-color:     var(--color-ink);
+        border-radius:    50%;
+        border-style:     solid;
+        box-sizing:       border-box;
+    }
+
+    input[type="range"]:not(:is(
+        :disabled,
+        [aria-disabled="true"]
+    ))::-moz-range-thumb {
+        cursor: pointer;
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+        input[type="range"]::-webkit-slider-thumb {
+            transition: background-color 0.15s ease, scale 0.15s ease;
+        }
+        input[type="range"]::-moz-range-thumb {
+            transition: background-color 0.15s ease, scale 0.15s ease;
+        }
+    }
+
+    /* --- size --- */
+
+    input[type="range"][data-size="xs"] {
+        block-size:    var(--xs-box-height);
+        border-radius: var(--xs-border-radius);
+    }
+    input[type="range"][data-size="xs"]::-webkit-slider-runnable-track {
+        block-size:    var(--xs-line-height);
+        border-radius: var(--xs-border-radius);
+    }
+    input[type="range"][data-size="xs"]::-moz-range-track {
+        block-size:    var(--xs-line-height);
+        border-radius: var(--xs-border-radius);
+    }
+    input[type="range"][data-size="xs"]::-webkit-slider-thumb {
+        block-size:   var(--xs-box-height);
+        border-width: var(--xs-border-width);
+        inline-size:  var(--xs-box-height);
+        margin-top:   calc((var(--xs-line-height) - var(--xs-box-height)) / 2);
+    }
+    input[type="range"][data-size="xs"]::-moz-range-thumb {
+        block-size:   var(--xs-box-height);
+        border-width: var(--xs-border-width);
+        inline-size:  var(--xs-box-height);
+    }
+
+    input[type="range"][data-size="sm"] {
+        block-size:    var(--sm-box-height);
+        border-radius: var(--sm-border-radius);
+    }
+    input[type="range"][data-size="sm"]::-webkit-slider-runnable-track {
+        block-size:    var(--sm-line-height);
+        border-radius: var(--sm-border-radius);
+    }
+    input[type="range"][data-size="sm"]::-moz-range-track {
+        block-size:    var(--sm-line-height);
+        border-radius: var(--sm-border-radius);
+    }
+    input[type="range"][data-size="sm"]::-webkit-slider-thumb {
+        block-size:   var(--sm-box-height);
+        border-width: var(--sm-border-width);
+        inline-size:  var(--sm-box-height);
+        margin-top:   calc((var(--sm-line-height) - var(--sm-box-height)) / 2);
+    }
+    input[type="range"][data-size="sm"]::-moz-range-thumb {
+        block-size:   var(--sm-box-height);
+        border-width: var(--sm-border-width);
+        inline-size:  var(--sm-box-height);
+    }
+
+    input[type="range"]:where(
+        [data-size="md"],
+        :not([data-size])
+    ) {
+        block-size:    var(--md-box-height);
+        border-radius: var(--md-border-radius);
+    }
+    input[type="range"]:where(
+        [data-size="md"],
+        :not([data-size])
+    )::-webkit-slider-runnable-track {
+        block-size:    var(--md-line-height);
+        border-radius: var(--md-border-radius);
+    }
+    input[type="range"]:where(
+        [data-size="md"],
+        :not([data-size])
+    )::-moz-range-track {
+        block-size:    var(--md-line-height);
+        border-radius: var(--md-border-radius);
+    }
+    input[type="range"]:where(
+        [data-size="md"],
+        :not([data-size])
+    )::-webkit-slider-thumb {
+        block-size:   var(--md-box-height);
+        border-width: var(--md-border-width);
+        inline-size:  var(--md-box-height);
+        margin-top:   calc((var(--md-line-height) - var(--md-box-height)) / 2);
+    }
+    input[type="range"]:where(
+        [data-size="md"],
+        :not([data-size])
+    )::-moz-range-thumb {
+        block-size:   var(--md-box-height);
+        border-width: var(--md-border-width);
+        inline-size:  var(--md-box-height);
+    }
+
+    input[type="range"][data-size="lg"] {
+        block-size:    var(--lg-box-height);
+        border-radius: var(--lg-border-radius);
+    }
+    input[type="range"][data-size="lg"]::-webkit-slider-runnable-track {
+        block-size:    var(--lg-line-height);
+        border-radius: var(--lg-border-radius);
+    }
+    input[type="range"][data-size="lg"]::-moz-range-track {
+        block-size:    var(--lg-line-height);
+        border-radius: var(--lg-border-radius);
+    }
+    input[type="range"][data-size="lg"]::-webkit-slider-thumb {
+        block-size:   var(--lg-box-height);
+        border-width: var(--lg-border-width);
+        inline-size:  var(--lg-box-height);
+        margin-top:   calc((var(--lg-line-height) - var(--lg-box-height)) / 2);
+    }
+    input[type="range"][data-size="lg"]::-moz-range-thumb {
+        block-size:   var(--lg-box-height);
+        border-width: var(--lg-border-width);
+        inline-size:  var(--lg-box-height);
+    }
+
+    input[type="range"][data-size="xl"] {
+        block-size:    var(--xl-box-height);
+        border-radius: var(--xl-border-radius);
+    }
+    input[type="range"][data-size="xl"]::-webkit-slider-runnable-track {
+        block-size:    var(--xl-line-height);
+        border-radius: var(--xl-border-radius);
+    }
+    input[type="range"][data-size="xl"]::-moz-range-track {
+        block-size:    var(--xl-line-height);
+        border-radius: var(--xl-border-radius);
+    }
+    input[type="range"][data-size="xl"]::-webkit-slider-thumb {
+        block-size:   var(--xl-box-height);
+        border-width: var(--xl-border-width);
+        inline-size:  var(--xl-box-height);
+        margin-top:   calc((var(--xl-line-height) - var(--xl-box-height)) / 2);
+    }
+    input[type="range"][data-size="xl"]::-moz-range-thumb {
+        block-size:   var(--xl-box-height);
+        border-width: var(--xl-border-width);
+        inline-size:  var(--xl-box-height);
+    }
+
+    input[type="range"][data-size="2xl"] {
+        block-size:    var(--2xl-box-height);
+        border-radius: var(--2xl-border-radius);
+    }
+    input[type="range"][data-size="2xl"]::-webkit-slider-runnable-track {
+        block-size:    var(--2xl-line-height);
+        border-radius: var(--2xl-border-radius);
+    }
+    input[type="range"][data-size="2xl"]::-moz-range-track {
+        block-size:    var(--2xl-line-height);
+        border-radius: var(--2xl-border-radius);
+    }
+    input[type="range"][data-size="2xl"]::-webkit-slider-thumb {
+        block-size:   var(--2xl-box-height);
+        border-width: var(--2xl-border-width);
+        inline-size:  var(--2xl-box-height);
+        margin-top:   calc((var(--2xl-line-height) - var(--2xl-box-height)) / 2);
+    }
+    input[type="range"][data-size="2xl"]::-moz-range-thumb {
+        block-size:   var(--2xl-box-height);
+        border-width: var(--2xl-border-width);
+        inline-size:  var(--2xl-box-height);
+    }
+
+    /* === :hover, :active, :focus-visible === */
+
+    input[type="range"]:not(:is(
+        :disabled,
+        [aria-disabled="true"]
+    )):where(
+        :hover,
+        :active,
+        :focus-visible
+    )::-webkit-slider-thumb {
+        background-color: var(--color-emphasis-ink);
+        border-color:     var(--color-emphasis-ink);
+    }
+    input[type="range"]:not(:is(
+        :disabled,
+        [aria-disabled="true"]
+    )):where(
+        :hover,
+        :active,
+        :focus-visible
+    )::-moz-range-thumb {
+        background-color: var(--color-emphasis-ink);
+        border-color:     var(--color-emphasis-ink);
+    }
+
+    input[type="range"]:not(:is(
+        :disabled,
+        [aria-disabled="true"]
+    )):active::-webkit-slider-thumb {
+        background-color: var(--color-emphasis-ink-mix);
+        border-color:     var(--color-emphasis-ink-mix);
+        scale:            1.15;
+    }
+    input[type="range"]:not(:is(
+        :disabled,
+        [aria-disabled="true"]
+    )):active::-moz-range-thumb {
+        background-color: var(--color-emphasis-ink-mix);
+        border-color:     var(--color-emphasis-ink-mix);
+        scale:            1.15;
+    }
+
+    /* === :user-invalid, [aria-invalid="true"] === */
+
+    input[type="range"]:where(
+        :user-invalid,
+        [aria-invalid="true"]
+    )::-webkit-slider-runnable-track {
+        background-color: var(--color-error);
+    }
+    input[type="range"]:where(
+        :user-invalid,
+        [aria-invalid="true"]
+    )::-moz-range-track {
+        background-color: var(--color-error);
+    }
+    input[type="range"]:where(
+        :user-invalid,
+        [aria-invalid="true"]
+    )::-webkit-slider-thumb {
+        border-color: var(--color-error);
+    }
+    input[type="range"]:where(
+        :user-invalid,
+        [aria-invalid="true"]
+    )::-moz-range-thumb {
+        border-color: var(--color-error);
+    }
+
+    /* === :disabled, [aria-disabled="true"] === */
+
+    input[type="range"]:where(
+        :disabled,
+        [aria-disabled="true"]
+    )::-webkit-slider-thumb {
+        background-color: var(--color-paper);
+        border-color:     var(--color-ink-mix);
+        cursor:           not-allowed;
+    }
+    input[type="range"]:where(
+        :disabled,
+        [aria-disabled="true"]
+    )::-moz-range-thumb {
+        background-color: var(--color-paper);
+        border-color:     var(--color-ink-mix);
+        cursor:           not-allowed;
+    }
+
+    /* === forced-colors === */
+
+    @media (forced-colors: active) {
+        input[type="range"] {
+            background-color: Canvas;
+        }
+        input[type="range"]::-webkit-slider-runnable-track {
+            background-color: CanvasText;
+        }
+        input[type="range"]::-moz-range-track {
+            background-color: CanvasText;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            background-color: Canvas;
+            border-color:     CanvasText;
+        }
+        input[type="range"]::-moz-range-thumb {
+            background-color: Canvas;
+            border-color:     CanvasText;
+        }
+        input[type="range"]:not(:is(
+            :disabled,
+            [aria-disabled="true"]
+        )):where(
+            :hover,
+            :active,
+            :focus-visible
+        )::-webkit-slider-thumb {
+            background-color: Highlight;
+            border-color:     CanvasText;
+        }
+        input[type="range"]:not(:is(
+            :disabled,
+            [aria-disabled="true"]
+        )):where(
+            :hover,
+            :active,
+            :focus-visible
+        )::-moz-range-thumb {
+            background-color: Highlight;
+            border-color:     CanvasText;
+        }
+        input[type="range"]:where(
+            :user-invalid,
+            [aria-invalid="true"]
+        )::-webkit-slider-runnable-track {
+            background-color: Mark;
+        }
+        input[type="range"]:where(
+            :user-invalid,
+            [aria-invalid="true"]
+        )::-moz-range-track {
+            background-color: Mark;
+        }
+        input[type="range"]:where(
+            :user-invalid,
+            [aria-invalid="true"]
+        )::-webkit-slider-thumb {
+            border-color: Mark;
+        }
+        input[type="range"]:where(
+            :user-invalid,
+            [aria-invalid="true"]
+        )::-moz-range-thumb {
+            border-color: Mark;
+        }
+        input[type="range"]:where(
+            :disabled,
+            [aria-disabled="true"]
+        )::-webkit-slider-runnable-track {
+            background-color: GrayText;
+        }
+        input[type="range"]:where(
+            :disabled,
+            [aria-disabled="true"]
+        )::-moz-range-track {
+            background-color: GrayText;
+        }
+        input[type="range"]:where(
+            :disabled,
+            [aria-disabled="true"]
+        )::-webkit-slider-thumb {
+            border-color: GrayText;
+        }
+        input[type="range"]:where(
+            :disabled,
+            [aria-disabled="true"]
+        )::-moz-range-thumb {
+            border-color: GrayText;
+        }
+    }
+
+    /* === print === */
+
+    @media print {
+        input[type="range"]::-webkit-slider-runnable-track {
+            background-color: var(--color-ink);
+        }
+        input[type="range"]::-moz-range-track {
+            background-color: var(--color-ink);
+        }
+    }
+}

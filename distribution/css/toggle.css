@@ -1,113 +1,257 @@
 /* toggle: input widget that allows users to choose one of two values: on or off.  */
 
-/* <label>
+/*  <label>
         <span>inline</span>
         <input type="checkbox" role="switch"></label> */
 
-@layer css.components {
+@layer css.toggle {
 
-    label:has(> input[type="checkbox"][role="switch"])[data-size="lg"] {
-        --height: var(--lg-box-height);
-        --border-width: 0.1875rem;
-    }
+    /* === color, layout === */
 
-    label:has(> input[type="checkbox"][role="switch"]):not([data-size]),
-    label:has(> input[type="checkbox"][role="switch"])[data-size="md"] {
-        --height: var(--md-box-height);
-        --border-width: 0.125rem;
-    }
-
-    label:has(> input[type="checkbox"][role="switch"])[data-size="sm"] {
-        --height: var(--sm-box-height);
-        --border-width: 0.125rem;
-    }
-
-    label:has(> input[type="checkbox"][role="switch"])[data-size="xs"] {
-        --height: var(--xs-box-height);
-        --border-width: 0.125rem;
-    }
-
-    /* label: lays out an optional leading <span> alongside the track */
-    label:has(> input[type="checkbox"][role="switch"]) {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
+    label:has(> input[type="checkbox"][role="switch"]),
+    label:has(> input[type="checkbox"][role="switch"]) > * {
         vertical-align: middle;
-        cursor: pointer;
     }
 
-    label:has(> input[type="checkbox"][role="switch"])[data-type="label-above"] {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.25rem;
+    /* label[data-axis="block"] */
+
+    label:has(> input[type="checkbox"][role="switch"])[data-axis="block"] {
+        display: inline flow-root;
+    }
+    label:has(> input[type="checkbox"][role="switch"])[data-axis="block"] > *:first-child {
+        display:    block;
+        text-align: center;
+    }
+    label:has(> input[type="checkbox"][role="switch"])[data-axis="block"] > *:first-child:not([data-size]) {
+        border-radius:  var(--md-border-radius);
+        border-width:   var(--md-border-width);
+        padding-bottom: calc(((var(--md-box-height) - var(--md-line-height)) / 2) - var(--md-border-width));
     }
 
-    /* track: the input itself is the track; its ::after is the knob */
-    label:has(> input[type="checkbox"][role="switch"]) > input[type="checkbox"] {
-        --padding: calc(var(--border-width) * 2);
-        --knob-size: calc(var(--height) - var(--padding) * 2);
+    /*  the knob offset is logical (inset-inline-start), but translateX is not:
+        it does not flip in rtl, so the shift carries a direction flag.
+        transform is kept (not the translate property) because ::after already
+        uses `translate` for vertical centring. */
 
-        appearance: none;
-        position: relative;
-        flex-shrink: 0;
-        width: calc(var(--padding) * 2 + var(--knob-size) * 2);
-        height: var(--height);
-        margin: 0;
-        border: var(--border-width) solid var(--color-ink);
-        border-radius: calc(var(--height) / 2);
-        background-color: var(--color-muted);
-        cursor: pointer;
-        transition: background-color 0.15s ease;
+    label > input[type="checkbox"][role="switch"] {
+        --toggle-dir: 1;
+    }
+    label > input[type="checkbox"][role="switch"]:dir(rtl) {
+        --toggle-dir: -1;
     }
 
-    label:has(> input[type="checkbox"][role="switch"]) > input[type="checkbox"]:checked {
-        background: var(--color-emphasis-active);
+    label > input[type="checkbox"][role="switch"] {
+        background-color: var(--color-ink-mix);
+        border-color:     var(--color-ink);
+        border-style:     solid;
+        cursor:           pointer;
+        margin:           0;
     }
 
-    /* knob */
-    label:has(> input[type="checkbox"][role="switch"]) > input[type="checkbox"]::after {
-        content: "OFF";
-        position: absolute;
-        top: 50%;
-        left: var(--padding);
-        translate: 0 -50%;
-        width: var(--knob-size);
-        height: var(--knob-size);
-        border: var(--border-width) solid var(--color-ink);
-        border-radius: 50%;
-        background: var(--color-background);
-        box-shadow: var(--elevation-1);
-        display: inline-flex;
-        align-items: center;
+    @media (prefers-reduced-motion: no-preference) {
+        label > input[type="checkbox"][role="switch"] {
+            transition: background-color 0.15s ease;
+        }
+    }
+
+    label > input[type="checkbox"][role="switch"]:checked {
+        background: var(--color-success);
+    }
+
+    label > input[type="checkbox"][role="switch"]::after {
+        align-items:     center;
+        background:      var(--color-paper);
+        border-color:    var(--color-ink);
+        border-style:    solid;
+        color:           var(--color-ink);
+        content:         "OFF";
+        display:         flex;
+        font-weight:     bold;
         justify-content: center;
-        font-size: calc(var(--knob-size) * 0.35);
-        font-weight: bold;
-        color: var(--color-muted);
-        transition: transform 0.15s ease;
+        position:        absolute;
+        top:             50%;
+        translate:       0 -50%;
     }
 
-    label:has(> input[type="checkbox"][role="switch"]) > input[type="checkbox"]:checked::after {
+    @media (prefers-reduced-motion: no-preference) {
+        label > input[type="checkbox"][role="switch"]::after {
+            transition: transform 0.15s ease;
+        }
+    }
+
+    label > input[type="checkbox"][role="switch"]:checked::after {
         content: "ON";
-        transform: translateX(var(--knob-size));
-        color: rgb(var(--rgb-ink));
     }
 
-    label:has(> input[type="checkbox"][role="switch"]) > input[type="checkbox"]:focus-visible {
-        outline: 0.125rem solid rgb(var(--rgb-focus));
-        outline-offset: 0.125rem;
-    }
+    /* label[data-type="knob-only"] */
 
-    /* knob-only: track background/label are inert, only the knob responds to clicks */
-    label:has(> input[type="checkbox"][role="switch"])[data-type="knob-only"] {
+    label[data-type="knob-only"] {
         pointer-events: none;
     }
-
-    label:has(> input[type="checkbox"][role="switch"])[data-type="knob-only"] > input[type="checkbox"] {
+    label[data-type="knob-only"] > input[type="checkbox"] {
         pointer-events: none;
     }
-
-    label:has(> input[type="checkbox"][role="switch"])[data-type="knob-only"] > input[type="checkbox"]::after {
+    label[data-type="knob-only"] > input[type="checkbox"][role="switch"]::after {
         pointer-events: auto;
     }
 
+    @media (forced-colors: active) {
+        label > input[type="checkbox"][role="switch"] {
+            background-color: Canvas;
+            border-color:     CanvasText;
+        }
+        label > input[type="checkbox"][role="switch"]:checked {
+            background: Canvas;
+        }
+        label > input[type="checkbox"][role="switch"]::after {
+            background:   CanvasText;
+            border-color: CanvasText;
+            color:        Canvas;
+        }
+        label > input[type="checkbox"][role="switch"]:checked::after {
+            color: Canvas;
+        }
+    }
+
+    /* --- size --- */
+
+    label > input[type="checkbox"][role="switch"][data-size="xs"] {
+        border-radius: calc(var(--xs-box-height) / 2);
+        border-width:  var(--xs-border-width);
+        block-size:    var(--xs-box-height);
+        inline-size:   calc(calc(var(--xs-box-height) - var(--xs-border-width) * 4) * 2 + var(--xs-border-width) * 4);
+    }
+    label > input[type="checkbox"][role="switch"][data-size="xs"]::after {
+        border-radius:      calc(var(--xs-box-height) / 2);
+        border-width:       var(--xs-border-width);
+        font-size:          var(--xs-font-size);
+        block-size:         calc(var(--xs-box-height) - var(--xs-border-width) * 4);
+        inset-inline-start: var(--xs-border-width);
+        inline-size:        calc(var(--xs-box-height) - var(--xs-border-width) * 4);
+    }
+    label > input[type="checkbox"][role="switch"][data-size="xs"]:checked::after {
+        transform: translateX(calc(calc(var(--xs-box-height) - var(--xs-border-width) * 4) * var(--toggle-dir, 1)));
+    }
+    label > input[type="checkbox"][role="switch"][data-size="xs"]::after {
+        content: "";
+    }
+
+    label > input[type="checkbox"][role="switch"][data-size="sm"] {
+        border-radius: calc(var(--sm-box-height) / 2);
+        border-width:  var(--sm-border-width);
+        block-size:    var(--sm-box-height);
+        inline-size:   calc(calc(var(--sm-box-height) - var(--sm-border-width) * 4) * 2 + var(--sm-border-width) * 4);
+    }
+    label > input[type="checkbox"][role="switch"][data-size="sm"]::after {
+        border-radius:      calc(var(--sm-box-height) / 2);
+        border-width:       var(--sm-border-width);
+        font-size:          var(--sm-font-size);
+        block-size:         calc(var(--sm-box-height) - var(--sm-border-width) * 4);
+        inset-inline-start: var(--sm-border-width);
+        inline-size:        calc(var(--sm-box-height) - var(--sm-border-width) * 4);
+    }
+    label > input[type="checkbox"][role="switch"][data-size="sm"]:checked::after {
+        transform: translateX(calc(calc(var(--sm-box-height) - var(--sm-border-width) * 4) * var(--toggle-dir, 1)));
+    }
+
+    label > input[type="checkbox"][role="switch"]:where(
+        [data-size="md"],
+        :not([data-size])
+    ) {
+        border-radius: calc(var(--md-box-height) / 2);
+        border-width:  var(--md-border-width);
+        block-size:    var(--md-box-height);
+        inline-size:   calc(calc(var(--md-box-height) - var(--md-border-width) * 4) * 2 + var(--md-border-width) * 4);
+    }
+    label > input[type="checkbox"][role="switch"]:where(
+        [data-size="md"],
+        :not([data-size])
+    )::after {
+        border-radius:      calc(var(--md-box-height) / 2);
+        border-width:       var(--md-border-width);
+        font-size:          var(--md-font-size);
+        block-size:         calc(var(--md-box-height) - var(--md-border-width) * 4);
+        inset-inline-start: var(--md-border-width);
+        inline-size:        calc(var(--md-box-height) - var(--md-border-width) * 4);
+    }
+    label > input[type="checkbox"][role="switch"]:where(
+        [data-size="md"],
+        :not([data-size])
+    ):checked::after {
+        transform: translateX(calc(calc(var(--md-box-height) - var(--md-border-width) * 4) * var(--toggle-dir, 1)));
+    }
+
+    label > input[type="checkbox"][role="switch"][data-size="lg"] {
+        border-radius: calc(var(--lg-box-height) / 2);
+        border-width:  var(--lg-border-width);
+        block-size:    var(--lg-box-height);
+        inline-size:   calc(calc(var(--lg-box-height) - var(--lg-border-width) * 4) * 2 + var(--lg-border-width) * 4);
+    }
+    label > input[type="checkbox"][role="switch"][data-size="lg"]::after {
+        border-radius:      calc(var(--lg-box-height) / 2);
+        border-width:       var(--lg-border-width);
+        font-size:          var(--lg-font-size);
+        block-size:         calc(var(--lg-box-height) - var(--lg-border-width) * 4);
+        inset-inline-start: var(--lg-border-width);
+        inline-size:        calc(var(--lg-box-height) - var(--lg-border-width) * 4);
+    }
+    label > input[type="checkbox"][role="switch"][data-size="lg"]:checked::after {
+        transform: translateX(calc(calc(var(--lg-box-height) - var(--lg-border-width) * 4) * var(--toggle-dir, 1)));
+    }
+
+    label > input[type="checkbox"][role="switch"][data-size="xl"] {
+        border-radius: calc(var(--xl-box-height) / 2);
+        border-width:  var(--xl-border-width);
+        block-size:    var(--xl-box-height);
+        inline-size:   calc(calc(var(--xl-box-height) - var(--xl-border-width) * 4) * 2 + var(--xl-border-width) * 4);
+    }
+    label > input[type="checkbox"][role="switch"][data-size="xl"]::after {
+        border-radius:      calc(var(--xl-box-height) / 2);
+        border-width:       var(--xl-border-width);
+        font-size:          var(--xl-font-size);
+        block-size:         calc(var(--xl-box-height) - var(--xl-border-width) * 4);
+        inset-inline-start: var(--xl-border-width);
+        inline-size:        calc(var(--xl-box-height) - var(--xl-border-width) * 4);
+    }
+    label > input[type="checkbox"][role="switch"][data-size="xl"]:checked::after {
+        transform: translateX(calc(calc(var(--xl-box-height) - var(--xl-border-width) * 4) * var(--toggle-dir, 1)));
+    }
+
+    label > input[type="checkbox"][role="switch"][data-size="2xl"] {
+        border-radius: calc(var(--2xl-box-height) / 2);
+        border-width:  var(--2xl-border-width);
+        block-size:    var(--2xl-box-height);
+        inline-size:   calc(calc(var(--2xl-box-height) - var(--2xl-border-width) * 4) * 2 + var(--2xl-border-width) * 4);
+    }
+    label > input[type="checkbox"][role="switch"][data-size="2xl"]::after {
+        border-radius:      calc(var(--2xl-box-height) / 2);
+        border-width:       var(--2xl-border-width);
+        font-size:          var(--2xl-font-size);
+        block-size:         calc(var(--2xl-box-height) - var(--2xl-border-width) * 4);
+        inset-inline-start: var(--2xl-border-width);
+        inline-size:        calc(var(--2xl-box-height) - var(--2xl-border-width) * 4);
+    }
+    label > input[type="checkbox"][role="switch"][data-size="2xl"]:checked::after {
+        transform: translateX(calc(calc(var(--2xl-box-height) - var(--2xl-border-width) * 4) * var(--toggle-dir, 1)));
+    }
+
+    /* --- disabled --- */
+
+    label > input[type="checkbox"][role="switch"]:is(
+        :disabled,
+        [aria-disabled="true"]
+    )::after {
+        border-color: var(--color-ink-mix);
+        color:        var(--color-ink-mix);
+    }
+
+    @media (forced-colors: active) {
+        label > input[type="checkbox"][role="switch"]:is(
+            :disabled,
+            [aria-disabled="true"]
+        )::after {
+            background:   GrayText;
+            border-color: GrayText;
+        }
+    }
 }

@@ -1,0 +1,516 @@
+/*  Usage:
+
+    <label>
+        <button type="button" tabindex="-1" aria-label="decrement"></button>
+        <input type="text" inputmode="numeric" pattern="[0-9]*" role="spinbutton">
+        <button type="button" tabindex="-1" aria-label="increment"></button></label>
+
+    <label data-axis="block">
+        <input type="text" inputmode="numeric" pattern="[0-9]*" role="spinbutton">
+        <button type="button" tabindex="-1" aria-label="increment"></button>
+        <button type="button" tabindex="-1" aria-label="decrement"></button></label>
+*/
+
+@layer css.step {
+
+    /* === color, layout === */
+
+    label:has(> input[role="spinbutton"]) > button {
+        padding-inline: 0;
+    }
+
+    label:has(> input[role="spinbutton"]) > button[data-action]:empty::after,
+    label:has(> input[role="spinbutton"]) > button[data-action="increment"]:empty::before {
+        background-color: currentColor;
+        content:          "";
+        inset:            0;
+        margin:           auto;
+        position:         absolute;
+    }
+
+    /* === size === */
+
+    label:has(> input[inputmode="numeric"]) > button[data-action][data-size="xs"] {
+        inline-size: var(--xs-box-height);
+    }
+    label:has(> input[inputmode="numeric"]) > button[data-action][data-size="xs"]:empty::after {
+        block-size:  var(--xs-border-width);
+        inline-size: calc(var(--xs-box-height) / 4);
+    }
+    label:has(> input[inputmode="numeric"]) > button[data-action="increment"][data-size="xs"]:empty::before {
+        block-size:  calc(var(--xs-box-height) / 4);
+        inline-size: var(--xs-border-width);
+    }
+
+    label:has(> input[inputmode="numeric"]) > button[data-action][data-size="sm"] {
+        inline-size: var(--sm-box-height);
+    }
+    label:has(> input[inputmode="numeric"]) > button[data-action][data-size="sm"]:empty::after {
+        block-size:  var(--sm-border-width);
+        inline-size: calc(var(--sm-box-height) / 4);
+    }
+    label:has(> input[inputmode="numeric"]) > button[data-action="increment"][data-size="sm"]:empty::before {
+        block-size:  calc(var(--sm-box-height) / 4);
+        inline-size: var(--sm-border-width);
+    }
+
+    label:has(> input[inputmode="numeric"]) > button[data-action]:where(
+        [data-size="md"],
+        :not([data-size])
+    ) {
+        inline-size: var(--md-box-height);
+    }
+    label:has(> input[inputmode="numeric"]) > button[data-action]:where(
+        [data-size="md"],
+        :not([data-size])
+    ):empty::after {
+        block-size:  var(--md-border-width);
+        inline-size: calc(var(--md-box-height) / 4);
+    }
+    label:has(> input[inputmode="numeric"]) > button[data-action="increment"]:where(
+        [data-size="md"],
+        :not([data-size])
+    ):empty::before {
+        block-size:  calc(var(--md-box-height) / 4);
+        inline-size: var(--md-border-width);
+    }
+
+    label:has(> input[inputmode="numeric"]) > button[data-action][data-size="lg"] {
+        inline-size: var(--lg-box-height);
+    }
+    label:has(> input[inputmode="numeric"]) > button[data-action][data-size="lg"]:empty::after {
+        block-size:  var(--lg-border-width);
+        inline-size: calc(var(--lg-box-height) / 4);
+    }
+    label:has(> input[inputmode="numeric"]) > button[data-action="increment"][data-size="lg"]:empty::before {
+        block-size:  calc(var(--lg-box-height) / 4);
+        inline-size: var(--lg-border-width);
+    }
+
+    label:has(> input[inputmode="numeric"]) > button[data-action][data-size="xl"] {
+        inline-size: var(--xl-box-height);
+    }
+    label:has(> input[inputmode="numeric"]) > button[data-action][data-size="xl"]:empty::after {
+        block-size:  var(--xl-border-width);
+        inline-size: calc(var(--xl-box-height) / 4);
+    }
+    label:has(> input[inputmode="numeric"]) > button[data-action="increment"][data-size="xl"]:empty::before {
+        block-size:  calc(var(--xl-box-height) / 4);
+        inline-size: var(--xl-border-width);
+    }
+
+    label:has(> input[inputmode="numeric"]) > button[data-action][data-size="2xl"] {
+        inline-size: var(--2xl-box-height);
+    }
+    label:has(> input[inputmode="numeric"]) > button[data-action][data-size="2xl"]:empty::after {
+        block-size:  var(--2xl-border-width);
+        inline-size: calc(var(--2xl-box-height) / 4);
+    }
+    label:has(> input[inputmode="numeric"]) > button[data-action="increment"][data-size="2xl"]:empty::before {
+        block-size:  calc(var(--2xl-box-height) / 4);
+        inline-size: var(--2xl-border-width);
+    }
+
+    /* === input === */
+
+    label:has(> input[inputmode="numeric"]) > input[inputmode="numeric"] {
+        /*  a spinbutton is read and corrected digit by digit, so the field does
+            not grow with its content the way a text input does. */
+        field-sizing:    fixed;
+        min-inline-size: 0;
+    }
+
+    /* === [data-axis="block"] === */
+
+    label:has(> input[inputmode="numeric"])[data-axis="block"] {
+        display:               inline grid;
+        grid-template-columns: auto auto;
+        grid-template-rows:    1fr 1fr;
+    }
+    label:has(> input[inputmode="numeric"])[data-axis="block"] > input[inputmode="numeric"] {
+        grid-column: 1;
+        grid-row:    1 / span 2;
+    }
+    label:has(> input[inputmode="numeric"])[data-axis="block"] > button[data-action="increment"] {
+        grid-column: 2;
+        grid-row:    1;
+    }
+    label:has(> input[inputmode="numeric"])[data-axis="block"] > button[data-action="decrement"] {
+        grid-column: 2;
+        grid-row:    2;
+    }
+
+    /*  half a box height each, and the min-height button.css sets per size step
+        has to give way for the pair to add up to one box. */
+
+    label:has(> input[inputmode="numeric"])[data-axis="block"] > button[data-action] {
+        min-block-size: 0;
+        padding-block:  0;
+    }
+
+    label:has(> input[inputmode="numeric"])[data-axis="block"] > button[data-action][data-size="xs"] {
+        block-size: calc(var(--xs-box-height) / 2);
+    }
+    label:has(> input[inputmode="numeric"])[data-axis="block"] > button[data-action][data-size="sm"] {
+        block-size: calc(var(--sm-box-height) / 2);
+    }
+    label:has(> input[inputmode="numeric"])[data-axis="block"] > button[data-action]:where(
+        [data-size="md"],
+        :not([data-size])
+    ) {
+        block-size: calc(var(--md-box-height) / 2);
+    }
+    label:has(> input[inputmode="numeric"])[data-axis="block"] > button[data-action][data-size="lg"] {
+        block-size: calc(var(--lg-box-height) / 2);
+    }
+    label:has(> input[inputmode="numeric"])[data-axis="block"] > button[data-action][data-size="xl"] {
+        block-size: calc(var(--xl-box-height) / 2);
+    }
+    label:has(> input[inputmode="numeric"])[data-axis="block"] > button[data-action][data-size="2xl"] {
+        block-size: calc(var(--2xl-box-height) / 2);
+    }
+
+    /*  only the end edge is shared here: the start edge is the outside of the
+        group and has to keep its line. */
+
+    label:has(> input[inputmode="numeric"])[data-axis="block"] > input[inputmode="numeric"] {
+        border-inline-end-width:   0;
+        border-inline-start-width: var(--md-border-width);
+    }
+    label:has(> input[inputmode="numeric"])[data-axis="block"] > input[inputmode="numeric"][data-size="xs"] {
+        border-inline-start-width: var(--xs-border-width);
+    }
+    label:has(> input[inputmode="numeric"])[data-axis="block"] > input[inputmode="numeric"][data-size="sm"] {
+        border-inline-start-width: var(--sm-border-width);
+    }
+    label:has(> input[inputmode="numeric"])[data-axis="block"] > input[inputmode="numeric"][data-size="lg"] {
+        border-inline-start-width: var(--lg-border-width);
+    }
+    label:has(> input[inputmode="numeric"])[data-axis="block"] > input[inputmode="numeric"][data-size="xl"] {
+        border-inline-start-width: var(--xl-border-width);
+    }
+    label:has(> input[inputmode="numeric"])[data-axis="block"] > input[inputmode="numeric"][data-size="2xl"] {
+        border-inline-start-width: var(--2xl-border-width);
+    }
+
+    /*  corners: the input owns the start edge, the buttons the end edge. the
+        inline form squares off the input entirely, so the start corners are
+        given back here: they are the outside of the group. */
+
+    label:has(> input[inputmode="numeric"])[data-axis="block"] > input[inputmode="numeric"][data-size="xs"] {
+        border-end-start-radius:   var(--xs-border-radius);
+        border-start-start-radius: var(--xs-border-radius);
+    }
+    label:has(> input[inputmode="numeric"])[data-axis="block"] > input[inputmode="numeric"][data-size="sm"] {
+        border-end-start-radius:   var(--sm-border-radius);
+        border-start-start-radius: var(--sm-border-radius);
+    }
+    label:has(> input[inputmode="numeric"])[data-axis="block"] > input[inputmode="numeric"]:where(
+        [data-size="md"],
+        :not([data-size])
+    ) {
+        border-end-start-radius:   var(--md-border-radius);
+        border-start-start-radius: var(--md-border-radius);
+    }
+    label:has(> input[inputmode="numeric"])[data-axis="block"] > input[inputmode="numeric"][data-size="lg"] {
+        border-end-start-radius:   var(--lg-border-radius);
+        border-start-start-radius: var(--lg-border-radius);
+    }
+    label:has(> input[inputmode="numeric"])[data-axis="block"] > input[inputmode="numeric"][data-size="xl"] {
+        border-end-start-radius:   var(--xl-border-radius);
+        border-start-start-radius: var(--xl-border-radius);
+    }
+    label:has(> input[inputmode="numeric"])[data-axis="block"] > input[inputmode="numeric"][data-size="2xl"] {
+        border-end-start-radius:   var(--2xl-border-radius);
+        border-start-start-radius: var(--2xl-border-radius);
+    }
+
+    label:has(> input[inputmode="numeric"])[data-axis="block"] > input[inputmode="numeric"] {
+        border-end-end-radius:   0;
+        border-start-end-radius: 0;
+    }
+    label:has(> input[inputmode="numeric"])[data-axis="block"] > button[data-action="increment"] {
+        border-end-end-radius:     0;
+        border-end-start-radius:   0;
+        border-start-start-radius: 0;
+    }
+    label:has(> input[inputmode="numeric"])[data-axis="block"] > button[data-action="decrement"] {
+        border-end-start-radius:   0;
+        border-start-end-radius:   0;
+        border-start-start-radius: 0;
+    }
+
+    /*  the one corner each button keeps (increment's outer top corner,
+        decrement's outer bottom corner) used to go unstated, left to
+        whatever border-radius default happened to still reach it. Restated
+        explicitly per size instead, so this variant stands on its own
+        regardless of what any other rule elsewhere does or stops doing. */
+
+    label:has(> input[inputmode="numeric"])[data-axis="block"] > button[data-action="increment"][data-size="xs"] {
+        border-start-end-radius: var(--xs-border-radius);
+    }
+    label:has(> input[inputmode="numeric"])[data-axis="block"] > button[data-action="increment"][data-size="sm"] {
+        border-start-end-radius: var(--sm-border-radius);
+    }
+    label:has(> input[inputmode="numeric"])[data-axis="block"] > button[data-action="increment"]:where(
+        [data-size="md"],
+        :not([data-size])
+    ) {
+        border-start-end-radius: var(--md-border-radius);
+    }
+    label:has(> input[inputmode="numeric"])[data-axis="block"] > button[data-action="increment"][data-size="lg"] {
+        border-start-end-radius: var(--lg-border-radius);
+    }
+    label:has(> input[inputmode="numeric"])[data-axis="block"] > button[data-action="increment"][data-size="xl"] {
+        border-start-end-radius: var(--xl-border-radius);
+    }
+    label:has(> input[inputmode="numeric"])[data-axis="block"] > button[data-action="increment"][data-size="2xl"] {
+        border-start-end-radius: var(--2xl-border-radius);
+    }
+
+    label:has(> input[inputmode="numeric"])[data-axis="block"] > button[data-action="decrement"][data-size="xs"] {
+        border-end-end-radius: var(--xs-border-radius);
+    }
+    label:has(> input[inputmode="numeric"])[data-axis="block"] > button[data-action="decrement"][data-size="sm"] {
+        border-end-end-radius: var(--sm-border-radius);
+    }
+    label:has(> input[inputmode="numeric"])[data-axis="block"] > button[data-action="decrement"]:where(
+        [data-size="md"],
+        :not([data-size])
+    ) {
+        border-end-end-radius: var(--md-border-radius);
+    }
+    label:has(> input[inputmode="numeric"])[data-axis="block"] > button[data-action="decrement"][data-size="lg"] {
+        border-end-end-radius: var(--lg-border-radius);
+    }
+    label:has(> input[inputmode="numeric"])[data-axis="block"] > button[data-action="decrement"][data-size="xl"] {
+        border-end-end-radius: var(--xl-border-radius);
+    }
+    label:has(> input[inputmode="numeric"])[data-axis="block"] > button[data-action="decrement"][data-size="2xl"] {
+        border-end-end-radius: var(--2xl-border-radius);
+    }
+
+    /* === sort button === */
+
+    /*
+        <th scope="col" aria-sort="ascending">
+            <span data-axis="block">
+                <label>
+                    <input type="radio" name="sort-table" value="1-asc"
+                            aria-label="Sort ascending" checked></label>
+                <label>
+                    <input type="radio" name="sort-table" value="1-desc"
+                            aria-label="Sort descending"></label></span></th>
+
+        <th scope="col" aria-sort="ascending">
+            <label>
+                <input type="radio" name="sort-table" value="1-asc"
+                        aria-label="Sort ascending" checked></label>
+            <span></span>
+            <label>
+                <input type="radio" name="sort-table" value="1-desc"
+                        aria-label="Sort descending"></label></th>
+
+        <th scope="col" aria-sort="ascending">
+            <span></span>
+            <label>
+                <input type="radio" name="sort-table" value="1-asc"
+                        aria-label="Sort ascending" checked></label>
+            <label>
+                <input type="radio" name="sort-table" value="1-desc"
+                        aria-label="Sort descending"></label></th>
+    */
+
+    th:has(> [data-axis="block"] input[type="radio"]) {
+        white-space: nowrap;
+    }
+
+    /*  the pair is a box height tall against a content box that is only a
+        line-height tall, so the overhang is given back to the block padding
+        it sits in rather than to the row, which would grow. */
+
+    [data-axis="block"]:has(> label > input[type="radio"]) {
+        display:             inline flow-root;
+        margin-block:        calc((var(--md-line-height) - var(--md-box-height)) / 2);
+        margin-inline-start: calc(var(--md-border-radius) / 2);
+        vertical-align:      middle;
+    }
+
+    [data-axis="block"] > label:has(> input[type="radio"]) {
+        cursor:  pointer;
+        display: block;
+    }
+
+    /*  the radio itself is not drawn: the triangle stands for it. the input
+        keeps its box so it still takes focus and the hit area stays whole.
+
+        this is a label > input[type="radio"] like any other, so css.radio
+        styles it as a circle: only what the triangle contradicts is undone
+        here, and the radius has to go with the border or the focus ring is
+        drawn as an ellipse around a triangle.
+
+        half a box height each, so the pair fills the cell between its borders:
+        the row height a th gets from css.table is its line-height plus the
+        block padding on both sides, which is one box height. */
+
+    [data-axis="block"] > label > input[type="radio"] {
+        border:        0;
+        border-radius: 0;
+        color:         var(--color-ink-mix);
+        display:       block;
+        inline-size:   var(--md-box-height);
+        block-size:    calc(var(--md-box-height) / 2);
+    }
+
+    /*  css.radio rounds this pseudo-element into the inner circle of a radio;
+        the triangle needs its corners back. */
+
+    [data-axis="block"] > label > input[type="radio"]::after {
+        background-color: transparent;
+        block-size:       0;
+        border-inline:    calc(var(--md-box-height) / 4) solid transparent;
+        border-radius:    0;
+        content:          "";
+        inline-size:      0;
+        inset:            0;
+        margin:           auto;
+        position:         absolute;
+    }
+
+    /*  first is ascending, second is descending: the order on the page is the
+        order of the values, so the shape follows the position rather than a
+        value attribute. */
+
+    [data-axis="block"] > label:first-child > input[type="radio"]::after {
+        border-block-end: calc(var(--md-box-height) / 4) solid currentColor;
+    }
+    [data-axis="block"] > label:last-child > input[type="radio"]::after {
+        border-block-start: calc(var(--md-box-height) / 4) solid currentColor;
+    }
+
+    /*  === size ===
+
+        the cell sets the height here, so the pair follows table[data-size]
+        rather than a data-size of its own. */
+
+    table[data-size="xs"] [data-axis="block"]:has(> label > input[type="radio"]) {
+        margin-block:        calc((var(--xs-line-height) - var(--xs-box-height)) / 2);
+        margin-inline-start: calc(var(--xs-border-radius) / 2);
+    }
+    table[data-size="xs"] [data-axis="block"] > label > input[type="radio"] {
+        inline-size: var(--xs-box-height);
+        block-size:  calc(var(--xs-box-height) / 2);
+    }
+    table[data-size="xs"] [data-axis="block"] > label > input[type="radio"]::after {
+        border-inline: calc(var(--xs-box-height) / 4) solid transparent;
+    }
+    table[data-size="xs"] [data-axis="block"] > label:first-child > input[type="radio"]::after {
+        border-block-end: calc(var(--xs-box-height) / 4) solid currentColor;
+    }
+    table[data-size="xs"] [data-axis="block"] > label:last-child > input[type="radio"]::after {
+        border-block-start: calc(var(--xs-box-height) / 4) solid currentColor;
+    }
+
+    table[data-size="sm"] [data-axis="block"]:has(> label > input[type="radio"]) {
+        margin-block:        calc((var(--sm-line-height) - var(--sm-box-height)) / 2);
+        margin-inline-start: calc(var(--sm-border-radius) / 2);
+    }
+    table[data-size="sm"] [data-axis="block"] > label > input[type="radio"] {
+        inline-size: var(--sm-box-height);
+        block-size:  calc(var(--sm-box-height) / 2);
+    }
+    table[data-size="sm"] [data-axis="block"] > label > input[type="radio"]::after {
+        border-inline: calc(var(--sm-box-height) / 4) solid transparent;
+    }
+    table[data-size="sm"] [data-axis="block"] > label:first-child > input[type="radio"]::after {
+        border-block-end: calc(var(--sm-box-height) / 4) solid currentColor;
+    }
+    table[data-size="sm"] [data-axis="block"] > label:last-child > input[type="radio"]::after {
+        border-block-start: calc(var(--sm-box-height) / 4) solid currentColor;
+    }
+
+    table[data-size="lg"] [data-axis="block"]:has(> label > input[type="radio"]) {
+        margin-block:        calc((var(--lg-line-height) - var(--lg-box-height)) / 2);
+        margin-inline-start: calc(var(--lg-border-radius) / 2);
+    }
+    table[data-size="lg"] [data-axis="block"] > label > input[type="radio"] {
+        inline-size: var(--lg-box-height);
+        block-size:  calc(var(--lg-box-height) / 2);
+    }
+    table[data-size="lg"] [data-axis="block"] > label > input[type="radio"]::after {
+        border-inline: calc(var(--lg-box-height) / 4) solid transparent;
+    }
+    table[data-size="lg"] [data-axis="block"] > label:first-child > input[type="radio"]::after {
+        border-block-end: calc(var(--lg-box-height) / 4) solid currentColor;
+    }
+    table[data-size="lg"] [data-axis="block"] > label:last-child > input[type="radio"]::after {
+        border-block-start: calc(var(--lg-box-height) / 4) solid currentColor;
+    }
+
+    table[data-size="xl"] [data-axis="block"]:has(> label > input[type="radio"]) {
+        margin-block:        calc((var(--xl-line-height) - var(--xl-box-height)) / 2);
+        margin-inline-start: calc(var(--xl-border-radius) / 2);
+    }
+    table[data-size="xl"] [data-axis="block"] > label > input[type="radio"] {
+        inline-size: var(--xl-box-height);
+        block-size:  calc(var(--xl-box-height) / 2);
+    }
+    table[data-size="xl"] [data-axis="block"] > label > input[type="radio"]::after {
+        border-inline: calc(var(--xl-box-height) / 4) solid transparent;
+    }
+    table[data-size="xl"] [data-axis="block"] > label:first-child > input[type="radio"]::after {
+        border-block-end: calc(var(--xl-box-height) / 4) solid currentColor;
+    }
+    table[data-size="xl"] [data-axis="block"] > label:last-child > input[type="radio"]::after {
+        border-block-start: calc(var(--xl-box-height) / 4) solid currentColor;
+    }
+
+    table[data-size="2xl"] [data-axis="block"]:has(> label > input[type="radio"]) {
+        margin-block:        calc((var(--2xl-line-height) - var(--2xl-box-height)) / 2);
+        margin-inline-start: calc(var(--2xl-border-radius) / 2);
+    }
+    table[data-size="2xl"] [data-axis="block"] > label > input[type="radio"] {
+        inline-size: var(--2xl-box-height);
+        block-size:  calc(var(--2xl-box-height) / 2);
+    }
+    table[data-size="2xl"] [data-axis="block"] > label > input[type="radio"]::after {
+        border-inline: calc(var(--2xl-box-height) / 4) solid transparent;
+    }
+    table[data-size="2xl"] [data-axis="block"] > label:first-child > input[type="radio"]::after {
+        border-block-end: calc(var(--2xl-box-height) / 4) solid currentColor;
+    }
+    table[data-size="2xl"] [data-axis="block"] > label:last-child > input[type="radio"]::after {
+        border-block-start: calc(var(--2xl-box-height) / 4) solid currentColor;
+    }
+
+    /* the direction in force is the one drawn in ink. */
+
+    [data-axis="block"] > label > input[type="radio"]:checked {
+        color: var(--color-ink);
+    }
+
+    /*  an outline, not a box-shadow, which is not painted under forced-colors.
+        the ring is the width of a border here: each half is only half a box
+        height tall, so the ring used elsewhere would swallow it. */
+
+    [data-axis="block"] > label > input[type="radio"]:focus-visible {
+        outline-color:  var(--color-focus);
+        outline-offset: 0;
+        outline-style:  solid;
+        outline-width:  var(--md-border-width);
+        z-index:        1;
+    }
+
+    @media (forced-colors: active) {
+        [data-axis="block"] > label > input[type="radio"] {
+            color: ButtonText;
+        }
+        [data-axis="block"] > label > input[type="radio"]:checked {
+            color: Highlight;
+        }
+        [data-axis="block"] > label > input[type="radio"]:focus-visible {
+            outline-color: Highlight;
+        }
+    }
+
+}

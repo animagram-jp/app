@@ -1,0 +1,210 @@
+/*
+    Usage:
+
+    <label data-group="inline">
+        <span>label text inline flow</span>
+        <input></input>
+        <select></select>
+        <button></button></label>
+*/
+
+@layer css.data_group {
+
+    /* === layout === */
+
+    *:where(
+        *[data-group="inline"],
+        search,
+        form[role="search"]
+    ) {
+        display: inline flow-root;
+    }
+
+    *:where(
+        *[data-group="inline"],
+        search,
+        form[role="search"],
+        label:has(> *[role="spinbutton"])
+    ) {
+        font-size:   0;
+        white-space: nowrap;
+        width:       fit-content;
+    }
+
+    *:where(
+        *[data-group="inline"],
+        search,
+        form[role="search"],
+        label:has(> *[role="spinbutton"])
+    ) * {
+        vertical-align: middle;
+    }
+
+    /* --- label text --- */
+
+    *:where(
+        *[data-group="inline"],
+        search,
+        form[role="search"],
+        label:has(> *[role="spinbutton"])
+    ) > span:first-child {
+        padding-inline-end: var(--md-border-radius);
+    }
+
+    /* --- corner control --- */
+
+    *[data-group="inline"] > label:not(:last-child) > *:where(
+        input:is(
+            [type="text"],
+            [type="email"],
+            [type="password"],
+            [type="search"],
+            [type="url"],
+            [type="tel"]
+        ),
+        select
+    ),
+    *[data-group="inline"] > *:where(
+        :is(
+            button,
+            input:is(
+                [type="text"],
+                [type="email"],
+                [type="password"],
+                [type="search"],
+                [type="url"],
+                [type="tel"]
+            ),
+            select,
+            textarea
+        ):not([data-surround]),
+        *[data-surround="fill"],
+        *[data-surround="outline"]
+    ):not(:last-child),
+    *:where(
+        search,
+        form[role="search"]
+    ) > label:not(:last-child) > *:where(
+        input,
+        select
+    ),
+    *:where(
+        search,
+        form[role="search"]
+    ) > button:not(:last-child) {
+        border-end-end-radius:   0;
+        border-start-end-radius: 0;
+    }
+
+    *[data-group="inline"] > *:where(
+        label,
+        button,
+        input,
+        select
+    ) ~ label > *:where(
+        input:is(
+            [type="text"],
+            [type="email"],
+            [type="password"],
+            [type="search"],
+            [type="url"],
+            [type="tel"]
+        ),
+        select
+    ),
+    *[data-group="inline"] > *:where(
+        label,
+        button,
+        input,
+        select
+    ) ~ *:where(
+        :is(
+            button,
+            input:is(
+                [type="text"],
+                [type="email"],
+                [type="password"],
+                [type="search"],
+                [type="url"],
+                [type="tel"]
+            ),
+            select,
+            textarea
+        ):not([data-surround]),
+        *[data-surround="fill"],
+        *[data-surround="outline"]
+    ),
+    *:where(
+        search,
+        form[role="search"]
+    ) > label ~ label > *:where(
+        input,
+        select
+    ),
+    *:where(
+        search,
+        form[role="search"]
+    ) > label ~ button {
+        border-end-start-radius:   0;
+        border-start-start-radius: 0;
+    }
+
+    /* === color === */
+
+    *:where(
+        *[data-group="inline"],
+        search,
+        form[role="search"]
+    ) > button:not(:where(:active, [aria-pressed="true"])) {
+        border-color: var(--color-ink-mix);
+    }
+
+    *:where(
+        *[data-group="inline"],
+        search,
+        form[role="search"]
+    ):has(*:where(
+        :user-invalid,
+        [aria-invalid="true"]
+    )) {
+        outline-color:  var(--color-error);
+        outline-offset: 0;
+        outline-style:  solid;
+        outline-width:  var(--md-border-width);
+    }
+
+    *:where(
+        *[data-group="inline"],
+        search,
+        form[role="search"]
+    ):has(*:where(
+        :user-invalid,
+        [aria-invalid="true"]
+    )) *:where(
+        :user-invalid,
+        [aria-invalid="true"]
+    ):not(:focus-visible) {
+        outline-color: transparent;
+    }
+
+    @media (forced-colors: active) {
+        *:where(
+            *[data-group="inline"],
+            search,
+            form[role="search"]
+        ) > button:not(:where(:active, [aria-pressed="true"])) {
+            border-color: ButtonBorder;
+        }
+
+        *:where(
+            *[data-group="inline"],
+            search,
+            form[role="search"]
+        ):has(*:where(
+            :user-invalid,
+            [aria-invalid="true"]
+        )) {
+            outline-color: Mark;
+        }
+    }
+}

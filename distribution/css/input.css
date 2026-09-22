@@ -1,183 +1,104 @@
-/* <span data-input-number>
-        <button></button>
-        <input type="text">
-        <button></button></span> */
+/*
+    Usage:
 
-@layer css.components {
+    <input type="text|email|password|search|url|tel"></input>
+    
+    <select>
+        <option></option></select>
+        
+    <label>
+        <select data-facet="chevron">
+            <option></option></select></label>
 
-    input:not([type="checkbox"], [type="radio"], [data-input-number] input) {
-        appearance: none;
-        border: 1px solid var(--color-muted);
-        background-color: var(--color-background);
-        border-radius: 0.5rem;
-        color: rgb(var(--rgb-ink));
-        font-weight: normal;
-        font-size: var(--md-font-size);
-        line-height: var(--md-line-height);
-        font-family: var(--font-family-sans);
-        letter-spacing: var(--md-letter-spacing);
+    <textarea></textarea>
+
+    <label data-group="inline">
+        <input id="" type="password" autocomplete="current-password">
+        <button type="button" aria-controls="password" aria-pressed="false"></button></label>
+*/
+
+@layer css.input {
+    *:where(
+        input:is(
+            [type="text"],
+            [type="email"],
+            [type="password"],
+            [type="search"],
+            [type="url"],
+            [type="tel"]
+        ),
+        select,
+        textarea
+    ) {
+        field-sizing:     content;
+        max-inline-size:  100%;
+        min-inline-size:  7ch; /* per https://developer.chrome.com/docs/css-ui/css-field-sizing */
     }
 
-    input[data-size="lg"]:not([type="checkbox"], [type="radio"], [data-input-number] input) {
-        height: var(--lg-box-height);
-        padding-block: calc((var(--lg-box-height) - var(--lg-line-height)) / 2);
-        padding-inline: 1rem;
+    *:where(
+        input:is(
+            [type="text"],
+            [type="email"],
+            [type="password"],
+            [type="search"],
+            [type="url"],
+            [type="tel"]
+        ),
+        textarea
+    ) {
+        caret-color: var(--color-ink-mix);
+        cursor:      text;
+    }
+    
+    *:where(input[inputmode="numeric"]) {
+        text-align: right;
     }
 
-    input:not([data-size], [type="checkbox"], [type="radio"], [data-input-number] input),
-    input[data-size="md"]:not([type="checkbox"], [type="radio"], [data-input-number] input) {
-        height: var(--md-box-height);
-        padding-block: calc((var(--md-box-height) - var(--md-line-height)) / 2);
-        padding-inline: 1rem;
-    }
+    /*  Edge ships its own reveal control. Hide it so the page does not show
+        two toggles that disagree with each other. */
 
-    input[data-size="sm"]:not([type="checkbox"], [type="radio"], [data-input-number] input) {
-        height: var(--sm-box-height);
-        padding-block: calc((var(--sm-box-height) - var(--sm-line-height)) / 2);
-        padding-inline: 0.75rem;
-    }
-
-    input:read-only:not([type="checkbox"], [type="radio"], :disabled, [data-input-number] input) {
-        border-style: dashed;
-    }
-
-    @media (hover: hover) {
-        input:not([type="checkbox"], [type="radio"], :read-only, [data-input-number] input):hover {
-            border-color: rgb(var(--rgb-border));
-        }
-    }
-
-    input:not([type="checkbox"], [type="radio"], [data-input-number] input):is(:user-invalid, [aria-invalid="true"]) {
-        border-color: rgb(var(--rgb-error));
-    }
-
-    @media (hover: hover) {
-        input:not([type="checkbox"], [type="radio"], [data-input-number] input):is(:user-invalid, [aria-invalid="true"]):hover {
-            border-color: rgb(var(--rgb-error));
-        }
-    }
-
-    input:not([type="checkbox"], [type="radio"], [data-input-number] input):is(:disabled, [aria-disabled="true"]),
-    input:not([type="checkbox"], [type="radio"], [data-input-number] input):is(:disabled, [aria-disabled="true"]):hover {
-        border-color: rgb(var(--rgb-light-gray));
-        background-color: rgb(var(--rgb-light-gray) / 0.3);
-        color: var(--color-muted);
-    }
-
-    @media (forced-colors: active) {
-        input:not([type="checkbox"], [type="radio"], [data-input-number] input)[aria-disabled="true"],
-        input:not([type="checkbox"], [type="radio"], [data-input-number] input)[aria-disabled="true"]:hover {
-            border-color: GrayText;
-            color: GrayText;
-        }
-    }
-
-    input[type="search"]::-webkit-search-cancel-button {
+    *:where(input[type="password"])::-ms-reveal {
         display: none;
     }
 
-    [data-input-number] {
-        display: inline flex;
-        align-items: stretch;
-        box-sizing: border-box;
-        border: 1px solid var(--color-muted);
-        background-color: var(--color-background);
-        border-radius: 0.5rem;
-        color: rgb(var(--rgb-ink));
-        font-weight: normal;
-        font-size: var(--md-font-size);
-        line-height: var(--md-line-height);
-        font-family: var(--font-family-sans);
-        letter-spacing: var(--md-letter-spacing);
+    select:not([data-facet]) {
+        appearance: auto;
     }
 
-    [data-input-number][data-size="lg"] {
-        height: var(--lg-box-height);
+    /* --- size --- */
+
+    label > select[data-facet="chevron"][data-size="xs"] {
+        padding-inline-end: calc(var(--xs-box-height) * 0.75);
+    }
+    label > select[data-facet="chevron"][data-size="sm"] {
+        padding-inline-end: calc(var(--sm-box-height) * 0.6);
+    }
+    label > select[data-facet="chevron"]:where(
+        [data-size="md"],
+        :not([data-size])
+    ) {
+        padding-inline-end: calc(var(--md-box-height) * 0.6);
+    }
+    label > select[data-facet="chevron"][data-size="lg"] {
+        padding-inline-end: calc(var(--lg-box-height) * 0.6);
+    }
+    label > select[data-facet="chevron"][data-size="xl"] {
+        padding-inline-end: calc(var(--xl-box-height) * 0.6);
+    }
+    label > select[data-facet="chevron"][data-size="2xl"] {
+        padding-inline-end: calc(var(--2xl-box-height) * 0.6);
     }
 
-    [data-input-number]:not([data-size]),
-    [data-input-number][data-size="md"] {
-        height: var(--md-box-height);
-    }
+    /* === required ===
 
-    [data-input-number][data-size="sm"] {
-        height: var(--sm-box-height);
-    }
+        Usage:
 
-    [data-input-number] input[type="text"] {
-        appearance: none;
-        box-sizing: border-box;
-        border: none;
-        background: transparent;
-        padding: 0.75rem 0;
-        color: inherit;
-        font: inherit;
-        letter-spacing: inherit;
-        flex: 1;
-        min-width: 0;
-        text-align: center;
+        <label>
+            <span></span>
+            <input required></input></label>
+    */
+    *:where(label):has(:required) > span:first-child::after {
+        color:   var(--color-error);
+        content: "*";
     }
-
-    [data-input-number] input[type="text"]:focus-visible {
-        outline: none;
-    }
-
-    [data-input-number]:focus-within {
-        outline: 0.125rem solid rgb(var(--rgb-border));
-        outline-offset: 0.125rem;
-        box-shadow: 0 0 0 0.125rem rgb(var(--rgb-focus));
-    }
-
-    [data-input-number] button {
-        all: unset;
-        box-sizing: border-box;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex: 0 0 auto;
-        width: 2rem;
-        background-color: var(--color-background);
-        color: rgb(var(--rgb-ink));
-        cursor: pointer;
-        font-size: var(--sm-font-size);
-        font-weight: bold;
-    }
-
-    [data-input-number][data-size="lg"] button {
-        width: 2.5rem;
-    }
-
-    [data-input-number][data-size="sm"] button {
-        width: 1.5rem;
-    }
-
-    [data-input-number] button:first-child {
-        border-radius: 0.5rem 0 0 0.5rem;
-        border-right: 1px solid var(--color-muted);
-    }
-
-    [data-input-number] button:last-child {
-        border-radius: 0 0.5rem 0.5rem 0;
-        border-left: 1px solid var(--color-muted);
-    }
-
-    @media (hover: hover) {
-        [data-input-number] button:hover {
-            background-color: rgb(var(--rgb-light-gray) / 0.3);
-        }
-    }
-
-    [data-input-number] button:focus-visible {
-        outline: 0.125rem solid rgb(var(--rgb-border));
-        outline-offset: 0.125rem;
-        background-color: rgb(var(--rgb-focus));
-        box-shadow: 0 0 0 0.125rem rgb(var(--rgb-focus));
-    }
-
-    @media (hover: hover) {
-        [data-input-number]:not(:focus-within):hover {
-            border-color: rgb(var(--rgb-border));
-        }
-    }
-
 }

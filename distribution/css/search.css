@@ -1,0 +1,184 @@
+/*
+    Usage:
+
+    <label>
+        <input type="search"></label>
+
+    <search aria-labelledby="">
+        <span id=""></span>
+        <label>
+            <input type="search"></label>
+        <button type="button"></button></search>
+
+    <form role="search" aria-labelledby="">
+        <span id=""></span>
+        <label>
+            <input type="search" name=""></label>
+        <button type="submit"></button></form>
+
+    <search aria-labelledby="">
+        <span id=""></span>
+        <label>
+            <select data-facet="chevron">
+                <option></option>
+                <option></option></select></label>
+        <label>
+            <input type="search"></label>
+        <button type="button"></button></search>
+
+    <form role="search" aria-labelledby="">
+        <span id=""></span>
+        <label>
+            <select data-facet="chevron">
+                <option></option>
+                <option></option></select></label>
+        <label>
+            <input type="search" name=""></label>
+        <button type="submit"></button></form>
+*/
+
+@layer css.search {
+    label:has(> input[type="search"]) {
+        position: relative;
+    }
+
+    *:where(search, form[role="search"]) > span {
+        margin-inline-end: 0.5rem;
+    }
+
+    label:has(> input[type="search"])::before,
+    label:has(> input[type="search"])::after {
+        color:          var(--color-ink-mix);
+        content:        "";
+        inset-block:    0;
+        margin-block:   auto;
+        pointer-events: none;
+        position:       absolute;
+        z-index:        2;
+    }
+
+    label:has(> input[type="search"])::before {
+        border-radius: 50%;
+        border-style:  solid;
+    }
+
+    label:has(> input[type="search"])::after {
+        background-color: currentColor;
+        transform-origin: top center;
+    }
+
+    @media (forced-colors: active) {
+        label:has(> input[type="search"])::before,
+        label:has(> input[type="search"])::after {
+            color: FieldText;
+        }
+    }
+
+    /* --- size --- */
+
+    label:has(> input[type="search"][data-size="xs"])::before {
+        block-size:         calc(var(--xs-box-height) / 4);
+        border-width:       var(--xs-border-width);
+        inline-size:        calc(var(--xs-box-height) / 4);
+        inset-inline-start: calc(var(--xs-box-height) / 4);
+    }
+    label:has(> input[type="search"][data-size="xs"])::after {
+        block-size:         calc(var(--xs-box-height) / 6);
+        inline-size:        var(--xs-border-width);
+        inset-inline-start: calc(var(--xs-box-height) * 0.375 + var(--xs-box-height) / 8 * 0.707 - var(--xs-border-width) / 2);
+        transform:          translateY(calc(var(--xs-box-height) / 8 * 0.707 + var(--xs-box-height) / 12)) rotate(-45deg);
+    }
+    label:has(> input[type="search"][data-size="sm"])::before {
+        block-size:         calc(var(--sm-box-height) / 4);
+        border-width:       var(--sm-border-width);
+        inline-size:        calc(var(--sm-box-height) / 4);
+        inset-inline-start: calc(var(--sm-box-height) / 4);
+    }
+    label:has(> input[type="search"][data-size="sm"])::after {
+        block-size:         calc(var(--sm-box-height) / 6);
+        inline-size:        var(--sm-border-width);
+        inset-inline-start: calc(var(--sm-box-height) * 0.375 + var(--sm-box-height) / 8 * 0.707 - var(--sm-border-width) / 2);
+        transform:          translateY(calc(var(--sm-box-height) / 8 * 0.707 + var(--sm-box-height) / 12)) rotate(-45deg);
+    }
+    label:has(> input[type="search"]:where(
+        [data-size="md"],
+        :not([data-size])
+    ))::before {
+        block-size:         calc(var(--md-box-height) / 4);
+        border-width:       var(--md-border-width);
+        inline-size:        calc(var(--md-box-height) / 4);
+        inset-inline-start: calc(var(--md-box-height) / 4);
+    }
+    label:has(> input[type="search"]:where(
+        [data-size="md"],
+        :not([data-size])
+    ))::after {
+        block-size:         calc(var(--md-box-height) / 6);
+        inline-size:        var(--md-border-width);
+        inset-inline-start: calc(var(--md-box-height) * 0.375 + var(--md-box-height) / 8 * 0.707 - var(--md-border-width) / 2);
+        transform:          translateY(calc(var(--md-box-height) / 8 * 0.707 + var(--md-box-height) / 12)) rotate(-45deg);
+    }
+    label:has(> input[type="search"][data-size="lg"])::before {
+        block-size:         calc(var(--lg-box-height) / 4);
+        border-width:       var(--lg-border-width);
+        inline-size:        calc(var(--lg-box-height) / 4);
+        inset-inline-start: calc(var(--lg-box-height) / 4);
+    }
+    label:has(> input[type="search"][data-size="lg"])::after {
+        block-size:         calc(var(--lg-box-height) / 6);
+        inline-size:        var(--lg-border-width);
+        inset-inline-start: calc(var(--lg-box-height) * 0.375 + var(--lg-box-height) / 8 * 0.707 - var(--lg-border-width) / 2);
+        transform:          translateY(calc(var(--lg-box-height) / 8 * 0.707 + var(--lg-box-height) / 12)) rotate(-45deg);
+    }
+    label:has(> input[type="search"][data-size="xl"])::before {
+        block-size:         calc(var(--xl-box-height) / 4);
+        border-width:       var(--xl-border-width);
+        inline-size:        calc(var(--xl-box-height) / 4);
+        inset-inline-start: calc(var(--xl-box-height) / 4);
+    }
+    label:has(> input[type="search"][data-size="xl"])::after {
+        block-size:         calc(var(--xl-box-height) / 6);
+        inline-size:        var(--xl-border-width);
+        inset-inline-start: calc(var(--xl-box-height) * 0.375 + var(--xl-box-height) / 8 * 0.707 - var(--xl-border-width) / 2);
+        transform:          translateY(calc(var(--xl-box-height) / 8 * 0.707 + var(--xl-box-height) / 12)) rotate(-45deg);
+    }
+    label:has(> input[type="search"][data-size="2xl"])::before {
+        block-size:         calc(var(--2xl-box-height) / 4);
+        border-width:       var(--2xl-border-width);
+        inline-size:        calc(var(--2xl-box-height) / 4);
+        inset-inline-start: calc(var(--2xl-box-height) / 4);
+    }
+    label:has(> input[type="search"][data-size="2xl"])::after {
+        block-size:         calc(var(--2xl-box-height) / 6);
+        inline-size:        var(--2xl-border-width);
+        inset-inline-start: calc(var(--2xl-box-height) * 0.375 + var(--2xl-box-height) / 8 * 0.707 - var(--2xl-border-width) / 2);
+        transform:          translateY(calc(var(--2xl-box-height) / 8 * 0.707 + var(--2xl-box-height) / 12)) rotate(-45deg);
+    }
+
+    label > input[type="search"][data-size="xs"] {
+        padding-inline-start: calc(var(--xs-box-height) * 0.75);
+    }
+
+    label > input[type="search"][data-size="sm"] {
+        padding-inline-start: calc(var(--sm-box-height) * 0.75);
+    }
+
+    label > input[type="search"]:where(
+        [data-size="md"],
+        :not([data-size])
+    ) {
+        padding-inline-start: calc(var(--md-box-height) * 0.75);
+    }
+
+    label > input[type="search"][data-size="lg"] {
+        padding-inline-start: calc(var(--lg-box-height) * 0.75);
+    }
+
+    label > input[type="search"][data-size="xl"] {
+        padding-inline-start: calc(var(--xl-box-height) * 0.75);
+    }
+
+    label > input[type="search"][data-size="2xl"] {
+        padding-inline-start: calc(var(--2xl-box-height) * 0.75);
+    }
+}
