@@ -198,7 +198,8 @@ instanceは、null(未入力)をlistの out of range で表現し、メモリ占
 
 - `distribution/css/`: [animagram-jp/css](../vendor/css) の `css/css/*.css` をそのままコピーしたミラー。手で編集しない。
 - `distribution/css-app/`: config.css(変数定義)、style.css、その他appの自作/未移行コンポーネント。
-  - heading.css, input.css, table.css, list-box.css は css repo 側の属性契約 (`data-sort`/`data-hover`, `data-input-number`, `data-chip`/`data-rule`, `data-surround`/`data-sign` 等) が変わっており、単純差し替えができないため css-app に残置。
+  - input.css, table.css, list-box.css は css repo 側の属性契約 (`data-input-number`, `data-sort`/`data-hover`, `data-surround`/`data-sign` 等) が変わっており、単純差し替えができないため css-app に残置。1つずつマークアップ込みで移行予定。
+  - heading.css は css/css のものに移行済み（data-chip/data-rule は元々未使用で、サイズ既定値・margin/colorはvendorのdata_size.css/reset.css/base.cssで担保されるため無変更で移行可能だった）。
 
 ## Javascript
 
