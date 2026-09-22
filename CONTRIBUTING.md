@@ -103,8 +103,9 @@ perl -0pi -e 's/return cachedTextDecoder\.decode\(getUint8ArrayMemory0\(\)\.suba
 # auto formatter
 cargo +nightly fmt
 
-# copy from animagram/css
-cp -f ../css/css/*.css ./distribution/css/
+# copy from animagram/css (vendored as a git submodule at vendor/css)
+git submodule update --init --remote vendor/css
+cp -f vendor/css/css/*.css ./distribution/css/
 ```
 
 OPFS files are in:
