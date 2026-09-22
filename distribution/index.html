@@ -20,16 +20,16 @@
     <link rel="stylesheet" href="./css/radio.css?v={version}">
     <link rel="stylesheet" href="./css/heading.css?v={version}">
     <link rel="stylesheet" href="./css/listbox.css?v={version}">
+    <link rel="stylesheet" href="./css/table.css?v={version}">
     <!-- css-app (app-specific; not yet migrated off the pre-redesign contract: -->
-    <!-- input data-input-number, table data-sort/data-hover have no equivalent -->
-    <!-- in vendor's new markup contract. list-box.css supplements css/listbox.css -->
-    <!-- with the chevron/checkmark/padding it doesn't implement.) -->
+    <!-- input data-input-number has no equivalent in vendor's new markup -->
+    <!-- contract. list-box.css supplements css/listbox.css with the -->
+    <!-- chevron/checkmark/padding it doesn't implement.) -->
     <link rel="stylesheet" href="./css-app/config.css?v={version}">
     <link rel="stylesheet" href="./css-app/description_list.css?v={version}">
     <link rel="stylesheet" href="./css-app/field-label.css?v={version}">
     <link rel="stylesheet" href="./css-app/input.css?v={version}">
     <link rel="stylesheet" href="./css-app/list-box.css?v={version}">
-    <link rel="stylesheet" href="./css-app/table.css?v={version}">
     <link rel="stylesheet" href="./css-app/textarea.css?v={version}">
     <link rel="stylesheet" href="./css-app/select.css?v={version}">
     <link rel="stylesheet" href="./css-app/style.css?v={version}">
@@ -473,7 +473,7 @@
                 <!-- fieldset-3: Characteristic (label / initial / change / modifier / sum) -->
                 <h3 id="main_section-2_h3-3">能力値</h3>
                 <fieldset id="main_section-2_fieldset-3" aria-labelledby="main_section-2_h3-3">
-                    <table id="main_section-2_fieldset-3_table-1" data-type="dense" data-stripe>
+                    <table id="main_section-2_fieldset-3_table-1" data-size="sm" data-stripe>
                         <thead>
                             <tr>
                                 <th></th>
@@ -518,7 +518,7 @@
                                 <td>
                                     <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0"></td>
                                 <td></td></tr></tbody></table>
-                    <table id="main_section-2_fieldset-3_table-2" data-type="dense" data-stripe>
+                    <table id="main_section-2_fieldset-3_table-2" data-size="sm" data-stripe>
                         <thead>
                             <tr>
                                 <th></th>
@@ -577,7 +577,7 @@
                 <!-- fieldset-5: Skill (label / speciality / base value / occupation pt / interest pt / modifier / sum) -->
                 <h3 id="main_section-2_h3-5">技能</h3>
                 <fieldset id="main_section-2_fieldset-5" aria-labelledby="main_section-2_h3-5">
-                    <table id="main_section-2_fieldset-5_table" data-type="dense" data-stripe>
+                    <table id="main_section-2_fieldset-5_table" data-size="sm" data-stripe>
                         <thead>
                             <tr>
                                 <th></th>
