@@ -1,0 +1,219 @@
+/*
+    SPDX-License-Identifier: MIT) Copyright (c) 2021 Elad Shechter
+    The new CSS reset - version 1.11.3 (last updated 25.08.2024)
+    GitHub page: https://github.com/elad2412/the-new-css-reset
+
+    ```bash
+    curl -fsSL -o reference/css/the-new-css-reset.css \
+    https://raw.githubusercontent.com/elad2412/the-new-css-reset/master/css/reset.css
+    ```
+
+    SPDX-License-Identifier: MIT) Copyright (c) 2019 Andy Bell and other contributors
+    GitHub page: https://github.com/hankchizljaw/modern-css-reset
+
+    ```bash
+    curl -fsSL -o reference/css/modern-reset.css \
+    https://raw.githubusercontent.com/hankchizljaw/modern-css-reset/master/dist/reset.css
+    ```
+
+    SPDX-License-Identifier: MIT) Copyright (c) Tailwind Labs, Inc.
+    GitHub page: https://github.com/tailwindlabs/tailwindcss
+
+    ```bash
+    mkdir -p /tmp/tw_extract && docker run --rm -v /tmp/tw_extract:/out node:lts-slim bash -c "
+    cd /tmp && npm install tailwindcss@latest --no-save --silent &&
+    cp /tmp/node_modules/tailwindcss/preflight.css /out/preflight.css
+    " && cp /tmp/tw_extract/preflight.css reference/css/tailwind-preflight.css \
+    && rm -rf /tmp/tw_extract
+    ```
+*/
+@layer css.reset {
+
+    /*
+        Remove all the styles of the "User-Agent-Stylesheet", except for the 'display' property
+        - The "symbol *" part is to solve Firefox SVG sprite bug
+        - The "html" element is excluded, otherwise a bug in Chrome breaks the CSS hyphens property (https://github.com/elad2412/the-new-css-reset/issues/36)
+    */
+    *:where(:not(html, iframe, canvas, img, svg, video, audio):not(svg *, symbol *)) {
+        all: unset;
+        display: revert;
+    }
+
+    /* Preferred box-sizing value */
+    *,
+    *::before,
+    *::after,
+    ::backdrop, /* per tailwind-preflight.css:7-16 */
+    ::file-selector-button { /* per tailwind-preflight.css:7-16 */
+        box-sizing: border-box;
+    }
+    
+    /* Fix mobile Safari increase font-size on landscape mode */
+    html, :host { /* per tailwind-preflight.css:28-51 */
+        -moz-text-size-adjust: none;
+        -webkit-text-size-adjust: none;
+        text-size-adjust: none;
+        line-height: var(--md-line-height); /* per tailwind-preflight.css:28-51 */
+        tab-size: 4; /* per tailwind-preflight.css:28-51 */
+    }
+    
+    body { /* per modern-reset.css, but 100dvh not 100vh. */
+        min-height: 100dvh;
+    }
+    
+    /* Reapply the pointer cursor for anchor tags */
+    a, button {
+        cursor: revert;
+    }
+    
+    a { /* per modern-reset.css */
+        text-decoration-skip-ink: auto;
+    }
+    
+    html:focus-within { /* per modern-reset.css */
+        scroll-behavior: smooth;
+    }
+    @media (prefers-reduced-motion: reduce) { /* per modern-reset.css */
+        html:focus-within {
+            scroll-behavior: auto;
+        }
+    }
+    
+    hr { /* per tailwind-preflight.css:53-63 */
+        border-top-width: 1px;
+        height: 0;
+    }
+    
+    b, strong { /* per tailwind-preflight.css:98-105 */
+        font-weight: bolder;
+    }
+    
+    small { /* per tailwind-preflight.css:134-140, but "smaller" not "80%" */
+        font-size: smaller;
+    }
+    
+    sub, sup { /* per tailwind-preflight.css:142-160 */
+        font-size: 0.75em;
+        line-height: 0;
+        position: relative;
+        vertical-align: baseline;
+    }
+    sub { /* per tailwind-preflight.css:142-160 */
+        bottom: -0.25em;
+    }
+    sup { /* per tailwind-preflight.css:142-160 */
+        top: -0.5em;
+    }
+    
+    /* Firefox: solve issue where nested ordered lists continue numbering from parent (https://bugzilla.mozilla.org/show_bug.cgi?id=1881517) */
+    ol {
+        counter-reset: revert;
+    }
+
+    /* Remove list styles (bullets/numbers). */
+    ol, ul, menu, summary {
+        list-style: none;
+    }
+    
+    /* For images to not be able to exceed their container */
+    img, video { /* per tailwind-preflight.css:226-234 */
+        max-inline-size: 100%;
+        block-size: auto;
+    }
+    
+    iframe, canvas, img, svg, video, audio { /* per tailwind-preflight.css:208-224,but display: inline flow-root not block */
+        display: inline flow-root;
+        vertical-align: middle;
+    }
+    
+    /* removes spacing between cells in tables */
+    table {
+        border-collapse: collapse;
+        text-indent: 0; /* per tailwind-preflight.css:162-172 */
+        border-color: inherit; /* per tailwind-preflight.css:162-172 */
+    }
+    
+    /* Safari - solving issue when using user-select:none on the <body> text input doesn't working */
+    input, textarea {
+        -webkit-user-select: auto;
+    }
+
+    /* revert the 'white-space' property for textarea elements on Safari */
+    textarea {
+        white-space: revert;
+        resize: vertical; /* per tailwind-preflight.css:303-309 */
+    }
+    
+    ::file-selector-button { /* per tailwind-preflight.css:236-257 */
+        color: inherit;
+        font: inherit;
+        font-feature-settings: inherit;
+        font-variation-settings: inherit;
+        letter-spacing: inherit;
+    }
+    
+    /* minimum style to allow to style meter element */
+    meter {
+        -webkit-appearance: revert;
+        appearance: revert;
+    }
+    
+    ::-webkit-search-decoration { /* per tailwind-preflight.css:311-317 */
+        -webkit-appearance: none;
+    }
+    
+    /* preformatted text - use only for this feature */
+    pre {
+        all: revert;
+        box-sizing: border-box;
+    }
+
+    cite {
+        font-style: italic;
+    }
+    cite:is(:lang(ja), :lang(zh), :lang(ko)) {
+        font-style: normal;
+    }
+    
+    /* reset default text opacity of input placeholder. */
+    ::placeholder {
+        opacity: 1; /* per tailwind-preflight.css:283-289 */
+    }
+    
+    /* fix the feature of 'hidden' attribute.
+       display:revert; revert to element instead of attribute */
+    :where([hidden]):where(:not([hidden='until-found'])) { /* per tailwind-preflight.css:392-398 */
+        display: none !important;
+    }
+    
+    :-moz-ui-invalid { /* per tailwind-preflight.css:365-371 */
+        box-shadow: none;
+    }
+
+    ::-webkit-inner-spin-button,
+    ::-webkit-outer-spin-button { /* per tailwind-preflight.css:383-390 */
+        height: auto;
+    }
+    
+    /* revert for bug in Chromium browsers
+       - fix for the content editable attribute will work properly.
+       - webkit-user-select: auto; added for Safari in case of using user-select:none on wrapper element*/
+    :where([contenteditable]:not([contenteditable="false"])) {
+        -moz-user-modify: read-write;
+        -webkit-user-modify: read-write;
+        overflow-wrap: break-word;
+        -webkit-line-break: after-white-space;
+        -webkit-user-select: auto;
+    }
+    
+    /* apply back the draggable feature - exist only in Chromium and Safari */
+    :where([draggable="true"]) {
+        -webkit-user-drag: element;
+    }
+    
+    /* Revert Modal native behavior */
+    :where(dialog:modal) {
+        all: revert;
+        box-sizing: border-box;
+    }
+}

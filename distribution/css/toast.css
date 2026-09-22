@@ -1,0 +1,150 @@
+/* toast: a transient status message stacked in a fixed corner of the viewport. */
+
+/* Usage:
+
+    <section data-type="toast" aria-live="polite" aria-atomic="true">
+        <output class="hidden">
+            <span></span>
+            <p></p></output>
+        <button data-sign="x" class="hidden">
+            <span></span>
+            <p></p></button></section>
+
+    The number of [data-type="toast"]'s children means the maximum number of toasts that can be displayed simultaneously.
+    Also see reference/style.js.
+*/
+
+@layer css.toast {
+
+    /* === layout === */
+
+    [data-type="toast"] {
+        bottom:           1.5rem;
+        display:          flex;
+        flex-direction:   column-reverse;
+        gap:              0.75rem;
+        inset-inline-end: 1.5rem;
+        max-inline-size:  calc(100vw - 3rem);
+        position:         fixed;
+        z-index:          100;
+    }
+
+    [data-type="toast"] > * {
+        max-inline-size: 22rem;
+        min-inline-size: 14rem;
+        opacity:         0;
+        pointer-events:  none;
+        translate:       1.5rem 0;
+    }
+
+    [data-type="toast"] > * > p {
+        display: inline;
+    }
+
+    /*  a clickable slot carries its sign itself rather than holding a button:
+        the end padding is widened to a box height and the sign, centred in the
+        box by css.data_sign, is pulled into it. */
+
+    [data-type="toast"] > [data-sign] {
+        cursor:     pointer;
+        text-align: start;
+    }
+
+    [data-type="toast"] > [data-sign]::before,
+    [data-type="toast"] > [data-sign]::after {
+        inset-inline-start: auto;
+    }
+
+    /* --- size --- */
+
+    [data-type="toast"] > [data-sign][data-size="xs"] {
+        padding-inline-end: var(--xs-box-height);
+    }
+    [data-type="toast"] > [data-sign][data-size="xs"]::before,
+    [data-type="toast"] > [data-sign][data-size="xs"]::after {
+        inset-inline-end: calc((var(--xs-box-height) - var(--xs-line-height)) / 2);
+    }
+
+    [data-type="toast"] > [data-sign][data-size="sm"] {
+        padding-inline-end: var(--sm-box-height);
+    }
+    [data-type="toast"] > [data-sign][data-size="sm"]::before,
+    [data-type="toast"] > [data-sign][data-size="sm"]::after {
+        inset-inline-end: calc((var(--sm-box-height) - var(--sm-line-height)) / 2);
+    }
+
+    [data-type="toast"] > [data-sign]:where(
+        [data-size="md"],
+        :not([data-size])
+    ) {
+        padding-inline-end: var(--md-box-height);
+    }
+    [data-type="toast"] > [data-sign]:where(
+        [data-size="md"],
+        :not([data-size])
+    )::before,
+    [data-type="toast"] > [data-sign]:where(
+        [data-size="md"],
+        :not([data-size])
+    )::after {
+        inset-inline-end: calc((var(--md-box-height) - var(--md-line-height)) / 2);
+    }
+
+    [data-type="toast"] > [data-sign][data-size="lg"] {
+        padding-inline-end: var(--lg-box-height);
+    }
+    [data-type="toast"] > [data-sign][data-size="lg"]::before,
+    [data-type="toast"] > [data-sign][data-size="lg"]::after {
+        inset-inline-end: calc((var(--lg-box-height) - var(--lg-line-height)) / 2);
+    }
+
+    [data-type="toast"] > [data-sign][data-size="xl"] {
+        padding-inline-end: var(--xl-box-height);
+    }
+    [data-type="toast"] > [data-sign][data-size="xl"]::before,
+    [data-type="toast"] > [data-sign][data-size="xl"]::after {
+        inset-inline-end: calc((var(--xl-box-height) - var(--xl-line-height)) / 2);
+    }
+
+    [data-type="toast"] > [data-sign][data-size="2xl"] {
+        padding-inline-end: var(--2xl-box-height);
+    }
+    [data-type="toast"] > [data-sign][data-size="2xl"]::before,
+    [data-type="toast"] > [data-sign][data-size="2xl"]::after {
+        inset-inline-end: calc((var(--2xl-box-height) - var(--2xl-line-height)) / 2);
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+        [data-type="toast"] > * {
+            transition: opacity 0.15s ease, translate 0.15s ease;
+        }
+    }
+
+    [data-type="toast"] > .show {
+        opacity:        1;
+        pointer-events: auto;
+        translate:      0 0;
+    }
+
+    [data-type="toast"] > .hide {
+        opacity:        0;
+        pointer-events: none;
+        translate:      1.5rem 0;
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+        [data-type="toast"] > .hide {
+            transition-duration: 0.15s;
+        }
+    }
+
+    /* === forced-colors === */
+
+    @media (forced-colors: active) {
+        [data-type="toast"] > * {
+            background-color: Canvas;
+            border-color:     ButtonBorder;
+            color:            CanvasText;
+        }
+    }
+}

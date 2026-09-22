@@ -1,0 +1,112 @@
+/*  Usage:
+
+    <section role="alert" data-type="error-summary" aria-labelledby="error-heading">
+        <h2 id="error-heading">There is a problem</h2>
+        <p>optional description</p>
+        <ul>
+            <li><a href="#name">Enter your name</a></li>
+            <li><a href="#dob-day">Date of birth must be a real date</a></li></ul></section>
+
+    <label for="name"></label>
+    <p data-type="error" id="name-error"><strong>Error:</strong></p>
+    <input type="text" id="name" aria-describedby="name-error" aria-invalid="true">
+
+    <label for="name">
+        <p data-type="error" id="name-error"><strong>Error:</strong></p>
+        <input type="text" id="name" aria-describedby="name-error" aria-invalid="true"></label>
+ */
+
+@layer css.error {
+
+    /* === error summary (section[data-type="error-summary"]) === */
+
+    /* === color, layout === */
+
+    section[data-type="error-summary"] {
+        border-color:  var(--color-error);
+        border-style:  solid;
+        border-radius: 0;
+        color:         var(--color-ink);
+        margin:        0;
+    }
+
+    section[data-type="error-summary"] > h2 {
+        font-size:      var(--lg-font-size);
+        font-weight:    bold;
+        letter-spacing: var(--lg-letter-spacing);
+        line-height:    var(--lg-line-height);
+        margin-block:   0 1rem;
+    }
+
+    section[data-type="error-summary"] > p {
+        margin-block: 0 1rem;
+    }
+
+    section[data-type="error-summary"] > ul {
+        list-style:   none;
+        margin-block: 0;
+        padding:      0;
+    }
+
+    section[data-type="error-summary"] > ul > li {
+        padding-block-end: 0.25rem; /* = outline-width */
+    }
+
+    section[data-type="error-summary"] > ul > li + li {
+        padding-block-start: 0.25rem; /* = outline-width *2 */
+    }
+
+    section[data-type="error-summary"] > *:last-child {
+        margin-block-end: 0;
+    }
+
+    section[data-type="error-summary"] > ul > li > a {
+        color:                     var(--color-ink);
+        font-weight:               bold;
+        text-decoration-color:     currentColor;
+        text-decoration-line:      underline;
+        text-decoration-thickness: 0.125rem;
+        text-underline-offset:     0.3em;
+    }
+
+    /* --- focus --- */
+
+    /* --- visited, hover, active --- */
+
+    section[data-type="error-summary"] > ul > li > a:where(:visited, :hover, :active) {
+        color: var(--color-ink);
+    }
+
+    section[data-type="error-summary"] > ul > li > a:where(:hover, :active) {
+        text-decoration-thickness: 0.25rem;
+    }
+
+    /* === error message (p[data-type="error"]) === */
+
+    /* === color, layout === */
+
+    p[data-type="error"] {
+        clear:       both; /* per govuk: stay clear of a floated hint */
+        color:       var(--color-ink);
+        font-weight: bold;
+        margin:      0 0 0.5rem 0;
+    }
+    p[data-type="error"]::before {
+        background-color: var(--color-error);
+    }
+
+    /* === forced-colors === */
+
+    @media (forced-colors: active) {
+        p[data-type="error"] {
+            color: CanvasText;
+        }
+        section[data-type="error-summary"] {
+            border-color: Mark;
+        }
+        section[data-type="error-summary"] > ul > li > a,
+        section[data-type="error-summary"] > ul > li > a:where(:visited, :hover, :active) {
+            color: LinkText;
+        }
+    }
+}

@@ -1,0 +1,48 @@
+/*  Usage:
+
+    <dl>
+        <dt>key</dt>
+        <dd>value</dd></dl>
+
+    <ul>
+        <li>item</li></ul>
+
+    <ol>
+        <li>item</li></ol>
+ */
+
+@layer css.list {
+
+    /* === description list (dl) === */
+
+    *:where(dl) {
+        column-gap:            0.5rem;
+        display:               grid;
+        grid-template-columns: auto 1fr;
+        overflow-wrap:         anywhere;
+        row-gap:               0.5rem;
+    }
+
+    *:where(dl) > dt {
+        grid-column: 1;
+    }
+
+    *:where(dl) > dd {
+        grid-column: 2;
+    }
+
+    /* === marker list (ul, ol) === */
+
+    *:where(ul, ol) {
+        padding-inline-start: 2rem;
+    }
+    *:where(ul) {
+        list-style-type: disc;
+    }
+    *:where(ol) {
+        list-style-type: decimal;
+    }
+    *:where(ul, ol) :where(ul, ol) {
+        padding-inline-start: 2rem;
+    }
+}

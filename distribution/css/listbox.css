@@ -1,0 +1,102 @@
+/* Usage:
+
+    <button id="" type="button" popovertarget="" aria-haspopup="listbox" data-surround="outline | fill">
+    <ul id="" popover="auto" role="listbox" aria-labelledby="">
+        <li role="presentation"></li>
+        <li role="option" aria-selected="true">
+            <input type="checkbox | radio" data-sign="check" checked>
+            <span></span></li>
+        <li role="option">
+            <button></button></li></ul>
+
+    #button {anchor-name: --button;}
+    #ul {position-anchor: --button;}
+*/
+
+@layer css.listbox {
+
+    button[aria-haspopup="listbox"]:not(
+        :disabled,
+        [aria-disabled="true"]
+    ) {
+        color: var(--color-ink);
+    }
+
+    *[role="listbox"] {
+        background-color:       var(--color-paper);
+        border-color:           var(--color-ink-mix);
+        border-style:           solid;
+        border-width:           var(--md-border-width);
+        border-radius:          var(--md-border-radius);
+        color:                  var(--color-ink);
+        list-style-type:        none;
+        margin-block:           0.25rem;
+        max-height:             calc(var(--md-border-width) * 0.2 + var(--md-box-height) * 6.5);
+        overflow-y:             auto;
+        padding-inline:         0.25rem; /* for scrollbar width and symmetory */
+        position-area:          block-end span-inline-start;
+        position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline;
+        width:                  max-content;
+    }
+    @media (forced-colors: active) {
+        *[role="listbox"] {
+            background-color: Canvas;
+            border-color:     ButtonBorder;
+            color:            CanvasText;
+        }
+    }
+
+    *[role="listbox"] *:where(
+        *[role="presentation"],
+        *[role="option"]
+    ) {
+        cursor:      default;
+        white-space: nowrap;
+        width:       100%;
+    }
+
+    *[role="option"]:not([data-surround]) {
+        background-color: transparent;
+        border:           none;
+        color:            inherit;
+    }
+
+    *[role="listbox"] *[role="option"] button {
+        all: unset;
+    }
+
+    /* === focus === */
+
+    *[role="option"] > *:where(
+        :focus-visible,
+        :hover,
+        :active
+    ) {
+        outline: none;
+    }
+
+    *[role="listbox"] *[role="option"]:has(*:focus-visible) {
+        background-color: var(--color-focus);
+        color:            var(--color-paper);
+        outline-color:    var(--color-paper);
+        outline-offset:   calc(var(--md-border-width) * -1);
+        outline-style:    solid;
+        outline-width:    var(--md-border-width);
+        position:         relative;
+        z-index:          1;
+    }
+
+    @media (forced-colors: active) {
+        *[role="listbox"] *[role="option"]:has(*:focus-visible) {
+            outline-color: Highlight;
+        }
+    }
+
+    /* === hover === */
+
+    @media (hover: hover) {
+        *[role="listbox"] *[role="option"]:hover:not(:has(*:focus-visible)) {
+            background-color: var(--color-paper-mix);
+        }
+    }
+}
