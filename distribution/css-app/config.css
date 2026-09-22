@@ -61,20 +61,6 @@
         --rgb-background: var(--rgb-white);
         /* borders — required alongside any base-color fill (low contrast against white); max-contrast since e.g. focus-visible outlines want maximum visibility, not a subtle line */
         --rgb-border: var(--rgb-black);
-        /* emphasis — blue reads reliably for P/D-type color vision */
-        --rgb-emphasis: var(--rgb-accent-blue);
-        --rgb-emphasis-fill: var(--rgb-emphasis);
-
-        /*
-        * Hover/active highlight for outline/text variants: a translucent wash
-        * of --rgb-ink over the button's own background, not a tint of
-        * --rgb-emphasis. An emphasis-colored wash sits too close in luminance to
-        * the emphasis-colored text once darkened toward a dark background, and
-        * fails contrast against it. --rgb-ink inverts between schemes already,
-        * so one alpha ramp works for both: it darkens a light surface and lightens a dark one.
-        */
-        --alpha-highlight-weak: 8%;
-        --alpha-highlight-strong: 16%;
     }
 
     @media (prefers-color-scheme: dark) {
@@ -82,10 +68,38 @@
             --rgb-ink: var(--rgb-white);
             --rgb-background: var(--rgb-black);
             --rgb-border: var(--rgb-white);
-            /* brighter sky-blue reads better than blue on a dark ground */
-            --rgb-emphasis: var(--rgb-accent-sky);
-            /* accent-sky fails 4.5:1 for white text; blue clears it */
-            --rgb-emphasis-fill: var(--rgb-accent-blue);
+        }
+    }
+
+    /*
+    * Brand emphasis color: same org theme as animagram-jp/css
+    * (css/reference/style.css), adopted verbatim rather than the design
+    * system's default CUD accent purple.
+    */
+    :root {
+        --rgb-theme-purple: 91 47 145; /* Project theme color (#5B2F91). */
+
+        --color-emphasis-ink:   rgb(var(--rgb-theme-purple));
+        --color-emphasis-paper: color-mix(in srgb, rgb(var(--rgb-theme-purple)) 27%, rgb(0,0,0));
+    }
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --color-emphasis-ink:   color-mix(in srgb, rgb(var(--rgb-theme-purple)) 38%, rgb(255,255,255));
+            --color-emphasis-paper: color-mix(in srgb, rgb(var(--rgb-theme-purple)) 74%, rgb(255,255,255));
+        }
+    }
+    @media (forced-colors: none) {
+        :root[data-color-scheme="light"],
+        :root[data-color-scheme="light-high-contrast"],
+        :root[data-color-scheme="light-less-contrast"] {
+            --color-emphasis-ink:   rgb(var(--rgb-theme-purple));
+            --color-emphasis-paper: color-mix(in srgb, rgb(var(--rgb-theme-purple)) 27%, rgb(0,0,0));
+        }
+        :root[data-color-scheme="dark"],
+        :root[data-color-scheme="dark-high-contrast"],
+        :root[data-color-scheme="dark-less-contrast"] {
+            --color-emphasis-ink:   color-mix(in srgb, rgb(var(--rgb-theme-purple)) 38%, rgb(255,255,255));
+            --color-emphasis-paper: color-mix(in srgb, rgb(var(--rgb-theme-purple)) 74%, rgb(255,255,255));
         }
     }
 
@@ -154,31 +168,19 @@
     body {
         --color-ink: rgb(var(--rgb-ink));
         --color-background: rgb(var(--rgb-background));
-        --color-emphasis: rgb(var(--rgb-emphasis));
-
-        /*
-        * --color-emphasis-fill: background for white-text-on-color use (fill
-        * buttons). Same as --color-emphasis in light mode, but dark mode's
-        * --rgb-emphasis (accent-sky) is too light for white text at 4.5:1
-        * (measured 1.8:1) — overridden to blue below, which clears it (6.56:1)
-        * without needing a separate darken ratio.
-        */
-        --color-emphasis-fill: rgb(var(--rgb-emphasis-fill));
         --color-focus: rgb(var(--rgb-focus));
         --color-border: rgb(var(--rgb-border));
 
         /*
-        * --ratio-emphasis-*: color-mix ratios of --color-emphasis(-fill) against
+        * --ratio-emphasis-*: color-mix ratios of --color-emphasis-ink against
         * black, shared by light/dark so only the ratios (not the mix method)
-        * need revisiting if a brand color makes it look off; a perceptual space
+        * need revisiting if the brand color changes; a perceptual space
         * (oklch) may be worth switching to at that point.
         */
         --ratio-emphasis-hover: 74%;
         --ratio-emphasis-active: 50%;
-        --color-emphasis-hover: color-mix(in srgb, var(--color-emphasis) var(--ratio-emphasis-hover), black);
-        --color-emphasis-active: color-mix(in srgb, var(--color-emphasis) var(--ratio-emphasis-active), black);
-        --color-emphasis-fill-hover: color-mix(in srgb, var(--color-emphasis-fill) var(--ratio-emphasis-hover), black);
-        --color-emphasis-fill-active: color-mix(in srgb, var(--color-emphasis-fill) var(--ratio-emphasis-active), black);
+        --color-emphasis-hover: color-mix(in srgb, var(--color-emphasis-ink) var(--ratio-emphasis-hover), black);
+        --color-emphasis-active: color-mix(in srgb, var(--color-emphasis-ink) var(--ratio-emphasis-active), black);
 
         /*
         * --color-muted: de-emphasized text (support/helper copy) that still
@@ -205,7 +207,7 @@
     }
 
     :where(a):any-link {
-        color: var(--color-emphasis);
+        color: var(--color-emphasis-ink);
         text-decoration: underline;
         text-decoration-thickness: 0.0625rem;
         text-underline-offset: 0.1875rem;
