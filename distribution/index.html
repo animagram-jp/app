@@ -22,14 +22,13 @@
     <link rel="stylesheet" href="./css/listbox.css?v={version}">
     <link rel="stylesheet" href="./css/table.css?v={version}">
     <link rel="stylesheet" href="./css/input.css?v={version}">
+    <link rel="stylesheet" href="./css/list.css?v={version}">
+    <link rel="stylesheet" href="./css/step.css?v={version}">
     <!-- css-app: app-specific overrides + not-yet-migrated markup contracts. -->
-    <!-- input.css and list-box.css supplement their css/ counterpart with -->
-    <!-- patterns vendor doesn't implement (numeric stepper; listbox chevron/ -->
-    <!-- checkmark/padding). -->
+    <!-- list-box.css supplements css/listbox.css with patterns vendor -->
+    <!-- doesn't implement (chevron/checkmark/padding). -->
     <link rel="stylesheet" href="./css-app/config.css?v={version}">
-    <link rel="stylesheet" href="./css-app/description_list.css?v={version}">
     <link rel="stylesheet" href="./css-app/field-label.css?v={version}">
-    <link rel="stylesheet" href="./css-app/input.css?v={version}">
     <link rel="stylesheet" href="./css-app/list-box.css?v={version}">
     <link rel="stylesheet" href="./css-app/textarea.css?v={version}">
     <link rel="stylesheet" href="./css-app/select.css?v={version}">
@@ -63,9 +62,9 @@
                 <button value="4"></button></li></ul>
         <button id="header_button-2" type="button" popovertarget="header_ul-2" aria-haspopup="listbox" aria-expanded="false" aria-controls="header_ul-2">
             <span>✓</span>死生 紡</button>
-        <button id="header_button-3" type="button" aria-label="switch modal" data-type="outline">✏️</button>
-        <button id="header_button-4" type="button" class="dice" data-type="outline">🎲</button>
-        <button id="header_button-5" type="submit" form="form" data-type="fill">✓</button></header>
+        <button id="header_button-3" type="button" aria-label="switch modal" data-surround="outline">✏️</button>
+        <button id="header_button-4" type="button" class="dice" data-surround="outline">🎲</button>
+        <button id="header_button-5" type="submit" form="form" data-surround="fill">✓</button></header>
 
         <main id="main">
             <h2 id="main_h2-1">キャラクターシート</h2>
@@ -81,7 +80,7 @@
                     <span aria-label="Updated At">
                         <span></span>
                         <span>2026-04-18</span></span>
-                        <button id="main_button" type="button" aria-label="delete character sheet" data-type="outline">◌</button></section>
+                        <button id="main_button" type="button" aria-label="delete character sheet" data-surround="outline">◌</button></section>
 
                 <h3 id="main_section-1_h3-2">プロフィール</h3>
                 <section id="main_section-1_section-2" aria-labelledby="main_section-1_h3-2">
@@ -464,12 +463,11 @@
                     <label id="main_section-2_fieldset-2_label-7" for="main_section-2_fieldset-2_label-7_input">
                         <span>住所</span>
                         <input id="main_section-2_fieldset-2_label-7_input" type="text" name="main_section-2_fieldset-2_label-5_input"></label>
-                    <label id="main_section-2_fieldset-2_label-8" for="main_section-2_fieldset-2_label-8_span_input">
+                    <label id="main_section-2_fieldset-2_label-8" for="main_section-2_fieldset-2_label-8_span_input" data-group="inline">
                         <span>年齢</span>
-                    <span data-input-number>
-                        <button type="button">−</button>
-                        <input id="main_section-2_fieldset-2_label-8_span_input" type="text" inputmode="numeric" name="main_section-2_fieldset-2_label-8_span_input" placeholder="0">
-                        <button type="button">+</button></span></label></fieldset>
+                        <button type="button" data-action="decrement" tabindex="-1" aria-label="decrement"></button>
+                        <input id="main_section-2_fieldset-2_label-8_span_input" type="text" inputmode="numeric" pattern="[0-9]*" role="spinbutton" name="main_section-2_fieldset-2_label-8_span_input" placeholder="0">
+                        <button type="button" data-action="increment" tabindex="-1" aria-label="increment"></button></label></fieldset>
 
                 <!-- fieldset-3: Characteristic (label / initial / change / modifier / sum) -->
                 <h3 id="main_section-2_h3-3">能力値</h3>
@@ -1486,7 +1484,7 @@
         <h2 id="main_h2-3">チャットボックス</h2>
         <section id="main_section-4" aria-label="Input Message" aria-labelledby="main_h2-3">
             <textarea id="main_section-4_textarea" name="main_section-4_textarea" rows="2" placeholder="/"></textarea>
-            <button id="main_section-4_button" type="submit" data-type="fill" data-size="sm">↑</button></section>
+            <button id="main_section-4_button" type="submit" data-surround="fill" data-size="sm">↑</button></section>
 
         <!-- ===== Overlay dialog ===== -->
         <dialog id="main_modal" aria-label="overlay">
@@ -1512,10 +1510,10 @@
                     <button></button></li>
                 <li role="option" class="hidden">
                     <button></button></li></ul>
-            <span id="main_modal_span" data-input-number>
-                <button id="main_modal_span_button-1" type="button">−</button>
-                <input id="main_modal_span_input" type="text" inputmode="numeric" placeholder="0" form="main_form">
-                <button id="main_modal_span_button-2" type="button">+</button></span>
+            <label id="main_modal_span" data-group="inline">
+                <button id="main_modal_span_button-1" type="button" data-action="decrement" tabindex="-1" aria-label="decrement"></button>
+                <input id="main_modal_span_input" type="text" inputmode="numeric" pattern="[0-9]*" role="spinbutton" placeholder="0" form="main_form">
+                <button id="main_modal_span_button-2" type="button" data-action="increment" tabindex="-1" aria-label="increment"></button></label>
             <button id="main_modal_button" type="submit" form="main_form" data-surround="transparent">→</button></dialog>
         <form id="main_form" method="dialog"></form></main>
 

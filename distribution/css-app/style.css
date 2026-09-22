@@ -207,8 +207,7 @@ button[aria-haspopup="listbox"]>span { /* todo: 必要なブロックである�
 }
 
 #header_button-5 {
-    --color-emphasis: rgb(var(--rgb-accent-green));
-    --color-emphasis-fill: rgb(var(--rgb-accent-green));
+    --color-emphasis-ink: rgb(var(--rgb-accent-green));
     position: relative;
     color: transparent;
 }
@@ -300,7 +299,7 @@ main>section {
     color: revert;
 }
 
-#main_section-2_fieldset-2 :is(input, [data-input-number]),
+#main_section-2_fieldset-2 input,
 #main_section-2_fieldset-5 input {
     width: 17rem;
 }
