@@ -1,80 +1,18 @@
-/* <span data-input-number>
-        <button></button>
-        <input type="text">
-        <button></button></span> */
+/*
+ * Supplements css/input.css (vendor), which has no numeric-stepper pattern
+ * ([data-input-number] composing two <button>s with a text <input>). Plain
+ * <input type="text"|"email"|...> border/background/height/padding now
+ * comes from css/data_style.css + css/data_size.css instead (their generic
+ * `input:is([type="text"],...)` rules already match without any of this
+ * file's old exclusion selectors).
+ *
+ * <span data-input-number>
+ *     <button></button>
+ *     <input type="text">
+ *     <button></button></span>
+ */
 
 @layer css.components {
-
-    input:not([type="checkbox"], [type="radio"], [data-input-number] input) {
-        appearance: none;
-        border: 1px solid var(--color-muted);
-        background-color: var(--color-background);
-        border-radius: 0.5rem;
-        color: rgb(var(--rgb-ink));
-        font-weight: normal;
-        font-size: var(--md-font-size);
-        line-height: var(--md-line-height);
-        font-family: var(--font-family-sans);
-        letter-spacing: var(--md-letter-spacing);
-    }
-
-    input[data-size="lg"]:not([type="checkbox"], [type="radio"], [data-input-number] input) {
-        height: var(--lg-box-height);
-        padding-block: calc((var(--lg-box-height) - var(--lg-line-height)) / 2);
-        padding-inline: 1rem;
-    }
-
-    input:not([data-size], [type="checkbox"], [type="radio"], [data-input-number] input),
-    input[data-size="md"]:not([type="checkbox"], [type="radio"], [data-input-number] input) {
-        height: var(--md-box-height);
-        padding-block: calc((var(--md-box-height) - var(--md-line-height)) / 2);
-        padding-inline: 1rem;
-    }
-
-    input[data-size="sm"]:not([type="checkbox"], [type="radio"], [data-input-number] input) {
-        height: var(--sm-box-height);
-        padding-block: calc((var(--sm-box-height) - var(--sm-line-height)) / 2);
-        padding-inline: 0.75rem;
-    }
-
-    input:read-only:not([type="checkbox"], [type="radio"], :disabled, [data-input-number] input) {
-        border-style: dashed;
-    }
-
-    @media (hover: hover) {
-        input:not([type="checkbox"], [type="radio"], :read-only, [data-input-number] input):hover {
-            border-color: rgb(var(--rgb-border));
-        }
-    }
-
-    input:not([type="checkbox"], [type="radio"], [data-input-number] input):is(:user-invalid, [aria-invalid="true"]) {
-        border-color: rgb(var(--rgb-error));
-    }
-
-    @media (hover: hover) {
-        input:not([type="checkbox"], [type="radio"], [data-input-number] input):is(:user-invalid, [aria-invalid="true"]):hover {
-            border-color: rgb(var(--rgb-error));
-        }
-    }
-
-    input:not([type="checkbox"], [type="radio"], [data-input-number] input):is(:disabled, [aria-disabled="true"]),
-    input:not([type="checkbox"], [type="radio"], [data-input-number] input):is(:disabled, [aria-disabled="true"]):hover {
-        border-color: rgb(var(--rgb-light-gray));
-        background-color: rgb(var(--rgb-light-gray) / 0.3);
-        color: var(--color-muted);
-    }
-
-    @media (forced-colors: active) {
-        input:not([type="checkbox"], [type="radio"], [data-input-number] input)[aria-disabled="true"],
-        input:not([type="checkbox"], [type="radio"], [data-input-number] input)[aria-disabled="true"]:hover {
-            border-color: GrayText;
-            color: GrayText;
-        }
-    }
-
-    input[type="search"]::-webkit-search-cancel-button {
-        display: none;
-    }
 
     [data-input-number] {
         display: inline flex;

@@ -197,7 +197,7 @@ instanceは、null(未入力)をlistの out of range で表現し、メモリ占
 
 - `distribution/css/`: [animagram-jp/css](../vendor/css) の `css/css/*.css` をそのままコピーしたミラー。手で編集しない。
 - `distribution/css-app/`: config.css(変数定義)、style.css、その他appの自作/未移行コンポーネント。
-  - input.css は css repo 側の属性契約 (`data-input-number`) が変わっており、単純差し替えができないため css-app に残置。マークアップ込みで移行予定。
+  - input.css は css/input.css を使う形に移行済み。プレーンな `<input>` の border/background/height/paddingはvendorのdata_style.css/data_size.cssの汎用ルールに委譲。`[data-input-number]`(+/-ステッパー)はvendorに相当パターンがないため css-app/input.css に残置。
   - heading.css は css/css のものに移行済み（data-chip/data-rule は元々未使用で、サイズ既定値・margin/colorはvendorのdata_size.css/reset.css/base.cssで担保されるため無変更で移行可能だった）。
   - list-box.css は css/listbox.css を使う形に移行済み。vendor側が実装していないシェブロン矢印・選択チェックマーク・オプションのpadding/タッチターゲットのみ css-app/list-box.css に残し、コンテナの背景/ボーダーやoption hover/focusはcss/listbox.cssに委譲。anchor-name/position-anchorは元々css-app/style.css側でIDごとに個別指定済みなので変更なし。
   - table.css は css/table.css に移行済み。未サポートになった機能は敢えて維持せず削除: `data-sort`/`data-sort-direction`(ソート機能・矢印ボタン)、`data-hover`(行ホバー強調)、`data-selectable`のチェックボックスセル中央寄せは元々マークアップで未使用だったため実質的な機能欠落なし。`data-type="dense"` は3テーブルとも `data-size="sm"` に置き換え(他の要素と同じ data-size ボキャブラリに統一)。`data-border` は元々未使用のため、vendorのデフォルト(`sectioned`: thead下罫線+`th[scope=row]`の右罫線)がそのまま適用される。
