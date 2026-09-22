@@ -2,6 +2,8 @@
 
 # Contrinbuting
 
+## Development rule
+
 - Follow [ORG_CONTRIBUTING.md](./ORG_CONTRIBUTING.md)
 
 If "ORG_CONTRIBUTING.md" does not exist in the repository root of your working environment, download it by executing the following.
@@ -9,6 +11,8 @@ If "ORG_CONTRIBUTING.md" does not exist in the repository root of your working e
 ```bash
 curl -fsSL -H "Accept: application/vnd.github.raw+json" "https://api.github.com/repos/animagram-jp/.github/contents/.github/CONTRIBUTING.md?ref=main" -o "ORG_CONTRIBUTING.md"
 ```
+
+- パスは、相対パスは"./"、絶対パスは"/"で必ず始める。distribution以下のhref定義は、相対パスに統一する。
 
 ## Requirements
 
