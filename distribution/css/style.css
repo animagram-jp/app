@@ -17,6 +17,30 @@
 :root {
     --font-family-sans-serif: "IBM Plex Sans", "Noto Sans JP", "BIZ UDPGothic", "Hiragino Sans", sans-serif;
     --font-family-monospace: "Fira Code", "BIZ UDGothic", monospace;
+
+    --rgb-theme-purple: 91 47 145;
+    --color-emphasis-ink:   rgb(var(--rgb-theme-purple));
+    --color-emphasis-paper: color-mix(in srgb, rgb(var(--rgb-theme-purple)) 27%, rgb(0,0,0));
+}
+@media (prefers-color-scheme: dark) {
+    :root {
+        --color-emphasis-ink:   color-mix(in srgb, rgb(var(--rgb-theme-purple)) 38%, rgb(255,255,255));
+        --color-emphasis-paper: color-mix(in srgb, rgb(var(--rgb-theme-purple)) 74%, rgb(255,255,255));
+    }
+}
+@media (forced-colors: none) {
+    :root[data-color-scheme="light"],
+    :root[data-color-scheme="light-high-contrast"],
+    :root[data-color-scheme="light-less-contrast"] {
+        --color-emphasis-ink:   rgb(var(--rgb-theme-purple));
+        --color-emphasis-paper: color-mix(in srgb, rgb(var(--rgb-theme-purple)) 27%, rgb(0,0,0));
+    }
+    :root[data-color-scheme="dark"],
+    :root[data-color-scheme="dark-high-contrast"],
+    :root[data-color-scheme="dark-less-contrast"] {
+        --color-emphasis-ink:   color-mix(in srgb, rgb(var(--rgb-theme-purple)) 38%, rgb(255,255,255));
+        --color-emphasis-paper: color-mix(in srgb, rgb(var(--rgb-theme-purple)) 74%, rgb(255,255,255));
+    }
 }
 
 html {
@@ -24,7 +48,6 @@ html {
 }
 
 body {
-    font-family: var(--font-family-sans);
     max-width: 100%;
     min-height: 100dvh;
     overflow-x: hidden;
@@ -64,72 +87,12 @@ h3 {
     padding-top: 1rem;
 }
 
-input,
-textarea {
-    font-family: inherit;
-    font-size: inherit;
-}
-
-input[inputmode="numeric"] {
-    text-align: right;
-}
-
-[data-type="toast"] {
-    position: fixed;
-    bottom: 1.5rem;
-    right: 1.5rem;
-    display: flex;
-    flex-direction: column-reverse;
-    gap: .75rem;
-    z-index: 100;
-}
-
-[data-type="toast"] output {
-    display: flex;
-    align-items: baseline;
-    border-radius: .375rem;
-    min-width: 14rem;
-    max-width: 22rem;
-    background: #1c1c1c;
-    color: #f5f5f5;
-    font-size: .875rem;
-    line-height: 1.45;
-    cursor: pointer;
-    user-select: none;
-    opacity: 0;
-    translate: 1.5rem 0;
-    transition: opacity .2s ease, translate .2s ease;
-    pointer-events: none;
-    border: none;
-}
-
-[data-type="toast"] output.show {
-    opacity: 1;
-    translate: 0 0;
-    pointer-events: auto;
-}
-
-[data-type="toast"] output.hide {
-    opacity: 0;
-    translate: 1.5rem 0;
-    transition-duration: .15s;
-    pointer-events: none;
-}
-
-[data-type="toast"] output span { /* toast icon */
-    font-weight: 700;
-    font-size: .8125rem;
-    flex-shrink: 0;
-    padding: 0 .125rem;
-    opacity: .7;
-}
-
 [data-type="toast"] output.info {
     background: rgb(var(--rgb-light-gray));
 }
 
 [data-type="toast"] output.success {
-    background: rgb(var(--rgb-success));
+    background: var(--color-success);
 }
 
 [data-type="toast"] output.warning {

@@ -23,7 +23,7 @@ Gui application system for editing and reading structured data. Handles event lo
 
 ## Todo
 
-- [ ] `THREAD === "main"` へ落ちた場合の着地。現状は 1 回だけの自動
+- [ ] `THREAD === "main"` フォールバック時、現状は 1 回だけの自動
       reload ([`distribution/init.js`](./distribution/init.js)) で
       `THREAD === "worker"` への復帰を試みるのみ。reload しても
       `crossOriginIsolated` が false のまま (COOP/COEP を出せない配信、
@@ -104,7 +104,7 @@ perl -0pi -e 's/return cachedTextDecoder\.decode\(getUint8ArrayMemory0\(\)\.suba
 cargo +nightly fmt
 
 # copy from animagram/css
-cp -f ../css/css/*.css ./distribution/css/
+cp -f ../css/css/*.css ./distribution/css/css/
 ```
 
 OPFS files are in:

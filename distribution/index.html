@@ -9,47 +9,40 @@
     <title>CoC7th Playing Engine</title>
     <link rel="icon" href="data:,">
     <link rel="icon" type="image/png" sizes="512x512" href="./image/animagram.png?v={version}">
-    <!-- css/css (vendor design system, mirrored verbatim via vendor/css submodule) -->
-    <link rel="stylesheet" href="./css/reset.css?v={version}">
-    <link rel="stylesheet" href="./css/base.css?v={version}">
-    <link rel="stylesheet" href="./css/data_style.css?v={version}">
-    <link rel="stylesheet" href="./css/data_size.css?v={version}">
-    <link rel="stylesheet" href="./css/data_sign.css?v={version}">
-    <link rel="stylesheet" href="./css/data_group.css?v={version}">
-    <link rel="stylesheet" href="./css/button.css?v={version}">
-    <link rel="stylesheet" href="./css/radio.css?v={version}">
-    <link rel="stylesheet" href="./css/heading.css?v={version}">
-    <link rel="stylesheet" href="./css/listbox.css?v={version}">
-    <link rel="stylesheet" href="./css/table.css?v={version}">
-    <link rel="stylesheet" href="./css/input.css?v={version}">
-    <link rel="stylesheet" href="./css/list.css?v={version}">
-    <link rel="stylesheet" href="./css/step.css?v={version}">
-    <!-- css-app: app-specific overrides + not-yet-migrated markup contracts. -->
-    <!-- list-box.css supplements css/listbox.css with patterns vendor -->
-    <!-- doesn't implement (chevron/checkmark/padding). -->
-    <link rel="stylesheet" href="./css-app/config.css?v={version}">
-    <link rel="stylesheet" href="./css-app/field-label.css?v={version}">
-    <link rel="stylesheet" href="./css-app/list-box.css?v={version}">
-    <link rel="stylesheet" href="./css-app/textarea.css?v={version}">
-    <link rel="stylesheet" href="./css-app/select.css?v={version}">
-    <link rel="stylesheet" href="./css-app/style.css?v={version}">
+    <link rel="stylesheet" href="./css/css/reset.css?v={version}">
+    <link rel="stylesheet" href="./css/css/base.css?v={version}">
+    <link rel="stylesheet" href="./css/css/data_style.css?v={version}">
+    <link rel="stylesheet" href="./css/css/data_size.css?v={version}">
+    <link rel="stylesheet" href="./css/css/data_sign.css?v={version}">
+    <link rel="stylesheet" href="./css/css/data_group.css?v={version}">
+    <link rel="stylesheet" href="./css/css/input.css?v={version}">
+    <link rel="stylesheet" href="./css/css/button.css?v={version}">
+    <link rel="stylesheet" href="./css/css/radio.css?v={version}">
+    <link rel="stylesheet" href="./css/css/heading.css?v={version}">
+    <link rel="stylesheet" href="./css/css/listbox.css?v={version}">
+    <link rel="stylesheet" href="./css/css/table.css?v={version}">
+    <link rel="stylesheet" href="./css/css/list.css?v={version}">
+    <link rel="stylesheet" href="./css/css/step.css?v={version}">
+    <link rel="stylesheet" href="./css/style.css?v={version}">
     <script>if ("serviceWorker" in navigator) {navigator.serviceWorker.register("./sw.js").catch((err) => console.warn("SW registration failed:", err));};</script>
     <link rel="manifest" href="./manifest.json">
     <script src="./init.js" type="module"></script></head>
 
-<body id="body" hidden>
+<body id="body">
     <header id="header">
         <hgroup id="header_hgroup">
             <h1>CoC7th</h1>
             <p>Call of Cthulhu 7th edition playing engine</p></hgroup>
+        <button id="header_button-1" type="button" popovertarget="header_ul-1" aria-haspopup="listbox" aria-expanded="false" aria-controls="header_ul-1" data-surround="outline">
+            <span>🌐</span>日本語</button>
         <ul id="header_ul-1" popover="auto" role="listbox" aria-labelledby="header_button-1">
             <li role="presentation">Select Language</li>
             <li role="option">
                 <button lang="en" value="1">English (US)</button></li>
             <li role="option">
                 <button lang="ja" value="2">日本語</button></li></ul>
-        <button id="header_button-1" type="button" popovertarget="header_ul-1" aria-haspopup="listbox" aria-expanded="false" aria-controls="header_ul-1">
-            <span>🌐</span>日本語</button>
+        <button id="header_button-2" type="button" popovertarget="header_ul-2" aria-haspopup="listbox" aria-expanded="false" aria-controls="header_ul-2" data-surround="outline">
+            <span>✓</span>死生 紡</button>
         <ul id="header_ul-2" popover="auto" role="listbox" aria-labelledby="header_button-2">
             <li role="presentation">Select Character</li>
             <li role="option">
@@ -60,8 +53,6 @@
                 <button value="3"></button></li>
             <li role="option" class="hidden">
                 <button value="4"></button></li></ul>
-        <button id="header_button-2" type="button" popovertarget="header_ul-2" aria-haspopup="listbox" aria-expanded="false" aria-controls="header_ul-2">
-            <span>✓</span>死生 紡</button>
         <button id="header_button-3" type="button" aria-label="switch modal" data-surround="outline">✏️</button>
         <button id="header_button-4" type="button" class="dice" data-surround="outline">🎲</button>
         <button id="header_button-5" type="submit" form="form" data-surround="fill">✓</button></header>
