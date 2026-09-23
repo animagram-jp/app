@@ -33,9 +33,7 @@ use crate::{
     js_client::{CommandError, dom, encode_error},
 };
 
-// ============================================================
-// arena layout
-// ============================================================
+// === arena layout ===
 //
 // 全て 64 byte 境界に整列させる。値は `./init.js` と一対一で対応する。
 // 一方だけを変更してはならない。
@@ -76,9 +74,7 @@ pub const EVENT_CAPACITY: usize = 64;
 /// コマンド出力バッファの初期容量。
 pub const COMMAND_CAPACITY: usize = 16 * 1024;
 
-// ============================================================
-// arena state
-// ============================================================
+// === arena state ===
 
 #[repr(C, align(64))]
 pub struct Arena {
@@ -99,9 +95,7 @@ pub static mut APP: Option<App> = None;
 /// `run_loop` の継続条件。
 pub static mut RUNNING: bool = true;
 
-// ============================================================
-// arena function
-// ============================================================
+// === arena function ===
 
 impl Arena {
     /// 共有アリーナ先頭への生ポインタ。
@@ -225,9 +219,7 @@ impl Arena {
     }
 }
 
-// ============================================================
-// arena entry point
-// ============================================================
+// === arena entry point ===
 //
 // worker / main thread 共通。JavaScript 側は `arena_pointer` の直後に
 // `initialize` を呼ぶ。
@@ -315,9 +307,7 @@ pub fn emit(frame: &[u8]) -> bool {
     pushed
 }
 
-// ============================================================
-// error report
-// ============================================================
+// === error report ===
 
 /// 異常をコマンドリング経由で JavaScript へ報告する。
 ///
@@ -371,9 +361,7 @@ pub fn report_error(error: CommandError) {
 //
 // handler から呼ぶため `report_error` は `pub` のままにしてある。
 
-// ============================================================
-// encode, decode
-// ============================================================
+// === encode, decode ===
 
 /// コマンドを書き出す際の追記先を保持する。
 pub struct Encoder<'a>(&'a mut Vec<u8>);

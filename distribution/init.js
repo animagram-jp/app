@@ -20,16 +20,16 @@ if (params.has("eruda")) {
 // === arena layout ===
 
 const EVENT_CONTROL = 0;
-const EVENT_PAYLOAD = 128; /** range start */
-const EVENT_SLOT = 4096; /* bytes per slot */
+const EVENT_PAYLOAD = 128; // range start
+const EVENT_SLOT = 4096; // bytes per slot
 const EVENT_SLOT_COUNT = 64;
 
 const COMMAND_CONTROL = 262272;
-const COMMAND_PAYLOAD = 262400; /** range start */
-const COMMAND_SLOT = 4096; /* bytes per slot */
+const COMMAND_PAYLOAD = 262400; // range start
+const COMMAND_SLOT = 4096; // bytes per slot
 const COMMAND_SLOT_COUNT = 64;
 
-const ARENA_SIZE = 524544; /* bytes per slot */
+const ARENA_SIZE = 524544; // bytes per slot
 
 const CONTROL_WRITE_OFFSET = 0;
 const CONTROL_READ_OFFSET = 64;
@@ -261,6 +261,8 @@ function drain() {
         execute(S.commandScratch[0], d);
     }
 }
+
+// === toast ===
 
 const toastCycles = new WeakMap();
 
@@ -609,9 +611,7 @@ class Decoder {
 const TEXT_ENCODER = new TextEncoder();
 const TEXT_DECODER = new TextDecoder();
 
-// ============================================================
-// arena function
-// ============================================================
+// === arena function ===
 
 /**
  * Rebuilds the typed array views and returns S if the buffer changed.

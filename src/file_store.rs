@@ -46,9 +46,7 @@ use web_sys::{
     FileSystemReadWriteOptions, FileSystemSyncAccessHandle, WorkerGlobalScope,
 };
 
-// ============================================================
-// Wire format & replay (pure, host-testable)
-// ============================================================
+// === Wire format & replay (pure, host-testable) ===
 
 /// Fletcher-32 over `data`, consumed as little-endian u16 words with a
 /// trailing odd byte folded in as-is. Detects torn or corrupt log records.
@@ -173,9 +171,7 @@ fn build_memory(snap: &[u8], log: &[u8]) -> (BTreeMap<u32, Vec<u8>>, usize) {
     (memory, log_end)
 }
 
-// ============================================================
-// FileStore — OPFS I/O + RAM index (dedicated worker only)
-// ============================================================
+// === FileStore — OPFS I/O + RAM index (dedicated worker only) ===
 
 /// Error type for every fallible `FileStore` operation.
 ///
@@ -659,9 +655,7 @@ async fn open(
     Ok(handle.unchecked_into())
 }
 
-// ============================================================
-// Shared test dataset (examples/log_records.tsv)
-// ============================================================
+// === Shared test dataset (examples/log_records.tsv) ===
 
 #[cfg(test)]
 #[allow(dead_code)] // the host and wasm suites use different subsets of these helpers
@@ -732,9 +726,7 @@ mod test_data {
     }
 }
 
-// ============================================================
-// Host unit tests (`cargo test`) — wire format & replay only, no OPFS
-// ============================================================
+// === Host unit tests (`cargo test`) — wire format & replay only, no OPFS ===
 
 #[cfg(all(test, not(target_arch = "wasm32")))]
 mod tests {
@@ -898,9 +890,7 @@ mod tests {
     }
 }
 
-// ============================================================
-// OPFS integration tests (headless browser)
-// ============================================================
+// === OPFS integration tests (headless browser) ===
 
 #[cfg(all(test, target_arch = "wasm32"))]
 mod opfs_tests {

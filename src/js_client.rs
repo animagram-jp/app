@@ -289,9 +289,7 @@ pub(crate) fn encode_error(encoder: &mut Encoder, error: &CommandError, message:
     encoder.str(message);
 }
 
-// ============================================================
-// receive (canvas event)
-// ============================================================
+// === receive (canvas event) ===
 
 /// DOM 由来のイベントの内容。
 ///
@@ -317,9 +315,7 @@ pub struct CanvasEvent {
     pub pointer_id: u32,
 }
 
-// ============================================================
-// static string index (init.js の各テーブルと index を揃える)
-// ============================================================
+// === static string index (init.js の各テーブルと index を揃える) ===
 
 /// `init.js::ATTRIBUTES` の index。HTML 属性名。
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -469,10 +465,7 @@ impl KeyName {
     }
 }
 
-// ============================================================
-// gesture: tap, long press, swipe (up,down,left,right), drag
-// See ./docs/Gesture.md
-// ============================================================
+// === gesture: tap, long press, swipe (up,down,left,right), drag (See ./docs/Gesture.md) ===
 
 #[derive(Debug, Clone, Copy)]
 pub struct Thresholds {
@@ -1008,9 +1001,7 @@ mod gesture_tests {
     }
 }
 
-// ============================================================
-// gesture: two-finger (pinch / pan)
-// ============================================================
+// === gesture: two-finger (pinch / pan) ===
 //
 // 2 本指の入力を、逆向きの変位なら pinch (`scale`)、平行な変位なら
 // pan (1 本指パイプラインへ渡す合成点) に振り分ける。
@@ -1219,9 +1210,7 @@ fn two_point_distance(x0: f64, y0: f64, x1: f64, y1: f64) -> f64 {
     libm::sqrt(dx * dx + dy * dy)
 }
 
-// ============================================================
-// gesture: TouchTracker (pointer_id によるルーティング)
-// ============================================================
+// === gesture: TouchTracker (pointer_id によるルーティング) ===
 
 /// 複数指のポインタ入力を、1 系統の `Gesture` へ落とす。
 ///
@@ -1759,9 +1748,7 @@ mod touch_tracker_tests {
     }
 }
 
-// ============================================================
-// dom (rust item <=> element id)
-// ============================================================
+// === dom (rust item <=> element id) ===
 
 pub mod dom {
     use alloc::vec::Vec;

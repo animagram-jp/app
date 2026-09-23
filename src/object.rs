@@ -96,10 +96,8 @@ pub mod dice {
     }
 }
 
-// ============================================================
-// SubjectTrait: グループ分けenum(Profile, Character, ...)自身が持つ、
-// バリアントに対応するids/labelを返す能力。
-// ============================================================
+// === SubjectTrait ===
+// グループ分けenum(Profile, Character, ...)自身が持つ、バリアントに対応するids/labelを返す能力。
 
 pub trait SubjectTrait {
     fn ids(&self) -> &'static [u32];
@@ -109,15 +107,9 @@ pub trait SubjectTrait {
         Self: Sized;
 }
 
-// ============================================================
-// StaticModel: 固定N件のidsを持つフィールドの共通trait。
-// idsの並びがコンパイル時に決まっているものが対象(Customのような実行時に
-// 件数が決まる可変長の間接参照は対象外。そちらはDynamicModel相当で別途扱う)。
-//
-// 各structは「自分がどのenum(Enum)のどのバリアント(VARIANT)に属するか」を
-// 宣言するだけでよく、idsへの正規化はここでの既定実装に任せられる。
-// structがSubjectTraitを実装するわけではない(所属先はstructの外、implの中で宣言する)。
-// ============================================================
+// === StaticModel ===
+// 固定N件のidsを持つフィールドの共通trait。idsの並びがコンパイル時に決まっているものが対象(Customのような実行時に件数が決まる可変長の間接参照は対象外。そちらはDynamicModel相当で別途扱う)。
+// 各structは「自分がどのenum(Enum)のどのバリアント(VARIANT)に属するか」を宣言するだけでよく、idsへの正規化はここでの既定実装に任せられる。structがSubjectTraitを実装するわけではない(所属先はstructの外、implの中で宣言する)。
 
 pub trait StaticModel<const N: usize> {
     type Parsed;
@@ -150,9 +142,7 @@ pub trait StaticModel<const N: usize> {
     }
 }
 
-// ============================================================
-// Character::{Profile, Characteristic, Secondary Attribute, Skill, Posession, Backstory, Memo}
-// ============================================================
+// === Character::{Profile, Characteristic, Secondary Attribute, Skill, Posession, Backstory, Memo} ===
 
 pub enum Character {
     Profile,
@@ -209,9 +199,7 @@ impl Character {
     }
 }
 
-// ============================================================
-// Profile::{Name, Birthppalce, Pronoun, Occupation, Residence, Age}
-// ============================================================
+// === Profile::{Name, Birthppalce, Pronoun, Occupation, Residence, Age} ===
 
 #[derive(Clone, Copy)]
 pub enum Profile {
@@ -583,9 +571,7 @@ impl StaticModel<1> for Age {
     }
 }
 
-// ============================================================
-// Characteristics (Strength, Constitution, Size, Dexterity, Appearance, Intelligence, Power, Education)
-// ============================================================
+// === Characteristics (Strength, Constitution, Size, Dexterity, Appearance, Intelligence, Power, Education) ===
 
 #[derive(Clone, Copy)]
 pub enum Characteristic {
@@ -716,9 +702,7 @@ impl Characteristic {
     }
 }
 
-// ============================================================
-// --- Secondary Attributes
-// ============================================================
+// === Secondary Attributes ===
 
 pub enum SecondaryAttribute {
     HitPoints,             // CON, SIZ -> u8
@@ -1017,9 +1001,7 @@ impl InterestSkillPoints {
     }
 }
 
-// ============================================================
-// Skill, ArtAndCraft, Fighting, Firearms, LanguageOther, Survival p.54
-// ============================================================
+// === Skill, ArtAndCraft, Fighting, Firearms, LanguageOther, Survival p.54 ===
 
 #[derive(Clone, PartialEq, Eq)]
 pub enum Skill {
@@ -3343,9 +3325,7 @@ impl SurvivalCustom {
     }
 }
 
-// ============================================================
-// --- Possession --- p.44
-// ============================================================
+// === Possession p.44 ===
 
 pub enum Possession {
     Weapon,
@@ -3844,9 +3824,7 @@ impl Wealth {
     }
 }
 
-// ============================================================
-// --- バックストーリー (Backstory) ---
-// ============================================================
+// === バックストーリー (Backstory) ===
 
 pub enum Backstory {
     KeyConnection(Box<Backstory>),
@@ -3911,9 +3889,7 @@ impl Backstory {
     }
 }
 
-// ============================================================
-// --- メモ (Memo) ---
-// ============================================================
+// === メモ (Memo) ===
 
 /// メモスロット。slot: 0..MAX_MEMO_SLOTS-1
 /// encode/decode のバイト列レイアウト:
