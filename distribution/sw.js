@@ -42,7 +42,7 @@ self.addEventListener("activate", (e) => {
     );
 });
 
-function withCoi(res) {
+function response_cross_origin_isolation(res) {
     const headers = new Headers(res.headers);
     headers.set("Cross-Origin-Opener-Policy", "same-origin");
     headers.set("Cross-Origin-Embedder-Policy", "require-corp");
@@ -62,14 +62,14 @@ self.addEventListener("fetch", (e) => {
     const url = new URL(req.url);
     if (url.origin !== self.location.origin) return;
 
-    const isPrecached = PRECACHE_URLS.has(url.href) ||
+    const is_precached = PRECACHE_URLS.has(url.href) ||
         (req.mode === "navigate" && PRECACHE_URLS.has(new URL("./", self.location.href).href));
-    if (!isPrecached) return;
+    if (!is_precached) return;
 
     if (req.mode === "navigate") {
         e.respondWith(
-            fetch(req).then((rawRes) => {
-                const res = withCoi(rawRes);
+            fetch(req).then((raw_res) => {
+                const res = response_cross_origin_isolation(raw_res);
                 const copy = res.clone();
                 e.waitUntil(caches.open(VERSION).then((c) => c.put(req, copy)));
                 return res;
@@ -81,8 +81,8 @@ self.addEventListener("fetch", (e) => {
     e.respondWith(
     caches.match(req).then((hit) => {
       if (hit) return hit;
-      return fetch(req).then((rawRes) => {
-        const res = withCoi(rawRes);
+      return fetch(req).then((raw_res) => {
+        const res = response_cross_origin_isolation(raw_res);
         if (res.ok) {
           const copy = res.clone();
           e.waitUntil(caches.open(VERSION).then((c) => c.put(req, copy)));

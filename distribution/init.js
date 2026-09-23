@@ -37,14 +37,14 @@ const LENGTH_PREFIX = 4;
 
 // JavaScript -> Wasm
 const EVENT_RING = {
-    control: EVENT_CONTROL, payload: EVENT_PAYLOAD, slot: EVENT_SLOT, slotCount: EVENT_SLOT_COUNT,
+    control: EVENT_CONTROL, payload: EVENT_PAYLOAD, slot: EVENT_SLOT, slot_count: EVENT_SLOT_COUNT,
 };
 // Wasm -> JavaScript
 const COMMAND_RING = {
     control:   COMMAND_CONTROL,
     payload:   COMMAND_PAYLOAD,
     slot:      COMMAND_SLOT,
-    slotCount: COMMAND_SLOT_COUNT,
+    slot_count: COMMAND_SLOT_COUNT,
 };
 
 const THREAD = crossOriginIsolated ? "worker" : "main";
@@ -72,9 +72,9 @@ const S = {
     buffer: null,
     int32: null,
     uint8: null,
-    dataView: null,
-    eventScratch: new Uint8Array(EVENT_SLOT),
-    commandScratch: new Uint8Array(COMMAND_SLOT),
+    data_view: null,
+    event_scratch: new Uint8Array(EVENT_SLOT),
+    command_scratch: new Uint8Array(COMMAND_SLOT),
     kick: () => {},
 };
 
@@ -84,7 +84,7 @@ start();
 
 function start() {
     if (THREAD === "main") {
-        tryRecoverToWorkerThread().then((reloading) => {
+        try_recover_to_worker_thread().then((reloading) => {
             if (!reloading) attach();
         });
         return;
@@ -152,7 +152,7 @@ function restart() {
 const MAIN_RELOAD_KEY = "app:main-thread-reload-attempted";
 
 // one time retry
-async function tryRecoverToWorkerThread() {
+async function try_recover_to_worker_thread() {
     if (sessionStorage.getItem(MAIN_RELOAD_KEY)) return false;
     if (!("serviceWorker" in navigator)) return false;
 
@@ -230,7 +230,7 @@ function execute(operation, d) {
         }
     }
 
-    const el = document.getElementById(decodeId(d));
+    const el = document.getElementById(decode_id(d));
     if (!el) return;
     switch (operation) {
         case  1: el.textContent = d.string() ?? ""; break;
@@ -248,43 +248,43 @@ function execute(operation, d) {
         case 13: el.showModal(); break;
         case 14: el.close(); break;
         case 15: el.focus(); break;
-        case 16: jsFn[FN_NAMES[d.u16()]]?.(el); break;
+        case 16: js_fn[FN_NAMES[d.u16()]]?.(el); break;
     }
 }
 
 function drain() {
     view();
     for (;;) {
-        const length = ringPop(COMMAND_RING, S.commandScratch);
+        const length = ring_pop(COMMAND_RING, S.command_scratch);
         if (length === 0) return;
-        const d = new Decoder(S.commandScratch, 1, length);
-        execute(S.commandScratch[0], d);
+        const d = new Decoder(S.command_scratch, 1, length);
+        execute(S.command_scratch[0], d);
     }
 }
 
 // === toast ===
 
-const toastCycles = new WeakMap();
+const toast_cycles = new WeakMap();
 
-const cancelToastCycle = (el) => {
-    const cycle = toastCycles.get(el);
+const cancel_toast_cycle = (el) => {
+    const cycle = toast_cycles.get(el);
     if (!cycle) return;
     clearTimeout(cycle.timer);
     cycle.controller.abort();
 };
 
-const jsFn = {
-    show: (el) => {
-        cancelToastCycle(el);
+const js_fn = {
+    show_toast: (el) => {
+        cancel_toast_cycle(el);
         el.classList.remove("hidden", "hide");
         requestAnimationFrame(() => requestAnimationFrame(() => {
             el.classList.add("show");
-            const timer = setTimeout(() => jsFn.hide(el), 3000);
-            toastCycles.set(el, { timer, controller: new AbortController() });
+            const timer = setTimeout(() => js_fn.hide_toast(el), 3000);
+            toast_cycles.set(el, { timer, controller: new AbortController() });
         }));
     },
-    hide: (el) => {
-        cancelToastCycle(el);
+    hide_toast: (el) => {
+        cancel_toast_cycle(el);
         const controller = new AbortController();
         const finish = () => {
             clearTimeout(fallback);
@@ -293,7 +293,7 @@ const jsFn = {
         el.classList.replace("show", "hide");
         el.addEventListener("transitionend", finish, { once: true, signal: controller.signal });
         const fallback = setTimeout(finish, 250);
-        toastCycles.set(el, { timer: fallback, controller });
+        toast_cycles.set(el, { timer: fallback, controller });
     },
 };
 
@@ -309,7 +309,7 @@ const ROOTS = ["header", "main", "modal", "form", "output", "section"]
 function send(e) {
     if (!ROOTS.some(r => r && r.contains(e.target))) return;
 
-    const encoder = new Encoder(S.eventScratch);
+    const encoder = new Encoder(S.event_scratch);
     encoder.u8(EVENT_CANVAS);
     encoder.u8(Math.max(EVENT_TYPES.indexOf(e.type), 0));
     encoder.id(e.target.id ?? "");
@@ -331,7 +331,7 @@ function send(e) {
  */
 function push(frame) {
     view();
-    if (!ringPush(EVENT_RING, frame)) return false;
+    if (!ring_push(EVENT_RING, frame)) return false;
 
     Atomics.notify(S.int32, (S.base + EVENT_RING.control) >> 2);
     S.kick();
@@ -351,11 +351,11 @@ function bind() {
         document.addEventListener(type, send);
     }
 
-    let resizeTimer;
+    let resize_timer;
     window.addEventListener("resize", () => {
-        clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(() => {
-            const encoder = new Encoder(S.eventScratch);
+        clearTimeout(resize_timer);
+        resize_timer = setTimeout(() => {
+            const encoder = new Encoder(S.event_scratch);
             encoder.u8(EVENT_RESIZE);
             encoder.f32(window.innerWidth);
             encoder.f32(window.innerHeight);
@@ -364,7 +364,7 @@ function bind() {
     });
 
     window.addEventListener("scroll", (e) => {
-        const encoder = new Encoder(S.eventScratch);
+        const encoder = new Encoder(S.event_scratch);
         encoder.u8(EVENT_SCROLL);
         encoder.id(e.target?.id ?? "");
         encoder.f32(window.scrollX);
@@ -374,7 +374,7 @@ function bind() {
 
     window.addEventListener("pagehide", (e) => {
         if (e.persisted) return;
-        const encoder = new Encoder(S.eventScratch);
+        const encoder = new Encoder(S.event_scratch);
         encoder.u8(EVENT_SHUTDOWN);
         push(encoder.frame());
     });
@@ -489,11 +489,11 @@ const CURSOR_VALUES = [
 ];
 
 /**
- *  jsFn key. index == js_client.rs:FnName
+ *  js_fn key. index == js_client.rs:FnName
  */
 const FN_NAMES = [
-    "hide",
-    "show",
+    "hide_toast",
+    "show_toast",
 ];
 
 /**
@@ -518,7 +518,7 @@ class Encoder {
     /** @param {Uint8Array} scratch - write destination */
     constructor(scratch) {
         this.scratch = scratch;
-        this.dataView = new DataView(scratch.buffer, scratch.byteOffset);
+        this.data_view = new DataView(scratch.buffer, scratch.byteOffset);
         this.position = 0;
     }
 
@@ -526,11 +526,11 @@ class Encoder {
     frame() { return this.scratch.subarray(0, this.position); }
 
     u8(value) { this.scratch[this.position++] = value; }
-    u16(value) { this.dataView.setUint16(this.position, value, true); this.position += 2; }
-    u32(value) { this.dataView.setUint32(this.position, value, true); this.position += 4; }
-    i32(value) { this.dataView.setInt32(this.position, value, true); this.position += 4; }
-    f32(value) { this.dataView.setFloat32(this.position, value, true); this.position += 4; }
-    f64(value) { this.dataView.setFloat64(this.position, value, true); this.position += 8; }
+    u16(value) { this.data_view.setUint16(this.position, value, true); this.position += 2; }
+    u32(value) { this.data_view.setUint32(this.position, value, true); this.position += 4; }
+    i32(value) { this.data_view.setInt32(this.position, value, true); this.position += 4; }
+    f32(value) { this.data_view.setFloat32(this.position, value, true); this.position += 4; }
+    f64(value) { this.data_view.setFloat64(this.position, value, true); this.position += 8; }
 
     /** Appends a byte sequence, length-prefixed. */
     bytes(value) {
@@ -575,7 +575,7 @@ class Decoder {
      */
     constructor(scratch, start, end) {
         this.scratch = scratch;
-        this.dataView = new DataView(scratch.buffer, scratch.byteOffset);
+        this.data_view = new DataView(scratch.buffer, scratch.byteOffset);
         this.position = start;
         this.end = end;
     }
@@ -588,11 +588,11 @@ class Decoder {
     }
 
     u8() { return this.take(1) ? this.scratch[this.position - 1] : undefined; }
-    u16() { return this.take(2) ? this.dataView.getUint16(this.position - 2, true) : undefined; }
-    u32() { return this.take(4) ? this.dataView.getUint32(this.position - 4, true) : undefined; }
-    i32() { return this.take(4) ? this.dataView.getInt32(this.position - 4, true) : undefined; }
-    f32() { return this.take(4) ? this.dataView.getFloat32(this.position - 4, true) : undefined; }
-    f64() { return this.take(8) ? this.dataView.getFloat64(this.position - 8, true) : undefined; }
+    u16() { return this.take(2) ? this.data_view.getUint16(this.position - 2, true) : undefined; }
+    u32() { return this.take(4) ? this.data_view.getUint32(this.position - 4, true) : undefined; }
+    i32() { return this.take(4) ? this.data_view.getInt32(this.position - 4, true) : undefined; }
+    f32() { return this.take(4) ? this.data_view.getFloat32(this.position - 4, true) : undefined; }
+    f64() { return this.take(8) ? this.data_view.getFloat64(this.position - 8, true) : undefined; }
 
     /** Reads a length-prefixed byte sequence. */
     bytes() {
@@ -627,7 +627,7 @@ function view() {
         S.buffer = buffer;
         S.int32 = new Int32Array(buffer);
         S.uint8 = new Uint8Array(buffer);
-        S.dataView = new DataView(buffer);
+        S.data_view = new DataView(buffer);
     }
     return S;
 }
@@ -640,7 +640,7 @@ function view() {
  * @param {Decoder} d
  * @returns {string} element id
  */
-function decodeId(d) {
+function decode_id(d) {
     const count = d.u8();
     if (count === undefined) return "";
     const segments = [];
@@ -658,29 +658,29 @@ function decodeId(d) {
  * Writing the payload need not be atomic; the `Atomics.store` of the
  * write sequence guarantees visibility of the prior writes to the reader.
  *
- * @param {{control: number, payload: number, slot: number, slotCount: number}} ring
+ * @param {{control: number, payload: number, slot: number, slot_count: number}} ring
  * @param {Uint8Array} source - frame to write
  * @returns {boolean} whether it was appended
  */
-function ringPush(ring, source) {
-    const { slot, slotCount } = ring;
+function ring_push(ring, source) {
+    const { slot, slot_count } = ring;
     if (source.length + LENGTH_PREFIX > slot) throw new RangeError("frame too large");
 
     const control = S.base + ring.control;
     const payload = S.base + ring.payload;
-    const writeIndex = control >> 2;
-    const readIndex = (control + CONTROL_READ_OFFSET) >> 2;
+    const write_index = control >> 2;
+    const read_index = (control + CONTROL_READ_OFFSET) >> 2;
 
-    const write = Atomics.load(S.int32, writeIndex) >>> 0;
-    const read = Atomics.load(S.int32, readIndex) >>> 0;
-    if (((write - read) >>> 0) >= slotCount) return false;
+    const write = Atomics.load(S.int32, write_index) >>> 0;
+    const read = Atomics.load(S.int32, read_index) >>> 0;
+    if (((write - read) >>> 0) >= slot_count) return false;
 
-    const offset = payload + (write & (slotCount - 1)) * slot;
-    S.dataView.setUint32(offset, source.length, true);
+    const offset = payload + (write & (slot_count - 1)) * slot;
+    S.data_view.setUint32(offset, source.length, true);
     S.uint8.set(source, offset + LENGTH_PREFIX);
 
     // Commit. Only now does the slot become visible to the reader.
-    Atomics.store(S.int32, writeIndex, (write + 1) | 0);
+    Atomics.store(S.int32, write_index, (write + 1) | 0);
     return true;
 }
 
@@ -688,29 +688,29 @@ function ringPush(ring, source) {
  * Copies the front frame of the ring into destination and returns its
  * length. 0 if empty.
  *
- * @param {{control: number, payload: number, slot: number, slotCount: number}} ring
+ * @param {{control: number, payload: number, slot: number, slot_count: number}} ring
  * @param {Uint8Array} destination - copy destination
  * @returns {number} bytes copied
  */
-function ringPop(ring, destination) {
-    const { slot, slotCount } = ring;
+function ring_pop(ring, destination) {
+    const { slot, slot_count } = ring;
     const control = S.base + ring.control;
     const payload = S.base + ring.payload;
-    const writeIndex = control >> 2;
-    const readIndex = (control + CONTROL_READ_OFFSET) >> 2;
+    const write_index = control >> 2;
+    const read_index = (control + CONTROL_READ_OFFSET) >> 2;
 
-    const read = Atomics.load(S.int32, readIndex) >>> 0;
-    const write = Atomics.load(S.int32, writeIndex) >>> 0;
+    const read = Atomics.load(S.int32, read_index) >>> 0;
+    const write = Atomics.load(S.int32, write_index) >>> 0;
     if (read === write) return 0;
 
-    const offset = payload + (read & (slotCount - 1)) * slot;
+    const offset = payload + (read & (slot_count - 1)) * slot;
     // Even if the length prefix is corrupt, this stays inside the slot.
-    const length = Math.min(S.dataView.getUint32(offset, true), slot - LENGTH_PREFIX);
+    const length = Math.min(S.data_view.getUint32(offset, true), slot - LENGTH_PREFIX);
     destination.set(S.uint8.subarray(offset + LENGTH_PREFIX, offset + LENGTH_PREFIX + length));
 
-    Atomics.store(S.int32, readIndex, (read + 1) | 0);
+    Atomics.store(S.int32, read_index, (read + 1) | 0);
     // Wakes a writer that is waiting on a full ring.
-    Atomics.notify(S.int32, readIndex);
+    Atomics.notify(S.int32, read_index);
     return length;
 }
 
