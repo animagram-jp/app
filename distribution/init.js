@@ -148,6 +148,10 @@ function restart() {
 
 // === main thread ===
 
+if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("./sw.js").catch((err) => console.warn("SW registration failed:", err));
+}
+
 // flag of retry of loading when fallback to THREAD === "main"
 const MAIN_RELOAD_KEY = "app:main-thread-reload-attempted";
 
