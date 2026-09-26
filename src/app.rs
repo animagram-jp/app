@@ -123,15 +123,6 @@ impl App {
     }
 }
 
-/// `wasm_bindgen` の境界に載せないメソッド。
-///
-/// `commands` は借用を返すため `#[wasm_bindgen]` を付けた impl には置けない。
-/// wasm-bindgen は JavaScript 側が保持するビューの生存期間を追えず、
-/// `Vec` の再確保でメモリが動くと無効なビューが残るためである。
-///
-/// JavaScript はこのメソッドを呼ばない。コマンド列は `poll` / `run_loop` が
-/// 内部で取り出してアリーナのコマンドリングへ `emit` し、JavaScript へは
-/// `arena_pointer` が返すオフセット越しに届く。
 impl App {
     pub fn commands(&self) -> &[u8] {
         &self.commands

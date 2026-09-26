@@ -2,9 +2,8 @@
 //
 // 1. アリーナのレイアウト定数。`./init.js` と一対一で対応する。
 // 2. `Arena` 本体。イベントリングとコマンドリングをオフセットで区切って収める。
-// 3. entry point。`arena_pointer` / `initialize` / `poll` / `run_loop`。
-// 4. `Encoder` / `Decoder`。バイト列の読み書き。
-// 5. 異常報告。`report_error` と panic hook。
+// 3. `Encoder` / `Decoder`。バイト列の読み書き。
+// 4. 異常報告。`report_error` と panic hook。
 
 use alloc::{
     string::{String, ToString},
@@ -86,13 +85,13 @@ unsafe impl Sync for Arena {}
 
 pub static ARENA: Arena = Arena { bytes: UnsafeCell::new([0; ARENA_SIZE]) };
 
-/// `poll` / `run_loop` が駆動する App。
+/// `serve_event` が駆動する App。
 ///
 /// `App::init` は `wasm_bindgen` 経由でも呼べるが、worker では
-/// `run_loop` が自走するため、そこから届く場所に置く必要がある。
+/// `serve_event` が自走するため、そこから届く場所に置く必要がある。
 pub static mut APP: Option<App> = None;
 
-/// `run_loop` の継続条件。
+/// `serve_event` の継続条件。
 pub static mut RUNNING: bool = true;
 
 // === arena function ===
@@ -203,7 +202,7 @@ impl Arena {
         self.ring_commit_pop(EVENT_CONTROL);
     }
 
-    /// イベントリングの書き込みシーケンス。`run_loop` の待機条件に用いる。
+    /// イベントリングの書き込みシーケンス。`serve_event` の待機条件に用いる。
     pub fn event_write_seq(&self) -> u32 {
         self.control_at(EVENT_CONTROL, CONTROL_WRITE_OFFSET).load(Ordering::Acquire)
     }
@@ -241,9 +240,9 @@ pub fn initialize() {
     unsafe { RUNNING = true };
 }
 
-/// main thread 用。同期呼び出しし、溜まっているイベントだけ処理して返る。
+/// main thread 用。先頭の 1 件だけ処理して返る。
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
-pub fn poll() {
+pub fn process_event() {
     // `&raw mut` を挟むのは `static mut` への参照を作らないためである。
     // clippy::deref_addrof は `APP.as_mut()` を勧めるが、それでは
     // `static mut` への参照が生じるため従わない。
@@ -251,17 +250,18 @@ pub fn poll() {
     let Some(app) = (unsafe { (*(&raw mut APP)).as_mut() }) else {
         return;
     };
-    while let Some(frame) = ARENA.event_peek() {
-        app.clear();
-        app.process(frame);
-        // 処理の前にスロットを返却する。emit による再入を避ける。
-        ARENA.event_commit_pop();
-        let commands = app.commands();
-        if !commands.is_empty() && !emit(commands) {
-            // リングが満杯でコマンドを落とした。画面が実際の状態から
-            // ずれるため、黙って続けず JavaScript へ報告する。
-            report_error(CommandError::CommandOverflow);
-        }
+    let Some(frame) = ARENA.event_peek() else {
+        return;
+    };
+    app.clear();
+    app.process(frame);
+    // 処理の前にスロットを返却する。emit による再入を避ける。
+    ARENA.event_commit_pop();
+    let commands = app.commands();
+    if !commands.is_empty() && !emit(commands) {
+        // リングが満杯でコマンドを落とした。画面が実際の状態から
+        // ずれるため、黙って続けず JavaScript へ報告する。
+        report_error(CommandError::CommandOverflow);
     }
 }
 
@@ -272,14 +272,14 @@ pub fn poll() {
 /// 限る。main thread から呼ぶと thread ごと停止する。
 ///
 /// 引数と戻り値を持たないため、`wasm_bindgen` が生成するグルーは
-/// `wasm.run_loop()` を呼ぶだけの関数 1 枚であり、wasm 側の export は
+/// `wasm.serve_event()` を呼ぶだけの関数 1 枚であり、wasm 側の export は
 /// `no_mangle` の場合と同一である。worker.js は他の export と同じく
 /// 名前で import する。
 #[cfg(all(target_arch = "wasm32", target_feature = "atomics"))]
 #[wasm_bindgen]
-pub fn run_loop() {
+pub fn serve_event() {
     while unsafe { RUNNING } {
-        poll();
+        process_event();
         let write = ARENA.event_write_seq();
         if ARENA.event_read_seq() == write {
             unsafe {
@@ -311,7 +311,7 @@ pub fn emit(frame: &[u8]) -> bool {
 
 /// 異常をコマンドリング経由で JavaScript へ報告する。
 ///
-/// `Handler` を経由せず直接リングへ積む。panic hook や `run_loop` からは
+/// `Handler` を経由せず直接リングへ積む。panic hook や `serve_event` からは
 /// コマンド列を返す相手が居ないためである。
 ///
 /// リングが満杯の場合は何もしない。ここで再帰的に報告しても同じ理由で
@@ -354,8 +354,8 @@ pub fn report_error(error: CommandError) {
 // handler が走った後 thread は停止する。停止した worker は JavaScript 側が
 // `terminate` して作り直す。
 //
-// `RUNNING` は触らない。panic は `poll` の内側から巻き戻るため
-// `run_loop` の `while` へ戻らず、停止条件を書いても読まれない。
+// `RUNNING` は触らない。panic は内側から巻き戻るため
+// `serve_event` の `while` へ戻らず、停止条件を書いても読まれない。
 // また JavaScript 側は丸ごと作り直す以外の判断をしないので、
 // 停止したことを `message` と別に伝える必要もない。
 //

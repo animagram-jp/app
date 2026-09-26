@@ -1,15 +1,15 @@
 // thread = "worker" | "main":
 //
-// | Thread | Memory | Command |
-// |-|-|-|
-// | dedicated worker | WebAssembly.Memory(shared=true)  | `run_loop` |
-// | main thread      | WebAssembly.Memory(shared=false) | `poll`     |
+// | Thread | Memory |
+// |-|-|
+// | dedicated worker | WebAssembly.Memory(shared=true)  |
+// | main thread      | WebAssembly.Memory(shared=false) |
 
 #![no_std]
 #![feature(adt_const_params)]
 #![feature(const_param_ty_trait)]
 // `memory_atomic_wait32` / `memory_atomic_notify`
-// worker (`-Ctarget-feature=+atomics`) `run_loop`
+// worker (`-Ctarget-feature=+atomics`) `serve_event`
 #![cfg_attr(
     all(target_arch = "wasm32", target_feature = "atomics"),
     feature(stdarch_wasm_atomic_wait)

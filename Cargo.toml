@@ -32,7 +32,6 @@ web-sys = { version = "0.3", default-features = false, features = [
     "FileSystemSyncAccessHandle",
     "DomException",
 ] }
-serde = { version = "1", default-features = false, features = ["derive", "alloc"] }
 rand  = { version = "0.10", default-features = false, features = ["alloc", "sys_rng"] }
 log   = { version = "0.4", default-features = false, optional = true }
 libm  = { version = "0.2", default-features = false }

@@ -2,7 +2,7 @@ self.addEventListener("message", async (e) => {
     const { type, payload } = e.data;
     if (type !== "init") return;
 
-    const { default: init, App, arena_pointer, initialize, run_loop } =
+    const { default: init, App, arena_pointer, initialize, serve_event } =
         await import("./app/app.js");
     await init({ memory: payload.memory });
 
@@ -15,7 +15,7 @@ self.addEventListener("message", async (e) => {
         payload.viewport_width,
         payload.viewport_height,
     );
-    run_loop();
+    serve_event();
 });
 
 self.addEventListener("error", (e) => {

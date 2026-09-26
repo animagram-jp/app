@@ -34,8 +34,15 @@ pub enum Event {
     Canvas(CanvasEvent),
     /// A recognized gesture. Pushed by `dispatch` itself.
     Gesture(Gesture),
-    Resize { width: f64, height: f64 },
-    Scroll { id: dom::Id, x: f64, y: f64 },
+    Resize {
+        width:  f64,
+        height: f64,
+    },
+    Scroll {
+        id: dom::Id,
+        x:  f64,
+        y:  f64,
+    },
     Shutdown,
 }
 

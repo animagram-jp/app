@@ -1,10 +1,4 @@
-const params = new URLSearchParams(location.search);
-if (params.has("eruda")) {
-    const s = document.createElement("script");
-    s.src = "https://cdn.jsdelivr.net/npm/eruda";
-    s.onload = () => eruda.init();
-    document.body.appendChild(s);
-}
+// === constants ===
 
 const EVENT_CONTROL = 0;
 const EVENT_PAYLOAD = 128; // range start
@@ -62,17 +56,53 @@ const S = {
     data_view: null,
     event_scratch: new Uint8Array(EVENT_SLOT),
     command_scratch: new Uint8Array(COMMAND_SLOT),
-    kick: () => {},
+    call_app: () => {},
 };
 
 let worker = null;
 let bound = false;
+let restarting = false;
 start();
 
+// === start ===
+
 function start() {
+    const params = new URLSearchParams(location.search);
+    if (params.has("eruda")) {
+        const s = document.createElement("script");
+        s.src = "https://cdn.jsdelivr.net/npm/eruda";
+        s.onload = () => eruda.init();
+        document.body.appendChild(s);
+    }
+
     if (THREAD === "main") {
-        try_recover_to_worker_thread().then((reloading) => {
-            if (!reloading) attach();
+        try_recover_to_worker_thread().then(async (reloading) => {
+            if (reloading) return;
+
+            // `App.init` awaits `FileStore::new`, which requires a
+            // dedicated worker (`FileSystemSyncAccessHandle` is only
+            // obtainable in a worker). So this path only works for a
+            // configuration without persistence. THREAD === "main" is
+            // for when you only want to verify the arena layout and the
+            // command / event round trip.
+            const { default: init, App, arena_pointer, initialize, process_event } =
+                await import("./app/app.js");
+            await init({ memory: S.memory });
+
+            S.exports = { arena_pointer, initialize, process_event };
+            S.buffer = null;
+            initialize();
+            S.base = arena_pointer();
+
+            S.call_app = () => { process_event(); drain(); };
+
+            await App.init(
+                window.matchMedia("(pointer: coarse)").matches,
+                window.innerWidth,
+                window.innerHeight,
+            );
+            bind();
+            S.call_app();
         });
         return;
     }
@@ -80,12 +110,20 @@ function start() {
     const w = new Worker("./worker.js", { type: "module" });
     worker = w;
 
-    w.addEventListener("message", (e) => {
+    w.addEventListener("message", async (e) => {
         if (e.data.type === "error") { restart(); }
         if (e.data.type === "ready") {
             S.base = e.data.base;
             sessionStorage.removeItem(MAIN_RELOAD_KEY);
-            pump();
+
+            for (;;) {
+                drain();
+                view();
+                const index = (S.base + COMMAND_RING.control) >> 2;
+                const write = Atomics.load(S.int32, index);
+                const result = Atomics.waitAsync(S.int32, index, write);
+                if (result.async) await result.value;
+            }
         }
     });
 
@@ -107,7 +145,6 @@ function start() {
     bind();
 }
 
-let restarting = false;
 function restart() {
     if (restarting) return;
     restarting = true;
@@ -120,7 +157,7 @@ function restart() {
         S.exports?.initialize();
         S.base = S.exports?.arena_pointer() ?? S.base;
         bind();
-        S.kick();
+        S.call_app();
     } else {
         start();
     }
@@ -128,12 +165,6 @@ function restart() {
     restarting = false;
 }
 
-// === main thread ===
-
-// flag of retry of loading when fallback to THREAD === "main"
-const MAIN_RELOAD_KEY = "app:main-thread-reload-attempted";
-
-// one time retry
 async function try_recover_to_worker_thread() {
     if (sessionStorage.getItem(MAIN_RELOAD_KEY)) return false;
     if (!("serviceWorker" in navigator)) return false;
@@ -144,58 +175,23 @@ async function try_recover_to_worker_thread() {
     return true;
 }
 
-/**
- * Boots Wasm right here when thread is "main".
- *
- * worker.js follows the same steps for the worker case.
- *
- * `App.init` awaits `FileStore::new`, which requires a dedicated worker
- * (`FileSystemSyncAccessHandle` is only obtainable in a worker). So this
- * path only works for a configuration without persistence. THREAD ===
- * "main" is for when you only want to verify the arena layout and the
- * command / event round trip.
- */
-async function attach() {
-    const { default: init, App, arena_pointer, initialize, poll } =
-        await import("./app/app.js");
-    await init({ memory: S.memory });
+// flag of retry of loading when fallback to THREAD === "main"
+const MAIN_RELOAD_KEY = "app:main-thread-reload-attempted";
 
-    S.exports = { arena_pointer, initialize, poll };
-    S.buffer = null;
-    initialize();
-    S.base = arena_pointer();
+// === excute command ===
 
-    // On main thread nothing else drives Wasm, so run it on every send.
-    S.kick = () => { poll(); drain(); };
-
-    // `App.init` is async; without awaiting it, kick would run before
-    // initial_draw's commands are queued.
-    await App.init(
-        window.matchMedia("(pointer: coarse)").matches,
-        window.innerWidth,
-        window.innerHeight,
-    );
-    bind();
-    S.kick();
-}
-
-// === worker thread ===
-
-async function pump() {
+function drain() {
+    view();
     for (;;) {
-        drain();
-        view();
-        const index = (S.base + COMMAND_RING.control) >> 2;
-        const write = Atomics.load(S.int32, index);
-        const result = Atomics.waitAsync(S.int32, index, write);
-        if (result.async) await result.value;
+        const length = ring_pop(COMMAND_RING, S.command_scratch);
+        if (length === 0) return;
+        const d = new Decoder(S.command_scratch, 1, length);
+        execute(S.command_scratch[0], d);
     }
 }
 
-// === Excute(commands) ===
-
 /**
- *  Excute command (1 octets) recieved from app.
+ *  Execute command (1 octets) recieved from app.
  *
  *  @param {number}  operation - js_client.rs:OPERATION_*
  *  @param {Decoder} d         - payload
@@ -234,26 +230,25 @@ function execute(operation, d) {
     }
 }
 
-function drain() {
-    view();
-    for (;;) {
-        const length = ring_pop(COMMAND_RING, S.command_scratch);
-        if (length === 0) return;
-        const d = new Decoder(S.command_scratch, 1, length);
-        execute(S.command_scratch[0], d);
+/**
+ * Rebuilds an element id from the format written by `Encoder::id`.
+ *
+ * Returns the same string as `dom::Id::encode` in `js_client.rs`.
+ *
+ * @param {Decoder} d
+ * @returns {string} element id
+ */
+function decode_id(d) {
+    const count = d.u8();
+    if (count === undefined) return "";
+    const segments = [];
+    for (let i = 0; i < count; i++) {
+        const tag = TAGS[d.u8()] ?? "";
+        const number = d.u32();
+        segments.push(number === 0xFFFFFFFF ? tag : `${tag}-${number}`);
     }
+    return segments.join("_");
 }
-
-// === toast ===
-
-const toast_cycles = new WeakMap();
-
-const cancel_toast_cycle = (el) => {
-    const cycle = toast_cycles.get(el);
-    if (!cycle) return;
-    clearTimeout(cycle.timer);
-    cycle.controller.abort();
-};
 
 const js_fn = {
     show_toast: (el) => {
@@ -279,8 +274,16 @@ const js_fn = {
     },
 };
 
-const ROOTS = ["header", "main", "modal", "form", "output", "section"]
-    .map(id => document.getElementById(id));
+const cancel_toast_cycle = (el) => {
+    const cycle = toast_cycles.get(el);
+    if (!cycle) return;
+    clearTimeout(cycle.timer);
+    cycle.controller.abort();
+};
+
+const toast_cycles = new WeakMap();
+
+// === send event ===
 
 /**
  * Send Event to app
@@ -306,7 +309,7 @@ function send(e) {
 }
 
 /**
- * Write 1 event and kick App.
+ * Write 1 event and call_app.
  *
  * @param {Uint8Array} - frame
  * @returns {boolean} - result
@@ -316,7 +319,7 @@ function push(frame) {
     if (!ring_push(EVENT_RING, frame)) return false;
 
     Atomics.notify(S.int32, (S.base + EVENT_RING.control) >> 2);
-    S.kick();
+    S.call_app();
     return true;
 }
 
@@ -361,12 +364,13 @@ function bind() {
     });
 }
 
-// === event ===
-
 const EVENT_CANVAS = 1;
 const EVENT_RESIZE = 2;
 const EVENT_SCROLL = 3;
 const EVENT_SHUTDOWN = 8;
+
+const ROOTS = ["header", "main", "modal", "form", "output", "section"]
+    .map(id => document.getElementById(id));
 
 /**
  *  DOM event type. index == js_client.rs:EventType::decode_u8
@@ -480,8 +484,7 @@ const FN_NAMES = [
 /**
  *  Error kind (for log). key == js_client.rs:CommandError::wire_code
  *
- *  Whether a restart is required is not decided by this code; wasm sends
- *  it explicitly as the `serious` byte in `Command::Error`. 0 is unused.
+ *  Whether a restart is required is not decided by this but the `serious` byte in `Command::Error`.
  */
 const ERROR_NAMES = {
     1: "decode",
@@ -490,108 +493,7 @@ const ERROR_NAMES = {
     4: "file-store",
 };
 
-/**
- * Holds the destination and position while writing out a command.
- *
- * Mirrors `Encoder` in `arena.rs`.
- */
-class Encoder {
-    /** @param {Uint8Array} scratch - write destination */
-    constructor(scratch) {
-        this.scratch = scratch;
-        this.data_view = new DataView(scratch.buffer, scratch.byteOffset);
-        this.position = 0;
-    }
-
-    frame() { return this.scratch.subarray(0, this.position); }
-
-    u8(value) { this.scratch[this.position++] = value; }
-    u16(value) { this.data_view.setUint16(this.position, value, true); this.position += 2; }
-    u32(value) { this.data_view.setUint32(this.position, value, true); this.position += 4; }
-    i32(value) { this.data_view.setInt32(this.position, value, true); this.position += 4; }
-    f32(value) { this.data_view.setFloat32(this.position, value, true); this.position += 4; }
-    f64(value) { this.data_view.setFloat64(this.position, value, true); this.position += 8; }
-
-    /** Appends a byte sequence, length-prefixed. */
-    bytes(value) {
-        this.u32(value.length);
-        this.scratch.set(value, this.position);
-        this.position += value.length;
-    }
-
-    /** Appends a string as UTF-8, length-prefixed. */
-    str(value) { this.bytes(TEXT_ENCODER.encode(value)); }
-
-    /**
-     * Appends an element id as `[count:u8]([tag:u8][number:u32])*`.
-     *
-     * Same format as `Encoder::id` / `Decoder::id` in `arena.rs`. A
-     * segment with no sequence number uses 0xFFFFFFFF.
-     */
-    id(value) {
-        if (!value) { this.u8(0); return; }
-        const segments = value.split("_");
-        this.u8(segments.length);
-        for (const segment of segments) {
-            const dash = segment.lastIndexOf("-");
-            const number = dash < 0 ? NaN : Number(segment.slice(dash + 1));
-            const tag = Number.isInteger(number) ? segment.slice(0, dash) : segment;
-            this.u8(Math.max(0, TAGS.indexOf(tag)));
-            this.u32(Number.isInteger(number) ? number : 0xFFFFFFFF);
-        }
-    }
-}
-
-/**
- * Holds the position while reading out an event.
- *
- * Mirrors `Decoder` in `arena.rs`. Reading past the end returns undefined.
- */
-class Decoder {
-    /**
-     * @param {Uint8Array} scratch - read source
-     * @param {number}     start   - position to start reading from
-     * @param {number}     end     - position to stop reading at
-     */
-    constructor(scratch, start, end) {
-        this.scratch = scratch;
-        this.data_view = new DataView(scratch.buffer, scratch.byteOffset);
-        this.position = start;
-        this.end = end;
-    }
-
-    /** Checks whether `count` bytes can be advanced from the current position. */
-    take(count) {
-        if (this.position + count > this.end) return false;
-        this.position += count;
-        return true;
-    }
-
-    u8() { return this.take(1) ? this.scratch[this.position - 1] : undefined; }
-    u16() { return this.take(2) ? this.data_view.getUint16(this.position - 2, true) : undefined; }
-    u32() { return this.take(4) ? this.data_view.getUint32(this.position - 4, true) : undefined; }
-    i32() { return this.take(4) ? this.data_view.getInt32(this.position - 4, true) : undefined; }
-    f32() { return this.take(4) ? this.data_view.getFloat32(this.position - 4, true) : undefined; }
-    f64() { return this.take(8) ? this.data_view.getFloat64(this.position - 8, true) : undefined; }
-
-    /** Reads a length-prefixed byte sequence. */
-    bytes() {
-        const length = this.u32();
-        if (length === undefined || !this.take(length)) return undefined;
-        return this.scratch.subarray(this.position - length, this.position);
-    }
-
-    /** Reads a length-prefixed string as UTF-8. */
-    string() {
-        const bytes = this.bytes();
-        return bytes === undefined ? undefined : TEXT_DECODER.decode(bytes);
-    }
-}
-
-const TEXT_ENCODER = new TextEncoder();
-const TEXT_DECODER = new TextDecoder();
-
-// === arena function ===
+// === arena ===
 
 /**
  * Rebuilds the typed array views and returns S if the buffer changed.
@@ -610,26 +512,6 @@ function view() {
         S.data_view = new DataView(buffer);
     }
     return S;
-}
-
-/**
- * Rebuilds an element id from the format written by `Encoder::id`.
- *
- * Returns the same string as `dom::Id::encode` in `js_client.rs`.
- *
- * @param {Decoder} d
- * @returns {string} element id
- */
-function decode_id(d) {
-    const count = d.u8();
-    if (count === undefined) return "";
-    const segments = [];
-    for (let i = 0; i < count; i++) {
-        const tag = TAGS[d.u8()] ?? "";
-        const number = d.u32();
-        segments.push(number === 0xFFFFFFFF ? tag : `${tag}-${number}`);
-    }
-    return segments.join("_");
 }
 
 /**
@@ -693,4 +575,103 @@ function ring_pop(ring, destination) {
     Atomics.notify(S.int32, read_index);
     return length;
 }
+
+/**
+ * MUST Sync with `arena.rs::Encoder`.
+ */
+class Encoder {
+    /** @param {Uint8Array} scratch - write destination */
+    constructor(scratch) {
+        this.scratch = scratch;
+        this.data_view = new DataView(scratch.buffer, scratch.byteOffset);
+        this.position = 0;
+    }
+
+    frame() { return this.scratch.subarray(0, this.position); }
+
+    u8(value) { this.scratch[this.position++] = value; }
+    u16(value) { this.data_view.setUint16(this.position, value, true); this.position += 2; }
+    u32(value) { this.data_view.setUint32(this.position, value, true); this.position += 4; }
+    i32(value) { this.data_view.setInt32(this.position, value, true); this.position += 4; }
+    f32(value) { this.data_view.setFloat32(this.position, value, true); this.position += 4; }
+    f64(value) { this.data_view.setFloat64(this.position, value, true); this.position += 8; }
+
+    /** Appends a byte sequence, length-prefixed. */
+    bytes(value) {
+        this.u32(value.length);
+        this.scratch.set(value, this.position);
+        this.position += value.length;
+    }
+
+    /** Appends a string as UTF-8, length-prefixed. */
+    str(value) { this.bytes(TEXT_ENCODER.encode(value)); }
+
+    /**
+     * Appends an element id as `[count:u8]([tag:u8][number:u32])*`.
+     *
+     * Same format as `Encoder::id` / `Decoder::id` in `arena.rs`. A
+     * segment with no sequence number uses 0xFFFFFFFF.
+     */
+    id(value) {
+        if (!value) { this.u8(0); return; }
+        const segments = value.split("_");
+        this.u8(segments.length);
+        for (const segment of segments) {
+            const dash = segment.lastIndexOf("-");
+            const number = dash < 0 ? NaN : Number(segment.slice(dash + 1));
+            const tag = Number.isInteger(number) ? segment.slice(0, dash) : segment;
+            this.u8(Math.max(0, TAGS.indexOf(tag)));
+            this.u32(Number.isInteger(number) ? number : 0xFFFFFFFF);
+        }
+    }
+}
+
+/**
+ * Holds the position while reading out an event.
+ *
+ * Must sync with `arena.rs::Decoder`. Reading past the end returns undefined.
+ */
+class Decoder {
+    /**
+     * @param {Uint8Array} scratch - read source
+     * @param {number}     start   - position to start reading from
+     * @param {number}     end     - position to stop reading at
+     */
+    constructor(scratch, start, end) {
+        this.scratch = scratch;
+        this.data_view = new DataView(scratch.buffer, scratch.byteOffset);
+        this.position = start;
+        this.end = end;
+    }
+
+    /** Checks whether `count` bytes can be advanced from the current position. */
+    take(count) {
+        if (this.position + count > this.end) return false;
+        this.position += count;
+        return true;
+    }
+
+    u8() { return this.take(1) ? this.scratch[this.position - 1] : undefined; }
+    u16() { return this.take(2) ? this.data_view.getUint16(this.position - 2, true) : undefined; }
+    u32() { return this.take(4) ? this.data_view.getUint32(this.position - 4, true) : undefined; }
+    i32() { return this.take(4) ? this.data_view.getInt32(this.position - 4, true) : undefined; }
+    f32() { return this.take(4) ? this.data_view.getFloat32(this.position - 4, true) : undefined; }
+    f64() { return this.take(8) ? this.data_view.getFloat64(this.position - 8, true) : undefined; }
+
+    /** Reads a length-prefixed byte sequence. */
+    bytes() {
+        const length = this.u32();
+        if (length === undefined || !this.take(length)) return undefined;
+        return this.scratch.subarray(this.position - length, this.position);
+    }
+
+    /** Reads a length-prefixed string as UTF-8. */
+    string() {
+        const bytes = this.bytes();
+        return bytes === undefined ? undefined : TEXT_DECODER.decode(bytes);
+    }
+}
+
+const TEXT_ENCODER = new TextEncoder();
+const TEXT_DECODER = new TextDecoder();
 

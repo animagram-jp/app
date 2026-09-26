@@ -110,28 +110,28 @@ impl CommandError {
 /// Command from Wasm to JavaScript thread
 pub enum Command {
     SetText {
-        id: dom::Id,
+        id:    dom::Id,
         value: String,
     },
     SetValue {
-        id: dom::Id,
+        id:    dom::Id,
         value: String,
     },
     SetAttribute {
-        id: dom::Id,
+        id:        dom::Id,
         attribute: Attribute,
-        value: String,
+        value:     String,
     },
     RemoveAttribute {
-        id: dom::Id,
+        id:        dom::Id,
         attribute: Attribute,
     },
     AddClass {
-        id: dom::Id,
+        id:    dom::Id,
         value: ClassName,
     },
     RemoveClass {
-        id: dom::Id,
+        id:    dom::Id,
         value: ClassName,
     },
     SetWidth {
@@ -144,19 +144,19 @@ pub enum Command {
     },
     SetZIndex {
         id: dom::Id,
-        z: i32,
+        z:  i32,
     },
     SetBackground {
-        id: dom::Id,
+        id:    dom::Id,
         value: String,
     },
     SetTranslate {
         id: dom::Id,
-        x: f32,
-        y: f32,
+        x:  f32,
+        y:  f32,
     },
     SetCursor {
-        id: dom::Id,
+        id:    dom::Id,
         value: CursorValue,
     },
     ShowModal {
@@ -169,7 +169,7 @@ pub enum Command {
         id: dom::Id,
     },
     JsFn {
-        id: dom::Id,
+        id:   dom::Id,
         name: FnName,
     },
     /// 異常を報告する。`error.is_serious()` なら JavaScript 側は worker を
@@ -298,17 +298,17 @@ pub struct CanvasEvent {
     /// イベント種別。
     pub event_type: EventType,
     /// 発生元の要素。
-    pub id: dom::Id,
+    pub id:         dom::Id,
     /// 押されたキー。
-    pub key: KeyName,
+    pub key:        KeyName,
     /// 要素の `value`。
-    pub value: String,
+    pub value:      String,
     /// `clientX` の値。
-    pub x: f64,
+    pub x:          f64,
     /// `clientY` の値。
-    pub y: f64,
+    pub y:          f64,
     /// `timeStamp` の値。
-    pub time: f64,
+    pub time:       f64,
     /// `PointerEvent.pointerId`。pointer 系以外のイベントでは 0
     /// (`init.js` の `send` が `e.pointerId ?? 0` で送る)。複数指の
     /// 追跡に使う ([`TouchTracker`] を参照)。
@@ -470,44 +470,44 @@ impl KeyName {
 #[derive(Debug, Clone, Copy)]
 pub struct Thresholds {
     /// 長押しと見なす最短時間 (ms)。
-    pub long_press_ms: f64,
+    pub long_press_ms:      f64,
     /// 長押し中に許容する座標のブレ (px)。これを超えたら長押しを取り消す。
     pub long_press_slop_px: f64,
     /// ドラッグ開始と見なす移動距離 (px)。
-    pub drag_start_px: f64,
+    pub drag_start_px:      f64,
     /// スワイプと見なす最短距離 (px)。
-    pub swipe_min_px: f64,
+    pub swipe_min_px:       f64,
     /// スワイプと見なす最低速度 (px/ms)。
     pub swipe_min_velocity: f64,
     /// スワイプと見なす最長時間 (ms)。これを超えたらドラッグ扱い。
-    pub swipe_max_ms: f64,
+    pub swipe_max_ms:       f64,
     /// タップと見なす最長時間 (ms)。
-    pub tap_max_ms: f64,
+    pub tap_max_ms:         f64,
     /// タップ中に許容する座標のブレ (px)。
-    pub tap_slop_px: f64,
+    pub tap_slop_px:        f64,
 }
 
 impl Thresholds {
     pub const MOUSE: Self = Self {
-        long_press_ms: 251.0,
+        long_press_ms:      251.0,
         long_press_slop_px: 9.0,
-        drag_start_px: 10.0,
-        swipe_min_px: 50.0,
+        drag_start_px:      10.0,
+        swipe_min_px:       50.0,
         swipe_min_velocity: 0.5,
-        swipe_max_ms: 250.0,
-        tap_max_ms: 250.0,
-        tap_slop_px: 9.0,
+        swipe_max_ms:       250.0,
+        tap_max_ms:         250.0,
+        tap_slop_px:        9.0,
     };
 
     pub const TOUCH: Self = Self {
-        long_press_ms: 500.0,
+        long_press_ms:      500.0,
         long_press_slop_px: 16.0,
-        drag_start_px: 16.0,
-        swipe_min_px: 50.0,
+        drag_start_px:      16.0,
+        swipe_min_px:       50.0,
         swipe_min_velocity: 0.5,
-        swipe_max_ms: 300.0,
-        tap_max_ms: 300.0,
-        tap_slop_px: 16.0,
+        swipe_max_ms:       300.0,
+        tap_max_ms:         300.0,
+        tap_slop_px:        16.0,
     };
 
     #[must_use]
@@ -527,26 +527,26 @@ impl Default for Thresholds {
 
 #[derive(Debug, Default, Clone, Copy)]
 pub struct PointerState {
-    is_down: bool,
-    start_x: f64,
-    start_y: f64,
-    current_x: f64,
-    current_y: f64,
-    start_time: f64,
+    is_down:          bool,
+    start_x:          f64,
+    start_y:          f64,
+    current_x:        f64,
+    current_y:        f64,
+    start_time:       f64,
     /// 直近の `PointerMove` の座標・時刻 (無ければ `PointerDown` のそれ)。
     /// swipe の速度を「離す直前の実際の動き」から計算するために持つ。
-    last_move_x: f64,
-    last_move_y: f64,
-    last_move_time: f64,
+    last_move_x:      f64,
+    last_move_y:      f64,
+    last_move_time:   f64,
     /// `PointerDown` 時の (pointer_px - 対象の左上 px)。
-    drag_offset: (f64, f64),
+    drag_offset:      (f64, f64),
     /// ドラッグ中の対象左上 px (一時値)。
-    drag_px: (f64, f64),
-    is_dragging: bool,
+    drag_px:          (f64, f64),
+    is_dragging:      bool,
     /// 長押しを発火済みか。連続発火を防ぐラッチ。
     long_press_fired: bool,
     /// 直前の終了が `PointerCancel` だったか。
-    cancelled: bool,
+    cancelled:        bool,
 }
 
 impl PointerState {
@@ -554,20 +554,20 @@ impl PointerState {
     pub fn update(self, event_type: &EventType, x: f64, y: f64, time: f64) -> Self {
         match event_type {
             EventType::PointerDown => Self {
-                is_down: true,
-                start_x: x,
-                start_y: y,
-                current_x: x,
-                current_y: y,
-                start_time: time,
-                last_move_x: x,
-                last_move_y: y,
-                last_move_time: time,
-                drag_offset: (0.0, 0.0),
-                drag_px: (0.0, 0.0),
-                is_dragging: false,
+                is_down:          true,
+                start_x:          x,
+                start_y:          y,
+                current_x:        x,
+                current_y:        y,
+                start_time:       time,
+                last_move_x:      x,
+                last_move_y:      y,
+                last_move_time:   time,
+                drag_offset:      (0.0, 0.0),
+                drag_px:          (0.0, 0.0),
+                is_dragging:      false,
                 long_press_fired: false,
-                cancelled: false,
+                cancelled:        false,
             },
             EventType::PointerMove => Self {
                 current_x: x,
@@ -622,7 +622,7 @@ pub enum Gesture {
     /// `scale` は 2 本指の開始距離に対する現在距離の比であり、
     /// `center_x` / `center_y` は 2 本指の現在の中点。
     Pinch {
-        scale: f64,
+        scale:    f64,
         center_x: f64,
         center_y: f64,
     },
@@ -1012,9 +1012,9 @@ mod gesture_tests {
 /// 2 本指のうち一方の追跡状態。
 #[derive(Debug, Clone, Copy)]
 struct TouchPoint {
-    id: u32,
-    start_x: f64,
-    start_y: f64,
+    id:        u32,
+    start_x:   f64,
+    start_y:   f64,
     current_x: f64,
     current_y: f64,
 }
@@ -1075,9 +1075,9 @@ enum FoldedInput {
 /// 不要と判断)。
 #[derive(Debug, Clone, Copy, Default)]
 struct TwoFingerState {
-    primary: Option<TouchPoint>,
+    primary:   Option<TouchPoint>,
     secondary: Option<TouchPoint>,
-    mode: TwoFingerMode,
+    mode:      TwoFingerMode,
 }
 
 impl TwoFingerState {
@@ -1123,9 +1123,9 @@ impl TwoFingerState {
         if self.primary.is_some_and(|p| p.id == id) {
             (
                 Self {
-                    primary: self.secondary,
+                    primary:   self.secondary,
                     secondary: None,
-                    mode: TwoFingerMode::Undetermined,
+                    mode:      TwoFingerMode::Undetermined,
                 },
                 ended_mode,
             )
@@ -1194,7 +1194,7 @@ impl TwoFingerState {
                 let current_distance =
                     two_point_distance(p.current_x, p.current_y, s.current_x, s.current_y);
                 FoldedInput::Pinch {
-                    scale: current_distance / start_distance,
+                    scale:    current_distance / start_distance,
                     center_x: (p.current_x + s.current_x) / 2.0,
                     center_y: (p.current_y + s.current_y) / 2.0,
                 }
@@ -1259,8 +1259,8 @@ fn two_point_distance(x0: f64, y0: f64, x1: f64, y1: f64) -> f64 {
 #[derive(Debug, Default)]
 pub struct TouchTracker {
     primary_state: PointerState,
-    two_fingers: TwoFingerState,
-    pan_state: Option<PointerState>,
+    two_fingers:   TwoFingerState,
+    pan_state:     Option<PointerState>,
 }
 
 impl TouchTracker {
@@ -1892,7 +1892,7 @@ pub mod dom {
     #[derive(Debug, Clone, PartialEq)]
     pub struct Segment {
         pub tag: Tag,
-        pub n: Option<u32>,
+        pub n:   Option<u32>,
     }
 
     /// element id。
