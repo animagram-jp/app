@@ -62,6 +62,11 @@ const S = {
 let worker = null;
 let bound = false;
 let restarting = false;
+
+if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("./sw.js").catch((err) => console.warn("SW registration failed:", err));
+}
+
 start();
 
 // === start ===
