@@ -1,14 +1,3 @@
-// init.js
-//
-// start()
-// drain() iter.execute()
-// send(Event)
-// bind()
-//
-// MUST sync CONSTANTS with arena.rs
-// MUST sync OPERATION with js_client.rs
-// MUST sync Event with event.rs
-
 const params = new URLSearchParams(location.search);
 if (params.has("eruda")) {
     const s = document.createElement("script");
@@ -16,8 +5,6 @@ if (params.has("eruda")) {
     s.onload = () => eruda.init();
     document.body.appendChild(s);
 }
-
-// === arena layout ===
 
 const EVENT_CONTROL = 0;
 const EVENT_PAYLOAD = 128; // range start
@@ -35,21 +22,21 @@ const CONTROL_WRITE_OFFSET = 0;
 const CONTROL_READ_OFFSET = 64;
 const LENGTH_PREFIX = 4;
 
-// JavaScript -> Wasm
 const EVENT_RING = {
-    control: EVENT_CONTROL, payload: EVENT_PAYLOAD, slot: EVENT_SLOT, slot_count: EVENT_SLOT_COUNT,
+    control: EVENT_CONTROL, 
+    payload: EVENT_PAYLOAD, 
+    slot: EVENT_SLOT, 
+    slot_count: EVENT_SLOT_COUNT,
 };
-// Wasm -> JavaScript
+
 const COMMAND_RING = {
-    control:   COMMAND_CONTROL,
-    payload:   COMMAND_PAYLOAD,
-    slot:      COMMAND_SLOT,
+    control: COMMAND_CONTROL,
+    payload: COMMAND_PAYLOAD,
+    slot: COMMAND_SLOT,
     slot_count: COMMAND_SLOT_COUNT,
 };
 
 const THREAD = crossOriginIsolated ? "worker" : "main";
-
-// === arena state ===
 
 /**
  *  MUST Sync with talc allocator -Clink-arg=--max-memory=134217728, 128MiB = 2048 pages
@@ -120,11 +107,6 @@ function start() {
     bind();
 }
 
-/**
- * recreate arena
- * - worker: worker.initialize
- * - main: initialize, not attach
- */
 let restarting = false;
 function restart() {
     if (restarting) return;
@@ -338,7 +320,6 @@ function push(frame) {
     return true;
 }
 
-/** Start listening Event to send. */
 function bind() {
     if (bound) return;
     bound = true;
@@ -522,7 +503,6 @@ class Encoder {
         this.position = 0;
     }
 
-    /** Returns the range written so far. */
     frame() { return this.scratch.subarray(0, this.position); }
 
     u8(value) { this.scratch[this.position++] = value; }

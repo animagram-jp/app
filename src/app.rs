@@ -65,14 +65,11 @@ impl App {
     /// App::init(false, 0.0, 0.0).await;
     /// let app = unsafe { (*(&raw mut APP)).as_mut() }.unwrap();
     /// app.clear();
-    /// // 空フレームはデコードに失敗し、Command::Error として報告される。
     /// app.process(&[]);
     /// assert_eq!(app.commands()[0], OPERATION_ERROR);
     /// # }
     /// ```
     pub fn process(&mut self, frame: &[u8]) {
-        // デコードに失敗したフレームは捨てる。1 フレーム落ちるだけで
-        // 復旧できるため、報告はするが再起動は求めない。
         let Some(event) = decode_event(frame) else {
             encode_command(&mut self.commands, &Command::Error { error: CommandError::Decode });
             return;
@@ -107,7 +104,6 @@ impl App {
                     thresholds,
                 ) {
                     Some(gesture) => handler.process_gesture(&gesture, touch.active_state()),
-                    // ignore PointerMove / PointerUp / PointerCancel
                     None => match canvas_event.event_type {
                         EventType::PointerMove
                         | EventType::PointerUp
@@ -137,9 +133,6 @@ impl App {
 /// 内部で取り出してアリーナのコマンドリングへ `emit` し、JavaScript へは
 /// `arena_pointer` が返すオフセット越しに届く。
 impl App {
-    /// 前回 `clear` 以降に積まれたコマンド列を返す。
-    ///
-    /// 返るスライスは次の `clear` または `process` までのみ有効である。
     pub fn commands(&self) -> &[u8] {
         &self.commands
     }
