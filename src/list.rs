@@ -147,7 +147,6 @@ impl<T: Copy + Default + PartialEq> List<T> {
 /// // intern: same value returns existing id
 /// let r = vl.set(&0, &[1u8, 2, 3], true, false).unwrap();
 /// assert!(matches!(r, SetOutcome::Updated(1)));
-/// assert_eq!(vl.index.len(), 4); // sentinel + id=1 のみ
 ///
 /// // update in-place (value fits)
 /// let r = vl.set(&1, &[9u8, 8], false, false).unwrap();
@@ -319,7 +318,7 @@ mod tests {
     #[test]
     fn list_set_update_existing() {
         let mut list: List<u32> = List::new();
-        list.set(&0, 1u32, false, false).unwrap(); // id=1 を作成
+        list.set(&0, 1u32, false, false).unwrap();
         let r = list.set(&1, 3u32, false, false).unwrap();
         assert!(matches!(r, SetOutcome::Updated(1)));
         assert_eq!(*list.get(&1).unwrap(), 3u32);

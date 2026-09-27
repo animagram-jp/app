@@ -260,7 +260,6 @@ impl MadnessRealTime {
     }
 }
 
-/// ルールブック 日本語訳版 155頁
 #[derive(Clone, Copy)]
 pub enum MadnessSummary {
     Amnesia,
@@ -302,7 +301,6 @@ impl MadnessSummary {
     }
 }
 
-/// ルールブック 日本語訳版 174頁
 #[derive(Clone, Copy)]
 pub enum FailedCastingMinor {
     BlurredVision,
@@ -340,7 +338,6 @@ impl FailedCastingMinor {
     }
 }
 
-/// ルールブック 日本語訳版 P175
 #[derive(Clone, Copy)]
 pub enum FailedCastingMajor {
     Earthquake,
@@ -382,7 +379,6 @@ impl FailedCastingMajor {
     }
 }
 
-/// ルールブック 日本語訳版 156頁
 #[derive(Clone, Copy, PartialEq, List, Id, app_macros::Roll)]
 pub enum Phobia {
     Ablutophobia,
@@ -694,7 +690,6 @@ impl Phobia {
     }
 }
 
-/// ルールブック 日本語訳版 157頁
 #[derive(Clone, Copy, PartialEq, List, Id, app_macros::Roll)]
 pub enum Mania {
     Ablutomania,

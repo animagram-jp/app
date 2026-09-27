@@ -84,8 +84,6 @@ impl Timezone {
     }
 }
 
-/// Unix time (ms) からtimestampに変換する。
-/// `is_utc=true` なら UTC のまま格納。`is_utc=false` なら `tz` のローカル時刻に変換して格納。
 ///
 /// ```
 /// use app::timestamp::*;
@@ -93,7 +91,6 @@ impl Timezone {
 /// // 2000-01-01 00:00:00 UTC = 946684800000 ms
 /// let ut = 946684800000.0_f64;
 ///
-/// // UTC格納
 /// let ts = from_ut(ut, true, &Timezone::AsiaTokyo);
 /// let (year, month, day, hour, ..) = unpack(ts);
 /// assert_eq!(year, 2000);
@@ -101,7 +98,6 @@ impl Timezone {
 /// assert_eq!(day, 1);
 /// assert_eq!(hour, 0);
 ///
-/// // Asia/Tokyo (UTC+9) に変換して格納
 /// let ts = from_ut(ut, false, &Timezone::AsiaTokyo);
 /// let (year, month, day, hour, ..) = unpack(ts);
 /// assert_eq!(year, 2000);

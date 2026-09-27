@@ -13,14 +13,11 @@ use core::{
 
 use arbitrary_int::{i10, u9};
 
-// `no_std` のため `String` 以外もここで明示的に入れる。
 use crate::{Lang, data_struct::DataStruct, list::ListError, timestamp::Field};
 
 pub type Dice = (i8, u8, i8); // (count, sides, modifier)
 
 pub mod dice {
-    // `no_std` のため入れ子 module にも alloc の prelude を入れる。
-    // 外側の `use` はここへ届かない。
     use alloc::{
         format,
         string::{String, ToString},
@@ -30,13 +27,6 @@ pub mod dice {
 
     use super::Dice;
 
-    /// seed 付きの `SmallRng` を作る。
-    ///
-    /// `rand::rng()` は `#[cfg(feature = "thread_rng")]` であり
-    /// `thread_rng = ["std", ..]` のため `no_std` では使えない。
-    /// `sys_rng` feature の `SysRng` で seed を取り `SmallRng` を回す。
-    /// `SysRng` 自身は fallible (`TryRng`) で `RngExt` が付かないため、
-    /// 直接 `random_range` を呼ぶことはできない。
     fn rng() -> rand::rngs::SmallRng {
         use rand::{SeedableRng as _, TryRng as _};
 
@@ -97,7 +87,6 @@ pub mod dice {
 }
 
 // === SubjectTrait ===
-// グループ分けenum(Profile, Character, ...)自身が持つ、バリアントに対応するids/labelを返す能力。
 
 pub trait SubjectTrait {
     fn ids(&self) -> &'static [u32];
@@ -108,8 +97,6 @@ pub trait SubjectTrait {
 }
 
 // === StaticModel ===
-// 固定N件のidsを持つフィールドの共通trait。idsの並びがコンパイル時に決まっているものが対象(Customのような実行時に件数が決まる可変長の間接参照は対象外。そちらはDynamicModel相当で別途扱う)。
-// 各structは「自分がどのenum(Enum)のどのバリアント(VARIANT)に属するか」を宣言するだけでよく、idsへの正規化はここでの既定実装に任せられる。structがSubjectTraitを実装するわけではない(所属先はstructの外、implの中で宣言する)。
 
 pub trait StaticModel<const N: usize> {
     type Parsed;
@@ -120,10 +107,8 @@ pub trait StaticModel<const N: usize> {
         Self::VARIANT.ids().try_into().expect("id slice length mismatch")
     }
 
-    /// バイト列(値なしはNone)からドメイン値へ変換する。DataStructに依存しない純粋関数。
     fn parse(bytes: [Option<&[u8]>; N]) -> Self::Parsed;
 
-    /// ドメイン値からバイト列へ変換する。Noneは削除を意味する。DataStructに依存しない純粋関数。
     fn encode(value: &Self::Parsed) -> [Option<Vec<u8>>; N];
 
     fn read(character: &DataStruct) -> Self::Parsed {
@@ -157,13 +142,13 @@ pub enum Character {
 impl Character {
     pub const fn base_id(&self) -> u32 {
         match self {
-            Self::Profile => 10,            //  10- 17 (8件)
-            Self::Characteristic => 20,     //  20- 28 (9件)
-            Self::SecondaryAttribute => 30, //  30- 37 (8件)
-            Self::Skill => 40,              //  40- 86 (47件)
-            Self::Possession => 90,         //  90-... (拡張余地)
-            Self::Backstory => 100,         // 100-109 (10件)
-            Self::Memo => 110,              // 110      (1件)
+            Self::Profile => 10,
+            Self::Characteristic => 20,
+            Self::SecondaryAttribute => 30,
+            Self::Skill => 40,
+            Self::Possession => 90,
+            Self::Backstory => 100,
+            Self::Memo => 110,
         }
     }
 
@@ -634,7 +619,6 @@ impl Characteristic {
             .get(self.id())
             .ok()
             .map(|b| {
-                // todo: Field使用
                 let initial = b
                     .get(0..2)
                     .and_then(|x| x.try_into().ok())
@@ -692,7 +676,6 @@ impl Characteristic {
     }
 
     pub fn roll_initial(&self) -> u16 {
-        // SIZ / INT / EDU は (2d6+6)×5、それ以外は 3d6×5
         match self {
             Self::Size | Self::Intelligence | Self::Education => {
                 dice::roll(&[(2, 6, 6)]) as u16 * 5
@@ -836,7 +819,7 @@ impl Sanity {
     }
 
     pub fn derive(character: &DataStruct) -> u8 {
-        Characteristic::Power.read(character).0 as u8 // todo 99以上は99へ変換
+        Characteristic::Power.read(character).0 as u8
     }
 }
 
@@ -981,7 +964,7 @@ impl OccupationSkillPoints {
         let Some((c1, c2)) = Self::read(character) else {
             return (0, 0);
         };
-        let used = 0u16; // todo: 割り振り済みポイント: Skill::sum().0で計算
+        let used = 0u16;
         let (c1_initial, _, c1_modifier) = c1.read(character);
         let (c2_initial, _, c2_modifier) = c2.read(character);
         let total =
@@ -994,7 +977,7 @@ pub struct InterestSkillPoints; // InterestSkillPoints: u16 | INT -> (u16, u16)
 
 impl InterestSkillPoints {
     pub fn derive(character: &DataStruct) -> (u16, u16) {
-        let used = 0u16; // todo: 割り振り済みポイント: Skill::sum().0で計算
+        let used = 0u16;
         let (initial, _, modifier) = Characteristic::Intelligence.read(character);
         let total = ((initial as i32 + modifier as i32) * 2).max(0) as u16;
         (used, total)
@@ -1051,7 +1034,7 @@ pub enum Skill {
     Swim,
     Throw,
     Track,
-    Custom, // 変動id帯予約用item
+    Custom,
 }
 
 impl Skill {
@@ -1108,7 +1091,6 @@ impl Skill {
     }
 
     pub const fn base_id(&self) -> u32 {
-        // ルールブック記載specialization id帯、custom id帯と衝突しないように基準idを割り振る
         const BASE: u32 = Character::Skill.base_id();
         match self {
             Self::Accounting => BASE + 0, // 1 slot (minimum)
@@ -1161,7 +1143,6 @@ impl Skill {
         }
     }
 
-    // 固定値の基本成功率のみ
     pub const fn base_percent(&self) -> u16 {
         match self {
             Self::Accounting => 5,
@@ -1210,7 +1191,6 @@ impl Skill {
         }
     }
 
-    // 固定値の技能名のみ
     pub fn name(&self, lang: &Lang) -> &'static str {
         match (self, lang) {
             (Self::Accounting, Lang::En(_)) => "Accounting",
@@ -1512,8 +1492,6 @@ impl LanguageOwn {
         character
     }
 
-    // read() の戻り値を引数に取る。character の読み出し不要。
-    // -> base_percent(定数), occupation_points, interest_points, change, modifier, sum
     pub fn as_editable_numeric(
         occupation_points: u16,
         interest_points: u16,
@@ -1539,21 +1517,20 @@ impl LanguageOwn {
     }
 }
 
-/// 芸術/製作 (専門分野) Art/Craft (Specialization) // p.62 モリダンス等は長いので除外
 #[derive(PartialEq, Eq)]
 pub enum ArtAndCraft {
-    Acting,      // 演劇
-    Barber,      // 理容
-    Calligraphy, // 書道
-    Carpentry,   // 大工仕事
-    Cook,        // 料理
-    Dancing,     // ダンス
-    FineArt,     // 絵画
-    Forgery,     // 文書偽造
-    Photography, // 写真術
-    Pottery,     // 陶芸
-    Sculpting,   // 彫刻
-    Writing,     // 執筆
+    Acting,
+    Barber,
+    Calligraphy,
+    Carpentry,
+    Cook,
+    Dancing,
+    FineArt,
+    Forgery,
+    Photography,
+    Pottery,
+    Sculpting,
+    Writing,
     Custom,
 }
 
@@ -1573,7 +1550,7 @@ impl ArtAndCraft {
             Self::Pottery => BASE_ID + 10,
             Self::Sculpting => BASE_ID + 11,
             Self::Writing => BASE_ID + 12,
-            Self::Custom => BASE_ID + 13, // Custom(u8)のidリスト格納スロット
+            Self::Custom => BASE_ID + 13,
         }
     }
 
@@ -1732,7 +1709,6 @@ impl ArtAndCraftCustom {
         Self::LIST_ID
     }
 
-    // base_percent は定数(5%)のため SkillTrait と同一 Field 構成・5 bytes
     const OCCUPATION_POINTS: Field = Field { position: 32, mask: (1 << 9) - 1 };
     const INTEREST_POINTS: Field = Field { position: 23, mask: (1 << 9) - 1 };
     const CHANGE: Field = Field { position: 13, mask: (1 << 10) - 1 };
@@ -1807,8 +1783,6 @@ impl ArtAndCraftCustom {
         character
     }
 
-    // read() の戻り値を引数に取る。character の読み出し不要。
-    // -> base_percent(定数), occupation_points, interest_points, change, modifier, sum
     pub fn as_editable_numeric(
         occupation_points: u16,
         interest_points: u16,
@@ -1834,17 +1808,16 @@ impl ArtAndCraftCustom {
     }
 }
 
-/// 近接戦闘 (専門分野) Fighting (Specialization) // p.61
 #[derive(Clone, PartialEq, Eq)]
 pub enum Fighting {
-    Axe,      // 斧         15%
-    Brawl,    // 格闘       25%
-    Chainsaw, // チェーンソー 10%
-    Flail,    // フレイル    10%
-    Garrote,  // 絞殺ひも    15%
-    Spear,    // 槍         20%
-    Sword,    // 刀剣       20%
-    Whip,     // 鞭         05%
+    Axe,
+    Brawl,
+    Chainsaw,
+    Flail,
+    Garrote,
+    Spear,
+    Sword,
+    Whip,
     Custom,
 }
 
@@ -2013,7 +1986,6 @@ impl FightingTrait<{ Fighting::Whip }> for Whip {}
 pub struct FightingCustom(pub u8);
 
 impl FightingCustom {
-    // Custom(0) = リスト格納スロット。Custom(i) (i≥1) → numeric: list+i*2-1, name: list+i*2
     const LIST_ID: u32 = Skill::Fighting.base_id() + 9;
     pub const fn list_id() -> u32 {
         Self::LIST_ID
@@ -2026,7 +1998,6 @@ impl FightingCustom {
         Self::LIST_ID + self.0 as u32 * 2
     }
 
-    // base_percent は可変のため 6 bytes (bits 41-47 に格納)
     const BASE_PERCENT: Field = Field { position: 41, mask: (1 << 7) - 1 };
     const OCCUPATION_POINTS: Field = Field { position: 32, mask: (1 << 9) - 1 };
     const INTEREST_POINTS: Field = Field { position: 23, mask: (1 << 9) - 1 };
@@ -2105,7 +2076,6 @@ impl FightingCustom {
         character
     }
 
-    // read() の戻り値を引数に取る。character の読み出し不要。
     // -> base_percent, occupation_points, interest_points, change, modifier, sum
     pub fn as_editable_numeric(
         base_percent: u16,
@@ -2132,16 +2102,15 @@ impl FightingCustom {
     }
 }
 
-/// 射撃 (専門分野) Firearms (Specialization) // p.64
 #[derive(Clone, PartialEq, Eq)]
 pub enum Firearms {
-    Bow,           // 弓, 15%
-    FlameThrower,  // 火炎放射器, 10%
-    Handgun,       // 拳銃, 20%
-    HeavyWeapons,  // 重火器, 10%
-    MachineGun,    // マシンガン, 10%
-    RifleShotgun,  // ライフル/ショットガン, 25%
-    SubmachineGun, // サブマシンガン, 15%
+    Bow,
+    FlameThrower,
+    Handgun,
+    HeavyWeapons,
+    MachineGun,
+    RifleShotgun,
+    SubmachineGun,
     Custom,
 }
 
@@ -2314,7 +2283,6 @@ impl FirearmsCustom {
         Self::LIST_ID + self.0 as u32 * 2
     }
 
-    // base_percent は可変のため 6 bytes (bits 41-47 に格納)
     const BASE_PERCENT: Field = Field { position: 41, mask: (1 << 7) - 1 };
     const OCCUPATION_POINTS: Field = Field { position: 32, mask: (1 << 9) - 1 };
     const INTEREST_POINTS: Field = Field { position: 23, mask: (1 << 9) - 1 };
@@ -2393,7 +2361,6 @@ impl FirearmsCustom {
         character
     }
 
-    // read() の戻り値を引数に取る。character の読み出し不要。
     // -> base_percent, occupation_points, interest_points, change, modifier, sum
     pub fn as_editable_numeric(
         base_percent: u16,
@@ -2420,7 +2387,6 @@ impl FirearmsCustom {
     }
 }
 
-/// ほかの言語 (専門分野) (Language (Other) (Specialization) // p.73
 pub struct LanguageOther(pub u8);
 
 impl LanguageOther {
@@ -2437,7 +2403,6 @@ impl LanguageOther {
         Self::LIST_ID + self.0 as u32 * 2
     }
 
-    // base_percent は定数(1%)のため SkillTrait と同一 Field 構成・5 bytes
     const OCCUPATION_POINTS: Field = Field { position: 32, mask: (1 << 9) - 1 };
     const INTEREST_POINTS: Field = Field { position: 23, mask: (1 << 9) - 1 };
     const CHANGE: Field = Field { position: 13, mask: (1 << 10) - 1 };
@@ -2512,8 +2477,6 @@ impl LanguageOther {
         character
     }
 
-    // read() の戻り値を引数に取る。character の読み出し不要。
-    // -> base_percent(定数), occupation_points, interest_points, change, modifier, sum
     pub fn as_editable_numeric(
         &self,
         occupation_points: u16,
@@ -2539,22 +2502,18 @@ impl LanguageOther {
     }
 }
 
-/// 操縦 (専門分野) Pilot (Specialization) // p.67
 #[derive(Clone, PartialEq, Eq)]
 pub enum Pilot {
-    // --- 両時代共通 ---
-    Boat,      // ボート
-    SteamShip, // 汽船
-    Sailboat,  // 帆船
-    CivilProp, // 民間プロペラ機
-    // --- 1920s のみ ---
-    Balloon,   // 気球
-    Dirigible, // 飛行船
-    // --- Modern (1990s) のみ ---
-    CivilJet,   // 民間ジェット機
-    Airliner,   // 定期旅客機
-    JetFighter, // ジェット戦闘機
-    Helicopter, // ヘリコプター
+    Boat,
+    SteamShip,
+    Sailboat,
+    CivilProp,
+    Balloon,
+    Dirigible,
+    CivilJet,
+    Airliner,
+    JetFighter,
+    Helicopter,
     Custom,
 }
 
@@ -2596,7 +2555,6 @@ impl Pilot {
 
     pub const fn name(&self, lang: Lang) -> &'static str {
         match (self, lang) {
-            // --- 両時代共通 ---
             (Self::Boat, Lang::Ja) => "ボート",
             (Self::Boat, Lang::En(_)) => "Boat",
             (Self::SteamShip, Lang::Ja) => "汽船",
@@ -2605,12 +2563,10 @@ impl Pilot {
             (Self::Sailboat, Lang::En(_)) => "Sailboat",
             (Self::CivilProp, Lang::Ja) => "民間プロペラ機",
             (Self::CivilProp, Lang::En(_)) => "Civil Prop",
-            // --- 1920s のみ ---
             (Self::Balloon, Lang::Ja) => "気球",
             (Self::Balloon, Lang::En(_)) => "Balloon",
             (Self::Dirigible, Lang::Ja) => "飛行船",
             (Self::Dirigible, Lang::En(_)) => "Dirigible",
-            // --- Modern (1990s) のみ ---
             (Self::CivilJet, Lang::Ja) => "民間ジェット機",
             (Self::CivilJet, Lang::En(_)) => "Civil Jet",
             (Self::Airliner, Lang::Ja) => "旅客機",
@@ -2723,7 +2679,6 @@ impl PilotTrait<{ Pilot::Helicopter }> for PilotHelicopter {}
 pub struct PilotCustom(pub u8);
 
 impl PilotCustom {
-    // Custom(0) = リスト格納スロット。Custom(i) (i≥1) → numeric: list+i*2-1, name: list+i*2
     const LIST_ID: u32 = Skill::Pilot.base_id() + 10;
     pub const fn list_id() -> u32 {
         Self::LIST_ID
@@ -2736,7 +2691,6 @@ impl PilotCustom {
         Self::LIST_ID + self.0 as u32 * 2
     }
 
-    // base_percent は定数(1%)のため SkillTrait と同一 Field 構成・5 bytes
     const OCCUPATION_POINTS: Field = Field { position: 32, mask: (1 << 9) - 1 };
     const INTEREST_POINTS: Field = Field { position: 23, mask: (1 << 9) - 1 };
     const CHANGE: Field = Field { position: 13, mask: (1 << 10) - 1 };
@@ -2786,8 +2740,6 @@ impl PilotCustom {
         character
     }
 
-    // read() の戻り値を引数に取る。character の読み出し不要。
-    // -> base_percent(定数), occupation_points, interest_points, change, modifier, sum
     pub fn as_editable_numeric(
         occupation_points: u16,
         interest_points: u16,
@@ -2813,23 +2765,22 @@ impl PilotCustom {
     }
 }
 
-/// 科学 (専門分野) Science (Specialization) // p.59
 #[derive(Clone, PartialEq, Eq)]
 pub enum Science {
     None,
-    Astronomy,    // 天文学
-    Biology,      // 生物学
-    Botany,       // 植物学
-    Chemistry,    // 化学
-    Cryptography, // 暗号学
-    Engineering,  // 工学
-    Forensics,    // 法医学
-    Geology,      // 地質学
-    Mathematics,  // 数学
-    Meteorology,  // 気象学
-    Pharmacy,     // 薬学
-    Physics,      // 物理学
-    Zoology,      // 動物学
+    Astronomy,
+    Biology,
+    Botany,
+    Chemistry,
+    Cryptography,
+    Engineering,
+    Forensics,
+    Geology,
+    Mathematics,
+    Meteorology,
+    Pharmacy,
+    Physics,
+    Zoology,
     Custom,
 }
 
@@ -2868,7 +2819,7 @@ impl Science {
             Self::Pharmacy => 10,
             Self::Physics => 11,
             Self::Zoology => 12,
-            Self::Custom => 13, // カスタムidリスト格納スロット
+            Self::Custom => 13,
         }
     }
 
@@ -3018,7 +2969,6 @@ impl ScienceTrait<{ Science::Zoology }> for ScienceZoology {}
 pub struct ScienceCustom(pub u8);
 
 impl ScienceCustom {
-    // Custom(0) = リスト格納スロット。Custom(i) (i≥1) → numeric: list+i*2-1, name: list+i*2
     const LIST_ID: u32 = Skill::Science.base_id() + 13;
     pub const fn list_id() -> u32 {
         Self::LIST_ID
@@ -3031,7 +2981,6 @@ impl ScienceCustom {
         Self::LIST_ID + self.0 as u32 * 2
     }
 
-    // base_percent は定数(1%)のため SkillTrait と同一 Field 構成・5 bytes
     const OCCUPATION_POINTS: Field = Field { position: 32, mask: (1 << 9) - 1 };
     const INTEREST_POINTS: Field = Field { position: 23, mask: (1 << 9) - 1 };
     const CHANGE: Field = Field { position: 13, mask: (1 << 10) - 1 };
@@ -3081,8 +3030,6 @@ impl ScienceCustom {
         character
     }
 
-    // read() の戻り値を引数に取る。character の読み出し不要。
-    // -> base_percent(定数), occupation_points, interest_points, change, modifier, sum
     pub fn as_editable_numeric(
         occupation_points: u16,
         interest_points: u16,
@@ -3108,7 +3055,6 @@ impl ScienceCustom {
     }
 }
 
-// --- サバイバル 専門分野 (Survival Specialization) --- p.63
 #[derive(Clone, PartialEq, Eq)]
 pub enum Survival {
     Arctic,
@@ -3127,7 +3073,7 @@ impl Survival {
             Self::Arctic => 0,
             Self::Desert => 1,
             Self::Sea => 2,
-            Self::Custom => 3, // カスタムidリスト格納スロット
+            Self::Custom => 3,
         }
     }
 
@@ -3235,7 +3181,6 @@ impl SurvivalTrait<{ Survival::Sea }> for SurvivalSea {}
 pub struct SurvivalCustom(pub u8);
 
 impl SurvivalCustom {
-    // Custom(0) = リスト格納スロット。Custom(i) (i≥1) → numeric: list+i*2-1, name: list+i*2
     const LIST_ID: u32 = Skill::Survival.base_id() + 3;
     pub const fn list_id() -> u32 {
         Self::LIST_ID
@@ -3248,7 +3193,6 @@ impl SurvivalCustom {
         Self::LIST_ID + self.0 as u32 * 2
     }
 
-    // base_percent は定数(10%)のため SkillTrait と同一 Field 構成・5 bytes
     const OCCUPATION_POINTS: Field = Field { position: 32, mask: (1 << 9) - 1 };
     const INTEREST_POINTS: Field = Field { position: 23, mask: (1 << 9) - 1 };
     const CHANGE: Field = Field { position: 13, mask: (1 << 10) - 1 };
@@ -3298,8 +3242,6 @@ impl SurvivalCustom {
         character
     }
 
-    // read() の戻り値を引数に取る。character の読み出し不要。
-    // -> base_percent(定数), occupation_points, interest_points, change, modifier, sum
     pub fn as_editable_numeric(
         occupation_points: u16,
         interest_points: u16,
@@ -3360,27 +3302,24 @@ impl Possession {
 }
 
 pub enum Weapon {
-    // --- 近接・投擲武器 ---
-    BowAndArrows,  // Bow and Arrows      1D6+half DB      (貫通)
+    BowAndArrows,
     BrassKnuckles, // Brass Knuckles      1D3+1+DB
     Bullwhip,      // Bullwhip            1D3+half DB
     BurningTorch,  // Burning Torch       1D6+burn
     Blackjack,     // Blackjack           1D8+DB
     ClubLarge,     // Club, Large         1D8+DB
     ClubSmall,     // Club, Small         1D6+DB
-    Crossbow,      // Crossbow            1D8+2            (貫通)
-    Garrote,       // Garrote             1D6+DB           (貫通)
-    HatchetSickle, // Hatchet/Sickle      1D6+1+DB         (貫通)
-    KnifeLarge,    // Knife, Large        1D8+DB           (貫通)
-    KnifeMedium,   // Knife, Medium       1D4+2+DB         (貫通)
-    KnifeSmall,    // Knife, Small        1D4+DB           (貫通)
+    Crossbow,
+    Garrote,
+    HatchetSickle,
+    KnifeLarge,
+    KnifeMedium,
+    KnifeSmall,
     Nunchaku,      // Nunchaku            1D8+DB
     RockThrown,    // Rock, Thrown        1D4+half DB
-    Shuriken,      // Shuriken            1D3+half DB      (貫通)
-    Spear,         // Spear               1D8+1            (貫通)
-    SpearThrown,   // Spear, Thrown       1D8+half DB      (貫通)
-    // todo!(チェーンソー、マセスプレー、スタンガン、刀剣類、戦闘用ブーメラン、木斧)
-    // --- 拳銃 (Handguns) ---
+    Shuriken,
+    Spear,
+    SpearThrown,
     Auto22Short, // .22 Short Automatic 1D6
     Derringer25, // .25 Derringer       1D6
     Revolver32,  // .32 Revolver        1D8
@@ -3388,7 +3327,6 @@ pub enum Weapon {
     LugerP08,    // Model P08 Luger     1D10
     Revolver45,  // .45 Revolver        1D10+2
     Automatic45, // .45 Automatic       1D10+2
-    // --- ライフル (Rifles) ---
     BoltAction22,   // .22 Bolt-Action     1D6+1
     LeverAction30,  // .30 Lever-Action    2D6
     MartiniHenry45, // .45 Martini-Henry   1D8+1D6+3
@@ -3396,16 +3334,13 @@ pub enum Weapon {
     LeeEnfield303,  // .303 Lee-Enfield    2D6+4
     BoltAction3006, // .30-06 Bolt-Action  2D6+4
     ElephantGun,    // Elephant Gun        3D6+4
-    // --- ショットガン (Shotguns) ---
     Shotgun20Gauge,         // 20-gauge (2B)        2D6/1D6/1D3
     Shotgun16Gauge,         // 16-gauge (2B)        2D6+2/1D6+1/1D4
     Shotgun12Gauge,         // 12-gauge (2B)        4D6/2D6/1D6
     Shotgun12GaugeSemiAuto, // 12-gauge semi-auto   4D6/2D6/1D6
     Shotgun12GaugeSawedOff, // 12-gauge sawed off   4D6/1D6
-    // --- 短機関銃 (SMG) ---
     BergmannMP18, // Bergmann MP18        1D10
     Thompson,     // Thompson             1D10+2
-    // --- 機関銃 (MG) ---
     BrowningAutoRifle, // Browning Auto Rifle  2D6+4
     BrowningM1917,     // .30 Browning M1917   2D6+4
     BrenGun,           // Bren Gun             2D6+4
@@ -3518,16 +3453,12 @@ impl Weapon {
         todo!()
     }
 
-    /// 基本ダメージ式。`(dice_terms, db_multiplier)` を返す。
-    /// `db_multiplier`: 0=なし, 1=DB全量, 2=DB半分(端数切り捨て)。
-    /// ダメージボーナスの実値は呼び出し側が `SecondaryAttribute::DamageBonus` から取得して加算する。
-    /// `Custom` は固定式が不明なため `None` を返す。
     pub fn damage(&self) -> Option<(&'static [Dice], u8)> {
         match self {
             Self::BowAndArrows => Some((&[(1, 6, 0)], 2)),
             Self::BrassKnuckles => Some((&[(1, 3, 1)], 1)),
             Self::Bullwhip => Some((&[(1, 3, 0)], 2)),
-            Self::BurningTorch => Some((&[(1, 6, 0)], 0)), // +burn は別途処理
+            Self::BurningTorch => Some((&[(1, 6, 0)], 0)),
             Self::Blackjack => Some((&[(1, 8, 0)], 1)),
             Self::ClubLarge => Some((&[(1, 8, 0)], 1)),
             Self::ClubSmall => Some((&[(1, 6, 0)], 1)),
@@ -3556,7 +3487,7 @@ impl Weapon {
             Self::LeeEnfield303 => Some((&[(2, 6, 4)], 0)),
             Self::BoltAction3006 => Some((&[(2, 6, 4)], 0)),
             Self::ElephantGun => Some((&[(3, 6, 4)], 0)),
-            Self::Shotgun20Gauge => Some((&[(2, 6, 0)], 0)), // /1D6/1D3 距離段階別
+            Self::Shotgun20Gauge => Some((&[(2, 6, 0)], 0)),
             Self::Shotgun16Gauge => Some((&[(2, 6, 2)], 0)),
             Self::Shotgun12Gauge => Some((&[(4, 6, 0)], 0)),
             Self::Shotgun12GaugeSemiAuto => Some((&[(4, 6, 0)], 0)),
@@ -3609,7 +3540,6 @@ impl Weapon {
         }
     }
 
-    /// ラウンドあたり攻撃回数。銃器の括弧内は速射(quick draw)
     pub fn attacks_per_round(&self) -> u8 {
         match self {
             Self::BowAndArrows => 1,
@@ -3619,7 +3549,7 @@ impl Weapon {
             Self::Blackjack => 1,
             Self::ClubLarge => 1,
             Self::ClubSmall => 1,
-            Self::Crossbow => 1, // 実際は1/2ラウンド
+            Self::Crossbow => 1,
             Self::Garrote => 1,
             Self::HatchetSickle => 1,
             Self::KnifeLarge => 1,
@@ -3652,15 +3582,14 @@ impl Weapon {
             Self::BergmannMP18 => 1,
             Self::Thompson => 1,
             Self::BrowningAutoRifle => 1,
-            Self::BrowningM1917 => 1, // フルオート
+            Self::BrowningM1917 => 1,
             Self::BrenGun => 1,
-            Self::LewisGun => 1,   // フルオート
-            Self::Vickers303 => 1, // フルオート
+            Self::LewisGun => 1,
+            Self::Vickers303 => 1,
             Self::Custom(_) => 1,
         }
     }
 
-    /// 装填数 (magazine)。近接武器は None
     pub fn ammunition(&self) -> Option<u8> {
         match self {
             Self::BowAndArrows => Some(1),
@@ -3696,7 +3625,6 @@ impl Weapon {
         }
     }
 
-    /// 故障値 (malfunction number)。故障なしは None
     pub fn malfunction(&self) -> Option<u8> {
         match self {
             Self::BowAndArrows => Some(97),
@@ -3744,7 +3672,7 @@ pub enum Armor {
     BulletproofGlass,   // 1.5" Bulletproof Glass 15pt
     SteelPlate1In,      // 1" Steel Plate         19pt
     LargeSandbag,       // Large Sandbag          20pt
-    Custom(String),     // 自由記述（装甲点は別途入力）
+    Custom(String),
 }
 
 impl Armor {
@@ -3788,7 +3716,6 @@ impl Armor {
     }
 }
 
-// --- 収入と財産 (Wealth) ---
 pub enum StandardOfLiving {
     Pauper,
     Poor,
@@ -3824,7 +3751,6 @@ impl Wealth {
     }
 }
 
-// === バックストーリー (Backstory) ===
 
 pub enum Backstory {
     KeyConnection(Box<Backstory>),
@@ -3866,7 +3792,7 @@ impl Backstory {
             (Self::PersonalDescription, Lang::En(_)) => "Personal Description",
             (Self::PersonalDescription, Lang::Ja) => "容姿の描写",
             (Self::IdeologyAndBeliefs, Lang::En(_)) => "Ideology & Beliefs",
-            (Self::IdeologyAndBeliefs, Lang::Ja) => "イデオロギー・信念", // p40 原文が"&"なので／から・に修正
+            (Self::IdeologyAndBeliefs, Lang::Ja) => "イデオロギー・信念",
             (Self::SignificantPeople, Lang::En(_)) => "Significant People",
             (Self::SignificantPeople, Lang::Ja) => "重要な人物",
             (Self::MeaningfulLocation, Lang::En(_)) => "Meaningful Location",
@@ -3889,13 +3815,8 @@ impl Backstory {
     }
 }
 
-// === メモ (Memo) ===
 
-/// メモスロット。slot: 0..MAX_MEMO_SLOTS-1
-/// encode/decode のバイト列レイアウト:
 ///   [title_len: u32 LE][title: utf-8][body: utf-8]
-/// label()  → title（表示名）
-/// display() → body（本文）
 pub struct Memo {
     pub slot: usize,
 }
@@ -3903,12 +3824,10 @@ pub struct Memo {
 pub const MAX_MEMO_SLOTS: usize = 8;
 
 impl Memo {
-    /// slot 0..MAX_MEMO_SLOTS-1 の一覧を返す
     pub fn list() -> [Memo; MAX_MEMO_SLOTS] {
         from_fn(|slot| Memo { slot })
     }
 
-    /// DataStruct のキーとなる ID。Character::Memo の const id を直接参照。
     pub fn id(&self) -> u32 {
         Character::Memo.base_id() + self.slot as u32
     }
@@ -3941,7 +3860,6 @@ impl Memo {
         (title, body)
     }
 
-    /// title（表示名）を返す。bytes が空の場合は "Note N" / "メモ N"。
     pub fn label(&self, bytes: &[u8], lang: Lang) -> String {
         let (title, _) = Self::decode(bytes);
         if title.is_empty() {
@@ -3954,7 +3872,6 @@ impl Memo {
         }
     }
 
-    /// body（本文）を返す。
     pub fn display(bytes: &[u8]) -> String {
         let (_, body) = Self::decode(bytes);
         body

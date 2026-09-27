@@ -19,7 +19,6 @@ const ID_MODIFIED_AT: u32 = 3;
 #[derive(Debug)]
 pub enum DataStructError {
     List(ListError),
-    /// list_id への書き込み失敗時、書き込もうとしていたidを保持する
     IndirectWrite {
         list_id: u32,
         ids:     Vec<u32>,
@@ -116,13 +115,10 @@ impl DataStruct {
         self.values.delete(&variable_id)
     }
 
-    /// 固定N件のschema_idをまとめて取得する。値なし(未設定)はNoneで表す。
     pub fn get_many<const N: usize>(&self, ids: [u32; N]) -> [Option<&[u8]>; N] {
         ids.map(|id| self.get(id).ok())
     }
 
-    /// 固定N件のschema_idをまとめてset/deleteする(Some=set, None=delete)。
-    /// modified_atは全体で一度だけ更新する。途中で失敗した場合はselfを変更しない(all-or-nothing)。
     pub fn set_many<const N: usize>(
         &mut self,
         entries: [(u32, Option<&[u8]>); N],
@@ -136,7 +132,7 @@ impl DataStruct {
                 }
                 None => match staged.delete(schema_id) {
                     Ok(()) => {}
-                    Err(ListError::NotExist) => {} // 元々存在しないなら無視
+                    Err(ListError::NotExist) => {}
                     Err(e) => return Err(e),
                 },
             }
@@ -149,8 +145,6 @@ impl DataStruct {
         Ok(())
     }
 
-    /// list_id に格納された「K個組のu32 id」の配列から、指定したN個のindexの組をまとめて取得する。
-    /// Skill/ArtAndCraft等のCustomスロットのような、動的に確保されるレコード群への間接参照に使う。
     pub fn get_indirect<const N: usize, const K: usize>(
         &self,
         list_id: u32,
@@ -170,9 +164,6 @@ impl DataStruct {
         })
     }
 
-    /// get_indirectの書き込み版。N個のindex分の組をlist_idのバイト列にまとめて書き込み、1回のsetに集約する
-    /// (list全体を一度だけ読み書きするため、途中失敗時もselfは変更されない)。
-    /// list_idへの書き込みが失敗した場合、DataStructError::IndirectWriteに書き込もうとしていたidを保持して返す。
     pub fn set_indirect<const N: usize, const K: usize>(
         &mut self,
         list_id: u32,
@@ -214,7 +205,6 @@ impl DataStruct {
     /// [u32 * (schema_size+1)][u32: slice_at][u8 * slice_at: vl.index][u8 * ?: vl.data]
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut out = Vec::new();
-        // index を schema_size+1 スロット分に正規化して書き出す
         for i in 0..=self.schema_size as usize {
             let v = self.index.data.get(i).copied().unwrap_or(0);
             out.extend_from_slice(&v.to_le_bytes());

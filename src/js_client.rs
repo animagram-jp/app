@@ -53,20 +53,12 @@ pub const OPERATION_JS_FN: u8 = 16;
 
 pub const OPERATION_ERROR: u8 = 18;
 
-/// `Command::Error` が運ぶ異常の内容。発生源ごとに variant を持つ。
 ///
-/// 新しい発生源を追加するときはここに variant を足す。`is_serious` /
-/// `wire_code` の match が非網羅になり、対応漏れはコンパイルエラーで
-/// 検出される。
 #[derive(Debug)]
 pub enum CommandError {
-    /// イベントフレームのデコードに失敗した。1 フレーム捨てれば済む。
     Decode,
-    /// コマンドリングが満杯でフレームを捨てた。画面が実際の状態からずれる。
     CommandOverflow,
-    /// `#[panic_handler]` が捕捉した panic。
     Panic { location: String, message: String },
-    /// `FileStore` に起因する異常。detail は `FileStoreError` 自身が運ぶ。
     FileStore(FileStoreError),
 }
 
@@ -95,8 +87,6 @@ impl CommandError {
         }
     }
 
-    /// JavaScript へ渡す固定の識別子。`distribution/init.js` の
-    /// `ERROR_NAMES` と対応を保つ。
     pub(crate) fn wire_code(&self) -> u8 {
         match self {
             CommandError::Decode => 1,
@@ -172,17 +162,12 @@ pub enum Command {
         id:   dom::Id,
         name: FnName,
     },
-    /// 異常を報告する。`error.is_serious()` なら JavaScript 側は worker を
-    /// 作り直す。
     Error {
         error: CommandError,
     },
 }
 
-/// コマンド 1 件をバイト列へ追記する。
 ///
-/// フレーム構造は `[operation:u8][payload...]` である。要素を持つ
-/// operation は `id` を長さ前置のセグメント列として続ける。
 ///
 /// ```
 /// # use app::js_client::{encode_command, Command, dom, OPERATION_FOCUS};
@@ -278,10 +263,6 @@ pub fn encode_command(commands: &mut Vec<u8>, command: &Command) {
     }
 }
 
-/// `Command::Error` 1 件をバイト列へ追記する。`encode_command` の
-/// `Error` 腕と `arena::report_error` の両方から呼ぶ — `report_error` は
-/// 固定長スロットに収めるため `message` を事前に切り詰めて渡す必要があり、
-/// `error.to_string()` を直接埋め込む単純な腕にできないためである。
 pub(crate) fn encode_error(encoder: &mut Encoder, error: &CommandError, message: &str) {
     encoder.u8(OPERATION_ERROR);
     encoder.u8(error.is_serious() as u8);
@@ -291,33 +272,20 @@ pub(crate) fn encode_error(encoder: &mut Encoder, error: &CommandError, message:
 
 // === receive (canvas event) ===
 
-/// DOM 由来のイベントの内容。
 ///
 /// crate::event::decode_event
 pub struct CanvasEvent {
-    /// イベント種別。
     pub event_type: EventType,
-    /// 発生元の要素。
     pub id:         dom::Id,
-    /// 押されたキー。
     pub key:        KeyName,
-    /// 要素の `value`。
     pub value:      String,
-    /// `clientX` の値。
     pub x:          f64,
-    /// `clientY` の値。
     pub y:          f64,
-    /// `timeStamp` の値。
     pub time:       f64,
-    /// `PointerEvent.pointerId`。pointer 系以外のイベントでは 0
-    /// (`init.js` の `send` が `e.pointerId ?? 0` で送る)。複数指の
-    /// 追跡に使う ([`TouchTracker`] を参照)。
     pub pointer_id: u32,
 }
 
-// === static string index (init.js の各テーブルと index を揃える) ===
 
-/// `init.js::ATTRIBUTES` の index。HTML 属性名。
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Attribute {
     Disabled,
@@ -330,7 +298,6 @@ impl Attribute {
     }
 }
 
-/// `init.js::CLASS_NAMES` の index。CSS クラス名。
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum ClassName {
     Hide,
@@ -344,7 +311,6 @@ impl ClassName {
     }
 }
 
-/// `init.js::CURSOR_VALUES` の index。CSS `cursor` の値。
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum CursorValue {
     Default,
@@ -357,7 +323,6 @@ impl CursorValue {
     }
 }
 
-/// `init.js::FN_NAMES` の index。
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum FnName {
     HideToast,
@@ -370,7 +335,6 @@ impl FnName {
     }
 }
 
-/// 入力装置の種別。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Device {
     Touch,
@@ -469,21 +433,13 @@ impl KeyName {
 
 #[derive(Debug, Clone, Copy)]
 pub struct Thresholds {
-    /// 長押しと見なす最短時間 (ms)。
     pub long_press_ms:      f64,
-    /// 長押し中に許容する座標のブレ (px)。これを超えたら長押しを取り消す。
     pub long_press_slop_px: f64,
-    /// ドラッグ開始と見なす移動距離 (px)。
     pub drag_start_px:      f64,
-    /// スワイプと見なす最短距離 (px)。
     pub swipe_min_px:       f64,
-    /// スワイプと見なす最低速度 (px/ms)。
     pub swipe_min_velocity: f64,
-    /// スワイプと見なす最長時間 (ms)。これを超えたらドラッグ扱い。
     pub swipe_max_ms:       f64,
-    /// タップと見なす最長時間 (ms)。
     pub tap_max_ms:         f64,
-    /// タップ中に許容する座標のブレ (px)。
     pub tap_slop_px:        f64,
 }
 
@@ -533,19 +489,13 @@ pub struct PointerState {
     current_x:        f64,
     current_y:        f64,
     start_time:       f64,
-    /// 直近の `PointerMove` の座標・時刻 (無ければ `PointerDown` のそれ)。
-    /// swipe の速度を「離す直前の実際の動き」から計算するために持つ。
     last_move_x:      f64,
     last_move_y:      f64,
     last_move_time:   f64,
-    /// `PointerDown` 時の (pointer_px - 対象の左上 px)。
     drag_offset:      (f64, f64),
-    /// ドラッグ中の対象左上 px (一時値)。
     drag_px:          (f64, f64),
     is_dragging:      bool,
-    /// 長押しを発火済みか。連続発火を防ぐラッチ。
     long_press_fired: bool,
-    /// 直前の終了が `PointerCancel` だったか。
     cancelled:        bool,
 }
 
@@ -587,14 +537,12 @@ impl PointerState {
         }
     }
 
-    /// 押下開始からの移動距離 (px)。
     fn distance(&self) -> f64 {
         let dx = self.current_x - self.start_x;
         let dy = self.current_y - self.start_y;
         libm::sqrt(dx * dx + dy * dy)
     }
 
-    /// 現在座標。[`TouchTracker`] が 2 本指セッション終了時に、合成ポインタへ送る `PointerUp` の座標を作るのに使う。
     #[must_use]
     pub const fn current(&self) -> (f64, f64) {
         (self.current_x, self.current_y)
@@ -613,43 +561,21 @@ pub enum Gesture {
         x: f64,
         y: f64,
     }, // in dragging
-    /// ドラッグ終了 (`pointerup`)。スナップ処理はここで行う。
     DragEnd,
-    /// ドラッグ中断 (`pointercancel`)。ドロップを取り消す。
     DragCancel,
-    /// 2 本指のつまみ操作。継続中は毎フレーム発火する。
     ///
-    /// `scale` は 2 本指の開始距離に対する現在距離の比であり、
-    /// `center_x` / `center_y` は 2 本指の現在の中点。
     Pinch {
         scale:    f64,
         center_x: f64,
         center_y: f64,
     },
-    /// つまみ操作の終了 (どちらかの指が離れた)。
     PinchEnd,
 }
 
-/// pointer 状態の遷移からジェスチャを認識する。
 ///
-/// `is_down == false` でも、`PointerUp` / `PointerCancel` なら終了時
-/// ジェスチャ (`DragEnd` / `Swipe*` / `Tap` / `LongPress`) の判定へ進む。
 ///
-/// # 判定順
 ///
-/// 1. 終了イベント (`PointerUp` / `PointerCancel`)
-///    - ドラッグ中なら `DragEnd` / `DragCancel`
-///    - 速い + 遠い + 短い なら `Swipe*`
-///    - 長押し発火済みなら何も返さない (発火済みのため)
-///    - 保持時間超過 + ブレ小 なら `LongPress`（動かないまま離した場合）
-///    - 短い + ブレ小 なら `Tap`
-/// 2. 移動イベント (`PointerMove`)
-///    - 保持時間超過 + ブレ小 かつ未発火なら `LongPress`
-///      （動かないまま保持時間を超え、その後わずかに動いた場合）
-///    - 既にドラッグ中、または swipe 条件を満たさない移動なら `Drag`
 ///
-/// `LongPress` はタイマーを持たない。動かないまま保持され続けた場合は
-/// 次の `PointerMove` / `PointerUp` まで発火が遅延する。
 #[must_use]
 pub fn detect_gesture(
     state: &mut PointerState,
@@ -667,20 +593,17 @@ pub fn detect_gesture(
     }
 }
 
-/// 終了イベントの判定。
 fn detect_on_release(
     state: &mut PointerState,
     prev_state: &PointerState,
     current_time: f64,
     thresholds: &Thresholds,
 ) -> Option<Gesture> {
-    // ドラッグしていたなら、終了種別を返して確定させる。
     if prev_state.is_dragging {
         state.is_dragging = false;
         return Some(if state.cancelled { Gesture::DragCancel } else { Gesture::DragEnd });
     }
 
-    // キャンセルはここで打ち切る。タップにもスワイプにもしない。
     if state.cancelled {
         return None;
     }
@@ -691,16 +614,7 @@ fn detect_on_release(
     }
     let distance = state.distance();
 
-    // swipe: 速い + 遠い + 短い。
     //
-    // 速度は `start` からの平均ではなく、直近の `PointerMove` から
-    // `current` までの区間で計算する。平均だと、序盤に大きく動いた後
-    // 指を止めたまま保持してから離した場合でも、距離が大きいままなので
-    // 速度が閾値を超え続け、実際には止まっていたのに swipe と誤判定
-    // されうる。直近区間で計算すれば、動きが止まっていた分だけ
-    // `move_dt` が伸びて速度は自然に下がる。`PointerMove` が一度も
-    // 無ければ `last_move_*` は `start` と同じなので、平均と一致する
-    // (`swipe_without_move_event` はこの経路)。
     let move_dt = current_time - state.last_move_time;
     let velocity = if move_dt > 0.0 {
         let mdx = state.current_x - state.last_move_x;
@@ -724,19 +638,14 @@ fn detect_on_release(
         });
     }
 
-    // 長押しは `detect_on_move` で既に発火済み。ここで tap を重ねて返さない。
     if state.long_press_fired {
         return None;
     }
 
-    // long press: 指を動かさないまま保持時間を超えて離した場合、
-    // `PointerMove` が一度も来ていないため `detect_on_move` 側では
-    // 拾えていない。ここが最後の判定機会になる。
     if dt > thresholds.long_press_ms && distance < thresholds.long_press_slop_px {
         return Some(Gesture::LongPress);
     }
 
-    // tap: 短い + ブレ小。
     if dt < thresholds.tap_max_ms && distance < thresholds.tap_slop_px {
         return Some(Gesture::Tap);
     }
@@ -744,7 +653,6 @@ fn detect_on_release(
     None
 }
 
-/// 移動イベントの判定。
 fn detect_on_move(
     state: &mut PointerState,
     current_time: f64,
@@ -756,9 +664,6 @@ fn detect_on_move(
 
     let distance = state.distance();
 
-    // long press: 動いていない状態で保持時間を超えたら、この `PointerMove`
-    // で確定させる。指を完全に静止させたままなら次の `PointerUp` で
-    // `detect_on_release` が拾う。
     if !state.long_press_fired
         && !state.is_dragging
         && distance < thresholds.long_press_slop_px
@@ -772,17 +677,14 @@ fn detect_on_move(
         return None;
     }
 
-    // 既にドラッグ中なら継続する。
     if state.is_dragging {
         return Some(Gesture::Drag { x: state.current_x, y: state.current_y });
     }
 
-    // まだドラッグに入っていない場合、swipe になりうる動きは譲る。
     let dt = current_time - state.start_time;
     if dt > 0.0 && dt < thresholds.swipe_max_ms {
         let velocity = distance / dt;
         if velocity > thresholds.swipe_min_velocity && distance > thresholds.swipe_min_px {
-            // まだ確定させない。PointerUp で swipe か drag かを決める。
             return None;
         }
     }
@@ -797,7 +699,6 @@ mod gesture_tests {
 
     use super::*;
 
-    /// `app.rs` と同じ順序 (update → detect_gesture) でイベント列を流す。
     fn run(events: &[(EventType, f64, f64, f64)], th: &Thresholds) -> Vec<Gesture> {
         let mut state = PointerState::default();
         let mut out = Vec::new();
@@ -811,7 +712,6 @@ mod gesture_tests {
         out
     }
 
-    // --- swipe: 元実装では到達不能だった経路 ---
 
     #[test]
     fn swipe_right_fires() {
@@ -840,7 +740,6 @@ mod gesture_tests {
         assert_eq!(got, [Gesture::SwipeRight]);
     }
 
-    /// 継続して動いたまま離せば、複数の `PointerMove` を挟んでも swipe。
     #[test]
     fn swipe_fires_when_motion_continues_to_release() {
         let th = Thresholds::MOUSE;
@@ -856,10 +755,6 @@ mod gesture_tests {
         assert_eq!(got, [Gesture::SwipeRight]);
     }
 
-    /// 序盤に大きく速く動いた後、指を止めたまま保持してから離した場合は
-    /// swipe にならない。`start` からの平均速度だけで判定すると、距離が
-    /// 大きいままなので閾値を超え続け、実際には止まっていたのに swipe と
-    /// 誤判定される (`0..20ms` で 150px 動いた後、`249ms` まで static)。
     #[test]
     fn swipe_does_not_fire_after_stopping_before_release() {
         let th = Thresholds::MOUSE;
@@ -981,7 +876,6 @@ mod gesture_tests {
         assert_eq!(got, [Gesture::Drag { x: 40.0, y: 10.0 }, Gesture::Drag { x: 40.0, y: 10.0 }]);
     }
 
-    // --- 装置別閾値 ---
 
     #[test]
     fn touch_thresholds_are_looser() {
@@ -1003,13 +897,8 @@ mod gesture_tests {
 
 // === gesture: two-finger (pinch / pan) ===
 //
-// 2 本指の入力を、逆向きの変位なら pinch (`scale`)、平行な変位なら
-// pan (1 本指パイプラインへ渡す合成点) に振り分ける。
 //
-// `TouchTracker` が `pointer_id` ごとに指を primary/secondary へ振り分け、
-// `App::dispatch` から呼ばれる (`app.rs` を参照)。
 
-/// 2 本指のうち一方の追跡状態。
 #[derive(Debug, Clone, Copy)]
 struct TouchPoint {
     id:        u32,
@@ -1029,50 +918,27 @@ impl TouchPoint {
     }
 }
 
-/// pan/pinch の確定状態。一度確定したら、2 本指セッションが終わるまで
-/// ラッチする ([`TwoFingerState::fold`] の doc を参照)。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 enum TwoFingerMode {
-    /// まだ確定していない。両方の指の変位が `TWO_FINGER_COMMIT_PX` を
-    /// 超えるまでこのまま。
     #[default]
     Undetermined,
-    /// 2 本指パンとして確定。
     Pan,
-    /// pinch として確定。
     Pinch,
 }
 
-/// 各指がこの距離 (px) 動くまで pan/pinch を確定しない。
 ///
-/// 変位ベクトルが `(0,0)` のままだと内積が常に 0 になり、片方の指だけ
-/// 先に動いた瞬間が pan 側 (内積が pinch 閾値未満にならない) に誤って
-/// 倒れる。両方が動くまで待つことでこれを避ける。
 const TWO_FINGER_COMMIT_PX: f64 = 8.0;
 
-/// pinch と判定する際の、変位ベクトルの内積の閾値。
 ///
-/// 内積が正 (順向き) でも小さければ「ほぼ直交」であり、pinch 側に
-/// 倒しても実害が小さい。0.0 (符号だけで判定) から始めて実機で調整
-/// する想定。
 const PINCH_DOT_THRESHOLD: f64 = 0.0;
 
-/// 畳み込み結果。[`TwoFingerState::fold`] へ渡す「仮想の 1 点」か、
-/// pinch として確定した scale と中心座標のどちらか。
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum FoldedInput {
-    /// 2 本の指がほぼ平行に動いている。1 本指パイプラインへ渡す合成座標。
     AsSinglePoint { x: f64, y: f64 },
-    /// 2 本の指が逆向きに動いている。pinch として確定。
     Pinch { scale: f64, center_x: f64, center_y: f64 },
-    /// 1 本指のみ、または判定材料が揃っていない。
     None,
 }
 
-/// 2 本指ジェスチャの追跡状態。`primary` が埋まっていない状態で
-/// `secondary` だけ埋まることはない (1 本目が離れたら 2 本目を
-/// `primary` へ繰り上げる)。3 本目以降は無視する (zoom 用途では
-/// 不要と判断)。
 #[derive(Debug, Clone, Copy, Default)]
 struct TwoFingerState {
     primary:   Option<TouchPoint>,
@@ -1081,7 +947,6 @@ struct TwoFingerState {
 }
 
 impl TwoFingerState {
-    /// 指が 1 本追加で触れた。3 本目以降は無視する。
     #[must_use]
     fn touch_down(self, id: u32, x: f64, y: f64) -> Self {
         match (self.primary, self.secondary) {
@@ -1095,7 +960,6 @@ impl TwoFingerState {
         }
     }
 
-    /// `id` に一致する指が動いた。どちらにも一致しなければ無視する。
     #[must_use]
     fn touch_move(self, id: u32, x: f64, y: f64) -> Self {
         if self.primary.is_some_and(|p| p.id == id) {
@@ -1113,10 +977,6 @@ impl TwoFingerState {
         }
     }
 
-    /// `id` に一致する指が離れた。`primary` なら `secondary` を
-    /// 繰り上げる。戻り値の 2 つ目は、離れる前の確定状態
-    /// (呼び出し側が `Gesture::PinchEnd` を出すかどうかの判断に使う。
-    /// [`TouchTracker`] を参照)。
     #[must_use]
     fn touch_up(self, id: u32) -> (Self, TwoFingerMode) {
         let ended_mode = self.mode;
@@ -1146,21 +1006,12 @@ impl TwoFingerState {
         self.secondary.map(|p| p.id)
     }
 
-    /// `primary` の現在座標。2 本指セッションが終わって 1 本指に戻る際、
-    /// 残った指の位置で `PointerState` を作り直すのに使う
-    /// ([`TouchTracker::resync_primary`] を参照)。
     #[must_use]
     fn primary_current(&self) -> Option<(f64, f64)> {
         self.primary.map(|p| (p.current_x, p.current_y))
     }
 
-    /// 現在の 2 本指の状態から、畳み込み結果を導出する。
     ///
-    /// 2 本とも揃っていなければ `FoldedInput::None`。揃っていても、
-    /// 両方の指の変位が `TWO_FINGER_COMMIT_PX` を超えるまでは判定を
-    /// 保留し `FoldedInput::None` を返す (doc 冒頭の 1. を参照)。
-    /// 一度 `Pan` / `Pinch` を確定したら、2 本指セッションが終わる
-    /// まで再判定しない (doc 冒頭の 2. を参照)。
     #[must_use]
     fn fold(&mut self) -> FoldedInput {
         let (Some(p), Some(s)) = (self.primary, self.secondary) else {
@@ -1203,59 +1054,21 @@ impl TwoFingerState {
     }
 }
 
-/// 2 点間の距離 (px)。`PointerState::distance` と同じ式。
 fn two_point_distance(x0: f64, y0: f64, x1: f64, y1: f64) -> f64 {
     let dx = x1 - x0;
     let dy = y1 - y0;
     libm::sqrt(dx * dx + dy * dy)
 }
 
-// === gesture: TouchTracker (pointer_id によるルーティング) ===
 
-/// 複数指のポインタ入力を、1 系統の `Gesture` へ落とす。
 ///
-/// 最初に触れた指を primary とし、既存の 1 本指パイプライン
-/// (`PointerState` / `detect_gesture`) でそのまま tap/press/swipe/drag を
-/// 判定する。2 本目が触れたら secondary として `TwoFingerState` へ渡し、
-/// pan/pinch の判定を始める。3 本目以降は無視する。
 ///
-/// 2 本指セッション中は primary の 1 本指判定を凍結する
-/// (`PointerMove` / `PointerUp` を `primary_state` へ回さない)。pan と
-/// 確定した場合のみ、2 本指の合成点を仮想の 1 本指ポインタ
-/// (`pan_state`) として同じパイプラインに流し、Drag/Swipe/Tap を
-/// そのまま得る。pinch と確定した場合は `PointerState` を経由せず、
-/// `Gesture::Pinch` を直接返す。
 ///
-/// 2 本指セッションが終わって 1 本指に戻るときは、残った指の現在位置で
-/// `primary_state` を `PointerDown` し直す ([`Self::resync_primary`])。
-/// 凍結中に動いた分の距離を再開後の 1 本指判定へ持ち込まないためである。
 ///
-/// `detect_gesture` と同じく「`Event` 1 個から `Gesture` を導出する」形を
-/// 保つ。役割の入れ替わり自体はジェスチャを発行しない。
 ///
-/// # `touch-action` をネイティブに委ねる場合
 ///
-/// キャンバス側が `touch-action: none` を指定せず、ブラウザにピンチ
-/// ズーム/パンを渡すことも選べる。その場合ブラウザがジェスチャを
-/// 認識した時点で対象の pointer に `pointercancel` を送ってくる
-/// (Pointer Events の仕様上の挙動)。`on_up` は `PointerUp` /
-/// `PointerCancel` を区別だけして同じ経路を通るため、途中で
-/// 権限がブラウザ側へ渡っても 2 本指セッションは `PinchEnd` /
-/// `DragCancel` として正しく閉じ、残った指へ正しく resync する。
-/// `handle` を呼ぶかどうか自体 (`send` 側で listener を付けるか、
-/// `touch-action` をどう指定するか) は呼び出し側の裁量であり、ここでは
-/// 「どんな順序でイベントが来ても壊れない」ことだけを保証する。
 ///
-/// 具体的には、既に primary/secondary として追跡中の `pointer_id` へ
-/// `PointerDown` が重複して届いても (down/up の対応がブラウザ側の
-/// ジェスチャ引き継ぎで崩れた場合を想定)、新しい指としては扱わない
-/// (`on_down` を参照)。同じ id が primary と secondary の両方に入ると、
-/// 以降の `is_primary` / `is_secondary` 判定が両方 true になり、
-/// 2 本指のつもりが実体は 1 本指という壊れた状態になる。
 ///
-/// 追跡していない `pointer_id` の `PointerMove` / `PointerUp` /
-/// `PointerCancel` は常に無視する (3 本目以降と同じ経路)。`PointerDown`
-/// 自体が届かなかった指を扱おうとしないので、これも安全側に倒れる。
 #[derive(Debug, Default)]
 pub struct TouchTracker {
     primary_state: PointerState,
@@ -1264,7 +1077,6 @@ pub struct TouchTracker {
 }
 
 impl TouchTracker {
-    /// 1 イベント分進めて、確定したジェスチャがあれば返す。
     #[must_use]
     pub fn handle(
         &mut self,
@@ -1288,10 +1100,6 @@ impl TouchTracker {
         }
     }
 
-    /// 現在アクティブな `PointerState`。2 本指 pan 中はその合成ポインタ、
-    /// それ以外は primary のもの。`Gesture::Pinch` / `PinchEnd` には
-    /// 対応する `PointerState` が無いため、呼び出し側はそれらの variant
-    /// ではこれを参照しない。
     #[must_use]
     pub const fn active_state(&self) -> &PointerState {
         match &self.pan_state {
@@ -1303,13 +1111,6 @@ impl TouchTracker {
     fn on_down(&mut self, id: u32, x: f64, y: f64, time: f64) {
         if self.two_fingers.primary_id() == Some(id) || self.two_fingers.secondary_id() == Some(id)
         {
-            // 既に追跡中の id への重複 `PointerDown`。`touch-action` を
-            // ネイティブに委ねた場合、ジェスチャの認識・引き渡し中に
-            // ブラウザが down/up の対応を崩して送ってくることがあり
-            // うる。新しい指として扱うと同じ id が primary と secondary
-            // の両方に入り、`is_primary` / `is_secondary` が同時に true
-            // になって以降の判定が壊れる。新規の指としては扱わず、
-            // 位置の更新だけ反映する。
             self.two_fingers = self.two_fingers.touch_move(id, x, y);
             return;
         }
@@ -1330,16 +1131,14 @@ impl TouchTracker {
         let is_primary = self.two_fingers.primary_id() == Some(id);
         let is_secondary = self.two_fingers.secondary_id() == Some(id);
         if !is_primary && !is_secondary {
-            return None; // 3 本目以降、追跡していない指。
+            return None;
         }
         self.two_fingers = self.two_fingers.touch_move(id, x, y);
 
         if self.two_fingers.secondary_id().is_some() {
-            // 2 本指セッション中。primary 単独の判定は凍結し、fold に譲る。
             return self.fold_and_emit(time, thresholds);
         }
 
-        // 1 本指のまま。既存のパイプラインで判定する。
         let prev = self.primary_state;
         self.primary_state = self.primary_state.update(&EventType::PointerMove, x, y, time);
         detect_gesture(&mut self.primary_state, &prev, &EventType::PointerMove, time, thresholds)
@@ -1359,15 +1158,12 @@ impl TouchTracker {
         let had_secondary = self.two_fingers.secondary_id().is_some();
 
         if is_secondary || (is_primary && had_secondary) {
-            // 2 本指セッションの終了 (どちらの指が離れても終わる)。
             let (next, ended_mode) = self.two_fingers.touch_up(id);
             self.two_fingers = next;
             let gesture = self.end_two_finger_session(event_type, ended_mode, time, thresholds);
-            // 残った 1 本を今の位置から数え直す。
             self.resync_primary(time);
             gesture
         } else if is_primary {
-            // 通常の 1 本指の終了。既存のパイプラインそのまま。
             let prev = self.primary_state;
             self.primary_state = self.primary_state.update(event_type, x, y, time);
             let gesture =
@@ -1375,14 +1171,10 @@ impl TouchTracker {
             self.two_fingers = self.two_fingers.touch_up(id).0;
             gesture
         } else {
-            None // 追跡していない指。
+            None
         }
     }
 
-    /// 2 本指セッションを閉じる。pinch だったら `PinchEnd`、pan だったら
-    /// 合成ポインタへ最後の `PointerUp` / `PointerCancel` を送って
-    /// `DragEnd` / `DragCancel` / `Swipe*` / `Tap` を得る。まだ確定して
-    /// いなければ (`Undetermined`) 何も発行していないので `None`。
     fn end_two_finger_session(
         &mut self,
         event_type: &EventType,
@@ -1403,8 +1195,6 @@ impl TouchTracker {
         }
     }
 
-    /// 2 本指セッションが終わって残った 1 本を、今の位置から
-    /// `PointerDown` し直す。凍結中に動いた分を引きずらないため。
     fn resync_primary(&mut self, time: f64) {
         self.primary_state = match self.two_fingers.primary_current() {
             Some((x, y)) => PointerState::default().update(&EventType::PointerDown, x, y, time),
@@ -1441,24 +1231,16 @@ impl TouchTracker {
 mod two_finger_tests {
     use super::*;
 
-    /// 片方の指だけが先に動いても、もう片方が動くまで確定しない。
-    /// 動いていない指の変位ベクトルは `(0,0)` であり、内積が常に 0 に
-    /// なるため「符号だけで毎フレーム判定する」実装だと pan 側に誤って
-    /// 倒れ、1 本指パイプラインへ合成点を渡してしまう
-    /// (`is_dragging` が立ち、その後 pinch へ切り替わっても終了処理
-    /// されず残留する)。
     #[test]
     fn waits_for_both_fingers_before_classifying() {
         let mut state =
             TwoFingerState::default().touch_down(1, 100.0, 100.0).touch_down(2, 200.0, 100.0);
 
-        // primary だけが動く。secondary の変位は (0,0) のまま。
         state = state.touch_move(1, 110.0, 100.0);
         assert_eq!(state.fold(), FoldedInput::None);
         state = state.touch_move(1, 130.0, 100.0);
         assert_eq!(state.fold(), FoldedInput::None);
 
-        // secondary も動き、両者が閾値を超えて初めて確定する。
         state = state.touch_move(1, 150.0, 100.0).touch_move(2, 150.0, 100.0);
         assert_eq!(
             state.fold(),
@@ -1488,8 +1270,6 @@ mod two_finger_tests {
         }
     }
 
-    /// 両指がほぼ同じ向き・同じ距離動けば pan (1 本指パイプラインへの
-    /// 合成点) になる。
     #[test]
     fn parallel_motion_is_pan_not_pinch() {
         let mut state =
@@ -1498,7 +1278,6 @@ mod two_finger_tests {
         assert_eq!(state.fold(), FoldedInput::AsSinglePoint { x: 170.0, y: 100.0 });
     }
 
-    /// 一度確定したら、その後の入力で符号が変わっても再判定しない。
     #[test]
     fn mode_latches_after_commit() {
         let mut state =
@@ -1506,13 +1285,10 @@ mod two_finger_tests {
         state = state.touch_move(1, 140.0, 100.0).touch_move(2, 160.0, 100.0);
         assert!(matches!(state.fold(), FoldedInput::Pinch { .. }));
 
-        // 内積の符号だけで見ればもう pinch ではない動きだが、ラッチして
-        // いるため pan には切り替わらない。
         state = state.touch_move(1, 140.0, 100.0).touch_move(2, 140.0, 100.0);
         assert!(matches!(state.fold(), FoldedInput::Pinch { .. }));
     }
 
-    /// 3 本目以降は無視する。
     #[test]
     fn third_finger_is_ignored() {
         let state = TwoFingerState::default()
@@ -1523,8 +1299,6 @@ mod two_finger_tests {
         assert_eq!(state.secondary_id(), Some(2));
     }
 
-    /// 1 本目が離れたら 2 本目が `primary` へ繰り上がり、モードは
-    /// 再判定待ちに戻る。
     #[test]
     fn primary_release_promotes_secondary() {
         let mut state =
@@ -1537,12 +1311,9 @@ mod two_finger_tests {
         assert_eq!(ended_mode, TwoFingerMode::Pinch);
         assert_eq!(state.primary_id(), Some(2));
         assert!(state.secondary_id().is_none());
-        // 1 本指しか残っていないので確定しない。
         assert_eq!(state.fold(), FoldedInput::None);
     }
 
-    /// セッションが終わって新しい 2 本指セッションが始まれば、前回の
-    /// 確定状態を引きずらず改めて判定する。
     #[test]
     fn new_session_reclassifies_independently() {
         let mut state =
@@ -1550,7 +1321,6 @@ mod two_finger_tests {
         state = state.touch_move(1, 140.0, 100.0).touch_move(2, 160.0, 100.0);
         assert!(matches!(state.fold(), FoldedInput::Pinch { .. }));
 
-        // 両方離れて、今度はパンとして新しいセッションを始める。
         state = state.touch_up(2).0.touch_up(1).0;
         state = state.touch_down(3, 0.0, 0.0).touch_down(4, 50.0, 0.0);
         state = state.touch_move(3, 0.0, 50.0).touch_move(4, 50.0, 50.0);
@@ -1564,7 +1334,6 @@ mod touch_tracker_tests {
 
     use super::*;
 
-    /// `App::dispatch` と同じ順序で 1 イベントずつ `handle` に流す。
     fn run(events: &[(EventType, u32, f64, f64, f64)], th: &Thresholds) -> Vec<Option<Gesture>> {
         let mut tracker = TouchTracker::default();
         events
@@ -1573,8 +1342,6 @@ mod touch_tracker_tests {
             .collect()
     }
 
-    /// 1 本指のときは、これまでの単一指パイプラインと同じ結果になる
-    /// (`gesture_tests::swipe_right_fires` と同じ数値)。
     #[test]
     fn single_finger_behaves_like_before() {
         let th = Thresholds::MOUSE;
@@ -1589,9 +1356,6 @@ mod touch_tracker_tests {
         assert_eq!(got, [None, None, Some(Gesture::SwipeRight)]);
     }
 
-    /// 2 本目が触れると primary 単独の判定は凍結する。片方だけが先に
-    /// 動いても (以前ならここで `Drag` が漏れていた)、両方が
-    /// `TWO_FINGER_COMMIT_PX` を超えて初めて pinch が確定する。
     #[test]
     fn second_finger_freezes_primary_until_pinch_commits() {
         let th = Thresholds::MOUSE;
@@ -1599,8 +1363,8 @@ mod touch_tracker_tests {
             &[
                 (EventType::PointerDown, 1, 100.0, 100.0, 0.0),
                 (EventType::PointerDown, 2, 200.0, 100.0, 0.0),
-                (EventType::PointerMove, 1, 150.0, 100.0, 50.0), // primary だけ動く
-                (EventType::PointerMove, 2, 150.0, 100.0, 60.0), // secondary も動き確定
+                (EventType::PointerMove, 1, 150.0, 100.0, 50.0),
+                (EventType::PointerMove, 2, 150.0, 100.0, 60.0),
             ],
             &th,
         );
@@ -1609,13 +1373,12 @@ mod touch_tracker_tests {
             [
                 None,
                 None,
-                None, // primary 単独では Drag も何も出ない (凍結中)
+                None,
                 Some(Gesture::Pinch { scale: 0.0, center_x: 150.0, center_y: 100.0 }),
             ]
         );
     }
 
-    /// pinch が確定した後、2 本目が離れると `PinchEnd`。
     #[test]
     fn pinch_end_on_secondary_release() {
         let th = Thresholds::MOUSE;
@@ -1632,8 +1395,6 @@ mod touch_tracker_tests {
         assert_eq!(got[4], Some(Gesture::PinchEnd));
     }
 
-    /// 平行に動く 2 本指パンは、合成した中点を仮想の 1 本指ポインタへ
-    /// 流し、閾値を超えると `Drag` として出る。離れると `DragEnd`。
     #[test]
     fn two_finger_pan_emits_drag_then_drag_end() {
         let th = Thresholds::MOUSE;
@@ -1641,9 +1402,9 @@ mod touch_tracker_tests {
             &[
                 (EventType::PointerDown, 1, 0.0, 0.0, 0.0),
                 (EventType::PointerDown, 2, 100.0, 0.0, 0.0),
-                (EventType::PointerMove, 1, 30.0, 0.0, 50.0), // まだ確定しない
-                (EventType::PointerMove, 2, 130.0, 0.0, 60.0), // pan 確定、合成点 (80,0) で pan_state を作る
-                (EventType::PointerMove, 1, 60.0, 0.0, 120.0), // 合成点 (95,0)、start (80,0) から 15px
+                (EventType::PointerMove, 1, 30.0, 0.0, 50.0),
+                (EventType::PointerMove, 2, 130.0, 0.0, 60.0),
+                (EventType::PointerMove, 1, 60.0, 0.0, 120.0),
                 (EventType::PointerUp, 2, 130.0, 0.0, 200.0),
             ],
             &th,
@@ -1653,10 +1414,6 @@ mod touch_tracker_tests {
         assert_eq!(got[5], Some(Gesture::DragEnd));
     }
 
-    /// primary が (secondary が触れたまま) 離れると、secondary が
-    /// primary へ繰り上がり、以降は繰り上がった指の現在位置から
-    /// 単一指の判定を再開する。古い primary の位置・時刻を引きずらない
-    /// ことを、直後の quick tap が正しく `Tap` になることで確認する。
     #[test]
     fn primary_release_promotes_and_resyncs_single_finger_tracking() {
         let th = Thresholds::MOUSE;
@@ -1665,10 +1422,10 @@ mod touch_tracker_tests {
                 (EventType::PointerDown, 1, 100.0, 100.0, 0.0),
                 (EventType::PointerDown, 2, 200.0, 100.0, 0.0),
                 (EventType::PointerMove, 1, 140.0, 100.0, 50.0),
-                (EventType::PointerMove, 2, 160.0, 100.0, 60.0), // pinch 確定
-                (EventType::PointerUp, 1, 140.0, 100.0, 70.0),   // primary (1) が離れる
-                (EventType::PointerMove, 2, 161.0, 100.0, 120.0), // 繰り上がった 2 のわずかな動き
-                (EventType::PointerUp, 2, 161.0, 100.0, 170.0),  // すぐ離す → tap
+                (EventType::PointerMove, 2, 160.0, 100.0, 60.0),
+                (EventType::PointerUp, 1, 140.0, 100.0, 70.0),
+                (EventType::PointerMove, 2, 161.0, 100.0, 120.0),
+                (EventType::PointerUp, 2, 161.0, 100.0, 170.0),
             ],
             &th,
         );
@@ -1678,8 +1435,6 @@ mod touch_tracker_tests {
         assert_eq!(got[6], Some(Gesture::Tap));
     }
 
-    /// 3 本目以降の指は完全に無視され、既存の 2 本指セッションを
-    /// 邪魔しない。
     #[test]
     fn third_finger_does_not_interfere() {
         let th = Thresholds::MOUSE;
@@ -1699,46 +1454,32 @@ mod touch_tracker_tests {
         assert_eq!(got[6], Some(Gesture::Pinch { scale: 0.2, center_x: 150.0, center_y: 100.0 }));
     }
 
-    /// 追跡中の id への重複 `PointerDown` は新しい指として扱わない。
-    /// `touch-action` をネイティブに委ねると、ブラウザがジェスチャを
-    /// 引き継ぐ過程で down/up の対応が崩れて再送されることを想定した
-    /// 防御 (`TouchTracker` の doc を参照)。
     ///
-    /// もし重複 down が `primary_state` を作り直してしまうなら、`start`
-    /// が重複 down の位置 (105,100) にずれ、直後の move ((115,100)) は
-    /// 距離 10px で `drag_start_px` (10px) を超えず `Drag` にならない。
-    /// 元の `start` (100,100) が保たれていれば距離は 15px になり
-    /// `Drag` が出る。
     #[test]
     fn duplicate_pointer_down_does_not_reset_primary_state() {
         let th = Thresholds::MOUSE;
         let got = run(
             &[
                 (EventType::PointerDown, 1, 100.0, 100.0, 0.0),
-                (EventType::PointerDown, 1, 105.0, 100.0, 10.0), // 重複 down (同じ id)
+                (EventType::PointerDown, 1, 105.0, 100.0, 10.0),
                 (EventType::PointerMove, 1, 115.0, 100.0, 50.0),
                 (EventType::PointerUp, 1, 115.0, 100.0, 100.0),
             ],
             &th,
         );
-        assert_eq!(got[1], None); // 重複 down 自体は何も発行しない。
+        assert_eq!(got[1], None);
         assert_eq!(got[2], Some(Gesture::Drag { x: 115.0, y: 100.0 }));
         assert_eq!(got[3], Some(Gesture::DragEnd));
     }
 
-    /// 追跡中の id への重複 `PointerDown` が `secondary` を埋めてしまうと、
-    /// 直後に触れる本物の 2 本目の指が「3 本目以降」として無視され、
-    /// pinch/pan が一切判定できなくなる。重複 down が `secondary` を
-    /// 占有していなければ、本物の 2 本目が正しく `secondary` に入り
-    /// pinch まで確定するはずである。
     #[test]
     fn duplicate_pointer_down_does_not_block_genuine_second_finger() {
         let th = Thresholds::MOUSE;
         let got = run(
             &[
                 (EventType::PointerDown, 1, 100.0, 100.0, 0.0),
-                (EventType::PointerDown, 1, 100.0, 100.0, 5.0), // 重複 down (同じ id、同じ座標)
-                (EventType::PointerDown, 2, 200.0, 100.0, 5.0), // 本物の 2 本目
+                (EventType::PointerDown, 1, 100.0, 100.0, 5.0),
+                (EventType::PointerDown, 2, 200.0, 100.0, 5.0),
                 (EventType::PointerMove, 1, 140.0, 100.0, 50.0),
                 (EventType::PointerMove, 2, 160.0, 100.0, 60.0),
             ],
@@ -1761,7 +1502,6 @@ pub mod dom {
         primitive::{u8, u32},
     };
 
-    /// element の tag。
     #[derive(Debug, Clone, PartialEq)]
     pub enum Tag {
         Article,
