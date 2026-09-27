@@ -44,7 +44,7 @@ jobs:
                   rustup override set nightly
 
             - name: "install wasm-bindgen-cli"
-              run: cargo install wasm-bindgen-cli --version 0.2.127
+              run: cargo install wasm-bindgen-cli --version 0.2.129
 
             - name: "install wasm-tools"
               run: cargo install wasm-tools

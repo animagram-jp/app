@@ -59,7 +59,16 @@ sudo install -d -m 0755 /etc/apt/keyrings
 curl -fsSL https://packages.mozilla.org/apt/repo-signing-key.gpg | sudo tee /etc/apt/keyrings/packages.mozilla.org.asc > /dev/null
 sudo tee /etc/apt/sources.list.d/mozilla.sources > /dev/null <<< $'Types: deb\nURIs: https://packages.mozilla.org/apt\nSuites: mozilla\nComponents: main\nSigned-By: /etc/apt/keyrings/packages.mozilla.org.asc'
 sudo tee /etc/apt/preferences.d/mozilla > /dev/null <<< $'Package: *\nPin: origin packages.mozilla.org\nPin-Priority: 1000'
-sudo apt update && sudo apt install firefox geckodriver wasm-bindgen-cli
+sudo apt update && sudo apt install firefox
+# geckodriver は apt に存在しないため、GitHub Releases の公式バイナリを取得する
+# https://github.com/mozilla/geckodriver/releases
+curl -fsSL -o /tmp/geckodriver.tar.gz "https://github.com/mozilla/geckodriver/releases/download/v0.37.1/geckodriver-v0.37.1-linux64.tar.gz"
+tar xzf /tmp/geckodriver.tar.gz -C /tmp && chmod +x /tmp/geckodriver && mv /tmp/geckodriver ~/.cargo/bin/geckodriver
+# wasm-bindgen-cli も apt に存在しないため、Cargo.lock の wasm-bindgen と同一バージョンで cargo install する
+cargo install wasm-bindgen-cli --version 0.2.129 --locked
+
+# -Zbuild-std に必要な rust-src (rust-toolchain.toml の nightly に対して導入)
+rustup component add rust-src --toolchain nightly
 
 # docTest
 cargo test --doc
