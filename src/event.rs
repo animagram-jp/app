@@ -15,9 +15,7 @@ use crate::{
     Lang,
     arena::Decoder,
     data_struct::DataStruct,
-    js_client::{
-        Attribute, CanvasEvent, ClassName, Command, EventType, Gesture, KeyName, PointerState, dom,
-    },
+    js_client::{CanvasEvent, ClassName, Command, EventType, Gesture, KeyName, PointerState, dom},
 };
 
 #[cfg(feature = "worker")]
@@ -165,11 +163,7 @@ impl Handler {
     }
 
     pub fn initial_draw(&self) -> (Vec<Event>, Vec<Command>) {
-        let commands = vec![Command::RemoveAttribute {
-            id:        dom::Id::new(&[(dom::Tag::Body, None)]),
-            attribute: Attribute::Hidden,
-        }];
-        (vec![], commands)
+        (vec![], vec![])
     }
 
     pub fn process(
