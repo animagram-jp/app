@@ -1,19 +1,19 @@
 /*  Usage:
 
-    <section role="alert" data-type="error-summary" aria-labelledby="error-heading">
-        <h2 id="error-heading">There is a problem</h2>
+    <section data-type="error-summary">
+        <h2>There is a problem</h2>
         <p>optional description</p>
         <ul>
-            <li><a href="#name">Enter your name</a></li>
-            <li><a href="#dob-day">Date of birth must be a real date</a></li></ul></section>
+            <li><a>Enter your name</a></li>
+            <li><a>Date of birth must be a real date</a></li></ul></section>
 
-    <label for="name"></label>
-    <p data-type="error" id="name-error"><strong>Error:</strong></p>
-    <input type="text" id="name" aria-describedby="name-error" aria-invalid="true">
+    <label></label>
+    <p data-type="error"><strong>Error:</strong></p>
+    <input type="text" aria-invalid="true">
 
-    <label for="name">
-        <p data-type="error" id="name-error"><strong>Error:</strong></p>
-        <input type="text" id="name" aria-describedby="name-error" aria-invalid="true"></label>
+    <label>
+        <p data-type="error"><strong>Error:</strong></p>
+        <input type="text" aria-invalid="true"></label>
  */
 
 @layer css.error {

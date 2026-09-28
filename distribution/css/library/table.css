@@ -22,14 +22,14 @@
         max-inline-size: 100%;
     }
 
-    table *:where(td, th) {
+    table :where(td, th) {
         text-align:     start;
         vertical-align: baseline;
     }
 
     /* --- size --- */
 
-    table[data-size="xs"] *:where(td, th) {
+    table[data-size="xs"] :where(td, th) {
         padding-block:  calc((var(--xs-box-height) - var(--xs-line-height)) / 2);
         padding-inline: var(--xs-border-radius);
     }
@@ -37,7 +37,7 @@
         font-size: var(--xs-font-size);
     }
 
-    table[data-size="sm"] *:where(td, th) {
+    table[data-size="sm"] :where(td, th) {
         padding-block:  calc((var(--sm-box-height) - var(--sm-line-height)) / 2);
         padding-inline: var(--sm-border-radius);
     }
@@ -48,12 +48,12 @@
     table:where(
         [data-size="md"],
         :not([data-size])
-    ) *:where(td, th) {
+    ) :where(td, th) {
         padding-block:  calc((var(--md-box-height) - var(--md-line-height)) / 2);
         padding-inline: var(--md-border-radius);
     }
 
-    table[data-size="lg"] *:where(td, th) {
+    table[data-size="lg"] :where(td, th) {
         padding-block:  calc((var(--lg-box-height) - var(--lg-line-height)) / 2);
         padding-inline: var(--lg-border-radius);
     }
@@ -61,7 +61,7 @@
         font-size: var(--lg-font-size);
     }
 
-    table[data-size="xl"] *:where(td, th) {
+    table[data-size="xl"] :where(td, th) {
         padding-block:  calc((var(--xl-box-height) - var(--xl-line-height)) / 2);
         padding-inline: var(--xl-border-radius);
     }
@@ -69,7 +69,7 @@
         font-size: var(--xl-font-size);
     }
 
-    table[data-size="2xl"] *:where(td, th) {
+    table[data-size="2xl"] :where(td, th) {
         padding-block:  calc((var(--2xl-box-height) - var(--2xl-line-height)) / 2);
         padding-inline: var(--2xl-border-radius);
     }
@@ -79,7 +79,7 @@
 
     /* === data-border === */
 
-    table:where(:not([data-border]), [data-border="sectioned"]) thead tr:last-of-type *:where(td, th) {
+    table:where(:not([data-border]), [data-border="sectioned"]) thead tr:last-of-type :where(td, th) {
         border-block-end: var(--md-border-width) solid var(--color-ink);
     }
 
@@ -87,30 +87,30 @@
         border-inline-end: var(--md-border-width) solid var(--color-ink);
     }
 
-    table:where(:not([data-border]), [data-border="sectioned"]) tfoot tr:first-of-type *:where(td, th) {
+    table:where(:not([data-border]), [data-border="sectioned"]) tfoot tr:first-of-type :where(td, th) {
         border-block-start: var(--md-border-width) solid var(--color-ink);
     }
     
-    table[data-border="grid"] *:where(td, th) {
+    table[data-border="grid"] :where(td, th) {
         border: var(--md-border-width) solid var(--color-ink-mix);
     }
-    table[data-border="grid"] tr:first-child *:where(td, th) {
+    table[data-border="grid"] tr:first-child :where(td, th) {
         border-block-start-color: var(--color-ink);
     }
-    table[data-border="grid"] tr:last-child *:where(td, th) {
+    table[data-border="grid"] tr:last-child :where(td, th) {
         border-block-end-color: var(--color-ink);
     }
-    table[data-border="grid"] *:where(td, th):first-child {
+    table[data-border="grid"] :where(td, th):first-child {
         border-inline-start-color: var(--color-ink);
     }
-    table[data-border="grid"] *:where(td, th):last-child {
+    table[data-border="grid"] :where(td, th):last-child {
         border-inline-end-color: var(--color-ink);
     }
 
     table[data-border="booktabs"] {
         border-block: var(--md-border-width) solid var(--color-ink);
     }
-    table[data-border="booktabs"] thead tr:last-of-type *:where(td, th) {
+    table[data-border="booktabs"] thead tr:last-of-type :where(td, th) {
         border-block-end: var(--md-border-width) solid var(--color-ink);
     }
 
@@ -121,21 +121,22 @@
 
     /* === data-selectable === */
     table[data-selectable] tbody tr:has(:checked) {
-        background-color: var(--color-emphasis-paper);
+        outline-color: var(--color-emphasis-ink);
+        outline-style: solid;
+        outline-width: var(--md-border-width);
     }
 
     @media (forced-colors: active) {
-        table[data-stripe] tbody tr:nth-child(even),
-        table[data-selectable] tbody tr:has(:checked) {
+        table[data-stripe] tbody tr:nth-child(even) {
             background-color: revert;
         }
-        table[data-selectable] tbody tr:has(:checked) *:where(td, th) {
-            border-block: var(--md-border-width) solid Highlight;
+        table[data-selectable] tbody tr:has(:checked) {
+            outline-color: Highlight;
         }
     }
 
     @media (forced-colors: active) {
-        table *:where(td, th) {
+        table :where(td, th) {
             border-color: CanvasText;
         }
     }

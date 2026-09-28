@@ -9,7 +9,7 @@
     css.input,
     css.button,
     css.checkbox,
-    css.toggle,
+    css.toggle, /* dependency: input */
     css.radio,
     css.heading,
     css.list,
@@ -17,19 +17,21 @@
     css.table,
     css.slider,
     css.step,
-    css.listbox, /* order dependency: radio, listbox */
+    css.popup, /* dependency: radio */
     css.error,
     css.toast;
 
 @layer css.base {
 
-    /*
-    * Source: Color Universal Design Recommended Color Set ver.3
-    * CUDO (Color Universal Design Organization)
-    * https://cudo.jp/wp-content/uploads/2016/07/CUD%E6%8E%A8%E5%A5%A8%E9%85%8D%E8%89%B2%E3%82%BB%E3%83%83%E3%83%88%E3%82%AC%E3%82%A4%E3%83%89%E3%83%96%E3%83%83%E3%82%AF.pdf
-    * Per-color comments: JPMA color chip no. (Munsell notation), CMYK
-    */
+    /* --- color properties --- */
+
     :root {
+        /*
+        * Source: Color Universal Design Recommended Color Set ver.3
+        * CUDO (Color Universal Design Organization)
+        * https://cudo.jp/wp-content/uploads/2016/07/CUD%E6%8E%A8%E5%A5%A8%E9%85%8D%E8%89%B2%E3%82%BB%E3%83%83%E3%83%88%E3%82%AC%E3%82%A4%E3%83%89%E3%83%96%E3%83%83%E3%82%AF.pdf
+        * Per-color comments: JPMA color chip no. (Munsell notation), CMYK
+        */
 
         /* Accent colors: high-saturation colors for small areas like signage and graphs */
         --rgb-accent-red:    255  40   0; /* G08-50V (8.75R 5/12),  CMYK 0,75,95,0 (or 0.75,90,0) */
@@ -56,9 +58,7 @@
         --rgb-light-gray: 200 200 203; /* G75-80B (5PB 8/1), CMYK 15,10,10,0 */
         --rgb-gray:       127 135 143; /* G75-50D (5PB 5/2), CMYK 18,10,0,55 */
         --rgb-black:        0   0   0; /* GN-15 (N1.5),      CMYK 50,50,50,100 (or 0,0,0,100) */
-    }
 
-    :root {
         color-scheme: light dark;
 
         --color-ink:       rgb(var(--rgb-black));
@@ -73,7 +73,7 @@
         --color-visited: color-mix(in srgb, rgb(var(--rgb-accent-purple)) 74%, rgb(0,0,0));
 
         --color-emphasis-ink:     rgb(var(--rgb-accent-purple));
-        --color-emphasis-paper:   color-mix(in srgb, rgb(var(--rgb-accent-purple)) 46%, rgb(0,0,0));
+        --color-emphasis-paper:   color-mix(in srgb, rgb(var(--rgb-accent-purple)) 54%, rgb(255,255,255));
         --color-emphasis-ink-mix: color-mix(in srgb, var(--color-emphasis-ink) 50%, var(--color-ink));
 
         --color-focus: var(--color-emphasis-ink);
@@ -86,7 +86,7 @@
             --color-highlight-paper:  color-mix(in srgb, rgb(var(--rgb-accent-yellow)) 41%, rgb(0,0,0));
             --color-visited:          color-mix(in srgb, rgb(var(--rgb-accent-purple)) 19%, rgb(255,255,255));
             --color-emphasis-ink:     color-mix(in srgb, rgb(var(--rgb-accent-purple)) 35%, rgb(255,255,255));
-            --color-emphasis-paper:   color-mix(in srgb, rgb(var(--rgb-accent-purple)) 71%, rgb(255,255,255));
+            --color-emphasis-paper:   color-mix(in srgb, rgb(var(--rgb-accent-purple)) 74%, rgb(255,255,255));
         }
     }
     @media (prefers-contrast: more) {
@@ -124,8 +124,9 @@
         :root[data-color-scheme="light"] {
             --color-ink:            rgb(var(--rgb-black));
             --color-paper:          rgb(var(--rgb-white));
+            --color-visited:        color-mix(in srgb, rgb(var(--rgb-accent-purple)) 74%, rgb(0,0,0));
             --color-emphasis-ink:   rgb(var(--rgb-accent-purple));
-            --color-emphasis-paper: color-mix(in srgb, rgb(var(--rgb-accent-purple)) 46%, rgb(0,0,0));
+            --color-emphasis-paper: color-mix(in srgb, rgb(var(--rgb-accent-purple)) 54%, rgb(255,255,255));
         }
         :root[data-color-scheme="dark"] {
             --color-ink:             rgb(var(--rgb-white));
@@ -134,14 +135,15 @@
             --color-highlight-paper: color-mix(in srgb, rgb(var(--rgb-accent-yellow)) 41%, rgb(0,0,0));
             --color-visited:         color-mix(in srgb, rgb(var(--rgb-accent-purple)) 19%, rgb(255,255,255));
             --color-emphasis-ink:    color-mix(in srgb, rgb(var(--rgb-accent-purple)) 35%, rgb(255,255,255));
-            --color-emphasis-paper:  color-mix(in srgb, rgb(var(--rgb-accent-purple)) 71%, rgb(255,255,255));
+            --color-emphasis-paper:  color-mix(in srgb, rgb(var(--rgb-accent-purple)) 74%, rgb(255,255,255));
         }
         :root[data-color-scheme="light-high-contrast"] {
             --color-ink:            rgb(var(--rgb-black));
             --color-paper:          rgb(var(--rgb-white));
             --color-ink-mix:        color-mix(in srgb, var(--color-ink) 66%, var(--color-paper));
+            --color-visited:        color-mix(in srgb, rgb(var(--rgb-accent-purple)) 74%, rgb(0,0,0));
             --color-emphasis-ink:   rgb(var(--rgb-accent-purple));
-            --color-emphasis-paper: color-mix(in srgb, rgb(var(--rgb-accent-purple)) 46%, rgb(0,0,0));
+            --color-emphasis-paper: color-mix(in srgb, rgb(var(--rgb-accent-purple)) 54%, rgb(255,255,255));
         }
         :root[data-color-scheme="dark-high-contrast"] {
             --color-ink:             rgb(var(--rgb-white));
@@ -151,15 +153,16 @@
             --color-highlight-paper: color-mix(in srgb, rgb(var(--rgb-accent-yellow)) 41%, rgb(0,0,0));
             --color-visited:         color-mix(in srgb, rgb(var(--rgb-accent-purple)) 19%, rgb(255,255,255));
             --color-emphasis-ink:    color-mix(in srgb, rgb(var(--rgb-accent-purple)) 35%, rgb(255,255,255));
-            --color-emphasis-paper:  color-mix(in srgb, rgb(var(--rgb-accent-purple)) 71%, rgb(255,255,255));
+            --color-emphasis-paper:  color-mix(in srgb, rgb(var(--rgb-accent-purple)) 74%, rgb(255,255,255));
         }
         :root[data-color-scheme="light-less-contrast"] {
             --color-ink:            rgb(43,43,43);
             --color-paper:          rgb(243,243,243);
             --color-ink-mix:        rgb(111,111,111);
             --color-paper-mix:      rgb(147,147,147);
+            --color-visited:        color-mix(in srgb, rgb(var(--rgb-accent-purple)) 74%, rgb(0,0,0));
             --color-emphasis-ink:   rgb(var(--rgb-accent-purple));
-            --color-emphasis-paper: color-mix(in srgb, rgb(var(--rgb-accent-purple)) 46%, rgb(0,0,0));
+            --color-emphasis-paper: color-mix(in srgb, rgb(var(--rgb-accent-purple)) 54%, rgb(255,255,255));
         }
         :root[data-color-scheme="dark-less-contrast"] {
             --color-ink:            rgb(243,243,243);
@@ -170,13 +173,23 @@
             --color-highlight-paper: color-mix(in srgb, rgb(var(--rgb-accent-yellow)) 41%, rgb(0,0,0));
             --color-visited:         color-mix(in srgb, rgb(var(--rgb-accent-purple)) 19%, rgb(255,255,255));
             --color-emphasis-ink:    color-mix(in srgb, rgb(var(--rgb-accent-purple)) 35%, rgb(255,255,255));
-            --color-emphasis-paper:  color-mix(in srgb, rgb(var(--rgb-accent-purple)) 71%, rgb(255,255,255));
+            --color-emphasis-paper:  color-mix(in srgb, rgb(var(--rgb-accent-purple)) 74%, rgb(255,255,255));
         }
     }
     @media (forced-colors: active) {
         :root {
-            --color-ink:   CanvasText;
-            --color-paper: Canvas;
+            --color-ink:              CanvasText;
+            --color-paper:            Canvas;
+            --color-ink-mix:          GrayText;
+            --color-paper-mix:        Canvas;
+            --color-error:            Mark;
+            --color-highlight-ink:    Mark;
+            --color-highlight-paper:  Mark;
+            --color-visited:          VisitedText;
+            --color-focus:            Highlight;
+            --color-emphasis-ink:     AccentColor;
+            --color-emphasis-ink-mix: AccentColor;
+            --color-emphasis-paper:   AccentColor;
         }
     }
     @media print {
@@ -184,10 +197,12 @@
             --color-ink:            rgb(var(--rgb-black));
             --color-paper:          rgb(var(--rgb-white));
             --color-emphasis-ink:   rgb(var(--rgb-accent-purple));
-            --color-emphasis-paper: color-mix(in srgb, rgb(var(--rgb-accent-purple)) 46%, rgb(0,0,0));
+            --color-emphasis-paper: color-mix(in srgb, rgb(var(--rgb-accent-purple)) 54%, rgb(255,255,255));
             --color-visited:        color-mix(in srgb, rgb(var(--rgb-accent-purple)) 74%, rgb(0,0,0));
         }
     }
+
+    /* --- size properties --- */
 
     :root {
         --xs-border-radius:  0.325rem;
@@ -239,10 +254,6 @@
         font-family: var(--font-family-sans-serif);
     }
 
-    ::placeholder {
-        color: var(--color-ink-mix);
-    }
-
     html {
         scrollbar-gutter: stable;
     }
@@ -253,47 +264,15 @@
         }
     }
 
-    html:has(:modal) {
-        overflow: clip;
-        scrollbar-gutter: auto;
-    }
-
     body {
         color: var(--color-ink);
         background: var(--color-paper);
         margin: 0;
     }
 
-    body:has(:modal) {
-        overflow: auto;
-        scrollbar-gutter: stable;
-    }
-
-    label:has(> *) {
-        display: inline flow-root;
-    }
-
-    [hidden],
-    .hidden {
-        display: none !important;
-    }
-
-    ::selection {
+    ::selection, mark {
         background-color: var(--color-highlight-ink);
         color: var(--color-paper);
-    }
-    mark {
-        background-color: color-mix(in srgb, var(--color-highlight-ink) 70%, var(--color-paper));
-        color: var(--color-paper);
-    }
-    [data-surround="fill"] > ::selection,
-    [data-surround="fill"]::selection {
-        background-color: var(--color-highlight-paper);
-    }
-    [data-surround="fill"] > mark,
-    [data-surround="fill"] > ::selection,
-    [data-surround="fill"]::selection {
-        color: var(--color-ink);
     }
 
     code, pre, kbd, samp, var,
@@ -305,6 +284,28 @@
     ) {
         font-family: var(--font-family-monospace);
         font-style: normal;
+        font-feature-settings: initial; /* per kiso.css:193 */
+        font-variation-settings: initial; /* per kiso.css:194 */
+        font-variant-ligatures: none; /* per kiso.css:203 */
+    }
+
+    /* --- forced-color --- */
+    
+    @media (forced-colors: active) {
+        :where(button, [type="button"], [type="submit"], [type="reset"]) {
+            background-color: ButtonFace;
+            border-color:     ButtonBorder;
+            color:            ButtonText;
+        }
+        :where(a:any-link) {
+            color: LinkText;
+        }
+    }
+
+    /* --- class, attribute --- */
+
+    .hidden {
+        display: none !important;
     }
 
     .visually-hidden {

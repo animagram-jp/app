@@ -1,0 +1,155 @@
+/* Usage:
+
+    === popover ===
+
+    <button type="button" id="popover_button-1" popovertarget="popover-1">
+    <* id="popover-1" popover="auto">
+
+    #popover_button-1 {anchor-name: --popover_button-1;}
+    #popover-1        {position-anchor: --popover_button-1;}
+
+    === dialog ===
+
+    <button type="button" onclick="dialog-1.showModal()"></button>
+    <dialog id="dialog-1">
+        <button type="button" formmethod="dialog"></button></dialog>
+
+    === menu / listbox ===
+
+    <button type="button" id="popover_button-2" popovertarget="popover-2">
+    <menu|ol|ul id="popover-2" popover="auto" role="menu/listbox">
+        <li></li>
+        <li>
+            <a></a></li>
+        <li>
+            <a aria-disabled="true"></a></li>
+        <li>
+            <label>
+                <input type="checkbox" role="menuitemcheckbox/option" data-sign="check">
+                <span></span></label></li>
+        <li>
+            <label>
+                <input type="radio" role="menuitemradio/option" data-sign="check">
+                <span></span></label></li>
+        <li>
+            <button role="menuitem/option"></button></li>
+        <li>
+            <label>
+                <span></span>
+                <input type="text">
+                <button role="menuitem/option"></button></label></li></menu|ol|ul>
+
+    #popover_button-2 {anchor-name: --popover_button-2;}
+    #popover-2        {position-anchor: --popover_button-2;}
+
+    --- combobox (listbox + typeable input) ---
+
+    <label>
+        <span></span>
+        <input type="text" id="combobox">
+        <button type="button" popovertarget="listbox-2"></button></label>
+    <ol|ul id="listbox-2" popover="auto" role="listbox">...</ol|ul>
+
+    #combobox  {anchor-name: --combobox;}
+    #listbox-2 {position-anchor: --combobox;}
+
+    === tooltip ===
+
+    <button type="button" id="tooltip_trigger-1" popovertarget="tooltip-1">
+    <* id="tooltip-1" popover="auto|manual"></*>
+
+    #tooltip_trigger-1 {anchor-name: --tooltip_trigger-1;}
+    #tooltip-1         {position-anchor: --tooltip_trigger-1;}
+*/
+
+@layer css.popup {
+
+    [popover] {
+        margin:                 0.25rem 0;
+        position-area:          block-end span-inline-start;
+        position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline;
+    }
+
+    [popovertarget]:not(
+        :disabled,
+        [aria-disabled="true"]
+    ) {
+        color: var(--color-ink);
+    }
+
+    :where([role="menu"], [role="listbox"]) {
+        background-color: var(--color-paper);
+        border-color:     var(--color-ink-mix);
+        border-style:     solid;
+        border-width:     var(--md-border-width);
+        border-radius:    var(--md-border-radius);
+        color:            var(--color-ink);
+        list-style-type:  none;
+        max-height:       calc(var(--md-border-width) * 0.2 + var(--md-box-height) * 6.5);
+        overflow-y:       auto;
+        padding-inline:   0.25rem;
+        width:            max-content;
+    }
+    @media (forced-colors: active) {
+        :where([role="menu"], [role="listbox"]) {
+            background-color: Canvas;
+            border-color:     ButtonBorder;
+            color:            CanvasText;
+        }
+    }
+
+    :where([role="menu"], [role="listbox"]) > li {
+        display: contents;
+    }
+    :where([role="menu"], [role="listbox"]) > li:not(:has(*)) {
+        display: block;
+    }
+
+    li > [role]:where(a, button),
+    li > label:has(> input[role]) {
+        cursor:      pointer;
+        display:     block;
+        white-space: nowrap;
+        width:       100%;
+    }
+
+    li > label > input[role]::before {
+        border-color: currentColor;
+    }
+
+    li > label > input[role] {
+        block-size:  var(--md-line-height);
+        cursor:      pointer;
+        inline-size: var(--md-line-height);
+    }
+
+    /* === hover === */
+
+    @media (hover: hover) {
+        li > [role]:where(a, button):hover:not(:focus-visible),
+        li > label:has(> input[role]:hover):not(:has(> input[role]:focus-visible)) {
+            background-color: var(--color-paper-mix);
+        }
+    }
+
+    dialog {
+        background-color: var(--color-paper);
+        border-color:     var(--color-ink-mix);
+        border-style:     solid;
+        border-width:     var(--md-border-width);
+        border-radius:    var(--md-border-radius);
+        color:            var(--color-ink);
+    }
+
+    :where(dialog, [popover][data-surround="transparent"])::backdrop { /* per kiso.css:514 */
+        background-color: oklch(0% 0 0deg / 30%);
+    }
+
+    @media (forced-colors: active) {
+        dialog {
+            background-color: Canvas;
+            border-color:     ButtonBorder;
+            color:            CanvasText;
+        }
+    }
+}

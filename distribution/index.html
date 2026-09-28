@@ -9,20 +9,20 @@
     <title>CoC7th Playing Engine</title>
     <link rel="icon" href="data:,">
     <link rel="icon" type="image/png" sizes="512x512" href="./image/animagram.png?v={version}">
-    <link rel="stylesheet" href="./css/css/reset.css?v={version}">
-    <link rel="stylesheet" href="./css/css/base.css?v={version}">
-    <link rel="stylesheet" href="./css/css/data_style.css?v={version}">
-    <link rel="stylesheet" href="./css/css/data_size.css?v={version}">
-    <link rel="stylesheet" href="./css/css/data_sign.css?v={version}">
-    <link rel="stylesheet" href="./css/css/data_group.css?v={version}">
-    <link rel="stylesheet" href="./css/css/input.css?v={version}">
-    <link rel="stylesheet" href="./css/css/button.css?v={version}">
-    <link rel="stylesheet" href="./css/css/radio.css?v={version}">
-    <link rel="stylesheet" href="./css/css/heading.css?v={version}">
-    <link rel="stylesheet" href="./css/css/listbox.css?v={version}">
-    <link rel="stylesheet" href="./css/css/table.css?v={version}">
-    <link rel="stylesheet" href="./css/css/list.css?v={version}">
-    <link rel="stylesheet" href="./css/css/step.css?v={version}">
+    <link rel="stylesheet" href="./css/library/reset.css?v={version}">
+    <link rel="stylesheet" href="./css/library/base.css?v={version}">
+    <link rel="stylesheet" href="./css/library/data_style.css?v={version}">
+    <link rel="stylesheet" href="./css/library/data_size.css?v={version}">
+    <link rel="stylesheet" href="./css/library/data_sign.css?v={version}">
+    <link rel="stylesheet" href="./css/library/data_group.css?v={version}">
+    <link rel="stylesheet" href="./css/library/input.css?v={version}">
+    <link rel="stylesheet" href="./css/library/button.css?v={version}">
+    <link rel="stylesheet" href="./css/library/radio.css?v={version}">
+    <link rel="stylesheet" href="./css/library/heading.css?v={version}">
+    <link rel="stylesheet" href="./css/library/popup.css?v={version}">
+    <link rel="stylesheet" href="./css/library/table.css?v={version}">
+    <link rel="stylesheet" href="./css/library/list.css?v={version}">
+    <link rel="stylesheet" href="./css/library/step.css?v={version}">
     <link rel="stylesheet" href="./css/style.css?v={version}">
     <link rel="manifest" href="./manifest.json">
     <script src="./init.js" type="module"></script></head>
@@ -35,23 +35,23 @@
         <button id="header_button-1" type="button" popovertarget="header_ul-1" aria-haspopup="listbox" aria-expanded="false" aria-controls="header_ul-1" data-surround="outline">
             <span>🌐</span>日本語</button>
         <ul id="header_ul-1" popover="auto" role="listbox" aria-labelledby="header_button-1">
-            <li role="presentation">Select Language</li>
-            <li role="option">
-                <button lang="en" value="1">English (US)</button></li>
-            <li role="option">
-                <button lang="ja" value="2">日本語</button></li></ul>
+            <li>Select Language</li>
+            <li>
+                <button role="option" lang="en" value="1">English (US)</button></li>
+            <li>
+                <button role="option" lang="ja" value="2">日本語</button></li></ul>
         <button id="header_button-2" type="button" popovertarget="header_ul-2" aria-haspopup="listbox" aria-expanded="false" aria-controls="header_ul-2" data-surround="outline">
             <span>✓</span>死生 紡</button>
         <ul id="header_ul-2" popover="auto" role="listbox" aria-labelledby="header_button-2">
-            <li role="presentation">Select Character</li>
-            <li role="option">
-                <button value="1">死生 紡</button></li>
-            <li role="option" class="hidden">
-                <button value="2"></button></li>
-            <li role="option" class="hidden">
-                <button value="3"></button></li>
-            <li role="option" class="hidden">
-                <button value="4"></button></li></ul>
+            <li>Select Character</li>
+            <li>
+                <button role="option" value="1">死生 紡</button></li>
+            <li class="hidden">
+                <button role="option" value="2"></button></li>
+            <li class="hidden">
+                <button role="option" value="3"></button></li>
+            <li class="hidden">
+                <button role="option" value="4"></button></li></ul>
         <button id="header_button-3" type="button" aria-label="switch modal" data-surround="outline">✏️</button>
         <button id="header_button-4" type="button" class="dice" data-surround="outline">🎲</button>
         <button id="header_button-5" type="submit" form="form" data-surround="fill">✓</button></header>
@@ -455,9 +455,9 @@
                         <input id="main_section-2_fieldset-2_label-7_input" type="text" name="main_section-2_fieldset-2_label-5_input"></label>
                     <label id="main_section-2_fieldset-2_label-8" for="main_section-2_fieldset-2_label-8_span_input" data-group="inline">
                         <span>年齢</span>
-                        <button type="button" data-action="decrement" tabindex="-1" aria-label="decrement"></button>
+                        <button type="button" data-sign="minus" tabindex="-1" aria-label="decrement"></button>
                         <input id="main_section-2_fieldset-2_label-8_span_input" type="text" inputmode="numeric" pattern="[0-9]*" role="spinbutton" name="main_section-2_fieldset-2_label-8_span_input" placeholder="0">
-                        <button type="button" data-action="increment" tabindex="-1" aria-label="increment"></button></label></fieldset>
+                        <button type="button" data-sign="plus" tabindex="-1" aria-label="increment"></button></label></fieldset>
 
                 <!-- fieldset-3: Characteristic (label / initial / change / modifier / sum) -->
                 <h3 id="main_section-2_h3-3">能力値</h3>
@@ -631,22 +631,22 @@
                                 <td id="main_section-2_fieldset-5_table_tbody_tr-5_td-1">
                                     <input id="main_section-2_fieldset-5_table_tbody_tr-5_td-1_input" type="text" placeholder="" class="hidden" data-size="sm">
                                     <ul id="main_section-2_fieldset-5_table_tbody_tr-5_td-1_ul" popover="auto" role="listbox" aria-labelledby="main_section-2_fieldset-5_table_tbody_tr-5_td-1_button">
-                                        <li role="option" aria-selected="true">
-                                            <button>演劇</button></li>
-                                        <li role="option">
-                                            <button>ダンス</button></li>
-                                        <li role="option">
-                                            <button>料理</button></li>
-                                        <li role="option">
-                                            <button>書道</button></li>
-                                        <li role="option">
-                                            <button>執筆</button></li>
-                                        <li role="option">
-                                            <button>絵画</button></li>
-                                        <li role="option">
-                                            <button>文書偽造</button></li>
-                                        <li role="option">
-                                            <button>写真術</button></li></ul>
+                                        <li>
+                                            <button role="option" aria-selected="true">演劇</button></li>
+                                        <li>
+                                            <button role="option">ダンス</button></li>
+                                        <li>
+                                            <button role="option">料理</button></li>
+                                        <li>
+                                            <button role="option">書道</button></li>
+                                        <li>
+                                            <button role="option">執筆</button></li>
+                                        <li>
+                                            <button role="option">絵画</button></li>
+                                        <li>
+                                            <button role="option">文書偽造</button></li>
+                                        <li>
+                                            <button role="option">写真術</button></li></ul>
                                     <button id="main_section-2_fieldset-5_table_tbody_tr-5_td-1_button" type="button" popovertarget="main_section-2_fieldset-5_table_tbody_tr-5_td-1_ul" aria-haspopup="listbox" aria-expanded="false" aria-controls="main_section-2_fieldset-5_table_tbody_tr-5_td-1_ul" data-size="sm">演劇</button></td>
                                 <td>5</td>
                                 <td>
@@ -662,22 +662,22 @@
                                 <td id="main_section-2_fieldset-5_table_tbody_tr-6_td-1">
                                     <input id="main_section-2_fieldset-5_table_tbody_tr-6_td-1_input" type="text" placeholder="" class="hidden" data-size="sm">
                                     <ul id="main_section-2_fieldset-5_table_tbody_tr-6_td-1_ul" popover="auto" role="listbox" aria-labelledby="main_section-2_fieldset-5_table_tbody_tr-6_td-1_button">
-                                        <li role="option" aria-selected="true">
-                                            <button>ダンス</button></li>
-                                        <li role="option">
-                                            <button>演劇</button></li>
-                                        <li role="option">
-                                            <button>料理</button></li>
-                                        <li role="option">
-                                            <button>書道</button></li>
-                                        <li role="option">
-                                            <button>執筆</button></li>
-                                        <li role="option">
-                                            <button>絵画</button></li>
-                                        <li role="option">
-                                            <button>文書偽造</button></li>
-                                        <li role="option">
-                                            <button>写真術</button></li></ul>
+                                        <li>
+                                            <button role="option" aria-selected="true">ダンス</button></li>
+                                        <li>
+                                            <button role="option">演劇</button></li>
+                                        <li>
+                                            <button role="option">料理</button></li>
+                                        <li>
+                                            <button role="option">書道</button></li>
+                                        <li>
+                                            <button role="option">執筆</button></li>
+                                        <li>
+                                            <button role="option">絵画</button></li>
+                                        <li>
+                                            <button role="option">文書偽造</button></li>
+                                        <li>
+                                            <button role="option">写真術</button></li></ul>
                                     <button id="main_section-2_fieldset-5_table_tbody_tr-6_td-1_button" type="button" popovertarget="main_section-2_fieldset-5_table_tbody_tr-6_td-1_ul" aria-haspopup="listbox" aria-expanded="false" aria-controls="main_section-2_fieldset-5_table_tbody_tr-6_td-1_ul" data-size="sm">ダンス</button></td>
                                 <td>5</td>
                                 <td>
@@ -890,22 +890,22 @@
                             <td id="main_section-2_fieldset-5_table_tbody_tr-23_td-1">
                                 <input id="main_section-2_fieldset-5_table_tbody_tr-23_td-1_input" type="text" placeholder="" class="hidden" data-size="sm">
                                 <ul id="main_section-2_fieldset-5_table_tbody_tr-23_td-1_ul" popover="auto" role="listbox" aria-labelledby="main_section-2_fieldset-5_table_tbody_tr-23_td-1_button">
-                                    <li role="option" aria-selected="true">
-                                        <button>格闘</button></li>
-                                    <li role="option">
-                                        <button>斧</button></li>
-                                    <li role="option">
-                                        <button>チェーンソー</button></li>
-                                    <li role="option">
-                                        <button>フレイル</button></li>
-                                    <li role="option">
-                                        <button>絞殺ひも</button></li>
-                                    <li role="option">
-                                        <button>槍</button></li>
-                                    <li role="option">
-                                        <button>刀剣</button></li>
-                                    <li role="option">
-                                        <button>鞭</button></li></ul>
+                                    <li>
+                                        <button role="option" aria-selected="true">格闘</button></li>
+                                    <li>
+                                        <button role="option">斧</button></li>
+                                    <li>
+                                        <button role="option">チェーンソー</button></li>
+                                    <li>
+                                        <button role="option">フレイル</button></li>
+                                    <li>
+                                        <button role="option">絞殺ひも</button></li>
+                                    <li>
+                                        <button role="option">槍</button></li>
+                                    <li>
+                                        <button role="option">刀剣</button></li>
+                                    <li>
+                                        <button role="option">鞭</button></li></ul>
                                 <button id="main_section-2_fieldset-5_table_tbody_tr-23_td-1_button" type="button" popovertarget="main_section-2_fieldset-5_table_tbody_tr-23_td-1_ul" aria-haspopup="listbox" aria-expanded="false" aria-controls="main_section-2_fieldset-5_table_tbody_tr-23_td-1_ul" data-size="sm">格闘</button></td>
                             <td>25</td>
                             <td>
@@ -921,22 +921,22 @@
                             <td id="main_section-2_fieldset-5_table_tbody_tr-24_td-1">
                                 <input id="main_section-2_fieldset-5_table_tbody_tr-24_td-1_input" type="text" placeholder="" class="hidden" data-size="sm">
                                 <ul id="main_section-2_fieldset-5_table_tbody_tr-24_td-1_ul" popover="auto" role="listbox" aria-labelledby="main_section-2_fieldset-5_table_tbody_tr-24_td-1_button">
-                                    <li role="option" aria-selected="true">
-                                        <button>刀剣</button></li>
-                                    <li role="option">
-                                        <button>斧</button></li>
-                                    <li role="option">
-                                        <button>格闘</button></li>
-                                    <li role="option">
-                                        <button>チェーンソー</button></li>
-                                    <li role="option">
-                                        <button>フレイル</button></li>
-                                    <li role="option">
-                                        <button>絞殺ひも</button></li>
-                                    <li role="option">
-                                        <button>槍</button></li>
-                                    <li role="option">
-                                        <button>鞭</button></li></ul>
+                                    <li>
+                                        <button role="option" aria-selected="true">刀剣</button></li>
+                                    <li>
+                                        <button role="option">斧</button></li>
+                                    <li>
+                                        <button role="option">格闘</button></li>
+                                    <li>
+                                        <button role="option">チェーンソー</button></li>
+                                    <li>
+                                        <button role="option">フレイル</button></li>
+                                    <li>
+                                        <button role="option">絞殺ひも</button></li>
+                                    <li>
+                                        <button role="option">槍</button></li>
+                                    <li>
+                                        <button role="option">鞭</button></li></ul>
                                 <button id="main_section-2_fieldset-5_table_tbody_tr-24_td-1_button" type="button" popovertarget="main_section-2_fieldset-5_table_tbody_tr-24_td-1_ul" aria-haspopup="listbox" aria-expanded="false" aria-controls="main_section-2_fieldset-5_table_tbody_tr-24_td-1_ul" data-size="sm">刀剣</button></td>
                             <td>20</td>
                             <td>
@@ -952,18 +952,18 @@
                             <td id="main_section-2_fieldset-5_table_tbody_tr-25_td-1">
                                 <input id="main_section-2_fieldset-5_table_tbody_tr-25_td-1_input" type="text" placeholder="" class="hidden" data-size="sm">
                                 <ul id="main_section-2_fieldset-5_table_tbody_tr-25_td-1_ul" popover="auto" role="listbox" aria-labelledby="main_section-2_fieldset-5_table_tbody_tr-25_td-1_button">
-                                    <li role="option" aria-selected="true">
-                                        <button>拳銃</button></li>
-                                    <li role="option">
-                                        <button>弓</button></li>
-                                    <li role="option">
-                                        <button>重火器</button></li>
-                                    <li role="option">
-                                        <button>機関銃</button></li>
-                                    <li role="option">
-                                        <button>ライフル/ショットガン</button></li>
-                                    <li role="option">
-                                        <button>サブマシンガン</button></li></ul>
+                                    <li>
+                                        <button role="option" aria-selected="true">拳銃</button></li>
+                                    <li>
+                                        <button role="option">弓</button></li>
+                                    <li>
+                                        <button role="option">重火器</button></li>
+                                    <li>
+                                        <button role="option">機関銃</button></li>
+                                    <li>
+                                        <button role="option">ライフル/ショットガン</button></li>
+                                    <li>
+                                        <button role="option">サブマシンガン</button></li></ul>
                                 <button id="main_section-2_fieldset-5_table_tbody_tr-25_td-1_button" type="button" popovertarget="main_section-2_fieldset-5_table_tbody_tr-25_td-1_ul" aria-haspopup="listbox" aria-expanded="false" aria-controls="main_section-2_fieldset-5_table_tbody_tr-25_td-1_ul" data-size="sm">拳銃</button></td>
                             <td>20</td>
                             <td>
@@ -1172,26 +1172,26 @@
                             <td id="main_section-2_fieldset-5_table_tbody_tr-42_td-1">
                                 <input id="main_section-2_fieldset-5_table_tbody_tr-42_td-1_input" type="text" placeholder="" class="hidden" data-size="sm">
                                 <ul id="main_section-2_fieldset-5_table_tbody_tr-42_td-1_ul" popover="auto" role="listbox" aria-labelledby="main_section-2_fieldset-5_table_tbody_tr-42_td-1_button">
-                                    <li role="option" aria-selected="true">
-                                        <button>ボート</button></li>
-                                    <li role="option">
-                                        <button>汽船</button></li>
-                                    <li role="option">
-                                        <button>帆船</button></li>
-                                    <li role="option">
-                                        <button>民間プロペラ機</button></li>
-                                    <li role="option">
-                                        <button>気球</button></li>
-                                    <li role="option">
-                                        <button>飛行船</button></li>
-                                    <li role="option">
-                                        <button>民間ジェット機</button></li>
-                                    <li role="option">
-                                        <button>旅客機</button></li>
-                                    <li role="option">
-                                        <button>ジェット戦闘機</button></li>
-                                    <li role="option">
-                                        <button>ヘリコプター</button></li></ul>
+                                    <li>
+                                        <button role="option" aria-selected="true">ボート</button></li>
+                                    <li>
+                                        <button role="option">汽船</button></li>
+                                    <li>
+                                        <button role="option">帆船</button></li>
+                                    <li>
+                                        <button role="option">民間プロペラ機</button></li>
+                                    <li>
+                                        <button role="option">気球</button></li>
+                                    <li>
+                                        <button role="option">飛行船</button></li>
+                                    <li>
+                                        <button role="option">民間ジェット機</button></li>
+                                    <li>
+                                        <button role="option">旅客機</button></li>
+                                    <li>
+                                        <button role="option">ジェット戦闘機</button></li>
+                                    <li>
+                                        <button role="option">ヘリコプター</button></li></ul>
                                 <button id="main_section-2_fieldset-5_table_tbody_tr-42_td-1_button" type="button" popovertarget="main_section-2_fieldset-5_table_tbody_tr-42_td-1_ul" aria-haspopup="listbox" aria-expanded="false" aria-controls="main_section-2_fieldset-5_table_tbody_tr-42_td-1_ul" data-size="sm">ボート</button></td>
                             <td>1</td>
                             <td>
@@ -1243,34 +1243,34 @@
                             <td id="main_section-2_fieldset-5_table_tbody_tr-46_td-1">
                                 <input id="main_section-2_fieldset-5_table_tbody_tr-46_td-1_input" type="text" placeholder="" class="hidden" data-size="sm">
                                 <ul id="main_section-2_fieldset-5_table_tbody_tr-46_td-1_ul" popover="auto" role="listbox" aria-labelledby="main_section-2_fieldset-5_table_tbody_tr-46_td-1_button">
-                                    <li role="option" aria-selected="true">
-                                        <button>天文学</button></li>
-                                    <li role="option">
-                                        <button>生物学</button></li>
-                                    <li role="option">
-                                        <button>植物学</button></li>
-                                    <li role="option">
-                                        <button>化学</button></li>
-                                    <li role="option">
-                                        <button>暗号学</button></li>
-                                    <li role="option">
-                                        <button>工学</button></li>
-                                    <li role="option">
-                                        <button>法医学</button></li>
-                                    <li role="option">
-                                        <button>地質学</button></li>
-                                    <li role="option">
-                                        <button>数学</button></li>
-                                    <li role="option">
-                                        <button>気象学</button></li>
-                                    <li role="option">
-                                        <button>薬学</button></li>
-                                    <li role="option">
-                                        <button>物理学</button></li>
-                                    <li role="option">
-                                        <button>動物学</button></li>
-                                    <li role="option">
-                                        <button>✏️</button></li></ul>
+                                    <li>
+                                        <button role="option" aria-selected="true">天文学</button></li>
+                                    <li>
+                                        <button role="option">生物学</button></li>
+                                    <li>
+                                        <button role="option">植物学</button></li>
+                                    <li>
+                                        <button role="option">化学</button></li>
+                                    <li>
+                                        <button role="option">暗号学</button></li>
+                                    <li>
+                                        <button role="option">工学</button></li>
+                                    <li>
+                                        <button role="option">法医学</button></li>
+                                    <li>
+                                        <button role="option">地質学</button></li>
+                                    <li>
+                                        <button role="option">数学</button></li>
+                                    <li>
+                                        <button role="option">気象学</button></li>
+                                    <li>
+                                        <button role="option">薬学</button></li>
+                                    <li>
+                                        <button role="option">物理学</button></li>
+                                    <li>
+                                        <button role="option">動物学</button></li>
+                                    <li>
+                                        <button role="option">✏️</button></li></ul>
                                 <button id="main_section-2_fieldset-5_table_tbody_tr-46_td-1_button" type="button" popovertarget="main_section-2_fieldset-5_table_tbody_tr-46_td-1_ul" aria-haspopup="listbox" aria-expanded="false" aria-controls="main_section-2_fieldset-5_table_tbody_tr-46_td-1_ul" data-size="sm">天文学</button></td>
                             <td>1</td>
                             <td>
@@ -1322,14 +1322,14 @@
                             <td id="main_section-2_fieldset-5_table_tbody_tr-50_td-1">
                                 <input id="main_section-2_fieldset-5_table_tbody_tr-50_td-1_input" type="text" placeholder="" class="hidden" data-size="sm">
                                 <ul id="main_section-2_fieldset-5_table_tbody_tr-50_td-1_ul" popover="auto" role="listbox" aria-labelledby="main_section-2_fieldset-5_table_tbody_tr-50_td-1_button">
-                                    <li role="option" aria-selected="true">
-                                        <button>選択</button></li>
-                                    <li role="option">
-                                        <button>極地</button></li>
-                                    <li role="option">
-                                        <button>砂漠</button></li>
-                                    <li role="option">
-                                        <button>海</button></li></ul>
+                                    <li>
+                                        <button role="option" aria-selected="true">選択</button></li>
+                                    <li>
+                                        <button role="option">極地</button></li>
+                                    <li>
+                                        <button role="option">砂漠</button></li>
+                                    <li>
+                                        <button role="option">海</button></li></ul>
                                 <button id="main_section-2_fieldset-5_table_tbody_tr-50_td-1_button" type="button" popovertarget="main_section-2_fieldset-5_table_tbody_tr-50_td-1_ul" aria-haspopup="listbox" aria-expanded="false" aria-controls="main_section-2_fieldset-5_table_tbody_tr-50_td-1_ul" data-size="sm">選択</button></td>
                             <td>10</td>
                             <td>
@@ -1395,9 +1395,9 @@
                                 <input type="text" placeholder="技能名" data-size="sm"></th>
                             <td id="main_section-2_fieldset-5_table_tbody_tr-55_td-1">
                                 <ul id="main_section-2_fieldset-5_table_tbody_tr-55_td-1_ul" popover="auto" role="listbox" aria-labelledby="main_section-2_fieldset-5_table_tbody_tr-55_td-1_button">
-                                    <li role="presentation">選択してください</li>
-                                    <li role="option" aria-selected="true">
-                                        <button>選択</button></li></ul>
+                                    <li>選択してください</li>
+                                    <li>
+                                        <button role="option" aria-selected="true">選択</button></li></ul>
                                 <button id="main_section-2_fieldset-5_table_tbody_tr-55_td-1_button" type="button" popovertarget="main_section-2_fieldset-5_table_tbody_tr-55_td-1_ul" aria-haspopup="listbox" aria-expanded="false" aria-controls="main_section-2_fieldset-5_table_tbody_tr-55_td-1_ul" data-size="sm">
                                     <input type="text" data-size="sm" placeholder="自由記入"></button></td>
                             <td>
@@ -1480,30 +1480,30 @@
         <dialog id="main_modal" aria-label="overlay">
             <h3 id="main_modal_h3"></h3>
             <ul id="main_modal_ul" role="listbox">
-                <li role="option">
-                    <button></button></li>
-                <li role="option">
-                    <button></button></li>
-                <li role="option">
-                    <button></button></li>
-                <li role="option" class="hidden">
-                    <button></button></li>
-                <li role="option" class="hidden">
-                    <button></button></li>
-                <li role="option" class="hidden">
-                    <button></button></li>
-                <li role="option" class="hidden">
-                    <button></button></li>
-                <li role="option" class="hidden">
-                    <button></button></li>
-                <li role="option" class="hidden">
-                    <button></button></li>
-                <li role="option" class="hidden">
-                    <button></button></li></ul>
+                <li>
+                    <button role="option"></button></li>
+                <li>
+                    <button role="option"></button></li>
+                <li>
+                    <button role="option"></button></li>
+                <li class="hidden">
+                    <button role="option"></button></li>
+                <li class="hidden">
+                    <button role="option"></button></li>
+                <li class="hidden">
+                    <button role="option"></button></li>
+                <li class="hidden">
+                    <button role="option"></button></li>
+                <li class="hidden">
+                    <button role="option"></button></li>
+                <li class="hidden">
+                    <button role="option"></button></li>
+                <li class="hidden">
+                    <button role="option"></button></li></ul>
             <label id="main_modal_span" data-group="inline">
-                <button id="main_modal_span_button-1" type="button" data-action="decrement" tabindex="-1" aria-label="decrement"></button>
+                <button id="main_modal_span_button-1" type="button" data-sign="minus" tabindex="-1" aria-label="decrement"></button>
                 <input id="main_modal_span_input" type="text" inputmode="numeric" pattern="[0-9]*" role="spinbutton" placeholder="0" form="main_form">
-                <button id="main_modal_span_button-2" type="button" data-action="increment" tabindex="-1" aria-label="increment"></button></label>
+                <button id="main_modal_span_button-2" type="button" data-sign="plus" tabindex="-1" aria-label="increment"></button></label>
             <button id="main_modal_button" type="submit" form="main_form" data-surround="transparent">→</button></dialog>
         <form id="main_form" method="dialog"></form></main>
 

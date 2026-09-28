@@ -1,0 +1,246 @@
+/*  Usage:
+
+    <label>
+        <span>inline</span>
+        <input type="checkbox" role="switch"></label>
+*/
+
+@layer css.toggle {
+
+    /* === color, layout === */
+
+    /* label[data-axis="block"] */
+
+    label:has(> input[type="checkbox"][role="switch"])[data-axis="block"] {
+        display: inline flow-root;
+    }
+    label:has(> input[type="checkbox"][role="switch"])[data-axis="block"] > *:first-child {
+        display:    block;
+        text-align: center;
+    }
+    label:has(> input[type="checkbox"][role="switch"])[data-axis="block"] > *:first-child:not([data-size]) {
+        border-radius:  var(--md-border-radius);
+        border-width:   var(--md-border-width);
+        padding-bottom: calc(((var(--md-box-height) - var(--md-line-height)) / 2) - var(--md-border-width));
+    }
+
+    label > input[type="checkbox"][role="switch"] {
+        --toggle-dir: 1;
+    }
+    label > input[type="checkbox"][role="switch"]:dir(rtl) {
+        --toggle-dir: -1;
+    }
+
+    label > input[type="checkbox"][role="switch"] {
+        background-color: var(--color-ink-mix);
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+        label > input[type="checkbox"][role="switch"] {
+            transition: background-color 0.15s ease;
+        }
+    }
+
+    label > input[type="checkbox"][role="switch"]:checked {
+        background: var(--color-success);
+    }
+
+    label > input[type="checkbox"][role="switch"]::after {
+        align-items:     center;
+        background:      var(--color-paper);
+        border-color:    var(--color-ink);
+        border-style:    solid;
+        color:           var(--color-ink);
+        content:         "OFF";
+        display:         flex;
+        font-weight:     bold;
+        justify-content: center;
+        position:        absolute;
+        top:             50%;
+        translate:       0 -50%;
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+        label > input[type="checkbox"][role="switch"]::after {
+            transition: transform 0.15s ease;
+        }
+    }
+
+    label > input[type="checkbox"][role="switch"]:checked::after {
+        content: "ON";
+    }
+
+    /* label[data-type="knob-only"] */
+
+    label[data-type="knob-only"] {
+        pointer-events: none;
+    }
+    label[data-type="knob-only"] > input[type="checkbox"] {
+        pointer-events: none;
+    }
+    label[data-type="knob-only"] > input[type="checkbox"][role="switch"]::after {
+        pointer-events: auto;
+    }
+
+    @media (forced-colors: active) {
+        label > input[type="checkbox"][role="switch"]:checked {
+            background: Canvas;
+        }
+        label > input[type="checkbox"][role="switch"]::after {
+            background:   CanvasText;
+            border-color: CanvasText;
+            color:        Canvas;
+        }
+        label > input[type="checkbox"][role="switch"]:checked::after {
+            color: Canvas;
+        }
+    }
+
+    /* --- size --- */
+
+    label > input[type="checkbox"][role="switch"] {
+        &[data-size="xs"] {
+            border-radius: calc(var(--xs-box-height) / 2);
+            border-width:  var(--xs-border-width);
+            block-size:    var(--xs-box-height);
+            inline-size:   calc(calc(var(--xs-box-height) - var(--xs-border-width) * 4) * 2 + var(--xs-border-width) * 4);
+
+            &::after {
+                border-radius:      calc(var(--xs-box-height) / 2);
+                border-width:       var(--xs-border-width);
+                content:            "";
+                font-size:          var(--xs-font-size);
+                block-size:         calc(var(--xs-box-height) - var(--xs-border-width) * 4);
+                inset-inline-start: var(--xs-border-width);
+                inline-size:        calc(var(--xs-box-height) - var(--xs-border-width) * 4);
+            }
+
+            &:checked::after {
+                transform: translateX(calc(calc(var(--xs-box-height) - var(--xs-border-width) * 4) * var(--toggle-dir, 1)));
+            }
+        }
+
+        &[data-size="sm"] {
+            border-radius: calc(var(--sm-box-height) / 2);
+            border-width:  var(--sm-border-width);
+            block-size:    var(--sm-box-height);
+            inline-size:   calc(calc(var(--sm-box-height) - var(--sm-border-width) * 4) * 2 + var(--sm-border-width) * 4);
+
+            &::after {
+                border-radius:      calc(var(--sm-box-height) / 2);
+                border-width:       var(--sm-border-width);
+                font-size:          var(--sm-font-size);
+                block-size:         calc(var(--sm-box-height) - var(--sm-border-width) * 4);
+                inset-inline-start: var(--sm-border-width);
+                inline-size:        calc(var(--sm-box-height) - var(--sm-border-width) * 4);
+            }
+
+            &:checked::after {
+                transform: translateX(calc(calc(var(--sm-box-height) - var(--sm-border-width) * 4) * var(--toggle-dir, 1)));
+            }
+        }
+
+        &:where(
+            [data-size="md"],
+            :not([data-size])
+        ) {
+            border-radius: calc(var(--md-box-height) / 2);
+            border-width:  var(--md-border-width);
+            block-size:    var(--md-box-height);
+            inline-size:   calc(calc(var(--md-box-height) - var(--md-border-width) * 4) * 2 + var(--md-border-width) * 4);
+
+            &::after {
+                border-radius:      calc(var(--md-box-height) / 2);
+                border-width:       var(--md-border-width);
+                font-size:          var(--md-font-size);
+                block-size:         calc(var(--md-box-height) - var(--md-border-width) * 4);
+                inset-inline-start: var(--md-border-width);
+                inline-size:        calc(var(--md-box-height) - var(--md-border-width) * 4);
+            }
+
+            &:checked::after {
+                transform: translateX(calc(calc(var(--md-box-height) - var(--md-border-width) * 4) * var(--toggle-dir, 1)));
+            }
+        }
+
+        &[data-size="lg"] {
+            border-radius: calc(var(--lg-box-height) / 2);
+            border-width:  var(--lg-border-width);
+            block-size:    var(--lg-box-height);
+            inline-size:   calc(calc(var(--lg-box-height) - var(--lg-border-width) * 4) * 2 + var(--lg-border-width) * 4);
+
+            &::after {
+                border-radius:      calc(var(--lg-box-height) / 2);
+                border-width:       var(--lg-border-width);
+                font-size:          var(--lg-font-size);
+                block-size:         calc(var(--lg-box-height) - var(--lg-border-width) * 4);
+                inset-inline-start: var(--lg-border-width);
+                inline-size:        calc(var(--lg-box-height) - var(--lg-border-width) * 4);
+            }
+
+            &:checked::after {
+                transform: translateX(calc(calc(var(--lg-box-height) - var(--lg-border-width) * 4) * var(--toggle-dir, 1)));
+            }
+        }
+
+        &[data-size="xl"] {
+            border-radius: calc(var(--xl-box-height) / 2);
+            border-width:  var(--xl-border-width);
+            block-size:    var(--xl-box-height);
+            inline-size:   calc(calc(var(--xl-box-height) - var(--xl-border-width) * 4) * 2 + var(--xl-border-width) * 4);
+
+            &::after {
+                border-radius:      calc(var(--xl-box-height) / 2);
+                border-width:       var(--xl-border-width);
+                font-size:          var(--xl-font-size);
+                block-size:         calc(var(--xl-box-height) - var(--xl-border-width) * 4);
+                inset-inline-start: var(--xl-border-width);
+                inline-size:        calc(var(--xl-box-height) - var(--xl-border-width) * 4);
+            }
+
+            &:checked::after {
+                transform: translateX(calc(calc(var(--xl-box-height) - var(--xl-border-width) * 4) * var(--toggle-dir, 1)));
+            }
+        }
+
+        &[data-size="2xl"] {
+            border-radius: calc(var(--2xl-box-height) / 2);
+            border-width:  var(--2xl-border-width);
+            block-size:    var(--2xl-box-height);
+            inline-size:   calc(calc(var(--2xl-box-height) - var(--2xl-border-width) * 4) * 2 + var(--2xl-border-width) * 4);
+
+            &::after {
+                border-radius:      calc(var(--2xl-box-height) / 2);
+                border-width:       var(--2xl-border-width);
+                font-size:          var(--2xl-font-size);
+                block-size:         calc(var(--2xl-box-height) - var(--2xl-border-width) * 4);
+                inset-inline-start: var(--2xl-border-width);
+                inline-size:        calc(var(--2xl-box-height) - var(--2xl-border-width) * 4);
+            }
+
+            &:checked::after {
+                transform: translateX(calc(calc(var(--2xl-box-height) - var(--2xl-border-width) * 4) * var(--toggle-dir, 1)));
+            }
+        }
+    }
+
+    /* --- disabled --- */
+
+    label > input[type="checkbox"][role="switch"]:is(
+        :disabled,
+        [aria-disabled="true"]
+    )::after {
+        border-color: var(--color-ink-mix);
+        color:        var(--color-ink-mix);
+    }
+
+    @media (forced-colors: active) {
+        label > input[type="checkbox"][role="switch"]:is(
+            :disabled,
+            [aria-disabled="true"]
+        )::after {
+            background:   GrayText;
+            border-color: GrayText;
+        }
+    }
+}

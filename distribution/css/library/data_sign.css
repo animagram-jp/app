@@ -1,0 +1,1231 @@
+/*  Usage:
+
+    <* data-surround="" data-sign|facet="" (data-inline-axis="start|end|center")></>
+
+    <* data-surround="">
+        <* data-sign-style="inline" data-sign|facet="" (data-inline-axis="start|end|center")></*></*>
+
+    <summary (data-facet="chevron")></summary>
+
+    <label>
+        <select data-facet="chevron">
+            <option></option></select></label>
+*/
+
+@layer css.data_sign {
+    :where(
+        [data-sign],
+        [data-facet],
+        summary:not([data-facet]),
+        button[aria-haspopup="listbox"],
+        label:has(> select[data-facet="chevron"])
+    ) {
+        position: relative;
+    }
+
+    /* --- min inline size, min block size --- */
+
+    :where(
+        [data-sign],
+        [data-facet]
+    ):not(select, [data-sign-style="inline"]) {
+        &[data-size="xs"] {
+            min-block-size:  var(--xs-box-height);
+            min-inline-size: var(--xs-box-height);
+        }
+
+        &[data-size="sm"] {
+            min-block-size:  var(--sm-box-height);
+            min-inline-size: var(--sm-box-height);
+        }
+
+        &:where(
+            [data-size="md"],
+            :not([data-size])
+        ) {
+            min-block-size:  var(--md-box-height);
+            min-inline-size: var(--md-box-height);
+        }
+
+        &[data-size="lg"] {
+            min-block-size:  var(--lg-box-height);
+            min-inline-size: var(--lg-box-height);
+        }
+
+        &[data-size="xl"] {
+            min-block-size:  var(--xl-box-height);
+            min-inline-size: var(--xl-box-height);
+        }
+
+        &[data-size="2xl"] {
+            min-block-size:  var(--2xl-box-height);
+            min-inline-size: var(--2xl-box-height);
+        }
+    }
+
+    /* --- block align center --- */
+
+    :where(
+        [data-sign="minus"],
+        [data-sign="plus"],
+        [data-sign="x"]
+    )::before,
+    :where(
+        [data-sign="hatch"],
+        [data-sign="minus"],
+        [data-sign="plus"],
+        [data-sign="x"]
+    )::after {
+        inset-block:  0;
+        margin-block: auto;
+    }
+
+    /* === data-inline-align === */
+
+    /* --- center --- */
+
+    :where(
+        [data-sign="minus"],
+        [data-sign="plus"],
+        [data-sign="x"]
+    )::before,
+    :where(
+        [data-sign="check"],
+        [data-sign="hatch"],
+        [data-sign="minus"],
+        [data-sign="plus"],
+        [data-sign="rule"],
+        [data-sign="x"]
+    ):not([data-inline-align="start"])::after,
+    input[type="checkbox"]:not([role="switch"]):not([data-sign]):not([data-facet])::after {
+        content:  "";
+        position: absolute;
+    }
+
+    [data-sign="check"][data-inline-align="start"]::before {
+        content:  "";
+        position: absolute;
+    }
+
+    :where(
+        [data-sign="hatch"],
+        [data-sign="minus"],
+        [data-sign="plus"],
+        [data-sign="x"]
+    ):where(
+        [data-inline-align="center"],
+        :not([data-inline-align])
+    )::before,
+    :where(
+        [data-sign="check"],
+        [data-sign="hatch"],
+        [data-sign="minus"],
+        [data-sign="plus"],
+        [data-sign="x"]
+    ):where(
+        [data-inline-align="center"],
+        :not([data-inline-align])
+    )::after,
+    [data-sign="rule"][data-inline-align="center"]::after,
+    input[type="checkbox"]:not([role="switch"]):not([data-sign]):not([data-facet])::after {
+        inset-inline:  0;
+        margin-inline: auto;
+    }
+
+    /* --- start --- */
+
+    :where(
+        [data-sign="check"],
+        [data-sign="hatch"],
+        [data-sign="minus"],
+        [data-sign="plus"],
+        [data-sign="x"]
+    )[data-inline-align="start"]::before,
+    :where(
+        [data-sign="hatch"],
+        [data-sign="minus"],
+        [data-sign="plus"],
+        [data-sign="x"]
+    )[data-inline-align="start"]::after,
+    [data-sign="rule"]:where(
+        [data-inline-align="start"],
+        :not([data-inline-align])
+    )::after {
+        inset-inline-start: 0;
+        inset-inline-end:   auto;
+        margin-inline:      0;
+    }
+
+    /* --- end --- */
+
+    :where(
+        [data-sign="hatch"],
+        [data-sign="minus"],
+        [data-sign="plus"],
+        [data-sign="rule"],
+        [data-sign="x"]
+    )[data-inline-align="end"]::before,
+    :where(
+        [data-sign="check"],
+        [data-sign="hatch"],
+        [data-sign="minus"],
+        [data-sign="plus"],
+        [data-sign="rule"],
+        [data-sign="x"]
+    )[data-inline-align="end"]::after {
+        inset-inline-start: auto;
+        inset-inline-end:   0;
+        margin-inline:      0;
+    }
+
+    /*  === sign-style: inline === */
+
+    [data-sign-style="inline"] {
+        vertical-align: middle;
+    }
+
+    [data-sign-style="inline"]:not([data-size] *) {
+        block-size: var(--md-line-height);
+    }
+    [data-size="xs"] [data-sign-style="inline"]:not([data-size="xs"] [data-size] *) {
+        block-size: var(--xs-line-height);
+    }
+    [data-size="sm"] [data-sign-style="inline"]:not([data-size="sm"] [data-size] *) {
+        block-size: var(--sm-line-height);
+    }
+    [data-size="md"] [data-sign-style="inline"]:not([data-size="md"] [data-size] *) {
+        block-size: var(--md-line-height);
+    }
+    [data-size="lg"] [data-sign-style="inline"]:not([data-size="lg"] [data-size] *) {
+        block-size: var(--lg-line-height);
+    }
+    [data-size="xl"] [data-sign-style="inline"]:not([data-size="xl"] [data-size] *) {
+        block-size: var(--xl-line-height);
+    }
+    [data-size="2xl"] [data-sign-style="inline"]:not([data-size="2xl"] [data-size] *) {
+        block-size: var(--2xl-line-height);
+    }
+
+    /* === check === */
+
+    input[type="checkbox"]:not([role="switch"]):not([data-sign]):not([data-facet])::before {
+        content:  "";
+        inset:    0;
+        position: absolute;
+    }
+
+    [data-sign="check"]:where([data-inline-align="start"])::before,
+    [data-sign="check"]:not([data-inline-align="start"])::after,
+    input[type="checkbox"]:not([role="switch"]):not([data-sign]):not([data-facet])::after {
+        border-color:  currentColor;
+        border-radius: 0;
+        border-style:  solid;
+        border-width:  0 0.1875rem 0.1875rem 0;
+        inset-block:   0;
+        margin-block:  auto;
+        rotate:        45deg;
+    }
+
+    [data-sign="check"]:not(:checked):where([data-inline-align="start"])::before,
+    [data-sign="check"]:not(:checked):not([data-inline-align="start"])::after,
+    input[type="checkbox"]:not([role="switch"]):not([data-sign]):not([data-facet]):not(:checked)::after {
+        border-width: 0;
+    }
+
+    /* --- size --- */
+
+    :where(
+        [data-sign="check"],
+        input[type="checkbox"]:not([role="switch"]):not([data-sign]):not([data-facet])
+    ) {
+        &[data-size="xs"] {
+            block-size:  var(--xs-box-height);
+            inline-size: var(--xs-box-height);
+        }
+
+        &[data-size="sm"] {
+            block-size:  var(--sm-box-height);
+            inline-size: var(--sm-box-height);
+        }
+
+        &:where(
+            [data-size="md"],
+            :not([data-size])
+        ) {
+            block-size:  var(--md-box-height);
+            inline-size: var(--md-box-height);
+        }
+
+        &[data-size="lg"] {
+            block-size:  var(--lg-box-height);
+            inline-size: var(--lg-box-height);
+        }
+
+        &[data-size="xl"] {
+            block-size:  var(--xl-box-height);
+            inline-size: var(--xl-box-height);
+        }
+
+        &[data-size="2xl"] {
+            block-size:  var(--2xl-box-height);
+            inline-size: var(--2xl-box-height);
+        }
+    }
+
+    [data-sign="check"][data-size="xs"]:where([data-inline-align="start"])::before,
+    [data-sign="check"][data-size="xs"]:not([data-inline-align="start"])::after,
+    input[type="checkbox"]:not([role="switch"]):not([data-sign]):not([data-facet])[data-size="xs"]::after {
+        block-size:  calc(var(--xs-box-height) / 2);
+        inline-size: calc(var(--xs-box-height) / 4);
+        translate:   0 -0.09375rem;
+    }
+
+    [data-sign="check"][data-size="sm"]:where([data-inline-align="start"])::before,
+    [data-sign="check"][data-size="sm"]:not([data-inline-align="start"])::after,
+    input[type="checkbox"]:not([role="switch"]):not([data-sign]):not([data-facet])[data-size="sm"]::after {
+        block-size:  calc(var(--sm-box-height) / 2);
+        inline-size: calc(var(--sm-box-height) / 4);
+        translate:   0 -0.15625rem;
+    }
+
+    [data-sign="check"]:where([data-size="md"], :not([data-size])):where([data-inline-align="start"])::before,
+    [data-sign="check"]:where([data-size="md"], :not([data-size])):not([data-inline-align="start"])::after,
+    input[type="checkbox"]:not([role="switch"]):not([data-sign]):not([data-facet]):where([data-size="md"], :not([data-size]))::after {
+        block-size:  calc(var(--md-box-height) / 2);
+        inline-size: calc(var(--md-box-height) / 4);
+        translate:   0 -0.20312rem;
+    }
+
+    [data-sign="check"][data-size="lg"]:where([data-inline-align="start"])::before,
+    [data-sign="check"][data-size="lg"]:not([data-inline-align="start"])::after,
+    input[type="checkbox"]:not([role="switch"]):not([data-sign]):not([data-facet])[data-size="lg"]::after {
+        block-size:  calc(var(--lg-box-height) / 2);
+        inline-size: calc(var(--lg-box-height) / 4);
+        translate:   0 -0.25rem;
+    }
+
+    [data-sign="check"][data-size="xl"]:where([data-inline-align="start"])::before,
+    [data-sign="check"][data-size="xl"]:not([data-inline-align="start"])::after,
+    input[type="checkbox"]:not([role="switch"]):not([data-sign]):not([data-facet])[data-size="xl"]::after {
+        block-size:  calc(var(--xl-box-height) / 2);
+        inline-size: calc(var(--xl-box-height) / 4);
+        translate:   0 -0.28125rem;
+    }
+
+    [data-sign="check"][data-size="2xl"]:where([data-inline-align="start"])::before,
+    [data-sign="check"][data-size="2xl"]:not([data-inline-align="start"])::after,
+    input[type="checkbox"]:not([role="switch"]):not([data-sign]):not([data-facet])[data-size="2xl"]::after {
+        block-size:  calc(var(--2xl-box-height) / 2);
+        inline-size: calc(var(--2xl-box-height) / 4);
+        translate:   0 -0.35938rem;
+    }
+
+    /* === copy === */
+
+    [data-sign="copy"]::before,
+    [data-sign="copy"]::after {
+        border-color: currentColor;
+        border-style: solid;
+        content:      "";
+        inset:        0;
+        margin:       auto;
+        position:     absolute;
+    }
+    [data-sign="copy"]::after {
+        background-color: inherit;
+    }
+
+    /* --- size --- */
+
+    [data-sign="copy"] {
+        &[data-size="xs"] {
+            block-size:  var(--xs-line-height);
+            inline-size: var(--xs-line-height);
+
+            &::before,
+            &::after {
+                block-size:    calc(var(--xs-line-height) * 0.875);
+                border-radius: var(--xs-border-radius);
+                border-width:  var(--xs-border-width);
+                inline-size:   calc(var(--xs-line-height) * 0.625);
+            }
+            &::before {
+                translate: calc(var(--xs-line-height) * 0.1875) calc(var(--xs-line-height) * -0.0625);
+            }
+            &::after {
+                translate: calc(var(--xs-line-height) * -0.1875) calc(var(--xs-line-height) * 0.0625);
+            }
+            &[data-type="landscape"]::before,
+            &[data-type="landscape"]::after {
+                block-size:  calc(var(--xs-line-height) * 0.625);
+                inline-size: calc(var(--xs-line-height) * 0.875);
+            }
+            &[data-type="landscape"]::before {
+                translate: calc(var(--xs-line-height) * 0.0625) calc(var(--xs-line-height) * -0.1875);
+            }
+            &[data-type="landscape"]::after {
+                translate: calc(var(--xs-line-height) * -0.0625) calc(var(--xs-line-height) * 0.1875);
+            }
+        }
+
+        &[data-size="sm"] {
+            block-size:  var(--sm-line-height);
+            inline-size: var(--sm-line-height);
+
+            &::before,
+            &::after {
+                block-size:    calc(var(--sm-line-height) * 0.875);
+                border-radius: var(--sm-border-radius);
+                border-width:  var(--sm-border-width);
+                inline-size:   calc(var(--sm-line-height) * 0.625);
+            }
+            &::before {
+                translate: calc(var(--sm-line-height) * 0.1875) calc(var(--sm-line-height) * -0.0625);
+            }
+            &::after {
+                translate: calc(var(--sm-line-height) * -0.1875) calc(var(--sm-line-height) * 0.0625);
+            }
+            &[data-type="landscape"]::before,
+            &[data-type="landscape"]::after {
+                block-size:  calc(var(--sm-line-height) * 0.625);
+                inline-size: calc(var(--sm-line-height) * 0.875);
+            }
+            &[data-type="landscape"]::before {
+                translate: calc(var(--sm-line-height) * 0.0625) calc(var(--sm-line-height) * -0.1875);
+            }
+            &[data-type="landscape"]::after {
+                translate: calc(var(--sm-line-height) * -0.0625) calc(var(--sm-line-height) * 0.1875);
+            }
+        }
+
+        &:where([data-size="md"], :not([data-size])) {
+            block-size:  var(--md-line-height);
+            inline-size: var(--md-line-height);
+
+            &::before,
+            &::after {
+                block-size:    calc(var(--md-line-height) * 0.875);
+                border-radius: var(--md-border-radius);
+                border-width:  var(--md-border-width);
+                inline-size:   calc(var(--md-line-height) * 0.625);
+            }
+            &::before {
+                translate: calc(var(--md-line-height) * 0.1875) calc(var(--md-line-height) * -0.0625);
+            }
+            &::after {
+                translate: calc(var(--md-line-height) * -0.1875) calc(var(--md-line-height) * 0.0625);
+            }
+            &[data-type="landscape"]::before,
+            &[data-type="landscape"]::after {
+                block-size:  calc(var(--md-line-height) * 0.625);
+                inline-size: calc(var(--md-line-height) * 0.875);
+            }
+            &[data-type="landscape"]::before {
+                translate: calc(var(--md-line-height) * 0.0625) calc(var(--md-line-height) * -0.1875);
+            }
+            &[data-type="landscape"]::after {
+                translate: calc(var(--md-line-height) * -0.0625) calc(var(--md-line-height) * 0.1875);
+            }
+        }
+
+        &[data-size="lg"] {
+            block-size:  var(--lg-line-height);
+            inline-size: var(--lg-line-height);
+
+            &::before,
+            &::after {
+                block-size:    calc(var(--lg-line-height) * 0.875);
+                border-radius: var(--lg-border-radius);
+                border-width:  var(--lg-border-width);
+                inline-size:   calc(var(--lg-line-height) * 0.625);
+            }
+            &::before {
+                translate: calc(var(--lg-line-height) * 0.1875) calc(var(--lg-line-height) * -0.0625);
+            }
+            &::after {
+                translate: calc(var(--lg-line-height) * -0.1875) calc(var(--lg-line-height) * 0.0625);
+            }
+            &[data-type="landscape"]::before,
+            &[data-type="landscape"]::after {
+                block-size:  calc(var(--lg-line-height) * 0.625);
+                inline-size: calc(var(--lg-line-height) * 0.875);
+            }
+            &[data-type="landscape"]::before {
+                translate: calc(var(--lg-line-height) * 0.0625) calc(var(--lg-line-height) * -0.1875);
+            }
+            &[data-type="landscape"]::after {
+                translate: calc(var(--lg-line-height) * -0.0625) calc(var(--lg-line-height) * 0.1875);
+            }
+        }
+
+        &[data-size="xl"] {
+            block-size:  var(--xl-line-height);
+            inline-size: var(--xl-line-height);
+
+            &::before,
+            &::after {
+                block-size:    calc(var(--xl-line-height) * 0.875);
+                border-radius: var(--xl-border-radius);
+                border-width:  var(--xl-border-width);
+                inline-size:   calc(var(--xl-line-height) * 0.625);
+            }
+            &::before {
+                translate: calc(var(--xl-line-height) * 0.1875) calc(var(--xl-line-height) * -0.0625);
+            }
+            &::after {
+                translate: calc(var(--xl-line-height) * -0.1875) calc(var(--xl-line-height) * 0.0625);
+            }
+            &[data-type="landscape"]::before,
+            &[data-type="landscape"]::after {
+                block-size:  calc(var(--xl-line-height) * 0.625);
+                inline-size: calc(var(--xl-line-height) * 0.875);
+            }
+            &[data-type="landscape"]::before {
+                translate: calc(var(--xl-line-height) * 0.0625) calc(var(--xl-line-height) * -0.1875);
+            }
+            &[data-type="landscape"]::after {
+                translate: calc(var(--xl-line-height) * -0.0625) calc(var(--xl-line-height) * 0.1875);
+            }
+        }
+
+        &[data-size="2xl"] {
+            block-size:  var(--2xl-line-height);
+            inline-size: var(--2xl-line-height);
+
+            &::before,
+            &::after {
+                block-size:    calc(var(--2xl-line-height) * 0.875);
+                border-radius: var(--2xl-border-radius);
+                border-width:  var(--2xl-border-width);
+                inline-size:   calc(var(--2xl-line-height) * 0.625);
+            }
+            &::before {
+                translate: calc(var(--2xl-line-height) * 0.1875) calc(var(--2xl-line-height) * -0.0625);
+            }
+            &::after {
+                translate: calc(var(--2xl-line-height) * -0.1875) calc(var(--2xl-line-height) * 0.0625);
+            }
+            &[data-type="landscape"]::before,
+            &[data-type="landscape"]::after {
+                block-size:  calc(var(--2xl-line-height) * 0.625);
+                inline-size: calc(var(--2xl-line-height) * 0.875);
+            }
+            &[data-type="landscape"]::before {
+                translate: calc(var(--2xl-line-height) * 0.0625) calc(var(--2xl-line-height) * -0.1875);
+            }
+            &[data-type="landscape"]::after {
+                translate: calc(var(--2xl-line-height) * -0.0625) calc(var(--2xl-line-height) * 0.1875);
+            }
+        }
+    }
+
+    /* === file === */
+
+    [data-sign="file"]::before {
+        border-color:            currentColor;
+        border-style:            solid;
+        border-top-right-radius: 0;
+        clip-path:               polygon(0% 0%, 62.5% 0%, 100% 28.125%, 100% 100%, 0% 100%);
+        content:                 "";
+        inset:                   0;
+        margin:                  auto;
+        position:                absolute;
+    }
+
+    [data-sign="file"]::after {
+        background-color: currentColor;
+        clip-path:        polygon(62.5% 0%, 100% 28.125%, 94.1074% 32.5444%, 56.6074% 4.4194%);
+        content:          "";
+        inset:            0;
+        margin:           auto;
+        position:         absolute;
+    }
+
+    /* --- size --- */
+
+    [data-sign="file"] {
+        &[data-size="xs"] {
+            &::before,
+            &::after {
+                block-size:  var(--xs-line-height);
+                inline-size: calc(var(--xs-line-height) * 0.75);
+            }
+            &::before {
+                border-radius: calc(var(--xs-line-height) * 0.125);
+                border-top-right-radius: 0;
+                border-width:  calc(var(--xs-line-height) * 0.0625);
+            }
+        }
+        &[data-size="sm"] {
+            &::before,
+            &::after {
+                block-size:  var(--sm-line-height);
+                inline-size: calc(var(--sm-line-height) * 0.75);
+            }
+            &::before {
+                border-radius: calc(var(--sm-line-height) * 0.125);
+                border-top-right-radius: 0;
+                border-width:  calc(var(--sm-line-height) * 0.0625);
+            }
+        }
+        &:where(
+            [data-size="md"],
+            :not([data-size])
+        ) {
+            &::before,
+            &::after {
+                block-size:  var(--md-line-height);
+                inline-size: calc(var(--md-line-height) * 0.75);
+            }
+            &::before {
+                border-radius: calc(var(--md-line-height) * 0.125);
+                border-top-right-radius: 0;
+                border-width:  calc(var(--md-line-height) * 0.0625);
+            }
+        }
+        &[data-size="lg"] {
+            &::before,
+            &::after {
+                block-size:  var(--lg-line-height);
+                inline-size: calc(var(--lg-line-height) * 0.75);
+            }
+            &::before {
+                border-radius: calc(var(--lg-line-height) * 0.125);
+                border-top-right-radius: 0;
+                border-width:  calc(var(--lg-line-height) * 0.0625);
+            }
+        }
+        &[data-size="xl"] {
+            &::before,
+            &::after {
+                block-size:  var(--xl-line-height);
+                inline-size: calc(var(--xl-line-height) * 0.75);
+            }
+            &::before {
+                border-radius: calc(var(--xl-line-height) * 0.125);
+                border-top-right-radius: 0;
+                border-width:  calc(var(--xl-line-height) * 0.0625);
+            }
+        }
+        &[data-size="2xl"] {
+            &::before,
+            &::after {
+                block-size:  var(--2xl-line-height);
+                inline-size: calc(var(--2xl-line-height) * 0.75);
+            }
+            &::before {
+                border-radius: calc(var(--2xl-line-height) * 0.125);
+                border-top-right-radius: 0;
+                border-width:  calc(var(--2xl-line-height) * 0.0625);
+            }
+        }
+    }
+
+    /* === hatch === */
+
+    [data-sign="hatch"]::after {
+        background-image: repeating-linear-gradient(
+            -45deg,
+            currentcolor 0,
+            currentcolor 0.125rem,
+            transparent 0.125rem,
+            transparent 0.25rem
+        );
+        border-radius: 0;
+    }
+
+    /* --- size --- */
+
+    [data-sign="hatch"] {
+        &[data-size="xs"]::after {
+            block-size:  var(--xs-line-height);
+            inline-size: var(--xs-line-height);
+        }
+        &[data-size="sm"]::after {
+            block-size:  var(--sm-line-height);
+            inline-size: var(--sm-line-height);
+        }
+        &:where(
+            [data-size="md"],
+            :not([data-size])
+        )::after {
+            block-size:  var(--md-line-height);
+            inline-size: var(--md-line-height);
+        }
+        &[data-size="lg"]::after {
+            block-size:  var(--lg-line-height);
+            inline-size: var(--lg-line-height);
+        }
+        &[data-size="xl"]::after {
+            block-size:  var(--xl-line-height);
+            inline-size: var(--xl-line-height);
+        }
+        &[data-size="2xl"]::after {
+            block-size:  var(--2xl-line-height);
+            inline-size: var(--2xl-line-height);
+        }
+    }
+
+    /*  === minus, plus === */
+
+    [data-sign="plus"]::before,
+    :where(
+        [data-sign="minus"],
+        [data-sign="plus"]
+    )::after {
+        background-color: currentColor;
+    }
+    [data-sign="plus"]::before {
+        border-radius: 0;
+    }
+    [data-sign="minus"]::after,
+    [data-sign="plus"]::after {
+        border-radius: 0;
+    }
+    [data-sign="plus"]::after {
+        rotate: 90deg;
+    }
+
+    /* --- size --- */
+
+    [data-sign="plus"] {
+        &[data-size="xs"]::before {
+            block-size:  var(--xs-border-width);
+            inline-size: calc(var(--xs-line-height) * 0.625);
+        }
+        &[data-size="sm"]::before {
+            block-size:  var(--sm-border-width);
+            inline-size: calc(var(--sm-line-height) * 0.625);
+        }
+        &:where(
+            [data-size="md"],
+            :not([data-size])
+        )::before {
+            block-size:  var(--md-border-width);
+            inline-size: calc(var(--md-line-height) * 0.625);
+        }
+        &[data-size="lg"]::before {
+            block-size:  var(--lg-border-width);
+            inline-size: calc(var(--lg-line-height) * 0.625);
+        }
+        &[data-size="xl"]::before {
+            block-size:  var(--xl-border-width);
+            inline-size: calc(var(--xl-line-height) * 0.625);
+        }
+        &[data-size="2xl"]::before {
+            block-size:  var(--2xl-border-width);
+            inline-size: calc(var(--2xl-line-height) * 0.625);
+        }
+    }
+    :where(
+        [data-sign="minus"],
+        [data-sign="plus"]
+    ) {
+        &[data-size="xs"]::after {
+            block-size:  var(--xs-border-width);
+            inline-size: calc(var(--xs-line-height) * 0.625);
+        }
+        &[data-size="sm"]::after {
+            block-size:  var(--sm-border-width);
+            inline-size: calc(var(--sm-line-height) * 0.625);
+        }
+        &:where(
+            [data-size="md"],
+            :not([data-size])
+        )::after {
+            block-size:  var(--md-border-width);
+            inline-size: calc(var(--md-line-height) * 0.625);
+        }
+        &[data-size="lg"]::after {
+            block-size:  var(--lg-border-width);
+            inline-size: calc(var(--lg-line-height) * 0.625);
+        }
+        &[data-size="xl"]::after {
+            block-size:  var(--xl-border-width);
+            inline-size: calc(var(--xl-line-height) * 0.625);
+        }
+        &[data-size="2xl"]::after {
+            block-size:  var(--2xl-border-width);
+            inline-size: calc(var(--2xl-line-height) * 0.625);
+        }
+    }
+
+    /* === rule: indent with a rule bar === */
+
+    [data-sign="rule"]:where(
+        [data-inline-align="start"],
+        :not([data-inline-align])
+    ) {
+        padding-inline-start: 1.5rem;
+    }
+
+    [data-sign="rule"]::after {
+        background-color: var(--color-emphasis-ink);
+        border-radius:     0;
+        inline-size:       0.5rem;
+    }
+    @media (forced-colors: active) {
+        [data-sign="rule"]::after {
+            background-color: CanvasText;
+        }
+    }
+
+    /* --- size --- */
+
+    [data-sign="rule"] {
+        &[data-size="xs"]::after {
+            inset-block: calc((var(--xs-box-height) - var(--xs-line-height)) / 2);
+        }
+        &[data-size="sm"]::after {
+            inset-block: calc((var(--sm-box-height) - var(--sm-line-height)) / 2);
+        }
+        &:where(
+            [data-size="md"],
+            :not([data-size])
+        )::after {
+            inset-block: calc((var(--md-box-height) - var(--md-line-height)) / 2);
+        }
+        &[data-size="lg"]::after {
+            inset-block: calc((var(--lg-box-height) - var(--lg-line-height)) / 2);
+        }
+        &[data-size="xl"]::after {
+            inset-block: calc((var(--xl-box-height) - var(--xl-line-height)) / 2);
+        }
+        &[data-size="2xl"]::after {
+            inset-block: calc((var(--2xl-box-height) - var(--2xl-line-height)) / 2);
+        }
+    }
+
+    /*  === x === */
+
+    [data-sign="x"]::before,
+    [data-sign="x"]::after {
+        background-color: currentColor;
+        border-radius:    0;
+    }
+    [data-sign="x"]::before {
+        rotate: 45deg;
+    }
+    [data-sign="x"]::after {
+        rotate: -45deg;
+    }
+
+    /* --- size --- */
+
+    [data-sign="x"] {
+        &[data-size="xs"]::before,
+        &[data-size="xs"]::after {
+            block-size:  var(--xs-border-width);
+            inline-size: calc(var(--xs-line-height) / 1.4142);
+        }
+        &[data-size="sm"]::before,
+        &[data-size="sm"]::after {
+            block-size:  var(--sm-border-width);
+            inline-size: calc(var(--sm-line-height) / 1.4142);
+        }
+        &:where(
+            [data-size="md"],
+            :not([data-size])
+        )::before,
+        &:where(
+            [data-size="md"],
+            :not([data-size])
+        )::after {
+            block-size:  var(--md-border-width);
+            inline-size: calc(var(--md-line-height) / 1.4142);
+        }
+        &[data-size="lg"]::before,
+        &[data-size="lg"]::after {
+            block-size:  var(--lg-border-width);
+            inline-size: calc(var(--lg-line-height) / 1.4142);
+        }
+        &[data-size="xl"]::before,
+        &[data-size="xl"]::after {
+            block-size:  var(--xl-border-width);
+            inline-size: calc(var(--xl-line-height) / 1.4142);
+        }
+        &[data-size="2xl"]::before,
+        &[data-size="2xl"]::after {
+            block-size:  var(--2xl-border-width);
+            inline-size: calc(var(--2xl-line-height) / 1.4142);
+        }
+    }
+
+    /* === chevron === */
+
+    :where(
+        [data-facet="chevron"]:not(select),
+        summary:not([data-facet]),
+        button[aria-haspopup="listbox"]:not([data-facet]),
+        label:has(> select[data-facet="chevron"])
+    )::after {
+        border-radius:        0;
+        border-style:         solid;
+        border-top-width:     0;
+        border-left-width:    0;
+        border-bottom-width:  var(--md-border-width);
+        border-right-width:   var(--md-border-width);
+        content:              "";
+        inset-block:          0;
+        margin-block:         auto;
+        pointer-events:       none;
+        position:             absolute;
+        z-index:              2;
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+        :where(
+            [data-facet="chevron"]:not(select),
+            summary:not([data-facet]),
+            button[aria-haspopup="listbox"]:not([data-facet]),
+            label:has(> select[data-facet="chevron"])
+        )::after {
+            transition: transform 0.15s ease;
+        }
+    }
+
+    /* --- size --- */
+
+    :where(
+        [data-facet="chevron"]:not(select),
+        summary:not([data-facet]),
+        button[aria-haspopup="listbox"]:not([data-facet])
+    ) {
+        &[data-size="xs"] {
+            padding-inline-end: calc(var(--xs-border-radius) * 2 + var(--xs-font-size) * 0.75 * 1.06);
+        }
+
+        &[data-size="sm"] {
+            padding-inline-end: calc(var(--sm-border-radius) * 2 + var(--sm-font-size) * 0.75 * 1.06);
+        }
+
+        &:where(
+            [data-size="md"],
+            :not([data-size])
+        ) {
+            padding-inline-end: calc(var(--md-border-radius) * 2 + var(--md-font-size) * 0.75 * 1.06);
+        }
+
+        &[data-size="lg"] {
+            padding-inline-end: calc(var(--lg-border-radius) * 2 + var(--lg-font-size) * 0.6 * 1.06);
+        }
+
+        &[data-size="xl"] {
+            padding-inline-end: calc(var(--xl-border-radius) * 2 + var(--xl-font-size) * 0.6 * 1.06);
+        }
+
+        &[data-size="2xl"] {
+            padding-inline-end: calc(var(--2xl-border-radius) * 2 + var(--2xl-font-size) * 0.6 * 1.06);
+        }
+    }
+
+    :where(
+        [data-facet="chevron"]:not(select)[data-size="xs"],
+        summary:not([data-facet])[data-size="xs"],
+        button[aria-haspopup="listbox"]:not([data-facet])[data-size="xs"],
+        label:has(> select[data-facet="chevron"][data-size="xs"])
+    )::after {
+        block-size:          calc(var(--xs-font-size) * 0.75 * 1.06);
+        border-bottom-width: var(--xs-border-width);
+        border-right-width:  var(--xs-border-width);
+        inline-size:         calc(var(--xs-font-size) * 0.75 * 1.06);
+        inset-inline-end:    var(--xs-border-radius);
+        transform:           translateY(-0.125rem) rotate(45deg);
+    }
+    :where(
+        [data-facet="chevron"]:not(select)[data-size="xs"]:where(:open, :checked, :has(+ [popover]:popover-open)),
+        details:open > summary:not([data-facet])[data-size="xs"],
+        button[aria-haspopup="listbox"]:not([data-facet])[data-size="xs"]:has(+ [popover]:popover-open),
+        label:has(> select[data-facet="chevron"][data-size="xs"]:open)
+    )::after {
+        transform: translateY(0.125rem) rotate(225deg);
+    }
+
+    :where(
+        [data-facet="chevron"]:not(select)[data-size="sm"],
+        summary:not([data-facet])[data-size="sm"],
+        button[aria-haspopup="listbox"]:not([data-facet])[data-size="sm"],
+        label:has(> select[data-facet="chevron"][data-size="sm"])
+    )::after {
+        block-size:          calc(var(--sm-font-size) * 0.75 * 1.06);
+        border-bottom-width: var(--sm-border-width);
+        border-right-width:  var(--sm-border-width);
+        inline-size:         calc(var(--sm-font-size) * 0.75 * 1.06);
+        inset-inline-end:    var(--sm-border-radius);
+        transform:           translateY(-0.125rem) rotate(45deg);
+    }
+    :where(
+        [data-facet="chevron"]:not(select)[data-size="sm"]:where(:open, :checked, :has(+ [popover]:popover-open)),
+        details:open > summary:not([data-facet])[data-size="sm"],
+        button[aria-haspopup="listbox"]:not([data-facet])[data-size="sm"]:has(+ [popover]:popover-open),
+        label:has(> select[data-facet="chevron"][data-size="sm"]:open)
+    )::after {
+        transform: translateY(0.125rem) rotate(225deg);
+    }
+
+    :where(
+        [data-facet="chevron"]:not(select):where([data-size="md"], :not([data-size])),
+        summary:not([data-facet]):where([data-size="md"], :not([data-size])),
+        button[aria-haspopup="listbox"]:not([data-facet]):where([data-size="md"], :not([data-size])),
+        label:has(> select[data-facet="chevron"]:where([data-size="md"], :not([data-size])))
+    )::after {
+        block-size:         calc(var(--md-font-size) * 0.75 * 1.06);
+        inline-size:        calc(var(--md-font-size) * 0.75 * 1.06);
+        inset-inline-end:   var(--md-border-radius);
+        transform:          translateY(-0.1875rem) rotate(45deg);
+    }
+    :where(
+        [data-facet="chevron"]:not(select):where([data-size="md"], :not([data-size])):where(:open, :checked, :has(+ [popover]:popover-open)),
+        details:open > summary:not([data-facet]):where([data-size="md"], :not([data-size])),
+        button[aria-haspopup="listbox"]:not([data-facet]):where([data-size="md"], :not([data-size])):has(+ [popover]:popover-open),
+        label:has(> select[data-facet="chevron"]:where([data-size="md"], :not([data-size])):open)
+    )::after {
+        transform: translateY(0.1875rem) rotate(225deg);
+    }
+
+    :where(
+        [data-facet="chevron"]:not(select)[data-size="lg"],
+        summary:not([data-facet])[data-size="lg"],
+        button[aria-haspopup="listbox"]:not([data-facet])[data-size="lg"],
+        label:has(> select[data-facet="chevron"][data-size="lg"])
+    )::after {
+        block-size:          calc(var(--lg-font-size) * 0.6 * 1.06);
+        border-bottom-width: var(--lg-border-width);
+        border-right-width:  var(--lg-border-width);
+        inline-size:         calc(var(--lg-font-size) * 0.6 * 1.06);
+        inset-inline-end:    var(--lg-border-radius);
+        transform:           translateY(-0.125rem) rotate(45deg);
+    }
+
+    :where(
+        [data-facet="chevron"]:not(select)[data-size="lg"]:where(:open, :checked, :has(+ [popover]:popover-open)),
+        details:open > summary:not([data-facet])[data-size="lg"],
+        button[aria-haspopup="listbox"]:not([data-facet])[data-size="lg"]:has(+ [popover]:popover-open),
+        label:has(> select[data-facet="chevron"][data-size="lg"]:open)
+    )::after {
+        transform: translateY(0.125rem) rotate(225deg);
+    }
+
+    :where(
+        [data-facet="chevron"]:not(select)[data-size="xl"],
+        summary:not([data-facet])[data-size="xl"],
+        button[aria-haspopup="listbox"]:not([data-facet])[data-size="xl"],
+        label:has(> select[data-facet="chevron"][data-size="xl"])
+    )::after {
+        block-size:          calc(var(--xl-font-size) * 0.6 * 1.06);
+        border-bottom-width: var(--xl-border-width);
+        border-right-width:  var(--xl-border-width);
+        inline-size:         calc(var(--xl-font-size) * 0.6 * 1.06);
+        inset-inline-end:    var(--xl-border-radius);
+        transform:           translateY(-0.1875rem) rotate(45deg);
+    }
+
+    :where(
+        [data-facet="chevron"]:not(select)[data-size="xl"]:where(:open, :checked, :has(+ [popover]:popover-open)),
+        details:open > summary:not([data-facet])[data-size="xl"],
+        button[aria-haspopup="listbox"]:not([data-facet])[data-size="xl"]:has(+ [popover]:popover-open),
+        label:has(> select[data-facet="chevron"][data-size="xl"]:open)
+    )::after {
+        transform: translateY(0.1875rem) rotate(225deg);
+    }
+
+    :where(
+        [data-facet="chevron"]:not(select)[data-size="2xl"],
+        summary:not([data-facet])[data-size="2xl"],
+        button[aria-haspopup="listbox"]:not([data-facet])[data-size="2xl"],
+        label:has(> select[data-facet="chevron"][data-size="2xl"])
+    )::after {
+        block-size:          calc(var(--2xl-font-size) * 0.6 * 1.06);
+        border-bottom-width: var(--2xl-border-width);
+        border-right-width:  var(--2xl-border-width);
+        inline-size:         calc(var(--2xl-font-size) * 0.6 * 1.06);
+        inset-inline-end:    var(--2xl-border-radius);
+        transform:           translateY(-0.25rem) rotate(45deg);
+    }
+
+    :where(
+        [data-facet="chevron"]:not(select)[data-size="2xl"]:where(:open, :checked, :has(+ [popover]:popover-open)),
+        details:open > summary:not([data-facet])[data-size="2xl"],
+        button[aria-haspopup="listbox"]:not([data-facet])[data-size="2xl"]:has(+ [popover]:popover-open),
+        label:has(> select[data-facet="chevron"][data-size="2xl"]:open)
+    )::after {
+        transform: translateY(0.25rem) rotate(225deg);
+    }
+
+    /* === eye === */
+
+    [data-facet="eye"]::before {
+        background-color: currentColor;
+        content:          "";
+        inset:            0;
+        margin:           auto;
+        position:         absolute;
+        clip-path: shape(
+            from 100% 50%,
+            curve to 50% 15.625% with 100% 50% / 81.25% 15.625%,
+            curve to 0% 50% with 18.75% 15.625% / 0% 50%,
+            curve to 50% 84.375% with 0% 50% / 18.75% 84.375%,
+            curve to 100% 50% with 81.25% 84.375% / 100% 50%,
+            close,
+            move to 92.5% 50%,
+            curve to 50% 79.219% with 92.5% 50% / 76.562% 79.219%,
+            curve to 7.5% 50% with 23.438% 79.219% / 7.5% 50%,
+            curve to 50% 20.781% with 7.5% 50% / 23.438% 20.781%,
+            curve to 92.5% 50% with 76.562% 20.781% / 92.5% 50%,
+            close,
+            move to -10.828% -5.172%,
+            line to 105.172% 110.828%,
+            line to 110.828% 105.172%,
+            line to -5.172% -10.828%,
+            close
+        );
+    }
+
+    [data-facet="eye"]:where(:checked, [aria-pressed="true"])::before {
+        clip-path: shape(
+            from 100% 50%,
+            curve to 50% 15.625% with 100% 50% / 81.25% 15.625%,
+            curve to 0% 50% with 18.75% 15.625% / 0% 50%,
+            curve to 50% 84.375% with 0% 50% / 18.75% 84.375%,
+            curve to 100% 50% with 81.25% 84.375% / 100% 50%,
+            close
+        );
+    }
+
+    /* --- size --- */
+
+    [data-facet="eye"] {
+        &[data-size="xs"]::before {
+            block-size:  var(--xs-line-height);
+            inline-size: var(--xs-line-height);
+        }
+
+        &[data-size="sm"]::before {
+            block-size:  var(--sm-line-height);
+            inline-size: var(--sm-line-height);
+        }
+
+        &:where(
+            [data-size="md"],
+            :not([data-size])
+        )::before {
+            block-size:  var(--md-line-height);
+            inline-size: var(--md-line-height);
+        }
+
+        &[data-size="lg"]::before {
+            block-size:  var(--lg-line-height);
+            inline-size: var(--lg-line-height);
+        }
+
+        &[data-size="xl"]::before {
+            block-size:  var(--xl-line-height);
+            inline-size: var(--xl-line-height);
+        }
+
+        &[data-size="2xl"]::before {
+            block-size:  var(--2xl-line-height);
+            inline-size: var(--2xl-line-height);
+        }
+    }
+
+    /* === reload, sync === */
+
+    :where(
+        [data-facet="reload"],
+        [data-facet="sync"]
+    )::after {
+        background-color: currentColor;
+        content:           "";
+        inset:             0;
+        margin:            auto;
+        position:          absolute;
+    }
+
+    /* --- size --- */
+
+    :where(
+        [data-facet="reload"],
+        [data-facet="sync"]
+    ) {
+        &[data-size="xs"]::after {
+            block-size:  var(--xs-line-height);
+            inline-size: var(--xs-line-height);
+        }
+        &[data-size="sm"]::after {
+            block-size:  var(--sm-line-height);
+            inline-size: var(--sm-line-height);
+        }
+        &:where(
+            [data-size="md"],
+            :not([data-size])
+        )::after {
+            block-size:  var(--md-line-height);
+            inline-size: var(--md-line-height);
+        }
+        &[data-size="lg"]::after {
+            block-size:  var(--lg-line-height);
+            inline-size: var(--lg-line-height);
+        }
+        &[data-size="xl"]::after {
+            block-size:  var(--xl-line-height);
+            inline-size: var(--xl-line-height);
+        }
+        &[data-size="2xl"]::after {
+            block-size:  var(--2xl-line-height);
+            inline-size: var(--2xl-line-height);
+        }
+    }
+
+    /* === reload === */
+
+    [data-facet="reload"]::after {
+        clip-path: shape(
+            from 50% 18.75%,
+            arc to 78.412% 36.962% of 31.25% 31.25% ccw large,
+            arc to 84.087% 34.356% of 3.125% 3.125% cw small,
+            arc to 50% 12.5% of 37.5% 37.5% cw large,
+            line to 50% 3.338%,
+            arc to 52.562% 2.138% of 1.562% 1.562% cw small,
+            line to 67.312% 14.425%,
+            curve to 67.312% 16.825% with 68.062% 15.05% / 68.062% 16.2%,
+            line to 52.562% 29.113%,
+            arc to 50% 27.913% of 1.562% 1.562% cw small,
+            line to 50% 18.75%,
+            close
+        );
+    }
+
+    /* === sync === */
+
+    [data-facet="sync"]::after {
+        clip-path: shape(
+            from 50% 18.75%,
+            curve to 25.894% 30.112% with 40.3% 18.75% / 31.625% 23.169%,
+            arc to 21.075% 26.137% of 3.125% 3.125% cw large,
+            arc to 86.981% 43.75% of 37.512% 37.512% cw small,
+            line to 96.663% 43.75%,
+            arc to 97.863% 46.312% of 1.562% 1.562% cw small,
+            line to 85.575% 61.062%,
+            arc to 83.175% 61.062% of 1.562% 1.562% cw small,
+            line to 70.888% 46.312%,
+            arc to 72.088% 43.75% of 1.562% 1.562% cw small,
+            line to 80.625% 43.75%,
+            arc to 50% 18.75% of 31.25% 31.25% ccw small,
+            close,
+            move to 19.375% 56.25%,
+            arc to 74.106% 69.888% of 31.262% 31.262% ccw small,
+            arc to 78.925% 73.862% of 3.125% 3.125% cw large,
+            arc to 13.019% 56.25% of 37.512% 37.512% cw small,
+            line to 3.75% 56.25%,
+            line to 28.325% 56.25%,
+            arc to 29.525% 58.812% of 1.562% 1.562% cw small,
+            line to 17.238% 73.562%,
+            arc to 14.838% 73.562% of 1.562% 1.562% cw small,
+            line to 2.55% 58.812%,
+            arc to 3.75% 56.25% of 1.562% 1.562% cw small,
+            line to 19.375% 56.25%,
+            close
+        );
+    }
+}

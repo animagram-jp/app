@@ -4,20 +4,20 @@
     <label>
         <input type="search"></label>
 
-    <search aria-labelledby="">
-        <span id=""></span>
+    <search>
+        <span></span>
         <label>
             <input type="search"></label>
         <button type="button"></button></search>
 
-    <form role="search" aria-labelledby="">
-        <span id=""></span>
+    <form role="search">
+        <span></span>
         <label>
-            <input type="search" name=""></label>
+            <input type="search"></label>
         <button type="submit"></button></form>
 
-    <search aria-labelledby="">
-        <span id=""></span>
+    <search>
+        <span></span>
         <label>
             <select data-facet="chevron">
                 <option></option>
@@ -26,14 +26,14 @@
             <input type="search"></label>
         <button type="button"></button></search>
 
-    <form role="search" aria-labelledby="">
-        <span id=""></span>
+    <form role="search">
+        <span></span>
         <label>
             <select data-facet="chevron">
                 <option></option>
                 <option></option></select></label>
         <label>
-            <input type="search" name=""></label>
+            <input type="search"></label>
         <button type="submit"></button></form>
 */
 
@@ -42,7 +42,7 @@
         position: relative;
     }
 
-    *:where(search, form[role="search"]) > span {
+    :where(search, form[role="search"]) > span {
         margin-inline-end: 0.5rem;
     }
 

@@ -1,0 +1,177 @@
+/*
+    Usage:
+
+    <input type="text|email|password|search|url|tel|checkbox|radio">
+
+    <label>
+        <span></span>
+        <input type="password">
+        <input type="checkbox"></label>
+
+    <textarea placeholder=""></textarea>
+    
+    <select>
+        <option></option></select>
+        
+    <label>
+        <select data-facet="chevron">
+            <option></option></select></label>
+*/
+@layer css.input {
+
+    :where(
+        input:is(
+            [type="text"],
+            [type="email"],
+            [type="password"],
+            [type="search"],
+            [type="url"],
+            [type="tel"]
+        ),
+        select,
+        textarea
+    ) {
+        field-sizing:     content;
+        max-inline-size:  100%;
+        min-inline-size:  7ch; /* per https://developer.chrome.com/docs/css-ui/css-field-sizing */
+    }
+
+    :where(
+        input:is(
+            [type="text"],
+            [type="email"],
+            [type="password"],
+            [type="search"],
+            [type="url"],
+            [type="tel"]
+        ),
+        textarea
+    ) {
+        caret-color: var(--color-ink-mix);
+        cursor:      text;
+
+        &::placeholder {
+            color: var(--color-ink-mix);        
+        }
+    }
+
+    :where(
+        input[type="checkbox"],
+        input[type="radio"]
+    ) {
+        cursor: pointer;
+    }
+
+    :where(
+        input[type="checkbox"],
+        input[type="radio"]
+    ):is([data-sign]):not([data-sign-style="inline"], [data-surround]):where(:checked, :indeterminate) {
+        background-color: var(--color-emphasis-ink);
+        color:             var(--color-paper);
+    }
+
+    input[inputmode="numeric"] {
+        text-align: right;
+    }
+
+    /* === password === */
+
+    input[type="password"]::-ms-reveal {
+        display: none;
+    }
+
+    label:has(> input[aria-controls]) {
+        position: relative;
+    }
+
+    label:has(> input[aria-controls]) > input:not([type="checkbox"]) {
+        field-sizing: fixed;
+        inline-size:  15rem;
+    }
+
+    label:has(> input[aria-controls]) > input[type="checkbox"] {
+        inset-block:      0;
+        inset-inline-end: 0;
+        position:         absolute;
+    }
+
+    /* --- size --- */
+
+    label:has(> input[aria-controls]:where([data-size="md"], :not([data-size]))) > input:not([type="checkbox"]) {
+        padding-inline-end: var(--md-box-height);
+    }
+    label:has(> input[aria-controls]) > input[type="checkbox"]:where([data-size="md"], :not([data-size])) {
+        padding-inline-end: var(--md-border-radius);
+    }
+
+    select:not([data-facet]) {
+        appearance: auto;
+    }
+
+    /* --- size --- */
+
+    label > select[data-facet="chevron"][data-size="xs"] {
+        padding-inline-end: calc(var(--xs-box-height) * 0.75);
+    }
+    label > select[data-facet="chevron"][data-size="sm"] {
+        padding-inline-end: calc(var(--sm-box-height) * 0.6);
+    }
+    label > select[data-facet="chevron"]:where(
+        [data-size="md"],
+        :not([data-size])
+    ) {
+        padding-inline-end: calc(var(--md-box-height) * 0.6);
+    }
+    label > select[data-facet="chevron"][data-size="lg"] {
+        padding-inline-end: calc(var(--lg-box-height) * 0.6);
+    }
+    label > select[data-facet="chevron"][data-size="xl"] {
+        padding-inline-end: calc(var(--xl-box-height) * 0.6);
+    }
+    label > select[data-facet="chevron"][data-size="2xl"] {
+        padding-inline-end: calc(var(--2xl-box-height) * 0.6);
+    }
+
+    /* === required ===
+
+        Usage:
+
+        <label>
+            <span></span>
+            <input:not([type="radio"]) required></label>
+            
+        <label></label>
+        <input:not([type="radio"]) required>
+
+        <fieldset>
+            <legend>
+                <span></span></legend>
+            <label>
+                <input type="radio" required></label></fieldset>
+
+        <fieldset>
+            <*:not(legend, label)></*:not(legend, label)>
+            <label>
+                <span></span>
+                <input type="radio" required></label></fieldset>
+    */
+    label:has(:not(input[type="radio"]):required) > :not(input, select, textarea):first-child::after {
+        color:   var(--color-error);
+        content: "*";
+    }
+
+    label:has(+ :not([type="radio"]):required)::after {
+        color:   var(--color-error);
+        content: "*";
+    }
+
+    fieldset:has(input[type="radio"]:required) > legend > :first-child::after {
+        color:   var(--color-error);
+        content: "*";
+    }
+
+    fieldset:has(input[type="radio"]:required) > :not(label, legend):first-child::after {
+        color:   var(--color-error);
+        content: "*";
+    }
+}

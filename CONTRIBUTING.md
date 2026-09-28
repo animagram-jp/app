@@ -117,7 +117,7 @@ perl -0pi -e 's/return cachedTextDecoder\.decode\(getUint8ArrayMemory0\(\)\.suba
 cargo +nightly fmt
 
 # copy from animagram/css
-cp -f ../css/css/*.css ./distribution/css/css/
+cp -f ../css/css/*.css ./distribution/css/library/
 ```
 
 OPFS files are in:

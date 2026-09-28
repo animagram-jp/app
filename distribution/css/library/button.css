@@ -1,0 +1,32 @@
+/*
+    Usage:
+
+    <a></a>
+    <button></button>
+    <input type="button">
+    <input type="submit">
+    <input type="reset">
+    <summary></summary>
+*/
+@layer css.button {
+
+    :where(button, [type="button"], [type="submit"], [type="reset"]) {
+        font-weight: bold;
+    }
+
+    summary:not([data-surround]) {
+        display: block;
+    }
+
+    /* --- visited --- */
+
+    a:visited:not([data-surround="fill"], :hover, :focus-visible, [aria-disabled="true"]) {
+        color: var(--color-visited);
+    }
+
+    @media (forced-colors: active) {
+        a:visited:not([data-surround="fill"], :hover, :focus-visible, [aria-disabled="true"]) {
+            color: VisitedText;
+        }
+    }
+}

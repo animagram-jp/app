@@ -1,0 +1,261 @@
+@layer css.data_size {
+
+    /* === common for elements whether inline flow or not, focusable or not. === */
+
+    * {
+        &[data-size="xs"] {
+            font-size:      var(--xs-font-size);
+            letter-spacing: var(--xs-letter-spacing);
+            line-height:    var(--xs-line-height);
+        }
+
+        &[data-size="sm"] {
+            font-size:      var(--sm-font-size);
+            letter-spacing: var(--sm-letter-spacing);
+            line-height:    var(--sm-line-height);
+        }
+
+        &[data-size="md"],
+        &:where(:not([data-size]):not([data-size] *)) {
+            font-size:      var(--md-font-size);
+            letter-spacing: var(--md-letter-spacing);
+            line-height:    var(--md-line-height);
+        }
+
+        &[data-size="lg"] {
+            font-size:      var(--lg-font-size);
+            letter-spacing: var(--lg-letter-spacing);
+            line-height:    var(--lg-line-height);
+        }
+
+        &[data-size="xl"] {
+            font-size:      var(--xl-font-size);
+            letter-spacing: var(--xl-letter-spacing);
+            line-height:    var(--xl-line-height);
+        }
+
+        &[data-size="2xl"] {
+            font-size:      var(--2xl-font-size);
+            letter-spacing: var(--2xl-letter-spacing);
+            line-height:    var(--2xl-line-height);
+        }
+    }
+
+    h3:not([data-size]) {
+        font-size:      var(--lg-font-size);
+        letter-spacing: var(--lg-letter-spacing);
+        line-height:    var(--lg-line-height);
+    }
+
+    h2:not([data-size]) {
+        font-size:      var(--xl-font-size);
+        letter-spacing: var(--xl-letter-spacing);
+        line-height:    var(--xl-line-height);
+    }
+
+    h1:not([data-size]) {
+        font-size:      var(--2xl-font-size);
+        letter-spacing: var(--2xl-letter-spacing);
+        line-height:    var(--2xl-line-height);
+    }
+
+    /* === surround style without border === */
+
+    :where(
+        [data-surround="transparent"],
+        li[role],
+        li > [role]:where(a, button),
+        li > label:has(> input[role])
+    ) {
+        &[data-size="xs"] {
+            min-height:     var(--xs-box-height);
+            padding-block:  calc((var(--xs-box-height) - var(--xs-line-height)) / 2);
+            padding-inline: var(--xs-border-radius);
+        }
+
+        &[data-size="sm"] {
+            min-height:     var(--sm-box-height);
+            padding-block:  calc((var(--sm-box-height) - var(--sm-line-height)) / 2);
+            padding-inline: var(--sm-border-radius);
+        }
+
+        &:where(
+            [data-size="md"],
+            :not([data-size])
+        ) {
+            min-height:     var(--md-box-height);
+            padding-block:  calc((var(--md-box-height) - var(--md-line-height)) / 2);
+            padding-inline: var(--md-border-radius);
+        }
+
+        &[data-size="lg"] {
+            min-height:     var(--lg-box-height);
+            padding-block:  calc((var(--lg-box-height) - var(--lg-line-height)) / 2);
+            padding-inline: var(--lg-border-radius);
+        }
+
+        &[data-size="xl"] {
+            min-height:     var(--xl-box-height);
+            padding-block:  calc((var(--xl-box-height) - var(--xl-line-height)) / 2);
+            padding-inline: var(--xl-border-radius);
+        }
+
+        &[data-size="2xl"] {
+            min-height:     var(--2xl-box-height);
+            padding-block:  calc((var(--2xl-box-height) - var(--2xl-line-height)) / 2);
+            padding-inline: var(--2xl-border-radius);
+        }
+    }
+
+    /* === surround style with border === */
+
+    :where(
+        [data-surround="fill"],
+        [data-surround="outline"],
+        :is(
+            button,
+            [type="button"],
+            [type="submit"],
+            [type="reset"],
+            input:is(
+                [type="text"],
+                [type="email"],
+                [type="password"],
+                [type="search"],
+                [type="url"],
+                [type="tel"]
+            ),
+            select,
+            summary,
+            textarea,
+            [data-type="toast"] > *,
+            section[data-type="error-summary"],
+            p[data-type="error"]
+        ):not([data-surround])
+    ) {
+        &[data-size="xs"] {
+            border-radius:  var(--xs-border-radius);
+            border-width:   var(--xs-border-width);
+            min-height:     var(--xs-box-height);
+            padding-block:  calc(((var(--xs-box-height) - var(--xs-line-height)) / 2) - var(--xs-border-width));
+            padding-inline: var(--xs-border-radius);
+        }
+
+        &[data-size="sm"] {
+            border-radius:  var(--sm-border-radius);
+            border-width:   var(--sm-border-width);
+            min-height:     var(--sm-box-height);
+            padding-block:  calc(((var(--sm-box-height) - var(--sm-line-height)) / 2) - var(--sm-border-width));
+            padding-inline: var(--sm-border-radius);
+        }
+
+        &:where(
+            [data-size="md"],
+            :not([data-size])
+        ) {
+            border-radius:  var(--md-border-radius);
+            border-width:   var(--md-border-width);
+            min-height:     var(--md-box-height);
+            padding-block:  calc(((var(--md-box-height) - var(--md-line-height)) / 2) - var(--md-border-width));
+            padding-inline: var(--md-border-radius);
+        }
+
+        &[data-size="lg"] {
+            border-radius:  var(--lg-border-radius);
+            border-width:   var(--lg-border-width);
+            min-height:     var(--lg-box-height);
+            padding-block:  calc(((var(--lg-box-height) - var(--lg-line-height)) / 2) - var(--lg-border-width));
+            padding-inline: var(--lg-border-radius);
+        }
+
+        &[data-size="xl"] {
+            border-radius:  var(--xl-border-radius);
+            border-width:   var(--xl-border-width);
+            min-height:     var(--xl-box-height);
+            padding-block:  calc(((var(--xl-box-height) - var(--xl-line-height)) / 2) - var(--xl-border-width));
+            padding-inline: var(--xl-border-radius);
+        }
+
+        &[data-size="2xl"] {
+            border-radius:  var(--2xl-border-radius);
+            border-width:   var(--2xl-border-width);
+            min-height:     var(--2xl-box-height);
+            padding-block:  calc(((var(--2xl-box-height) - var(--2xl-line-height)) / 2) - var(--2xl-border-width));
+            padding-inline: var(--2xl-border-radius);
+        }
+    }
+
+    /* === common for elements inline flow and focusable === */
+
+    a:not([data-surround="fill"], [data-surround="outline"], [data-surround="transparent"]) {
+        &[data-size="xs"]:focus-visible {
+            outline-offset: calc(((var(--xs-box-height) - var(--xs-line-height)) / 2) - var(--xs-border-width));
+            outline-width:  var(--xs-border-width);
+        }
+
+        &[data-size="sm"]:focus-visible {
+            outline-offset: calc(((var(--sm-box-height) - var(--sm-line-height)) / 2) - var(--sm-border-width));
+            outline-width:  var(--sm-border-width);
+        }
+
+        &:where(
+            [data-size="md"],
+            :not([data-size])
+        ):focus-visible {
+            outline-offset: calc(((var(--md-box-height) - var(--md-line-height)) / 2) - var(--md-border-width));
+            outline-width:  var(--md-border-width);
+        }
+
+        &[data-size="lg"]:focus-visible {
+            outline-offset: calc(((var(--lg-box-height) - var(--lg-line-height)) / 2) - var(--lg-border-width));
+            outline-width:  var(--lg-border-width);
+        }
+
+        &[data-size="xl"]:focus-visible {
+            outline-offset: calc(((var(--xl-box-height) - var(--xl-line-height)) / 2) - var(--xl-border-width));
+            outline-width:  var(--xl-border-width);
+        }
+
+        &[data-size="2xl"]:focus-visible {
+            outline-offset: calc(((var(--2xl-box-height) - var(--2xl-line-height)) / 2) - var(--2xl-border-width));
+            outline-width:  var(--2xl-border-width);
+        }
+    }
+
+    /* === surround transparent style: focus === */
+
+    :where(
+        [data-surround="transparent"],
+        tr:not([data-style], [data-surround]),
+        li[role],
+        li > [role]:where(a, button),
+        li > label:has(> input[role])
+    ) {
+        &[data-size="xs"]:is(:focus-visible, :has(:checked)) {
+            outline-offset: calc(var(--xs-border-width) * -1);
+        }
+
+        &[data-size="sm"]:is(:focus-visible, :has(:checked)) {
+            outline-offset: calc(var(--sm-border-width) * -1);
+        }
+
+        &:where(
+            [data-size="md"],
+            :not([data-size])
+        ):is(:focus-visible, :has(:checked)) {
+            outline-offset: calc(var(--md-border-width) * -1);
+        }
+
+        &[data-size="lg"]:is(:focus-visible, :has(:checked)) {
+            outline-offset: calc(var(--lg-border-width) * -1);
+        }
+
+        &[data-size="xl"]:is(:focus-visible, :has(:checked)) {
+            outline-offset: calc(var(--xl-border-width) * -1);
+        }
+
+        &[data-size="2xl"]:is(:focus-visible, :has(:checked)) {
+            outline-offset: calc(var(--2xl-border-width) * -1);
+        }
+    }
+}

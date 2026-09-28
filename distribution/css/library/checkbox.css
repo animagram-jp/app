@@ -1,0 +1,110 @@
+/*  Usage:
+
+    <label>
+        <span></span>
+        <input type="checkbox"></label>
+*/
+
+@layer css.checkbox {
+
+    input[type="checkbox"]:not([role="switch"]):not([data-sign]):not([data-facet]):where(:checked, :indeterminate) {
+        color: var(--color-paper);
+    }
+
+    input[type="checkbox"]:not([role="switch"]):is(:not([data-sign]):not([data-facet]), [data-sign="check"])::before {
+        border-color: var(--color-paper);
+    }
+
+    /* --- indeterminate --- */
+
+    input[type="checkbox"]:not([role="switch"]):is(:not([data-sign]):not([data-facet]), [data-sign="check"]):indeterminate::before {
+        border-width: 0 0 0.1875rem 0;
+        rotate:       0deg;
+        translate:    0 -0.09375rem;
+    }
+
+    @media (forced-colors: active) {
+        input[type="checkbox"]:not([role="switch"]):is(:not([data-sign]):not([data-facet]), [data-sign="check"])::before {
+            border-color: Canvas;
+        }
+    }
+
+    /* === size === */
+
+    input[type="checkbox"]:not([role="switch"]):not([data-sign], [data-facet], [data-surround]) {
+        &[data-size="xs"] {
+            border-radius: var(--xs-border-radius);
+            border-width:  var(--xs-border-width);
+            block-size:    var(--xs-box-height);
+            inline-size:   var(--xs-box-height);
+
+            &:indeterminate::before {
+                block-size:  0;
+                inline-size: calc(var(--xs-box-height) / 2);
+            }
+        }
+
+        &[data-size="sm"] {
+            border-radius: var(--sm-border-radius);
+            border-width:  var(--sm-border-width);
+            block-size:    var(--sm-box-height);
+            inline-size:   var(--sm-box-height);
+
+            &:indeterminate::before {
+                block-size:  0;
+                inline-size: calc(var(--sm-box-height) / 2);
+            }
+        }
+
+        &:where(
+            [data-size="md"],
+            :not([data-size])
+        ) {
+            border-radius: var(--md-border-radius);
+            border-width:  var(--md-border-width);
+            block-size:    var(--md-box-height);
+            inline-size:   var(--md-box-height);
+
+            &:indeterminate::before {
+                block-size:  0;
+                inline-size: calc(var(--md-box-height) / 2);
+            }
+        }
+
+        &[data-size="lg"] {
+            border-radius: var(--lg-border-radius);
+            border-width:  var(--lg-border-width);
+            block-size:    var(--lg-box-height);
+            inline-size:   var(--lg-box-height);
+
+            &:indeterminate::before {
+                block-size:  0;
+                inline-size: calc(var(--lg-box-height) / 2);
+            }
+        }
+
+        &[data-size="xl"] {
+            border-radius: var(--xl-border-radius);
+            border-width:  var(--xl-border-width);
+            block-size:    var(--xl-box-height);
+            inline-size:   var(--xl-box-height);
+
+            &:indeterminate::before {
+                block-size:  0;
+                inline-size: calc(var(--xl-box-height) / 2);
+            }
+        }
+
+        &[data-size="2xl"] {
+            border-radius: var(--2xl-border-radius);
+            border-width:  var(--2xl-border-width);
+            block-size:    var(--2xl-box-height);
+            inline-size:   var(--2xl-box-height);
+
+            &:indeterminate::before {
+                block-size:  0;
+                inline-size: calc(var(--2xl-box-height) / 2);
+            }
+        }
+    }
+}
