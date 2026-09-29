@@ -10,7 +10,7 @@ use core::{
 use wasm_bindgen::prelude::wasm_bindgen;
 
 use crate::{
-    arena::{APP, COMMAND_CAPACITY, EVENT_CAPACITY, RUNNING, emit},
+    arena::{APP, EVENT_CAPACITY, RUNNING, emit},
     event::{Event, Handler, decode_event},
     js_client::{
         Command, CommandError, EventType, Thresholds, TouchTracker, detect_device, encode_command,
@@ -25,28 +25,25 @@ pub struct App {
     thresholds: Thresholds,
     events:     VecDeque<Event>,
     handler:    Handler,
-    commands:   Vec<u8>,
+    commands:   Vec<Command>,
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 impl App {
     pub async fn init(pointer_coarse: bool, viewport_width: f64, viewport_height: f64) {
-        let mut app = App {
+        let app = App {
             touch:      TouchTracker::default(),
             thresholds: Thresholds::for_device(detect_device(pointer_coarse)),
             events:     VecDeque::with_capacity(EVENT_CAPACITY),
             handler:    Handler::ready(viewport_width, viewport_height).await,
-            commands:   Vec::with_capacity(COMMAND_CAPACITY),
+            commands:   Vec::new(),
         };
 
         let (_events, commands) = app.handler.initial_draw();
         for command in &commands {
-            encode_command(&mut app.commands, command);
-        }
-
-        if !app.commands.is_empty() {
-            emit(&app.commands);
-            app.commands.clear();
+            let mut frame = Vec::new();
+            encode_command(&mut frame, command);
+            emit(&frame);
         }
 
         #[allow(clippy::deref_addrof)]
@@ -61,17 +58,17 @@ impl App {
     /// # async fn example() {
     /// # use app::app::App;
     /// # use app::arena::APP;
-    /// # use app::js_client::OPERATION_ERROR;
+    /// # use app::js_client::Command;
     /// App::init(false, 0.0, 0.0).await;
     /// let app = unsafe { (*(&raw mut APP)).as_mut() }.unwrap();
     /// app.clear();
     /// app.process(&[]);
-    /// assert_eq!(app.commands()[0], OPERATION_ERROR);
+    /// assert!(matches!(app.commands()[0], Command::Error { .. }));
     /// # }
     /// ```
     pub fn process(&mut self, frame: &[u8]) {
         let Some(event) = decode_event(frame) else {
-            encode_command(&mut self.commands, &Command::Error { error: CommandError::Decode });
+            self.commands.push(Command::Error { error: CommandError::Decode });
             return;
         };
 
@@ -80,9 +77,7 @@ impl App {
         while let Some(event) = self.events.pop_front() {
             let (new_events, new_commands) = self.dispatch(event);
             self.events.extend(new_events);
-            for command in &new_commands {
-                encode_command(&mut self.commands, command);
-            }
+            self.commands.extend(new_commands);
         }
     }
 
@@ -124,7 +119,7 @@ impl App {
 }
 
 impl App {
-    pub fn commands(&self) -> &[u8] {
+    pub fn commands(&self) -> &[Command] {
         &self.commands
     }
 }

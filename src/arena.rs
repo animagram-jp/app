@@ -23,7 +23,7 @@ use wasm_bindgen::prelude::wasm_bindgen;
 
 use crate::{
     app::App,
-    js_client::{CommandError, dom, encode_error},
+    js_client::{CommandError, dom, encode_command, encode_error},
 };
 
 // === arena layout ===
@@ -198,8 +198,13 @@ pub fn process_event() {
     app.clear();
     app.process(frame);
     ARENA.event_commit_pop();
-    let commands = app.commands();
-    if !commands.is_empty() && !emit(commands) {
+    let mut frame = Vec::new();
+    let emitted = app.commands().iter().all(|command| {
+        frame.clear();
+        encode_command(&mut frame, command);
+        emit(&frame)
+    });
+    if !emitted {
         report_error(CommandError::CommandOverflow);
     }
 }
@@ -365,5 +370,49 @@ impl<'a> Decoder<'a> {
             });
         }
         Some(dom::Id(segments))
+    }
+}
+
+#[cfg(all(test, target_arch = "wasm32"))]
+mod tests {
+    use wasm_bindgen_test::*;
+
+    use super::*;
+    use crate::{
+        event::EVENT_CANVAS,
+        js_client::{EventType, OPERATION_ADD_CLASS, OPERATION_REMOVE_CLASS},
+    };
+
+    const CLICK: u8 = 2;
+
+    #[wasm_bindgen_test]
+    async fn process_event_emits_one_frame_per_command() {
+        assert_eq!(EventType::decode_u8(CLICK), EventType::Click);
+        initialize();
+        App::init(false, 0.0, 0.0).await;
+
+        let mut frame = Vec::new();
+        let mut encoder = Encoder::new(&mut frame);
+        encoder.u8(EVENT_CANVAS);
+        encoder.u8(CLICK);
+        encoder.id(&dom::Id::new(&[(dom::Tag::Header, None), (dom::Tag::Button, Some(3))]));
+        encoder.u8(0);
+        encoder.str("");
+        encoder.f32(0.0);
+        encoder.f32(0.0);
+        frame.extend_from_slice(&0f64.to_le_bytes());
+        frame.extend_from_slice(&0u32.to_le_bytes());
+        assert!(ARENA.ring_push(EVENT_CONTROL, EVENT_PAYLOAD, EVENT_SLOT, EVENT_SLOT_COUNT, &frame));
+
+        process_event();
+
+        let mut operations = Vec::new();
+        while let Some(command) =
+            ARENA.ring_peek(COMMAND_CONTROL, COMMAND_PAYLOAD, COMMAND_SLOT, COMMAND_SLOT_COUNT)
+        {
+            operations.push(command[0]);
+            ARENA.ring_commit_pop(COMMAND_CONTROL);
+        }
+        assert_eq!(operations, [OPERATION_REMOVE_CLASS, OPERATION_ADD_CLASS]);
     }
 }
