@@ -19,11 +19,7 @@ const ID_MODIFIED_AT: u32 = 3;
 #[derive(Debug)]
 pub enum DataStructError {
     List(ListError),
-    IndirectWrite {
-        list_id: u32,
-        ids:     Vec<u32>,
-        source:  ListError,
-    },
+    IndirectWrite { list_id: u32, ids: Vec<u32>, source: ListError },
 }
 
 impl From<ListError> for DataStructError {

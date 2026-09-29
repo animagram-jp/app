@@ -22,15 +22,14 @@ panic を `Command::Error` として JavaScript へ送る動作は変わらな�
 App::init (async, worker の init フェーズ)
   └ Handler::ready -> FileStore::new(..).await
        └ 失敗時は panic -> #[panic_handler] が Command::Error を送る
-initial_draw -> body の hidden を外す (app repository と同じ)
 ```
 
 `await` が要るのは `FileStore::new` (と内部の `open`) だけである。
 `FileSystemSyncAccessHandle` は名前の通り同期ハンドルであり、取得さえ
-済めば `get` / `set` / `save` / `close` は `run_loop` の中から直接呼べる。
-`run_loop` は `memory_atomic_wait32` で thread ごとブロックし、その間
+済めば `get` / `set` / `save` / `close` は `serve_event` の中から直接呼べる。
+`serve_event` は `memory_atomic_wait32` で thread ごとブロックし、その間
 worker の JavaScript イベントループが回らないため Promise は解決しない。
-`await` を `run_loop` に入る前に済ませておく必要があるのはそのためで、
+`await` を `serve_event` に入る前に済ませておく必要があるのはそのためで、
 `FileStore::new` の doc も "Await it in the worker's init phase" と
 指示している。
 
@@ -38,9 +37,9 @@ worker の JavaScript イベントループが回らないため Promise は解�
 
 この形が使えるのは OPFS が同期ハンドルを返すからであり、一般解ではない。
 接続後も継続的にコールバックが来るもの — WebSocket / WebRTC / WebGPU —
-は `run_loop` の下では一切発火しない。
+は `serve_event` の下では一切発火しない。
 
-| API | 必要なもの | `run_loop` 下 |
+| API | 必要なもの | `serve_event` 下 |
 |-|-|-|
 | WebSocket | `onmessage` | 発火しない |
 | WebRTC | `ondatachannel` / ICE | 進まない |
@@ -69,7 +68,7 @@ Wasm からの要求は `OPERATION_*` としてコマンドリングへ出す。
 **復帰は wasm 内で完結しない。** 再取得は必ず `FileStore::new` を通り、
 `getDirectory()` → `getFileHandle()` → `createSyncAccessHandle()` の
 すべてが `await` を要する。同期なのは取得後の read/write だけである。
-`run_loop` はブロックしているので Promise は解決しない。したがって
+`serve_event` はブロックしているので Promise は解決しない。したがって
 JavaScript 側の `restart()` に委ね、新しい worker の `App::init` に
 開き直させる。直前の `save` が成功した時点までは残る (log ベースで
 あり、確定していない末尾は次回の `save` が切り落とす)。
@@ -108,7 +107,7 @@ main でなければならないのは DOM に触るものだけである。切�
 
 ### 番号を詰めていない
 
-`OPERATION_*` の 17 / 18 と `EVENT_*` の 4 / 5 は、この往復が使っていた。
+`OPERATION_*` の 17 と `EVENT_*` の 5〜7 は欠番である。
 削除後も後続の番号はずらしていない。`init.js` と一対一で対応しており、
 片方だけ動かすと双方を同時に直す必要が生じるためである。
 todo: 要見直し: command op全体を見渡し、今後の拡張性も考える。
@@ -119,7 +118,7 @@ todo: 要見直し: command op全体を見渡し、今後の拡張性も考え�
 `FileStore` (OPFS) を持ち、`Handler::save` が生える。
 
 ```
-# worker 構成。run_loop と FileStore を持つ。
+# worker 構成。serve_event と FileStore を持つ。
 RUSTFLAGS="-Ctarget-feature=+atomics,+bulk-memory" cargo build --release --target wasm32-unknown-unknown -Zbuild-std=std,panic_abort
 
 # main thread
@@ -130,15 +129,11 @@ cargo build --release --target wasm32-unknown-unknown --no-default-features
 
 `worker` feature (既定で有効) は dedicated worker + SharedArrayBuffer +
 `talc` アロケータを使う。`--target web` の wasm-bindgen 出力は標準では
-memory を自己完結で持つため、共有メモリで使うには以下の手順で
-memory import 化と shared 化を後段で行う必要がある。
+memory を自己完結で持つため、共有メモリで使うには memory import 化と
+shared 化を後段で行う必要がある。実行するコマンドは
+[CONTRIBUTING.md](../CONTRIBUTING.md) の Commands にあり、ここには理由だけを残す。
 
 ## 1. Rust を wasm にビルドする
-
-```bash
-RUSTFLAGS="-Ctarget-feature=+atomics,+bulk-memory -Clink-arg=--import-memory -Clink-arg=--max-memory=134217728" \
-cargo build --release --target wasm32-unknown-unknown -Zbuild-std=std,panic_abort
-```
 
 - `+atomics,+bulk-memory`: 共有メモリと `memory.copy` 系命令を有効化する。
 - `--import-memory`: memory を wasm モジュール自己完結ではなく外部 import にする。
@@ -155,11 +150,6 @@ cargo build --release --target wasm32-unknown-unknown -Zbuild-std=std,panic_abor
 
 ## 2. wasm-bindgen で JS グルーコードを生成する
 
-```bash
-wasm-bindgen --target web --out-dir distribution/app --out-name app \
-  target/wasm32-unknown-unknown/release/app.wasm
-```
-
 `--import-memory` の効果で `app.js` の `init()` (`default` export) が
 第 2 引数 (または `{ memory }`) として `WebAssembly.Memory` を受け取る
 形になる。これが無いと `memory` パラメータの受け口自体が生成されない。
@@ -168,21 +158,9 @@ wasm-bindgen --target web --out-dir distribution/app --out-name app \
 
 手順 1 で `--shared-memory` を使わなかったため、生成された
 `app_bg.wasm` の memory import は shared ではない。`wasm-tools` で
-watに変換し、該当行だけ手で `shared` を足して戻す。
-
-```bash
-# cargo install wasm-tools
-
-wasm-tools print distribution/app/app_bg.wasm -o /tmp/app.wat
-# /tmp/app.wat 内の
-#   (import "./app_bg.js" "memory" (memory (;0;) 39 2048))
-# を
-#   (import "./app_bg.js" "memory" (memory (;0;) 39 2048 shared))
-# に書き換える (min/max の数値はビルドのたびに変わりうるので、行の
-# 数値ではなく `(import "./app_bg.js" "memory"` で検索する)。
-wasm-tools parse /tmp/app.wat -o distribution/app/app_bg.wasm
-wasm-tools validate --features=threads,bulk-memory distribution/app/app_bg.wasm
-```
+wat に変換し、`(import "./app_bg.js" "memory"` の行だけに `shared` を
+足して戻す。min/max の数値はビルドのたびに変わりうるので、行の
+数値ではなくこの文字列で検索する。
 
 ## 4. `distribution/app/app.js` の TextDecoder 呼び出しをパッチする
 
@@ -190,20 +168,5 @@ wasm-bindgen が生成する `decodeText` (`&str` を JS 文字列に変換す�
 内部関数) は `TextDecoder.decode()` に `SharedArrayBuffer` 裏付けの
 `Uint8Array` をそのまま渡す。`TextDecoder.decode()` は仕様上これを
 拒否する (`TypeError: ... can't be a SharedArrayBuffer`)。
-
-`app.js` 内の
-
-```js
-return cachedTextDecoder.decode(getUint8ArrayMemory0().subarray(ptr, ptr + len));
-```
-
-を
-
-```js
-const view = getUint8ArrayMemory0().subarray(ptr, ptr + len);
-return cachedTextDecoder.decode(
-    view.buffer instanceof SharedArrayBuffer ? view.slice() : view
-);
-```
-
-に置き換える。手順 1〜3 を再実行するたびにこのパッチも当て直す必要がある。
+`SharedArrayBuffer` 裏付けなら `slice()` してコピーを渡すよう書き換える。
+手順 1〜3 を再実行するたびにこのパッチも当て直す必要がある。

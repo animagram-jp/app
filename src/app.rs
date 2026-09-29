@@ -10,10 +10,11 @@ use core::{
 use wasm_bindgen::prelude::wasm_bindgen;
 
 use crate::{
-    arena::{APP, EVENT_CAPACITY, RUNNING, emit},
-    event::{Event, Handler, decode_event},
+    arena::{APP, RUNNING, emit},
+    event::{Event, Handler, WindowEvent, decode_event},
     js_client::{
-        Command, CommandError, EventType, Thresholds, TouchTracker, detect_device, encode_command,
+        CanvasEvent, Command, CommandError, EventType, Thresholds, TouchTracker, detect_device,
+        encode_command,
     },
 };
 
@@ -26,6 +27,7 @@ pub struct App {
     events:     VecDeque<Event>,
     handler:    Handler,
     commands:   Vec<Command>,
+    origin:     Option<CanvasEvent>,
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
@@ -34,9 +36,10 @@ impl App {
         let app = App {
             touch:      TouchTracker::default(),
             thresholds: Thresholds::for_device(detect_device(pointer_coarse)),
-            events:     VecDeque::with_capacity(EVENT_CAPACITY),
+            events:     VecDeque::new(),
             handler:    Handler::ready(viewport_width, viewport_height).await,
             commands:   Vec::new(),
+            origin:     None,
         };
 
         let (_events, commands) = app.handler.initial_draw();
@@ -86,10 +89,15 @@ impl App {
     }
 
     fn dispatch(&mut self, event: Event) -> (Vec<Event>, Vec<Command>) {
-        let Self { handler, touch, thresholds, .. } = self;
+        let Self { handler, touch, thresholds, origin, .. } = self;
 
         match event {
             Event::Canvas(canvas_event) => {
+                if canvas_event.event_type == EventType::PointerDown
+                    && !touch.active_state().is_down()
+                {
+                    *origin = Some(canvas_event.clone());
+                }
                 match touch.handle(
                     &canvas_event.event_type,
                     canvas_event.pointer_id,
@@ -98,19 +106,24 @@ impl App {
                     canvas_event.time,
                     thresholds,
                 ) {
-                    Some(gesture) => handler.process_gesture(&gesture, touch.active_state()),
+                    Some(gesture) => (vec![Event::Gesture(gesture)], vec![]),
                     None => match canvas_event.event_type {
                         EventType::PointerMove
                         | EventType::PointerUp
                         | EventType::PointerCancel => (vec![], vec![]),
-                        _ => handler.process(&canvas_event, touch.active_state()),
+                        _ => handler.process_canvas(&canvas_event, touch.active_state()),
                     },
                 }
             }
-            Event::Gesture(gesture) => handler.process_gesture(&gesture, touch.active_state()),
-            Event::Resize { width, height } => handler.process_viewport(width, height),
-            Event::Scroll { id, x, y } => handler.process_scroll(&id, x, y),
-            Event::Shutdown => {
+            Event::Gesture(gesture) => {
+                handler.process_gesture(&gesture, touch.active_state(), origin.as_ref())
+            }
+            Event::Window(WindowEvent::Resize { width, height }) => {
+                handler.process_resize(width, height)
+            }
+            Event::Window(WindowEvent::Scroll { x, y }) => handler.process_scroll(x, y),
+            Event::Window(WindowEvent::Visibility { state }) => handler.process_visibility(state),
+            Event::Window(WindowEvent::Shutdown) => {
                 unsafe { RUNNING = false };
                 (vec![], self.handler.close())
             }
@@ -121,5 +134,119 @@ impl App {
 impl App {
     pub fn commands(&self) -> &[Command] {
         &self.commands
+    }
+}
+
+#[cfg(all(test, not(feature = "worker")))]
+mod tests {
+    use alloc::{collections::VecDeque, vec::Vec};
+    use core::{
+        future::Future,
+        pin::pin,
+        task::{Context, Poll, Waker},
+    };
+
+    use super::*;
+    use crate::{
+        event::EVENT_CANVAS,
+        js_client::{Device, Gesture, Thresholds, dom, put_f32, put_str, put_u32},
+    };
+
+    const POINTER_DOWN: u8 = 10;
+    const POINTER_UP: u8 = 12;
+
+    fn block_on<F: Future>(future: F) -> F::Output {
+        let mut future = pin!(future);
+        let mut context = Context::from_waker(Waker::noop());
+        loop {
+            if let Poll::Ready(output) = future.as_mut().poll(&mut context) {
+                return output;
+            }
+        }
+    }
+
+    fn new_app() -> App {
+        App {
+            touch:      TouchTracker::default(),
+            thresholds: Thresholds::for_device(Device::Mouse),
+            events:     VecDeque::new(),
+            handler:    block_on(Handler::ready(0.0, 0.0)),
+            commands:   Vec::new(),
+            origin:     None,
+        }
+    }
+
+    fn section(n: u32) -> dom::Id {
+        dom::Id::new(&[(dom::Tag::Main, None), (dom::Tag::Section, Some(n))])
+    }
+
+    fn pointer_frame(event_type: u8, id: &dom::Id, x: f32, pointer_id: u32, time: f64) -> Vec<u8> {
+        let mut frame = Vec::new();
+        frame.push(EVENT_CANVAS);
+        frame.push(event_type);
+        id.encode(&mut frame);
+        frame.push(0);
+        frame.push(0);
+        put_str(&mut frame, "");
+        put_f32(&mut frame, x);
+        put_f32(&mut frame, 0.0);
+        frame.extend_from_slice(&time.to_le_bytes());
+        put_u32(&mut frame, pointer_id);
+        frame
+    }
+
+    fn origin_id(app: &App) -> Option<dom::Id> {
+        app.origin.as_ref().map(|origin| origin.id.clone())
+    }
+
+    #[test]
+    fn origin_follows_the_pointerdown_that_starts_a_sequence() {
+        assert_eq!(EventType::decode_u8(POINTER_DOWN), EventType::PointerDown);
+        assert_eq!(EventType::decode_u8(POINTER_UP), EventType::PointerUp);
+
+        let mut app = new_app();
+        assert_eq!(origin_id(&app), None);
+
+        app.process(&pointer_frame(POINTER_DOWN, &section(1), 10.0, 1, 0.0));
+        assert_eq!(origin_id(&app), Some(section(1)));
+
+        app.process(&pointer_frame(POINTER_UP, &section(1), 10.0, 1, 50.0));
+        assert_eq!(origin_id(&app), Some(section(1)));
+
+        app.process(&pointer_frame(POINTER_DOWN, &section(2), 30.0, 2, 1000.0));
+        assert_eq!(origin_id(&app), Some(section(2)));
+    }
+
+    #[test]
+    fn a_second_pointer_does_not_replace_the_origin() {
+        let mut app = new_app();
+
+        app.process(&pointer_frame(POINTER_DOWN, &section(1), 10.0, 1, 0.0));
+        app.process(&pointer_frame(POINTER_DOWN, &section(2), 200.0, 2, 5.0));
+        assert_eq!(origin_id(&app), Some(section(1)));
+    }
+
+    #[test]
+    fn a_recognized_gesture_is_returned_as_an_event() {
+        let mut app = new_app();
+        app.process(&pointer_frame(POINTER_DOWN, &section(1), 10.0, 1, 0.0));
+
+        let Some(Event::Canvas(release)) =
+            decode_event(&pointer_frame(POINTER_UP, &section(1), 10.0, 1, 50.0))
+        else {
+            panic!("not a canvas event");
+        };
+        let (events, commands) = app.dispatch(Event::Canvas(release));
+        assert!(matches!(events.as_slice(), [Event::Gesture(Gesture::Tap)]));
+        assert!(commands.is_empty());
+    }
+
+    #[test]
+    fn the_event_queue_is_empty_after_a_whole_tap() {
+        let mut app = new_app();
+
+        app.process(&pointer_frame(POINTER_DOWN, &section(1), 10.0, 1, 0.0));
+        app.process(&pointer_frame(POINTER_UP, &section(1), 10.0, 1, 50.0));
+        assert!(app.events.is_empty());
     }
 }

@@ -5,50 +5,35 @@ use alloc::{
 use core::{
     clone::Clone,
     cmp::{Eq, PartialEq},
+    convert::TryInto,
     default::Default,
     fmt::{self, Debug, Display, Formatter},
     marker::Copy,
     option::Option::{self, None, Some},
-    primitive::{bool, f32, f64, i32, u8, u16, u32},
+    primitive::{bool, f32, f64, i32, str, u8, u16, u32, usize},
 };
 
-use crate::{arena::Encoder, file_store::FileStoreError};
+use crate::{file_store::FileStoreError, timestamp::Field};
 
 // === send operation ===
 //
 // see distribution/init.js execute operation
 
-/// case  1: el.textContent = d.string() ?? ""; break;
 pub const OPERATION_SET_TEXT: u8 = 1;
-/// case  2: el.value = d.string() ?? ""; break;
 pub const OPERATION_SET_VALUE: u8 = 2;
-/// case  3: el.setAttribute(NAMES[d.u16()], d.string() ?? ""); break;
 pub const OPERATION_SET_ATTRIBUTE: u8 = 3;
-/// case  4: el.removeAttribute(NAMES[d.u16()]); break;
 pub const OPERATION_REMOVE_ATTRIBUTE: u8 = 4;
-/// case  5: el.classList.add(NAMES[d.u16()]); break;
 pub const OPERATION_ADD_CLASS: u8 = 5;
-/// case  6: el.classList.remove(NAMES[d.u16()]); break;
 pub const OPERATION_REMOVE_CLASS: u8 = 6;
-/// case  7: el.style.width = d.u32() + "px"; break;
 pub const OPERATION_SET_WIDTH: u8 = 7;
-/// case  8: el.style.height = d.u32() + "px"; break;
 pub const OPERATION_SET_HEIGHT: u8 = 8;
-/// case  9: el.style.zIndex = d.i32(); break;
 pub const OPERATION_SET_Z_INDEX: u8 = 9;
-/// case 10: el.style.background = d.string(); break;
 pub const OPERATION_SET_BACKGROUND: u8 = 10;
-/// case 11: el.style.translate = `${d.f32()}px ${d.f32()}px`; break;
 pub const OPERATION_SET_TRANSLATE: u8 = 11;
-/// case 12: el.style.cursor = NAMES[d.u16()] ?? ""; break;
 pub const OPERATION_SET_CURSOR: u8 = 12;
-/// case 13: el.showModal(); break;
 pub const OPERATION_SHOW_MODAL: u8 = 13;
-/// case 14: el.close(); break;
 pub const OPERATION_CLOSE_MODAL: u8 = 14;
-/// case 15: el.focus(); break;
 pub const OPERATION_FOCUS: u8 = 15;
-/// case 16: js_fn[NAMES[d.u16()]]?.(el); break;
 pub const OPERATION_JS_FN: u8 = 16;
 
 pub const OPERATION_ERROR: u8 = 18;
@@ -99,185 +84,185 @@ impl CommandError {
 
 /// Command from Wasm to JavaScript thread
 pub enum Command {
-    SetText {
-        id:    dom::Id,
-        value: String,
-    },
-    SetValue {
-        id:    dom::Id,
-        value: String,
-    },
-    SetAttribute {
-        id:        dom::Id,
-        attribute: Attribute,
-        value:     String,
-    },
-    RemoveAttribute {
-        id:        dom::Id,
-        attribute: Attribute,
-    },
-    AddClass {
-        id:    dom::Id,
-        value: ClassName,
-    },
-    RemoveClass {
-        id:    dom::Id,
-        value: ClassName,
-    },
-    SetWidth {
-        id: dom::Id,
-        px: u32,
-    },
-    SetHeight {
-        id: dom::Id,
-        px: u32,
-    },
-    SetZIndex {
-        id: dom::Id,
-        z:  i32,
-    },
-    SetBackground {
-        id:    dom::Id,
-        value: String,
-    },
-    SetTranslate {
-        id: dom::Id,
-        x:  f32,
-        y:  f32,
-    },
-    SetCursor {
-        id:    dom::Id,
-        value: CursorValue,
-    },
-    ShowModal {
-        id: dom::Id,
-    },
-    CloseModal {
-        id: dom::Id,
-    },
-    Focus {
-        id: dom::Id,
-    },
-    JsFn {
-        id:   dom::Id,
-        name: FnName,
-    },
-    Error {
-        error: CommandError,
-    },
+    SetText { id: dom::Id, value: String },
+    SetValue { id: dom::Id, value: String },
+    SetAttribute { id: dom::Id, attribute: Attribute, value: String },
+    RemoveAttribute { id: dom::Id, attribute: Attribute },
+    AddClass { id: dom::Id, value: ClassName },
+    RemoveClass { id: dom::Id, value: ClassName },
+    SetWidth { id: dom::Id, px: u32 },
+    SetHeight { id: dom::Id, px: u32 },
+    SetZIndex { id: dom::Id, z: i32 },
+    SetBackground { id: dom::Id, value: String },
+    SetTranslate { id: dom::Id, x: f32, y: f32 },
+    SetCursor { id: dom::Id, value: CursorValue },
+    ShowModal { id: dom::Id },
+    CloseModal { id: dom::Id },
+    Focus { id: dom::Id },
+    JsFn { id: dom::Id, name: FnName },
+    Error { error: CommandError },
 }
 
 ///
 ///
 /// ```
 /// # use app::js_client::{encode_command, Command, dom, OPERATION_FOCUS};
-/// let mut commands = Vec::new();
-/// encode_command(&mut commands, &Command::Focus {
+/// let mut frame = Vec::new();
+/// encode_command(&mut frame, &Command::Focus {
 ///     id: dom::Id::new(&[(dom::Tag::Body, None)]),
 /// });
-/// assert_eq!(commands[0], OPERATION_FOCUS);
+/// assert_eq!(frame[0], OPERATION_FOCUS);
 /// ```
-pub fn encode_command(commands: &mut Vec<u8>, command: &Command) {
-    let mut encoder = Encoder::new(commands);
+pub fn encode_command(frame: &mut Vec<u8>, command: &Command) {
     match *command {
         Command::SetText { ref id, ref value } => {
-            encoder.u8(OPERATION_SET_TEXT);
-            encoder.id(id);
-            encoder.str(value);
+            frame.push(OPERATION_SET_TEXT);
+            id.encode(frame);
+            put_str(frame, value);
         }
         Command::SetValue { ref id, ref value } => {
-            encoder.u8(OPERATION_SET_VALUE);
-            encoder.id(id);
-            encoder.str(value);
+            frame.push(OPERATION_SET_VALUE);
+            id.encode(frame);
+            put_str(frame, value);
         }
         Command::SetAttribute { ref id, attribute, ref value } => {
-            encoder.u8(OPERATION_SET_ATTRIBUTE);
-            encoder.id(id);
-            encoder.u16(attribute.encode_u16());
-            encoder.str(value);
+            frame.push(OPERATION_SET_ATTRIBUTE);
+            id.encode(frame);
+            put_u16(frame, attribute.encode_u16());
+            put_str(frame, value);
         }
         Command::RemoveAttribute { ref id, attribute } => {
-            encoder.u8(OPERATION_REMOVE_ATTRIBUTE);
-            encoder.id(id);
-            encoder.u16(attribute.encode_u16());
+            frame.push(OPERATION_REMOVE_ATTRIBUTE);
+            id.encode(frame);
+            put_u16(frame, attribute.encode_u16());
         }
         Command::AddClass { ref id, value } => {
-            encoder.u8(OPERATION_ADD_CLASS);
-            encoder.id(id);
-            encoder.u16(value.encode_u16());
+            frame.push(OPERATION_ADD_CLASS);
+            id.encode(frame);
+            put_u16(frame, value.encode_u16());
         }
         Command::RemoveClass { ref id, value } => {
-            encoder.u8(OPERATION_REMOVE_CLASS);
-            encoder.id(id);
-            encoder.u16(value.encode_u16());
+            frame.push(OPERATION_REMOVE_CLASS);
+            id.encode(frame);
+            put_u16(frame, value.encode_u16());
         }
         Command::SetWidth { ref id, px } => {
-            encoder.u8(OPERATION_SET_WIDTH);
-            encoder.id(id);
-            encoder.u32(px);
+            frame.push(OPERATION_SET_WIDTH);
+            id.encode(frame);
+            put_u32(frame, px);
         }
         Command::SetHeight { ref id, px } => {
-            encoder.u8(OPERATION_SET_HEIGHT);
-            encoder.id(id);
-            encoder.u32(px);
+            frame.push(OPERATION_SET_HEIGHT);
+            id.encode(frame);
+            put_u32(frame, px);
         }
         Command::SetZIndex { ref id, z } => {
-            encoder.u8(OPERATION_SET_Z_INDEX);
-            encoder.id(id);
-            encoder.i32(z);
+            frame.push(OPERATION_SET_Z_INDEX);
+            id.encode(frame);
+            put_i32(frame, z);
         }
         Command::SetBackground { ref id, ref value } => {
-            encoder.u8(OPERATION_SET_BACKGROUND);
-            encoder.id(id);
-            encoder.str(value);
+            frame.push(OPERATION_SET_BACKGROUND);
+            id.encode(frame);
+            put_str(frame, value);
         }
         Command::SetTranslate { ref id, x, y } => {
-            encoder.u8(OPERATION_SET_TRANSLATE);
-            encoder.id(id);
-            encoder.f32(x);
-            encoder.f32(y);
+            frame.push(OPERATION_SET_TRANSLATE);
+            id.encode(frame);
+            put_f32(frame, x);
+            put_f32(frame, y);
         }
         Command::SetCursor { ref id, value } => {
-            encoder.u8(OPERATION_SET_CURSOR);
-            encoder.id(id);
-            encoder.u16(value.encode_u16());
+            frame.push(OPERATION_SET_CURSOR);
+            id.encode(frame);
+            put_u16(frame, value.encode_u16());
         }
         Command::ShowModal { ref id } => {
-            encoder.u8(OPERATION_SHOW_MODAL);
-            encoder.id(id);
+            frame.push(OPERATION_SHOW_MODAL);
+            id.encode(frame);
         }
         Command::CloseModal { ref id } => {
-            encoder.u8(OPERATION_CLOSE_MODAL);
-            encoder.id(id);
+            frame.push(OPERATION_CLOSE_MODAL);
+            id.encode(frame);
         }
         Command::Focus { ref id } => {
-            encoder.u8(OPERATION_FOCUS);
-            encoder.id(id);
+            frame.push(OPERATION_FOCUS);
+            id.encode(frame);
         }
         Command::JsFn { ref id, name } => {
-            encoder.u8(OPERATION_JS_FN);
-            encoder.id(id);
-            encoder.u16(name.encode_u16());
+            frame.push(OPERATION_JS_FN);
+            id.encode(frame);
+            put_u16(frame, name.encode_u16());
         }
-        Command::Error { ref error } => encode_error(&mut encoder, error, &error.to_string()),
+        Command::Error { ref error } => encode_error(frame, error, &error.to_string()),
     }
 }
 
-pub(crate) fn encode_error(encoder: &mut Encoder, error: &CommandError, message: &str) {
-    encoder.u8(OPERATION_ERROR);
-    encoder.u8(error.is_serious() as u8);
-    encoder.u8(error.wire_code());
-    encoder.str(message);
+pub(crate) fn encode_error(frame: &mut Vec<u8>, error: &CommandError, message: &str) {
+    frame.push(OPERATION_ERROR);
+    frame.push(error.is_serious() as u8);
+    frame.push(error.wire_code());
+    put_str(frame, message);
+}
+
+pub(crate) fn put_u16(frame: &mut Vec<u8>, value: u16) {
+    frame.extend_from_slice(&value.to_le_bytes());
+}
+
+pub(crate) fn put_u32(frame: &mut Vec<u8>, value: u32) {
+    frame.extend_from_slice(&value.to_le_bytes());
+}
+
+pub(crate) fn put_i32(frame: &mut Vec<u8>, value: i32) {
+    frame.extend_from_slice(&value.to_le_bytes());
+}
+
+pub(crate) fn put_f32(frame: &mut Vec<u8>, value: f32) {
+    frame.extend_from_slice(&value.to_le_bytes());
+}
+
+pub(crate) fn put_str(frame: &mut Vec<u8>, value: &str) {
+    put_u32(frame, value.len() as u32);
+    frame.extend_from_slice(value.as_bytes());
+}
+
+fn take<'a>(input: &mut &'a [u8], count: usize) -> Option<&'a [u8]> {
+    let (head, tail) = input.split_at_checked(count)?;
+    *input = tail;
+    Some(head)
+}
+
+pub(crate) fn get_u8(input: &mut &[u8]) -> Option<u8> {
+    Some(take(input, 1)?[0])
+}
+
+pub(crate) fn get_u32(input: &mut &[u8]) -> Option<u32> {
+    Some(u32::from_le_bytes(take(input, 4)?.try_into().ok()?))
+}
+
+pub(crate) fn get_f32(input: &mut &[u8]) -> Option<f32> {
+    Some(f32::from_le_bytes(take(input, 4)?.try_into().ok()?))
+}
+
+pub(crate) fn get_f64(input: &mut &[u8]) -> Option<f64> {
+    Some(f64::from_le_bytes(take(input, 8)?.try_into().ok()?))
+}
+
+pub(crate) fn get_string(input: &mut &[u8]) -> Option<String> {
+    let length = get_u32(input)? as usize;
+    Some(str::from_utf8(take(input, length)?).ok()?.to_string())
 }
 
 // === receive (canvas event) ===
 
 ///
 /// crate::event::decode_event
+#[derive(Clone)]
 pub struct CanvasEvent {
     pub event_type: EventType,
     pub id:         dom::Id,
     pub key:        KeyName,
+    pub flags:      u8,
     pub value:      String,
     pub x:          f64,
     pub y:          f64,
@@ -285,10 +270,37 @@ pub struct CanvasEvent {
     pub pointer_id: u32,
 }
 
+const ALT: Field = Field { position: 1, mask: (1 << 1) - 1 }; // bit 1
+const CTRL: Field = Field { position: 2, mask: (1 << 1) - 1 }; // bit 2
+const META: Field = Field { position: 3, mask: (1 << 1) - 1 }; // bit 3
+const REPEAT: Field = Field { position: 4, mask: (1 << 1) - 1 }; // bit 4
+const SHIFT: Field = Field { position: 5, mask: (1 << 1) - 1 }; // bit 5
+
+impl CanvasEvent {
+    pub fn alt(&self) -> bool {
+        ALT.get::<u8>(self.flags as u64) == 1
+    }
+
+    pub fn ctrl(&self) -> bool {
+        CTRL.get::<u8>(self.flags as u64) == 1
+    }
+
+    pub fn meta(&self) -> bool {
+        META.get::<u8>(self.flags as u64) == 1
+    }
+
+    pub fn repeat(&self) -> bool {
+        REPEAT.get::<u8>(self.flags as u64) == 1
+    }
+
+    pub fn shift(&self) -> bool {
+        SHIFT.get::<u8>(self.flags as u64) == 1
+    }
+}
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Attribute {
-    Disabled,
+    Disabled = 1,
     Hidden,
 }
 
@@ -300,7 +312,7 @@ impl Attribute {
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum ClassName {
-    Hide,
+    Hide = 1,
     Show,
     Hidden,
 }
@@ -313,7 +325,7 @@ impl ClassName {
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum CursorValue {
-    Default,
+    Default = 1,
     Grab,
 }
 
@@ -325,7 +337,7 @@ impl CursorValue {
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum FnName {
-    HideToast,
+    HideToast = 1,
     ShowToast,
 }
 
@@ -359,7 +371,6 @@ pub enum EventType {
     PointerDown,
     PointerMove,
     PointerUp,
-    Resize,
     Scroll,
     Submit,
     Other,
@@ -387,9 +398,8 @@ impl EventType {
             10 => Self::PointerDown,
             11 => Self::PointerMove,
             12 => Self::PointerUp,
-            13 => Self::Resize,
-            14 => Self::Scroll,
-            15 => Self::Submit,
+            13 => Self::Scroll,
+            14 => Self::Submit,
             _ => Self::Other,
         }
     }
@@ -397,33 +407,245 @@ impl EventType {
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum KeyName {
+    Alt,
+    AltGraph,
+    Ampersand,
+    Apostrophe,
     ArrowDown,
     ArrowLeft,
     ArrowRight,
     ArrowUp,
+    Asterisk,
+    At,
+    Backslash,
     Backspace,
+    Backtick,
+    CapsLock,
+    Caret,
+    CloseBrace,
+    CloseBracket,
+    CloseParen,
+    Colon,
+    Comma,
+    ContextMenu,
+    Control,
+    Delete,
+    Digit0,
+    Digit1,
+    Digit2,
+    Digit3,
+    Digit4,
+    Digit5,
+    Digit6,
+    Digit7,
+    Digit8,
+    Digit9,
+    Dollar,
+    DoubleQuote,
+    End,
     Enter,
+    Equal,
     Escape,
+    Exclamation,
+    F1,
+    F2,
+    F3,
+    F4,
+    F5,
+    F6,
+    F7,
+    F8,
+    F9,
+    F10,
+    F11,
+    F12,
+    Greater,
+    Hash,
+    Home,
+    Insert,
+    KeyA,
+    KeyB,
+    KeyC,
+    KeyD,
+    KeyE,
+    KeyF,
+    KeyG,
+    KeyH,
+    KeyI,
+    KeyJ,
+    KeyK,
+    KeyL,
+    KeyM,
+    KeyN,
+    KeyO,
+    KeyP,
+    KeyQ,
+    KeyR,
+    KeyS,
+    KeyT,
+    KeyU,
+    KeyV,
+    KeyW,
+    KeyX,
+    KeyY,
+    KeyZ,
+    Less,
+    Meta,
+    Minus,
+    OpenBrace,
+    OpenBracket,
+    OpenParen,
+    PageDown,
+    PageUp,
+    Percent,
+    Period,
+    Pipe,
+    Plus,
+    Question,
+    Semicolon,
+    Shift,
+    Slash,
+    Space,
     Tab,
+    Tilde,
+    Underscore,
     Other,
 }
 
 impl KeyName {
     /// ```
     /// # use app::js_client::KeyName;
-    /// assert_eq!(KeyName::decode_u8(6), KeyName::Enter);
+    /// assert_eq!(KeyName::decode_u8(37), KeyName::Enter);
     /// assert_eq!(KeyName::decode_u8(200), KeyName::Other);
     /// ```
     pub fn decode_u8(value: u8) -> Self {
         match value {
-            1 => Self::ArrowDown,
-            2 => Self::ArrowLeft,
-            3 => Self::ArrowRight,
-            4 => Self::ArrowUp,
-            5 => Self::Backspace,
-            6 => Self::Enter,
-            7 => Self::Escape,
-            8 => Self::Tab,
+            1 => Self::Alt,
+            2 => Self::AltGraph,
+            3 => Self::Ampersand,
+            4 => Self::Apostrophe,
+            5 => Self::ArrowDown,
+            6 => Self::ArrowLeft,
+            7 => Self::ArrowRight,
+            8 => Self::ArrowUp,
+            9 => Self::Asterisk,
+            10 => Self::At,
+            11 => Self::Backslash,
+            12 => Self::Backspace,
+            13 => Self::Backtick,
+            14 => Self::CapsLock,
+            15 => Self::Caret,
+            16 => Self::CloseBrace,
+            17 => Self::CloseBracket,
+            18 => Self::CloseParen,
+            19 => Self::Colon,
+            20 => Self::Comma,
+            21 => Self::ContextMenu,
+            22 => Self::Control,
+            23 => Self::Delete,
+            24 => Self::Digit0,
+            25 => Self::Digit1,
+            26 => Self::Digit2,
+            27 => Self::Digit3,
+            28 => Self::Digit4,
+            29 => Self::Digit5,
+            30 => Self::Digit6,
+            31 => Self::Digit7,
+            32 => Self::Digit8,
+            33 => Self::Digit9,
+            34 => Self::Dollar,
+            35 => Self::DoubleQuote,
+            36 => Self::End,
+            37 => Self::Enter,
+            38 => Self::Equal,
+            39 => Self::Escape,
+            40 => Self::Exclamation,
+            41 => Self::F1,
+            42 => Self::F2,
+            43 => Self::F3,
+            44 => Self::F4,
+            45 => Self::F5,
+            46 => Self::F6,
+            47 => Self::F7,
+            48 => Self::F8,
+            49 => Self::F9,
+            50 => Self::F10,
+            51 => Self::F11,
+            52 => Self::F12,
+            53 => Self::Greater,
+            54 => Self::Hash,
+            55 => Self::Home,
+            56 => Self::Insert,
+            57 => Self::KeyA,
+            58 => Self::KeyB,
+            59 => Self::KeyC,
+            60 => Self::KeyD,
+            61 => Self::KeyE,
+            62 => Self::KeyF,
+            63 => Self::KeyG,
+            64 => Self::KeyH,
+            65 => Self::KeyI,
+            66 => Self::KeyJ,
+            67 => Self::KeyK,
+            68 => Self::KeyL,
+            69 => Self::KeyM,
+            70 => Self::KeyN,
+            71 => Self::KeyO,
+            72 => Self::KeyP,
+            73 => Self::KeyQ,
+            74 => Self::KeyR,
+            75 => Self::KeyS,
+            76 => Self::KeyT,
+            77 => Self::KeyU,
+            78 => Self::KeyV,
+            79 => Self::KeyW,
+            80 => Self::KeyX,
+            81 => Self::KeyY,
+            82 => Self::KeyZ,
+            83 => Self::Less,
+            84 => Self::Meta,
+            85 => Self::Minus,
+            86 => Self::OpenBrace,
+            87 => Self::OpenBracket,
+            88 => Self::OpenParen,
+            89 => Self::PageDown,
+            90 => Self::PageUp,
+            91 => Self::Percent,
+            92 => Self::Period,
+            93 => Self::Pipe,
+            94 => Self::Plus,
+            95 => Self::Question,
+            96 => Self::Semicolon,
+            97 => Self::Shift,
+            98 => Self::Slash,
+            99 => Self::Space,
+            100 => Self::Tab,
+            101 => Self::Tilde,
+            102 => Self::Underscore,
+            _ => Self::Other,
+        }
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum VisibilityState {
+    Hidden,
+    Visible,
+    Other,
+}
+
+impl VisibilityState {
+    /// init.js VISIBILITY_STATES
+    ///
+    /// ```
+    /// # use app::js_client::VisibilityState;
+    /// assert_eq!(VisibilityState::decode_u8(2), VisibilityState::Visible);
+    /// assert_eq!(VisibilityState::decode_u8(0), VisibilityState::Other);
+    /// ```
+    pub fn decode_u8(value: u8) -> Self {
+        match value {
+            1 => Self::Hidden,
+            2 => Self::Visible,
             _ => Self::Other,
         }
     }
@@ -500,6 +722,11 @@ pub struct PointerState {
 }
 
 impl PointerState {
+    #[must_use]
+    pub const fn is_down(&self) -> bool {
+        self.is_down
+    }
+
     #[must_use]
     pub fn update(self, event_type: &EventType, x: f64, y: f64, time: f64) -> Self {
         match event_type {
@@ -712,7 +939,6 @@ mod gesture_tests {
         out
     }
 
-
     #[test]
     fn swipe_right_fires() {
         let th = Thresholds::MOUSE;
@@ -875,7 +1101,6 @@ mod gesture_tests {
         );
         assert_eq!(got, [Gesture::Drag { x: 40.0, y: 10.0 }, Gesture::Drag { x: 40.0, y: 10.0 }]);
     }
-
 
     #[test]
     fn touch_thresholds_are_looser() {
@@ -1059,7 +1284,6 @@ fn two_point_distance(x0: f64, y0: f64, x1: f64, y1: f64) -> f64 {
     let dy = y1 - y0;
     libm::sqrt(dx * dx + dy * dy)
 }
-
 
 ///
 ///
@@ -1498,9 +1722,11 @@ pub mod dom {
         cmp::PartialEq,
         fmt::Debug,
         iter::Iterator,
-        option::Option,
-        primitive::{u8, u32},
+        option::Option::{self, None, Some},
+        primitive::{u8, u32, usize},
     };
+
+    use super::{get_u8, get_u32, put_u32};
 
     #[derive(Debug, Clone, PartialEq)]
     pub enum Tag {
@@ -1643,5 +1869,455 @@ pub mod dom {
         pub fn new(segs: &[(Tag, Option<u32>)]) -> Self {
             Self(segs.iter().map(|(tag, n)| Segment { tag: tag.clone(), n: *n }).collect())
         }
+
+        pub fn encode(&self, frame: &mut Vec<u8>) {
+            frame.push(self.0.len() as u8);
+            for segment in &self.0 {
+                frame.push(segment.tag.encode_u8());
+                put_u32(frame, segment.n.unwrap_or(u32::MAX));
+            }
+        }
+
+        pub fn decode(input: &mut &[u8]) -> Option<Self> {
+            let count = get_u8(input)? as usize;
+            let mut segments = Vec::with_capacity(count);
+            for _ in 0..count {
+                let tag = Tag::decode_u8(get_u8(input)?);
+                let number = get_u32(input)?;
+                segments
+                    .push(Segment { tag, n: if number == u32::MAX { None } else { Some(number) } });
+            }
+            Some(Self(segments))
+        }
+    }
+}
+
+#[cfg(test)]
+mod wire_tests {
+    use alloc::{format, string::String, vec, vec::Vec};
+
+    use super::*;
+
+    const INIT_JS: &str = include_str!("../distribution/init.js");
+
+    const SYMBOLS: [(&str, &str); 32] = [
+        ("Ampersand", "&"),
+        ("Apostrophe", "'"),
+        ("Asterisk", "*"),
+        ("At", "@"),
+        ("Backslash", "\\"),
+        ("Backtick", "`"),
+        ("Caret", "^"),
+        ("CloseBrace", "}"),
+        ("CloseBracket", "]"),
+        ("CloseParen", ")"),
+        ("Colon", ":"),
+        ("Comma", ","),
+        ("Dollar", "$"),
+        ("DoubleQuote", "\""),
+        ("Equal", "="),
+        ("Exclamation", "!"),
+        ("Greater", ">"),
+        ("Hash", "#"),
+        ("Less", "<"),
+        ("Minus", "-"),
+        ("OpenBrace", "{"),
+        ("OpenBracket", "["),
+        ("OpenParen", "("),
+        ("Percent", "%"),
+        ("Period", "."),
+        ("Pipe", "|"),
+        ("Plus", "+"),
+        ("Question", "?"),
+        ("Semicolon", ";"),
+        ("Slash", "/"),
+        ("Tilde", "~"),
+        ("Underscore", "_"),
+    ];
+
+    fn unquote(entry: &str) -> String {
+        let inner = &entry[1..entry.len() - 1];
+        let mut out = String::new();
+        let mut chars = inner.chars();
+        while let Some(c) = chars.next() {
+            if c == '\\' {
+                out.push(chars.next().unwrap());
+            } else {
+                out.push(c);
+            }
+        }
+        out
+    }
+
+    fn js_array(name: &str) -> Vec<String> {
+        let head = format!("const {name} = [\n");
+        let start = INIT_JS.find(&head).unwrap_or_else(|| panic!("{name} not found")) + head.len();
+        let end = start + INIT_JS[start..].find("\n];").unwrap();
+        INIT_JS[start..end]
+            .lines()
+            .map(|line| {
+                let entry = line.trim().trim_end_matches(',');
+                if entry == "null" { String::new() } else { unquote(entry) }
+            })
+            .collect()
+    }
+
+    fn snake(name: &str) -> String {
+        let mut out = String::new();
+        for (i, c) in name.chars().enumerate() {
+            if c.is_ascii_uppercase() {
+                if i > 0 {
+                    out.push('_');
+                }
+                out.push(c.to_ascii_lowercase());
+            } else {
+                out.push(c);
+            }
+        }
+        out
+    }
+
+    fn key_string(key: KeyName) -> String {
+        let name = format!("{key:?}");
+        if name == "Space" {
+            return String::from(" ");
+        }
+        if let Some(digit) = name.strip_prefix("Digit") {
+            return String::from(digit);
+        }
+        if let Some(letter) = name.strip_prefix("Key") {
+            return letter.to_lowercase();
+        }
+        match SYMBOLS.iter().find(|(variant, _)| *variant == name) {
+            Some((_, key)) => String::from(*key),
+            None => name,
+        }
+    }
+
+    fn id_bytes() -> [u8; 11] {
+        [2, 14, 255, 255, 255, 255, 3, 3, 0, 0, 0]
+    }
+
+    fn header_button_3() -> dom::Id {
+        dom::Id::new(&[(dom::Tag::Header, None), (dom::Tag::Button, Some(3))])
+    }
+
+    #[test]
+    fn key_names_match_init_js() {
+        let js = js_array("KEY_NAMES");
+        assert_eq!(js[0], "");
+        for (i, name) in js.iter().enumerate().skip(1) {
+            assert_eq!(&key_string(KeyName::decode_u8(i as u8)), name, "index {i}");
+        }
+        assert_eq!(KeyName::decode_u8(js.len() as u8), KeyName::Other);
+        assert_eq!(KeyName::decode_u8(0), KeyName::Other);
+    }
+
+    #[test]
+    fn event_types_match_init_js() {
+        let js = js_array("EVENT_TYPES");
+        assert_eq!(js[0], "");
+        for (i, name) in js.iter().enumerate().skip(1) {
+            let event_type = EventType::decode_u8(i as u8);
+            assert_eq!(&format!("{event_type:?}").to_lowercase(), name, "index {i}");
+        }
+        assert_eq!(EventType::decode_u8(js.len() as u8), EventType::Other);
+        assert_eq!(EventType::decode_u8(0), EventType::Other);
+    }
+
+    #[test]
+    fn tags_match_init_js() {
+        let js = js_array("TAGS");
+        assert_eq!(js[0], "");
+        for (i, name) in js.iter().enumerate().skip(1) {
+            let tag = dom::Tag::decode_u8(i as u8);
+            assert_eq!(&format!("{tag:?}").to_lowercase(), name, "index {i}");
+            assert_eq!(tag.encode_u8() as usize, i);
+        }
+        assert_eq!(dom::Tag::decode_u8(js.len() as u8), dom::Tag::Other);
+        assert_eq!(dom::Tag::Other.encode_u8(), 0);
+    }
+
+    #[test]
+    fn visibility_states_match_init_js() {
+        let js = js_array("VISIBILITY_STATES");
+        assert_eq!(js, ["", "hidden", "visible"]);
+        assert_eq!(VisibilityState::decode_u8(1), VisibilityState::Hidden);
+        assert_eq!(VisibilityState::decode_u8(2), VisibilityState::Visible);
+        assert_eq!(VisibilityState::decode_u8(0), VisibilityState::Other);
+        assert_eq!(VisibilityState::decode_u8(3), VisibilityState::Other);
+    }
+
+    #[test]
+    fn command_tables_match_init_js() {
+        let tables: [(&str, Vec<(u16, String)>); 4] = [
+            (
+                "ATTRIBUTES",
+                vec![
+                    (Attribute::Disabled as u16, format!("{:?}", Attribute::Disabled)),
+                    (Attribute::Hidden as u16, format!("{:?}", Attribute::Hidden)),
+                ],
+            ),
+            (
+                "CLASS_NAMES",
+                vec![
+                    (ClassName::Hide as u16, format!("{:?}", ClassName::Hide)),
+                    (ClassName::Show as u16, format!("{:?}", ClassName::Show)),
+                    (ClassName::Hidden as u16, format!("{:?}", ClassName::Hidden)),
+                ],
+            ),
+            (
+                "CURSOR_VALUES",
+                vec![
+                    (CursorValue::Default as u16, format!("{:?}", CursorValue::Default)),
+                    (CursorValue::Grab as u16, format!("{:?}", CursorValue::Grab)),
+                ],
+            ),
+            (
+                "FN_NAMES",
+                vec![
+                    (FnName::HideToast as u16, format!("{:?}", FnName::HideToast)),
+                    (FnName::ShowToast as u16, format!("{:?}", FnName::ShowToast)),
+                ],
+            ),
+        ];
+        for (name, variants) in tables {
+            let js = js_array(name);
+            assert_eq!(js[0], "", "{name}[0]");
+            assert_eq!(js.len(), variants.len() + 1, "{name} length");
+            for (value, debug) in variants {
+                assert!(value >= 1, "{name} uses 0");
+                assert_eq!(js[value as usize], snake(&debug), "{name}[{value}]");
+            }
+        }
+    }
+
+    #[test]
+    fn operations_match_init_js() {
+        let operations = [
+            (OPERATION_SET_TEXT, 1),
+            (OPERATION_SET_VALUE, 2),
+            (OPERATION_SET_ATTRIBUTE, 3),
+            (OPERATION_REMOVE_ATTRIBUTE, 4),
+            (OPERATION_ADD_CLASS, 5),
+            (OPERATION_REMOVE_CLASS, 6),
+            (OPERATION_SET_WIDTH, 7),
+            (OPERATION_SET_HEIGHT, 8),
+            (OPERATION_SET_Z_INDEX, 9),
+            (OPERATION_SET_BACKGROUND, 10),
+            (OPERATION_SET_TRANSLATE, 11),
+            (OPERATION_SET_CURSOR, 12),
+            (OPERATION_SHOW_MODAL, 13),
+            (OPERATION_CLOSE_MODAL, 14),
+            (OPERATION_FOCUS, 15),
+            (OPERATION_JS_FN, 16),
+        ];
+        for (operation, number) in operations {
+            assert_eq!(operation as usize, number);
+            assert!(INIT_JS.contains(&format!("case {number:>2}:")), "case {number} missing");
+        }
+        assert!(INIT_JS.contains(&format!("operation === {OPERATION_ERROR}")));
+    }
+
+    #[test]
+    fn error_names_match_init_js() {
+        let head = "const ERROR_NAMES = {\n";
+        let start = INIT_JS.find(head).unwrap() + head.len();
+        let end = start + INIT_JS[start..].find("\n};").unwrap();
+        let entries: Vec<(u8, String)> = INIT_JS[start..end]
+            .lines()
+            .map(|line| {
+                let (number, name) = line.trim().trim_end_matches(',').split_once(": ").unwrap();
+                (number.parse().unwrap(), unquote(name))
+            })
+            .collect();
+        assert_eq!(
+            entries,
+            [
+                (1, String::from("decode")),
+                (2, String::from("command-overflow")),
+                (3, String::from("panic")),
+                (4, String::from("file-store")),
+            ]
+        );
+        assert_eq!(CommandError::Decode.wire_code(), 1);
+        assert_eq!(CommandError::CommandOverflow.wire_code(), 2);
+        assert_eq!(
+            CommandError::Panic { location: String::new(), message: String::new() }.wire_code(),
+            3
+        );
+    }
+
+    #[test]
+    fn key_flags_match_init_js() {
+        let start = INIT_JS.find("function key_flags(").unwrap();
+        let body = &INIT_JS[start..start + INIT_JS[start..].find("\n}\n").unwrap()];
+        let shifts: Vec<u32> = body
+            .split("<< ")
+            .skip(1)
+            .map(|rest| {
+                rest.chars().take_while(char::is_ascii_digit).collect::<String>().parse().unwrap()
+            })
+            .collect();
+        assert_eq!(
+            shifts,
+            [ALT.position, CTRL.position, META.position, REPEAT.position, SHIFT.position]
+        );
+        assert!(shifts.iter().all(|position| *position >= 1));
+    }
+
+    #[test]
+    fn canvas_event_flags_are_independent_bits() {
+        let event = |flags| CanvasEvent {
+            event_type: EventType::KeyDown,
+            id: dom::Id::new(&[]),
+            key: KeyName::Enter,
+            flags,
+            value: String::new(),
+            x: 0.0,
+            y: 0.0,
+            time: 0.0,
+            pointer_id: 0,
+        };
+        for bit in 0..8u32 {
+            let e = event(1 << bit);
+            let got = [e.alt(), e.ctrl(), e.meta(), e.repeat(), e.shift()];
+            let mut want = [false; 5];
+            if (1..=5).contains(&bit) {
+                want[bit as usize - 1] = true;
+            }
+            assert_eq!(got, want, "bit {bit}");
+        }
+        let all = event(0xFF);
+        assert!(all.alt() && all.ctrl() && all.meta() && all.repeat() && all.shift());
+    }
+
+    #[test]
+    fn primitives_round_trip() {
+        let mut frame = Vec::new();
+        frame.push(7);
+        put_u16(&mut frame, 0x0102);
+        put_u32(&mut frame, 0xDEAD_BEEF);
+        put_i32(&mut frame, -2);
+        put_f32(&mut frame, 1.5);
+        frame.extend_from_slice(&2.5f64.to_le_bytes());
+        put_str(&mut frame, "日本語");
+        assert_eq!(&frame[1..3], [0x02, 0x01]);
+        assert_eq!(&frame[7..11], (-2i32).to_le_bytes());
+
+        let mut input = &frame[..];
+        assert_eq!(get_u8(&mut input), Some(7));
+        input = &input[2..];
+        assert_eq!(get_u32(&mut input), Some(0xDEAD_BEEF));
+        input = &input[4..];
+        assert_eq!(get_f32(&mut input), Some(1.5));
+        assert_eq!(get_f64(&mut input), Some(2.5));
+        assert_eq!(get_string(&mut input).as_deref(), Some("日本語"));
+        assert!(input.is_empty());
+        assert_eq!(get_u8(&mut input), None);
+    }
+
+    #[test]
+    fn get_functions_reject_short_or_invalid_input() {
+        assert_eq!(get_u32(&mut &[1, 2, 3][..]), None);
+        assert_eq!(get_f32(&mut &[0; 3][..]), None);
+        assert_eq!(get_f64(&mut &[0; 7][..]), None);
+
+        let mut too_long = Vec::new();
+        put_u32(&mut too_long, 5);
+        too_long.extend_from_slice(b"abcd");
+        assert_eq!(get_string(&mut &too_long[..]), None);
+
+        let mut invalid = Vec::new();
+        put_u32(&mut invalid, 2);
+        invalid.extend_from_slice(&[0xFF, 0xFE]);
+        assert_eq!(get_string(&mut &invalid[..]), None);
+    }
+
+    #[test]
+    fn dom_id_round_trip() {
+        let ids = [
+            dom::Id::new(&[]),
+            dom::Id::new(&[(dom::Tag::Body, None)]),
+            header_button_3(),
+            dom::Id::new(&[
+                (dom::Tag::Main, None),
+                (dom::Tag::Section, Some(2)),
+                (dom::Tag::Fieldset, Some(u32::MAX - 1)),
+            ]),
+            dom::Id::new(&[(dom::Tag::Other, Some(0))]),
+        ];
+        for id in ids {
+            let mut frame = Vec::new();
+            id.encode(&mut frame);
+            let mut input = &frame[..];
+            assert_eq!(dom::Id::decode(&mut input), Some(id.clone()));
+            assert!(input.is_empty());
+            for cut in 0..frame.len() {
+                assert_eq!(dom::Id::decode(&mut &frame[..cut]), None, "cut {cut}");
+            }
+        }
+    }
+
+    #[test]
+    fn encode_command_layouts() {
+        let id = header_button_3();
+        let with_id = |operation: u8, tail: &[u8]| {
+            let mut frame = vec![operation];
+            frame.extend_from_slice(&id_bytes());
+            frame.extend_from_slice(tail);
+            frame
+        };
+        let encode = |command: Command| {
+            let mut frame = Vec::new();
+            encode_command(&mut frame, &command);
+            frame
+        };
+
+        assert_eq!(
+            encode(Command::SetText { id: id.clone(), value: String::from("hi") }),
+            with_id(1, &[2, 0, 0, 0, b'h', b'i'])
+        );
+        assert_eq!(
+            encode(Command::SetAttribute {
+                id:        id.clone(),
+                attribute: Attribute::Hidden,
+                value:     String::from("x"),
+            }),
+            with_id(3, &[2, 0, 1, 0, 0, 0, b'x'])
+        );
+        assert_eq!(
+            encode(Command::AddClass { id: id.clone(), value: ClassName::Hidden }),
+            with_id(5, &[3, 0])
+        );
+        assert_eq!(
+            encode(Command::SetWidth { id: id.clone(), px: 258 }),
+            with_id(7, &[2, 1, 0, 0])
+        );
+        assert_eq!(encode(Command::SetZIndex { id: id.clone(), z: -1 }), with_id(9, &[255; 4]));
+        let mut translate = Vec::new();
+        translate.extend_from_slice(&1.5f32.to_le_bytes());
+        translate.extend_from_slice(&(-2.5f32).to_le_bytes());
+        assert_eq!(
+            encode(Command::SetTranslate { id: id.clone(), x: 1.5, y: -2.5 }),
+            with_id(11, &translate)
+        );
+        assert_eq!(
+            encode(Command::SetCursor { id: id.clone(), value: CursorValue::Grab }),
+            with_id(12, &[2, 0])
+        );
+        assert_eq!(encode(Command::Focus { id: id.clone() }), with_id(15, &[]));
+        assert_eq!(
+            encode(Command::JsFn { id: id.clone(), name: FnName::ShowToast }),
+            with_id(16, &[2, 0])
+        );
+        assert_eq!(
+            encode(Command::Error { error: CommandError::Decode }),
+            [18, 0, 1, 6, 0, 0, 0, b'D', b'e', b'c', b'o', b'd', b'e']
+        );
+        let panic = encode(Command::Error {
+            error: CommandError::Panic { location: String::new(), message: String::new() },
+        });
+        assert_eq!(&panic[..3], [18, 1, 3]);
     }
 }

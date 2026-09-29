@@ -3315,37 +3315,37 @@ pub enum Weapon {
     KnifeLarge,
     KnifeMedium,
     KnifeSmall,
-    Nunchaku,      // Nunchaku            1D8+DB
-    RockThrown,    // Rock, Thrown        1D4+half DB
+    Nunchaku,   // Nunchaku            1D8+DB
+    RockThrown, // Rock, Thrown        1D4+half DB
     Shuriken,
     Spear,
     SpearThrown,
-    Auto22Short, // .22 Short Automatic 1D6
-    Derringer25, // .25 Derringer       1D6
-    Revolver32,  // .32 Revolver        1D8
-    Automatic32, // .32 Automatic       1D8
-    LugerP08,    // Model P08 Luger     1D10
-    Revolver45,  // .45 Revolver        1D10+2
-    Automatic45, // .45 Automatic       1D10+2
-    BoltAction22,   // .22 Bolt-Action     1D6+1
-    LeverAction30,  // .30 Lever-Action    2D6
-    MartiniHenry45, // .45 Martini-Henry   1D8+1D6+3
-    MoranAirRifle,  // Col. Moran's Air    2D6+1
-    LeeEnfield303,  // .303 Lee-Enfield    2D6+4
-    BoltAction3006, // .30-06 Bolt-Action  2D6+4
-    ElephantGun,    // Elephant Gun        3D6+4
+    Auto22Short,            // .22 Short Automatic 1D6
+    Derringer25,            // .25 Derringer       1D6
+    Revolver32,             // .32 Revolver        1D8
+    Automatic32,            // .32 Automatic       1D8
+    LugerP08,               // Model P08 Luger     1D10
+    Revolver45,             // .45 Revolver        1D10+2
+    Automatic45,            // .45 Automatic       1D10+2
+    BoltAction22,           // .22 Bolt-Action     1D6+1
+    LeverAction30,          // .30 Lever-Action    2D6
+    MartiniHenry45,         // .45 Martini-Henry   1D8+1D6+3
+    MoranAirRifle,          // Col. Moran's Air    2D6+1
+    LeeEnfield303,          // .303 Lee-Enfield    2D6+4
+    BoltAction3006,         // .30-06 Bolt-Action  2D6+4
+    ElephantGun,            // Elephant Gun        3D6+4
     Shotgun20Gauge,         // 20-gauge (2B)        2D6/1D6/1D3
     Shotgun16Gauge,         // 16-gauge (2B)        2D6+2/1D6+1/1D4
     Shotgun12Gauge,         // 12-gauge (2B)        4D6/2D6/1D6
     Shotgun12GaugeSemiAuto, // 12-gauge semi-auto   4D6/2D6/1D6
     Shotgun12GaugeSawedOff, // 12-gauge sawed off   4D6/1D6
-    BergmannMP18, // Bergmann MP18        1D10
-    Thompson,     // Thompson             1D10+2
-    BrowningAutoRifle, // Browning Auto Rifle  2D6+4
-    BrowningM1917,     // .30 Browning M1917   2D6+4
-    BrenGun,           // Bren Gun             2D6+4
-    LewisGun,          // Mark I Lewis Gun     2D6+4
-    Vickers303,        // Vickers .303         2D6+4
+    BergmannMP18,           // Bergmann MP18        1D10
+    Thompson,               // Thompson             1D10+2
+    BrowningAutoRifle,      // Browning Auto Rifle  2D6+4
+    BrowningM1917,          // .30 Browning M1917   2D6+4
+    BrenGun,                // Bren Gun             2D6+4
+    LewisGun,               // Mark I Lewis Gun     2D6+4
+    Vickers303,             // Vickers .303         2D6+4
     Custom(String),
 }
 
@@ -3751,7 +3751,6 @@ impl Wealth {
     }
 }
 
-
 pub enum Backstory {
     KeyConnection(Box<Backstory>),
     PersonalDescription,
@@ -3814,7 +3813,6 @@ impl Backstory {
         }
     }
 }
-
 
 ///   [title_len: u32 LE][title: utf-8][body: utf-8]
 pub struct Memo {

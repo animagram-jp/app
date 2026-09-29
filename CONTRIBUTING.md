@@ -38,7 +38,6 @@ Gui application system for editing and reading structured data. Handles event lo
       画面のまま無反応になる。`Handler::ready` を main では `FileStore`
       無しの分岐にして起動自体は継続できるようにする対応を検討する
       (ただし永続化なしで使い続けることになるため、利用者への告知が要る)。
-      詳細は [`docs/build.md`](./docs/build.md) の COOP/COEP の節を参照。
 
 ---
 
@@ -48,7 +47,7 @@ worker 構成 (既定, `worker` feature 有効) は dedicated worker +
 SharedArrayBuffer + `talc` アロケーターを使う。`--target web` の
 wasm-bindgen 出力は標準では memory を自己完結で持つため、共有メモリで
 使うには手動で memory import 化と shared 化を後段で行う必要がある。
-手順の詳細と理由は [`docs/build.md`](./docs/build.md) を参照。
+手順の理由は [`reference/Heap.md`](./reference/Heap.md) を参照。
 
 ```bash
 # --- Setup firefox, geckodriver, wasm-bindgen-cli (wasm-bindgen-test) ---
@@ -75,6 +74,9 @@ cargo test --doc
 
 # unit test
 cargo test --lib
+
+# unit test (without `worker` feature: App / Handler on the host)
+cargo test --no-default-features --lib
 
 # unit test (wasm32 + headless browser)
 geckodriver --port 8000 & GECKODRIVER_REMOTE=http://127.0.0.1:8000 cargo test --target wasm32-unknown-unknown --lib --tests && pkill -f "geckodriver --port 8000"
@@ -208,14 +210,14 @@ instanceは、null(未入力)をlistの out of range で表現し、メモリ占
 
 ## Javascript
 
-| File | Port | Description |
-|-|-|-|
-| init.js   | `start` | Entrypoint: start listening commands and events, returning dedicated Worker. |
-| | `send` | Send Event to app. |
-| | `excute` | Excute commands recieved from app. |
-| worker.js | | メインと非同期なdedicated Web Workerスレッドでapp.jsを実行する |
-| app.js    | | app_bg.wasmのglueスクリプト(wasm-bindgenによる自動生成) |
-| sw.js     | | オフライン動作のためのService workerを起動する |
+eventはappが受け取るもの、commandはJavaScriptが実行するもの。両者は共有メモリ上のリングバッファで1フレームずつ受け渡す。
+
+| File | Description |
+|-|-|
+| init.js   | メインスレッド側。DOMイベントをeventとしてappへ送り、appからのcommandを実行する。 |
+| worker.js | メインと非同期なdedicated Web Workerスレッドでapp.jsを実行し、appのループを回す |
+| app.js    | app_bg.wasmのglueスクリプト(wasm-bindgenによる自動生成) |
+| sw.js     | オフライン動作と、cross-origin isolation (COOP/COEP) のためのService worker |
 
 ---
 
@@ -223,50 +225,12 @@ instanceは、null(未入力)をlistの out of range で表現し、メモリ占
 
 | File | Description |
 |-|-|
-| js_client.rs | WebAPIsの操作オブジェクト・関数をWebAssembly内で再定義する。操作関数はオブジェクトを引数に取る。 |
+| arena.rs | JavaScriptとappが共有するメモリのレイアウトと、event / commandのリングバッファ。 |
+| js_client.rs | JavaScriptとの境界。Command, Eventのフレーム形式(operation番号、put_* / get_*)、dom::Id、ジェスチャー認識。 |
 | list.rs | 可変長論理バイト列の宣言と、固定長要素列操作Listと可変長(バイト倍数)要素列操作VariabeList。バイト列読み取り関数new_from_bytesとget_from_bytesも含む。 |
-| file_store.rs | [トランザクションストアのOPFS実装](./docs/FileStore.md) |
+| file_store.rs | [トランザクションストアのOPFS実装](./reference/FileStore.md) |
 | timestamp.rs | タイムゾーンとデシ秒、カレンダー加減算に対応した、u64 timestampモジュール。 |
 | data_struct.rs | データモデル固有のフィールド数(schema_size)固定Listと可変部VariableListによるデータインスタンス操作モジュール。フィールド1にid(u32), 2にcreated_at(timestamp), 3にmodified_at(timestamp)を確定し、4~を開放。 |
 | object.rs | ドメイン固有のデータモデルの全フィールドとロジックを、各自公開されたenumのネスト群で表現したモジュール。関数はitemのドメイン意味(表示)を定義する`label`, 一意なschema_idを発行する`id`, バイト列とdomからの流入(u32,str,f64)を相互変換する`read` / `write`, 値の表示を導出する`display`などを各enum itemに対して定義する。 |
 | event.rs | canvasを操作する、ドメイン固有のステートを持つHandler定義。Handlerは、DataStructと、フィールド4~schema_sizeまでの操作ロジックを定義するobjectを束ねて操作を行う。js_clientのdom::Idとobjectのフィールドを相互にバルクマッピングする関数を定義して、canvasと内部データを相互変換する。 |
-| app.rs | - initとprocessの公開apiを持つ、Appインスタンス。eventsとcommandsの2つのキューを持ち、event::Handler.processへevents消費を移譲ループする。 |
-
-```rust
-use crate::{
-    js_client::{
-        Command,
-        get_js_str, get_js_u32, get_js_f64, get_js_field,
-        EventType, KeyName,
-        Device, Gesture, PointerState,
-        dom, CanvasEvent
-    },
-    list::{
-        List::{new, get, set, delete},
-        VariableList::{new, new_from_bytes, get, get_from_bytes, set, delete},
-    },
-    file_store::FileStore::{
-        new, issue_id, get, set, delete, save, discard, compact, close
-    },
-    timestamp::{
-        Field, YEAR, MONTH, DAY, HOUR, MINUTE, SECOND, DECISECOND, IS_UTC, TIMEZONE, Timezone,
-        from_ut, new, display, unpack, pack,
-        add_years, sub_years, add_months, sub_months, add_days, sub_days,
-        add_hours, sub_hours, add_minutes, sub_minutes
-    },
-    data_struct::DataStruct::{
-        new, get_from_bytes, get, set, delete, compact, to_bytes, from_bytes
-    },
-    object::{
-        Dice, dice::{display, roll},
-        Character, Profile, Characteristic, Skill,
-        ArtAndCraft, Fighting, Firearms, Pilot, Science, Survival,
-    },
-    event::Handler::{
-        ready, close, initial_draw, process, process_gesture
-    },
-    app::{
-        Event, App::{init, close, process, dispatch}
-    },
-};
-```
+| app.rs | - initとprocessの公開apiを持つ、Appインスタンス。eventsとcommandsの2つのキューを持ち、event::Handler.process_*へevents消費を移譲ループする。 |

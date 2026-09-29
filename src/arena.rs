@@ -1,19 +1,16 @@
 // Arena
 //
 
-use alloc::{
-    string::{String, ToString},
-    vec::Vec,
-};
+use alloc::{string::ToString, vec::Vec};
 #[cfg(all(target_arch = "wasm32", target_feature = "atomics"))]
 use core::arch::wasm32::{memory_atomic_notify, memory_atomic_wait32};
 use core::{
+    assert,
     cell::UnsafeCell,
-    convert::TryInto,
     debug_assert,
     marker::Sync,
     option::Option::{self, None, Some},
-    primitive::{bool, f32, f64, i32, str, u8, u16, u32, usize},
+    primitive::{bool, u8, u32, usize},
     ptr, slice,
     sync::atomic::{AtomicU32, Ordering},
 };
@@ -23,30 +20,28 @@ use wasm_bindgen::prelude::wasm_bindgen;
 
 use crate::{
     app::App,
-    js_client::{CommandError, dom, encode_command, encode_error},
+    js_client::{CommandError, encode_command, encode_error},
 };
 
 // === arena layout ===
 
 pub const EVENT_CONTROL: usize = 0;
-pub const EVENT_PAYLOAD: usize = 128;
+pub const EVENT_PAYLOAD: usize = EVENT_CONTROL + CONTROL_SIZE;
 pub const EVENT_SLOT: usize = 4096;
 pub const EVENT_SLOT_COUNT: u32 = 64;
 
-pub const COMMAND_CONTROL: usize = 262_272;
-pub const COMMAND_PAYLOAD: usize = 262_400;
+pub const COMMAND_CONTROL: usize = EVENT_PAYLOAD + EVENT_SLOT * EVENT_SLOT_COUNT as usize;
+pub const COMMAND_PAYLOAD: usize = COMMAND_CONTROL + CONTROL_SIZE;
 pub const COMMAND_SLOT: usize = 4096;
 pub const COMMAND_SLOT_COUNT: u32 = 64;
 
-pub const ARENA_SIZE: usize = 524_544;
+pub const ARENA_SIZE: usize = COMMAND_PAYLOAD + COMMAND_SLOT * COMMAND_SLOT_COUNT as usize;
 
 pub const CONTROL_WRITE_OFFSET: usize = 0;
 ///
 pub const CONTROL_READ_OFFSET: usize = 64;
+pub const CONTROL_SIZE: usize = 2 * CONTROL_READ_OFFSET;
 pub const LENGTH_PREFIX: usize = 4;
-
-pub const EVENT_CAPACITY: usize = 64;
-pub const COMMAND_CAPACITY: usize = 16 * 1024;
 
 // === arena state ===
 
@@ -166,6 +161,12 @@ impl Arena {
     }
 
     pub fn command_push(&self, frame: &[u8]) -> bool {
+        assert!(
+            frame.len() <= COMMAND_SLOT - LENGTH_PREFIX,
+            "command frame too large: {} > {}",
+            frame.len(),
+            COMMAND_SLOT - LENGTH_PREFIX,
+        );
         self.ring_push(COMMAND_CONTROL, COMMAND_PAYLOAD, COMMAND_SLOT, COMMAND_SLOT_COUNT, frame)
     }
 }
@@ -259,118 +260,8 @@ pub fn report_error(error: CommandError) {
     };
 
     let mut frame = Vec::with_capacity(message.len() + OVERHEAD);
-    let mut encoder = Encoder::new(&mut frame);
-    encode_error(&mut encoder, &error, message);
+    encode_error(&mut frame, &error, message);
     let _ = emit(&frame);
-}
-
-//
-//
-//
-//
-
-// === encode, decode ===
-
-pub struct Encoder<'a>(&'a mut Vec<u8>);
-
-impl<'a> Encoder<'a> {
-    pub fn new(commands: &'a mut Vec<u8>) -> Self {
-        Self(commands)
-    }
-
-    pub fn u8(&mut self, value: u8) {
-        self.0.push(value);
-    }
-
-    pub fn u16(&mut self, value: u16) {
-        self.0.extend_from_slice(&value.to_le_bytes());
-    }
-
-    pub fn u32(&mut self, value: u32) {
-        self.0.extend_from_slice(&value.to_le_bytes());
-    }
-
-    pub fn i32(&mut self, value: i32) {
-        self.0.extend_from_slice(&value.to_le_bytes());
-    }
-
-    pub fn f32(&mut self, value: f32) {
-        self.0.extend_from_slice(&value.to_le_bytes());
-    }
-
-    pub fn bytes(&mut self, value: &[u8]) {
-        self.u32(value.len() as u32);
-        self.0.extend_from_slice(value);
-    }
-
-    pub fn str(&mut self, value: &str) {
-        self.bytes(value.as_bytes());
-    }
-
-    ///
-    pub fn id(&mut self, value: &dom::Id) {
-        self.u8(value.0.len() as u8);
-        for segment in &value.0 {
-            self.u8(segment.tag.encode_u8());
-            self.u32(segment.n.unwrap_or(u32::MAX));
-        }
-    }
-}
-
-pub struct Decoder<'a> {
-    bytes:    &'a [u8],
-    position: usize,
-}
-
-impl<'a> Decoder<'a> {
-    pub fn new(bytes: &'a [u8]) -> Self {
-        Self { bytes, position: 0 }
-    }
-
-    fn take(&mut self, count: usize) -> Option<&'a [u8]> {
-        let slice = self.bytes.get(self.position..self.position + count)?;
-        self.position += count;
-        Some(slice)
-    }
-
-    pub fn u8(&mut self) -> Option<u8> {
-        Some(self.take(1)?[0])
-    }
-
-    pub fn u32(&mut self) -> Option<u32> {
-        Some(u32::from_le_bytes(self.take(4)?.try_into().ok()?))
-    }
-
-    pub fn f32(&mut self) -> Option<f32> {
-        Some(f32::from_le_bytes(self.take(4)?.try_into().ok()?))
-    }
-
-    pub fn f64(&mut self) -> Option<f64> {
-        Some(f64::from_le_bytes(self.take(8)?.try_into().ok()?))
-    }
-
-    pub fn bytes(&mut self) -> Option<&'a [u8]> {
-        let length = self.u32()? as usize;
-        self.take(length)
-    }
-
-    pub fn string(&mut self) -> Option<String> {
-        Some(str::from_utf8(self.bytes()?).ok()?.to_string())
-    }
-
-    pub fn id(&mut self) -> Option<dom::Id> {
-        let count = self.u8()? as usize;
-        let mut segments = Vec::with_capacity(count);
-        for _ in 0..count {
-            let tag = dom::Tag::decode_u8(self.u8()?);
-            let number = self.u32()?;
-            segments.push(dom::Segment {
-                tag,
-                n: if number == u32::MAX { None } else { Some(number) },
-            });
-        }
-        Some(dom::Id(segments))
-    }
 }
 
 #[cfg(all(test, target_arch = "wasm32"))]
@@ -380,7 +271,9 @@ mod tests {
     use super::*;
     use crate::{
         event::EVENT_CANVAS,
-        js_client::{EventType, OPERATION_ADD_CLASS, OPERATION_REMOVE_CLASS},
+        js_client::{
+            EventType, OPERATION_ADD_CLASS, OPERATION_REMOVE_CLASS, dom, put_f32, put_str,
+        },
     };
 
     const CLICK: u8 = 2;
@@ -392,17 +285,23 @@ mod tests {
         App::init(false, 0.0, 0.0).await;
 
         let mut frame = Vec::new();
-        let mut encoder = Encoder::new(&mut frame);
-        encoder.u8(EVENT_CANVAS);
-        encoder.u8(CLICK);
-        encoder.id(&dom::Id::new(&[(dom::Tag::Header, None), (dom::Tag::Button, Some(3))]));
-        encoder.u8(0);
-        encoder.str("");
-        encoder.f32(0.0);
-        encoder.f32(0.0);
+        frame.push(EVENT_CANVAS);
+        frame.push(CLICK);
+        dom::Id::new(&[(dom::Tag::Header, None), (dom::Tag::Button, Some(3))]).encode(&mut frame);
+        frame.push(0);
+        frame.push(0);
+        put_str(&mut frame, "");
+        put_f32(&mut frame, 0.0);
+        put_f32(&mut frame, 0.0);
         frame.extend_from_slice(&0f64.to_le_bytes());
         frame.extend_from_slice(&0u32.to_le_bytes());
-        assert!(ARENA.ring_push(EVENT_CONTROL, EVENT_PAYLOAD, EVENT_SLOT, EVENT_SLOT_COUNT, &frame));
+        assert!(ARENA.ring_push(
+            EVENT_CONTROL,
+            EVENT_PAYLOAD,
+            EVENT_SLOT,
+            EVENT_SLOT_COUNT,
+            &frame
+        ));
 
         process_event();
 
@@ -414,5 +313,38 @@ mod tests {
             ARENA.ring_commit_pop(COMMAND_CONTROL);
         }
         assert_eq!(operations, [OPERATION_REMOVE_CLASS, OPERATION_ADD_CLASS]);
+    }
+}
+
+#[cfg(test)]
+mod command_ring_tests {
+    use alloc::vec;
+
+    use super::*;
+
+    #[test]
+    fn command_push_accepts_the_largest_frame_and_reports_a_full_ring() {
+        ARENA.initialize();
+        let largest = COMMAND_SLOT - LENGTH_PREFIX;
+
+        assert!(ARENA.command_push(&vec![7; largest]));
+        let frame = ARENA
+            .ring_peek(COMMAND_CONTROL, COMMAND_PAYLOAD, COMMAND_SLOT, COMMAND_SLOT_COUNT)
+            .unwrap();
+        assert_eq!(frame.len(), largest);
+        assert!(frame.iter().all(|byte| *byte == 7));
+        ARENA.ring_commit_pop(COMMAND_CONTROL);
+
+        for _ in 0..COMMAND_SLOT_COUNT {
+            assert!(ARENA.command_push(&[1]));
+        }
+        assert!(!ARENA.command_push(&[1]));
+        ARENA.initialize();
+    }
+
+    #[test]
+    #[should_panic(expected = "command frame too large")]
+    fn command_push_panics_over_the_slot_limit() {
+        ARENA.command_push(&vec![0; COMMAND_SLOT - LENGTH_PREFIX + 1]);
     }
 }

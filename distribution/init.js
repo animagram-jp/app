@@ -1,20 +1,21 @@
 // === constants ===
 
+const CONTROL_WRITE_OFFSET = 0;
+const CONTROL_READ_OFFSET = 64;
+const CONTROL_SIZE = 2 * CONTROL_READ_OFFSET;
+const LENGTH_PREFIX = 4;
+
 const EVENT_CONTROL = 0;
-const EVENT_PAYLOAD = 128; // range start
+const EVENT_PAYLOAD = EVENT_CONTROL + CONTROL_SIZE; // range start
 const EVENT_SLOT = 4096; // bytes per slot
 const EVENT_SLOT_COUNT = 64;
 
-const COMMAND_CONTROL = 262272;
-const COMMAND_PAYLOAD = 262400; // range start
+const COMMAND_CONTROL = EVENT_PAYLOAD + EVENT_SLOT * EVENT_SLOT_COUNT;
+const COMMAND_PAYLOAD = COMMAND_CONTROL + CONTROL_SIZE; // range start
 const COMMAND_SLOT = 4096; // bytes per slot
 const COMMAND_SLOT_COUNT = 64;
 
-const ARENA_SIZE = 524544; // bytes per slot
-
-const CONTROL_WRITE_OFFSET = 0;
-const CONTROL_READ_OFFSET = 64;
-const LENGTH_PREFIX = 4;
+const ARENA_SIZE = COMMAND_PAYLOAD + COMMAND_SLOT * COMMAND_SLOT_COUNT;
 
 const EVENT_RING = {
     control: EVENT_CONTROL, 
@@ -30,7 +31,16 @@ const COMMAND_RING = {
     slot_count: COMMAND_SLOT_COUNT,
 };
 
+const EVENT_CANVAS = 1;
+const EVENT_RESIZE = 2;
+const EVENT_SCROLL = 3;
+const EVENT_VISIBILITY = 4;
+const EVENT_SHUTDOWN = 8;
+
 const THREAD = crossOriginIsolated ? "worker" : "main";
+
+// flag of retry of loading when fallback to THREAD === "main"
+const MAIN_RELOAD_KEY = "app:main-thread-reload-attempted";
 
 /**
  *  MUST Sync with talc allocator -Clink-arg=--max-memory=134217728, 128MiB = 2048 pages
@@ -54,14 +64,15 @@ const S = {
     int32: null,
     uint8: null,
     data_view: null,
-    event_scratch: new Uint8Array(EVENT_SLOT),
-    command_scratch: new Uint8Array(COMMAND_SLOT),
+    event_frame: new Uint8Array(EVENT_SLOT - LENGTH_PREFIX),
+    command_frame: new Uint8Array(COMMAND_SLOT - LENGTH_PREFIX),
     call_app: () => {},
 };
 
 let worker = null;
 let bound = false;
 let restarting = false;
+let composing_element = null;
 
 if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("./sw.js").catch((err) => console.warn("SW registration failed:", err));
@@ -180,79 +191,63 @@ async function try_recover_to_worker_thread() {
     return true;
 }
 
-// flag of retry of loading when fallback to THREAD === "main"
-const MAIN_RELOAD_KEY = "app:main-thread-reload-attempted";
-
 // === excute command ===
 
 function drain() {
     view();
     for (;;) {
-        const length = ring_pop(COMMAND_RING, S.command_scratch);
+        const length = ring_pop(COMMAND_RING, S.command_frame);
         if (length === 0) return;
-        const d = new Decoder(S.command_scratch, 1, length);
-        execute(S.command_scratch[0], d);
+        execute(S.command_frame.subarray(0, length));
     }
 }
 
 /**
  *  Execute command (1 octets) recieved from app.
- *
- *  @param {number}  operation - js_client.rs:OPERATION_*
- *  @param {Decoder} d         - payload
  */
-function execute(operation, d) {
-    switch (operation) {
-        case 18: {
-            const serious = d.u8() !== 0;
-            const code = d.u8();
-            const message = d.string() ?? "";
-            console.error(`[wasm] ${ERROR_NAMES[code] ?? code}:`, message);
-            if (serious) restart();
-            return;
-        }
+function execute(frame) {
+    const operation = frame[0];
+    if (operation === 18) {
+        const [serious, after_serious] = get_u8(frame, 1);
+        const [code, after_code] = get_u8(frame, after_serious);
+        const [message] = get_str(frame, after_code);
+        console.error(`[wasm] ${ERROR_NAMES[code] ?? code}:`, message ?? "");
+        if (serious !== 0) restart();
+        return;
     }
 
-    const el = document.getElementById(decode_id(d));
+    const [id, offset] = get_id(frame, 1);
+    const el = document.getElementById(id);
     if (!el) return;
     switch (operation) {
-        case  1: el.textContent = d.string() ?? ""; break;
-        case  2: el.value = d.string() ?? ""; break;
-        case  3: el.setAttribute(ATTRIBUTES[d.u16()], d.string() ?? ""); break;
-        case  4: el.removeAttribute(ATTRIBUTES[d.u16()]); break;
-        case  5: el.classList.add(CLASS_NAMES[d.u16()]); break;
-        case  6: el.classList.remove(CLASS_NAMES[d.u16()]); break;
-        case  7: el.style.width = d.u32() + "px"; break;
-        case  8: el.style.height = d.u32() + "px"; break;
-        case  9: el.style.zIndex = d.i32(); break;
-        case 10: el.style.background = d.string(); break;
-        case 11: el.style.translate = `${d.f32()}px ${d.f32()}px`; break;
-        case 12: el.style.cursor = CURSOR_VALUES[d.u16()] ?? ""; break;
+        case  1: el.textContent = get_str(frame, offset)[0] ?? ""; break;
+        case  2:
+            if (el !== composing_element) el.value = get_str(frame, offset)[0] ?? "";
+            break;
+        case  3: {
+            const [attribute, after] = get_u16(frame, offset);
+            el.setAttribute(ATTRIBUTES[attribute], get_str(frame, after)[0] ?? "");
+            break;
+        }
+        case  4: el.removeAttribute(ATTRIBUTES[get_u16(frame, offset)[0]]); break;
+        case  5: el.classList.add(CLASS_NAMES[get_u16(frame, offset)[0]]); break;
+        case  6: el.classList.remove(CLASS_NAMES[get_u16(frame, offset)[0]]); break;
+        case  7: el.style.width = get_u32(frame, offset)[0] + "px"; break;
+        case  8: el.style.height = get_u32(frame, offset)[0] + "px"; break;
+        case  9: el.style.zIndex = get_i32(frame, offset)[0]; break;
+        case 10: el.style.background = get_str(frame, offset)[0]; break;
+        case 11: {
+            const [x, after] = get_f32(frame, offset);
+            const [y] = get_f32(frame, after);
+            el.style.translate = `${x}px ${y}px`;
+            break;
+        }
+        case 12: el.style.cursor = CURSOR_VALUES[get_u16(frame, offset)[0]] ?? ""; break;
         case 13: el.showModal(); break;
         case 14: el.close(); break;
         case 15: el.focus(); break;
-        case 16: js_fn[FN_NAMES[d.u16()]]?.(el); break;
+        case 16: js_fn[FN_NAMES[get_u16(frame, offset)[0]]]?.(el); break;
     }
-}
-
-/**
- * Rebuilds an element id from the format written by `Encoder::id`.
- *
- * Returns the same string as `dom::Id::encode` in `js_client.rs`.
- *
- * @param {Decoder} d
- * @returns {string} element id
- */
-function decode_id(d) {
-    const count = d.u8();
-    if (count === undefined) return "";
-    const segments = [];
-    for (let i = 0; i < count; i++) {
-        const tag = TAGS[d.u8()] ?? "";
-        const number = d.u32();
-        segments.push(number === 0xFFFFFFFF ? tag : `${tag}-${number}`);
-    }
-    return segments.join("_");
 }
 
 const js_fn = {
@@ -297,20 +292,80 @@ const toast_cycles = new WeakMap();
  * @returns
  */
 function send(e) {
-    if (!ROOTS.some(r => r && r.contains(e.target))) return;
+    if (!in_roots(e.target)) return;
 
-    const encoder = new Encoder(S.event_scratch);
-    encoder.u8(EVENT_CANVAS);
-    encoder.u8(Math.max(EVENT_TYPES.indexOf(e.type), 0));
-    encoder.id(e.target.id ?? "");
-    encoder.u8(Math.max(KEY_NAMES.indexOf(e.key), 0));
-    encoder.str(e.target.value ?? "");
-    encoder.f32(e.clientX ?? 0);
-    encoder.f32(e.clientY ?? 0);
-    encoder.f64(e.timeStamp ?? 0);
-    encoder.u32(e.pointerId ?? 0);
+    push(encode_canvas_event(S.event_frame, e, e.clientX ?? 0, e.clientY ?? 0));
+}
 
-    push(encoder.frame());
+function send_key(e) {
+    if (e.isComposing || e.keyCode === 229 || e.target === composing_element) return;
+    send(e);
+}
+
+function send_scroll(e) {
+    if (e.target === document) {
+        push(encode_scroll_event(S.event_frame, window.scrollX, window.scrollY));
+        return;
+    }
+    if (!in_roots(e.target)) return;
+
+    push(encode_canvas_event(S.event_frame, e, e.target.scrollLeft, e.target.scrollTop));
+}
+
+function key_index(e) {
+    const key = e.key?.length === 1 ? e.key.toLowerCase() : e.key;
+    return Math.max(KEY_NAMES.indexOf(key), 0);
+}
+
+function key_flags(e) {
+    return (e.altKey ? 1 << 1 : 0)
+        | (e.ctrlKey ? 1 << 2 : 0)
+        | (e.metaKey ? 1 << 3 : 0)
+        | (e.repeat ? 1 << 4 : 0)
+        | (e.shiftKey ? 1 << 5 : 0);
+}
+
+function in_roots(target) {
+    return ROOTS.some(r => r && r.contains(target));
+}
+
+function encode_canvas_event(frame, e, x, y) {
+    let offset = put_u8(frame, 0, EVENT_CANVAS);
+    offset = put_u8(frame, offset, Math.max(EVENT_TYPES.indexOf(e.type), 0));
+    offset = put_id(frame, offset, e.target.id ?? "");
+    offset = put_u8(frame, offset, key_index(e));
+    offset = put_u8(frame, offset, key_flags(e));
+    offset = put_str(frame, offset, e.target.value ?? "");
+    offset = put_f32(frame, offset, x);
+    offset = put_f32(frame, offset, y);
+    offset = put_f64(frame, offset, e.timeStamp ?? 0);
+    offset = put_u32(frame, offset, e.pointerId ?? 0);
+    return frame.subarray(0, offset);
+}
+
+function encode_resize_event(frame, width, height) {
+    let offset = put_u8(frame, 0, EVENT_RESIZE);
+    offset = put_f32(frame, offset, width);
+    offset = put_f32(frame, offset, height);
+    return frame.subarray(0, offset);
+}
+
+function encode_scroll_event(frame, x, y) {
+    let offset = put_u8(frame, 0, EVENT_SCROLL);
+    offset = put_f32(frame, offset, x);
+    offset = put_f32(frame, offset, y);
+    return frame.subarray(0, offset);
+}
+
+function encode_visibility_event(frame, state) {
+    let offset = put_u8(frame, 0, EVENT_VISIBILITY);
+    offset = put_u8(frame, offset, Math.max(VISIBILITY_STATES.indexOf(state), 0));
+    return frame.subarray(0, offset);
+}
+
+function encode_shutdown_event(frame) {
+    const offset = put_u8(frame, 0, EVENT_SHUTDOWN);
+    return frame.subarray(0, offset);
 }
 
 /**
@@ -333,46 +388,46 @@ function bind() {
     bound = true;
 
     const EVENTS = [
-        "click", "keydown", "input", "change", "submit", "focusout",
-        "pointerdown", "pointerup", "pointermove", "pointercancel"
+        "change", "click", "contextmenu", "focusin", "focusout", "input",
+        "pointercancel", "pointerdown", "pointerup", "submit"
     ];
     for (const type of EVENTS) {
         document.addEventListener(type, send);
+    }
+    document.addEventListener("pointermove", send, { passive: true });
+
+    document.addEventListener("compositionstart", (e) => { composing_element = e.target; });
+    document.addEventListener("compositionend", () => { composing_element = null; });
+    document.addEventListener("focusout", () => { composing_element = null; });
+    for (const type of ["keydown", "keyup"]) {
+        document.addEventListener(type, send_key);
     }
 
     let resize_timer;
     window.addEventListener("resize", () => {
         clearTimeout(resize_timer);
         resize_timer = setTimeout(() => {
-            const encoder = new Encoder(S.event_scratch);
-            encoder.u8(EVENT_RESIZE);
-            encoder.f32(window.innerWidth);
-            encoder.f32(window.innerHeight);
-            push(encoder.frame());
+            push(encode_resize_event(S.event_frame, window.innerWidth, window.innerHeight));
         }, 100);
     });
 
-    window.addEventListener("scroll", (e) => {
-        const encoder = new Encoder(S.event_scratch);
-        encoder.u8(EVENT_SCROLL);
-        encoder.id(e.target?.id ?? "");
-        encoder.f32(window.scrollX);
-        encoder.f32(window.scrollY);
-        push(encoder.frame());
-    }, { passive: true });
+    document.addEventListener("scroll", send_scroll, { capture: true, passive: true });
 
     window.addEventListener("pagehide", (e) => {
         if (e.persisted) return;
-        const encoder = new Encoder(S.event_scratch);
-        encoder.u8(EVENT_SHUTDOWN);
-        push(encoder.frame());
+        push(encode_shutdown_event(S.event_frame));
+    });
+
+    document.addEventListener("visibilitychange", () => {
+        push(encode_visibility_event(S.event_frame, document.visibilityState));
     });
 }
 
-const EVENT_CANVAS = 1;
-const EVENT_RESIZE = 2;
-const EVENT_SCROLL = 3;
-const EVENT_SHUTDOWN = 8;
+const VISIBILITY_STATES = [
+    null,
+    "hidden",
+    "visible",
+];
 
 const ROOTS = ["header", "main", "modal", "form", "output", "section"]
     .map(id => document.getElementById(id));
@@ -394,7 +449,6 @@ const EVENT_TYPES = [
     "pointerdown",
     "pointermove",
     "pointerup",
-    "resize",
     "scroll",
     "submit",
 ];
@@ -404,14 +458,108 @@ const EVENT_TYPES = [
  */
 const KEY_NAMES = [
     null,
+    "Alt",
+    "AltGraph",
+    "&",
+    "'",
     "ArrowDown",
     "ArrowLeft",
     "ArrowRight",
     "ArrowUp",
+    "*",
+    "@",
+    "\\",
     "Backspace",
+    "`",
+    "CapsLock",
+    "^",
+    "}",
+    "]",
+    ")",
+    ":",
+    ",",
+    "ContextMenu",
+    "Control",
+    "Delete",
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "$",
+    "\"",
+    "End",
     "Enter",
+    "=",
     "Escape",
+    "!",
+    "F1",
+    "F2",
+    "F3",
+    "F4",
+    "F5",
+    "F6",
+    "F7",
+    "F8",
+    "F9",
+    "F10",
+    "F11",
+    "F12",
+    ">",
+    "#",
+    "Home",
+    "Insert",
+    "a",
+    "b",
+    "c",
+    "d",
+    "e",
+    "f",
+    "g",
+    "h",
+    "i",
+    "j",
+    "k",
+    "l",
+    "m",
+    "n",
+    "o",
+    "p",
+    "q",
+    "r",
+    "s",
+    "t",
+    "u",
+    "v",
+    "w",
+    "x",
+    "y",
+    "z",
+    "<",
+    "Meta",
+    "-",
+    "{",
+    "[",
+    "(",
+    "PageDown",
+    "PageUp",
+    "%",
+    ".",
+    "|",
+    "+",
+    "?",
+    ";",
+    "Shift",
+    "/",
+    " ",
     "Tab",
+    "~",
+    "_",
 ];
 
 /**
@@ -457,6 +605,7 @@ const TAGS = [
  *  HTML attribute name. index == js_client.rs:Attribute
  */
 const ATTRIBUTES = [
+    null,
     "disabled",
     "hidden",
 ];
@@ -465,6 +614,7 @@ const ATTRIBUTES = [
  *  CSS class name. index == js_client.rs:ClassName
  */
 const CLASS_NAMES = [
+    null,
     "hide",
     "show",
     "hidden",
@@ -474,6 +624,7 @@ const CLASS_NAMES = [
  *  CSS `cursor` value. index == js_client.rs:CursorValue
  */
 const CURSOR_VALUES = [
+    null,
     "default",
     "grab",
 ];
@@ -482,6 +633,7 @@ const CURSOR_VALUES = [
  *  js_fn key. index == js_client.rs:FnName
  */
 const FN_NAMES = [
+    null,
     "hide_toast",
     "show_toast",
 ];
@@ -581,100 +733,113 @@ function ring_pop(ring, destination) {
     return length;
 }
 
-/**
- * MUST Sync with `arena.rs::Encoder`.
- */
-class Encoder {
-    /** @param {Uint8Array} scratch - write destination */
-    constructor(scratch) {
-        this.scratch = scratch;
-        this.data_view = new DataView(scratch.buffer, scratch.byteOffset);
-        this.position = 0;
-    }
+function view_of(frame) {
+    return new DataView(frame.buffer, frame.byteOffset, frame.length);
+}
 
-    frame() { return this.scratch.subarray(0, this.position); }
-
-    u8(value) { this.scratch[this.position++] = value; }
-    u16(value) { this.data_view.setUint16(this.position, value, true); this.position += 2; }
-    u32(value) { this.data_view.setUint32(this.position, value, true); this.position += 4; }
-    i32(value) { this.data_view.setInt32(this.position, value, true); this.position += 4; }
-    f32(value) { this.data_view.setFloat32(this.position, value, true); this.position += 4; }
-    f64(value) { this.data_view.setFloat64(this.position, value, true); this.position += 8; }
-
-    /** Appends a byte sequence, length-prefixed. */
-    bytes(value) {
-        this.u32(value.length);
-        this.scratch.set(value, this.position);
-        this.position += value.length;
-    }
-
-    /** Appends a string as UTF-8, length-prefixed. */
-    str(value) { this.bytes(TEXT_ENCODER.encode(value)); }
-
-    /**
-     * Appends an element id as `[count:u8]([tag:u8][number:u32])*`.
-     *
-     * Same format as `Encoder::id` / `Decoder::id` in `arena.rs`. A
-     * segment with no sequence number uses 0xFFFFFFFF.
-     */
-    id(value) {
-        if (!value) { this.u8(0); return; }
-        const segments = value.split("_");
-        this.u8(segments.length);
-        for (const segment of segments) {
-            const dash = segment.lastIndexOf("-");
-            const number = dash < 0 ? NaN : Number(segment.slice(dash + 1));
-            const tag = Number.isInteger(number) ? segment.slice(0, dash) : segment;
-            this.u8(Math.max(0, TAGS.indexOf(tag)));
-            this.u32(Number.isInteger(number) ? number : 0xFFFFFFFF);
-        }
+function reserve(frame, offset, count) {
+    if (offset + count > frame.length) {
+        throw new RangeError(`frame too large: ${offset + count} > ${frame.length}`);
     }
 }
 
-/**
- * Holds the position while reading out an event.
- *
- * Must sync with `arena.rs::Decoder`. Reading past the end returns undefined.
- */
-class Decoder {
-    /**
-     * @param {Uint8Array} scratch - read source
-     * @param {number}     start   - position to start reading from
-     * @param {number}     end     - position to stop reading at
-     */
-    constructor(scratch, start, end) {
-        this.scratch = scratch;
-        this.data_view = new DataView(scratch.buffer, scratch.byteOffset);
-        this.position = start;
-        this.end = end;
-    }
+function put_u8(frame, offset, value) {
+    reserve(frame, offset, 1);
+    frame[offset] = value;
+    return offset + 1;
+}
 
-    /** Checks whether `count` bytes can be advanced from the current position. */
-    take(count) {
-        if (this.position + count > this.end) return false;
-        this.position += count;
-        return true;
-    }
+function put_u16(frame, offset, value) {
+    reserve(frame, offset, 2);
+    view_of(frame).setUint16(offset, value, true);
+    return offset + 2;
+}
 
-    u8() { return this.take(1) ? this.scratch[this.position - 1] : undefined; }
-    u16() { return this.take(2) ? this.data_view.getUint16(this.position - 2, true) : undefined; }
-    u32() { return this.take(4) ? this.data_view.getUint32(this.position - 4, true) : undefined; }
-    i32() { return this.take(4) ? this.data_view.getInt32(this.position - 4, true) : undefined; }
-    f32() { return this.take(4) ? this.data_view.getFloat32(this.position - 4, true) : undefined; }
-    f64() { return this.take(8) ? this.data_view.getFloat64(this.position - 8, true) : undefined; }
+function put_u32(frame, offset, value) {
+    reserve(frame, offset, 4);
+    view_of(frame).setUint32(offset, value, true);
+    return offset + 4;
+}
 
-    /** Reads a length-prefixed byte sequence. */
-    bytes() {
-        const length = this.u32();
-        if (length === undefined || !this.take(length)) return undefined;
-        return this.scratch.subarray(this.position - length, this.position);
-    }
+function put_f32(frame, offset, value) {
+    reserve(frame, offset, 4);
+    view_of(frame).setFloat32(offset, value, true);
+    return offset + 4;
+}
 
-    /** Reads a length-prefixed string as UTF-8. */
-    string() {
-        const bytes = this.bytes();
-        return bytes === undefined ? undefined : TEXT_DECODER.decode(bytes);
+function put_f64(frame, offset, value) {
+    reserve(frame, offset, 8);
+    view_of(frame).setFloat64(offset, value, true);
+    return offset + 8;
+}
+
+function put_str(frame, offset, value) {
+    const bytes = TEXT_ENCODER.encode(value);
+    reserve(frame, offset, 4 + bytes.length);
+    offset = put_u32(frame, offset, bytes.length);
+    frame.set(bytes, offset);
+    return offset + bytes.length;
+}
+
+function put_id(frame, offset, value) {
+    if (!value) return put_u8(frame, offset, 0);
+    const segments = value.split("_");
+    offset = put_u8(frame, offset, segments.length);
+    for (const segment of segments) {
+        const dash = segment.lastIndexOf("-");
+        const number = dash < 0 ? NaN : Number(segment.slice(dash + 1));
+        const tag = Number.isInteger(number) ? segment.slice(0, dash) : segment;
+        offset = put_u8(frame, offset, Math.max(0, TAGS.indexOf(tag)));
+        offset = put_u32(frame, offset, Number.isInteger(number) ? number : 0xFFFFFFFF);
     }
+    return offset;
+}
+
+function get_u8(frame, offset) {
+    if (offset + 1 > frame.length) return [undefined, offset];
+    return [frame[offset], offset + 1];
+}
+
+function get_u16(frame, offset) {
+    if (offset + 2 > frame.length) return [undefined, offset];
+    return [view_of(frame).getUint16(offset, true), offset + 2];
+}
+
+function get_u32(frame, offset) {
+    if (offset + 4 > frame.length) return [undefined, offset];
+    return [view_of(frame).getUint32(offset, true), offset + 4];
+}
+
+function get_i32(frame, offset) {
+    if (offset + 4 > frame.length) return [undefined, offset];
+    return [view_of(frame).getInt32(offset, true), offset + 4];
+}
+
+function get_f32(frame, offset) {
+    if (offset + 4 > frame.length) return [undefined, offset];
+    return [view_of(frame).getFloat32(offset, true), offset + 4];
+}
+
+function get_str(frame, offset) {
+    const [length, start] = get_u32(frame, offset);
+    if (length === undefined || start + length > frame.length) return [undefined, offset];
+    return [TEXT_DECODER.decode(frame.subarray(start, start + length)), start + length];
+}
+
+function get_id(frame, offset) {
+    const [count, start] = get_u8(frame, offset);
+    if (count === undefined) return ["", offset];
+    const segments = [];
+    let next = start;
+    for (let i = 0; i < count; i++) {
+        let tag, number;
+        [tag, next] = get_u8(frame, next);
+        [number, next] = get_u32(frame, next);
+        if (number === undefined) return ["", offset];
+        const name = TAGS[tag] ?? "";
+        segments.push(number === 0xFFFFFFFF ? name : `${name}-${number}`);
+    }
+    return [segments.join("_"), next];
 }
 
 const TEXT_ENCODER = new TextEncoder();
