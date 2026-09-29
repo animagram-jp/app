@@ -10,11 +10,12 @@ use core::{
 use wasm_bindgen::prelude::wasm_bindgen;
 
 use crate::{
+    Error,
     arena::{APP, RUNNING, emit},
-    event::{Event, Handler, WindowEvent, decode_event},
+    event::{Event, EventError, WindowEvent, decode_event},
+    handler::Handler,
     js_client::{
-        CanvasEvent, Command, CommandError, EventType, Thresholds, TouchTracker, detect_device,
-        encode_command,
+        CanvasEvent, Command, EventType, Thresholds, TouchTracker, detect_device, encode_command,
     },
 };
 
@@ -33,14 +34,7 @@ pub struct App {
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 impl App {
     pub async fn init(pointer_coarse: bool, viewport_width: f64, viewport_height: f64) {
-        let app = App {
-            touch:      TouchTracker::default(),
-            thresholds: Thresholds::for_device(detect_device(pointer_coarse)),
-            events:     VecDeque::new(),
-            handler:    Handler::ready(viewport_width, viewport_height).await,
-            commands:   Vec::new(),
-            origin:     None,
-        };
+        let app = App::new(pointer_coarse, Handler::ready(viewport_width, viewport_height).await);
 
         let (_events, commands) = app.handler.initial_draw();
         for command in &commands {
@@ -71,7 +65,7 @@ impl App {
     /// ```
     pub fn process(&mut self, frame: &[u8]) {
         let Some(event) = decode_event(frame) else {
-            self.commands.push(Command::Error { error: CommandError::Decode });
+            self.commands.push(Command::Error { error: Error::Event(EventError::Decode) });
             return;
         };
 
@@ -132,6 +126,17 @@ impl App {
 }
 
 impl App {
+    pub(crate) fn new(pointer_coarse: bool, handler: Handler) -> Self {
+        Self {
+            touch: TouchTracker::default(),
+            thresholds: Thresholds::for_device(detect_device(pointer_coarse)),
+            events: VecDeque::new(),
+            handler,
+            commands: Vec::new(),
+            origin: None,
+        }
+    }
+
     pub fn commands(&self) -> &[Command] {
         &self.commands
     }
@@ -139,7 +144,7 @@ impl App {
 
 #[cfg(all(test, not(feature = "worker")))]
 mod tests {
-    use alloc::{collections::VecDeque, vec::Vec};
+    use alloc::vec::Vec;
     use core::{
         future::Future,
         pin::pin,
@@ -149,7 +154,7 @@ mod tests {
     use super::*;
     use crate::{
         event::EVENT_CANVAS,
-        js_client::{Device, Gesture, Thresholds, dom, put_f32, put_str, put_u32},
+        js_client::{Gesture, dom, put_f32, put_str, put_u32},
     };
 
     const POINTER_DOWN: u8 = 10;
@@ -166,14 +171,7 @@ mod tests {
     }
 
     fn new_app() -> App {
-        App {
-            touch:      TouchTracker::default(),
-            thresholds: Thresholds::for_device(Device::Mouse),
-            events:     VecDeque::new(),
-            handler:    block_on(Handler::ready(0.0, 0.0)),
-            commands:   Vec::new(),
-            origin:     None,
-        }
+        App::new(false, block_on(Handler::ready(0.0, 0.0)))
     }
 
     fn section(n: u32) -> dom::Id {
@@ -188,6 +186,8 @@ mod tests {
         frame.push(0);
         frame.push(0);
         put_str(&mut frame, "");
+        put_f32(&mut frame, x);
+        put_f32(&mut frame, 0.0);
         put_f32(&mut frame, x);
         put_f32(&mut frame, 0.0);
         frame.extend_from_slice(&time.to_le_bytes());

@@ -2,28 +2,14 @@ use alloc::{format, string::String, vec::Vec};
 
 use arbitrary_int::traits::Integer;
 
+use crate::field::Field;
+
 // timestamp (64 bits)
 // note:
 // - Value 0...0 means null in each field.
 // - is_utc:
 //   = 1: The value is UTC time (timezone iana id may store original zone info).
 //   = 0: The value is local time of timezone
-
-pub struct Field {
-    pub position: u32,
-    pub mask:     u64,
-}
-
-impl Field {
-    #[inline(always)]
-    pub fn get<T: Integer>(&self, target: u64) -> T {
-        u64::masked_new((target >> self.position) & self.mask).as_::<T>()
-    }
-    #[inline(always)]
-    pub fn set<T: Integer>(&self, target: u64, value: T) -> u64 {
-        (target & !(self.mask << self.position)) | ((value.as_u64() & self.mask) << self.position)
-    }
-}
 
 const YEAR: Field = Field { position: 51, mask: (1 << 13) - 1 }; // u13, bit 51~63
 const MONTH: Field = Field { position: 46, mask: (1 << 5) - 1 }; // u5, bit 46~50

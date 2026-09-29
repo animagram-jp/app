@@ -1,13 +1,14 @@
 // Arena
 //
 
-use alloc::{string::ToString, vec::Vec};
+use alloc::{format, string::String, vec::Vec};
 #[cfg(all(target_arch = "wasm32", target_feature = "atomics"))]
 use core::arch::wasm32::{memory_atomic_notify, memory_atomic_wait32};
 use core::{
     assert,
     cell::UnsafeCell,
     debug_assert,
+    fmt::{self, Debug, Display, Formatter},
     marker::Sync,
     option::Option::{self, None, Some},
     primitive::{bool, u8, u32, usize},
@@ -19,8 +20,9 @@ use core::{
 use wasm_bindgen::prelude::wasm_bindgen;
 
 use crate::{
+    Error,
     app::App,
-    js_client::{CommandError, encode_command, encode_error},
+    js_client::{WireError, encode_command, encode_error},
 };
 
 // === arena layout ===
@@ -80,7 +82,7 @@ impl Arena {
     }
 
     ///
-    fn ring_push(
+    pub(crate) fn ring_push(
         &self,
         control: usize,
         payload: usize,
@@ -116,7 +118,7 @@ impl Arena {
     }
 
     ///
-    fn ring_peek(
+    pub(crate) fn ring_peek(
         &self,
         control: usize,
         payload: usize,
@@ -138,7 +140,7 @@ impl Arena {
         Some(unsafe { slice::from_raw_parts((offset + LENGTH_PREFIX) as *const u8, length) })
     }
 
-    fn ring_commit_pop(&self, control: usize) {
+    pub(crate) fn ring_commit_pop(&self, control: usize) {
         let read_atomic = self.control_at(control, CONTROL_READ_OFFSET);
         let read = read_atomic.load(Ordering::Relaxed);
         read_atomic.store(read.wrapping_add(1), Ordering::Release);
@@ -206,7 +208,7 @@ pub fn process_event() {
         emit(&frame)
     });
     if !emitted {
-        report_error(CommandError::CommandOverflow);
+        report_error(Error::Arena(ArenaError::CommandOverflow));
     }
 }
 
@@ -240,80 +242,83 @@ pub fn emit(frame: &[u8]) -> bool {
     pushed
 }
 
-// === error report ===
+// === error ===
 
-///
-///
-pub fn report_error(error: CommandError) {
-    const OVERHEAD: usize = LENGTH_PREFIX + 1 + 1 + 1 + 4;
-    let limit = COMMAND_SLOT - OVERHEAD;
-
-    let full_message = error.to_string();
-    let message = if full_message.len() <= limit {
-        &full_message[..]
-    } else {
-        let mut end = limit;
-        while end > 0 && !full_message.is_char_boundary(end) {
-            end -= 1;
-        }
-        &full_message[..end]
-    };
-
-    let mut frame = Vec::with_capacity(message.len() + OVERHEAD);
-    encode_error(&mut frame, &error, message);
-    let _ = emit(&frame);
+#[derive(Debug)]
+pub enum ArenaError {
+    CommandOverflow,
 }
 
-#[cfg(all(test, target_arch = "wasm32"))]
-mod tests {
-    use wasm_bindgen_test::*;
+impl Display for ArenaError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
 
-    use super::*;
-    use crate::{
-        event::EVENT_CANVAS,
-        js_client::{
-            EventType, OPERATION_ADD_CLASS, OPERATION_REMOVE_CLASS, dom, put_f32, put_str,
-        },
+impl WireError for ArenaError {
+    fn identifiers(&self, path: &mut Vec<u16>) {
+        match self {
+            ArenaError::CommandOverflow => path.push(1),
+        }
+    }
+
+    fn detail(&self) -> String {
+        String::new()
+    }
+
+    fn is_serious(&self) -> bool {
+        false
+    }
+}
+
+#[derive(Debug)]
+pub struct PanicError {
+    pub location: String,
+    pub message:  String,
+}
+
+impl Display for PanicError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+impl WireError for PanicError {
+    fn identifiers(&self, path: &mut Vec<u16>) {
+        path.push(1);
+    }
+
+    fn detail(&self) -> String {
+        format!("{}: {}", self.location, self.message)
+    }
+
+    fn is_serious(&self) -> bool {
+        true
+    }
+}
+
+// === error report ===
+
+pub fn report_error(error: Error) {
+    let mut path = Vec::new();
+    error.identifiers(&mut path);
+    let overhead = LENGTH_PREFIX + 1 + 1 + 1 + 2 * path.len() + 4;
+    let limit = COMMAND_SLOT - overhead;
+
+    let full_detail = error.detail();
+    let detail = if full_detail.len() <= limit {
+        &full_detail[..]
+    } else {
+        let mut end = limit;
+        while end > 0 && !full_detail.is_char_boundary(end) {
+            end -= 1;
+        }
+        &full_detail[..end]
     };
 
-    const CLICK: u8 = 2;
-
-    #[wasm_bindgen_test]
-    async fn process_event_emits_one_frame_per_command() {
-        assert_eq!(EventType::decode_u8(CLICK), EventType::Click);
-        initialize();
-        App::init(false, 0.0, 0.0).await;
-
-        let mut frame = Vec::new();
-        frame.push(EVENT_CANVAS);
-        frame.push(CLICK);
-        dom::Id::new(&[(dom::Tag::Header, None), (dom::Tag::Button, Some(3))]).encode(&mut frame);
-        frame.push(0);
-        frame.push(0);
-        put_str(&mut frame, "");
-        put_f32(&mut frame, 0.0);
-        put_f32(&mut frame, 0.0);
-        frame.extend_from_slice(&0f64.to_le_bytes());
-        frame.extend_from_slice(&0u32.to_le_bytes());
-        assert!(ARENA.ring_push(
-            EVENT_CONTROL,
-            EVENT_PAYLOAD,
-            EVENT_SLOT,
-            EVENT_SLOT_COUNT,
-            &frame
-        ));
-
-        process_event();
-
-        let mut operations = Vec::new();
-        while let Some(command) =
-            ARENA.ring_peek(COMMAND_CONTROL, COMMAND_PAYLOAD, COMMAND_SLOT, COMMAND_SLOT_COUNT)
-        {
-            operations.push(command[0]);
-            ARENA.ring_commit_pop(COMMAND_CONTROL);
-        }
-        assert_eq!(operations, [OPERATION_REMOVE_CLASS, OPERATION_ADD_CLASS]);
-    }
+    let mut frame = Vec::with_capacity(detail.len() + overhead);
+    encode_error(&mut frame, &error, detail);
+    let _ = emit(&frame);
 }
 
 #[cfg(test)]
@@ -346,5 +351,34 @@ mod command_ring_tests {
     #[should_panic(expected = "command frame too large")]
     fn command_push_panics_over_the_slot_limit() {
         ARENA.command_push(&vec![0; COMMAND_SLOT - LENGTH_PREFIX + 1]);
+    }
+}
+
+#[cfg(test)]
+mod error_tests {
+    use alloc::{format, string::String, vec::Vec};
+
+    use super::*;
+
+    fn identifiers(error: &impl WireError) -> Vec<u16> {
+        let mut path = Vec::new();
+        error.identifiers(&mut path);
+        path
+    }
+
+    #[test]
+    fn arena_error_command_overflow_is_recoverable_and_has_no_detail() {
+        assert_eq!(identifiers(&ArenaError::CommandOverflow), [1]);
+        assert_eq!(ArenaError::CommandOverflow.detail(), "");
+        assert!(!ArenaError::CommandOverflow.is_serious());
+    }
+
+    #[test]
+    fn panic_error_is_serious_and_reports_location_and_message() {
+        let error = PanicError { location: String::from("a.rs:1"), message: String::from("boom") };
+        assert_eq!(identifiers(&error), [1]);
+        assert_eq!(error.detail(), "a.rs:1: boom");
+        assert!(error.is_serious());
+        assert_eq!(format!("{error}"), format!("{error:?}"));
     }
 }

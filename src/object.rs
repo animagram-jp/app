@@ -13,7 +13,7 @@ use core::{
 
 use arbitrary_int::{i10, u9};
 
-use crate::{Lang, data_struct::DataStruct, list::ListError, timestamp::Field};
+use crate::{Lang, data_struct::DataStruct, field::Field, list::ListError};
 
 pub type Dice = (i8, u8, i8); // (count, sides, modifier)
 

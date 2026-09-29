@@ -53,7 +53,7 @@ function response_cross_origin_isolation(res) {
     });
 }
 
-const PRECACHE_URLS = new Set(PRECACHE.map((u) => new URL(u, self.location.href).href));
+const PRECACHE_PATHS = new Set(PRECACHE.map((u) => new URL(u, self.location.href).pathname));
 
 self.addEventListener("fetch", (e) => {
     const req = e.request;
@@ -62,8 +62,8 @@ self.addEventListener("fetch", (e) => {
     const url = new URL(req.url);
     if (url.origin !== self.location.origin) return;
 
-    const is_precached = PRECACHE_URLS.has(url.href) ||
-        (req.mode === "navigate" && PRECACHE_URLS.has(new URL("./", self.location.href).href));
+    const is_precached = PRECACHE_PATHS.has(url.pathname) ||
+        (req.mode === "navigate" && PRECACHE_PATHS.has(new URL("./", self.location.href).pathname));
     if (!is_precached) return;
 
     if (req.mode === "navigate") {
@@ -73,14 +73,14 @@ self.addEventListener("fetch", (e) => {
                 const copy = res.clone();
                 e.waitUntil(caches.open(VERSION).then((c) => c.put(req, copy)));
                 return res;
-            }).catch(() => caches.match(req).then((r) => r ?? caches.match("./")))
+            }).catch(() => caches.match(req).then((r) => r ?? caches.match("./")).then((r) => r && response_cross_origin_isolation(r)))
         );
         return;
     }
 
     e.respondWith(
     caches.match(req).then((hit) => {
-      if (hit) return hit;
+      if (hit) return response_cross_origin_isolation(hit);
       return fetch(req).then((raw_res) => {
         const res = response_cross_origin_isolation(raw_res);
         if (res.ok) {

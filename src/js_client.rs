@@ -7,13 +7,13 @@ use core::{
     cmp::{Eq, PartialEq},
     convert::TryInto,
     default::Default,
-    fmt::{self, Debug, Display, Formatter},
+    fmt::Debug,
     marker::Copy,
     option::Option::{self, None, Some},
     primitive::{bool, f32, f64, i32, str, u8, u16, u32, usize},
 };
 
-use crate::{file_store::FileStoreError, timestamp::Field};
+use crate::{Error, field::Field};
 
 // === send operation ===
 //
@@ -25,62 +25,60 @@ pub const OPERATION_SET_ATTRIBUTE: u8 = 3;
 pub const OPERATION_REMOVE_ATTRIBUTE: u8 = 4;
 pub const OPERATION_ADD_CLASS: u8 = 5;
 pub const OPERATION_REMOVE_CLASS: u8 = 6;
-pub const OPERATION_SET_WIDTH: u8 = 7;
-pub const OPERATION_SET_HEIGHT: u8 = 8;
-pub const OPERATION_SET_Z_INDEX: u8 = 9;
-pub const OPERATION_SET_BACKGROUND: u8 = 10;
-pub const OPERATION_SET_TRANSLATE: u8 = 11;
-pub const OPERATION_SET_CURSOR: u8 = 12;
-pub const OPERATION_SHOW_MODAL: u8 = 13;
-pub const OPERATION_CLOSE_MODAL: u8 = 14;
-pub const OPERATION_FOCUS: u8 = 15;
-pub const OPERATION_JS_FN: u8 = 16;
+pub const OPERATION_SET_STYLE: u8 = 7;
+pub const OPERATION_REMOVE_STYLE: u8 = 8;
+pub const OPERATION_SHOW_MODAL: u8 = 9;
+pub const OPERATION_CLOSE_MODAL: u8 = 10;
+pub const OPERATION_FOCUS: u8 = 11;
+pub const OPERATION_JS_FN: u8 = 12;
 
-pub const OPERATION_ERROR: u8 = 18;
+pub const OPERATION_ERROR: u8 = 13;
 
-///
-#[derive(Debug)]
-pub enum CommandError {
-    Decode,
-    CommandOverflow,
-    Panic { location: String, message: String },
-    FileStore(FileStoreError),
+pub trait WireError {
+    fn identifiers(&self, path: &mut Vec<u16>);
+    fn detail(&self) -> String;
+    fn is_serious(&self) -> bool;
 }
 
-impl Display for CommandError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self)
-    }
-}
-
-impl From<FileStoreError> for CommandError {
-    fn from(error: FileStoreError) -> Self {
-        CommandError::FileStore(error)
-    }
-}
-
-impl CommandError {
-    /// ```
-    /// # use app::js_client::CommandError;
-    /// assert!(!CommandError::Decode.is_serious());
-    /// assert!(CommandError::Panic { location: "".into(), message: "".into() }.is_serious());
-    /// ```
-    pub fn is_serious(&self) -> bool {
-        match self {
-            CommandError::Decode | CommandError::CommandOverflow => false,
-            CommandError::Panic { .. } | CommandError::FileStore(_) => true,
+macro_rules! wire_error {
+    ($name:ident { $($variant:ident($inner:ty) = $identifier:expr),+ $(,)? }) => {
+        #[derive(Debug)]
+        pub enum $name {
+            $($variant($inner)),+
         }
-    }
 
-    pub(crate) fn wire_code(&self) -> u8 {
-        match self {
-            CommandError::Decode => 1,
-            CommandError::CommandOverflow => 2,
-            CommandError::Panic { .. } => 3,
-            CommandError::FileStore(_) => 4,
+        impl ::core::fmt::Display for $name {
+            fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+                ::core::write!(f, "{:?}", self)
+            }
         }
-    }
+
+        impl $crate::js_client::WireError for $name {
+            fn identifiers(&self, path: &mut ::alloc::vec::Vec<u16>) {
+                match self {
+                    $($name::$variant(error) => {
+                        path.push($identifier);
+                        $crate::js_client::WireError::identifiers(error, path);
+                    })+
+                }
+            }
+
+            fn detail(&self) -> ::alloc::string::String {
+                match self {
+                    $($name::$variant(error) => $crate::js_client::WireError::detail(error)),+
+                }
+            }
+
+            fn is_serious(&self) -> bool {
+                match self {
+                    $($name::$variant(error) => $crate::js_client::WireError::is_serious(error)),+
+                }
+            }
+        }
+    };
 }
+
+pub(crate) use wire_error;
 
 /// Command from Wasm to JavaScript thread
 pub enum Command {
@@ -90,17 +88,13 @@ pub enum Command {
     RemoveAttribute { id: dom::Id, attribute: Attribute },
     AddClass { id: dom::Id, value: ClassName },
     RemoveClass { id: dom::Id, value: ClassName },
-    SetWidth { id: dom::Id, px: u32 },
-    SetHeight { id: dom::Id, px: u32 },
-    SetZIndex { id: dom::Id, z: i32 },
-    SetBackground { id: dom::Id, value: String },
-    SetTranslate { id: dom::Id, x: f32, y: f32 },
-    SetCursor { id: dom::Id, value: CursorValue },
+    SetStyle { id: dom::Id, property: StyleProperty, value: StyleValue },
+    RemoveStyle { id: dom::Id, property: StyleProperty },
     ShowModal { id: dom::Id },
     CloseModal { id: dom::Id },
     Focus { id: dom::Id },
     JsFn { id: dom::Id, name: FnName },
-    Error { error: CommandError },
+    Error { error: Error },
 }
 
 ///
@@ -146,36 +140,16 @@ pub fn encode_command(frame: &mut Vec<u8>, command: &Command) {
             id.encode(frame);
             put_u16(frame, value.encode_u16());
         }
-        Command::SetWidth { ref id, px } => {
-            frame.push(OPERATION_SET_WIDTH);
+        Command::SetStyle { ref id, property, ref value } => {
+            frame.push(OPERATION_SET_STYLE);
             id.encode(frame);
-            put_u32(frame, px);
+            put_u16(frame, property.encode_u16());
+            value.encode(frame);
         }
-        Command::SetHeight { ref id, px } => {
-            frame.push(OPERATION_SET_HEIGHT);
+        Command::RemoveStyle { ref id, property } => {
+            frame.push(OPERATION_REMOVE_STYLE);
             id.encode(frame);
-            put_u32(frame, px);
-        }
-        Command::SetZIndex { ref id, z } => {
-            frame.push(OPERATION_SET_Z_INDEX);
-            id.encode(frame);
-            put_i32(frame, z);
-        }
-        Command::SetBackground { ref id, ref value } => {
-            frame.push(OPERATION_SET_BACKGROUND);
-            id.encode(frame);
-            put_str(frame, value);
-        }
-        Command::SetTranslate { ref id, x, y } => {
-            frame.push(OPERATION_SET_TRANSLATE);
-            id.encode(frame);
-            put_f32(frame, x);
-            put_f32(frame, y);
-        }
-        Command::SetCursor { ref id, value } => {
-            frame.push(OPERATION_SET_CURSOR);
-            id.encode(frame);
-            put_u16(frame, value.encode_u16());
+            put_u16(frame, property.encode_u16());
         }
         Command::ShowModal { ref id } => {
             frame.push(OPERATION_SHOW_MODAL);
@@ -194,15 +168,20 @@ pub fn encode_command(frame: &mut Vec<u8>, command: &Command) {
             id.encode(frame);
             put_u16(frame, name.encode_u16());
         }
-        Command::Error { ref error } => encode_error(frame, error, &error.to_string()),
+        Command::Error { ref error } => encode_error(frame, error, &error.detail()),
     }
 }
 
-pub(crate) fn encode_error(frame: &mut Vec<u8>, error: &CommandError, message: &str) {
+pub(crate) fn encode_error(frame: &mut Vec<u8>, error: &Error, detail: &str) {
     frame.push(OPERATION_ERROR);
     frame.push(error.is_serious() as u8);
-    frame.push(error.wire_code());
-    put_str(frame, message);
+    let mut path = Vec::new();
+    error.identifiers(&mut path);
+    frame.push(path.len() as u8);
+    for identifier in path {
+        put_u16(frame, identifier);
+    }
+    put_str(frame, detail);
 }
 
 pub(crate) fn put_u16(frame: &mut Vec<u8>, value: u16) {
@@ -266,6 +245,8 @@ pub struct CanvasEvent {
     pub value:      String,
     pub x:          f64,
     pub y:          f64,
+    pub local_x:    f64,
+    pub local_y:    f64,
     pub time:       f64,
     pub pointer_id: u32,
 }
@@ -277,6 +258,10 @@ const REPEAT: Field = Field { position: 4, mask: (1 << 1) - 1 }; // bit 4
 const SHIFT: Field = Field { position: 5, mask: (1 << 1) - 1 }; // bit 5
 
 impl CanvasEvent {
+    pub fn root_origin(&self) -> (f64, f64) {
+        (self.x - self.local_x, self.y - self.local_y)
+    }
+
     pub fn alt(&self) -> bool {
         ALT.get::<u8>(self.flags as u64) == 1
     }
@@ -315,6 +300,7 @@ pub enum ClassName {
     Hide = 1,
     Show,
     Hidden,
+    Highlighted,
 }
 
 impl ClassName {
@@ -324,14 +310,97 @@ impl ClassName {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum CursorValue {
+pub enum Keyword {
     Default = 1,
+    EwResize,
     Grab,
+    NeswResize,
+    NsResize,
+    NwseResize,
 }
 
-impl CursorValue {
+impl Keyword {
     fn encode_u16(self) -> u16 {
         self as u16
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum StyleProperty {
+    Background = 1,
+    Cursor,
+    Height,
+    Translate,
+    Width,
+    ZIndex,
+}
+
+impl StyleProperty {
+    fn encode_u16(self) -> u16 {
+        self as u16
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Unit {
+    Em = 1,
+    Percent,
+    Px,
+    Rem,
+    Vh,
+    Vmax,
+    Vmin,
+    Vw,
+}
+
+impl Unit {
+    fn encode_u8(self) -> u8 {
+        self as u8
+    }
+}
+
+#[derive(Clone, PartialEq, Debug)]
+pub enum StyleValue {
+    Integer(i32),
+    Keyword(Keyword),
+    Length(f32, Unit),
+    List(Vec<StyleValue>),
+    Number(f32),
+    Text(String),
+}
+
+impl StyleValue {
+    fn encode(&self, frame: &mut Vec<u8>) {
+        match self {
+            Self::Integer(value) => {
+                frame.push(1);
+                put_i32(frame, *value);
+            }
+            Self::Keyword(keyword) => {
+                frame.push(2);
+                put_u16(frame, keyword.encode_u16());
+            }
+            Self::Length(value, unit) => {
+                frame.push(3);
+                put_f32(frame, *value);
+                frame.push(unit.encode_u8());
+            }
+            Self::List(items) => {
+                frame.push(4);
+                frame.push(items.len() as u8);
+                for item in items {
+                    item.encode(frame);
+                }
+            }
+            Self::Number(value) => {
+                frame.push(5);
+                put_f32(frame, *value);
+            }
+            Self::Text(text) => {
+                frame.push(6);
+                put_str(frame, text);
+            }
+        }
     }
 }
 
@@ -714,8 +783,6 @@ pub struct PointerState {
     last_move_x:      f64,
     last_move_y:      f64,
     last_move_time:   f64,
-    drag_offset:      (f64, f64),
-    drag_px:          (f64, f64),
     is_dragging:      bool,
     long_press_fired: bool,
     cancelled:        bool,
@@ -740,8 +807,6 @@ impl PointerState {
                 last_move_x:      x,
                 last_move_y:      y,
                 last_move_time:   time,
-                drag_offset:      (0.0, 0.0),
-                drag_px:          (0.0, 0.0),
                 is_dragging:      false,
                 long_press_fired: false,
                 cancelled:        false,
@@ -1897,6 +1962,10 @@ mod wire_tests {
     use alloc::{format, string::String, vec, vec::Vec};
 
     use super::*;
+    use crate::{
+        arena::{ArenaError, PanicError},
+        event::EventError,
+    };
 
     const INIT_JS: &str = include_str!("../distribution/init.js");
 
@@ -2050,7 +2119,7 @@ mod wire_tests {
 
     #[test]
     fn command_tables_match_init_js() {
-        let tables: [(&str, Vec<(u16, String)>); 4] = [
+        let tables: [(&str, Vec<(u16, String)>); 3] = [
             (
                 "ATTRIBUTES",
                 vec![
@@ -2064,13 +2133,7 @@ mod wire_tests {
                     (ClassName::Hide as u16, format!("{:?}", ClassName::Hide)),
                     (ClassName::Show as u16, format!("{:?}", ClassName::Show)),
                     (ClassName::Hidden as u16, format!("{:?}", ClassName::Hidden)),
-                ],
-            ),
-            (
-                "CURSOR_VALUES",
-                vec![
-                    (CursorValue::Default as u16, format!("{:?}", CursorValue::Default)),
-                    (CursorValue::Grab as u16, format!("{:?}", CursorValue::Grab)),
+                    (ClassName::Highlighted as u16, format!("{:?}", ClassName::Highlighted)),
                 ],
             ),
             (
@@ -2093,6 +2156,61 @@ mod wire_tests {
     }
 
     #[test]
+    fn style_tables_match_init_js() {
+        let tables: [(&str, Vec<(u16, &str)>); 3] = [
+            (
+                "STYLE_KEYWORDS",
+                vec![
+                    (Keyword::Default as u16, "default"),
+                    (Keyword::EwResize as u16, "ew-resize"),
+                    (Keyword::Grab as u16, "grab"),
+                    (Keyword::NeswResize as u16, "nesw-resize"),
+                    (Keyword::NsResize as u16, "ns-resize"),
+                    (Keyword::NwseResize as u16, "nwse-resize"),
+                ],
+            ),
+            (
+                "STYLE_PROPERTIES",
+                vec![
+                    (StyleProperty::Background as u16, "background"),
+                    (StyleProperty::Cursor as u16, "cursor"),
+                    (StyleProperty::Height as u16, "height"),
+                    (StyleProperty::Translate as u16, "translate"),
+                    (StyleProperty::Width as u16, "width"),
+                    (StyleProperty::ZIndex as u16, "z-index"),
+                ],
+            ),
+            (
+                "STYLE_UNITS",
+                vec![
+                    (Unit::Em as u16, "em"),
+                    (Unit::Percent as u16, "%"),
+                    (Unit::Px as u16, "px"),
+                    (Unit::Rem as u16, "rem"),
+                    (Unit::Vh as u16, "vh"),
+                    (Unit::Vmax as u16, "vmax"),
+                    (Unit::Vmin as u16, "vmin"),
+                    (Unit::Vw as u16, "vw"),
+                ],
+            ),
+        ];
+        for (name, variants) in tables {
+            let js = js_array(name);
+            assert_eq!(js[0], "", "{name}[0]");
+            assert_eq!(js.len(), variants.len() + 1, "{name} length");
+            for (value, expected) in variants {
+                assert!(value >= 1, "{name} uses 0");
+                assert_eq!(js[value as usize], expected, "{name}[{value}]");
+            }
+        }
+        let start = INIT_JS.find("function get_style_value(").unwrap();
+        let body = &INIT_JS[start..start + INIT_JS[start..].find("\n}\n").unwrap()];
+        for tag in 1..=6 {
+            assert!(body.contains(&format!("case {tag}:")), "style value tag {tag} missing");
+        }
+    }
+
+    #[test]
     fn operations_match_init_js() {
         let operations = [
             (OPERATION_SET_TEXT, 1),
@@ -2101,51 +2219,18 @@ mod wire_tests {
             (OPERATION_REMOVE_ATTRIBUTE, 4),
             (OPERATION_ADD_CLASS, 5),
             (OPERATION_REMOVE_CLASS, 6),
-            (OPERATION_SET_WIDTH, 7),
-            (OPERATION_SET_HEIGHT, 8),
-            (OPERATION_SET_Z_INDEX, 9),
-            (OPERATION_SET_BACKGROUND, 10),
-            (OPERATION_SET_TRANSLATE, 11),
-            (OPERATION_SET_CURSOR, 12),
-            (OPERATION_SHOW_MODAL, 13),
-            (OPERATION_CLOSE_MODAL, 14),
-            (OPERATION_FOCUS, 15),
-            (OPERATION_JS_FN, 16),
+            (OPERATION_SET_STYLE, 7),
+            (OPERATION_REMOVE_STYLE, 8),
+            (OPERATION_SHOW_MODAL, 9),
+            (OPERATION_CLOSE_MODAL, 10),
+            (OPERATION_FOCUS, 11),
+            (OPERATION_JS_FN, 12),
         ];
         for (operation, number) in operations {
             assert_eq!(operation as usize, number);
             assert!(INIT_JS.contains(&format!("case {number:>2}:")), "case {number} missing");
         }
         assert!(INIT_JS.contains(&format!("operation === {OPERATION_ERROR}")));
-    }
-
-    #[test]
-    fn error_names_match_init_js() {
-        let head = "const ERROR_NAMES = {\n";
-        let start = INIT_JS.find(head).unwrap() + head.len();
-        let end = start + INIT_JS[start..].find("\n};").unwrap();
-        let entries: Vec<(u8, String)> = INIT_JS[start..end]
-            .lines()
-            .map(|line| {
-                let (number, name) = line.trim().trim_end_matches(',').split_once(": ").unwrap();
-                (number.parse().unwrap(), unquote(name))
-            })
-            .collect();
-        assert_eq!(
-            entries,
-            [
-                (1, String::from("decode")),
-                (2, String::from("command-overflow")),
-                (3, String::from("panic")),
-                (4, String::from("file-store")),
-            ]
-        );
-        assert_eq!(CommandError::Decode.wire_code(), 1);
-        assert_eq!(CommandError::CommandOverflow.wire_code(), 2);
-        assert_eq!(
-            CommandError::Panic { location: String::new(), message: String::new() }.wire_code(),
-            3
-        );
     }
 
     #[test]
@@ -2176,6 +2261,8 @@ mod wire_tests {
             value: String::new(),
             x: 0.0,
             y: 0.0,
+            local_x: 0.0,
+            local_y: 0.0,
             time: 0.0,
             pointer_id: 0,
         };
@@ -2291,33 +2378,83 @@ mod wire_tests {
             with_id(5, &[3, 0])
         );
         assert_eq!(
-            encode(Command::SetWidth { id: id.clone(), px: 258 }),
-            with_id(7, &[2, 1, 0, 0])
-        );
-        assert_eq!(encode(Command::SetZIndex { id: id.clone(), z: -1 }), with_id(9, &[255; 4]));
-        let mut translate = Vec::new();
-        translate.extend_from_slice(&1.5f32.to_le_bytes());
-        translate.extend_from_slice(&(-2.5f32).to_le_bytes());
-        assert_eq!(
-            encode(Command::SetTranslate { id: id.clone(), x: 1.5, y: -2.5 }),
-            with_id(11, &translate)
+            encode(Command::SetStyle {
+                id:       id.clone(),
+                property: StyleProperty::Width,
+                value:    StyleValue::Length(1.5, Unit::Px),
+            }),
+            with_id(7, &[5, 0, 3, 0, 0, 192, 63, 3])
         );
         assert_eq!(
-            encode(Command::SetCursor { id: id.clone(), value: CursorValue::Grab }),
-            with_id(12, &[2, 0])
+            encode(Command::SetStyle {
+                id:       id.clone(),
+                property: StyleProperty::ZIndex,
+                value:    StyleValue::Integer(-1),
+            }),
+            with_id(7, &[6, 0, 1, 255, 255, 255, 255])
         );
-        assert_eq!(encode(Command::Focus { id: id.clone() }), with_id(15, &[]));
+        assert_eq!(
+            encode(Command::SetStyle {
+                id:       id.clone(),
+                property: StyleProperty::Cursor,
+                value:    StyleValue::Keyword(Keyword::Grab),
+            }),
+            with_id(7, &[2, 0, 2, 3, 0])
+        );
+        assert_eq!(
+            encode(Command::SetStyle {
+                id:       id.clone(),
+                property: StyleProperty::Background,
+                value:    StyleValue::Text(String::from("red")),
+            }),
+            with_id(7, &[1, 0, 6, 3, 0, 0, 0, b'r', b'e', b'd'])
+        );
+        assert_eq!(
+            encode(Command::SetStyle {
+                id:       id.clone(),
+                property: StyleProperty::Translate,
+                value:    StyleValue::List(vec![
+                    StyleValue::Length(1.5, Unit::Px),
+                    StyleValue::Length(-2.5, Unit::Rem),
+                ]),
+            }),
+            with_id(7, &[4, 0, 4, 2, 3, 0, 0, 192, 63, 3, 3, 0, 0, 32, 192, 4])
+        );
+        assert_eq!(
+            encode(Command::SetStyle {
+                id:       id.clone(),
+                property: StyleProperty::Height,
+                value:    StyleValue::Number(0.5),
+            }),
+            with_id(7, &[3, 0, 5, 0, 0, 0, 63])
+        );
+        assert_eq!(
+            encode(Command::RemoveStyle { id: id.clone(), property: StyleProperty::Cursor }),
+            with_id(8, &[2, 0])
+        );
+        assert_eq!(encode(Command::Focus { id: id.clone() }), with_id(11, &[]));
         assert_eq!(
             encode(Command::JsFn { id: id.clone(), name: FnName::ShowToast }),
-            with_id(16, &[2, 0])
+            with_id(12, &[2, 0])
         );
         assert_eq!(
-            encode(Command::Error { error: CommandError::Decode }),
-            [18, 0, 1, 6, 0, 0, 0, b'D', b'e', b'c', b'o', b'd', b'e']
+            encode(Command::Error { error: Error::Event(EventError::Decode) }),
+            [13, 0, 2, 2, 0, 1, 0, 0, 0, 0, 0]
+        );
+        assert_eq!(
+            encode(Command::Error { error: Error::Arena(ArenaError::CommandOverflow) }),
+            [13, 0, 2, 1, 0, 1, 0, 0, 0, 0, 0]
         );
         let panic = encode(Command::Error {
-            error: CommandError::Panic { location: String::new(), message: String::new() },
+            error: Error::Panic(PanicError {
+                location: String::from("a.rs:1"),
+                message:  String::from("boom"),
+            }),
         });
-        assert_eq!(&panic[..3], [18, 1, 3]);
+        assert_eq!(&panic[..7], [13, 1, 2, 4, 0, 1, 0]);
+        assert_eq!(
+            &panic[7..],
+            [12, 0, 0, 0, b'a', b'.', b'r', b's', b':', b'1', b':', b' ', b'b', b'o', b'o', b'm']
+        );
     }
 }

@@ -74,9 +74,12 @@ let bound = false;
 let restarting = false;
 let composing_element = null;
 
-if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("./sw.js").catch((err) => console.warn("SW registration failed:", err));
-}
+const sw_registration = "serviceWorker" in navigator
+    ? navigator.serviceWorker.register("./sw.js").catch((err) => {
+        console.warn("SW registration failed:", err);
+        return null;
+    })
+    : Promise.resolve(null);
 
 start();
 
@@ -183,7 +186,7 @@ function restart() {
 
 async function try_recover_to_worker_thread() {
     if (sessionStorage.getItem(MAIN_RELOAD_KEY)) return false;
-    if (!("serviceWorker" in navigator)) return false;
+    if (!(await sw_registration)) return false;
 
     sessionStorage.setItem(MAIN_RELOAD_KEY, "1");
     await navigator.serviceWorker.ready.catch(() => {});
@@ -191,7 +194,7 @@ async function try_recover_to_worker_thread() {
     return true;
 }
 
-// === excute command ===
+// === execute command ===
 
 function drain() {
     view();
@@ -207,11 +210,18 @@ function drain() {
  */
 function execute(frame) {
     const operation = frame[0];
-    if (operation === 18) {
+    if (operation === 13) {
         const [serious, after_serious] = get_u8(frame, 1);
-        const [code, after_code] = get_u8(frame, after_serious);
-        const [message] = get_str(frame, after_code);
-        console.error(`[wasm] ${ERROR_NAMES[code] ?? code}:`, message ?? "");
+        const [depth, first] = get_u8(frame, after_serious);
+        const identifiers = [];
+        let next = first;
+        for (let i = 0; i < (depth ?? 0); i++) {
+            let identifier;
+            [identifier, next] = get_u16(frame, next);
+            identifiers.push(identifier);
+        }
+        const [detail] = get_str(frame, next);
+        console.error(`[wasm] error ${identifiers.join(".")}:`, detail ?? "");
         if (serious !== 0) restart();
         return;
     }
@@ -232,21 +242,23 @@ function execute(frame) {
         case  4: el.removeAttribute(ATTRIBUTES[get_u16(frame, offset)[0]]); break;
         case  5: el.classList.add(CLASS_NAMES[get_u16(frame, offset)[0]]); break;
         case  6: el.classList.remove(CLASS_NAMES[get_u16(frame, offset)[0]]); break;
-        case  7: el.style.width = get_u32(frame, offset)[0] + "px"; break;
-        case  8: el.style.height = get_u32(frame, offset)[0] + "px"; break;
-        case  9: el.style.zIndex = get_i32(frame, offset)[0]; break;
-        case 10: el.style.background = get_str(frame, offset)[0]; break;
-        case 11: {
-            const [x, after] = get_f32(frame, offset);
-            const [y] = get_f32(frame, after);
-            el.style.translate = `${x}px ${y}px`;
+        case  7: {
+            const [property, after] = get_u16(frame, offset);
+            const [value] = get_style_value(frame, after);
+            if (STYLE_PROPERTIES[property] && value !== undefined) {
+                el.style.setProperty(STYLE_PROPERTIES[property], value);
+            }
             break;
         }
-        case 12: el.style.cursor = CURSOR_VALUES[get_u16(frame, offset)[0]] ?? ""; break;
-        case 13: el.showModal(); break;
-        case 14: el.close(); break;
-        case 15: el.focus(); break;
-        case 16: js_fn[FN_NAMES[get_u16(frame, offset)[0]]]?.(el); break;
+        case  8: {
+            const name = STYLE_PROPERTIES[get_u16(frame, offset)[0]];
+            if (name) el.style.removeProperty(name);
+            break;
+        }
+        case  9: el.showModal(); break;
+        case 10: el.close(); break;
+        case 11: el.focus(); break;
+        case 12: js_fn[FN_NAMES[get_u16(frame, offset)[0]]]?.(el); break;
     }
 }
 
@@ -292,9 +304,13 @@ const toast_cycles = new WeakMap();
  * @returns
  */
 function send(e) {
-    if (!in_roots(e.target)) return;
+    const root = root_of(e.target);
+    if (!root) return;
 
-    push(encode_canvas_event(S.event_frame, e, e.clientX ?? 0, e.clientY ?? 0));
+    const x = e.clientX ?? 0;
+    const y = e.clientY ?? 0;
+    const rect = e.clientX === undefined ? null : root.getBoundingClientRect();
+    push(encode_canvas_event(S.event_frame, e, x, y, rect ? x - rect.left : 0, rect ? y - rect.top : 0));
 }
 
 function send_key(e) {
@@ -307,9 +323,9 @@ function send_scroll(e) {
         push(encode_scroll_event(S.event_frame, window.scrollX, window.scrollY));
         return;
     }
-    if (!in_roots(e.target)) return;
+    if (!root_of(e.target)) return;
 
-    push(encode_canvas_event(S.event_frame, e, e.target.scrollLeft, e.target.scrollTop));
+    push(encode_canvas_event(S.event_frame, e, e.target.scrollLeft, e.target.scrollTop, 0, 0));
 }
 
 function key_index(e) {
@@ -325,11 +341,11 @@ function key_flags(e) {
         | (e.shiftKey ? 1 << 5 : 0);
 }
 
-function in_roots(target) {
-    return ROOTS.some(r => r && r.contains(target));
+function root_of(target) {
+    return ROOTS.find(r => r && r.contains(target));
 }
 
-function encode_canvas_event(frame, e, x, y) {
+function encode_canvas_event(frame, e, x, y, local_x, local_y) {
     let offset = put_u8(frame, 0, EVENT_CANVAS);
     offset = put_u8(frame, offset, Math.max(EVENT_TYPES.indexOf(e.type), 0));
     offset = put_id(frame, offset, e.target.id ?? "");
@@ -338,6 +354,8 @@ function encode_canvas_event(frame, e, x, y) {
     offset = put_str(frame, offset, e.target.value ?? "");
     offset = put_f32(frame, offset, x);
     offset = put_f32(frame, offset, y);
+    offset = put_f32(frame, offset, local_x);
+    offset = put_f32(frame, offset, local_y);
     offset = put_f64(frame, offset, e.timeStamp ?? 0);
     offset = put_u32(frame, offset, e.pointerId ?? 0);
     return frame.subarray(0, offset);
@@ -618,15 +636,39 @@ const CLASS_NAMES = [
     "hide",
     "show",
     "hidden",
+    "highlighted",
 ];
 
-/**
- *  CSS `cursor` value. index == js_client.rs:CursorValue
- */
-const CURSOR_VALUES = [
+const STYLE_KEYWORDS = [
     null,
     "default",
+    "ew-resize",
     "grab",
+    "nesw-resize",
+    "ns-resize",
+    "nwse-resize",
+];
+
+const STYLE_PROPERTIES = [
+    null,
+    "background",
+    "cursor",
+    "height",
+    "translate",
+    "width",
+    "z-index",
+];
+
+const STYLE_UNITS = [
+    null,
+    "em",
+    "%",
+    "px",
+    "rem",
+    "vh",
+    "vmax",
+    "vmin",
+    "vw",
 ];
 
 /**
@@ -637,18 +679,6 @@ const FN_NAMES = [
     "hide_toast",
     "show_toast",
 ];
-
-/**
- *  Error kind (for log). key == js_client.rs:CommandError::wire_code
- *
- *  Whether a restart is required is not decided by this but the `serious` byte in `Command::Error`.
- */
-const ERROR_NAMES = {
-    1: "decode",
-    2: "command-overflow",
-    3: "panic",
-    4: "file-store",
-};
 
 // === arena ===
 
@@ -824,6 +854,50 @@ function get_str(frame, offset) {
     const [length, start] = get_u32(frame, offset);
     if (length === undefined || start + length > frame.length) return [undefined, offset];
     return [TEXT_DECODER.decode(frame.subarray(start, start + length)), start + length];
+}
+
+function get_style_value(frame, offset) {
+    const [tag, start] = get_u8(frame, offset);
+    switch (tag) {
+        case 1: {
+            const [value, next] = get_i32(frame, start);
+            return value === undefined ? [undefined, offset] : [String(value), next];
+        }
+        case 2: {
+            const [keyword, next] = get_u16(frame, start);
+            const name = STYLE_KEYWORDS[keyword];
+            return name ? [name, next] : [undefined, offset];
+        }
+        case 3: {
+            const [value, after] = get_f32(frame, start);
+            const [unit, next] = get_u8(frame, after);
+            const name = STYLE_UNITS[unit];
+            return value === undefined || !name ? [undefined, offset] : [`${value}${name}`, next];
+        }
+        case 4: {
+            const [count, first] = get_u8(frame, start);
+            if (count === undefined) return [undefined, offset];
+            const parts = [];
+            let next = first;
+            for (let i = 0; i < count; i++) {
+                let part;
+                [part, next] = get_style_value(frame, next);
+                if (part === undefined) return [undefined, offset];
+                parts.push(part);
+            }
+            return [parts.join(" "), next];
+        }
+        case 5: {
+            const [value, next] = get_f32(frame, start);
+            return value === undefined ? [undefined, offset] : [String(value), next];
+        }
+        case 6: {
+            const [text, next] = get_str(frame, start);
+            return text === undefined ? [undefined, offset] : [text, next];
+        }
+        default:
+            return [undefined, offset];
+    }
 }
 
 function get_id(frame, offset) {

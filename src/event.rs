@@ -1,27 +1,41 @@
-use alloc::{vec, vec::Vec};
+use alloc::{string::String, vec::Vec};
 use core::{
-    matches,
+    fmt::{self, Debug, Display, Formatter},
     option::Option::{self, None, Some},
-    primitive::{f64, u8, u32},
+    primitive::{f64, u8},
 };
 
-use arbitrary_int::u2;
-
-#[cfg(feature = "worker")]
-use crate::file_store::FileStore;
-#[cfg(feature = "worker")]
-use crate::js_client::CommandError;
-use crate::{
-    Lang,
-    data_struct::DataStruct,
-    js_client::{
-        CanvasEvent, ClassName, Command, EventType, Gesture, KeyName, PointerState,
-        VisibilityState, dom, get_f32, get_f64, get_string, get_u8, get_u32,
-    },
+use crate::js_client::{
+    CanvasEvent, EventType, Gesture, KeyName, VisibilityState, WireError, dom, get_f32, get_f64,
+    get_string, get_u8, get_u32,
 };
 
-#[cfg(feature = "worker")]
-const RETRY_LIMIT: u8 = 3;
+#[derive(Debug)]
+pub enum EventError {
+    Decode,
+}
+
+impl Display for EventError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+impl WireError for EventError {
+    fn identifiers(&self, path: &mut Vec<u16>) {
+        match self {
+            EventError::Decode => path.push(1),
+        }
+    }
+
+    fn detail(&self) -> String {
+        String::new()
+    }
+
+    fn is_serious(&self) -> bool {
+        false
+    }
+}
 
 /// pointer / key / input / change / focus, etc.
 pub const EVENT_CANVAS: u8 = 1;
@@ -63,6 +77,8 @@ pub fn decode_event(frame: &[u8]) -> Option<Event> {
             value:      get_string(&mut input)?,
             x:          get_f32(&mut input)? as f64,
             y:          get_f32(&mut input)? as f64,
+            local_x:    get_f32(&mut input)? as f64,
+            local_y:    get_f32(&mut input)? as f64,
             time:       get_f64(&mut input)?,
             pointer_id: get_u32(&mut input)?,
         }),
@@ -82,135 +98,10 @@ pub fn decode_event(frame: &[u8]) -> Option<Event> {
     })
 }
 
-pub enum CharacterSheet {
-    Immutable,
-    Editable,
-}
-
-pub enum Dialog {
-    None,
-    Drawer,
-    Select { step: u8, index: u32 },
-    Input { step: u8, value: u32 },
-}
-
-pub struct Log;
-
-#[cfg(feature = "worker")]
-const CHARACTER_SCHEMA_NAME: &str = "characters";
-
-pub struct Handler {
-    character_sheet: CharacterSheet,
-    dialog:          Dialog,
-    lang:            Lang,
-    last_toast:      u2,
-    character:       DataStruct,
-    #[cfg(feature = "worker")]
-    characters:      FileStore,
-    logs:            Vec<Log>,
-    #[cfg(feature = "worker")]
-    store_failures:  u8,
-}
-
-impl Handler {
-    pub async fn ready(_viewport_width: f64, _viewport_height: f64) -> Self {
-        Self {
-            character_sheet: CharacterSheet::Immutable,
-            dialog: Dialog::None,
-            lang: Lang::Ja,
-            last_toast: u2::new(1),
-            character: DataStruct::new(0, 0.0, 256),
-            #[cfg(feature = "worker")]
-            characters: FileStore::new(CHARACTER_SCHEMA_NAME)
-                .await
-                .unwrap_or_else(|e| panic!("FileStore::new failed: {e}")),
-            logs: Vec::new(),
-            #[cfg(feature = "worker")]
-            store_failures: 0,
-        }
-    }
-
-    pub fn close(&self) -> Vec<Command> {
-        #[cfg(feature = "worker")]
-        self.characters.close();
-        vec![]
-    }
-
-    #[cfg(feature = "worker")]
-    pub fn save(&mut self) -> Vec<Command> {
-        match self.characters.save() {
-            Ok(()) => {
-                self.store_failures = 0;
-                vec![]
-            }
-            Err(_) if self.store_failures + 1 < RETRY_LIMIT => {
-                self.store_failures += 1;
-                vec![]
-            }
-            Err(e) => {
-                self.store_failures = 0;
-                vec![Command::Error { error: CommandError::FileStore(e) }]
-            }
-        }
-    }
-
-    pub fn process_resize(&mut self, _width: f64, _height: f64) -> (Vec<Event>, Vec<Command>) {
-        (vec![], vec![])
-    }
-
-    pub fn process_scroll(&mut self, _x: f64, _y: f64) -> (Vec<Event>, Vec<Command>) {
-        (vec![], vec![])
-    }
-
-    pub fn process_visibility(&mut self, _state: VisibilityState) -> (Vec<Event>, Vec<Command>) {
-        (vec![], vec![])
-    }
-
-    pub fn initial_draw(&self) -> (Vec<Event>, Vec<Command>) {
-        (vec![], vec![])
-    }
-
-    pub fn process_canvas(
-        &mut self,
-        event: &CanvasEvent,
-        _state: &PointerState,
-    ) -> (Vec<Event>, Vec<Command>) {
-        let toggle = dom::Id::new(&[(dom::Tag::Header, None), (dom::Tag::Button, Some(3))]);
-        if !matches!(event.event_type, EventType::Click) || event.id != toggle {
-            return (vec![], vec![]);
-        }
-
-        let section = |n| dom::Id::new(&[(dom::Tag::Main, None), (dom::Tag::Section, Some(n))]);
-        let (shown, hidden) = match self.character_sheet {
-            CharacterSheet::Immutable => {
-                self.character_sheet = CharacterSheet::Editable;
-                (1, 2)
-            }
-            CharacterSheet::Editable => {
-                self.character_sheet = CharacterSheet::Immutable;
-                (2, 1)
-            }
-        };
-        let commands = vec![
-            Command::RemoveClass { id: section(shown), value: ClassName::Hidden },
-            Command::AddClass { id: section(hidden), value: ClassName::Hidden },
-        ];
-        (vec![], commands)
-    }
-
-    pub fn process_gesture(
-        &mut self,
-        _gesture: &Gesture,
-        _state: &PointerState,
-        _origin: Option<&CanvasEvent>,
-    ) -> (Vec<Event>, Vec<Command>) {
-        (vec![], vec![])
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use alloc::{format, vec::Vec};
+    use core::matches;
 
     use super::*;
     use crate::js_client::{put_f32, put_str, put_u32};
@@ -241,6 +132,8 @@ mod tests {
         put_str(&mut frame, "a");
         put_f32(&mut frame, 1.5);
         put_f32(&mut frame, 2.5);
+        put_f32(&mut frame, 0.5);
+        put_f32(&mut frame, 1.0);
         frame.extend_from_slice(&3.0f64.to_le_bytes());
         put_u32(&mut frame, 9);
         frame
@@ -272,6 +165,8 @@ mod tests {
         );
         assert_eq!(event.value, "a");
         assert_eq!((event.x, event.y, event.time, event.pointer_id), (1.5, 2.5, 3.0, 9));
+        assert_eq!((event.local_x, event.local_y), (0.5, 1.0));
+        assert_eq!(event.root_origin(), (1.0, 1.5));
     }
 
     #[test]
@@ -323,6 +218,15 @@ mod tests {
         {
             assert!(decode_event(frame).is_none());
         }
+    }
+
+    #[test]
+    fn event_error_decode_is_recoverable_and_has_no_detail() {
+        let mut path = Vec::new();
+        EventError::Decode.identifiers(&mut path);
+        assert_eq!(path, [1]);
+        assert_eq!(EventError::Decode.detail(), "");
+        assert!(!EventError::Decode.is_serious());
     }
 
     #[test]

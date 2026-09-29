@@ -46,6 +46,8 @@ use web_sys::{
     FileSystemReadWriteOptions, FileSystemSyncAccessHandle, WorkerGlobalScope,
 };
 
+use crate::js_client::WireError;
+
 // === Wire format & replay (pure, host-testable) ===
 
 /// Fletcher-32 over `data`, consumed as little-endian u16 words with a
@@ -204,6 +206,32 @@ pub enum FileStoreError {
 impl Display for FileStoreError {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self)
+    }
+}
+
+impl WireError for FileStoreError {
+    fn identifiers(&self, path: &mut Vec<u16>) {
+        path.push(match self {
+            FileStoreError::InvalidState(_) => 1,
+            FileStoreError::QuotaExceeded(_) => 2,
+            FileStoreError::UnsupportedOp(_) => 3,
+            FileStoreError::InvalidName(_) => 4,
+            FileStoreError::Unknown(_) => 5,
+        });
+    }
+
+    fn detail(&self) -> String {
+        match self {
+            FileStoreError::InvalidState(message)
+            | FileStoreError::QuotaExceeded(message)
+            | FileStoreError::UnsupportedOp(message)
+            | FileStoreError::InvalidName(message)
+            | FileStoreError::Unknown(message) => message.clone(),
+        }
+    }
+
+    fn is_serious(&self) -> bool {
+        true
     }
 }
 
@@ -727,6 +755,35 @@ mod test_data {
 }
 
 // === Host unit tests (`cargo test`) — wire format & replay only, no OPFS ===
+
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod error_tests {
+    use alloc::{string::String, vec::Vec};
+
+    use super::*;
+
+    fn identifier(error: &FileStoreError) -> Vec<u16> {
+        let mut path = Vec::new();
+        error.identifiers(&mut path);
+        path
+    }
+
+    #[test]
+    fn file_store_error_identifiers_follow_the_declaration_order() {
+        assert_eq!(identifier(&FileStoreError::InvalidState(String::new())), [1]);
+        assert_eq!(identifier(&FileStoreError::QuotaExceeded(String::new())), [2]);
+        assert_eq!(identifier(&FileStoreError::UnsupportedOp(String::new())), [3]);
+        assert_eq!(identifier(&FileStoreError::InvalidName(String::new())), [4]);
+        assert_eq!(identifier(&FileStoreError::Unknown(String::new())), [5]);
+    }
+
+    #[test]
+    fn file_store_error_is_serious_and_reports_its_message() {
+        let error = FileStoreError::InvalidName(String::from("bad name"));
+        assert_eq!(error.detail(), "bad name");
+        assert!(error.is_serious());
+    }
+}
 
 #[cfg(all(test, not(target_arch = "wasm32")))]
 mod tests {

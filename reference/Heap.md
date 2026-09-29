@@ -63,7 +63,7 @@ Wasm からの要求は `OPERATION_*` としてコマンドリングへ出す。
 閾値は操作ごとに分けずひとつに揃えてある。
 失敗しても未保存の差分は `FileStore` 側に残るため、再試行でデータは
 失われない。それでも駄目ならハンドルの失効とみなし、
-`Command::Error { error: CommandError::FileStore(e) }` (`is_serious()` が真) を送る。
+`Command::Error { error: Error::FileStore(e) }` (`is_serious()` が真) を送る。JavaScript へは、`Error` の階層を識別子の並び (`[3, 1]` など) と詳細の文字列として渡す。
 
 **復帰は wasm 内で完結しない。** 再取得は必ず `FileStore::new` を通り、
 `getDirectory()` → `getFileHandle()` → `createSyncAccessHandle()` の
@@ -105,12 +105,10 @@ main でなければならないのは DOM に触るものだけである。切�
 「main か worker か」ではなく「wasm を回す thread か、JavaScript の
 イベントループが生きている thread か」である。
 
-### 番号を詰めていない
+### 番号
 
-`OPERATION_*` の 17 と `EVENT_*` の 5〜7 は欠番である。
-削除後も後続の番号はずらしていない。`init.js` と一対一で対応しており、
-片方だけ動かすと双方を同時に直す必要が生じるためである。
-todo: 要見直し: command op全体を見渡し、今後の拡張性も考える。
+`OPERATION_*` は意味順に 1 から詰めてある。`EVENT_*` の 5〜7 は欠番である。
+`init.js` と一対一で対応しており、片方だけ動かすと双方を同時に直す必要が生じる。
 
 ### 構成の切り替え
 
