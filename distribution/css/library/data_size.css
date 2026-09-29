@@ -258,4 +258,51 @@
             outline-offset: calc(var(--2xl-border-width) * -1);
         }
     }
+
+    /* --- hover, active --- */
+
+    :where(
+        :where(
+            a:any-link,
+            button,
+            [type="button"],
+            [type="submit"],
+            [type="reset"],
+            summary
+        )[data-surround="transparent"],
+        li[role],
+        li > [role]:where(a, button),
+        li > label:has(> input[role]:not(:disabled, [aria-disabled="true"])),
+        [popovertarget]:not([data-surround])
+    ) {
+        &[data-size="xs"]:not(:focus-visible) {
+            outline-offset: calc(var(--xs-border-width) * -1);
+            outline-width:  var(--xs-border-width);
+        }
+
+        &[data-size="sm"]:not(:focus-visible) {
+            outline-offset: calc(var(--sm-border-width) * -1);
+            outline-width:  var(--sm-border-width);
+        }
+
+        &:where([data-size="md"], :not([data-size])):not(:focus-visible) {
+            outline-offset: calc(var(--md-border-width) * -1);
+            outline-width:  var(--md-border-width);
+        }
+
+        &[data-size="lg"]:not(:focus-visible) {
+            outline-offset: calc(var(--lg-border-width) * -1);
+            outline-width:  var(--lg-border-width);
+        }
+
+        &[data-size="xl"]:not(:focus-visible) {
+            outline-offset: calc(var(--xl-border-width) * -1);
+            outline-width:  var(--xl-border-width);
+        }
+
+        &[data-size="2xl"]:not(:focus-visible) {
+            outline-offset: calc(var(--2xl-border-width) * -1);
+            outline-width:  var(--2xl-border-width);
+        }
+    }
 }

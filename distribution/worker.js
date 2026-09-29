@@ -3,8 +3,8 @@ self.addEventListener("message", async (e) => {
     if (type !== "init") return;
 
     const { default: init, App, arena_pointer, initialize, serve_event } =
-        await import("./app/app.js");
-    await init({ memory: payload.memory });
+        await import("./app/app.js?v={version}");
+    await init({ module_or_path: "./app/app_bg.wasm?v={version}", memory: payload.memory });
 
     initialize();
     const base = arena_pointer();

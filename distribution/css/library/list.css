@@ -20,7 +20,6 @@
         column-gap:            0.5rem;
         display:               grid;
         grid-template-columns: auto 1fr;
-        overflow-wrap:         anywhere;
         row-gap:               0.5rem;
     }
 

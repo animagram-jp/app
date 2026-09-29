@@ -99,8 +99,6 @@ pub enum Command {
     Error { error: Error },
 }
 
-///
-///
 /// ```
 /// # use app::js_client::{encode_command, Command, dom, OPERATION_FOCUS};
 /// let mut frame = Vec::new();
@@ -321,7 +319,6 @@ pub enum ClassName {
     Hide = 1,
     Show,
     Hidden,
-    Highlighted,
 }
 
 impl ClassName {
@@ -755,7 +752,7 @@ impl VisibilityState {
     }
 }
 
-// === gesture: tap, long press, swipe (up,down,left,right), drag (See ./docs/Gesture.md) ===
+// === gesture: tap, long press, swipe (up,down,left,right), drag (See Gesture.md) ===
 
 #[derive(Debug, Clone, Copy)]
 pub struct Thresholds {
@@ -878,7 +875,7 @@ impl PointerState {
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Gesture {
-    Tap, // includes click
+    Tap,
     LongPress,
     SwipeUp,
     SwipeDown,
@@ -887,10 +884,9 @@ pub enum Gesture {
     Drag {
         x: f64,
         y: f64,
-    }, // in dragging
+    },
     DragEnd,
     DragCancel,
-    ///
     Pinch {
         scale:    f64,
         center_x: f64,
@@ -899,10 +895,6 @@ pub enum Gesture {
     PinchEnd,
 }
 
-///
-///
-///
-///
 #[must_use]
 pub fn detect_gesture(
     state: &mut PointerState,
@@ -1251,10 +1243,8 @@ enum TwoFingerMode {
     Pinch,
 }
 
-///
 const TWO_FINGER_COMMIT_PX: f64 = 8.0;
 
-///
 const PINCH_DOT_THRESHOLD: f64 = 0.0;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -1336,7 +1326,6 @@ impl TwoFingerState {
         self.primary.map(|p| (p.current_x, p.current_y))
     }
 
-    ///
     #[must_use]
     fn fold(&mut self) -> FoldedInput {
         let (Some(p), Some(s)) = (self.primary, self.secondary) else {
@@ -1385,14 +1374,6 @@ fn two_point_distance(x0: f64, y0: f64, x1: f64, y1: f64) -> f64 {
     libm::sqrt(dx * dx + dy * dy)
 }
 
-///
-///
-///
-///
-///
-///
-///
-///
 #[derive(Debug, Default)]
 pub struct TouchTracker {
     primary_state: PointerState,
@@ -1844,7 +1825,9 @@ pub mod dom {
         H2,
         H3,
         Header,
+        Hgroup,
         Input,
+        Label,
         Li,
         Main,
         Modal, // <dialog id="*modal*">
@@ -1860,6 +1843,7 @@ pub mod dom {
         Textarea,
         Th,
         Thead,
+        Toast,
         Tr,
         Ul,
         Other,
@@ -1889,24 +1873,27 @@ pub mod dom {
                 Self::H2 => 12,
                 Self::H3 => 13,
                 Self::Header => 14,
-                Self::Input => 15,
-                Self::Li => 16,
-                Self::Main => 17,
-                Self::Modal => 18,
-                Self::Ol => 19,
-                Self::Output => 20,
-                Self::P => 21,
-                Self::Section => 22,
-                Self::Select => 23,
-                Self::Span => 24,
-                Self::Table => 25,
-                Self::Tbody => 26,
-                Self::Td => 27,
-                Self::Textarea => 28,
-                Self::Th => 29,
-                Self::Thead => 30,
-                Self::Tr => 31,
-                Self::Ul => 32,
+                Self::Hgroup => 15,
+                Self::Input => 16,
+                Self::Label => 17,
+                Self::Li => 18,
+                Self::Main => 19,
+                Self::Modal => 20,
+                Self::Ol => 21,
+                Self::Output => 22,
+                Self::P => 23,
+                Self::Section => 24,
+                Self::Select => 25,
+                Self::Span => 26,
+                Self::Table => 27,
+                Self::Tbody => 28,
+                Self::Td => 29,
+                Self::Textarea => 30,
+                Self::Th => 31,
+                Self::Thead => 32,
+                Self::Toast => 33,
+                Self::Tr => 34,
+                Self::Ul => 35,
                 Self::Other => 0,
             }
         }
@@ -1932,24 +1919,27 @@ pub mod dom {
                 12 => Self::H2,
                 13 => Self::H3,
                 14 => Self::Header,
-                15 => Self::Input,
-                16 => Self::Li,
-                17 => Self::Main,
-                18 => Self::Modal,
-                19 => Self::Ol,
-                20 => Self::Output,
-                21 => Self::P,
-                22 => Self::Section,
-                23 => Self::Select,
-                24 => Self::Span,
-                25 => Self::Table,
-                26 => Self::Tbody,
-                27 => Self::Td,
-                28 => Self::Textarea,
-                29 => Self::Th,
-                30 => Self::Thead,
-                31 => Self::Tr,
-                32 => Self::Ul,
+                15 => Self::Hgroup,
+                16 => Self::Input,
+                17 => Self::Label,
+                18 => Self::Li,
+                19 => Self::Main,
+                20 => Self::Modal,
+                21 => Self::Ol,
+                22 => Self::Output,
+                23 => Self::P,
+                24 => Self::Section,
+                25 => Self::Select,
+                26 => Self::Span,
+                27 => Self::Table,
+                28 => Self::Tbody,
+                29 => Self::Td,
+                30 => Self::Textarea,
+                31 => Self::Th,
+                32 => Self::Thead,
+                33 => Self::Toast,
+                34 => Self::Tr,
+                35 => Self::Ul,
                 _ => Self::Other,
             }
         }
@@ -2167,9 +2157,7 @@ mod wire_tests {
                 vec![
                     (ClassName::Hide as u16, format!("{:?}", ClassName::Hide)),
                     (ClassName::Show as u16, format!("{:?}", ClassName::Show)),
-                    (ClassName::Hidden as u16, format!("{:?}", ClassName::Hidden)),
-                    (ClassName::Highlighted as u16, format!("{:?}", ClassName::Highlighted)),
-                ],
+                    (ClassName::Hidden as u16, format!("{:?}", ClassName::Hidden)),                ],
             ),
             (
                 "FN_NAMES",

@@ -6,6 +6,7 @@
     <input type="button">
     <input type="submit">
     <input type="reset">
+    <input type="file">
     <summary></summary>
 */
 @layer css.button {
@@ -27,6 +28,186 @@
     @media (forced-colors: active) {
         a:visited:not([data-surround="fill"], :hover, :focus-visible, [aria-disabled="true"]) {
             color: VisitedText;
+        }
+    }
+
+    /* === input file === */
+
+    input[type="file"][data-surround] {
+        background-color: transparent;
+        border:           none;
+        color:            inherit;
+        min-height:       0;
+        padding:          0;
+    }
+
+    input[type="file"][data-surround]:where(:disabled, [aria-disabled="true"]) {
+        color: var(--color-ink-mix);
+    }
+
+    input[type="file"]::file-selector-button {
+        border-style:   solid;
+        cursor:         pointer;
+        display:        inline flow-root;
+        font-weight:    bold;
+        vertical-align: middle;
+    }
+
+    input[type="file"]:where(
+        [data-surround="fill"],
+        :not([data-surround])
+    )::file-selector-button {
+        background-color: var(--color-emphasis-ink);
+        border-color:     transparent;
+        color:            var(--color-paper);
+    }
+
+    input[type="file"]:where([data-surround="outline"])::file-selector-button {
+        background-color: var(--color-paper);
+        border-color:     currentColor;
+        color:            var(--color-emphasis-ink);
+    }
+
+    input[type="file"]:where([data-surround="transparent"])::file-selector-button {
+        background-color: transparent;
+        border-color:     transparent;
+        color:            inherit;
+    }
+
+    /* --- size --- */
+
+    input[type="file"] {
+        &[data-size="xs"]::file-selector-button {
+            border-radius:     var(--xs-border-radius);
+            border-width:      var(--xs-border-width);
+            margin-inline-end: var(--xs-border-radius);
+            min-height:        var(--xs-box-height);
+            padding-block:     calc(((var(--xs-box-height) - var(--xs-line-height)) / 2) - var(--xs-border-width));
+            padding-inline:    var(--xs-border-radius);
+        }
+
+        &[data-size="sm"]::file-selector-button {
+            border-radius:     var(--sm-border-radius);
+            border-width:      var(--sm-border-width);
+            margin-inline-end: var(--sm-border-radius);
+            min-height:        var(--sm-box-height);
+            padding-block:     calc(((var(--sm-box-height) - var(--sm-line-height)) / 2) - var(--sm-border-width));
+            padding-inline:    var(--sm-border-radius);
+        }
+
+        &:where([data-size="md"], :not([data-size]))::file-selector-button {
+            border-radius:     var(--md-border-radius);
+            border-width:      var(--md-border-width);
+            margin-inline-end: var(--md-border-radius);
+            min-height:        var(--md-box-height);
+            padding-block:     calc(((var(--md-box-height) - var(--md-line-height)) / 2) - var(--md-border-width));
+            padding-inline:    var(--md-border-radius);
+        }
+
+        &[data-size="lg"]::file-selector-button {
+            border-radius:     var(--lg-border-radius);
+            border-width:      var(--lg-border-width);
+            margin-inline-end: var(--lg-border-radius);
+            min-height:        var(--lg-box-height);
+            padding-block:     calc(((var(--lg-box-height) - var(--lg-line-height)) / 2) - var(--lg-border-width));
+            padding-inline:    var(--lg-border-radius);
+        }
+
+        &[data-size="xl"]::file-selector-button {
+            border-radius:     var(--xl-border-radius);
+            border-width:      var(--xl-border-width);
+            margin-inline-end: var(--xl-border-radius);
+            min-height:        var(--xl-box-height);
+            padding-block:     calc(((var(--xl-box-height) - var(--xl-line-height)) / 2) - var(--xl-border-width));
+            padding-inline:    var(--xl-border-radius);
+        }
+
+        &[data-size="2xl"]::file-selector-button {
+            border-radius:     var(--2xl-border-radius);
+            border-width:      var(--2xl-border-width);
+            margin-inline-end: var(--2xl-border-radius);
+            min-height:        var(--2xl-box-height);
+            padding-block:     calc(((var(--2xl-box-height) - var(--2xl-line-height)) / 2) - var(--2xl-border-width));
+            padding-inline:    var(--2xl-border-radius);
+        }
+    }
+
+    /* --- hover --- */
+
+    @media (hover: hover) {
+        input[type="file"]::file-selector-button:hover {
+            text-decoration-color:     currentColor;
+            text-decoration-line:      underline;
+            text-decoration-thickness: max(0.1875rem, 0.12em);
+            text-underline-offset:     0.3em;
+        }
+    }
+
+    /* --- active --- */
+
+    input[type="file"]:where(
+        [data-surround="fill"],
+        :not([data-surround])
+    )::file-selector-button:active {
+        background-color: var(--color-emphasis-ink-mix);
+        border-color:     transparent;
+    }
+
+    input[type="file"]:where([data-surround="outline"])::file-selector-button:active {
+        background-color: var(--color-paper-mix);
+        border-color:     var(--color-emphasis-ink-mix);
+        color:            var(--color-emphasis-ink);
+    }
+
+    /* --- invalid --- */
+
+    input[type="file"]:where(:user-invalid, [aria-invalid="true"])::file-selector-button {
+        border-color: var(--color-error);
+    }
+
+    /* --- disabled --- */
+
+    input[type="file"]:where(
+        [data-surround="outline"],
+        [data-surround="transparent"]
+    ):where(:disabled, [aria-disabled="true"])::file-selector-button {
+        border-color: var(--color-ink-mix);
+        color:        var(--color-ink-mix);
+    }
+
+    input[type="file"]:where(
+        [data-surround="fill"],
+        :not([data-surround])
+    ):where(:disabled, [aria-disabled="true"])::file-selector-button {
+        background-color: var(--color-ink-mix);
+        border-color:     transparent;
+        color:            var(--color-paper);
+    }
+
+    /* --- forced-color --- */
+
+    @media (forced-colors: active) {
+        input[type="file"]::file-selector-button {
+            background-color: ButtonFace;
+            border-color:     ButtonBorder;
+            color:            ButtonText;
+        }
+
+        input[type="file"]::file-selector-button:active {
+            color: ActiveText;
+        }
+
+        input[type="file"]:where(:user-invalid, [aria-invalid="true"])::file-selector-button {
+            border-color: Mark;
+        }
+
+        input[type="file"]:where(:disabled, [aria-disabled="true"])::file-selector-button {
+            border-color: GrayText;
+            color:        GrayText;
+        }
+
+        input[type="file"][data-surround]:where(:disabled, [aria-disabled="true"]) {
+            color: GrayText;
         }
     }
 }

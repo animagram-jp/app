@@ -1,3 +1,5 @@
+// This file includes untranslated text (ja).
+
 # Gesture
 
 Reference data for `js_client::detect_gesture()`
@@ -112,8 +114,3 @@ PointerUp/Cancel → current_x/y, cancelled フラグを更新, is_down = false
 - `swipe_min_velocity` と `swipe_min_px` は @use-gesture のより保守的な値（誤発火が少ない）を採用。
 - `TOUCH`はタッチの接触面の広さ・座標ブレを考慮し、ブレ許容系（`*_slop_px`, `drag_start_px`）と時間系（`long_press_ms`, `tap_max_ms`, `swipe_max_ms`）を`MOUSE`より広げている。Hammer.js/@use-gestureともにデバイス別の既定値分岐は持たないため、ここは実装側の独自拡張。
 - pinch/rotate/pan(2本指)・wheel系はどちらのライブラリにも定数はあるが、`detect_gesture`は単一ポインタのtap/press/swipe/dragのみを扱うため対象外（2本指ジェスチャーの検討は別途進めている。追加する場合は本表と同じ形式で追記する）。
-
-### 除外した値（今回の関数の対象外）
-
-- Hammer.js: pinch/rotate（2ポインタ）、`STATE_*`（内部状態機械のbitmask）、`DIRECTION_*`（bitmask定数、本実装ではenum variantで代替済み）、`COMPUTE_INTERVAL`（velocity再計算間隔、本実装は毎イベント計算のため不要）、`DEDUP_TIMEOUT`/`DEDUP_DISTANCE`（touch/mouse合成イベント除去、PointerEvent統一により不要）
-- @use-gesture: pinch/rotate/wheel/keyboard系一式、`BEFORE_LAST_KINEMATICS_DELAY`（velocity計算の内部実装詳細。上記の通り windowを変えることで同じ効果を得ているため定数としては未採用）、`LINE_HEIGHT`/`PAGE_HEIGHT`（wheel専用）

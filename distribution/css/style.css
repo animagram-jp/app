@@ -17,10 +17,10 @@
 :root {
     --font-family-sans-serif: "IBM Plex Sans", "Noto Sans JP", "BIZ UDPGothic", "Hiragino Sans", sans-serif;
     --font-family-monospace: "Fira Code", "BIZ UDGothic", monospace;
-
+    
     --rgb-theme-purple: 91 47 145;
     --color-emphasis-ink:   rgb(var(--rgb-theme-purple));
-    --color-emphasis-paper: color-mix(in srgb, rgb(var(--rgb-theme-purple)) 27%, rgb(0,0,0));
+    --color-emphasis-paper: color-mix(in srgb, rgb(var(--rgb-theme-purple)) 73%, rgb(255,255,255));
 }
 @media (prefers-color-scheme: dark) {
     :root {
@@ -33,7 +33,7 @@
     :root[data-color-scheme="light-high-contrast"],
     :root[data-color-scheme="light-less-contrast"] {
         --color-emphasis-ink:   rgb(var(--rgb-theme-purple));
-        --color-emphasis-paper: color-mix(in srgb, rgb(var(--rgb-theme-purple)) 27%, rgb(0,0,0));
+        --color-emphasis-paper: color-mix(in srgb, rgb(var(--rgb-theme-purple)) 73%, rgb(255,255,255));
     }
     :root[data-color-scheme="dark"],
     :root[data-color-scheme="dark-high-contrast"],
@@ -54,12 +54,8 @@ body {
     padding: 0.25rem;
 }
 
-section {
-    margin: 2rem 0;
-}
-
-body>header {
-    padding-top: 0.5rem;
+body>header, section, h2, h3 {
+    margin-block-start: 1rem;
 }
 
 body>header, 
@@ -68,7 +64,7 @@ main,
 aside, 
 body>footer {
     max-width: 60rem;
-    margin: 0 auto;
+    margin-inline: auto;
 }
 
 dialog>* {
@@ -81,43 +77,7 @@ dialog table {
     table-layout: fixed;
 }
 
-h1,
-h2,
-h3 {
-    padding-top: 1rem;
-}
-
-[data-type="toast"] output.info {
-    background: rgb(var(--rgb-light-gray));
-}
-
-[data-type="toast"] output.success {
-    background: var(--color-success);
-}
-
-[data-type="toast"] output.warning {
-    background: rgb(var(--rgb-accent-yellow));
-}
-
-/* --- CoC7th (html記述順) ─── */
-
-#header_hgroup {
-    display: flex;
-    align-items: flex-end;
-    gap: 0.5rem;
-}
-
-#header_hgroup>* {
-    display: inline-flex;
-}
-
-#header_hgroup>p {
-    white-space: pre-wrap;
-    margin: 0;
-    font-size: 0.9rem;
-    line-height: 1.5;
-    padding-bottom: calc((1.5 - 1) / 2 * (2rem - 0.9rem));
-}
+/* === CoC7th === */
 
 #header_button-1 {
     anchor-name: --header_button-1;
@@ -135,34 +95,8 @@ h3 {
     position-anchor: --header_button-2;
 }
 
-button[aria-haspopup="listbox"]>span { /* todo: 必要なブロックであるか? 要調査 */
-    display: inline-block;
-    width: 1em;
-    margin-inline-end: 0.5rem;
-}
-
 #header_button-5 {
     --color-emphasis-ink: rgb(var(--rgb-accent-green));
-    position: relative;
-    color: transparent;
-}
-
-#header_button-5::before {
-    content: "✓";
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 1.4em;
-    height: 1.4em;
-    margin: auto;
-    border-radius: 50%;
-    background-color: transparent;
-    border: 1.5px solid rgb(var(--rgb-white));
-    color: rgb(var(--rgb-white));
-    font-size: 0.9em;
-    line-height: 1;
 }
 
 main>section {
@@ -170,27 +104,22 @@ main>section {
     margin: 0.25rem 0 0;
 }
 
-#main_section-1_section-2,
-#main_section-1_section-3,
-#main_section-1_section-4,
-#main_section-1_section-5 {
+:is(#main_section-1_section-2, #main_section-1_section-3, #main_section-1_section-4, #main_section-1_section-5) {
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
 }
 
-#main_section-1_section-2>span,
-#main_section-1_section-3>span,
-#main_section-1_section-4>span #main_section-1_section-5>span {
+:is(#main_section-1_section-2, #main_section-1_section-3, #main_section-1_section-4, #main_section-1_section-5)>span {
     display: inline-flex;
     align-items: baseline;
     gap: 0.375rem;
 }
 
 #main_section-1_section-6>article {
-    --color-layer-1: var(--color-background);
-    --color-layer-2: color-mix(in srgb, var(--color-background) 95%, rgb(var(--rgb-ink)));
-    --color-layer-3: color-mix(in srgb, var(--color-background) 90%, rgb(var(--rgb-ink)));
+    --color-layer-1: var(--color-paper);
+    --color-layer-2: color-mix(in srgb, var(--color-paper) 95%, var(--color-ink));
+    --color-layer-3: color-mix(in srgb, var(--color-paper) 90%, var(--color-ink));
     --line-height-1: 0.2rem;
     --line-height-2: 0.1rem;
     --line-height-3: 0rem;
@@ -234,8 +163,7 @@ main>section {
     color: revert;
 }
 
-#main_section-2_fieldset-2 input,
-#main_section-2_fieldset-5 input {
+#main_section-2_fieldset-2 input {
     width: 17rem;
 }
 
@@ -280,7 +208,7 @@ main>section {
 }
 
 #main_section-2_fieldset-3 input,
-#main_section-2_fieldset-5 input[inputmode="numeric"] {
+#main_section-2_fieldset-5 input {
     width: 100%;
 }
 
@@ -313,116 +241,29 @@ main>section {
     padding: 0.5rem;
 }
 
-#main_section-2_fieldset-5_table_tbody_tr-5_td-1_button {
-    anchor-name: --main_section-2_fieldset-5_table_tbody_tr-5_td-1_button;
+#main_section-2_fieldset-5 td {
+    anchor-scope: --main_section-2_fieldset-5_td;
 }
 
-#main_section-2_fieldset-5_table_tbody_tr-5_td-1_ul {
-    position-anchor: --main_section-2_fieldset-5_table_tbody_tr-5_td-1_button;
+#main_section-2_fieldset-5 td>label {
+    display: flex;
+    width: 100%;
 }
 
-#main_section-2_fieldset-5_table_tbody_tr-6_td-1_button {
-    anchor-name: --main_section-2_fieldset-5_table_tbody_tr-6_td-1_button;
+#main_section-2_fieldset-5 td>label>input {
+    anchor-name: --main_section-2_fieldset-5_td;
+    flex: 1;
+    min-width: 0;
 }
 
-#main_section-2_fieldset-5_table_tbody_tr-6_td-1_ul {
-    position-anchor: --main_section-2_fieldset-5_table_tbody_tr-6_td-1_button;
-}
-
-#main_section-2_fieldset-5_table_tbody_tr-23_td-1_button {
-    anchor-name: --main_section-2_fieldset-5_table_tbody_tr-23_td-1_button;
-}
-
-#main_section-2_fieldset-5_table_tbody_tr-23_td-1_ul {
-    position-anchor: --main_section-2_fieldset-5_table_tbody_tr-23_td-1_button;
-}
-
-#main_section-2_fieldset-5_table_tbody_tr-24_td-1_button {
-    anchor-name: --main_section-2_fieldset-5_table_tbody_tr-24_td-1_button;
-}
-
-#main_section-2_fieldset-5_table_tbody_tr-24_td-1_ul {
-    position-anchor: --main_section-2_fieldset-5_table_tbody_tr-24_td-1_button;
-}
-
-#main_section-2_fieldset-5_table_tbody_tr-25_td-1_button {
-    anchor-name: --main_section-2_fieldset-5_table_tbody_tr-25_td-1_button;
-}
-
-#main_section-2_fieldset-5_table_tbody_tr-25_td-1_ul {
-    position-anchor: --main_section-2_fieldset-5_table_tbody_tr-25_td-1_button;
-}
-
-#main_section-2_fieldset-5_table_tbody_tr-42_td-1_button {
-    anchor-name: --main_section-2_fieldset-5_table_tbody_tr-42_td-1_button;
-}
-
-#main_section-2_fieldset-5_table_tbody_tr-42_td-1_ul {
-    position-anchor: --main_section-2_fieldset-5_table_tbody_tr-42_td-1_button;
-}
-
-#main_section-2_fieldset-5 td:nth-child(2) {
-    font-size: 0;
-}
-
-#main_section-2_fieldset-5 td:nth-child(2) * {
-    font-size: 1rem;
-}
-
-#main_section-2_fieldset-5 td:nth-child(2):has(button[aria-haspopup="listbox"]) input:not(.hidden) {
-    display: revert;
-    border-right: none;
-    border-top-right-radius: 0;
-    border-bottom-right-radius: 0;
-    vertical-align: middle;
-    width: 4rem;
-}
-
-#main_section-2_fieldset-5 td:nth-child(2):has(input:not(.hidden)) button[aria-haspopup="listbox"] {
-    font-size: 0;
-    padding-left: 0;
-    border-top-left-radius: 0;
-    border-bottom-left-radius: 0;
-}
-
-#main_section-2_fieldset-5_table_tbody_tr-46_td-1_button {
-    anchor-name: --main_section-2_fieldset-5_table_tbody_tr-46_td-1_button;
-}
-
-#main_section-2_fieldset-5_table_tbody_tr-46_td-1_ul {
-    position-anchor: --main_section-2_fieldset-5_table_tbody_tr-46_td-1_button;
-}
-
-#main_section-2_fieldset-5_table_tbody_tr-50_td-1_button {
-    anchor-name: --main_section-2_fieldset-5_table_tbody_tr-50_td-1_button;
-}
-
-#main_section-2_fieldset-5_table_tbody_tr-50_td-1_ul {
-    position-anchor: --main_section-2_fieldset-5_table_tbody_tr-50_td-1_button;
-}
-
-#main_section-2_fieldset-5_table_tbody_tr-55_td-1_button {
-    anchor-name: --main_section-2_fieldset-5_table_tbody_tr-55_td-1_button;
-    padding-inline-start: 0;
-}
-
-#main_section-2_fieldset-5_table_tbody_tr-55_td-1_ul {
-    position-anchor: --main_section-2_fieldset-5_table_tbody_tr-55_td-1_button;
-}
-
-#main_section-2_fieldset-5_table_tbody_tr-55 input {
-    width: 6rem;
+#main_section-2_fieldset-5 td>[popover] {
+    position-anchor: --main_section-2_fieldset-5_td;
 }
 
 #main_section-4 {
     display: flex;
     align-items: flex-end;
     gap: 0.2rem;
-}
-
-#main_section-4 label,
-#main_section-4 textarea {
-    display: inline-flex;
 }
 
 #main_modal {

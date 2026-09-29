@@ -1,17 +1,3 @@
-# panic handler
-
-`#[panic_handler]` を実装する。
-
-1. その関数が終端であり `!` を返す。既定の panic 処理は続かない。
-2. `info.payload()` の downcast が無い。`info.message()` を使う。
-   `arena.rs` は `&str` / `String` しか見ていないので等価である。
-
-`info.location()` は `no_std` でも取れるため、発生位置は失われない。
-panic を `Command::Error` として JavaScript へ送る動作は変わらない。
-
-`cargo test` はホスト側で `std` をリンクして `#[panic_handler]` が衝突するので、
-`#[cfg(all(target_arch = "wasm32", not(test)))]` で外す。
-
 # FileStore の初期化
 
 `Handler::ready` は app repository と同じく `async fn` で、
@@ -29,27 +15,21 @@ App::init (async, worker の init フェーズ)
 済めば `get` / `set` / `save` / `close` は `serve_event` の中から直接呼べる。
 `serve_event` は `memory_atomic_wait32` で thread ごとブロックし、その間
 worker の JavaScript イベントループが回らないため Promise は解決しない。
-`await` を `serve_event` に入る前に済ませておく必要があるのはそのためで、
-`FileStore::new` の doc も "Await it in the worker's init phase" と
-指示している。
 
 # 他の WebAPI は往復にする
 
 この形が使えるのは OPFS が同期ハンドルを返すからであり、一般解ではない。
-接続後も継続的にコールバックが来るもの — WebSocket / WebRTC / WebGPU —
-は `serve_event` の下では一切発火しない。
+接続後も継続的にコールバックが来る WebSocket / WebRTC / WebGPU は:
 
-| API | 必要なもの | `serve_event` 下 |
-|-|-|-|
-| WebSocket | `onmessage` | 発火しない |
-| WebRTC | `ondatachannel` / ICE | 進まない |
-| WebGPU | `mapAsync` などの Promise | 解決しない |
-| OPFS | `new` の `await` のみ | init で済むので無傷 |
+| API | 必要なもの |
+|-|-|
+| WebSocket | `onmessage` |
+| WebRTC | `ondatachannel` / ICE |
+| WebGPU | `mapAsync` などの Promise |
 
 これらは JavaScript 側 (イベントループが生きている側) に置き、
 コールバックからイベントリングへ `EVENT_*` フレームを push する。
 Wasm からの要求は `OPERATION_*` としてコマンドリングへ出す。
-判断の基準は「同期ハンドルが取れるか」で、取れるなら Wasm 側に置き、取れないならリング越しに投げる。
 
 ## ハンドルの失効と復帰
 
@@ -58,13 +38,8 @@ Wasm からの要求は `OPERATION_*` としてコマンドリングへ出す。
 「ハンドルが閉じている」だけでなく「書き込み自体が何らかの理由で失敗
 した」も同じ名前で来る。前者と後者は区別できない。
 
-そこで `Handler::save` は `RETRY_LIMIT` (= 3) 回まで呼び直す。
-`discard` / `compact` も同じハンドルを叩き同じ理由で失敗するため、
-閾値は操作ごとに分けずひとつに揃えてある。
-失敗しても未保存の差分は `FileStore` 側に残るため、再試行でデータは
-失われない。それでも駄目ならハンドルの失効とみなし、
-`Command::Error { error: Error::FileStore(e) }` (`is_serious()` が真) を送る。JavaScript へは、`Error` の階層を識別子の並び (`[3, 1]` など) と詳細の文字列として渡す。
-
+そこで `Handler::save` / `discard` / `compact` は `RETRY_LIMIT` (= 3) 回まで呼び直す。
+試行中の未保存の差分は `FileStore` 側に残る。
 **復帰は wasm 内で完結しない。** 再取得は必ず `FileStore::new` を通り、
 `getDirectory()` → `getFileHandle()` → `createSyncAccessHandle()` の
 すべてが `await` を要する。同期なのは取得後の read/write だけである。

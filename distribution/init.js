@@ -107,8 +107,8 @@ function start() {
             // for when you only want to verify the arena layout and the
             // command / event round trip.
             const { default: init, App, arena_pointer, initialize, process_event } =
-                await import("./app/app.js");
-            await init({ memory: S.memory });
+                await import("./app/app.js?v={version}");
+            await init({ module_or_path: "./app/app_bg.wasm?v={version}", memory: S.memory });
 
             S.exports = { arena_pointer, initialize, process_event };
             S.buffer = null;
@@ -128,7 +128,7 @@ function start() {
         return;
     }
 
-    const w = new Worker("./worker.js", { type: "module" });
+    const w = new Worker("./worker.js?v={version}", { type: "module" });
     worker = w;
 
     w.addEventListener("message", async (e) => {
@@ -500,7 +500,7 @@ const VISIBILITY_STATES = [
     "visible",
 ];
 
-const ROOTS = ["header", "main", "modal", "form", "output", "section"]
+const ROOTS = ["header", "main", "form", "toast"]
     .map(id => document.getElementById(id));
 
 /**
@@ -652,7 +652,9 @@ const TAGS = [
     "h2",
     "h3",
     "header",
+    "hgroup",
     "input",
+    "label",
     "li",
     "main",
     "modal",
@@ -668,6 +670,7 @@ const TAGS = [
     "textarea",
     "th",
     "thead",
+    "toast",
     "tr",
     "ul",
 ];
@@ -689,7 +692,6 @@ const CLASS_NAMES = [
     "hide",
     "show",
     "hidden",
-    "highlighted",
 ];
 
 const METHODS = [

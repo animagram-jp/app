@@ -23,10 +23,9 @@
             <input type="radio"></label></fieldset>
 
     <* role="tablist">
-        <label role="tab">
+        <* role="tab">
             <span></span>
-            <input type="radio"></*>
-        </*>
+            <input type="radio"></*></*>
     <* role="tabpanel"></*>
 */
 
@@ -34,32 +33,27 @@
     fieldset:has(> label > input[type="radio"]) {
         display: grid;
         border:  none;
-        margin:  0;
-        padding: 0;
         gap:     0.5rem;
     }
 
-    /*
-        [data-axis="inline"]
-        To fit vertical, needs grid-template-rows: repeat(N, ...);
-    */
+    /* --- data-axis="inline" ---
+        To fit vertical, needs grid-template-rows: repeat(N, ...); */
+        
     fieldset:has(> label > input[type="radio"])[data-axis="inline"] {
         grid-template-columns: auto 1fr;
     }
-    /* legend needs an inner wrapper due to browsers. */
+
     fieldset:has(> label > input[type="radio"]) > legend {
         display: contents;
     }
     fieldset:has(> label > input[type="radio"]) > legend > * {
         grid-column:     1 / -1;
         min-inline-size: 0;
-        overflow-wrap:   anywhere;
     }
 
     fieldset:has(> label > input[type="radio"]) > *:not(legend, label) {
         grid-column:     1 / -1;
         min-inline-size: 0;
-        overflow-wrap:   anywhere;
         margin:          0;
     }
 

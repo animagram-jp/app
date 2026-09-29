@@ -80,6 +80,34 @@
         margin-block: auto;
     }
 
+    /*  === sign-style: inline === */
+
+    [data-sign-style="inline"] {
+        vertical-align: middle;
+    }
+
+    [data-sign-style="inline"]:not([data-size] *) {
+        block-size: var(--md-line-height);
+    }
+    [data-size="xs"] [data-sign-style="inline"]:not([data-size="xs"] [data-size] *) {
+        block-size: var(--xs-line-height);
+    }
+    [data-size="sm"] [data-sign-style="inline"]:not([data-size="sm"] [data-size] *) {
+        block-size: var(--sm-line-height);
+    }
+    [data-size="md"] [data-sign-style="inline"]:not([data-size="md"] [data-size] *) {
+        block-size: var(--md-line-height);
+    }
+    [data-size="lg"] [data-sign-style="inline"]:not([data-size="lg"] [data-size] *) {
+        block-size: var(--lg-line-height);
+    }
+    [data-size="xl"] [data-sign-style="inline"]:not([data-size="xl"] [data-size] *) {
+        block-size: var(--xl-line-height);
+    }
+    [data-size="2xl"] [data-sign-style="inline"]:not([data-size="2xl"] [data-size] *) {
+        block-size: var(--2xl-line-height);
+    }
+
     /* === data-inline-align === */
 
     /* --- center --- */
@@ -91,6 +119,7 @@
     )::before,
     :where(
         [data-sign="check"],
+        [data-sign="folder"],
         [data-sign="hatch"],
         [data-sign="minus"],
         [data-sign="plus"],
@@ -102,7 +131,10 @@
         position: absolute;
     }
 
-    [data-sign="check"][data-inline-align="start"]::before {
+    :where(
+        [data-sign="check"],
+        [data-sign="folder"]
+    )[data-inline-align="start"]::before {
         content:  "";
         position: absolute;
     }
@@ -118,6 +150,7 @@
     )::before,
     :where(
         [data-sign="check"],
+        [data-sign="folder"],
         [data-sign="hatch"],
         [data-sign="minus"],
         [data-sign="plus"],
@@ -136,6 +169,7 @@
 
     :where(
         [data-sign="check"],
+        [data-sign="folder"],
         [data-sign="hatch"],
         [data-sign="minus"],
         [data-sign="plus"],
@@ -167,6 +201,7 @@
     )[data-inline-align="end"]::before,
     :where(
         [data-sign="check"],
+        [data-sign="folder"],
         [data-sign="hatch"],
         [data-sign="minus"],
         [data-sign="plus"],
@@ -176,34 +211,6 @@
         inset-inline-start: auto;
         inset-inline-end:   0;
         margin-inline:      0;
-    }
-
-    /*  === sign-style: inline === */
-
-    [data-sign-style="inline"] {
-        vertical-align: middle;
-    }
-
-    [data-sign-style="inline"]:not([data-size] *) {
-        block-size: var(--md-line-height);
-    }
-    [data-size="xs"] [data-sign-style="inline"]:not([data-size="xs"] [data-size] *) {
-        block-size: var(--xs-line-height);
-    }
-    [data-size="sm"] [data-sign-style="inline"]:not([data-size="sm"] [data-size] *) {
-        block-size: var(--sm-line-height);
-    }
-    [data-size="md"] [data-sign-style="inline"]:not([data-size="md"] [data-size] *) {
-        block-size: var(--md-line-height);
-    }
-    [data-size="lg"] [data-sign-style="inline"]:not([data-size="lg"] [data-size] *) {
-        block-size: var(--lg-line-height);
-    }
-    [data-size="xl"] [data-sign-style="inline"]:not([data-size="xl"] [data-size] *) {
-        block-size: var(--xl-line-height);
-    }
-    [data-size="2xl"] [data-sign-style="inline"]:not([data-size="2xl"] [data-size] *) {
-        block-size: var(--2xl-line-height);
     }
 
     /* === check === */
@@ -619,6 +626,90 @@
                 border-width:  calc(var(--2xl-line-height) * 0.0625);
             }
         }
+    }
+
+    /* === folder === */
+
+    [data-sign="folder"]:where([data-inline-align="start"])::before,
+    [data-sign="folder"]:not([data-inline-align="start"])::after {
+        background-color: currentColor;
+        clip-path:        shape(
+            evenodd from 3.375% 24.1875%,
+            line to 3.125% 18.75%,
+            arc to 15.625% 6.25% of 12.5% cw,
+            line to 38.575% 6.25%,
+            arc to 47.4125% 9.9125% of 12.5% cw,
+            line to 52.5875% 15.0875%,
+            arc to 61.425% 18.75% of 12.5% ccw,
+            line to 86.3125% 18.75%,
+            arc to 98.7625% 32.3813% of 12.5% cw,
+            line to 94.7812% 76.1312%,
+            arc to 82.3375% 87.5% of 12.5% cw,
+            line to 17.6625% 87.5%,
+            arc to 5.21875% 76.1312% of 12.5% cw,
+            line to 1.2375% 32.3813%,
+            arc to 3.375% 24.1875% of 12.5% cw,
+            close,
+            move to 13.6875% 25%,
+            arc to 7.4625% 31.8125% of 6.25% ccw,
+            line to 11.4437% 75.5625%,
+            arc to 17.6625% 81.25% of 6.25% ccw,
+            line to 82.3375% 81.25%,
+            arc to 88.5563% 75.5625% of 6.25% ccw,
+            line to 92.5375% 31.8125%,
+            arc to 86.3125% 25% of 6.25% ccw,
+            close,
+            move to 43% 14.3313%,
+            arc to 38.575% 12.5% of 6.25% ccw,
+            line to 15.625% 12.5%,
+            arc to 9.375% 18.6313% of 6.25% ccw,
+            line to 9.4125% 19.5%,
+            curve to 13.6875% 18.75% with 11.4313% 18.7563%,
+            line to 47.4125% 18.75%,
+            close
+        );
+        content:          "";
+        inset-block:      0;
+        margin-block:     auto;
+        position:         absolute;
+    }
+
+    /* --- size --- */
+
+    [data-sign="folder"][data-size="xs"]:where([data-inline-align="start"])::before,
+    [data-sign="folder"][data-size="xs"]:not([data-inline-align="start"])::after {
+        block-size:  var(--xs-line-height);
+        inline-size: var(--xs-line-height);
+    }
+
+    [data-sign="folder"][data-size="sm"]:where([data-inline-align="start"])::before,
+    [data-sign="folder"][data-size="sm"]:not([data-inline-align="start"])::after {
+        block-size:  var(--sm-line-height);
+        inline-size: var(--sm-line-height);
+    }
+
+    [data-sign="folder"]:where([data-size="md"], :not([data-size])):where([data-inline-align="start"])::before,
+    [data-sign="folder"]:where([data-size="md"], :not([data-size])):not([data-inline-align="start"])::after {
+        block-size:  var(--md-line-height);
+        inline-size: var(--md-line-height);
+    }
+
+    [data-sign="folder"][data-size="lg"]:where([data-inline-align="start"])::before,
+    [data-sign="folder"][data-size="lg"]:not([data-inline-align="start"])::after {
+        block-size:  var(--lg-line-height);
+        inline-size: var(--lg-line-height);
+    }
+
+    [data-sign="folder"][data-size="xl"]:where([data-inline-align="start"])::before,
+    [data-sign="folder"][data-size="xl"]:not([data-inline-align="start"])::after {
+        block-size:  var(--xl-line-height);
+        inline-size: var(--xl-line-height);
+    }
+
+    [data-sign="folder"][data-size="2xl"]:where([data-inline-align="start"])::before,
+    [data-sign="folder"][data-size="2xl"]:not([data-inline-align="start"])::after {
+        block-size:  var(--2xl-line-height);
+        inline-size: var(--2xl-line-height);
     }
 
     /* === hatch === */
@@ -1227,5 +1318,69 @@
             line to 19.375% 56.25%,
             close
         );
+    }
+
+    /* === reload, sync: busy === */
+
+    :is(
+        [data-facet="reload"],
+        [data-facet="sync"]
+    ):where(
+        [aria-busy="true"],
+        [aria-pressed="true"],
+        :checked
+    )::after {
+        background-color:    transparent;
+        background-image:
+            radial-gradient(circle closest-side, currentColor 95%, transparent 100%),
+            radial-gradient(circle closest-side, currentColor 95%, transparent 100%),
+            radial-gradient(circle closest-side, currentColor 95%, transparent 100%);
+        background-position:
+            13.077% 62.5%,
+            50% 62.5%,
+            86.923% 62.5%;
+        background-repeat:   no-repeat;
+        background-size:     18.75% 18.75%;
+        clip-path:           none;
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+        :is(
+            [data-facet="reload"],
+            [data-facet="sync"]
+        ):where(
+            [aria-busy="true"],
+            [aria-pressed="true"],
+            :checked
+        )::after {
+            animation: sign-hop 1.5s ease infinite;
+        }
+
+        @keyframes sign-hop {
+            0%, 40%, 100% {
+                background-position:
+                    13.077% 62.5%,
+                    50% 62.5%,
+                    86.923% 62.5%;
+            }
+            10% {
+                background-position:
+                    13.077% 25%,
+                    50% 62.5%,
+                    86.923% 62.5%;
+            }
+            20% {
+                background-position:
+                    13.077% 62.5%,
+                    50% 25%,
+                    86.923% 62.5%;
+            }
+            30% {
+                background-position:
+                    13.077% 62.5%,
+                    50% 62.5%,
+                    86.923% 25%;
+            }
+        }
     }
 }

@@ -123,15 +123,6 @@
         inline-size: var(--md-line-height);
     }
 
-    /* === hover === */
-
-    @media (hover: hover) {
-        li > [role]:where(a, button):hover:not(:focus-visible),
-        li > label:has(> input[role]:hover):not(:has(> input[role]:focus-visible)) {
-            background-color: var(--color-paper-mix);
-        }
-    }
-
     dialog {
         background-color: var(--color-paper);
         border-color:     var(--color-ink-mix);
