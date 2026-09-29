@@ -85,7 +85,7 @@ jobs:
               # の ?v={version} も同様にキャッシュバスティング用。
               run: |
                   sed -i "s/{version}/${VERSION}/g" \
-                      distribution/sw.js distribution/index.html distribution/manifest.json
+                      distribution/sw.js distribution/index.html distribution/manifest.json distribution/init.js
 
             - name: "setup Github Pages"
               uses: actions/configure-pages@v6

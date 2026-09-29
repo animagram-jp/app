@@ -12,7 +12,7 @@ use crate::{Error, file_store::FileStore};
 use crate::{
     Lang,
     data_struct::DataStruct,
-    event::Event,
+    event::{Event, Response},
     js_client::{
         CanvasEvent, ClassName, Command, EventType, Gesture, PointerState, VisibilityState, dom,
     },
@@ -102,6 +102,10 @@ impl Handler {
     }
 
     pub fn process_visibility(&mut self, _state: VisibilityState) -> (Vec<Event>, Vec<Command>) {
+        (vec![], vec![])
+    }
+
+    pub fn process_fetched(&mut self, _response: &Response) -> (Vec<Event>, Vec<Command>) {
         (vec![], vec![])
     }
 

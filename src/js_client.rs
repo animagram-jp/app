@@ -33,6 +33,7 @@ pub const OPERATION_FOCUS: u8 = 11;
 pub const OPERATION_JS_FN: u8 = 12;
 
 pub const OPERATION_ERROR: u8 = 13;
+pub const OPERATION_FETCH: u8 = 14;
 
 pub trait WireError {
     fn identifiers(&self, path: &mut Vec<u16>);
@@ -94,6 +95,7 @@ pub enum Command {
     CloseModal { id: dom::Id },
     Focus { id: dom::Id },
     JsFn { id: dom::Id, name: FnName },
+    Fetch { request: u32, method: Method, path: String, body: Vec<u8> },
     Error { error: Error },
 }
 
@@ -168,6 +170,13 @@ pub fn encode_command(frame: &mut Vec<u8>, command: &Command) {
             id.encode(frame);
             put_u16(frame, name.encode_u16());
         }
+        Command::Fetch { request, method, ref path, ref body } => {
+            frame.push(OPERATION_FETCH);
+            put_u32(frame, request);
+            frame.push(method.encode_u8());
+            put_str(frame, path);
+            put_bytes(frame, body);
+        }
         Command::Error { ref error } => encode_error(frame, error, &error.detail()),
     }
 }
@@ -200,9 +209,13 @@ pub(crate) fn put_f32(frame: &mut Vec<u8>, value: f32) {
     frame.extend_from_slice(&value.to_le_bytes());
 }
 
-pub(crate) fn put_str(frame: &mut Vec<u8>, value: &str) {
+pub(crate) fn put_bytes(frame: &mut Vec<u8>, value: &[u8]) {
     put_u32(frame, value.len() as u32);
-    frame.extend_from_slice(value.as_bytes());
+    frame.extend_from_slice(value);
+}
+
+pub(crate) fn put_str(frame: &mut Vec<u8>, value: &str) {
+    put_bytes(frame, value.as_bytes());
 }
 
 fn take<'a>(input: &mut &'a [u8], count: usize) -> Option<&'a [u8]> {
@@ -227,9 +240,17 @@ pub(crate) fn get_f64(input: &mut &[u8]) -> Option<f64> {
     Some(f64::from_le_bytes(take(input, 8)?.try_into().ok()?))
 }
 
-pub(crate) fn get_string(input: &mut &[u8]) -> Option<String> {
+pub(crate) fn get_u16(input: &mut &[u8]) -> Option<u16> {
+    Some(u16::from_le_bytes(take(input, 2)?.try_into().ok()?))
+}
+
+pub(crate) fn get_bytes<'a>(input: &mut &'a [u8]) -> Option<&'a [u8]> {
     let length = get_u32(input)? as usize;
-    Some(str::from_utf8(take(input, length)?).ok()?.to_string())
+    take(input, length)
+}
+
+pub(crate) fn get_string(input: &mut &[u8]) -> Option<String> {
+    Some(str::from_utf8(get_bytes(input)?).ok()?.to_string())
 }
 
 // === receive (canvas event) ===
@@ -413,6 +434,20 @@ pub enum FnName {
 impl FnName {
     fn encode_u16(self) -> u16 {
         self as u16
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Method {
+    Delete = 1,
+    Get,
+    Post,
+    Put,
+}
+
+impl Method {
+    fn encode_u8(self) -> u8 {
+        self as u8
     }
 }
 
@@ -2230,7 +2265,14 @@ mod wire_tests {
             assert_eq!(operation as usize, number);
             assert!(INIT_JS.contains(&format!("case {number:>2}:")), "case {number} missing");
         }
+        assert_eq!((OPERATION_ERROR, OPERATION_FETCH), (13, 14));
+        assert!(INIT_JS.contains(&format!("operation === {OPERATION_FETCH}")));
         assert!(INIT_JS.contains(&format!("operation === {OPERATION_ERROR}")));
+        assert_eq!(js_array("METHODS"), ["", "DELETE", "GET", "POST", "PUT"]);
+        assert_eq!(
+            [Method::Delete, Method::Get, Method::Post, Method::Put].map(Method::encode_u8),
+            [1, 2, 3, 4]
+        );
     }
 
     #[test]
@@ -2302,6 +2344,19 @@ mod wire_tests {
         assert_eq!(get_string(&mut input).as_deref(), Some("日本語"));
         assert!(input.is_empty());
         assert_eq!(get_u8(&mut input), None);
+    }
+
+    #[test]
+    fn bytes_round_trip_and_reject_short_input() {
+        let mut frame = Vec::new();
+        put_bytes(&mut frame, &[1, 2, 3]);
+        put_u16(&mut frame, 0x0102);
+        let mut input = &frame[..];
+        assert_eq!(get_bytes(&mut input), Some(&[1, 2, 3][..]));
+        assert_eq!(get_u16(&mut input), Some(0x0102));
+        assert!(input.is_empty());
+        assert_eq!(get_bytes(&mut &[4, 0, 0, 0, 1][..]), None);
+        assert_eq!(get_u16(&mut &[1][..]), None);
     }
 
     #[test]
@@ -2452,6 +2507,15 @@ mod wire_tests {
             }),
         });
         assert_eq!(&panic[..7], [13, 1, 2, 4, 0, 1, 0]);
+        assert_eq!(
+            encode(Command::Fetch {
+                request: 258,
+                method:  Method::Post,
+                path:    String::from("/a"),
+                body:    vec![9, 8],
+            }),
+            [14, 2, 1, 0, 0, 3, 2, 0, 0, 0, b'/', b'a', 2, 0, 0, 0, 9, 8]
+        );
         assert_eq!(
             &panic[7..],
             [12, 0, 0, 0, b'a', b'.', b'r', b's', b':', b'1', b':', b' ', b'b', b'o', b'o', b'm']

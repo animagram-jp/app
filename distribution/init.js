@@ -4,6 +4,7 @@ const CONTROL_WRITE_OFFSET = 0;
 const CONTROL_READ_OFFSET = 64;
 const CONTROL_SIZE = 2 * CONTROL_READ_OFFSET;
 const LENGTH_PREFIX = 4;
+const FETCH_HEADER = 1 + 4 + 2 + 1 + LENGTH_PREFIX;
 
 const EVENT_CONTROL = 0;
 const EVENT_PAYLOAD = EVENT_CONTROL + CONTROL_SIZE; // range start
@@ -35,6 +36,7 @@ const EVENT_CANVAS = 1;
 const EVENT_RESIZE = 2;
 const EVENT_SCROLL = 3;
 const EVENT_VISIBILITY = 4;
+const EVENT_FETCH = 5;
 const EVENT_SHUTDOWN = 8;
 
 const THREAD = crossOriginIsolated ? "worker" : "main";
@@ -225,6 +227,15 @@ function execute(frame) {
         if (serious !== 0) restart();
         return;
     }
+    if (operation === 14) {
+        const [request, after_request] = get_u32(frame, 1);
+        const [method, after_method] = get_u8(frame, after_request);
+        const [path, after_path] = get_str(frame, after_method);
+        const [body] = get_bytes(frame, after_path);
+        if (request === undefined || !METHODS[method] || path === undefined || body === undefined) return;
+        fetch_request(request, METHODS[method], path, body.slice());
+        return;
+    }
 
     const [id, offset] = get_id(frame, 1);
     const el = document.getElementById(id);
@@ -260,6 +271,39 @@ function execute(frame) {
         case 11: el.focus(); break;
         case 12: js_fn[FN_NAMES[get_u16(frame, offset)[0]]]?.(el); break;
     }
+}
+
+async function fetch_request(request, method, path, body) {
+    let status;
+    let bytes;
+    try {
+        const response = await fetch(`./api/{version}${path}`, {
+            method,
+            credentials: "same-origin",
+            ...(body.length > 0
+                ? { headers: { "Content-Type": "application/octet-stream" }, body }
+                : {}),
+        });
+        status = response.status;
+        bytes = new Uint8Array(await response.arrayBuffer());
+    } catch (err) {
+        status = 0;
+        bytes = TEXT_ENCODER.encode(String(err?.message ?? err));
+    }
+    await push_fetched(request, status, bytes);
+}
+
+async function push_fetched(request, status, bytes) {
+    const chunk_size = S.event_frame.length - FETCH_HEADER;
+    let offset = 0;
+    do {
+        const chunk = bytes.subarray(offset, offset + chunk_size);
+        offset += chunk.length;
+        const last = offset >= bytes.length;
+        while (!push(encode_fetch_event(S.event_frame, request, status, last, chunk))) {
+            await new Promise((resolve) => setTimeout(resolve, 0));
+        }
+    } while (offset < bytes.length);
 }
 
 const js_fn = {
@@ -378,6 +422,15 @@ function encode_scroll_event(frame, x, y) {
 function encode_visibility_event(frame, state) {
     let offset = put_u8(frame, 0, EVENT_VISIBILITY);
     offset = put_u8(frame, offset, Math.max(VISIBILITY_STATES.indexOf(state), 0));
+    return frame.subarray(0, offset);
+}
+
+function encode_fetch_event(frame, request, status, last, bytes) {
+    let offset = put_u8(frame, 0, EVENT_FETCH);
+    offset = put_u32(frame, offset, request);
+    offset = put_u16(frame, offset, status);
+    offset = put_u8(frame, offset, last ? 1 : 0);
+    offset = put_bytes(frame, offset, bytes);
     return frame.subarray(0, offset);
 }
 
@@ -639,6 +692,14 @@ const CLASS_NAMES = [
     "highlighted",
 ];
 
+const METHODS = [
+    null,
+    "DELETE",
+    "GET",
+    "POST",
+    "PUT",
+];
+
 const STYLE_KEYWORDS = [
     null,
     "default",
@@ -803,12 +864,15 @@ function put_f64(frame, offset, value) {
     return offset + 8;
 }
 
-function put_str(frame, offset, value) {
-    const bytes = TEXT_ENCODER.encode(value);
+function put_bytes(frame, offset, bytes) {
     reserve(frame, offset, 4 + bytes.length);
     offset = put_u32(frame, offset, bytes.length);
     frame.set(bytes, offset);
     return offset + bytes.length;
+}
+
+function put_str(frame, offset, value) {
+    return put_bytes(frame, offset, TEXT_ENCODER.encode(value));
 }
 
 function put_id(frame, offset, value) {
@@ -850,10 +914,15 @@ function get_f32(frame, offset) {
     return [view_of(frame).getFloat32(offset, true), offset + 4];
 }
 
-function get_str(frame, offset) {
+function get_bytes(frame, offset) {
     const [length, start] = get_u32(frame, offset);
     if (length === undefined || start + length > frame.length) return [undefined, offset];
-    return [TEXT_DECODER.decode(frame.subarray(start, start + length)), start + length];
+    return [frame.subarray(start, start + length), start + length];
+}
+
+function get_str(frame, offset) {
+    const [bytes, next] = get_bytes(frame, offset);
+    return bytes === undefined ? [undefined, offset] : [TEXT_DECODER.decode(bytes), next];
 }
 
 function get_style_value(frame, offset) {

@@ -1,4 +1,8 @@
-use alloc::{collections::VecDeque, vec, vec::Vec};
+use alloc::{
+    collections::{BTreeMap, VecDeque},
+    vec,
+    vec::Vec,
+};
 use core::{
     default::Default,
     iter::Extend,
@@ -12,7 +16,7 @@ use wasm_bindgen::prelude::wasm_bindgen;
 use crate::{
     Error,
     arena::{APP, RUNNING, emit},
-    event::{Event, EventError, WindowEvent, decode_event},
+    event::{Event, EventError, Response, WindowEvent, decode_event},
     handler::Handler,
     js_client::{
         CanvasEvent, Command, EventType, Thresholds, TouchTracker, detect_device, encode_command,
@@ -29,6 +33,7 @@ pub struct App {
     handler:    Handler,
     commands:   Vec<Command>,
     origin:     Option<CanvasEvent>,
+    responses:  BTreeMap<u32, Vec<u8>>,
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
@@ -83,7 +88,7 @@ impl App {
     }
 
     fn dispatch(&mut self, event: Event) -> (Vec<Event>, Vec<Command>) {
-        let Self { handler, touch, thresholds, origin, .. } = self;
+        let Self { handler, touch, thresholds, origin, responses, .. } = self;
 
         match event {
             Event::Canvas(canvas_event) => {
@@ -117,6 +122,17 @@ impl App {
             }
             Event::Window(WindowEvent::Scroll { x, y }) => handler.process_scroll(x, y),
             Event::Window(WindowEvent::Visibility { state }) => handler.process_visibility(state),
+            Event::FetchChunk(chunk) => {
+                let body = responses.entry(chunk.request).or_default();
+                body.extend_from_slice(&chunk.bytes);
+                if !chunk.last {
+                    return (vec![], vec![]);
+                }
+                let body = responses.remove(&chunk.request).unwrap_or_default();
+                let response = Response { request: chunk.request, status: chunk.status, body };
+                (vec![Event::Fetched(response)], vec![])
+            }
+            Event::Fetched(response) => handler.process_fetched(&response),
             Event::Window(WindowEvent::Shutdown) => {
                 unsafe { RUNNING = false };
                 (vec![], self.handler.close())
@@ -134,6 +150,7 @@ impl App {
             handler,
             commands: Vec::new(),
             origin: None,
+            responses: BTreeMap::new(),
         }
     }
 
@@ -197,6 +214,32 @@ mod tests {
 
     fn origin_id(app: &App) -> Option<dom::Id> {
         app.origin.as_ref().map(|origin| origin.id.clone())
+    }
+
+    fn chunk(request: u32, status: u16, last: bool, bytes: &[u8]) -> Event {
+        Event::FetchChunk(crate::event::FetchChunk { request, status, last, bytes: bytes.to_vec() })
+    }
+
+    #[test]
+    fn fetch_chunks_are_joined_per_request_and_delivered_once() {
+        let mut app = new_app();
+        assert!(app.dispatch(chunk(1, 200, false, &[1, 2])).0.is_empty());
+        assert!(app.dispatch(chunk(2, 404, false, &[9])).0.is_empty());
+        assert!(app.dispatch(chunk(1, 200, false, &[3])).0.is_empty());
+
+        let (events, commands) = app.dispatch(chunk(1, 200, true, &[4]));
+        assert!(commands.is_empty());
+        let [Event::Fetched(response)] = events.as_slice() else { panic!("not delivered") };
+        assert_eq!((response.request, response.status), (1, 200));
+        assert_eq!(response.body, [1, 2, 3, 4]);
+
+        let (events, _) = app.dispatch(chunk(2, 404, true, &[]));
+        let [Event::Fetched(response)] = events.as_slice() else { panic!("not delivered") };
+        assert_eq!(
+            (response.request, response.status, response.body.as_slice()),
+            (2, 404, &[9][..])
+        );
+        assert!(app.responses.is_empty());
     }
 
     #[test]

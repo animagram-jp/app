@@ -6,8 +6,8 @@ use core::{
 };
 
 use crate::js_client::{
-    CanvasEvent, EventType, Gesture, KeyName, VisibilityState, WireError, dom, get_f32, get_f64,
-    get_string, get_u8, get_u32,
+    CanvasEvent, EventType, Gesture, KeyName, VisibilityState, WireError, dom, get_bytes, get_f32,
+    get_f64, get_string, get_u8, get_u16, get_u32,
 };
 
 #[derive(Debug)]
@@ -42,6 +42,7 @@ pub const EVENT_CANVAS: u8 = 1;
 pub const EVENT_RESIZE: u8 = 2;
 pub const EVENT_SCROLL: u8 = 3;
 pub const EVENT_VISIBILITY: u8 = 4;
+pub const EVENT_FETCH: u8 = 5;
 pub const EVENT_SHUTDOWN: u8 = 8;
 
 pub enum Event {
@@ -50,6 +51,21 @@ pub enum Event {
     /// A recognized gesture. Pushed by `dispatch` itself.
     Gesture(Gesture),
     Window(WindowEvent),
+    FetchChunk(FetchChunk),
+    Fetched(Response),
+}
+
+pub struct FetchChunk {
+    pub request: u32,
+    pub status:  u16,
+    pub last:    bool,
+    pub bytes:   Vec<u8>,
+}
+
+pub struct Response {
+    pub request: u32,
+    pub status:  u16,
+    pub body:    Vec<u8>,
 }
 
 pub enum WindowEvent {
@@ -92,6 +108,12 @@ pub fn decode_event(frame: &[u8]) -> Option<Event> {
         }),
         EVENT_VISIBILITY => Event::Window(WindowEvent::Visibility {
             state: VisibilityState::decode_u8(get_u8(&mut input)?),
+        }),
+        EVENT_FETCH => Event::FetchChunk(FetchChunk {
+            request: get_u32(&mut input)?,
+            status:  get_u16(&mut input)?,
+            last:    get_u8(&mut input)? != 0,
+            bytes:   get_bytes(&mut input)?.to_vec(),
         }),
         EVENT_SHUTDOWN => Event::Window(WindowEvent::Shutdown),
         _ => return None,
@@ -145,6 +167,7 @@ mod tests {
         assert_eq!(js_constant("EVENT_RESIZE"), EVENT_RESIZE);
         assert_eq!(js_constant("EVENT_SCROLL"), EVENT_SCROLL);
         assert_eq!(js_constant("EVENT_VISIBILITY"), EVENT_VISIBILITY);
+        assert_eq!(js_constant("EVENT_FETCH"), EVENT_FETCH);
         assert_eq!(js_constant("EVENT_SHUTDOWN"), EVENT_SHUTDOWN);
     }
 
@@ -230,9 +253,28 @@ mod tests {
     }
 
     #[test]
+    fn decodes_fetch_chunks() {
+        let mut frame = Vec::new();
+        frame.push(EVENT_FETCH);
+        put_u32(&mut frame, 7);
+        frame.extend_from_slice(&404u16.to_le_bytes());
+        frame.push(1);
+        put_u32(&mut frame, 2);
+        frame.extend_from_slice(&[5, 6]);
+        let Some(Event::FetchChunk(chunk)) = decode_event(&frame) else {
+            panic!("not a fetch chunk");
+        };
+        assert_eq!((chunk.request, chunk.status, chunk.last), (7, 404, true));
+        assert_eq!(chunk.bytes, [5, 6]);
+        for cut in 0..frame.len() {
+            assert!(decode_event(&frame[..cut]).is_none(), "cut {cut}");
+        }
+    }
+
+    #[test]
     fn unknown_or_empty_frames_are_rejected() {
         assert!(decode_event(&[]).is_none());
-        for kind in [0, 5, 6, 7, 9, 200] {
+        for kind in [0, 6, 7, 9, 200] {
             assert!(decode_event(&[kind, 0, 0, 0, 0, 0, 0, 0, 0]).is_none(), "kind {kind}");
         }
     }
