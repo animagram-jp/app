@@ -1,6 +1,3 @@
-[workspace]
-members = [".", "crates/app_macros"]
-
 [package]
 name = "app"
 version = "0.1.0"
@@ -16,7 +13,6 @@ exclude = ["examples/", "distribution/", "docs/"]
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-app_macros    = { path = "crates/app_macros" }
 arbitrary-int = "2"
 wasm-bindgen         = { version = "0.2", default-features = false }
 wasm-bindgen-futures = { version = "0.4", default-features = false }

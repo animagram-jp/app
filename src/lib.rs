@@ -8,6 +8,7 @@
 #![no_std]
 #![feature(adt_const_params)]
 #![feature(const_param_ty_trait)]
+#![feature(variant_count)]
 // `memory_atomic_wait32` / `memory_atomic_notify`
 // worker (`-Ctarget-feature=+atomics`) `serve_event`
 #![cfg_attr(

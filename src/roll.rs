@@ -1,10 +1,34 @@
-use core::primitive::i8;
-
-use app_macros::{Id, List};
+use core::{
+    mem::{size_of, transmute_copy, variant_count},
+    primitive::{i8, u8},
+};
 
 use crate::{Lang, object::dice};
 
-#[derive(List)]
+const unsafe fn all_variants<T: Copy, const N: usize>(first: T) -> [T; N] {
+    assert!(size_of::<T>() == 1 && N == variant_count::<T>());
+    let mut all = [first; N];
+    let mut i = 0;
+    while i < N {
+        all[i] = unsafe { transmute_copy::<u8, T>(&(i as u8)) };
+        i += 1;
+    }
+    all
+}
+
+fn pick<T: Copy>(list: &[T]) -> T {
+    use rand::{RngExt as _, SeedableRng as _, TryRng as _};
+
+    let mut seed = [0u8; 32];
+    let mut sys = rand::rngs::SysRng::default();
+    sys.try_fill_bytes(&mut seed).unwrap();
+    let mut rng = rand::rngs::SmallRng::from_seed(seed);
+
+    list[rng.random_range(0..list.len())]
+}
+
+#[derive(Clone, Copy)]
+#[repr(u8)]
 pub enum Roll {
     DiceRoll,
     SkillRoll,
@@ -19,6 +43,10 @@ pub enum Roll {
 }
 
 impl Roll {
+    pub fn list() -> &'static [Self] {
+        const ALL: [Roll; variant_count::<Roll>()] = unsafe { all_variants(Roll::DiceRoll) };
+        &ALL
+    }
     pub fn display(self, lang: Lang) -> &'static str {
         match (self, lang) {
             (Self::DiceRoll, Lang::En(_)) => "Dice Roll (nDn +-n)",
@@ -44,12 +72,18 @@ impl Roll {
         }
     }
 }
-#[derive(List)]
+#[derive(Clone, Copy)]
+#[repr(u8)]
 pub enum BoutOfMadness {
     RealTime,
     Summary,
 }
 impl BoutOfMadness {
+    pub fn list() -> &'static [Self] {
+        const ALL: [BoutOfMadness; variant_count::<BoutOfMadness>()] =
+            unsafe { all_variants(BoutOfMadness::RealTime) };
+        &ALL
+    }
     pub fn display(self, lang: Lang) -> &'static str {
         match (self, lang) {
             (Self::RealTime, Lang::En(_)) => "real time",
@@ -59,12 +93,18 @@ impl BoutOfMadness {
         }
     }
 }
-#[derive(List)]
+#[derive(Clone, Copy)]
+#[repr(u8)]
 pub enum PhobiaAndMania {
     Phobia,
     Mania,
 }
 impl PhobiaAndMania {
+    pub fn list() -> &'static [Self] {
+        const ALL: [PhobiaAndMania; variant_count::<PhobiaAndMania>()] =
+            unsafe { all_variants(PhobiaAndMania::Phobia) };
+        &ALL
+    }
     pub fn display(self, lang: Lang) -> &'static str {
         match (self, lang) {
             (Self::Phobia, Lang::En(_)) => "Phobia",
@@ -74,12 +114,18 @@ impl PhobiaAndMania {
         }
     }
 }
-#[derive(List)]
+#[derive(Clone, Copy)]
+#[repr(u8)]
 pub enum FailedCasting {
     Minor,
     Major,
 }
 impl FailedCasting {
+    pub fn list() -> &'static [Self] {
+        const ALL: [FailedCasting; variant_count::<FailedCasting>()] =
+            unsafe { all_variants(FailedCasting::Minor) };
+        &ALL
+    }
     pub fn display(self, lang: Lang) -> &'static str {
         match (self, lang) {
             (Self::Minor, Lang::En(_)) => "minor",
@@ -379,7 +425,8 @@ impl FailedCastingMajor {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, List, Id, app_macros::Roll)]
+#[derive(Clone, Copy, PartialEq)]
+#[repr(u8)]
 pub enum Phobia {
     Ablutophobia,
     Acrophobia,
@@ -484,6 +531,17 @@ pub enum Phobia {
 }
 
 impl Phobia {
+    pub fn list() -> &'static [Self] {
+        const ALL: [Phobia; variant_count::<Phobia>()] =
+            unsafe { all_variants(Phobia::Ablutophobia) };
+        &ALL
+    }
+    pub fn id(self) -> u8 {
+        self as u8 + 1
+    }
+    pub fn roll() -> Self {
+        pick(Self::list())
+    }
     pub fn display(&self, lang: Lang) -> &'static str {
         match (self, lang) {
             (Self::Ablutophobia, Lang::En(_)) => "Abluto",
@@ -690,7 +748,8 @@ impl Phobia {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, List, Id, app_macros::Roll)]
+#[derive(Clone, Copy, PartialEq)]
+#[repr(u8)]
 pub enum Mania {
     Ablutomania,
     Aboulomania,
@@ -795,6 +854,16 @@ pub enum Mania {
 }
 
 impl Mania {
+    pub fn list() -> &'static [Self] {
+        const ALL: [Mania; variant_count::<Mania>()] = unsafe { all_variants(Mania::Ablutomania) };
+        &ALL
+    }
+    pub fn id(self) -> u8 {
+        self as u8 + 1
+    }
+    pub fn roll() -> Self {
+        pick(Self::list())
+    }
     pub fn display(&self, lang: Lang) -> &'static str {
         match (self, lang) {
             (Self::Ablutomania, Lang::En(_)) => "Abluto",
@@ -998,5 +1067,91 @@ impl Mania {
             (Self::Zoomania, Lang::En(_)) => "Zoo",
             (Self::Zoomania, Lang::Ja) => "動物",
         }
+    }
+}
+
+#[cfg(test)]
+mod variant_tests {
+    use alloc::{collections::BTreeSet, vec::Vec};
+    use core::mem::{transmute_copy, variant_count};
+
+    use super::*;
+    use crate::En;
+
+    fn discriminants<T: Copy>(list: &[T]) -> Vec<u8> {
+        list.iter().map(|v| unsafe { transmute_copy::<T, u8>(v) }).collect()
+    }
+
+    fn assert_list<T: Copy>(list: &[T], expected: usize) {
+        assert_eq!(list.len(), expected);
+        assert_eq!(list.len(), variant_count::<T>());
+        let expected_discriminants: Vec<u8> = (0..expected as u8).collect();
+        assert_eq!(discriminants(list), expected_discriminants);
+    }
+
+    #[test]
+    fn list_covers_every_variant_in_declaration_order() {
+        assert_list(Roll::list(), 10);
+        assert_list(BoutOfMadness::list(), 2);
+        assert_list(PhobiaAndMania::list(), 2);
+        assert_list(FailedCasting::list(), 2);
+        assert_list(Phobia::list(), 100);
+        assert_list(Mania::list(), 100);
+    }
+
+    #[test]
+    fn list_first_and_last_variants() {
+        assert_eq!(Roll::list()[0].display(Lang::Ja), "ダイスロール (nDn +-n)");
+        assert_eq!(BoutOfMadness::list()[1].display(Lang::Ja), "サマリー");
+        assert_eq!(Phobia::list()[0].display(Lang::Ja), "入浴");
+    }
+
+    #[test]
+    fn id_is_one_based_position() {
+        for (i, v) in Phobia::list().iter().enumerate() {
+            assert_eq!(v.id() as usize, i + 1);
+        }
+        for (i, v) in Mania::list().iter().enumerate() {
+            assert_eq!(v.id() as usize, i + 1);
+        }
+        assert_eq!(Phobia::list()[0].id(), 1);
+        assert_eq!(Phobia::list()[99].id(), 100);
+        assert_eq!(Mania::list()[99].id(), 100);
+    }
+
+    #[test]
+    fn roll_returns_list_members_and_varies() {
+        let mut phobia_ids = BTreeSet::new();
+        let mut mania_ids = BTreeSet::new();
+        for _ in 0..1000 {
+            let p = Phobia::roll();
+            let m = Mania::roll();
+            assert!((1..=100).contains(&p.id()));
+            assert!((1..=100).contains(&m.id()));
+            phobia_ids.insert(p.id());
+            mania_ids.insert(m.id());
+        }
+        assert!(phobia_ids.len() >= 50, "phobia variety {}", phobia_ids.len());
+        assert!(mania_ids.len() >= 50, "mania variety {}", mania_ids.len());
+    }
+
+    #[test]
+    fn every_phobia_and_mania_has_names_in_both_languages() {
+        for lang in [Lang::Ja, Lang::En(En::Us)] {
+            for v in Phobia::list() {
+                assert!(!v.display(lang).is_empty());
+            }
+            for v in Mania::list() {
+                assert!(!v.display(lang).is_empty());
+            }
+        }
+    }
+
+    #[test]
+    fn phobia_and_mania_names_are_distinct() {
+        let phobias: BTreeSet<&str> = Phobia::list().iter().map(|v| v.display(Lang::Ja)).collect();
+        let manias: BTreeSet<&str> = Mania::list().iter().map(|v| v.display(Lang::Ja)).collect();
+        assert_eq!(phobias.len(), 100);
+        assert_eq!(manias.len(), 100);
     }
 }
