@@ -63,8 +63,7 @@ sudo apt update && sudo apt install firefox
 # https://github.com/mozilla/geckodriver/releases
 curl -fsSL -o /tmp/geckodriver.tar.gz "https://github.com/mozilla/geckodriver/releases/download/v0.37.1/geckodriver-v0.37.1-linux64.tar.gz"
 tar xzf /tmp/geckodriver.tar.gz -C /tmp && chmod +x /tmp/geckodriver && mv /tmp/geckodriver ~/.cargo/bin/geckodriver
-# wasm-bindgen-cli も apt に存在しないため、Cargo.lock の wasm-bindgen と同一バージョンで cargo install する
-cargo install wasm-bindgen-cli --version 0.2.129 --locked
+cargo install wasm-bindgen-cli --version "$(grep -A1 '^name = "wasm-bindgen"$' Cargo.lock | sed -n 's/^version = "\(.*\)"$/\1/p')" --locked
 
 # -Zbuild-std に必要な rust-src (rust-toolchain.toml の nightly に対して導入)
 rustup component add rust-src --toolchain nightly

@@ -44,13 +44,15 @@ jobs:
                   rustup override set nightly
 
             - name: "install wasm-bindgen-cli"
-              run: cargo install wasm-bindgen-cli --version 0.2.129
+              run: |
+                  version="$(grep -A1 '^name = "wasm-bindgen"$' Cargo.lock | sed -n 's/^version = "\(.*\)"$/\1/p')"
+                  cargo install wasm-bindgen-cli --version "$version" --locked
 
             - name: "install wasm-tools"
               run: cargo install wasm-tools
 
             - name: "cargo test (doctest only; --lib requires a browser runner)"
-              run: cargo test --doc
+              run: cargo test --doc --locked
 
             - name: "cargo build (wasm32, web worker)"
               run: |
