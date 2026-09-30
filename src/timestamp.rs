@@ -1,7 +1,5 @@
 use alloc::{format, string::String, vec::Vec};
 
-use arbitrary_int::traits::Integer;
-
 use crate::field::Field;
 
 // timestamp (64 bits)
@@ -11,18 +9,18 @@ use crate::field::Field;
 //   = 1: The value is UTC time (timezone iana id may store original zone info).
 //   = 0: The value is local time of timezone
 
-const YEAR: Field = Field { position: 51, mask: (1 << 13) - 1 }; // u13, bit 51~63
-const MONTH: Field = Field { position: 46, mask: (1 << 5) - 1 }; // u5, bit 46~50
-const DAY: Field = Field { position: 41, mask: (1 << 5) - 1 }; // u5, bit 41~45
-const HOUR: Field = Field { position: 35, mask: (1 << 6) - 1 }; // u6, bit 35~40
-const MINUTE: Field = Field { position: 29, mask: (1 << 6) - 1 }; // u6, bit 29~34
-const SECOND: Field = Field { position: 23, mask: (1 << 6) - 1 }; // u6, bit 23~28
-const DECISECOND: Field = Field { position: 19, mask: (1 << 4) - 1 }; // u4, bit 19~22
+const YEAR: Field = Field::new(51, 13); // u13, bit 51~63
+const MONTH: Field = Field::new(47, 4);
+const DAY: Field = Field::new(42, 5);
+const HOUR: Field = Field::new(37, 5);
+const MINUTE: Field = Field::new(31, 6);
+const SECOND: Field = Field::new(25, 6);
+const CENTISECOND: Field = Field::new(18, 7);
 // 1 = true (year~second is utc value) and 0 = false (iana local value)
-const IS_UTC: Field = Field { position: 18, mask: (1 << 1) - 1 }; // bit 18
+const IS_UTC: Field = Field::new(17, 1);
 // id of IANA Time Zone Database
-const TIMEZONE: Field = Field { position: 8, mask: (1 << 10) - 1 }; // bit 8~17
-// const PADDING:    Field = Field { position:  0, mask: (1 <<  8) - 1 }; // bit 0~7
+const TIMEZONE: Field = Field::new(7, 10);
+// const PADDING:    Field = Field::new(0, 7);
 
 pub enum Timezone {
     // UTC+9
@@ -94,7 +92,7 @@ impl Timezone {
 pub fn from_ut(ut: f64, is_utc: bool, tz: &Timezone) -> u64 {
     let ms = ut as i64;
     let s = ms / 1000;
-    let decisecond = (ms % 1000).abs() / 100;
+    let centisecond = (ms % 1000).abs() / 10;
     let (s, is_utc_bit, tz_id) = if is_utc {
         (s, 1u64, 0u64)
     } else {
@@ -138,7 +136,7 @@ pub fn from_ut(ut: f64, is_utc: bool, tz: &Timezone) -> u64 {
     }
     let day = days + 1;
 
-    pack(year, month, day, hour, minute, second, decisecond, is_utc_bit, tz_id)
+    pack(year, month, day, hour, minute, second, centisecond, is_utc_bit, tz_id)
 }
 
 pub fn new(
@@ -148,20 +146,20 @@ pub fn new(
     hour: i64,
     minute: i64,
     second: i64,
-    decisecond: i64,
+    centisecond: i64,
     is_utc: bool,
     timezone: &Timezone,
 ) -> u64 {
     let mut ts = 0u64;
-    ts = YEAR.set(ts, u64::masked_new(year as u64));
-    ts = MONTH.set(ts, u64::masked_new(month as u64));
-    ts = DAY.set(ts, u64::masked_new(day as u64));
-    ts = HOUR.set(ts, u64::masked_new(hour as u64));
-    ts = MINUTE.set(ts, u64::masked_new(minute as u64));
-    ts = SECOND.set(ts, u64::masked_new(second as u64));
-    ts = DECISECOND.set(ts, u64::masked_new(decisecond as u64));
-    ts = IS_UTC.set(ts, u64::masked_new(is_utc as u64));
-    ts = TIMEZONE.set(ts, u64::masked_new(timezone.id() as u64));
+    ts = YEAR.set(ts, year as u64);
+    ts = MONTH.set(ts, month as u64);
+    ts = DAY.set(ts, day as u64);
+    ts = HOUR.set(ts, hour as u64);
+    ts = MINUTE.set(ts, minute as u64);
+    ts = SECOND.set(ts, second as u64);
+    ts = CENTISECOND.set(ts, centisecond as u64);
+    ts = IS_UTC.set(ts, is_utc as u64);
+    ts = TIMEZONE.set(ts, timezone.id() as u64);
     ts
 }
 
@@ -196,7 +194,7 @@ pub fn unpack(ts: u64) -> (i64, i64, i64, i64, i64, i64, i64, u64, u64) {
     let hour: u64 = HOUR.get(ts);
     let minute: u64 = MINUTE.get(ts);
     let second: u64 = SECOND.get(ts);
-    let decisecond: u64 = DECISECOND.get(ts);
+    let centisecond: u64 = CENTISECOND.get(ts);
     let is_utc: u64 = IS_UTC.get::<u64>(ts);
     let tz: u64 = TIMEZONE.get::<u64>(ts);
     (
@@ -206,7 +204,7 @@ pub fn unpack(ts: u64) -> (i64, i64, i64, i64, i64, i64, i64, u64, u64) {
         hour as i64,
         minute as i64,
         second as i64,
-        decisecond as i64,
+        centisecond as i64,
         is_utc,
         tz,
     )
@@ -219,20 +217,20 @@ pub fn pack(
     hour: i64,
     minute: i64,
     second: i64,
-    decisecond: i64,
+    centisecond: i64,
     is_utc: u64,
     tz: u64,
 ) -> u64 {
     let mut ts = 0u64;
-    ts = YEAR.set(ts, u64::masked_new(year as u64));
-    ts = MONTH.set(ts, u64::masked_new(month as u64));
-    ts = DAY.set(ts, u64::masked_new(day as u64));
-    ts = HOUR.set(ts, u64::masked_new(hour as u64));
-    ts = MINUTE.set(ts, u64::masked_new(minute as u64));
-    ts = SECOND.set(ts, u64::masked_new(second as u64));
-    ts = DECISECOND.set(ts, u64::masked_new(decisecond as u64));
-    ts = IS_UTC.set(ts, u64::masked_new(is_utc));
-    ts = TIMEZONE.set(ts, u64::masked_new(tz));
+    ts = YEAR.set(ts, year as u64);
+    ts = MONTH.set(ts, month as u64);
+    ts = DAY.set(ts, day as u64);
+    ts = HOUR.set(ts, hour as u64);
+    ts = MINUTE.set(ts, minute as u64);
+    ts = SECOND.set(ts, second as u64);
+    ts = CENTISECOND.set(ts, centisecond as u64);
+    ts = IS_UTC.set(ts, is_utc);
+    ts = TIMEZONE.set(ts, tz);
     ts
 }
 
@@ -253,10 +251,10 @@ pub fn add_years(timestamps: &[u64], n: i64) -> Vec<u64> {
     timestamps
         .iter()
         .map(|&ts| {
-            let (year, month, day, hour, minute, second, decisecond, is_utc, tz) = unpack(ts);
+            let (year, month, day, hour, minute, second, centisecond, is_utc, tz) = unpack(ts);
             let year = year + n;
             let day = day.min(days_in_month(year, month));
-            pack(year, month, day, hour, minute, second, decisecond, is_utc, tz)
+            pack(year, month, day, hour, minute, second, centisecond, is_utc, tz)
         })
         .collect()
 }
@@ -278,10 +276,10 @@ pub fn sub_years(timestamps: &[u64], n: i64) -> Vec<u64> {
     timestamps
         .iter()
         .map(|&ts| {
-            let (year, month, day, hour, minute, second, decisecond, is_utc, tz) = unpack(ts);
+            let (year, month, day, hour, minute, second, centisecond, is_utc, tz) = unpack(ts);
             let year = year - n;
             let day = day.min(days_in_month(year, month));
-            pack(year, month, day, hour, minute, second, decisecond, is_utc, tz)
+            pack(year, month, day, hour, minute, second, centisecond, is_utc, tz)
         })
         .collect()
 }
@@ -303,12 +301,12 @@ pub fn add_months(timestamps: &[u64], n: i64) -> Vec<u64> {
     timestamps
         .iter()
         .map(|&ts| {
-            let (year, month, day, hour, minute, second, decisecond, is_utc, tz) = unpack(ts);
+            let (year, month, day, hour, minute, second, centisecond, is_utc, tz) = unpack(ts);
             let month = month + n;
             let (year_add, month) = ((month - 1) / 12, (month - 1) % 12 + 1);
             let year = year + year_add;
             let day = day.min(days_in_month(year, month));
-            pack(year, month, day, hour, minute, second, decisecond, is_utc, tz)
+            pack(year, month, day, hour, minute, second, centisecond, is_utc, tz)
         })
         .collect()
 }
@@ -330,11 +328,11 @@ pub fn sub_months(timestamps: &[u64], n: i64) -> Vec<u64> {
     timestamps
         .iter()
         .map(|&ts| {
-            let (year, month, day, hour, minute, second, decisecond, is_utc, tz) = unpack(ts);
+            let (year, month, day, hour, minute, second, centisecond, is_utc, tz) = unpack(ts);
             let total = year * 12 + (month - 1) - n;
             let (year, month) = (total / 12, total % 12 + 1);
             let day = day.min(days_in_month(year, month));
-            pack(year, month, day, hour, minute, second, decisecond, is_utc, tz)
+            pack(year, month, day, hour, minute, second, centisecond, is_utc, tz)
         })
         .collect()
 }
@@ -356,7 +354,7 @@ pub fn add_days(timestamps: &[u64], n: i64) -> Vec<u64> {
     timestamps
         .iter()
         .map(|&ts| {
-            let (mut year, mut month, day, hour, minute, second, decisecond, is_utc, tz) =
+            let (mut year, mut month, day, hour, minute, second, centisecond, is_utc, tz) =
                 unpack(ts);
             let mut day = day + n;
             loop {
@@ -371,7 +369,7 @@ pub fn add_days(timestamps: &[u64], n: i64) -> Vec<u64> {
                     year += 1;
                 }
             }
-            pack(year, month, day, hour, minute, second, decisecond, is_utc, tz)
+            pack(year, month, day, hour, minute, second, centisecond, is_utc, tz)
         })
         .collect()
 }
@@ -393,7 +391,7 @@ pub fn sub_days(timestamps: &[u64], n: i64) -> Vec<u64> {
     timestamps
         .iter()
         .map(|&ts| {
-            let (mut year, mut month, mut day, hour, minute, second, decisecond, is_utc, tz) =
+            let (mut year, mut month, mut day, hour, minute, second, centisecond, is_utc, tz) =
                 unpack(ts);
             let mut remaining = n;
             while remaining >= day {
@@ -407,7 +405,7 @@ pub fn sub_days(timestamps: &[u64], n: i64) -> Vec<u64> {
                 day = days_in_month(year, month);
             }
             day -= remaining;
-            pack(year, month, day, hour, minute, second, decisecond, is_utc, tz)
+            pack(year, month, day, hour, minute, second, centisecond, is_utc, tz)
         })
         .collect()
 }
@@ -429,7 +427,7 @@ pub fn add_hours(timestamps: &[u64], n: i64) -> Vec<u64> {
     timestamps
         .iter()
         .map(|&ts| {
-            let (mut year, mut month, day, hour, minute, second, decisecond, is_utc, tz) =
+            let (mut year, mut month, day, hour, minute, second, centisecond, is_utc, tz) =
                 unpack(ts);
             let hour = hour + n;
             let mut day = day + hour / 24;
@@ -446,7 +444,7 @@ pub fn add_hours(timestamps: &[u64], n: i64) -> Vec<u64> {
                     year += 1;
                 }
             }
-            pack(year, month, day, hour, minute, second, decisecond, is_utc, tz)
+            pack(year, month, day, hour, minute, second, centisecond, is_utc, tz)
         })
         .collect()
 }
@@ -468,7 +466,7 @@ pub fn sub_hours(timestamps: &[u64], n: i64) -> Vec<u64> {
     timestamps
         .iter()
         .map(|&ts| {
-            let (mut year, mut month, mut day, mut hour, minute, second, decisecond, is_utc, tz) =
+            let (mut year, mut month, mut day, mut hour, minute, second, centisecond, is_utc, tz) =
                 unpack(ts);
             let mut remaining = n;
             while remaining > hour {
@@ -487,7 +485,7 @@ pub fn sub_hours(timestamps: &[u64], n: i64) -> Vec<u64> {
                 }
             }
             hour -= remaining;
-            pack(year, month, day, hour, minute, second, decisecond, is_utc, tz)
+            pack(year, month, day, hour, minute, second, centisecond, is_utc, tz)
         })
         .collect()
 }
@@ -509,7 +507,7 @@ pub fn add_minutes(timestamps: &[u64], n: i64) -> Vec<u64> {
     timestamps
         .iter()
         .map(|&ts| {
-            let (mut year, mut month, day, hour, minute, second, decisecond, is_utc, tz) =
+            let (mut year, mut month, day, hour, minute, second, centisecond, is_utc, tz) =
                 unpack(ts);
             let minute = minute + n;
             let hour = hour + minute / 60;
@@ -528,7 +526,7 @@ pub fn add_minutes(timestamps: &[u64], n: i64) -> Vec<u64> {
                     year += 1;
                 }
             }
-            pack(year, month, day, hour, minute, second, decisecond, is_utc, tz)
+            pack(year, month, day, hour, minute, second, centisecond, is_utc, tz)
         })
         .collect()
 }
@@ -557,7 +555,7 @@ pub fn sub_minutes(timestamps: &[u64], n: i64) -> Vec<u64> {
                 mut hour,
                 mut minute,
                 second,
-                decisecond,
+                centisecond,
                 is_utc,
                 tz,
             ) = unpack(ts);
@@ -583,7 +581,114 @@ pub fn sub_minutes(timestamps: &[u64], n: i64) -> Vec<u64> {
                 }
             }
             minute -= remaining;
-            pack(year, month, day, hour, minute, second, decisecond, is_utc, tz)
+            pack(year, month, day, hour, minute, second, centisecond, is_utc, tz)
         })
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn layout_positions() {
+        assert_eq!(pack(1, 0, 0, 0, 0, 0, 0, 0, 0), 1 << 51);
+        assert_eq!(pack(0, 1, 0, 0, 0, 0, 0, 0, 0), 1 << 47);
+        assert_eq!(pack(0, 0, 1, 0, 0, 0, 0, 0, 0), 1 << 42);
+        assert_eq!(pack(0, 0, 0, 1, 0, 0, 0, 0, 0), 1 << 37);
+        assert_eq!(pack(0, 0, 0, 0, 1, 0, 0, 0, 0), 1 << 31);
+        assert_eq!(pack(0, 0, 0, 0, 0, 1, 0, 0, 0), 1 << 25);
+        assert_eq!(pack(0, 0, 0, 0, 0, 0, 1, 0, 0), 1 << 18);
+        assert_eq!(pack(0, 0, 0, 0, 0, 0, 0, 1, 0), 1 << 17);
+        assert_eq!(pack(0, 0, 0, 0, 0, 0, 0, 0, 1), 1 << 7);
+    }
+
+    #[test]
+    fn layout_widths_do_not_overlap_and_leave_padding_zero() {
+        let all = pack(8191, 15, 31, 31, 63, 63, 127, 1, 1023);
+        assert_eq!(all, !0u64 << 7);
+        assert_eq!(all & 0x7f, 0);
+    }
+
+    #[test]
+    fn fields_are_isolated() {
+        let ts = pack(2026, 12, 31, 23, 59, 59, 99, 1, 2);
+        assert_eq!(unpack(ts), (2026, 12, 31, 23, 59, 59, 99, 1, 2));
+        let ts = pack(0, 0, 0, 0, 0, 0, 99, 0, 0);
+        assert_eq!(unpack(ts), (0, 0, 0, 0, 0, 0, 99, 0, 0));
+        let ts = pack(0, 0, 0, 0, 0, 0, 0, 1, 0);
+        assert_eq!(unpack(ts), (0, 0, 0, 0, 0, 0, 0, 1, 0));
+    }
+
+    #[test]
+    fn overflow_is_masked_without_corrupting_neighbours() {
+        let ts = pack(2026, 16, 32, 32, 64, 64, 128, 2, 1024);
+        assert_eq!(unpack(ts), (2026, 0, 0, 0, 0, 0, 0, 0, 0));
+    }
+
+    #[test]
+    fn new_matches_pack() {
+        let a = new(2026, 5, 16, 21, 43, 12, 34, false, &Timezone::AsiaTokyo);
+        let b = pack(2026, 5, 16, 21, 43, 12, 34, 0, Timezone::AsiaTokyo.id() as i64 as u64);
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn from_ut_centisecond() {
+        let base = 946684800000.0_f64;
+        for (ms, cs) in [(0.0, 0), (9.0, 0), (10.0, 1), (123.0, 12), (990.0, 99), (999.0, 99)] {
+            let (.., centisecond, _, _) = unpack(from_ut(base + ms, true, &Timezone::AsiaTokyo));
+            assert_eq!(centisecond, cs, "ms={ms}");
+        }
+    }
+
+    #[test]
+    fn from_ut_utc_and_local() {
+        let ut = 946684800000.0_f64 + 12_345.0;
+        let ts = from_ut(ut, true, &Timezone::AsiaTokyo);
+        assert_eq!(unpack(ts), (2000, 1, 1, 0, 0, 12, 34, 1, 0));
+        let ts = from_ut(ut, false, &Timezone::AsiaTokyo);
+        let tz = Timezone::AsiaTokyo.id() as u64;
+        assert_eq!(unpack(ts), (2000, 1, 1, 9, 0, 12, 34, 0, tz));
+        let ts = from_ut(ut, false, &Timezone::AmericaLosAngeles);
+        let tz = Timezone::AmericaLosAngeles.id() as u64;
+        assert_eq!(unpack(ts), (1999, 12, 31, 16, 0, 12, 34, 0, tz));
+    }
+
+    #[test]
+    fn u64_order_follows_time_order() {
+        let a = pack(2026, 5, 16, 21, 43, 12, 99, 1, 0);
+        let b = pack(2026, 5, 16, 21, 43, 13, 0, 1, 0);
+        let c = pack(2026, 5, 16, 21, 44, 0, 0, 1, 0);
+        let d = pack(2026, 5, 17, 0, 0, 0, 0, 1, 0);
+        let e = pack(2027, 1, 1, 0, 0, 0, 0, 1, 0);
+        assert!(a < b && b < c && c < d && d < e);
+    }
+
+    #[test]
+    fn arithmetic_preserves_centisecond_utc_and_tz() {
+        let ts = pack(2001, 1, 31, 23, 59, 58, 77, 1, 5);
+        let cases = [
+            add_years(&[ts], 1)[0],
+            sub_years(&[ts], 1)[0],
+            add_months(&[ts], 1)[0],
+            sub_months(&[ts], 1)[0],
+            add_days(&[ts], 1)[0],
+            sub_days(&[ts], 1)[0],
+            add_hours(&[ts], 1)[0],
+            sub_hours(&[ts], 1)[0],
+            add_minutes(&[ts], 1)[0],
+            sub_minutes(&[ts], 1)[0],
+        ];
+        for r in cases {
+            let (.., second, centisecond, is_utc, tz) = unpack(r);
+            assert_eq!((second, centisecond, is_utc, tz), (58, 77, 1, 5));
+        }
+    }
+
+    #[test]
+    fn display_format() {
+        let ts = pack(2026, 5, 6, 7, 8, 9, 10, 1, 0);
+        assert_eq!(display(ts), "2026-05-06 07:08");
+    }
 }

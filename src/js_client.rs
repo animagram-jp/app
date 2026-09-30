@@ -270,11 +270,11 @@ pub struct CanvasEvent {
     pub pointer_id: u32,
 }
 
-const ALT: Field = Field { position: 1, mask: (1 << 1) - 1 }; // bit 1
-const CTRL: Field = Field { position: 2, mask: (1 << 1) - 1 }; // bit 2
-const META: Field = Field { position: 3, mask: (1 << 1) - 1 }; // bit 3
-const REPEAT: Field = Field { position: 4, mask: (1 << 1) - 1 }; // bit 4
-const SHIFT: Field = Field { position: 5, mask: (1 << 1) - 1 }; // bit 5
+const ALT: Field = Field::new(1, 1); // bit 1
+const CTRL: Field = Field::new(2, 1); // bit 2
+const META: Field = Field::new(3, 1); // bit 3
+const REPEAT: Field = Field::new(4, 1); // bit 4
+const SHIFT: Field = Field::new(5, 1); // bit 5
 
 impl CanvasEvent {
     pub fn root_origin(&self) -> (f64, f64) {

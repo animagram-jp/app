@@ -231,7 +231,7 @@ arena.rs, event.rs, field.rs, js_client.rs, app.rs は、Handlerに依存しな�
 | list.rs | 可変長論理バイト列の宣言と、固定長要素列操作Listと可変長(バイト倍数)要素列操作VariabeList。バイト列読み取り関数new_from_bytesとget_from_bytesも含む。 |
 | field.rs | ビットフィールド(position, mask)の汎用get/set。timestampやobjectのビット配置の定義に使う。 |
 | file_store.rs | [トランザクションストアのOPFS実装](./reference/FileStore.md) |
-| timestamp.rs | タイムゾーンとデシ秒、カレンダー加減算に対応した、u64 timestampモジュール。 |
+| timestamp.rs | タイムゾーンとセンチ秒、カレンダー加減算に対応した、u64 timestampモジュール。 |
 | data_struct.rs | データモデル固有のフィールド数(schema_size)固定Listと可変部VariableListによるデータインスタンス操作モジュール。フィールド1にid(u32), 2にcreated_at(timestamp), 3にmodified_at(timestamp)を確定し、4~を開放。 |
 | object.rs | ドメイン固有のデータモデルの全フィールドとロジックを、各自公開されたenumのネスト群で表現したモジュール。関数はitemのドメイン意味(表示)を定義する`label`, 一意なschema_idを発行する`id`, バイト列とdomからの流入(u32,str,f64)を相互変換する`read` / `write`, 値の表示を導出する`display`などを各enum itemに対して定義する。 |
 | event.rs | appが受け取るeventの型(Canvas / Gesture / Window)と、ワイヤ上のフレーム種別、`decode_event`。 |
