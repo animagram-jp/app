@@ -881,17 +881,10 @@ pub enum Gesture {
     SwipeDown,
     SwipeLeft,
     SwipeRight,
-    Drag {
-        x: f64,
-        y: f64,
-    },
+    Drag { x: f64, y: f64 },
     DragEnd,
     DragCancel,
-    Pinch {
-        scale:    f64,
-        center_x: f64,
-        center_y: f64,
-    },
+    Pinch { scale: f64, center_x: f64, center_y: f64 },
     PinchEnd,
 }
 
@@ -2157,7 +2150,8 @@ mod wire_tests {
                 vec![
                     (ClassName::Hide as u16, format!("{:?}", ClassName::Hide)),
                     (ClassName::Show as u16, format!("{:?}", ClassName::Show)),
-                    (ClassName::Hidden as u16, format!("{:?}", ClassName::Hidden)),                ],
+                    (ClassName::Hidden as u16, format!("{:?}", ClassName::Hidden)),
+                ],
             ),
             (
                 "FN_NAMES",

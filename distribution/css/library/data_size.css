@@ -123,7 +123,13 @@
                 [type="password"],
                 [type="search"],
                 [type="url"],
-                [type="tel"]
+                [type="tel"],
+                [type="number"],
+                [type="date"],
+                [type="time"],
+                [type="datetime-local"],
+                [type="month"],
+                [type="week"]
             ),
             select,
             summary,

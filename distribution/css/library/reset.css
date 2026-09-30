@@ -202,6 +202,11 @@
     input[type="search"] { /* per kiso.css:348-351 */
         appearance: textfield;
     }
+
+    input[type="number"] {
+        appearance: textfield;
+    }
+    
     @supports (-webkit-touch-callout: none) { /* per kiso.css:353-358 */
         input[type="search"] {
             background-color: Canvas;
@@ -268,6 +273,8 @@
     ::-webkit-inner-spin-button,
     ::-webkit-outer-spin-button { /* per tailwind-preflight.css:383-390 */
         height: auto;
+        appearance: none;
+        margin: 0;
     }
 
     /* revert for bug in Chromium browsers
