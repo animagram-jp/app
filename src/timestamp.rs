@@ -1,6 +1,6 @@
 use alloc::{format, string::String, vec::Vec};
 
-use crate::field::Field;
+use crate::field::{Layout, Spec::Unsigned};
 
 // timestamp (64 bits)
 // note:
@@ -9,18 +9,32 @@ use crate::field::Field;
 //   = 1: The value is UTC time (timezone iana id may store original zone info).
 //   = 0: The value is local time of timezone
 
-const YEAR: Field = Field::new(51, 13); // u13, bit 51~63
-const MONTH: Field = Field::new(47, 4);
-const DAY: Field = Field::new(42, 5);
-const HOUR: Field = Field::new(37, 5);
-const MINUTE: Field = Field::new(31, 6);
-const SECOND: Field = Field::new(25, 6);
-const CENTISECOND: Field = Field::new(18, 7);
+const YEAR: usize = 0;
+const MONTH: usize = 1;
+const DAY: usize = 2;
+const HOUR: usize = 3;
+const MINUTE: usize = 4;
+const SECOND: usize = 5;
+const CENTISECOND: usize = 6;
 // 1 = true (year~second is utc value) and 0 = false (iana local value)
-const IS_UTC: Field = Field::new(17, 1);
+const IS_UTC: usize = 7;
 // id of IANA Time Zone Database
-const TIMEZONE: Field = Field::new(7, 10);
-// const PADDING:    Field = Field::new(0, 7);
+const TIMEZONE: usize = 8;
+
+const LAYOUT: Layout<9> = Layout::with_padding(
+    [
+        Unsigned(13),
+        Unsigned(4),
+        Unsigned(5),
+        Unsigned(5),
+        Unsigned(6),
+        Unsigned(6),
+        Unsigned(7),
+        Unsigned(1),
+        Unsigned(10),
+    ],
+    7,
+);
 
 pub enum Timezone {
     // UTC+9
@@ -150,25 +164,15 @@ pub fn new(
     is_utc: bool,
     timezone: &Timezone,
 ) -> u64 {
-    let mut ts = 0u64;
-    ts = YEAR.set(ts, year as u64);
-    ts = MONTH.set(ts, month as u64);
-    ts = DAY.set(ts, day as u64);
-    ts = HOUR.set(ts, hour as u64);
-    ts = MINUTE.set(ts, minute as u64);
-    ts = SECOND.set(ts, second as u64);
-    ts = CENTISECOND.set(ts, centisecond as u64);
-    ts = IS_UTC.set(ts, is_utc as u64);
-    ts = TIMEZONE.set(ts, timezone.id() as u64);
-    ts
+    pack(year, month, day, hour, minute, second, centisecond, is_utc as u64, timezone.id() as u64)
 }
 
 pub fn display(ts: u64) -> String {
-    let year: u64 = YEAR.get(ts);
-    let month: u64 = MONTH.get(ts);
-    let day: u64 = DAY.get(ts);
-    let hour: u64 = HOUR.get(ts);
-    let minute: u64 = MINUTE.get(ts);
+    let year: u64 = LAYOUT.get(ts, YEAR);
+    let month: u64 = LAYOUT.get(ts, MONTH);
+    let day: u64 = LAYOUT.get(ts, DAY);
+    let hour: u64 = LAYOUT.get(ts, HOUR);
+    let minute: u64 = LAYOUT.get(ts, MINUTE);
     format!("{year}-{month:02}-{day:02} {hour:02}:{minute:02}")
 }
 
@@ -188,25 +192,17 @@ fn days_in_month(year: i64, month: i64) -> i64 {
 }
 
 pub fn unpack(ts: u64) -> (i64, i64, i64, i64, i64, i64, i64, u64, u64) {
-    let year: u64 = YEAR.get(ts);
-    let month: u64 = MONTH.get(ts);
-    let day: u64 = DAY.get(ts);
-    let hour: u64 = HOUR.get(ts);
-    let minute: u64 = MINUTE.get(ts);
-    let second: u64 = SECOND.get(ts);
-    let centisecond: u64 = CENTISECOND.get(ts);
-    let is_utc: u64 = IS_UTC.get::<u64>(ts);
-    let tz: u64 = TIMEZONE.get::<u64>(ts);
+    let v: [u64; 9] = LAYOUT.unpack(ts);
     (
-        year as i64,
-        month as i64,
-        day as i64,
-        hour as i64,
-        minute as i64,
-        second as i64,
-        centisecond as i64,
-        is_utc,
-        tz,
+        v[YEAR] as i64,
+        v[MONTH] as i64,
+        v[DAY] as i64,
+        v[HOUR] as i64,
+        v[MINUTE] as i64,
+        v[SECOND] as i64,
+        v[CENTISECOND] as i64,
+        v[IS_UTC],
+        v[TIMEZONE],
     )
 }
 
@@ -221,17 +217,17 @@ pub fn pack(
     is_utc: u64,
     tz: u64,
 ) -> u64 {
-    let mut ts = 0u64;
-    ts = YEAR.set(ts, year as u64);
-    ts = MONTH.set(ts, month as u64);
-    ts = DAY.set(ts, day as u64);
-    ts = HOUR.set(ts, hour as u64);
-    ts = MINUTE.set(ts, minute as u64);
-    ts = SECOND.set(ts, second as u64);
-    ts = CENTISECOND.set(ts, centisecond as u64);
-    ts = IS_UTC.set(ts, is_utc);
-    ts = TIMEZONE.set(ts, tz);
-    ts
+    LAYOUT.pack([
+        year as u64,
+        month as u64,
+        day as u64,
+        hour as u64,
+        minute as u64,
+        second as u64,
+        centisecond as u64,
+        is_utc,
+        tz,
+    ])
 }
 
 /// Clamps to Feb 28 when adding a year to Feb 29 of a leap year.

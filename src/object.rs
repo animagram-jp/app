@@ -11,9 +11,17 @@ use core::{
     primitive::{i8, i32, u8},
 };
 
-use arbitrary_int::{i10, u9};
+use arbitrary_int::{i10, traits::Integer, u9};
 
-use crate::{Lang, data_struct::DataStruct, field::Field, list::ListError};
+use crate::{
+    Lang,
+    data_struct::DataStruct,
+    field::{
+        Layout,
+        Spec::{Signed, Unsigned},
+    },
+    list::ListError,
+};
 
 pub type Dice = (i8, u8, i8); // (count, sides, modifier)
 
@@ -1292,33 +1300,50 @@ impl Skill {
 
 impl core::marker::ConstParamTy_ for Skill {}
 
+const OCCUPATION_POINTS: usize = 0;
+const INTEREST_POINTS: usize = 1;
+const CHANGE: usize = 2;
+const MODIFIER: usize = 3;
+const PERCENT: usize = 4;
+
+const SKILL_LAYOUT: Layout<4> = Layout::new([Unsigned(9), Unsigned(9), Signed(10), Signed(10)]);
+const SKILL_WITH_PERCENT_LAYOUT: Layout<5> =
+    Layout::new([Unsigned(9), Unsigned(9), Signed(10), Signed(10), Unsigned(7)]);
+
+fn read_raw<const N: usize>(character: &DataStruct, id: u32, layout: &Layout<N>) -> u64 {
+    character.get(id).ok().and_then(|b| layout.decode(b)).unwrap_or(0)
+}
+
+fn write_raw<const N: usize>(character: &mut DataStruct, id: u32, layout: &Layout<N>, raw: u64) {
+    let (word, len) = layout.encode(raw);
+    let _ = character.set(id, &word[..len], None);
+}
+
+fn read_text(character: &DataStruct, id: u32) -> String {
+    character.get(id).ok().map(|b| String::from_utf8_lossy(b).into_owned()).unwrap_or_default()
+}
+
+fn read_ids(character: &DataStruct, list_id: u32, index: usize) -> [u32; 2] {
+    character.get_indirect::<1, 2>(list_id, [index])[0].unwrap_or([0, 0])
+}
+
+fn write_ids(character: &mut DataStruct, list_id: u32, index: usize, ids: [u32; 2]) {
+    let _ = character.set_indirect(list_id, [(index, ids)]);
+}
+
 pub trait SkillTrait<const S: Skill> {
     const SKILL: Skill = S;
     const BASE_ID: u32 = S.base_id();
     const BASE_PERCENT: u16 = S.base_percent();
 
-    const OCCUPATION_POINTS: Field = Field::new(32, 9); // 0~400, u9, bit 32~40
-    const INTEREST_POINTS: Field = Field::new(23, 9); // 0~400, u9, bit 23~31
-    const CHANGE: Field = Field::new(13, 10); // -400~400, i10, bit 13~22
-    const MODIFIER: Field = Field::new(3, 10); // -400~400, i10, bit 3~12
-
     // -> occupation_points, interest_points, change, modifier
     fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
-        let raw = character
-            .get(Self::BASE_ID)
-            .ok()
-            .and_then(|b| b.get(..5))
-            .map(|b| {
-                let mut a = [0u8; 8];
-                a[..5].copy_from_slice(b);
-                u64::from_le_bytes(a)
-            })
-            .unwrap_or(0);
+        let raw = read_raw(character, Self::BASE_ID, &SKILL_LAYOUT);
         (
-            Self::OCCUPATION_POINTS.get(raw),
-            Self::INTEREST_POINTS.get(raw),
-            Self::CHANGE.get(raw),
-            Self::MODIFIER.get(raw),
+            SKILL_LAYOUT.get(raw, OCCUPATION_POINTS),
+            SKILL_LAYOUT.get(raw, INTEREST_POINTS),
+            SKILL_LAYOUT.get(raw, CHANGE),
+            SKILL_LAYOUT.get(raw, MODIFIER),
         )
     }
 
@@ -1330,11 +1355,13 @@ pub trait SkillTrait<const S: Skill> {
         change: i10,
         modifier: i10,
     ) -> &'a mut DataStruct {
-        let raw = Self::OCCUPATION_POINTS.set(0u64, occupation_points);
-        let raw = Self::INTEREST_POINTS.set(raw, interest_points);
-        let raw = Self::CHANGE.set(raw, change);
-        let raw = Self::MODIFIER.set(raw, modifier);
-        let _ = character.set(Self::BASE_ID, &raw.to_le_bytes()[..5], None);
+        let raw = SKILL_LAYOUT.pack([
+            occupation_points.as_u64(),
+            interest_points.as_u64(),
+            change.as_u64(),
+            modifier.as_u64(),
+        ]);
+        write_raw(character, Self::BASE_ID, &SKILL_LAYOUT, raw);
         character
     }
 
@@ -1443,33 +1470,15 @@ pub struct LanguageOwn;
 impl LanguageOwn {
     const BASE_ID: u32 = Skill::LanguageOwn.base_id();
 
-    const OCCUPATION_POINTS: Field = Field::new(32, 9);
-    const INTEREST_POINTS: Field = Field::new(23, 9);
-    const CHANGE: Field = Field::new(13, 10);
-    const MODIFIER: Field = Field::new(3, 10);
-
     // -> occupation_points, interest_points, change, modifier, name
     pub fn read(&self, character: &DataStruct) -> (u16, u16, i16, i16, String) {
-        let raw = character
-            .get(Self::BASE_ID)
-            .ok()
-            .and_then(|b| b.get(..5))
-            .map(|b| {
-                let mut a = [0u8; 8];
-                a[..5].copy_from_slice(b);
-                u64::from_le_bytes(a)
-            })
-            .unwrap_or(0);
-        let name = character
-            .get(Self::BASE_ID + 1)
-            .ok()
-            .map(|b| String::from_utf8_lossy(b).into_owned())
-            .unwrap_or_default();
+        let raw = read_raw(character, Self::BASE_ID, &SKILL_LAYOUT);
+        let name = read_text(character, Self::BASE_ID + 1);
         (
-            Self::OCCUPATION_POINTS.get(raw),
-            Self::INTEREST_POINTS.get(raw),
-            Self::CHANGE.get(raw),
-            Self::MODIFIER.get(raw),
+            SKILL_LAYOUT.get(raw, OCCUPATION_POINTS),
+            SKILL_LAYOUT.get(raw, INTEREST_POINTS),
+            SKILL_LAYOUT.get(raw, CHANGE),
+            SKILL_LAYOUT.get(raw, MODIFIER),
             name,
         )
     }
@@ -1483,11 +1492,13 @@ impl LanguageOwn {
         modifier: i16,
         name: &str,
     ) -> &'a mut DataStruct {
-        let raw = Self::OCCUPATION_POINTS.set(0u64, occupation_points as u64);
-        let raw = Self::INTEREST_POINTS.set(raw, interest_points as u64);
-        let raw = Self::CHANGE.set(raw, change as u64);
-        let raw = Self::MODIFIER.set(raw, modifier as u64);
-        let _ = character.set(Self::BASE_ID, &raw.to_le_bytes()[..5], None);
+        let raw = SKILL_LAYOUT.pack([
+            occupation_points as u64,
+            interest_points as u64,
+            change as u64,
+            modifier as u64,
+        ]);
+        write_raw(character, Self::BASE_ID, &SKILL_LAYOUT, raw);
         let _ = character.set(Self::BASE_ID + 1, name.as_bytes(), None);
         character
     }
@@ -1613,28 +1624,14 @@ pub trait ArtAndCraftTrait<const A: ArtAndCraft> {
     const BASE_ID: u32 = A.base_id();
     const BASE_PERCENT: u16 = Skill::ArtAndCraft.base_percent();
 
-    const OCCUPATION_POINTS: Field = Field::new(32, 9);
-    const INTEREST_POINTS: Field = Field::new(23, 9);
-    const CHANGE: Field = Field::new(13, 10);
-    const MODIFIER: Field = Field::new(3, 10);
-
     // -> occupation_points, interest_points, change, modifier
     fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
-        let raw = character
-            .get(Self::BASE_ID)
-            .ok()
-            .and_then(|b| b.get(..5))
-            .map(|b| {
-                let mut a = [0u8; 8];
-                a[..5].copy_from_slice(b);
-                u64::from_le_bytes(a)
-            })
-            .unwrap_or(0);
+        let raw = read_raw(character, Self::BASE_ID, &SKILL_LAYOUT);
         (
-            Self::OCCUPATION_POINTS.get(raw),
-            Self::INTEREST_POINTS.get(raw),
-            Self::CHANGE.get(raw),
-            Self::MODIFIER.get(raw),
+            SKILL_LAYOUT.get(raw, OCCUPATION_POINTS),
+            SKILL_LAYOUT.get(raw, INTEREST_POINTS),
+            SKILL_LAYOUT.get(raw, CHANGE),
+            SKILL_LAYOUT.get(raw, MODIFIER),
         )
     }
 
@@ -1646,11 +1643,13 @@ pub trait ArtAndCraftTrait<const A: ArtAndCraft> {
         change: i10,
         modifier: i10,
     ) -> &'a mut DataStruct {
-        let raw = Self::OCCUPATION_POINTS.set(0u64, occupation_points);
-        let raw = Self::INTEREST_POINTS.set(raw, interest_points);
-        let raw = Self::CHANGE.set(raw, change);
-        let raw = Self::MODIFIER.set(raw, modifier);
-        let _ = character.set(Self::BASE_ID, &raw.to_le_bytes()[..5], None);
+        let raw = SKILL_LAYOUT.pack([
+            occupation_points.as_u64(),
+            interest_points.as_u64(),
+            change.as_u64(),
+            modifier.as_u64(),
+        ]);
+        write_raw(character, Self::BASE_ID, &SKILL_LAYOUT, raw);
         character
     }
 
@@ -1709,47 +1708,16 @@ impl ArtAndCraftCustom {
         Self::LIST_ID
     }
 
-    const OCCUPATION_POINTS: Field = Field::new(32, 9);
-    const INTEREST_POINTS: Field = Field::new(23, 9);
-    const CHANGE: Field = Field::new(13, 10);
-    const MODIFIER: Field = Field::new(3, 10);
-
     // -> occupation_points, interest_points, change, modifier, name
     pub fn read(&self, character: &DataStruct) -> (u16, u16, i16, i16, String) {
-        let i = self.0 as usize;
-        let (numeric_id, name_id) = character
-            .get(Self::LIST_ID)
-            .ok()
-            .and_then(|b| {
-                let base = i * 2 * 4;
-                let numeric = b.get(base..base + 4)?;
-                let name = b.get(base + 4..base + 8)?;
-                Some((
-                    u32::from_le_bytes(numeric.try_into().unwrap()),
-                    u32::from_le_bytes(name.try_into().unwrap()),
-                ))
-            })
-            .unwrap_or((0, 0));
-        let raw = character
-            .get(numeric_id)
-            .ok()
-            .and_then(|b| b.get(..5))
-            .map(|b| {
-                let mut a = [0u8; 8];
-                a[..5].copy_from_slice(b);
-                u64::from_le_bytes(a)
-            })
-            .unwrap_or(0);
-        let name = character
-            .get(name_id)
-            .ok()
-            .map(|b| String::from_utf8_lossy(b).into_owned())
-            .unwrap_or_default();
+        let [numeric_id, name_id] = read_ids(character, Self::LIST_ID, self.0 as usize);
+        let raw = read_raw(character, numeric_id, &SKILL_LAYOUT);
+        let name = read_text(character, name_id);
         (
-            Self::OCCUPATION_POINTS.get(raw),
-            Self::INTEREST_POINTS.get(raw),
-            Self::CHANGE.get(raw),
-            Self::MODIFIER.get(raw),
+            SKILL_LAYOUT.get(raw, OCCUPATION_POINTS),
+            SKILL_LAYOUT.get(raw, INTEREST_POINTS),
+            SKILL_LAYOUT.get(raw, CHANGE),
+            SKILL_LAYOUT.get(raw, MODIFIER),
             name,
         )
     }
@@ -1764,21 +1732,14 @@ impl ArtAndCraftCustom {
         modifier: i16,
         name: &str,
     ) -> &'a mut DataStruct {
-        let raw = Self::OCCUPATION_POINTS.set(0u64, occupation_points as u64);
-        let raw = Self::INTEREST_POINTS.set(raw, interest_points as u64);
-        let raw = Self::CHANGE.set(raw, change as u64);
-        let raw = Self::MODIFIER.set(raw, modifier as u64);
-        let i = self.0 as usize;
-        let base = i * 2 * 4;
-        let min_len = base + 8;
-        let mut list = character.get(Self::LIST_ID).map(|b| b.to_vec()).unwrap_or_default();
-        if list.len() < min_len {
-            list.resize(min_len, 0);
-        }
-        list[base..base + 4].copy_from_slice(&ids[0].to_le_bytes());
-        list[base + 4..base + 8].copy_from_slice(&ids[1].to_le_bytes());
-        let _ = character.set(Self::LIST_ID, &list, None);
-        let _ = character.set(ids[0], &raw.to_le_bytes()[..5], None);
+        let raw = SKILL_LAYOUT.pack([
+            occupation_points as u64,
+            interest_points as u64,
+            change as u64,
+            modifier as u64,
+        ]);
+        write_ids(character, Self::LIST_ID, self.0 as usize, ids);
+        write_raw(character, ids[0], &SKILL_LAYOUT, raw);
         let _ = character.set(ids[1], name.as_bytes(), None);
         character
     }
@@ -1896,28 +1857,14 @@ pub trait FightingTrait<const F: Fighting> {
     const BASE_ID: u32 = F.id(Skill::Fighting.base_id());
     const BASE_PERCENT: u16 = F.base_percent();
 
-    const OCCUPATION_POINTS: Field = Field::new(32, 9);
-    const INTEREST_POINTS: Field = Field::new(23, 9);
-    const CHANGE: Field = Field::new(13, 10);
-    const MODIFIER: Field = Field::new(3, 10);
-
     // -> occupation_points, interest_points, change, modifier
     fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
-        let raw = character
-            .get(Self::BASE_ID)
-            .ok()
-            .and_then(|b| b.get(..5))
-            .map(|b| {
-                let mut a = [0u8; 8];
-                a[..5].copy_from_slice(b);
-                u64::from_le_bytes(a)
-            })
-            .unwrap_or(0);
+        let raw = read_raw(character, Self::BASE_ID, &SKILL_LAYOUT);
         (
-            Self::OCCUPATION_POINTS.get(raw),
-            Self::INTEREST_POINTS.get(raw),
-            Self::CHANGE.get(raw),
-            Self::MODIFIER.get(raw),
+            SKILL_LAYOUT.get(raw, OCCUPATION_POINTS),
+            SKILL_LAYOUT.get(raw, INTEREST_POINTS),
+            SKILL_LAYOUT.get(raw, CHANGE),
+            SKILL_LAYOUT.get(raw, MODIFIER),
         )
     }
 
@@ -1929,11 +1876,13 @@ pub trait FightingTrait<const F: Fighting> {
         change: i10,
         modifier: i10,
     ) -> &'a mut DataStruct {
-        let raw = Self::OCCUPATION_POINTS.set(0u64, occupation_points);
-        let raw = Self::INTEREST_POINTS.set(raw, interest_points);
-        let raw = Self::CHANGE.set(raw, change);
-        let raw = Self::MODIFIER.set(raw, modifier);
-        let _ = character.set(Self::BASE_ID, &raw.to_le_bytes()[..5], None);
+        let raw = SKILL_LAYOUT.pack([
+            occupation_points.as_u64(),
+            interest_points.as_u64(),
+            change.as_u64(),
+            modifier.as_u64(),
+        ]);
+        write_raw(character, Self::BASE_ID, &SKILL_LAYOUT, raw);
         character
     }
 
@@ -1998,49 +1947,17 @@ impl FightingCustom {
         Self::LIST_ID + self.0 as u32 * 2
     }
 
-    const BASE_PERCENT: Field = Field::new(41, 7);
-    const OCCUPATION_POINTS: Field = Field::new(32, 9);
-    const INTEREST_POINTS: Field = Field::new(23, 9);
-    const CHANGE: Field = Field::new(13, 10);
-    const MODIFIER: Field = Field::new(3, 10);
-
     // -> occupation_points, interest_points, change, modifier, name
     pub fn read(&self, character: &DataStruct) -> (u16, u16, u16, i16, i16, String) {
-        let i = self.0 as usize;
-        let (numeric_id, name_id) = character
-            .get(Self::LIST_ID)
-            .ok()
-            .and_then(|b| {
-                let base = i * 2 * 4;
-                let numeric = b.get(base..base + 4)?;
-                let name = b.get(base + 4..base + 8)?;
-                Some((
-                    u32::from_le_bytes(numeric.try_into().unwrap()),
-                    u32::from_le_bytes(name.try_into().unwrap()),
-                ))
-            })
-            .unwrap_or((0, 0));
-        let raw = character
-            .get(numeric_id)
-            .ok()
-            .and_then(|b| b.get(..5))
-            .map(|b| {
-                let mut a = [0u8; 8];
-                a[..5].copy_from_slice(b);
-                u64::from_le_bytes(a)
-            })
-            .unwrap_or(0);
-        let name = character
-            .get(name_id)
-            .ok()
-            .map(|b| String::from_utf8_lossy(b).into_owned())
-            .unwrap_or_default();
+        let [numeric_id, name_id] = read_ids(character, Self::LIST_ID, self.0 as usize);
+        let raw = read_raw(character, numeric_id, &SKILL_WITH_PERCENT_LAYOUT);
+        let name = read_text(character, name_id);
         (
-            Self::BASE_PERCENT.get(raw),
-            Self::OCCUPATION_POINTS.get(raw),
-            Self::INTEREST_POINTS.get(raw),
-            Self::CHANGE.get(raw),
-            Self::MODIFIER.get(raw),
+            SKILL_WITH_PERCENT_LAYOUT.get(raw, PERCENT),
+            SKILL_WITH_PERCENT_LAYOUT.get(raw, OCCUPATION_POINTS),
+            SKILL_WITH_PERCENT_LAYOUT.get(raw, INTEREST_POINTS),
+            SKILL_WITH_PERCENT_LAYOUT.get(raw, CHANGE),
+            SKILL_WITH_PERCENT_LAYOUT.get(raw, MODIFIER),
             name,
         )
     }
@@ -2056,22 +1973,15 @@ impl FightingCustom {
         modifier: i16,
         name: &str,
     ) -> &'a mut DataStruct {
-        let mut raw = Self::BASE_PERCENT.set(0u64, base_percent as u64);
-        raw = Self::OCCUPATION_POINTS.set(raw, occupation_points as u64);
-        raw = Self::INTEREST_POINTS.set(raw, interest_points as u64);
-        raw = Self::CHANGE.set(raw, change as u64);
-        raw = Self::MODIFIER.set(raw, modifier as u64);
-        let i = self.0 as usize;
-        let base = i * 2 * 4;
-        let min_len = base + 8;
-        let mut list = character.get(Self::LIST_ID).map(|b| b.to_vec()).unwrap_or_default();
-        if list.len() < min_len {
-            list.resize(min_len, 0);
-        }
-        list[base..base + 4].copy_from_slice(&ids[0].to_le_bytes());
-        list[base + 4..base + 8].copy_from_slice(&ids[1].to_le_bytes());
-        let _ = character.set(Self::LIST_ID, &list, None);
-        let _ = character.set(ids[0], &raw.to_le_bytes()[..5], None);
+        let raw = SKILL_WITH_PERCENT_LAYOUT.pack([
+            occupation_points as u64,
+            interest_points as u64,
+            change as u64,
+            modifier as u64,
+            base_percent as u64,
+        ]);
+        write_ids(character, Self::LIST_ID, self.0 as usize, ids);
+        write_raw(character, ids[0], &SKILL_WITH_PERCENT_LAYOUT, raw);
         let _ = character.set(ids[1], name.as_bytes(), None);
         character
     }
@@ -2184,27 +2094,13 @@ pub trait FirearmsTrait<const F: Firearms> {
     const BASE_ID: u32 = F.id(Skill::Firearms.base_id());
     const BASE_PERCENT: u16 = F.base_percent();
 
-    const OCCUPATION_POINTS: Field = Field::new(32, 9);
-    const INTEREST_POINTS: Field = Field::new(23, 9);
-    const CHANGE: Field = Field::new(13, 10);
-    const MODIFIER: Field = Field::new(3, 10);
-
     fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
-        let raw = character
-            .get(Self::BASE_ID)
-            .ok()
-            .and_then(|b| b.get(..5))
-            .map(|b| {
-                let mut a = [0u8; 8];
-                a[..5].copy_from_slice(b);
-                u64::from_le_bytes(a)
-            })
-            .unwrap_or(0);
+        let raw = read_raw(character, Self::BASE_ID, &SKILL_LAYOUT);
         (
-            Self::OCCUPATION_POINTS.get(raw),
-            Self::INTEREST_POINTS.get(raw),
-            Self::CHANGE.get(raw),
-            Self::MODIFIER.get(raw),
+            SKILL_LAYOUT.get(raw, OCCUPATION_POINTS),
+            SKILL_LAYOUT.get(raw, INTEREST_POINTS),
+            SKILL_LAYOUT.get(raw, CHANGE),
+            SKILL_LAYOUT.get(raw, MODIFIER),
         )
     }
 
@@ -2216,11 +2112,13 @@ pub trait FirearmsTrait<const F: Firearms> {
         change: i10,
         modifier: i10,
     ) -> &'a mut DataStruct {
-        let raw = Self::OCCUPATION_POINTS.set(0u64, occupation_points);
-        let raw = Self::INTEREST_POINTS.set(raw, interest_points);
-        let raw = Self::CHANGE.set(raw, change);
-        let raw = Self::MODIFIER.set(raw, modifier);
-        let _ = character.set(Self::BASE_ID, &raw.to_le_bytes()[..5], None);
+        let raw = SKILL_LAYOUT.pack([
+            occupation_points.as_u64(),
+            interest_points.as_u64(),
+            change.as_u64(),
+            modifier.as_u64(),
+        ]);
+        write_raw(character, Self::BASE_ID, &SKILL_LAYOUT, raw);
         character
     }
 
@@ -2283,49 +2181,17 @@ impl FirearmsCustom {
         Self::LIST_ID + self.0 as u32 * 2
     }
 
-    const BASE_PERCENT: Field = Field::new(41, 7);
-    const OCCUPATION_POINTS: Field = Field::new(32, 9);
-    const INTEREST_POINTS: Field = Field::new(23, 9);
-    const CHANGE: Field = Field::new(13, 10);
-    const MODIFIER: Field = Field::new(3, 10);
-
     // -> occupation_points, interest_points, change, modifier, name
     pub fn read(&self, character: &DataStruct) -> (u16, u16, u16, i16, i16, String) {
-        let i = self.0 as usize;
-        let (numeric_id, name_id) = character
-            .get(Self::LIST_ID)
-            .ok()
-            .and_then(|b| {
-                let base = i * 2 * 4;
-                let numeric = b.get(base..base + 4)?;
-                let name = b.get(base + 4..base + 8)?;
-                Some((
-                    u32::from_le_bytes(numeric.try_into().unwrap()),
-                    u32::from_le_bytes(name.try_into().unwrap()),
-                ))
-            })
-            .unwrap_or((0, 0));
-        let raw = character
-            .get(numeric_id)
-            .ok()
-            .and_then(|b| b.get(..5))
-            .map(|b| {
-                let mut a = [0u8; 8];
-                a[..5].copy_from_slice(b);
-                u64::from_le_bytes(a)
-            })
-            .unwrap_or(0);
-        let name = character
-            .get(name_id)
-            .ok()
-            .map(|b| String::from_utf8_lossy(b).into_owned())
-            .unwrap_or_default();
+        let [numeric_id, name_id] = read_ids(character, Self::LIST_ID, self.0 as usize);
+        let raw = read_raw(character, numeric_id, &SKILL_WITH_PERCENT_LAYOUT);
+        let name = read_text(character, name_id);
         (
-            Self::BASE_PERCENT.get(raw),
-            Self::OCCUPATION_POINTS.get(raw),
-            Self::INTEREST_POINTS.get(raw),
-            Self::CHANGE.get(raw),
-            Self::MODIFIER.get(raw),
+            SKILL_WITH_PERCENT_LAYOUT.get(raw, PERCENT),
+            SKILL_WITH_PERCENT_LAYOUT.get(raw, OCCUPATION_POINTS),
+            SKILL_WITH_PERCENT_LAYOUT.get(raw, INTEREST_POINTS),
+            SKILL_WITH_PERCENT_LAYOUT.get(raw, CHANGE),
+            SKILL_WITH_PERCENT_LAYOUT.get(raw, MODIFIER),
             name,
         )
     }
@@ -2341,22 +2207,15 @@ impl FirearmsCustom {
         modifier: i16,
         name: &str,
     ) -> &'a mut DataStruct {
-        let mut raw = Self::BASE_PERCENT.set(0u64, base_percent as u64);
-        raw = Self::OCCUPATION_POINTS.set(raw, occupation_points as u64);
-        raw = Self::INTEREST_POINTS.set(raw, interest_points as u64);
-        raw = Self::CHANGE.set(raw, change as u64);
-        raw = Self::MODIFIER.set(raw, modifier as u64);
-        let i = self.0 as usize;
-        let base = i * 2 * 4;
-        let min_len = base + 8;
-        let mut list = character.get(Self::LIST_ID).map(|b| b.to_vec()).unwrap_or_default();
-        if list.len() < min_len {
-            list.resize(min_len, 0);
-        }
-        list[base..base + 4].copy_from_slice(&ids[0].to_le_bytes());
-        list[base + 4..base + 8].copy_from_slice(&ids[1].to_le_bytes());
-        let _ = character.set(Self::LIST_ID, &list, None);
-        let _ = character.set(ids[0], &raw.to_le_bytes()[..5], None);
+        let raw = SKILL_WITH_PERCENT_LAYOUT.pack([
+            occupation_points as u64,
+            interest_points as u64,
+            change as u64,
+            modifier as u64,
+            base_percent as u64,
+        ]);
+        write_ids(character, Self::LIST_ID, self.0 as usize, ids);
+        write_raw(character, ids[0], &SKILL_WITH_PERCENT_LAYOUT, raw);
         let _ = character.set(ids[1], name.as_bytes(), None);
         character
     }
@@ -2403,47 +2262,16 @@ impl LanguageOther {
         Self::LIST_ID + self.0 as u32 * 2
     }
 
-    const OCCUPATION_POINTS: Field = Field::new(32, 9);
-    const INTEREST_POINTS: Field = Field::new(23, 9);
-    const CHANGE: Field = Field::new(13, 10);
-    const MODIFIER: Field = Field::new(3, 10);
-
     // -> occupation_points, interest_points, change, modifier, name
     pub fn read(&self, character: &DataStruct) -> (u16, u16, i16, i16, String) {
-        let i = self.0 as usize;
-        let (numeric_id, name_id) = character
-            .get(Self::LIST_ID)
-            .ok()
-            .and_then(|b| {
-                let base = i * 2 * 4;
-                let numeric = b.get(base..base + 4)?;
-                let name = b.get(base + 4..base + 8)?;
-                Some((
-                    u32::from_le_bytes(numeric.try_into().unwrap()),
-                    u32::from_le_bytes(name.try_into().unwrap()),
-                ))
-            })
-            .unwrap_or((0, 0));
-        let raw = character
-            .get(numeric_id)
-            .ok()
-            .and_then(|b| b.get(..5))
-            .map(|b| {
-                let mut a = [0u8; 8];
-                a[..5].copy_from_slice(b);
-                u64::from_le_bytes(a)
-            })
-            .unwrap_or(0);
-        let name = character
-            .get(name_id)
-            .ok()
-            .map(|b| String::from_utf8_lossy(b).into_owned())
-            .unwrap_or_default();
+        let [numeric_id, name_id] = read_ids(character, Self::LIST_ID, self.0 as usize);
+        let raw = read_raw(character, numeric_id, &SKILL_LAYOUT);
+        let name = read_text(character, name_id);
         (
-            Self::OCCUPATION_POINTS.get(raw),
-            Self::INTEREST_POINTS.get(raw),
-            Self::CHANGE.get(raw),
-            Self::MODIFIER.get(raw),
+            SKILL_LAYOUT.get(raw, OCCUPATION_POINTS),
+            SKILL_LAYOUT.get(raw, INTEREST_POINTS),
+            SKILL_LAYOUT.get(raw, CHANGE),
+            SKILL_LAYOUT.get(raw, MODIFIER),
             name,
         )
     }
@@ -2458,21 +2286,14 @@ impl LanguageOther {
         modifier: i16,
         name: &str,
     ) -> &'a mut DataStruct {
-        let raw = Self::OCCUPATION_POINTS.set(0u64, occupation_points as u64);
-        let raw = Self::INTEREST_POINTS.set(raw, interest_points as u64);
-        let raw = Self::CHANGE.set(raw, change as u64);
-        let raw = Self::MODIFIER.set(raw, modifier as u64);
-        let i = self.0 as usize;
-        let base = i * 2 * 4;
-        let min_len = base + 8;
-        let mut list = character.get(Self::LIST_ID).map(|b| b.to_vec()).unwrap_or_default();
-        if list.len() < min_len {
-            list.resize(min_len, 0);
-        }
-        list[base..base + 4].copy_from_slice(&ids[0].to_le_bytes());
-        list[base + 4..base + 8].copy_from_slice(&ids[1].to_le_bytes());
-        let _ = character.set(Self::LIST_ID, &list, None);
-        let _ = character.set(ids[0], &raw.to_le_bytes()[..5], None);
+        let raw = SKILL_LAYOUT.pack([
+            occupation_points as u64,
+            interest_points as u64,
+            change as u64,
+            modifier as u64,
+        ]);
+        write_ids(character, Self::LIST_ID, self.0 as usize, ids);
+        write_raw(character, ids[0], &SKILL_LAYOUT, raw);
         let _ = character.set(ids[1], name.as_bytes(), None);
         character
     }
@@ -2588,27 +2409,13 @@ pub trait PilotTrait<const P: Pilot> {
     const BASE_ID: u32 = P.id(Skill::Pilot.base_id());
     const BASE_PERCENT: u16 = 1;
 
-    const OCCUPATION_POINTS: Field = Field::new(32, 9);
-    const INTEREST_POINTS: Field = Field::new(23, 9);
-    const CHANGE: Field = Field::new(13, 10);
-    const MODIFIER: Field = Field::new(3, 10);
-
     fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
-        let raw = character
-            .get(Self::BASE_ID)
-            .ok()
-            .and_then(|b| b.get(..5))
-            .map(|b| {
-                let mut a = [0u8; 8];
-                a[..5].copy_from_slice(b);
-                u64::from_le_bytes(a)
-            })
-            .unwrap_or(0);
+        let raw = read_raw(character, Self::BASE_ID, &SKILL_LAYOUT);
         (
-            Self::OCCUPATION_POINTS.get(raw),
-            Self::INTEREST_POINTS.get(raw),
-            Self::CHANGE.get(raw),
-            Self::MODIFIER.get(raw),
+            SKILL_LAYOUT.get(raw, OCCUPATION_POINTS),
+            SKILL_LAYOUT.get(raw, INTEREST_POINTS),
+            SKILL_LAYOUT.get(raw, CHANGE),
+            SKILL_LAYOUT.get(raw, MODIFIER),
         )
     }
 
@@ -2620,11 +2427,13 @@ pub trait PilotTrait<const P: Pilot> {
         change: i10,
         modifier: i10,
     ) -> &'a mut DataStruct {
-        let raw = Self::OCCUPATION_POINTS.set(0u64, occupation_points);
-        let raw = Self::INTEREST_POINTS.set(raw, interest_points);
-        let raw = Self::CHANGE.set(raw, change);
-        let raw = Self::MODIFIER.set(raw, modifier);
-        let _ = character.set(Self::BASE_ID, &raw.to_le_bytes()[..5], None);
+        let raw = SKILL_LAYOUT.pack([
+            occupation_points.as_u64(),
+            interest_points.as_u64(),
+            change.as_u64(),
+            modifier.as_u64(),
+        ]);
+        write_raw(character, Self::BASE_ID, &SKILL_LAYOUT, raw);
         character
     }
 
@@ -2691,33 +2500,15 @@ impl PilotCustom {
         Self::LIST_ID + self.0 as u32 * 2
     }
 
-    const OCCUPATION_POINTS: Field = Field::new(32, 9);
-    const INTEREST_POINTS: Field = Field::new(23, 9);
-    const CHANGE: Field = Field::new(13, 10);
-    const MODIFIER: Field = Field::new(3, 10);
-
     // -> occupation_points, interest_points, change, modifier, name
     pub fn read(&self, character: &DataStruct) -> (u16, u16, i16, i16, String) {
-        let raw = character
-            .get(self.numeric_id())
-            .ok()
-            .and_then(|b| b.get(..5))
-            .map(|b| {
-                let mut a = [0u8; 8];
-                a[..5].copy_from_slice(b);
-                u64::from_le_bytes(a)
-            })
-            .unwrap_or(0);
-        let name = character
-            .get(self.name_id())
-            .ok()
-            .map(|b| String::from_utf8_lossy(b).into_owned())
-            .unwrap_or_default();
+        let raw = read_raw(character, self.numeric_id(), &SKILL_LAYOUT);
+        let name = read_text(character, self.name_id());
         (
-            Self::OCCUPATION_POINTS.get(raw),
-            Self::INTEREST_POINTS.get(raw),
-            Self::CHANGE.get(raw),
-            Self::MODIFIER.get(raw),
+            SKILL_LAYOUT.get(raw, OCCUPATION_POINTS),
+            SKILL_LAYOUT.get(raw, INTEREST_POINTS),
+            SKILL_LAYOUT.get(raw, CHANGE),
+            SKILL_LAYOUT.get(raw, MODIFIER),
             name,
         )
     }
@@ -2731,11 +2522,13 @@ impl PilotCustom {
         modifier: i16,
         name: &str,
     ) -> &'a mut DataStruct {
-        let raw = Self::OCCUPATION_POINTS.set(0u64, occupation_points as u64);
-        let raw = Self::INTEREST_POINTS.set(raw, interest_points as u64);
-        let raw = Self::CHANGE.set(raw, change as u64);
-        let raw = Self::MODIFIER.set(raw, modifier as u64);
-        let _ = character.set(self.numeric_id(), &raw.to_le_bytes()[..5], None);
+        let raw = SKILL_LAYOUT.pack([
+            occupation_points as u64,
+            interest_points as u64,
+            change as u64,
+            modifier as u64,
+        ]);
+        write_raw(character, self.numeric_id(), &SKILL_LAYOUT, raw);
         let _ = character.set(self.name_id(), name.as_bytes(), None);
         character
     }
@@ -2872,27 +2665,13 @@ pub trait ScienceTrait<const S: Science> {
     const BASE_ID: u32 = S.id(Skill::Science.base_id());
     const BASE_PERCENT: u16 = 1;
 
-    const OCCUPATION_POINTS: Field = Field::new(32, 9);
-    const INTEREST_POINTS: Field = Field::new(23, 9);
-    const CHANGE: Field = Field::new(13, 10);
-    const MODIFIER: Field = Field::new(3, 10);
-
     fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
-        let raw = character
-            .get(Self::BASE_ID)
-            .ok()
-            .and_then(|b| b.get(..5))
-            .map(|b| {
-                let mut a = [0u8; 8];
-                a[..5].copy_from_slice(b);
-                u64::from_le_bytes(a)
-            })
-            .unwrap_or(0);
+        let raw = read_raw(character, Self::BASE_ID, &SKILL_LAYOUT);
         (
-            Self::OCCUPATION_POINTS.get(raw),
-            Self::INTEREST_POINTS.get(raw),
-            Self::CHANGE.get(raw),
-            Self::MODIFIER.get(raw),
+            SKILL_LAYOUT.get(raw, OCCUPATION_POINTS),
+            SKILL_LAYOUT.get(raw, INTEREST_POINTS),
+            SKILL_LAYOUT.get(raw, CHANGE),
+            SKILL_LAYOUT.get(raw, MODIFIER),
         )
     }
 
@@ -2904,11 +2683,13 @@ pub trait ScienceTrait<const S: Science> {
         change: i10,
         modifier: i10,
     ) -> &'a mut DataStruct {
-        let raw = Self::OCCUPATION_POINTS.set(0u64, occupation_points);
-        let raw = Self::INTEREST_POINTS.set(raw, interest_points);
-        let raw = Self::CHANGE.set(raw, change);
-        let raw = Self::MODIFIER.set(raw, modifier);
-        let _ = character.set(Self::BASE_ID, &raw.to_le_bytes()[..5], None);
+        let raw = SKILL_LAYOUT.pack([
+            occupation_points.as_u64(),
+            interest_points.as_u64(),
+            change.as_u64(),
+            modifier.as_u64(),
+        ]);
+        write_raw(character, Self::BASE_ID, &SKILL_LAYOUT, raw);
         character
     }
 
@@ -2981,33 +2762,15 @@ impl ScienceCustom {
         Self::LIST_ID + self.0 as u32 * 2
     }
 
-    const OCCUPATION_POINTS: Field = Field::new(32, 9);
-    const INTEREST_POINTS: Field = Field::new(23, 9);
-    const CHANGE: Field = Field::new(13, 10);
-    const MODIFIER: Field = Field::new(3, 10);
-
     // -> occupation_points, interest_points, change, modifier, name
     pub fn read(&self, character: &DataStruct) -> (u16, u16, i16, i16, String) {
-        let raw = character
-            .get(self.numeric_id())
-            .ok()
-            .and_then(|b| b.get(..5))
-            .map(|b| {
-                let mut a = [0u8; 8];
-                a[..5].copy_from_slice(b);
-                u64::from_le_bytes(a)
-            })
-            .unwrap_or(0);
-        let name = character
-            .get(self.name_id())
-            .ok()
-            .map(|b| String::from_utf8_lossy(b).into_owned())
-            .unwrap_or_default();
+        let raw = read_raw(character, self.numeric_id(), &SKILL_LAYOUT);
+        let name = read_text(character, self.name_id());
         (
-            Self::OCCUPATION_POINTS.get(raw),
-            Self::INTEREST_POINTS.get(raw),
-            Self::CHANGE.get(raw),
-            Self::MODIFIER.get(raw),
+            SKILL_LAYOUT.get(raw, OCCUPATION_POINTS),
+            SKILL_LAYOUT.get(raw, INTEREST_POINTS),
+            SKILL_LAYOUT.get(raw, CHANGE),
+            SKILL_LAYOUT.get(raw, MODIFIER),
             name,
         )
     }
@@ -3021,11 +2784,13 @@ impl ScienceCustom {
         modifier: i16,
         name: &str,
     ) -> &'a mut DataStruct {
-        let raw = Self::OCCUPATION_POINTS.set(0u64, occupation_points as u64);
-        let raw = Self::INTEREST_POINTS.set(raw, interest_points as u64);
-        let raw = Self::CHANGE.set(raw, change as u64);
-        let raw = Self::MODIFIER.set(raw, modifier as u64);
-        let _ = character.set(self.numeric_id(), &raw.to_le_bytes()[..5], None);
+        let raw = SKILL_LAYOUT.pack([
+            occupation_points as u64,
+            interest_points as u64,
+            change as u64,
+            modifier as u64,
+        ]);
+        write_raw(character, self.numeric_id(), &SKILL_LAYOUT, raw);
         let _ = character.set(self.name_id(), name.as_bytes(), None);
         character
     }
@@ -3104,27 +2869,13 @@ pub trait SurvivalTrait<const S: Survival> {
     const BASE_ID: u32 = S.id(Skill::Survival.base_id());
     const BASE_PERCENT: u16 = 10;
 
-    const OCCUPATION_POINTS: Field = Field::new(32, 9);
-    const INTEREST_POINTS: Field = Field::new(23, 9);
-    const CHANGE: Field = Field::new(13, 10);
-    const MODIFIER: Field = Field::new(3, 10);
-
     fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
-        let raw = character
-            .get(Self::BASE_ID)
-            .ok()
-            .and_then(|b| b.get(..5))
-            .map(|b| {
-                let mut a = [0u8; 8];
-                a[..5].copy_from_slice(b);
-                u64::from_le_bytes(a)
-            })
-            .unwrap_or(0);
+        let raw = read_raw(character, Self::BASE_ID, &SKILL_LAYOUT);
         (
-            Self::OCCUPATION_POINTS.get(raw),
-            Self::INTEREST_POINTS.get(raw),
-            Self::CHANGE.get(raw),
-            Self::MODIFIER.get(raw),
+            SKILL_LAYOUT.get(raw, OCCUPATION_POINTS),
+            SKILL_LAYOUT.get(raw, INTEREST_POINTS),
+            SKILL_LAYOUT.get(raw, CHANGE),
+            SKILL_LAYOUT.get(raw, MODIFIER),
         )
     }
 
@@ -3136,11 +2887,13 @@ pub trait SurvivalTrait<const S: Survival> {
         change: i10,
         modifier: i10,
     ) -> &'a mut DataStruct {
-        let raw = Self::OCCUPATION_POINTS.set(0u64, occupation_points);
-        let raw = Self::INTEREST_POINTS.set(raw, interest_points);
-        let raw = Self::CHANGE.set(raw, change);
-        let raw = Self::MODIFIER.set(raw, modifier);
-        let _ = character.set(Self::BASE_ID, &raw.to_le_bytes()[..5], None);
+        let raw = SKILL_LAYOUT.pack([
+            occupation_points.as_u64(),
+            interest_points.as_u64(),
+            change.as_u64(),
+            modifier.as_u64(),
+        ]);
+        write_raw(character, Self::BASE_ID, &SKILL_LAYOUT, raw);
         character
     }
 
@@ -3193,33 +2946,15 @@ impl SurvivalCustom {
         Self::LIST_ID + self.0 as u32 * 2
     }
 
-    const OCCUPATION_POINTS: Field = Field::new(32, 9);
-    const INTEREST_POINTS: Field = Field::new(23, 9);
-    const CHANGE: Field = Field::new(13, 10);
-    const MODIFIER: Field = Field::new(3, 10);
-
     // -> occupation_points, interest_points, change, modifier, name
     pub fn read(&self, character: &DataStruct) -> (u16, u16, i16, i16, String) {
-        let raw = character
-            .get(self.numeric_id())
-            .ok()
-            .and_then(|b| b.get(..5))
-            .map(|b| {
-                let mut a = [0u8; 8];
-                a[..5].copy_from_slice(b);
-                u64::from_le_bytes(a)
-            })
-            .unwrap_or(0);
-        let name = character
-            .get(self.name_id())
-            .ok()
-            .map(|b| String::from_utf8_lossy(b).into_owned())
-            .unwrap_or_default();
+        let raw = read_raw(character, self.numeric_id(), &SKILL_LAYOUT);
+        let name = read_text(character, self.name_id());
         (
-            Self::OCCUPATION_POINTS.get(raw),
-            Self::INTEREST_POINTS.get(raw),
-            Self::CHANGE.get(raw),
-            Self::MODIFIER.get(raw),
+            SKILL_LAYOUT.get(raw, OCCUPATION_POINTS),
+            SKILL_LAYOUT.get(raw, INTEREST_POINTS),
+            SKILL_LAYOUT.get(raw, CHANGE),
+            SKILL_LAYOUT.get(raw, MODIFIER),
             name,
         )
     }
@@ -3233,11 +2968,13 @@ impl SurvivalCustom {
         modifier: i16,
         name: &str,
     ) -> &'a mut DataStruct {
-        let raw = Self::OCCUPATION_POINTS.set(0u64, occupation_points as u64);
-        let raw = Self::INTEREST_POINTS.set(raw, interest_points as u64);
-        let raw = Self::CHANGE.set(raw, change as u64);
-        let raw = Self::MODIFIER.set(raw, modifier as u64);
-        let _ = character.set(self.numeric_id(), &raw.to_le_bytes()[..5], None);
+        let raw = SKILL_LAYOUT.pack([
+            occupation_points as u64,
+            interest_points as u64,
+            change as u64,
+            modifier as u64,
+        ]);
+        write_raw(character, self.numeric_id(), &SKILL_LAYOUT, raw);
         let _ = character.set(self.name_id(), name.as_bytes(), None);
         character
     }
@@ -3873,5 +3610,152 @@ impl Memo {
     pub fn display(bytes: &[u8]) -> String {
         let (_, body) = Self::decode(bytes);
         body
+    }
+}
+
+#[cfg(test)]
+mod skill_storage_tests {
+    use alloc::string::ToString;
+
+    use arbitrary_int::{i10, u9};
+
+    use super::*;
+
+    fn character() -> DataStruct {
+        DataStruct::new(1, 0.0, 256)
+    }
+
+    #[test]
+    fn skill_trait_round_trips_extreme_values() {
+        let mut c = character();
+        Accounting.write(&mut c, u9::new(511), u9::new(400), i10::new(-512), i10::new(511));
+        let (occupation, interest, change, modifier) = Accounting.read(&c);
+        assert_eq!(occupation.value(), 511);
+        assert_eq!(interest.value(), 400);
+        assert_eq!(change.value(), -512);
+        assert_eq!(modifier.value(), 511);
+    }
+
+    #[test]
+    fn skill_trait_keeps_occupation_top_bit() {
+        let mut c = character();
+        Accounting.write(&mut c, u9::new(256), u9::new(0), i10::new(0), i10::new(0));
+        assert_eq!(Accounting.read(&c).0.value(), 256);
+    }
+
+    #[test]
+    fn skill_trait_fields_are_independent() {
+        let mut c = character();
+        Accounting.write(&mut c, u9::new(1), u9::new(2), i10::new(-3), i10::new(4));
+        let (occupation, interest, change, modifier) = Accounting.read(&c);
+        assert_eq!(
+            (occupation.value(), interest.value(), change.value(), modifier.value()),
+            (1, 2, -3, 4)
+        );
+    }
+
+    #[test]
+    fn skills_use_separate_slots() {
+        let mut c = character();
+        Accounting.write(&mut c, u9::new(10), u9::new(0), i10::new(0), i10::new(0));
+        Anthropology.write(&mut c, u9::new(20), u9::new(0), i10::new(0), i10::new(0));
+        assert_eq!(Accounting.read(&c).0.value(), 10);
+        assert_eq!(Anthropology.read(&c).0.value(), 20);
+    }
+
+    #[test]
+    fn unwritten_skill_reads_zero() {
+        let c = character();
+        let (occupation, interest, change, modifier) = Accounting.read(&c);
+        assert_eq!(
+            (occupation.value(), interest.value(), change.value(), modifier.value()),
+            (0, 0, 0, 0)
+        );
+    }
+
+    #[test]
+    fn language_own_round_trips_with_name() {
+        let mut c = character();
+        LanguageOwn.write(&mut c, 400, 300, -400, 400, "Japanese");
+        assert_eq!(LanguageOwn.read(&c), (400, 300, -400, 400, "Japanese".to_string()));
+    }
+
+    #[test]
+    fn art_and_craft_custom_round_trips_via_indirect_ids() {
+        let mut c = character();
+        ArtAndCraftCustom(0).write(&mut c, [1000, 1001], 400, 1, -1, 400, "Origami");
+        ArtAndCraftCustom(1).write(&mut c, [1002, 1003], 2, 300, 5, -400, "Ikebana");
+        assert_eq!(ArtAndCraftCustom(0).read(&c), (400, 1, -1, 400, "Origami".to_string()));
+        assert_eq!(ArtAndCraftCustom(1).read(&c), (2, 300, 5, -400, "Ikebana".to_string()));
+    }
+
+    #[test]
+    fn art_and_craft_custom_unwritten_index_reads_empty() {
+        let mut c = character();
+        ArtAndCraftCustom(0).write(&mut c, [1000, 1001], 1, 1, 1, 1, "x");
+        assert_eq!(ArtAndCraftCustom(5).read(&c), (0, 0, 0, 0, String::new()));
+    }
+
+    #[test]
+    fn fighting_custom_keeps_base_percent() {
+        let mut c = character();
+        FightingCustom(0).write(&mut c, [1000, 1001], 127, 400, 300, -400, 400, "Kendo");
+        assert_eq!(FightingCustom(0).read(&c), (127, 400, 300, -400, 400, "Kendo".to_string()));
+    }
+
+    #[test]
+    fn firearms_custom_keeps_base_percent() {
+        let mut c = character();
+        FirearmsCustom(0).write(&mut c, [1000, 1001], 99, 400, 0, 0, 0, "Crossbow");
+        assert_eq!(FirearmsCustom(0).read(&c), (99, 400, 0, 0, 0, "Crossbow".to_string()));
+    }
+
+    #[test]
+    fn pilot_custom_uses_numeric_and_name_ids() {
+        let mut c = character();
+        PilotCustom(1).write(&mut c, 400, 7, -7, 400, "Rocket");
+        assert_eq!(PilotCustom(1).read(&c), (400, 7, -7, 400, "Rocket".to_string()));
+    }
+
+    #[test]
+    fn stored_sizes_follow_layouts() {
+        assert_eq!(SKILL_LAYOUT.bytes(), 5);
+        assert_eq!(SKILL_WITH_PERCENT_LAYOUT.bytes(), 6);
+        let mut c = character();
+        Accounting.write(&mut c, u9::new(511), u9::new(511), i10::new(-1), i10::new(-1));
+        assert_eq!(c.get(Skill::Accounting.base_id()).unwrap().len(), 5);
+        FightingCustom(0).write(&mut c, [1000, 1001], 127, 511, 511, -1, -1, "x");
+        assert_eq!(c.get(1000).unwrap().len(), 6);
+        ArtAndCraftCustom(0).write(&mut c, [1002, 1003], 511, 511, -1, -1, "x");
+        assert_eq!(c.get(1002).unwrap().len(), 5);
+    }
+
+    #[test]
+    fn stored_value_fits_declared_bits() {
+        let mut c = character();
+        Accounting.write(&mut c, u9::new(511), u9::new(511), i10::new(-1), i10::new(-1));
+        let bytes = c.get(Skill::Accounting.base_id()).unwrap();
+        let mut word = [0u8; 8];
+        word[..bytes.len()].copy_from_slice(bytes);
+        assert_eq!(u64::from_le_bytes(word) >> SKILL_LAYOUT.bits(), 0);
+        assert_eq!(u64::from_le_bytes(word), (1u64 << SKILL_LAYOUT.bits()) - 1);
+    }
+
+    #[test]
+    fn negative_values_round_trip_through_percent_layout() {
+        let mut c = character();
+        FirearmsCustom(0).write(&mut c, [1000, 1001], 100, 0, 0, -400, -1, "x");
+        assert_eq!(FirearmsCustom(0).read(&c), (100, 0, 0, -400, -1, "x".to_string()));
+    }
+
+    #[test]
+    fn short_stored_value_reads_as_zero() {
+        let mut c = character();
+        let _ = c.set(Skill::Accounting.base_id(), &[0xff; 4], None);
+        let (occupation, interest, change, modifier) = Accounting.read(&c);
+        assert_eq!(
+            (occupation.value(), interest.value(), change.value(), modifier.value()),
+            (0, 0, 0, 0)
+        );
     }
 }

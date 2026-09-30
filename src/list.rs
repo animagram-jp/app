@@ -4,10 +4,15 @@ use core::{
     cmp::PartialEq,
     default::Default,
     marker::Copy,
-    mem::size_of,
     option::Option::{None, Some},
     result::Result::{self, Err, Ok},
 };
+
+const WORD: usize = 4;
+
+pub(crate) fn read_u32(bytes: &[u8], at: usize) -> Option<u32> {
+    Some(u32::from_le_bytes(bytes.get(at..at.checked_add(WORD)?)?.try_into().ok()?))
+}
 
 #[derive(Debug)]
 pub enum SetOutcome {
@@ -167,19 +172,36 @@ impl VariableList {
     pub fn new() -> Self {
         Self {
             index: vec![0, 0], // id=0 sentinel
-            data:  Vec::new(),
+            data:  vec![0],
         }
     }
 
     pub fn new_from_bytes(index: &[u8], data: &[u8]) -> Self {
-        let sz = size_of::<usize>();
         Self {
             index: index
-                .chunks_exact(sz)
-                .map(|b| usize::from_ne_bytes(b.try_into().unwrap()))
+                .chunks_exact(WORD)
+                .map(|b| u32::from_le_bytes(b.try_into().unwrap()) as usize)
                 .collect(),
             data:  data.to_vec(),
         }
+    }
+
+    pub fn index_to_bytes(&self) -> Vec<u8> {
+        self.index.iter().flat_map(|&v| (v as u32).to_le_bytes()).collect()
+    }
+
+    pub fn get_from_bytes<'a>(
+        index: &[u8],
+        data: &'a [u8],
+        identity: &u32,
+    ) -> Result<&'a [u8], ListError> {
+        let at = *identity as usize * 2 * WORD;
+        let s = read_u32(index, at).ok_or(ListError::OutOfBounds)? as usize;
+        let e = read_u32(index, at + WORD).ok_or(ListError::OutOfBounds)? as usize;
+        if s == 0 && e == 0 {
+            return Err(ListError::NotExist);
+        }
+        data.get(s..e).ok_or(ListError::OutOfBounds)
     }
 
     pub fn get<'a>(&'a self, identity: &u32) -> Result<&'a [u8], ListError> {
@@ -286,7 +308,7 @@ impl VariableList {
     /// ```
     pub fn compact(&mut self) -> Result<BTreeMap<u32, u32>, VariableListError> {
         let mut new_index = vec![0, 0];
-        let mut new_data: Vec<u8> = Vec::new();
+        let mut new_data: Vec<u8> = vec![0];
         let mut remap = BTreeMap::new();
         let count = self.index.len() / 2;
         for i in 1..count {
@@ -390,5 +412,92 @@ mod tests {
         vl.compact().unwrap();
         assert!(vl.get(&2).is_err());
         assert_eq!(vl.get(&1).unwrap(), &[4u8, 5, 6]);
+    }
+}
+
+#[cfg(test)]
+mod byte_format_tests {
+    use super::*;
+
+    #[test]
+    fn read_u32_bounds() {
+        let b = [1u8, 0, 0, 0, 2, 0, 0, 0];
+        assert_eq!(read_u32(&b, 0), Some(1));
+        assert_eq!(read_u32(&b, 4), Some(2));
+        assert_eq!(read_u32(&b, 5), None);
+        assert_eq!(read_u32(&b, 8), None);
+        assert_eq!(read_u32(&b, usize::MAX), None);
+    }
+
+    #[test]
+    fn index_bytes_are_u32_le_pairs() {
+        let mut vl = VariableList::new();
+        vl.set(&0, &[1u8, 2, 3], false, false).unwrap();
+        let bytes = vl.index_to_bytes();
+        assert_eq!(bytes, [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 4, 0, 0, 0]);
+    }
+
+    #[test]
+    fn bytes_round_trip() {
+        let mut vl = VariableList::new();
+        vl.set(&0, &[1u8, 2, 3], false, false).unwrap();
+        vl.set(&0, &[9u8], false, false).unwrap();
+        let restored = VariableList::new_from_bytes(&vl.index_to_bytes(), &vl.data);
+        assert_eq!(restored.index, vl.index);
+        assert_eq!(restored.get(&1).unwrap(), &[1u8, 2, 3]);
+        assert_eq!(restored.get(&2).unwrap(), &[9u8]);
+    }
+
+    #[test]
+    fn get_from_bytes_matches_get() {
+        let mut vl = VariableList::new();
+        vl.set(&0, &[1u8, 2, 3], false, false).unwrap();
+        vl.set(&0, &[4u8], false, false).unwrap();
+        vl.delete(&1).unwrap();
+        let index = vl.index_to_bytes();
+        for id in 0..4u32 {
+            assert_eq!(
+                VariableList::get_from_bytes(&index, &vl.data, &id).ok(),
+                vl.get(&id).ok(),
+                "id={id}"
+            );
+        }
+        assert!(matches!(
+            VariableList::get_from_bytes(&index, &vl.data, &1),
+            Err(ListError::NotExist)
+        ));
+        assert!(matches!(
+            VariableList::get_from_bytes(&index, &vl.data, &3),
+            Err(ListError::OutOfBounds)
+        ));
+    }
+
+    #[test]
+    fn empty_value_is_not_vacant() {
+        let mut vl = VariableList::new();
+        let r = vl.set(&0, &[], false, false).unwrap();
+        assert!(matches!(r, SetOutcome::Created(1)));
+        assert_eq!(vl.get(&1).unwrap(), &[] as &[u8]);
+        let index = vl.index_to_bytes();
+        assert_eq!(VariableList::get_from_bytes(&index, &vl.data, &1).unwrap(), &[] as &[u8]);
+    }
+
+    #[test]
+    fn empty_value_survives_compact() {
+        let mut vl = VariableList::new();
+        vl.set(&0, &[], false, false).unwrap();
+        vl.set(&0, &[5u8], false, false).unwrap();
+        vl.compact().unwrap();
+        assert_eq!(vl.get(&1).unwrap(), &[] as &[u8]);
+        assert_eq!(vl.get(&2).unwrap(), &[5u8]);
+    }
+
+    #[test]
+    fn fresh_list_has_sentinel_byte_before_first_value() {
+        let mut vl = VariableList::new();
+        assert_eq!(vl.data, [0u8]);
+        vl.set(&0, &[7u8, 8], false, false).unwrap();
+        assert_eq!(vl.index[2..4], [1, 3]);
+        assert_eq!(vl.data, [0u8, 7, 8]);
     }
 }

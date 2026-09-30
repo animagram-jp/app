@@ -1,14 +1,13 @@
 use alloc::{collections::BTreeMap, vec::Vec};
 use core::{
     clone::Clone,
-    mem::size_of,
     option::Option::{self, None, Some},
     primitive::{f64, u8, u32},
     result::Result::{self, Err, Ok},
 };
 
 use crate::{
-    list::{List, ListError, SetOutcome, VariableList, VariableListError},
+    list::{List, ListError, SetOutcome, VariableList, VariableListError, read_u32},
     timestamp::{self, Timezone},
 };
 
@@ -37,11 +36,11 @@ pub struct DataStruct {
 
 impl DataStruct {
     pub fn new(id: u32, time: f64, schema_size: u32) -> Self {
-        let t = timestamp::from_ut(time, true, &Timezone::AsiaTokyo);
+        let t = encode_time(time);
         let mut data_struct = Self { schema_size, index: List::new(), values: VariableList::new() };
         let _ = data_struct.set(ID_IDENTITY, &id.to_le_bytes(), None);
-        let _ = data_struct.set(ID_CREATED_AT, &t.to_le_bytes(), None);
-        let _ = data_struct.set(ID_MODIFIED_AT, &t.to_le_bytes(), None);
+        let _ = data_struct.set(ID_CREATED_AT, &t, None);
+        let _ = data_struct.set(ID_MODIFIED_AT, &t, None);
         data_struct
     }
 
@@ -51,27 +50,13 @@ impl DataStruct {
         instance: &'a [u8],
         schema_id: u32,
     ) -> Result<&'a [u8], ListError> {
-        let index_len = (self.schema_size as usize + 1) * 4;
-        let offset = schema_id as usize * 4;
-        let variable_id = u32::from_le_bytes(
-            instance.get(offset..offset + 4).ok_or(ListError::OutOfBounds)?.try_into().unwrap(),
-        );
+        let sections = Sections::parse(instance, self.schema_size)?;
+        let variable_id =
+            read_u32(sections.index, schema_id as usize * 4).ok_or(ListError::OutOfBounds)?;
         if variable_id == 0 {
             return Err(ListError::NotExist);
         }
-        let slice_at =
-            u32::from_le_bytes(instance[index_len..index_len + 4].try_into().unwrap()) as usize;
-        let vl_index_start = index_len + 4;
-        let vl_data_start = vl_index_start + slice_at;
-        let vl_index = &instance[vl_index_start..vl_data_start];
-        let sz = size_of::<usize>();
-        let index_s = variable_id as usize * 2 * sz;
-        let s = usize::from_ne_bytes(vl_index[index_s..index_s + sz].try_into().unwrap());
-        let e = usize::from_ne_bytes(vl_index[index_s + sz..index_s + sz * 2].try_into().unwrap());
-        if s == 0 && e == 0 {
-            return Err(ListError::NotExist);
-        }
-        instance.get(vl_data_start + s..vl_data_start + e).ok_or(ListError::OutOfBounds)
+        VariableList::get_from_bytes(sections.values_index, sections.values_data, &variable_id)
     }
 
     pub fn get(&self, schema_id: u32) -> Result<&[u8], ListError> {
@@ -98,8 +83,7 @@ impl DataStruct {
         };
         if schema_id != ID_MODIFIED_AT {
             if let Some(t) = time {
-                let ts = timestamp::from_ut(t, true, &Timezone::AsiaTokyo);
-                self.set(ID_MODIFIED_AT, &ts.to_le_bytes(), None)?;
+                self.set(ID_MODIFIED_AT, &encode_time(t), None)?;
             }
         }
         Ok(outcome)
@@ -134,8 +118,7 @@ impl DataStruct {
             }
         }
         if let Some(t) = time {
-            let ts = timestamp::from_ut(t, true, &Timezone::AsiaTokyo);
-            staged.set(ID_MODIFIED_AT, &ts.to_le_bytes(), None)?;
+            staged.set(ID_MODIFIED_AT, &encode_time(t), None)?;
         }
         *self = staged;
         Ok(())
@@ -205,33 +188,196 @@ impl DataStruct {
             let v = self.index.data.get(i).copied().unwrap_or(0);
             out.extend_from_slice(&v.to_le_bytes());
         }
-        let vl_index_bytes: Vec<u8> =
-            self.values.index.iter().flat_map(|&v| v.to_le_bytes()).collect();
-        let slice_at = vl_index_bytes.len() as u32;
-        out.extend_from_slice(&slice_at.to_le_bytes());
-        out.extend_from_slice(&vl_index_bytes);
+        let values_index = self.values.index_to_bytes();
+        out.extend_from_slice(&(values_index.len() as u32).to_le_bytes());
+        out.extend_from_slice(&values_index);
         out.extend_from_slice(&self.values.data);
         out
     }
 
-    pub fn from_bytes(line: &[u8], schema_size: u32) -> Self {
-        let index_len = (schema_size as usize + 1) * 4;
-        let slice_at =
-            u32::from_le_bytes(line[index_len..index_len + 4].try_into().unwrap()) as usize;
-        let vl_index_start = index_len + 4;
-        let vl_data_start = vl_index_start + slice_at;
-        Self {
+    pub fn from_bytes(line: &[u8], schema_size: u32) -> Result<Self, ListError> {
+        let sections = Sections::parse(line, schema_size)?;
+        Ok(Self {
             schema_size,
             index: List {
-                data: line[..index_len]
+                data: sections
+                    .index
                     .chunks_exact(4)
                     .map(|b| u32::from_le_bytes(b.try_into().unwrap()))
                     .collect(),
             },
-            values: VariableList::new_from_bytes(
-                &line[vl_index_start..vl_data_start],
-                &line[vl_data_start..],
-            ),
+            values: VariableList::new_from_bytes(sections.values_index, sections.values_data),
+        })
+    }
+}
+
+struct Sections<'a> {
+    index:        &'a [u8],
+    values_index: &'a [u8],
+    values_data:  &'a [u8],
+}
+
+impl<'a> Sections<'a> {
+    fn parse(bytes: &'a [u8], schema_size: u32) -> Result<Self, ListError> {
+        let index_len = (schema_size as usize + 1) * 4;
+        let slice_at = read_u32(bytes, index_len).ok_or(ListError::OutOfBounds)? as usize;
+        let values_index_start = index_len + 4;
+        let values_data_start =
+            values_index_start.checked_add(slice_at).ok_or(ListError::OutOfBounds)?;
+        Ok(Self {
+            index:        &bytes[..index_len],
+            values_index: bytes
+                .get(values_index_start..values_data_start)
+                .ok_or(ListError::OutOfBounds)?,
+            values_data:  &bytes[values_data_start..],
+        })
+    }
+}
+
+fn encode_time(time: f64) -> [u8; 8] {
+    timestamp::from_ut(time, true, &Timezone::AsiaTokyo).to_le_bytes()
+}
+
+#[cfg(test)]
+mod tests {
+    use alloc::vec;
+
+    use super::*;
+
+    const Y2000: f64 = 946684800000.0;
+
+    fn word(bytes: &[u8], at: usize) -> u32 {
+        u32::from_le_bytes(bytes[at..at + 4].try_into().unwrap())
+    }
+
+    fn sample() -> DataStruct {
+        let mut ds = DataStruct::new(7, Y2000, 8);
+        ds.set(4, b"alpha", None).unwrap();
+        ds.set(5, b"", None).unwrap();
+        ds.set(6, &[1, 2, 3, 4, 5, 6, 7, 8], None).unwrap();
+        ds
+    }
+
+    fn modified_year(ds: &DataStruct) -> i64 {
+        let raw = u64::from_le_bytes(ds.get(ID_MODIFIED_AT).unwrap().try_into().unwrap());
+        timestamp::unpack(raw).0
+    }
+
+    #[test]
+    fn to_bytes_layout_is_u32_le_only() {
+        let ds = DataStruct::new(7, Y2000, 3);
+        let bytes = ds.to_bytes();
+        let index: Vec<u32> = (0..4).map(|i| word(&bytes, i * 4)).collect();
+        assert_eq!(index, vec![0, 1, 2, 3]);
+        let slice_at = word(&bytes, 16) as usize;
+        assert_eq!(slice_at, 8 * 4);
+        let values_index: Vec<u32> = (0..8).map(|i| word(&bytes, 20 + i * 4)).collect();
+        assert_eq!(values_index, vec![0, 0, 1, 5, 5, 13, 13, 21]);
+        assert_eq!(bytes.len(), 16 + 4 + slice_at + 1 + 20);
+        assert_eq!(bytes[20 + slice_at], 0);
+        assert_eq!(&bytes[21 + slice_at..25 + slice_at], &7u32.to_le_bytes());
+    }
+
+    #[test]
+    fn bytes_round_trip_preserves_every_value() {
+        let ds = sample();
+        let restored = DataStruct::from_bytes(&ds.to_bytes(), 8).unwrap();
+        for id in 0..=8 {
+            assert_eq!(ds.get(id).ok(), restored.get(id).ok(), "id={id}");
         }
+        assert_eq!(restored.to_bytes(), ds.to_bytes());
+    }
+
+    #[test]
+    fn get_from_bytes_matches_get() {
+        let ds = sample();
+        let bytes = ds.to_bytes();
+        for id in 0..=8 {
+            assert_eq!(ds.get_from_bytes(&bytes, id).ok(), ds.get(id).ok(), "id={id}");
+        }
+    }
+
+    #[test]
+    fn get_from_bytes_error_kinds() {
+        let ds = sample();
+        let bytes = ds.to_bytes();
+        assert!(matches!(ds.get_from_bytes(&bytes, 7), Err(ListError::NotExist)));
+        assert!(matches!(ds.get_from_bytes(&bytes, 9), Err(ListError::OutOfBounds)));
+        assert!(matches!(ds.get_from_bytes(&bytes[..10], 4), Err(ListError::OutOfBounds)));
+    }
+
+    #[test]
+    fn get_from_bytes_after_delete_is_not_exist() {
+        let mut ds = sample();
+        ds.delete(4).unwrap();
+        let bytes = ds.to_bytes();
+        assert!(matches!(ds.get_from_bytes(&bytes, 4), Err(ListError::NotExist)));
+        assert_eq!(ds.get_from_bytes(&bytes, 6).unwrap(), &[1, 2, 3, 4, 5, 6, 7, 8]);
+    }
+
+    #[test]
+    fn from_bytes_rejects_malformed_input() {
+        assert!(DataStruct::from_bytes(&[], 8).is_err());
+        let bytes = sample().to_bytes();
+        assert!(DataStruct::from_bytes(&bytes[..(8 + 1) * 4], 8).is_err());
+        assert!(DataStruct::from_bytes(&bytes[..(8 + 1) * 4 + 4 + 2], 8).is_err());
+        let mut huge = bytes.clone();
+        huge[(8 + 1) * 4..(8 + 1) * 4 + 4].copy_from_slice(&u32::MAX.to_le_bytes());
+        assert!(DataStruct::from_bytes(&huge, 8).is_err());
+    }
+
+    #[test]
+    fn compact_keeps_values_and_survives_serialization() {
+        let mut ds = sample();
+        ds.delete(4).unwrap();
+        ds.set(6, &[9], None).unwrap();
+        ds.compact().unwrap();
+        let restored = DataStruct::from_bytes(&ds.to_bytes(), 8).unwrap();
+        assert!(restored.get(4).is_err());
+        assert_eq!(restored.get(6).unwrap(), &[9]);
+        assert_eq!(restored.get(1).unwrap(), &7u32.to_le_bytes());
+    }
+
+    #[test]
+    fn new_stamps_created_and_modified_equally() {
+        let ds = DataStruct::new(1, Y2000, 4);
+        assert_eq!(ds.get(ID_CREATED_AT).unwrap(), ds.get(ID_MODIFIED_AT).unwrap());
+        assert_eq!(modified_year(&ds), 2000);
+    }
+
+    #[test]
+    fn set_with_time_updates_modified_only() {
+        let mut ds = DataStruct::new(1, Y2000, 8);
+        let later = Y2000 + 366.0 * 86400.0 * 1000.0;
+        ds.set(4, b"x", Some(later)).unwrap();
+        assert_eq!(modified_year(&ds), 2001);
+        let created = u64::from_le_bytes(ds.get(ID_CREATED_AT).unwrap().try_into().unwrap());
+        assert_eq!(timestamp::unpack(created).0, 2000);
+    }
+
+    #[test]
+    fn set_without_time_leaves_modified() {
+        let mut ds = DataStruct::new(1, Y2000, 8);
+        ds.set(4, b"x", None).unwrap();
+        assert_eq!(modified_year(&ds), 2000);
+    }
+
+    #[test]
+    fn set_many_is_atomic_and_stamps_time() {
+        let mut ds = sample();
+        let later = Y2000 + 366.0 * 86400.0 * 1000.0;
+        ds.set_many([(4, Some(&b"new"[..])), (5, None)], Some(later)).unwrap();
+        assert_eq!(ds.get(4).unwrap(), b"new");
+        assert!(ds.get(5).is_err());
+        assert_eq!(modified_year(&ds), 2001);
+    }
+
+    #[test]
+    fn indirect_round_trip_through_bytes() {
+        let mut ds = sample();
+        ds.set_indirect::<2, 2>(3, [(0, [10, 11]), (2, [20, 21])]).unwrap();
+        let restored = DataStruct::from_bytes(&ds.to_bytes(), 8).unwrap();
+        let got = restored.get_indirect::<3, 2>(3, [0, 1, 2]);
+        assert_eq!(got, [Some([10, 11]), Some([0, 0]), Some([20, 21])]);
     }
 }
