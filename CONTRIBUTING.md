@@ -86,33 +86,10 @@ geckodriver --port 8000 & GECKODRIVER_REMOTE=http://127.0.0.1:8000 cargo test --
 #    +atomics,+bulk-memory: enables shared memory and memory.copy.
 #    --import-memory: imports external memory.
 #    --max-memory=134217728: per talc allocator (128MiB, 2048 pages, `distribution/init.js:MEMORY_MAXIMUM_PAGES`)
-RUSTFLAGS="-Ctarget-feature=+atomics,+bulk-memory -Clink-arg=--import-memory -Clink-arg=--max-memory=134217728" cargo build --release --target wasm32-unknown-unknown -Zbuild-std=std,panic_abort
+RUSTFLAGS="-Ctarget-feature=+atomics,+bulk-memory -Clink-arg=--import-memory -Clink-arg=--shared-memory -Clink-arg=--max-memory=134217728 -Clink-arg=--export=__wasm_init_tls -Clink-arg=--export=__tls_size -Clink-arg=--export=__tls_align -Clink-arg=--export=__tls_base" cargo build --release --target wasm32-unknown-unknown -Zbuild-std=std,panic_abort
 
 # 2. Generate glue JS scripts
 wasm-bindgen --target web --out-dir distribution/app --out-name app target/wasm32-unknown-unknown/release/app.wasm
-
-# 3. Patch shared flag with wasm-tools
-#
-#   cargo install wasm-tools
-#   replace app_bg.wasm: (import "./app_bg.js" "memory" (memory (;0;) {min} {max})) to (import "./app_bg.js" "memory" (memory (;0;) {min} {max} shared)).
-wasm-tools print distribution/app/app_bg.wasm -o /tmp/app.wat
-sed -i -E 's/\(import "\.\/app_bg\.js" "memory" \(memory \(;0;\) ([0-9]+) ([0-9]+)\)\)/(import ".\/app_bg.js" "memory" (memory (;0;) \1 \2 shared))/' /tmp/app.wat
-grep -q 'shared' /tmp/app.wat
-wasm-tools parse /tmp/app.wat -o distribution/app/app_bg.wasm
-wasm-tools validate --features=threads,bulk-memory distribution/app/app_bg.wasm
-
-# 4. Patch app.js:cachedTextDecoder.decode
-#    (TypeError: TextDecoder.decode()... can't be a SharedArrayBuffer).
-#    Replace
-#    distribution/app/app.js:
-#      return cachedTextDecoder.decode(getUint8ArrayMemory0().subarray(ptr, ptr + len));
-#    to:
-#      const view = getUint8ArrayMemory0().subarray(ptr, ptr + len);
-#      return cachedTextDecoder.decode(
-#          view.buffer instanceof SharedArrayBuffer ? view.slice() : view
-#      );
-grep -q 'cachedTextDecoder.decode(getUint8ArrayMemory0().subarray(ptr, ptr + len));' distribution/app/app.js
-perl -0pi -e 's/return cachedTextDecoder\.decode\(getUint8ArrayMemory0\(\)\.subarray\(ptr, ptr \+ len\)\);/const view = getUint8ArrayMemory0().subarray(ptr, ptr + len);\n    return cachedTextDecoder.decode(\n        view.buffer instanceof SharedArrayBuffer ? view.slice() : view\n    );/' distribution/app/app.js
 
 # auto formatter
 cargo +nightly fmt

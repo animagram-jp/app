@@ -48,15 +48,12 @@ jobs:
                   version="$(grep -A1 '^name = "wasm-bindgen"$' Cargo.lock | sed -n 's/^version = "\(.*\)"$/\1/p')"
                   cargo install wasm-bindgen-cli --version "$version" --locked
 
-            - name: "install wasm-tools"
-              run: cargo install wasm-tools
-
             - name: "cargo test (doctest only; --lib requires a browser runner)"
               run: cargo test --doc --locked
 
             - name: "cargo build (wasm32, web worker)"
               run: |
-                  RUSTFLAGS="-Ctarget-feature=+atomics,+bulk-memory -Clink-arg=--import-memory -Clink-arg=--max-memory=134217728" \
+                  RUSTFLAGS="-Ctarget-feature=+atomics,+bulk-memory -Clink-arg=--import-memory -Clink-arg=--shared-memory -Clink-arg=--max-memory=134217728 -Clink-arg=--export=__wasm_init_tls -Clink-arg=--export=__tls_size -Clink-arg=--export=__tls_align -Clink-arg=--export=__tls_base" \
                   cargo build --release --target wasm32-unknown-unknown -Zbuild-std=std,panic_abort
 
             - name: "wasm-bindgen"
@@ -66,19 +63,6 @@ jobs:
 
             - name: "remove wasm-bindgen package boilerplate (no suppression flag exists)"
               run: rm -f distribution/app/README.md distribution/app/LICENSE
-
-            - name: "patch memory import to shared (wasm-bindgen だけでは shared 化できない)"
-              run: |
-                  wasm-tools print distribution/app/app_bg.wasm -o /tmp/app.wat
-                  sed -i -E 's/\(import "\.\/app_bg\.js" "memory" \(memory \(;0;\) ([0-9]+) ([0-9]+)\)\)/(import ".\/app_bg.js" "memory" (memory (;0;) \1 \2 shared))/' /tmp/app.wat
-                  grep -q 'shared' /tmp/app.wat
-                  wasm-tools parse /tmp/app.wat -o distribution/app/app_bg.wasm
-                  wasm-tools validate --features=threads,bulk-memory distribution/app/app_bg.wasm
-
-            - name: "patch TextDecoder.decode for SharedArrayBuffer (仕様上直接渡せないため)"
-              run: |
-                  grep -q 'cachedTextDecoder.decode(getUint8ArrayMemory0().subarray(ptr, ptr + len));' distribution/app/app.js
-                  perl -0pi -e 's/return cachedTextDecoder\.decode\(getUint8ArrayMemory0\(\)\.subarray\(ptr, ptr \+ len\)\);/const view = getUint8ArrayMemory0().subarray(ptr, ptr + len);\n    return cachedTextDecoder.decode(\n        view.buffer instanceof SharedArrayBuffer ? view.slice() : view\n    );/' distribution/app/app.js
 
             - name: "inject version into distribution files"
               # sw.js の VERSION 定数がビルドごとに変わらないと、ブラウザが
