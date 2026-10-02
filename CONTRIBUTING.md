@@ -78,7 +78,8 @@ cargo test --lib
 cargo test --no-default-features --lib
 
 # unit test (wasm32 + headless browser)
-geckodriver --port 8000 & GECKODRIVER_REMOTE=http://127.0.0.1:8000 cargo test --target wasm32-unknown-unknown --lib --tests && pkill -f "geckodriver --port 8000"
+geckodriver --port 8000 & GECKODRIVER_REMOTE=http://127.0.0.1:8000 cargo test --target wasm32-unknown-unknown --lib --tests
+pkill -f "geckodriver --port 8000"
 
 # --- build (wasm on dedicated worker) ---
 

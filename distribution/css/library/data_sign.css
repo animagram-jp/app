@@ -233,8 +233,8 @@
         rotate:        45deg;
     }
 
-    [data-sign="check"]:not(:checked):where([data-inline-align="start"])::before,
-    [data-sign="check"]:not(:checked):not([data-inline-align="start"])::after,
+    input[data-sign="check"]:not(:checked):where([data-inline-align="start"])::before,
+    input[data-sign="check"]:not(:checked):not([data-inline-align="start"])::after,
     input[type="checkbox"]:not([role="switch"]):not([data-sign]):not([data-facet]):not(:checked)::after {
         border-width: 0;
     }
