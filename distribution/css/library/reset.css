@@ -107,7 +107,8 @@
     }
 
     hr { /* per tailwind-preflight.css:53-63 */
-        border-top-width: 1px;
+        border-block-start-width: 1px;
+        border-block-start-style: solid;
         height: 0;
     }
 

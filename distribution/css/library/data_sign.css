@@ -1179,6 +1179,20 @@
             curve to 0% 50% with 18.75% 15.625% / 0% 50%,
             curve to 50% 84.375% with 0% 50% / 18.75% 84.375%,
             curve to 100% 50% with 81.25% 84.375% / 100% 50%,
+            close,
+            move to 92.5% 50%,
+            curve to 50% 79.219% with 92.5% 50% / 76.562% 79.219%,
+            curve to 7.5% 50% with 23.438% 79.219% / 7.5% 50%,
+            curve to 50% 20.781% with 7.5% 50% / 23.438% 20.781%,
+            curve to 92.5% 50% with 76.562% 20.781% / 92.5% 50%,
+            close,
+            move to 71.875% 50%,
+            arc to 28.125% 50% of 21.875% ccw,
+            arc to 71.875% 50% of 21.875% ccw,
+            close,
+            move to 65.625% 50%,
+            arc to 34.375% 50% of 15.625% cw,
+            arc to 65.625% 50% of 15.625% cw,
             close
         );
     }
