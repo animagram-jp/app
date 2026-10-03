@@ -8,6 +8,7 @@ const ALIGNMENT = 4;
 const PADDING_MARK = 0xFFFFFFFF;
 const FETCH_HEADER = 1 + 4 + 2 + 1 + LENGTH_PREFIX;
 const API_BASE = document.querySelector("meta[name='api-base']")?.content ?? "./api/{version}";
+const SW_URL = document.querySelector("meta[name='sw-url']")?.content ?? "./sw.js";
 
 const EVENT_CONTROL = 0;
 const EVENT_PAYLOAD = EVENT_CONTROL + CONTROL_SIZE; // range start
@@ -80,7 +81,7 @@ let restarting = false;
 let composing_element = null;
 
 const sw_registration = "serviceWorker" in navigator
-    ? navigator.serviceWorker.register("./sw.js").catch((err) => {
+    ? navigator.serviceWorker.register(SW_URL).catch((err) => {
         console.warn("SW registration failed:", err);
         return null;
     })

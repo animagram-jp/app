@@ -11,3 +11,8 @@ Cargo.lock
 **/distribution/app/
 
 reference/character.json
+
+/examples/calendar/app/
+/examples/calendar/init.js
+/examples/calendar/worker.js
+/examples/calendar/css/library/
