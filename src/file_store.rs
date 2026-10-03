@@ -371,6 +371,11 @@ impl FileStore {
         self.memory.get(&id).map(|v| v.as_slice())
     }
 
+    /// Current records with `from <= id < to`, in id order.
+    pub fn range(&self, from: u32, to: u32) -> impl Iterator<Item = (u32, &[u8])> {
+        self.memory.range(from..to).map(|(id, bytes)| (*id, bytes.as_slice()))
+    }
+
     /// Insert or overwrite `id` in memory and mark it pending. Never touches
     /// the disk; durability requires an explicit `save()`.
     ///

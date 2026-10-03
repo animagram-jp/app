@@ -1,10 +1,16 @@
-name: "Build for Cloudflare"
+name: "Deploy to Cloudflare"
 
 on:
+    push:
+        tags: ["*.*.*"]
     workflow_dispatch:
 
 permissions:
     contents: read
+
+concurrency:
+    group: "cloudflare"
+    cancel-in-progress: false
 
 jobs:
     build:
@@ -48,3 +54,43 @@ jobs:
               with:
                   name: "calendar"
                   path: "target/cloudflare/calendar"
+
+    deploy-app:
+        needs: build
+        runs-on: ubuntu-latest
+        steps:
+            - name: "git checkout"
+              uses: actions/checkout@v7
+
+            - name: "download app"
+              uses: actions/download-artifact@v8
+              with:
+                  name: "app"
+                  path: "target/cloudflare/app"
+
+            - name: "wrangler deploy"
+              uses: cloudflare/wrangler-action@v4
+              with:
+                  apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+                  accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+                  command: deploy --config cloudflare/app/wrangler.jsonc
+
+    deploy-calendar:
+        needs: deploy-app
+        runs-on: ubuntu-latest
+        steps:
+            - name: "git checkout"
+              uses: actions/checkout@v7
+
+            - name: "download calendar"
+              uses: actions/download-artifact@v8
+              with:
+                  name: "calendar"
+                  path: "target/cloudflare/calendar"
+
+            - name: "wrangler deploy"
+              uses: cloudflare/wrangler-action@v4
+              with:
+                  apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+                  accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+                  command: deploy --config cloudflare/calendar/wrangler.jsonc

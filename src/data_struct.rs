@@ -11,9 +11,9 @@ use crate::{
     timestamp::{self, Timezone},
 };
 
-const ID_IDENTITY: u32 = 1;
-const ID_CREATED_AT: u32 = 2;
-const ID_MODIFIED_AT: u32 = 3;
+pub const ID_IDENTITY: u32 = 1;
+pub const ID_CREATED_AT: u32 = 2;
+pub const ID_MODIFIED_AT: u32 = 3;
 
 #[derive(Debug)]
 pub enum DataStructError {
@@ -235,7 +235,7 @@ impl<'a> Sections<'a> {
 }
 
 fn encode_time(time: f64) -> [u8; 8] {
-    timestamp::from_ut(time, true, &Timezone::AsiaTokyo).to_le_bytes()
+    timestamp::from_ut(time, true, &Timezone::None).to_le_bytes()
 }
 
 #[cfg(test)]

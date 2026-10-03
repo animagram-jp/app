@@ -1,0 +1,13 @@
+{
+    "name": "animagram-app",
+    "compatibility_date": "2026-10-04",
+    "routes": [
+        {
+            "pattern": "app.animagram.jp",
+            "custom_domain": true
+        }
+    ],
+    "assets": {
+        "directory": "../../target/cloudflare/app"
+    }
+}

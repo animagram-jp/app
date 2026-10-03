@@ -2,7 +2,7 @@ use alloc::{boxed::Box, collections::BTreeMap, format, string::String, vec, vec:
 use core::{
     cell::RefCell,
     option::Option::{self, None, Some},
-    primitive::{f64, i32, u32, usize},
+    primitive::{f64, i32, i64, u32, u64, usize},
     result::Result::Ok,
 };
 
@@ -12,12 +12,10 @@ use rectgrid::{
 };
 
 use crate::{
-    Error,
+    Error, Lang,
     calendar::{
-        data::{Appointment, Calendar, DataError, Place, parse_date, parse_time},
-        date::{
-            MONTH_CELL_COUNT, civil_from_days, format_hhmm, format_iso, long_title, month_origin,
-            short_title,
+        data::{
+            Appointment, Calendar, DataError, Place, Record, format_hhmm, parse_date, parse_time,
         },
         grid::{Cell, ColumnAxis, Grid, TimeAxis},
         layout::lanes,
@@ -30,6 +28,9 @@ use crate::{
         StyleProperty, StyleValue, Unit, VisibilityState,
         dom::{Id, Tag},
         from_url_search_params,
+    },
+    timestamp::{
+        Format, Timezone, add_days, diff, display, from_ut, pack, sub_days, unpack, weekday,
     },
 };
 
@@ -56,7 +57,10 @@ const ZOOM_MAX: f64 = 3.0;
 const COLUMN_MIN_REM: f64 = 5.0;
 const AXIS_REM: f64 = 4.0;
 const HEAD_REM: f64 = 5.0;
-const STEP_DAYS: [i32; 5] = [-7, -1, 0, 1, 7];
+const STEP_DAYS: [i64; 5] = [-7, -1, 0, 1, 7];
+const LANG: Lang = Lang::Ja;
+const DAY: i64 = 8_640_000;
+const MONTH_CELL_COUNT: usize = 42;
 const STEP_TODAY: u32 = 3;
 const MONTH_BUTTON: u32 = 2;
 const MONTH_COLUMNS: u32 = 7;
@@ -196,9 +200,10 @@ struct Card {
 
 pub struct Handler {
     view:              View,
-    today:             i32,
-    base:              i32,
-    month:             (i32, u32),
+    now:               u64,
+    today:             u64,
+    base:              u64,
+    month:             (i64, i64),
     calendar:          Option<Calendar>,
     placed:            RefCell<Vec<Placed>>,
     bands:             RefCell<Vec<Band>>,
@@ -224,9 +229,11 @@ impl Handler {
         now: f64,
         timezone_offset_minutes: i32,
     ) -> Self {
+        let minutes = libm::floor(now / 60_000.0) as i64 + i64::from(timezone_offset_minutes);
+        let today = add_days(pack(1970, 1, 1, 0, 0, 0, 0, 0, 0), minutes.div_euclid(1440));
         #[allow(unused_mut)]
-        let mut handler =
-            Self::new(viewport_width_px, day_number(now, timezone_offset_minutes), rem_in_px);
+        let mut handler = Self::new(viewport_width_px, today, rem_in_px);
+        handler.now = from_ut(now, true, &Timezone::None);
         #[cfg(target_arch = "wasm32")]
         match crate::file_store::FileStore::new(STORE_NAME).await {
             Ok(opened) => handler.attach(Box::new(opened)),
@@ -244,12 +251,13 @@ impl Handler {
         self.store = Some(store);
     }
 
-    pub fn new(viewport_width_px: f64, today: i32, rem_in_px: f64) -> Self {
+    pub fn new(viewport_width_px: f64, today: u64, rem_in_px: f64) -> Self {
         let view = View::Week;
         let column_px = column_px(viewport_width_px, view, rem_in_px);
-        let (year, month, _) = civil_from_days(today);
+        let (year, month, ..) = unpack(today);
         Self {
             view,
+            now: 0,
             today,
             base: today,
             month: (year, month),
@@ -485,10 +493,10 @@ impl Handler {
         let calendar = self.calendar.as_ref()?;
         let appointment = calendar.appointments.get(index)?;
         let grid = self.grid();
-        let (start, end) = grid.time.clip(appointment.start, appointment.end)?;
-        let flats = appointment.cells.iter().filter_map(|place| {
-            let resource = calendar.resources.iter().position(|r| r.id == place.resource)?;
-            Some(grid.columns.flat(place.day - self.base, resource as u32))
+        let (start, end) = grid.time.clip(appointment.start(), appointment.end())?;
+        let flats = appointment.cells().into_iter().filter_map(|place| {
+            let resource = calendar.resources.iter().position(|r| r.id() == place.resource)?;
+            Some(grid.columns.flat((diff(self.base, place.day) / DAY) as i32, resource as u32))
         });
         let (first, last) = flats.fold(None, |range: Option<(i32, i32)>, flat| match range {
             Some((low, high)) => Some((low.min(flat), high.max(flat))),
@@ -758,7 +766,10 @@ impl Handler {
             .iter()
             .map(|cell| {
                 let resource = calendar.resources.get(cell.resource as usize)?;
-                Some(Place { day: self.base + cell.day as i32, resource: resource.id })
+                Some(Place {
+                    day:      add_days(self.base, i64::from(cell.day)),
+                    resource: resource.id(),
+                })
             })
             .collect();
         if let Some(cells) = cells {
@@ -788,8 +799,11 @@ impl Handler {
         let fields = EditForm {
             title:    String::new(),
             category: String::new(),
-            status:   calendar.statuses.first().map_or_else(String::new, |s| s.code.clone()),
-            date:     format_iso(first.day),
+            status:   calendar
+                .statuses
+                .first()
+                .map_or_else(String::new, |s| String::from(s.code())),
+            date:     display(first.day, LANG, Format::Date),
             resource: format!("{}", first.resource),
             start:    format_hhmm(start),
             end:      format_hhmm(end),
@@ -824,7 +838,8 @@ impl Handler {
             return vec![];
         };
         let start = grid.time.clamp_start(minutes, NEW_MINUTES);
-        let place = Place { day: self.base + cell.day as i32, resource: resource.id };
+        let place =
+            Place { day: add_days(self.base, i64::from(cell.day)), resource: resource.id() };
         self.new_form(vec![place], start, start + NEW_MINUTES, pointer)
     }
 
@@ -833,20 +848,21 @@ impl Handler {
         else {
             return vec![];
         };
-        let Some(place) = appointment.cells.get(cell).or_else(|| appointment.cells.first()) else {
+        let cells = appointment.cells();
+        let Some(place) = cells.get(cell).or_else(|| cells.first()) else {
             return vec![];
         };
         let fields = EditForm {
-            title:    appointment.title.clone(),
-            category: appointment.category.clone(),
-            status:   appointment.status.clone(),
-            date:     format_iso(place.day),
+            title:    String::from(appointment.title()),
+            category: String::from(appointment.category()),
+            status:   String::from(appointment.status()),
+            date:     display(place.day, LANG, Format::Date),
             resource: format!("{}", place.resource),
-            start:    format_hhmm(appointment.start),
-            end:      format_hhmm(appointment.end),
-            note:     appointment.note.clone(),
+            start:    format_hhmm(appointment.start()),
+            end:      format_hhmm(appointment.end()),
+            note:     String::from(appointment.note()),
         };
-        let heading = format!("#{}", appointment.id);
+        let heading = format!("#{}", appointment.id());
         self.form_commands(Editing::Existing(index), heading, fields, "")
     }
 
@@ -865,7 +881,6 @@ impl Handler {
             Ok(index) => {
                 self.editing = None;
                 let mut commands = self.persist(index);
-                commands.extend(self.persist_meta());
                 commands.extend(self.mark_dirty());
                 commands.push(Command::CloseModal { id: modal() });
                 commands.extend(self.loaded_commands());
@@ -884,9 +899,12 @@ impl Handler {
         }
         let calendar = self.calendar.as_mut().ok_or("データがありません")?;
         let resource_id: u32 = form.resource.parse().map_err(|_| "資源が不正です")?;
-        let resource =
-            calendar.resources.iter().position(|r| r.id == resource_id).ok_or("資源が不正です")?;
-        if !calendar.statuses.iter().any(|s| s.code == form.status) {
+        let resource = calendar
+            .resources
+            .iter()
+            .position(|r| r.id() == resource_id)
+            .ok_or("資源が不正です")?;
+        if !calendar.statuses.iter().any(|s| s.code() == form.status) {
             return Err("状態が不正です");
         }
         match editing {
@@ -895,47 +913,38 @@ impl Handler {
                     return Err("営業時間外です");
                 }
                 let cells = shift_cells(calendar, &pending, day, resource)?;
-                let id = calendar.appointments.iter().map(|a| a.id).max().map_or(1, |id| id + 1);
-                calendar.appointments.push(Appointment {
+                let id = calendar.appointments.iter().map(|a| a.id()).max().map_or(1, |id| id + 1);
+                calendar.appointments.push(Appointment::new(
                     id,
-                    cells,
+                    &cells,
                     start,
                     end,
-                    title: form.title,
-                    category: form.category,
-                    status: form.status,
-                    note: form.note,
-                });
+                    &form.title,
+                    &form.category,
+                    &form.status,
+                    &form.note,
+                ));
                 Ok(calendar.appointments.len() - 1)
             }
             Editing::Existing(index) => {
                 let appointment = calendar.appointments.get(index).ok_or("予約がありません")?;
-                let cells = shift_cells(calendar, &appointment.cells, day, resource)?;
+                let current_cells = appointment.cells();
+                let cells = shift_cells(calendar, &current_cells, day, resource)?;
                 let current = &calendar.appointments[index];
-                let changed = current.start != start || current.end != end;
+                let changed = current.start() != start || current.end() != end;
                 if changed && !fits(calendar, start, end) {
                     return Err("営業時間外です");
                 }
                 let appointment = &mut calendar.appointments[index];
-                appointment.cells = cells;
-                appointment.start = start;
-                appointment.end = end;
-                appointment.title = form.title;
-                appointment.category = form.category;
-                appointment.status = form.status;
-                appointment.note = form.note;
+                appointment.set_cells(&cells);
+                appointment.set_start(start);
+                appointment.set_end(end);
+                appointment.set_title(&form.title);
+                appointment.set_category(&form.category);
+                appointment.set_status(&form.status);
+                appointment.set_note(&form.note);
                 Ok(index)
             }
-        }
-    }
-
-    fn persist_meta(&mut self) -> Vec<Command> {
-        let (Some(store), Some(calendar)) = (self.store.as_mut(), self.calendar.as_ref()) else {
-            return vec![];
-        };
-        match store::put_meta(store.as_mut(), calendar) {
-            Ok(()) => vec![],
-            Err(error) => vec![data_error(error)],
         }
     }
 
@@ -976,8 +985,8 @@ impl Handler {
             (first..last.max(first + 1))
                 .map(|flat| {
                     let (day, resource) = grid.columns.locate(flat);
-                    let resource = calendar.resources.get(resource as usize)?.id;
-                    Some(Place { day: base + day, resource })
+                    let resource = calendar.resources.get(resource as usize)?.id();
+                    Some(Place { day: add_days(base, i64::from(day)), resource })
                 })
                 .collect::<Option<Vec<Place>>>()
         });
@@ -990,23 +999,24 @@ impl Handler {
         let Some(current) = calendar.appointments.get(index) else {
             return false;
         };
+        let current_cells = current.cells();
         let new_cells = match cells {
             Some(Some(cells)) => cells,
-            _ => current.cells.clone(),
+            _ => current_cells.clone(),
         };
         let (new_start, new_end) = match time {
             Some(Some((start, end))) if end > start => (start, end),
-            _ => (current.start, current.end),
+            _ => (current.start(), current.end()),
         };
         let changed =
-            new_cells != current.cells || new_start != current.start || new_end != current.end;
+            new_cells != current_cells || new_start != current.start() || new_end != current.end();
         if changed && !fits(calendar, new_start, new_end) {
             return false;
         }
         let appointment = &mut calendar.appointments[index];
-        appointment.cells = new_cells;
-        appointment.start = new_start;
-        appointment.end = new_end;
+        appointment.set_cells(&new_cells);
+        appointment.set_start(new_start);
+        appointment.set_end(new_end);
         changed
     }
 
@@ -1026,7 +1036,7 @@ impl Handler {
             return None;
         };
         let slot = (libm::floor(top.get() + 0.5).max(0.0) as u32).min(SLOT_COUNT - 1);
-        let duration = appointment.end - appointment.start;
+        let duration = appointment.end() - appointment.start();
         let logical = BBox::new(
             [GridUnit::new(libm::floor(column.get())), GridUnit::new(slot as f64)],
             [GridUnit::new(1.0), GridUnit::new(duration as f64 / SLOT_MINUTES as f64)],
@@ -1045,40 +1055,39 @@ impl Handler {
         let Some(appointment) = calendar.appointments.get(index) else {
             return false;
         };
-        let flat = |place: &Place| {
-            calendar
-                .resources
-                .iter()
-                .position(|r| r.id == place.resource)
-                .map(|position| axis.flat(place.day - base, position as u32))
-        };
-        let Some(from) = appointment.cells.get(pressed).and_then(flat) else {
+        let flat =
+            |place: &Place| {
+                calendar.resources.iter().position(|r| r.id() == place.resource).map(|position| {
+                    axis.flat((diff(base, place.day) / DAY) as i32, position as u32)
+                })
+            };
+        let Some(from) = appointment.cells().get(pressed).and_then(flat) else {
             return false;
         };
         let delta = axis.flat(target.day as i32, target.resource) - from;
         let moved: Option<Vec<Place>> = appointment
-            .cells
+            .cells()
             .iter()
             .map(|place| {
                 let (day, resource) = axis.locate(flat(place)? + delta);
-                let resource = calendar.resources.get(resource as usize)?.id;
-                Some(Place { day: base + day, resource })
+                let resource = calendar.resources.get(resource as usize)?.id();
+                Some(Place { day: add_days(base, i64::from(day)), resource })
             })
             .collect();
         let Some(moved) = moved else {
             return false;
         };
-        let duration = appointment.end - appointment.start;
-        let changed = appointment.cells != moved || appointment.start != start;
+        let duration = appointment.end() - appointment.start();
+        let changed = appointment.cells() != moved || appointment.start() != start;
         if changed && !fits(calendar, start, start + duration) {
             return false;
         }
         let Some(appointment) = calendar.appointments.get_mut(index) else {
             return false;
         };
-        appointment.cells = moved;
-        appointment.start = start;
-        appointment.end = start + duration;
+        appointment.set_cells(&moved);
+        appointment.set_start(start);
+        appointment.set_end(start + duration);
         changed
     }
 
@@ -1096,14 +1105,17 @@ impl Handler {
         Some((cell.day, cell.resource, slot as u32))
     }
 
-    pub fn base(&self) -> i32 {
+    pub fn base(&self) -> u64 {
         self.base
     }
 
     fn click_control(&mut self, id: &Id) -> Option<Vec<Command>> {
         if let Some(n) = step_button_at(id) {
-            self.base =
-                if n == STEP_TODAY { self.today } else { self.base + STEP_DAYS[n as usize - 1] };
+            self.base = if n == STEP_TODAY {
+                self.today
+            } else {
+                add_days(self.base, STEP_DAYS[n as usize - 1])
+            };
             return Some(self.date_commands());
         }
         if *id == modal() {
@@ -1117,19 +1129,22 @@ impl Handler {
             return Some(self.discard_commands());
         }
         if *id == month_button() {
-            self.month = month_of(self.base);
+            let (year, month, ..) = unpack(self.base);
+            self.month = (year, month);
             let mut commands = vec![hidden(edit_form(), true), hidden(month_form(), false)];
             commands.extend(self.month_commands());
             commands.push(Command::ShowModal { id: modal() });
             return Some(commands);
         }
         if let Some(delta) = month_step_at(id) {
-            let index = self.month.0 * 12 + (self.month.1 as i32 - 1) + delta;
-            self.month = (index.div_euclid(12), index.rem_euclid(12) as u32 + 1);
+            let index = self.month.0 * 12 + (self.month.1 - 1) + i64::from(delta);
+            self.month = (index.div_euclid(12), index.rem_euclid(12) + 1);
             return Some(self.month_commands());
         }
         if let Some(index) = month_cell_at(id) {
-            self.base = month_origin(self.month.0, self.month.1) + index as i32;
+            let first = pack(self.month.0, self.month.1, 1, 0, 0, 0, 0, 0, 0);
+            let origin = sub_days(first, weekday(first) as i64 - 1);
+            self.base = add_days(origin, index as i64);
             let mut commands = self.date_commands();
             commands.push(Command::CloseModal { id: modal() });
             return Some(commands);
@@ -1141,7 +1156,7 @@ impl Handler {
         let index = heading_axis().cell(n - 1).map_or(0, |cell| cell.resource as usize);
         let value = match self.calendar.as_ref().and_then(|calendar| calendar.resources.get(index))
         {
-            Some(resource) => resource.name.clone(),
+            Some(resource) => String::from(resource.name()),
             None => format!("R{}", index + 1),
         };
         Command::SetText { id: resource_name(n), value }
@@ -1160,18 +1175,20 @@ impl Handler {
         let mut columns: BTreeMap<u32, Vec<(usize, usize, u32, u32)>> = BTreeMap::new();
         let mut extent: BTreeMap<usize, (i32, i32)> = BTreeMap::new();
         for (index, appointment) in calendar.appointments.iter().enumerate() {
-            let Some((start, end)) = grid.time.clip(appointment.start, appointment.end) else {
+            let Some((start, end)) = grid.time.clip(appointment.start(), appointment.end()) else {
                 continue;
             };
-            for (cell_index, place) in appointment.cells.iter().enumerate() {
-                let Some(resource) = calendar.resources.iter().position(|r| r.id == place.resource)
+            for (cell_index, place) in appointment.cells().iter().enumerate() {
+                let Some(resource) =
+                    calendar.resources.iter().position(|r| r.id() == place.resource)
                 else {
                     continue;
                 };
-                let flat = grid.columns.flat(place.day - self.base, resource as u32);
+                let offset = diff(self.base, place.day) / DAY;
+                let flat = grid.columns.flat(offset as i32, resource as u32);
                 let range = extent.entry(index).or_insert((flat, flat));
                 *range = (range.0.min(flat), range.1.max(flat));
-                let Ok(day) = u32::try_from(place.day - self.base) else {
+                let Ok(day) = u32::try_from(offset) else {
                     continue;
                 };
                 let Some(unit) = grid.columns.unit(Cell { day, resource: resource as u32 }) else {
@@ -1251,8 +1268,11 @@ impl Handler {
                     calendar
                         .shifts
                         .iter()
-                        .find(|s| s.day == self.base + cell.day as i32 && s.resource == resource.id)
-                        .map(|s| s.person.clone())
+                        .find(|s| {
+                            s.day() == add_days(self.base, i64::from(cell.day))
+                                && s.resource() == resource.id()
+                        })
+                        .map(|s| String::from(s.person()))
                 });
             commands.push(Command::SetText {
                 id:    resource_person(n),
@@ -1339,8 +1359,8 @@ impl Handler {
             let status = calendar
                 .statuses
                 .iter()
-                .find(|s| s.code == appointment.status)
-                .map_or(appointment.status.as_str(), |s| s.label.as_str());
+                .find(|s| s.code() == appointment.status())
+                .map_or(appointment.status(), |s| s.label());
             commands.push(Command::RemoveAttribute {
                 id:        card_item(n),
                 attribute: Attribute::Hidden,
@@ -1366,15 +1386,15 @@ impl Handler {
                     card_part(n, CardPart::Time),
                     format!(
                         "{:02}:{:02}–{:02}:{:02}",
-                        appointment.start / 60,
-                        appointment.start % 60,
-                        appointment.end / 60,
-                        appointment.end % 60
+                        appointment.start() / 60,
+                        appointment.start() % 60,
+                        appointment.end() / 60,
+                        appointment.end() % 60
                     ),
                 ),
-                (card_part(n, CardPart::Title), appointment.title.clone()),
-                (card_part(n, CardPart::Category), appointment.category.clone()),
-                (card_part(n, CardPart::Note), appointment.note.clone()),
+                (card_part(n, CardPart::Title), String::from(appointment.title())),
+                (card_part(n, CardPart::Category), String::from(appointment.category())),
+                (card_part(n, CardPart::Note), String::from(appointment.note())),
             ] {
                 commands.push(Command::SetText { id, value });
             }
@@ -1409,13 +1429,15 @@ impl Handler {
     }
 
     fn persist(&mut self, index: usize) -> Vec<Command> {
-        let (Some(store), Some(calendar)) = (self.store.as_mut(), self.calendar.as_ref()) else {
+        let now = self.now;
+        let (Some(store), Some(calendar)) = (self.store.as_mut(), self.calendar.as_mut()) else {
             return vec![];
         };
-        let Some(appointment) = calendar.appointments.get(index) else {
+        let Some(appointment) = calendar.appointments.get_mut(index) else {
             return vec![];
         };
-        match store::put_appointment(store.as_mut(), appointment) {
+        appointment.touch(now);
+        match store::put(store.as_mut(), appointment) {
             Ok(()) => vec![],
             Err(error) => vec![data_error(error)],
         }
@@ -1469,14 +1491,17 @@ impl Handler {
         let mut commands: Vec<Command> = (1..=days)
             .map(|n| Command::SetText {
                 id:    day_title(n),
-                value: short_title(self.base + n as i32 - 1),
+                value: display(add_days(self.base, i64::from(n) - 1), LANG, Format::Short),
             })
             .collect();
-        let first = long_title(self.base);
+        let first = display(self.base, LANG, Format::Long);
         let value = if days == 1 {
             first
         } else {
-            format!("{first} – {}", long_title(self.base + days as i32 - 1))
+            format!(
+                "{first} – {}",
+                display(add_days(self.base, i64::from(days) - 1), LANG, Format::Long,)
+            )
         };
         commands.push(Command::SetText { id: title(), value });
         commands.extend(self.band_commands());
@@ -1486,12 +1511,13 @@ impl Handler {
 
     fn month_commands(&self) -> Vec<Command> {
         let (year, month) = self.month;
-        let origin = month_origin(year, month);
+        let first = pack(year, month, 1, 0, 0, 0, 0, 0, 0);
+        let origin = sub_days(first, weekday(first) as i64 - 1);
         let mut commands =
             vec![Command::SetText { id: month_title(), value: format!("{year}年{month}月") }];
         for index in 0..MONTH_CELL_COUNT {
-            let day = origin + index as i32;
-            let (_, cell_month, cell_day) = civil_from_days(day);
+            let day = add_days(origin, index as i64);
+            let (_, cell_month, cell_day, ..) = unpack(day);
             let id = month_cell(index);
             commands.push(Command::SetText { id: id.clone(), value: format!("{cell_day}") });
             commands.push(if cell_month == month {
@@ -1590,14 +1616,14 @@ impl Handler {
 fn shift_cells(
     calendar: &Calendar,
     cells: &[Place],
-    day: i32,
+    day: u64,
     resource: usize,
 ) -> Result<Vec<Place>, &'static str> {
     let first = cells.first().ok_or("予約がありません")?;
     let position = |place: &Place| {
-        calendar.resources.iter().position(|r| r.id == place.resource).ok_or("資源が不正です")
+        calendar.resources.iter().position(|r| r.id() == place.resource).ok_or("資源が不正です")
     };
-    let day_delta = day - first.day;
+    let day_delta = diff(first.day, day) / DAY;
     let resource_delta = resource as i32 - position(first)? as i32;
     cells
         .iter()
@@ -1605,7 +1631,7 @@ fn shift_cells(
             let index = usize::try_from(position(place)? as i32 + resource_delta)
                 .map_err(|_| "範囲外です")?;
             let moved = calendar.resources.get(index).ok_or("範囲外です")?;
-            Ok(Place { day: place.day + day_delta, resource: moved.id })
+            Ok(Place { day: add_days(place.day, day_delta), resource: moved.id() })
         })
         .collect()
 }
@@ -1616,11 +1642,11 @@ fn preview_item() -> Id {
 
 fn hours(calendar: &Calendar) -> Option<Hours> {
     let first = calendar.shifts.first()?;
-    let mut hours = Hours { open: first.open, close: first.close, rest: first.break_range };
+    let mut hours = Hours { open: first.open(), close: first.close(), rest: first.break_range() };
     for shift in &calendar.shifts[1..] {
-        hours.open = hours.open.min(shift.open);
-        hours.close = hours.close.max(shift.close);
-        hours.rest = match (hours.rest, shift.break_range) {
+        hours.open = hours.open.min(shift.open());
+        hours.close = hours.close.max(shift.close());
+        hours.rest = match (hours.rest, shift.break_range()) {
             (Some((a, b)), Some((c, d))) if a.max(c) < b.min(d) => Some((a.max(c), b.min(d))),
             _ => None,
         };
@@ -1630,11 +1656,6 @@ fn hours(calendar: &Calendar) -> Option<Hours> {
 
 fn fits(calendar: &Calendar, start: u32, end: u32) -> bool {
     hours(calendar).is_none_or(|hours| hours.open <= start && end <= hours.close)
-}
-
-fn day_number(now: f64, timezone_offset_minutes: i32) -> i32 {
-    let minutes = libm::floor(now / 60_000.0) as i64 + timezone_offset_minutes as i64;
-    minutes.div_euclid(1440) as i32
 }
 
 fn column_px(viewport_width_px: f64, view: View, rem_in_px: f64) -> f64 {
@@ -1919,19 +1940,20 @@ fn month_cell_at(id: &Id) -> Option<usize> {
     (0..MONTH_CELL_COUNT).find(|index| *id == month_cell(*index))
 }
 
-fn month_of(days: i32) -> (i32, u32) {
-    let (year, month, _) = civil_from_days(days);
-    (year, month)
-}
-
 #[cfg(test)]
 mod tests {
     use alloc::vec::Vec;
+    use core::{
+        future::Future,
+        pin::pin,
+        task::{Context, Poll, Waker},
+    };
     use std::fs;
 
     use super::*;
     use crate::{
-        calendar::{date::days_from_civil, store::memory::MemoryStore},
+        calendar::{data::Record, store::memory::MemoryStore},
+        data_struct::ID_MODIFIED_AT,
         js_client::KeyName,
     };
 
@@ -1944,18 +1966,38 @@ mod tests {
     const GRAB_X: f64 = 40.0;
     const GRAB_Y: f64 = 40.0;
 
-    fn today() -> i32 {
-        days_from_civil(2026, 10, 2)
+    fn block_on<F: Future>(future: F) -> F::Output {
+        let mut future = pin!(future);
+        let mut context = Context::from_waker(Waker::noop());
+        loop {
+            if let Poll::Ready(output) = future.as_mut().poll(&mut context) {
+                return output;
+            }
+        }
+    }
+
+    fn after(day: u64, n: i64) -> u64 {
+        add_days(day, n)
+    }
+
+    fn today() -> u64 {
+        pack(2026, 10, 2, 0, 0, 0, 0, 0, 0)
     }
 
     #[test]
-    fn day_number_follows_the_local_date() {
+    fn ready_follows_the_local_date() {
         let new_millennium = 946_684_800_000.0;
-        assert_eq!(day_number(new_millennium, 0), days_from_civil(2000, 1, 1));
-        assert_eq!(day_number(new_millennium, 540), days_from_civil(2000, 1, 1));
-        assert_eq!(day_number(new_millennium, -1), days_from_civil(1999, 12, 31));
-        assert_eq!(day_number(new_millennium + 899.0 * 60_000.0, 540), days_from_civil(2000, 1, 1));
-        assert_eq!(day_number(new_millennium + 900.0 * 60_000.0, 540), days_from_civil(2000, 1, 2));
+        for (now, offset, expected) in [
+            (new_millennium, 0, (2000, 1, 1)),
+            (new_millennium, 540, (2000, 1, 1)),
+            (new_millennium, -1, (1999, 12, 31)),
+            (new_millennium + 899.0 * 60_000.0, 540, (2000, 1, 1)),
+            (new_millennium + 900.0 * 60_000.0, 540, (2000, 1, 2)),
+        ] {
+            let handler = block_on(Handler::ready(VIEWPORT, 0.0, REM, now, offset));
+            let (year, month, day) = expected;
+            assert_eq!(handler.base(), pack(year, month, day, 0, 0, 0, 0, 0, 0), "{now} {offset}");
+        }
     }
     const ROOT: (f64, f64) = (0.0, 40.0);
 
@@ -2116,7 +2158,7 @@ mod tests {
         let mut handler = Handler::new(VIEWPORT, today(), REM);
         for (button, expected) in [(5, 7), (1, 0), (2, -1), (4, 0), (4, 1)] {
             press(&mut handler, step_button(button));
-            assert_eq!(handler.base() - today(), expected);
+            assert_eq!(diff(today(), handler.base()) / DAY, expected);
         }
         let commands = press(&mut handler, step_button(3));
         assert_eq!(handler.base(), today());
@@ -2138,8 +2180,8 @@ mod tests {
         let commands = press(&mut handler, month_button());
         assert!(matches!(commands.last(), Some(Command::ShowModal { id }) if *id == modal()));
         assert_eq!(text_of(&commands, &month_title()).unwrap(), "2026年10月");
-        assert_eq!(text_of(&commands, &month_cell(0)).unwrap(), "27");
-        assert_eq!(text_of(&commands, &month_cell(5)).unwrap(), "2");
+        assert_eq!(text_of(&commands, &month_cell(0)).unwrap(), "28");
+        assert_eq!(text_of(&commands, &month_cell(4)).unwrap(), "2");
         let current: Vec<_> = commands
             .iter()
             .filter(|command| {
@@ -2148,7 +2190,7 @@ mod tests {
             .collect();
         assert!(matches!(
             current.as_slice(),
-            [Command::SetAttribute { id, value, .. }] if *id == month_cell(5) && value == "date"
+            [Command::SetAttribute { id, value, .. }] if *id == month_cell(4) && value == "date"
         ));
         let enabled = commands
             .iter()
@@ -2168,12 +2210,12 @@ mod tests {
                 _ => None,
             })
             .collect();
-        assert_eq!(filled, [month_cell(5)]);
+        assert_eq!(filled, [month_cell(4)]);
     }
 
     #[test]
     fn month_steps_wrap_the_year() {
-        let mut handler = Handler::new(VIEWPORT, days_from_civil(2026, 1, 15), REM);
+        let mut handler = Handler::new(VIEWPORT, pack(2026, 1, 15, 0, 0, 0, 0, 0, 0), REM);
         press(&mut handler, month_button());
         let commands = press(&mut handler, month_step(1));
         assert_eq!(text_of(&commands, &month_title()).unwrap(), "2025年12月");
@@ -2188,8 +2230,8 @@ mod tests {
         let mut handler = Handler::new(VIEWPORT, today(), REM);
         press(&mut handler, month_button());
         press(&mut handler, month_step(2));
-        let commands = press(&mut handler, month_cell(10));
-        assert_eq!(handler.base(), days_from_civil(2026, 11, 11));
+        let commands = press(&mut handler, month_cell(16));
+        assert_eq!(handler.base(), pack(2026, 11, 11, 0, 0, 0, 0, 0, 0));
         assert!(matches!(commands.last(), Some(Command::CloseModal { id }) if *id == modal()));
         assert_eq!(text_of(&commands, &day_title(1)).unwrap(), "11/11(水)");
     }
@@ -2264,48 +2306,49 @@ mod tests {
 
     fn appointment(
         id: u32,
-        day: i32,
+        day: u64,
         resource: u32,
         start: u32,
         end: u32,
     ) -> crate::calendar::data::Appointment {
-        crate::calendar::data::Appointment {
+        crate::calendar::data::Appointment::new(
             id,
-            cells: vec![crate::calendar::data::Place { day, resource }],
+            &[crate::calendar::data::Place { day, resource }],
             start,
             end,
-            title: format!("t{id}"),
-            category: String::from("c"),
-            status: String::from("done"),
-            note: String::new(),
-        }
+            &format!("t{id}"),
+            "c",
+            "done",
+            "",
+        )
     }
 
     fn calendar_with(appointments: Vec<crate::calendar::data::Appointment>) -> Calendar {
         Calendar {
             headers: Default::default(),
             resources: (101..105)
-                .map(|id| crate::calendar::data::Resource {
-                    id,
-                    name: format!("Studio {}", id - 100),
-                    accent: String::from("blue"),
+                .map(|id| {
+                    crate::calendar::data::Resource::new(
+                        id,
+                        &format!("Studio {}", id - 100),
+                        "blue",
+                    )
                 })
                 .collect(),
-            statuses: vec![crate::calendar::data::Status {
-                code:   String::from("done"),
-                label:  String::from("D"),
-                accent: String::from("green"),
-            }],
+            statuses: vec![crate::calendar::data::Status::new(0, "done", "D", "green")],
             shifts: (-3..11)
-                .flat_map(|day| {
-                    (101..105).map(move |resource| crate::calendar::data::Shift {
-                        day: today() + day,
+                .flat_map(|day| (101..105).map(move |resource| (day, resource)))
+                .enumerate()
+                .map(|(index, (day, resource))| {
+                    crate::calendar::data::Shift::new(
+                        index as u32,
+                        after(today(), day),
                         resource,
-                        person: String::from("p"),
-                        open: 540,
-                        close: 1200,
-                        break_range: None,
-                    })
+                        "p",
+                        540,
+                        1200,
+                        None,
+                    )
                 })
                 .collect(),
             appointments,
@@ -2355,9 +2398,9 @@ mod tests {
         handler.calendar = Some(calendar_with(vec![
             appointment(1, base, 101, 600, 660),
             appointment(2, base, 101, 630, 690),
-            appointment(3, base + 10, 101, 600, 660),
-            appointment(4, base + 1, 102, 480, 570),
-            appointment(5, base - 1, 101, 600, 660),
+            appointment(3, after(base, 10), 101, 600, 660),
+            appointment(4, after(base, 1), 102, 480, 570),
+            appointment(5, after(base, -1), 101, 600, 660),
             appointment(6, base, 999, 600, 660),
         ]));
         let commands = handler.card_commands();
@@ -2377,8 +2420,8 @@ mod tests {
         let mut handler = Handler::new(VIEWPORT, base, REM);
         handler.calendar = Some(calendar_with(vec![
             appointment(1, base, 101, 600, 660),
-            appointment(2, base + 1, 101, 600, 660),
-            appointment(3, base + 2, 101, 600, 660),
+            appointment(2, after(base, 1), 101, 600, 660),
+            appointment(3, after(base, 2), 101, 600, 660),
         ]));
         assert_eq!(shown_count(&handler.card_commands()), 3);
         let commands = press(&mut handler, view_button(1));
@@ -2421,8 +2464,8 @@ mod tests {
         let expected = calendar
             .appointments
             .iter()
-            .flat_map(|a| a.cells.iter())
-            .filter(|cell| (0..7).contains(&(cell.day - today())))
+            .flat_map(|a| a.cells())
+            .filter(|cell| (0..7).contains(&(diff(today(), cell.day) / DAY)))
             .count();
         assert!(expected > 0);
         assert_eq!(shown_count(&commands), expected);
@@ -2476,7 +2519,7 @@ mod tests {
         (ROOT.0 + AXIS_PX, ROOT.1 + HEAD_PX)
     }
 
-    fn drag_fixture() -> (Handler, i32) {
+    fn drag_fixture() -> (Handler, u64) {
         let base = today();
         let mut handler = Handler::new(VIEWPORT, base, REM);
         handler.calendar = Some(calendar_with(vec![
@@ -2552,9 +2595,9 @@ mod tests {
         drag_to(&mut handler, pointer_x, pointer_y);
         let commands = end(&mut handler);
         let moved = &handler.calendar().unwrap().appointments[0];
-        assert_eq!(moved.cells[0].day, base + 2);
-        assert_eq!(moved.cells[0].resource, 103);
-        assert_eq!((moved.start, moved.end), (540 + 150, 540 + 210));
+        assert_eq!(moved.cells()[0].day, after(base, 2));
+        assert_eq!(moved.cells()[0].resource, 103);
+        assert_eq!((moved.start(), moved.end()), (540 + 150, 540 + 210));
         assert_eq!(shown_count(&commands), 2);
         assert!(matches!(
             commands.first(),
@@ -2572,7 +2615,7 @@ mod tests {
             drag_to(&mut handler, grid_origin().0 + 5.0, pointer_y);
             end(&mut handler);
             let moved = &handler.calendar().unwrap().appointments[0];
-            assert_eq!(moved.start, 540 + expected_slot * 15, "extra {extra}");
+            assert_eq!(moved.start(), 540 + expected_slot * 15, "extra {extra}");
         }
     }
 
@@ -2588,7 +2631,7 @@ mod tests {
         drag_to(&mut handler, ox + 5.0, oy + 43.2 * SLOT_PX + grab_y);
         end(&mut handler);
         let moved = &handler.calendar().unwrap().appointments[0];
-        assert_eq!((moved.start, moved.end), (20 * 60 - 60, 20 * 60));
+        assert_eq!((moved.start(), moved.end()), (20 * 60 - 60, 20 * 60));
     }
 
     #[test]
@@ -2603,7 +2646,7 @@ mod tests {
             let commands = end(&mut handler);
             let unchanged = &handler.calendar().unwrap().appointments[0];
             assert_eq!(
-                (unchanged.cells[0].day, unchanged.cells[0].resource, unchanged.start),
+                (unchanged.cells()[0].day, unchanged.cells()[0].resource, unchanged.start()),
                 (base, 101, 600)
             );
             assert_eq!(translate_of(&commands, 1), Some((0.0, 112.0)));
@@ -2620,7 +2663,7 @@ mod tests {
         assert!(handler.drag.is_none());
         assert_eq!(translate_of(&commands, 1), Some((0.0, 112.0)));
         let unchanged = &handler.calendar().unwrap().appointments[0];
-        assert_eq!((unchanged.cells[0].day, unchanged.start), (base, 600));
+        assert_eq!((unchanged.cells()[0].day, unchanged.start()), (base, 600));
     }
 
     #[test]
@@ -2644,7 +2687,7 @@ mod tests {
         drag_to(&mut handler, ox + column_px * 3.0 + 5.0, oy + 4.0 * SLOT_PX + GRAB_Y);
         end(&mut handler);
         let moved = &handler.calendar().unwrap().appointments[0];
-        assert_eq!((moved.cells[0].day, moved.cells[0].resource), (base, 104));
+        assert_eq!((moved.cells()[0].day, moved.cells()[0].resource), (base, 104));
     }
 
     #[test]
@@ -2668,9 +2711,17 @@ mod tests {
                 end(&mut handler);
                 let moved = &handler.calendar().unwrap().appointments[0];
                 let cell = axis.cell(unit).unwrap();
-                assert_eq!(moved.cells[0].day, base + cell.day as i32, "view {days} unit {unit}");
-                assert_eq!(moved.cells[0].resource, 101 + cell.resource, "view {days} unit {unit}");
-                assert_eq!(moved.start, 600);
+                assert_eq!(
+                    moved.cells()[0].day,
+                    after(base, i64::from(cell.day)),
+                    "view {days} unit {unit}"
+                );
+                assert_eq!(
+                    moved.cells()[0].resource,
+                    101 + cell.resource,
+                    "view {days} unit {unit}"
+                );
+                assert_eq!(moved.start(), 600);
             }
         }
     }
@@ -2688,15 +2739,31 @@ mod tests {
         assert_eq!(handler.grid().resolve(&bx).unwrap().cells, [Cell { day: 1, resource: 1 }]);
     }
 
-    fn multi_fixture(view_button_number: u32) -> (Handler, i32) {
+    fn multi_fixture(view_button_number: u32) -> (Handler, u64) {
         let base = today();
         let mut handler = Handler::new(VIEWPORT, base, REM);
         let mut spanning = appointment(1, base, 102, 600, 660);
-        spanning.cells.push(crate::calendar::data::Place { day: base, resource: 103 });
+        let mut cells = spanning.cells();
+        cells.push(crate::calendar::data::Place { day: base, resource: 103 });
+        spanning.set_cells(&cells);
         handler.calendar = Some(calendar_with(vec![spanning]));
         press(&mut handler, view_button(view_button_number));
         handler.card_commands();
         (handler, base)
+    }
+
+    fn open_at(handler: &mut Handler, minutes: u32) {
+        for shift in &mut handler.calendar.as_mut().unwrap().shifts {
+            *shift = crate::calendar::data::Shift::new(
+                crate::calendar::data::Record::identity(shift),
+                shift.day(),
+                shift.resource(),
+                shift.person(),
+                minutes,
+                shift.close(),
+                shift.break_range(),
+            );
+        }
     }
 
     fn drag_piece(handler: &mut Handler, n: u32, from_unit: u32, to_unit: u32) {
@@ -2715,9 +2782,9 @@ mod tests {
         end(handler);
     }
 
-    fn places(handler: &Handler) -> Vec<(i32, u32)> {
+    fn places(handler: &Handler) -> Vec<(u64, u32)> {
         handler.calendar().unwrap().appointments[0]
-            .cells
+            .cells()
             .iter()
             .map(|place| (place.day, place.resource))
             .collect()
@@ -2754,7 +2821,7 @@ mod tests {
         let base = today();
         let (mut handler, _) = multi_fixture(3);
         drag_piece(&mut handler, 1, 1, 3);
-        assert_eq!(places(&handler), [(base, 104), (base + 1, 101)]);
+        assert_eq!(places(&handler), [(base, 104), (after(base, 1), 101)]);
         let commands = handler.card_commands();
         assert_eq!(shown_count(&commands), 2);
     }
@@ -2764,7 +2831,9 @@ mod tests {
         let base = today();
         let mut handler = Handler::new(VIEWPORT, base, REM);
         let mut crossing = appointment(1, base, 104, 600, 660);
-        crossing.cells.push(crate::calendar::data::Place { day: base + 1, resource: 101 });
+        let mut cells = crossing.cells();
+        cells.push(crate::calendar::data::Place { day: after(base, 1), resource: 101 });
+        crossing.set_cells(&cells);
         handler.calendar = Some(calendar_with(vec![crossing]));
         press(&mut handler, view_button(1));
         let commands = handler.card_commands();
@@ -2821,7 +2890,7 @@ mod tests {
 
     fn times(handler: &Handler) -> (u32, u32) {
         let appointment = &handler.calendar().unwrap().appointments[0];
-        (appointment.start, appointment.end)
+        (appointment.start(), appointment.end())
     }
 
     #[test]
@@ -2937,7 +3006,7 @@ mod tests {
         end(&mut handler);
         assert_eq!(
             places(&handler),
-            [(base, 102), (base, 103), (base, 104), (base + 1, 101), (base + 1, 102)]
+            [(base, 102), (base, 103), (base, 104), (after(base, 1), 101), (after(base, 1), 102)]
         );
     }
 
@@ -3011,7 +3080,9 @@ mod tests {
         let make = || {
             let mut handler = Handler::new(VIEWPORT, base, REM);
             let mut crossing = appointment(1, base, 104, 600, 660);
-            crossing.cells.push(crate::calendar::data::Place { day: base + 1, resource: 101 });
+            let mut cells = crossing.cells();
+            cells.push(crate::calendar::data::Place { day: after(base, 1), resource: 101 });
+            crossing.set_cells(&cells);
             handler.calendar = Some(calendar_with(vec![crossing]));
             press(&mut handler, view_button(1));
             handler.card_commands();
@@ -3022,7 +3093,7 @@ mod tests {
         press_local(&mut handler, 1, 3.0 * column_px + 100.0, 221.0);
         drag_by(&mut handler, 0.0, SLOT_PX);
         end(&mut handler);
-        assert_eq!(places(&handler), [(base, 104), (base + 1, 101)]);
+        assert_eq!(places(&handler), [(base, 104), (after(base, 1), 101)]);
         assert_eq!(times(&handler), (600, 675));
 
         let mut handler = make();
@@ -3030,7 +3101,10 @@ mod tests {
         assert_eq!(resize_corner(&handler), Some([Some(true), None]));
         drag_by(&mut handler, -2.0 * column_px, 0.0);
         end(&mut handler);
-        assert_eq!(places(&handler), [(base, 102), (base, 103), (base, 104), (base + 1, 101)]);
+        assert_eq!(
+            places(&handler),
+            [(base, 102), (base, 103), (base, 104), (after(base, 1), 101)]
+        );
     }
 
     #[test]
@@ -3166,7 +3240,7 @@ mod tests {
             let placed = handler.placed.borrow();
             (placed[0].index, placed[0].base)
         };
-        let before = handler.calendar().unwrap().appointments[index].start;
+        let before = handler.calendar().unwrap().appointments[index].start();
         let (ox, oy) = grid_origin();
         handler.process_canvas(
             &pointer_down(card_part(1, CardPart::Title), ox + base[0] + 40.0, oy + base[1] + 20.0),
@@ -3214,20 +3288,20 @@ mod tests {
         let (mut handler, store) = with_store();
         handler.process_fetched(&sample_response(1, 200));
         let (index, before) = drag_first_card_by(&mut handler, 2.0 * SLOT_PX);
-        let after = handler.calendar().unwrap().appointments[index].start;
+        let after = handler.calendar().unwrap().appointments[index].start();
         assert_eq!(after, before + 30);
         assert!(handler.dirty());
         assert_eq!(store.pending_len(), 1);
-        assert_eq!(committed_calendar(&store).appointments[index].start, before);
+        assert_eq!(committed_calendar(&store).appointments[index].start(), before);
 
         press(&mut handler, save_button());
         assert!(!handler.dirty());
         assert_eq!(store.pending_len(), 0);
-        assert_eq!(committed_calendar(&store).appointments[index].start, after);
+        assert_eq!(committed_calendar(&store).appointments[index].start(), after);
 
         let mut reloaded = Handler::new(VIEWPORT, today(), REM);
         reloaded.attach(Box::new(store.clone()));
-        assert_eq!(reloaded.calendar().unwrap().appointments[index].start, after);
+        assert_eq!(reloaded.calendar().unwrap().appointments[index].start(), after);
     }
 
     #[test]
@@ -3238,7 +3312,7 @@ mod tests {
         store.0.borrow_mut().pending.clear();
         let mut reloaded = Handler::new(VIEWPORT, today(), REM);
         reloaded.attach(Box::new(store.clone()));
-        assert_eq!(reloaded.calendar().unwrap().appointments[index].start, before);
+        assert_eq!(reloaded.calendar().unwrap().appointments[index].start(), before);
     }
 
     #[test]
@@ -3247,7 +3321,7 @@ mod tests {
         handler.process_fetched(&sample_response(1, 200));
         let (index, before) = drag_first_card_by(&mut handler, 2.0 * SLOT_PX);
         let commands = handler.discard_commands();
-        assert_eq!(handler.calendar().unwrap().appointments[index].start, before);
+        assert_eq!(handler.calendar().unwrap().appointments[index].start(), before);
         assert!(!handler.dirty());
         assert_eq!(store.pending_len(), 0);
         assert_eq!(save_disabled(&commands), [true]);
@@ -3265,9 +3339,9 @@ mod tests {
         let (_, commands) = handler.process_fetched(&sample_response(1, 200));
         handler.set_origin(ROOT);
         let calendar = handler.calendar().unwrap();
-        let shift = calendar.shifts.iter().find(|s| s.day == today()).unwrap().clone();
+        let shift = calendar.shifts.iter().find(|s| s.day() == today()).unwrap().clone();
         let resource =
-            calendar.resources.iter().position(|r| r.id == shift.resource).unwrap() as u32;
+            calendar.resources.iter().position(|r| r.id() == shift.resource()).unwrap() as u32;
         let kinds: Vec<BandKind> = handler.bands.borrow().iter().map(|band| band.kind).collect();
         assert_eq!(kinds, [BandKind::Closed, BandKind::Closed, BandKind::Break]);
         let hit = |slot| handler.band_hit(band_point(slot));
@@ -3277,7 +3351,7 @@ mod tests {
         assert_eq!(hit(14.5), Some(BandKind::Break));
         assert_eq!(hit(38.5), Some(BandKind::Closed));
         assert_eq!(hit(43.5), Some(BandKind::Closed));
-        assert_eq!(text_of(&commands, &resource_person(resource + 1)).unwrap(), shift.person);
+        assert_eq!(text_of(&commands, &resource_person(resource + 1)).unwrap(), shift.person());
         let shown = commands
             .iter()
             .filter(|command| {
@@ -3311,8 +3385,14 @@ mod tests {
         grab(&mut handler, 1);
         let (_, commands) = handler.process_gesture(&Gesture::Tap, &state(), None);
         let appointment = handler.calendar().unwrap().appointments[0].clone();
-        assert_eq!(value_of(&commands, &edit_field(EditField::Title)).unwrap(), appointment.title);
-        assert_eq!(value_of(&commands, &edit_field(EditField::Date)).unwrap(), format_iso(base));
+        assert_eq!(
+            value_of(&commands, &edit_field(EditField::Title)).unwrap(),
+            appointment.title()
+        );
+        assert_eq!(
+            value_of(&commands, &edit_field(EditField::Date)).unwrap(),
+            display(base, Lang::Ja, Format::Date)
+        );
         assert_eq!(value_of(&commands, &edit_field(EditField::Resource)).unwrap(), "101");
         assert_eq!(value_of(&commands, &edit_field(EditField::Start)).unwrap(), "10:00");
         assert!(matches!(commands.last(), Some(Command::ShowModal { id }) if *id == modal()));
@@ -3349,7 +3429,10 @@ mod tests {
         let (mut handler, base) = drag_fixture();
         let commands = tap_empty(&mut handler, 2.0, 4.0);
         assert_eq!(value_of(&commands, &edit_field(EditField::Title)).unwrap(), "");
-        assert_eq!(value_of(&commands, &edit_field(EditField::Date)).unwrap(), format_iso(base));
+        assert_eq!(
+            value_of(&commands, &edit_field(EditField::Date)).unwrap(),
+            display(base, Lang::Ja, Format::Date)
+        );
         assert_eq!(value_of(&commands, &edit_field(EditField::Resource)).unwrap(), "103");
         assert_eq!(value_of(&commands, &edit_field(EditField::Start)).unwrap(), "10:00");
         assert_eq!(value_of(&commands, &edit_field(EditField::End)).unwrap(), "11:00");
@@ -3378,7 +3461,10 @@ mod tests {
         assert_eq!(value_of(&commands, &edit_field(EditField::Start)).unwrap(), "11:00");
         assert_eq!(value_of(&commands, &edit_field(EditField::End)).unwrap(), "12:00");
         assert_eq!(value_of(&commands, &edit_field(EditField::Resource)).unwrap(), "103");
-        assert_eq!(value_of(&commands, &edit_field(EditField::Date)).unwrap(), format_iso(base));
+        assert_eq!(
+            value_of(&commands, &edit_field(EditField::Date)).unwrap(),
+            display(base, Lang::Ja, Format::Date)
+        );
         assert!(commands.iter().any(|c| matches!(c,
             Command::SetAttribute { id, attribute: Attribute::Hidden, .. } if *id == preview_item())));
         assert!(matches!(commands.last(), Some(Command::ShowModal { .. })));
@@ -3393,14 +3479,16 @@ mod tests {
         };
         assert_eq!(cells.len(), 4);
         assert_eq!(cells[0], Place { day: base, resource: 103 });
-        assert_eq!(cells[3], Place { day: base + 1, resource: 102 });
-        let query = form_query("Span", &format_iso(base), 103, "12:30", "14:30")
-            .replace("done", "scheduled");
-        handler.calendar.as_mut().unwrap().statuses[0].code = String::from("scheduled");
+        assert_eq!(cells[3], Place { day: after(base, 1), resource: 102 });
+        let query =
+            form_query("Span", &display(base, Lang::Ja, Format::Date), 103, "12:30", "14:30")
+                .replace("done", "scheduled");
+        handler.calendar.as_mut().unwrap().statuses[0] =
+            crate::calendar::data::Status::new(0, "scheduled", "D", "green");
         submit(&mut handler, &query);
         let added = handler.calendar().unwrap().appointments.last().unwrap();
-        assert_eq!(added.cells.len(), 4);
-        assert_eq!((added.start, added.end), (750, 870));
+        assert_eq!(added.cells().len(), 4);
+        assert_eq!((added.start(), added.end()), (750, 870));
     }
 
     #[test]
@@ -3477,33 +3565,37 @@ mod tests {
     #[test]
     fn submitting_a_new_form_adds_a_persisted_appointment() {
         let (mut handler, store) = with_store();
+        handler.now = pack(2026, 10, 2, 12, 0, 0, 0, 1, 0);
         handler.process_fetched(&sample_response(1, 200));
         let before = handler.calendar().unwrap().appointments.len();
         let shift = handler.calendar().unwrap().shifts[0].clone();
         tap_empty(&mut handler, 0.0, 0.0);
-        let date = format_iso(shift.day);
-        let (start, end) = (format_hhmm(shift.open), format_hhmm(shift.open + 60));
+        let date = display(shift.day(), Lang::Ja, Format::Date);
+        let (start, end) = (format_hhmm(shift.open()), format_hhmm(shift.open() + 60));
         let query =
-            form_query("Neo", &date, shift.resource, &start, &end).replace("done", "scheduled");
+            form_query("Neo", &date, shift.resource(), &start, &end).replace("done", "scheduled");
         let commands = submit(&mut handler, &query);
         let calendar = handler.calendar().unwrap();
         assert_eq!(calendar.appointments.len(), before + 1);
         let added = calendar.appointments.last().unwrap();
         assert_eq!(
-            (added.title.as_str(), added.start, added.end),
-            ("Neo", shift.open, shift.open + 60)
+            (added.title(), added.start(), added.end()),
+            ("Neo", shift.open(), shift.open() + 60)
         );
         assert!(handler.dirty());
         assert!(commands.iter().any(|c| matches!(c, Command::CloseModal { .. })));
-        assert!(store.pending_len() >= 2);
+        assert!(store.pending_len() == 1);
         assert!(handler.editing.is_none());
+        let key = added.key().unwrap();
+        let saved = Appointment::from_bytes(&store.get(key).unwrap()).unwrap();
+        assert_eq!(saved.data().get(ID_MODIFIED_AT).unwrap(), handler.now.to_le_bytes());
     }
 
     #[test]
     fn a_form_missing_a_field_is_rejected() {
         let (mut handler, base) = drag_fixture();
         tap_empty(&mut handler, 0.0, 0.0);
-        let query = form_query("x", &format_iso(base), 101, "09:30", "10:30");
+        let query = form_query("x", &display(base, Lang::Ja, Format::Date), 101, "09:30", "10:30");
         let missing = query.replace("&note=n", "");
         let commands = submit(&mut handler, &missing);
         assert_eq!(text_of(&commands, &edit_message()).unwrap(), "入力を読み取れません");
@@ -3515,31 +3607,28 @@ mod tests {
     fn a_form_outside_the_open_hours_is_rejected_but_an_unchanged_time_is_not() {
         let (mut handler, base) = drag_fixture();
         tap_empty(&mut handler, 0.0, 0.0);
-        for shift in &mut handler.calendar.as_mut().unwrap().shifts {
-            shift.open = 660;
-        }
-        let early = form_query("x", &format_iso(base), 101, "09:30", "10:30");
+        open_at(&mut handler, 660);
+        let early = form_query("x", &display(base, Lang::Ja, Format::Date), 101, "09:30", "10:30");
         let commands = submit(&mut handler, &early);
         assert_eq!(text_of(&commands, &edit_message()).unwrap(), "営業時間外です");
         assert_eq!(handler.calendar().unwrap().appointments.len(), 2);
         grab(&mut handler, 1);
         handler.process_gesture(&Gesture::Tap, &state(), None);
-        let same = form_query("kept", &format_iso(base), 101, "10:00", "11:00");
+        let same =
+            form_query("kept", &display(base, Lang::Ja, Format::Date), 101, "10:00", "11:00");
         submit(&mut handler, &same);
-        assert_eq!(handler.calendar().unwrap().appointments[0].title, "kept");
+        assert_eq!(handler.calendar().unwrap().appointments[0].title(), "kept");
     }
 
     #[test]
     fn a_drag_before_the_open_hours_is_refused() {
         let (mut handler, _) = drag_fixture();
-        for shift in &mut handler.calendar.as_mut().unwrap().shifts {
-            shift.open = 660;
-        }
+        open_at(&mut handler, 660);
         let before = handler.calendar().unwrap().appointments[0].clone();
         let (x, y) = grab(&mut handler, 1);
         drag_to(&mut handler, x, y + 2.0 * SLOT_PX);
         end(&mut handler);
-        assert_eq!(handler.calendar().unwrap().appointments[0].start, before.start);
+        assert_eq!(handler.calendar().unwrap().appointments[0].start(), before.start());
         assert!(!handler.dirty());
     }
 
@@ -3566,7 +3655,7 @@ mod tests {
         handler.process_fetched(&sample_response(1, 200));
         let (index, before) = drag_first_card_by(&mut handler, 2.0 * SLOT_PX);
         let commands = press(&mut handler, reload_button());
-        assert_eq!(handler.calendar().unwrap().appointments[index].start, before);
+        assert_eq!(handler.calendar().unwrap().appointments[index].start(), before);
         assert_eq!(store.pending_len(), 0);
         assert_eq!(save_disabled(&commands), [true]);
     }
@@ -3596,17 +3685,27 @@ mod tests {
             seeding.attach(Box::new(store.clone()));
             seeding.process_fetched(&sample_response(1, 200));
         }
-        store
-            .0
-            .borrow_mut()
-            .committed
-            .insert(crate::calendar::store::appointment_key(5001).unwrap(), b"{".to_vec());
+        store.0.borrow_mut().committed.insert(
+            crate::calendar::data::Record::key(
+                &Calendar::parse(
+                    &fs::read(concat!(
+                        env!("CARGO_MANIFEST_DIR"),
+                        "/examples/calendar/data/calendar.json"
+                    ))
+                    .unwrap(),
+                )
+                .unwrap()
+                .appointments[0],
+            )
+            .unwrap(),
+            b"{".to_vec(),
+        );
         let mut handler = Handler::new(VIEWPORT, today(), REM);
         handler.attach(Box::new(store.clone()));
         let (_, commands) = handler.initial_draw();
         assert!(commands.iter().any(|command| matches!(
             command,
-            Command::Error { error: Error::Data(DataError::Parse(_)) }
+            Command::Error { error: Error::Data(DataError::Format(_)) }
         )));
         assert!(!commands.iter().any(|command| matches!(command, Command::Fetch { .. })));
     }
