@@ -7,8 +7,9 @@ use core::arch::wasm32::{memory_atomic_notify, memory_atomic_wait32};
 use core::{
     assert,
     cell::UnsafeCell,
+    clone::Clone,
     fmt::{self, Debug, Display, Formatter},
-    marker::Sync,
+    marker::{Copy, Sync},
     option::Option::{self, None, Some},
     primitive::{bool, u8, u32, usize},
     ptr, slice,
@@ -54,6 +55,11 @@ pub struct Ring {
 }
 
 impl Ring {
+    /// ```
+    /// # use app::arena::COMMAND_RING;
+    /// assert_eq!(COMMAND_RING.record_size(0), 4);
+    /// assert_eq!(COMMAND_RING.record_size(5), 12);
+    /// ```
     pub const fn record_size(&self, length: usize) -> usize {
         LENGTH_PREFIX + length.div_ceil(ALIGNMENT) * ALIGNMENT
     }
@@ -368,6 +374,10 @@ pub fn report_error(error: Error) {
 mod ring_tests {
     use alloc::{vec, vec::Vec};
     use core::cell::UnsafeCell;
+    use std::{
+        format,
+        sync::{Mutex, MutexGuard},
+    };
 
     use super::*;
 
@@ -375,9 +385,9 @@ mod ring_tests {
         Ring { control: 0, payload: CONTROL_SIZE, capacity: 256, frame_max: 100 };
 
     static TEST_ARENA: Arena = Arena { bytes: UnsafeCell::new([0; ARENA_SIZE]) };
-    static GUARD: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    static GUARD: Mutex<()> = Mutex::new(());
 
-    fn fresh() -> std::sync::MutexGuard<'static, ()> {
+    fn fresh() -> MutexGuard<'static, ()> {
         let guard = GUARD.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         TEST_ARENA.control_at(TEST_RING.control, CONTROL_WRITE_OFFSET).store(0, Ordering::Relaxed);
         TEST_ARENA.control_at(TEST_RING.control, CONTROL_READ_OFFSET).store(0, Ordering::Relaxed);
@@ -396,7 +406,7 @@ mod ring_tests {
 
     fn js_number(name: &str) -> usize {
         let init_js = include_str!("../distribution/init.js");
-        let head = std::format!("const {name} = ");
+        let head = format!("const {name} = ");
         let start = init_js.find(&head).unwrap_or_else(|| panic!("{name} not found")) + head.len();
         let end = start + init_js[start..].find(';').unwrap();
         init_js[start..end].parse().unwrap()
@@ -414,7 +424,7 @@ mod ring_tests {
         assert_eq!(js_number("COMMAND_FRAME_MAX"), COMMAND_FRAME_MAX);
         assert!(
             include_str!("../distribution/init.js")
-                .contains(&std::format!("const PADDING_MARK = {:#X};", PADDING_MARK))
+                .contains(&format!("const PADDING_MARK = {:#X};", PADDING_MARK))
         );
     }
 

@@ -10,7 +10,7 @@ use core::{
     fmt::Debug,
     marker::Copy,
     option::Option::{self, None, Some},
-    primitive::{bool, f32, f64, i32, str, u8, u16, u32, usize},
+    primitive::{bool, char, f32, f64, i32, str, u8, u16, u32, usize},
 };
 
 use crate::{Error, field::Field};
@@ -251,6 +251,18 @@ pub(crate) fn get_string(input: &mut &[u8]) -> Option<String> {
     Some(str::from_utf8(get_bytes(input)?).ok()?.to_string())
 }
 
+/// ```
+/// # use app::js_client::from_url_search_params;
+/// let pairs = from_url_search_params("a=1&b=%E4%BA%88+%E5%AE%9A&a=2");
+/// assert_eq!(
+///     pairs,
+///     [
+///         (String::from("a"), String::from("1")),
+///         (String::from("b"), String::from("予 定")),
+///         (String::from("a"), String::from("2")),
+///     ]
+/// );
+/// ```
 pub fn from_url_search_params(input: &str) -> Vec<(String, String)> {
     input
         .split('&')
