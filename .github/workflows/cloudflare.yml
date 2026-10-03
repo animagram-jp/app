@@ -22,7 +22,13 @@ jobs:
                   fetch-depth: 0
 
             - name: "resolve version"
-              run: echo "VERSION=$(git describe --tags --always)" >> "$GITHUB_ENV"
+              run: |
+                  if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+                      VERSION="${GITHUB_REF_NAME}"
+                  else
+                      VERSION="$(git describe --tags --always)"
+                  fi
+                  echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
 
             - name: "install nightly toolchain (for -Z build-std)"
               run: |
