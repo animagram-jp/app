@@ -1,8 +1,8 @@
-use alloc::{vec, vec::Vec};
+use alloc::{string::String, vec, vec::Vec};
 use core::{
     matches,
     option::Option::{self, None, Some},
-    primitive::{f64, u8, u32},
+    primitive::{f64, i32, u8, u32},
 };
 
 use arbitrary_int::u2;
@@ -14,7 +14,7 @@ use crate::{
     data_struct::DataStruct,
     event::{Event, Response},
     js_client::{
-        CanvasEvent, ClassName, Command, EventType, Gesture, PointerState, VisibilityState, dom,
+        Attribute, CanvasEvent, Command, EventType, Gesture, PointerState, VisibilityState, dom,
     },
 };
 
@@ -52,7 +52,13 @@ pub struct Handler {
 }
 
 impl Handler {
-    pub async fn ready(_viewport_width: f64, _viewport_height: f64) -> Self {
+    pub async fn ready(
+        _viewport_width: f64,
+        _viewport_height: f64,
+        _rem_in_px: f64,
+        _now: f64,
+        _timezone_offset_minutes: i32,
+    ) -> Self {
         Self {
             character_sheet: CharacterSheet::Immutable,
             dialog: Dialog::None,
@@ -135,8 +141,12 @@ impl Handler {
             }
         };
         let commands = vec![
-            Command::RemoveClass { id: section(shown), value: ClassName::Hidden },
-            Command::AddClass { id: section(hidden), value: ClassName::Hidden },
+            Command::RemoveAttribute { id: section(shown), attribute: Attribute::Hidden },
+            Command::SetAttribute {
+                id:        section(hidden),
+                attribute: Attribute::Hidden,
+                value:     String::new(),
+            },
         ];
         (vec![], commands)
     }
@@ -159,13 +169,10 @@ mod tests {
 
     use crate::{
         app::App,
-        arena::{
-            ARENA, COMMAND_CONTROL, COMMAND_PAYLOAD, COMMAND_SLOT, COMMAND_SLOT_COUNT,
-            EVENT_CONTROL, EVENT_PAYLOAD, EVENT_SLOT, EVENT_SLOT_COUNT, initialize, process_event,
-        },
+        arena::{ARENA, COMMAND_RING, EVENT_RING, initialize, process_event},
         event::EVENT_CANVAS,
         js_client::{
-            EventType, OPERATION_ADD_CLASS, OPERATION_REMOVE_CLASS, dom, put_f32, put_str,
+            EventType, OPERATION_REMOVE_ATTRIBUTE, OPERATION_SET_ATTRIBUTE, dom, put_f32, put_str,
         },
     };
 
@@ -175,7 +182,7 @@ mod tests {
     async fn process_event_emits_one_frame_per_command() {
         assert_eq!(EventType::decode_u8(CLICK), EventType::Click);
         initialize();
-        App::init(false, 0.0, 0.0).await;
+        App::init(false, 0.0, 0.0, 16.0, 0.0, 0).await;
 
         let mut frame = Vec::new();
         frame.push(EVENT_CANVAS);
@@ -190,24 +197,16 @@ mod tests {
         put_f32(&mut frame, 0.0);
         frame.extend_from_slice(&0f64.to_le_bytes());
         frame.extend_from_slice(&0u32.to_le_bytes());
-        assert!(ARENA.ring_push(
-            EVENT_CONTROL,
-            EVENT_PAYLOAD,
-            EVENT_SLOT,
-            EVENT_SLOT_COUNT,
-            &frame
-        ));
+        assert!(ARENA.ring_push(EVENT_RING, &frame));
 
         process_event();
 
         let mut operations = Vec::new();
-        while let Some(command) =
-            ARENA.ring_peek(COMMAND_CONTROL, COMMAND_PAYLOAD, COMMAND_SLOT, COMMAND_SLOT_COUNT)
-        {
+        while let Some(command) = ARENA.ring_peek(COMMAND_RING) {
             operations.push(command[0]);
-            ARENA.ring_commit_pop(COMMAND_CONTROL);
+            ARENA.ring_commit_pop(COMMAND_RING);
         }
-        assert_eq!(operations, [OPERATION_REMOVE_CLASS, OPERATION_ADD_CLASS]);
+        assert_eq!(operations, [OPERATION_REMOVE_ATTRIBUTE, OPERATION_SET_ATTRIBUTE]);
     }
 }
 
@@ -256,8 +255,8 @@ mod toggle_tests {
 
     fn hidden_change(command: &Command) -> (bool, dom::Id) {
         match command {
-            Command::AddClass { id, value: ClassName::Hidden } => (true, id.clone()),
-            Command::RemoveClass { id, value: ClassName::Hidden } => (false, id.clone()),
+            Command::SetAttribute { id, attribute: Attribute::Hidden, .. } => (true, id.clone()),
+            Command::RemoveAttribute { id, attribute: Attribute::Hidden } => (false, id.clone()),
             _ => panic!("unexpected command"),
         }
     }
@@ -268,7 +267,7 @@ mod toggle_tests {
 
     #[test]
     fn the_first_click_shows_the_edit_section_and_the_second_returns_to_the_view() {
-        let mut handler = block_on(Handler::ready(0.0, 0.0));
+        let mut handler = block_on(Handler::ready(0.0, 0.0, 16.0, 0.0, 0));
 
         let first: Vec<_> =
             click(&mut handler, toggle_button()).iter().map(hidden_change).collect();
@@ -281,7 +280,7 @@ mod toggle_tests {
 
     #[test]
     fn other_targets_and_events_change_nothing() {
-        let mut handler = block_on(Handler::ready(0.0, 0.0));
+        let mut handler = block_on(Handler::ready(0.0, 0.0, 16.0, 0.0, 0));
         assert!(click(&mut handler, section(1)).is_empty());
         let first: Vec<_> =
             click(&mut handler, toggle_button()).iter().map(hidden_change).collect();

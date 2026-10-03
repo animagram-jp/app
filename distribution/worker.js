@@ -14,6 +14,9 @@ self.addEventListener("message", async (e) => {
         payload.pointer_coarse,
         payload.viewport_width,
         payload.viewport_height,
+        payload.rem_in_px,
+        payload.now,
+        payload.timezone_offset_minutes,
     );
     serve_event();
 });

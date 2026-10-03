@@ -7,7 +7,7 @@ use core::{
     default::Default,
     iter::Extend,
     option::Option::{None, Some},
-    primitive::{bool, f64, u8},
+    primitive::{bool, f64, i32, u8},
 };
 
 #[cfg(target_arch = "wasm32")]
@@ -38,8 +38,25 @@ pub struct App {
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 impl App {
-    pub async fn init(pointer_coarse: bool, viewport_width: f64, viewport_height: f64) {
-        let app = App::new(pointer_coarse, Handler::ready(viewport_width, viewport_height).await);
+    pub async fn init(
+        pointer_coarse: bool,
+        viewport_width: f64,
+        viewport_height: f64,
+        rem_in_px: f64,
+        now: f64,
+        timezone_offset_minutes: i32,
+    ) {
+        let app = App::new(
+            pointer_coarse,
+            Handler::ready(
+                viewport_width,
+                viewport_height,
+                rem_in_px,
+                now,
+                timezone_offset_minutes,
+            )
+            .await,
+        );
 
         let (_events, commands) = app.handler.initial_draw();
         for command in &commands {
@@ -61,7 +78,7 @@ impl App {
     /// # use app::app::App;
     /// # use app::arena::APP;
     /// # use app::js_client::Command;
-    /// App::init(false, 0.0, 0.0).await;
+    /// App::init(false, 0.0, 0.0, 16.0, 0.0, 0).await;
     /// let app = unsafe { (*(&raw mut APP)).as_mut() }.unwrap();
     /// app.clear();
     /// app.process(&[]);
@@ -188,7 +205,7 @@ mod tests {
     }
 
     fn new_app() -> App {
-        App::new(false, block_on(Handler::ready(0.0, 0.0)))
+        App::new(false, block_on(Handler::ready(0.0, 0.0, 16.0, 0.0, 0)))
     }
 
     fn section(n: u32) -> dom::Id {

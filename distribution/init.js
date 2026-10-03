@@ -4,32 +4,34 @@ const CONTROL_WRITE_OFFSET = 0;
 const CONTROL_READ_OFFSET = 64;
 const CONTROL_SIZE = 2 * CONTROL_READ_OFFSET;
 const LENGTH_PREFIX = 4;
+const ALIGNMENT = 4;
+const PADDING_MARK = 0xFFFFFFFF;
 const FETCH_HEADER = 1 + 4 + 2 + 1 + LENGTH_PREFIX;
 
 const EVENT_CONTROL = 0;
 const EVENT_PAYLOAD = EVENT_CONTROL + CONTROL_SIZE; // range start
-const EVENT_SLOT = 4096; // bytes per slot
-const EVENT_SLOT_COUNT = 64;
+const EVENT_CAPACITY = 262144; // bytes of the ring payload
+const EVENT_FRAME_MAX = 4096;
 
-const COMMAND_CONTROL = EVENT_PAYLOAD + EVENT_SLOT * EVENT_SLOT_COUNT;
+const COMMAND_CONTROL = EVENT_PAYLOAD + EVENT_CAPACITY;
 const COMMAND_PAYLOAD = COMMAND_CONTROL + CONTROL_SIZE; // range start
-const COMMAND_SLOT = 4096; // bytes per slot
-const COMMAND_SLOT_COUNT = 64;
+const COMMAND_CAPACITY = 1048576; // bytes of the ring payload
+const COMMAND_FRAME_MAX = 65536;
 
-const ARENA_SIZE = COMMAND_PAYLOAD + COMMAND_SLOT * COMMAND_SLOT_COUNT;
+const ARENA_SIZE = COMMAND_PAYLOAD + COMMAND_CAPACITY;
 
 const EVENT_RING = {
-    control: EVENT_CONTROL, 
-    payload: EVENT_PAYLOAD, 
-    slot: EVENT_SLOT, 
-    slot_count: EVENT_SLOT_COUNT,
+    control: EVENT_CONTROL,
+    payload: EVENT_PAYLOAD,
+    capacity: EVENT_CAPACITY,
+    frame_max: EVENT_FRAME_MAX,
 };
 
 const COMMAND_RING = {
     control: COMMAND_CONTROL,
     payload: COMMAND_PAYLOAD,
-    slot: COMMAND_SLOT,
-    slot_count: COMMAND_SLOT_COUNT,
+    capacity: COMMAND_CAPACITY,
+    frame_max: COMMAND_FRAME_MAX,
 };
 
 const EVENT_CANVAS = 1;
@@ -66,8 +68,8 @@ const S = {
     int32: null,
     uint8: null,
     data_view: null,
-    event_frame: new Uint8Array(EVENT_SLOT - LENGTH_PREFIX),
-    command_frame: new Uint8Array(COMMAND_SLOT - LENGTH_PREFIX),
+    event_frame: new Uint8Array(EVENT_FRAME_MAX),
+    command_frame: new Uint8Array(COMMAND_FRAME_MAX),
     call_app: () => {},
 };
 
@@ -96,6 +98,10 @@ function start() {
         document.body.appendChild(s);
     }
 
+    const rem_in_px = parseFloat(getComputedStyle(document.documentElement).fontSize);
+    const now = Date.now();
+    const timezone_offset_minutes = -new Date().getTimezoneOffset();
+
     if (THREAD === "main") {
         try_recover_to_worker_thread().then(async (reloading) => {
             if (reloading) return;
@@ -119,8 +125,11 @@ function start() {
 
             await App.init(
                 window.matchMedia("(pointer: coarse)").matches,
-                window.innerWidth,
+                document.documentElement.clientWidth,
                 window.innerHeight,
+                rem_in_px,
+                now,
+                timezone_offset_minutes,
             );
             bind();
             S.call_app();
@@ -158,8 +167,11 @@ function start() {
         payload: {
             memory: S.memory,
             pointer_coarse: window.matchMedia("(pointer: coarse)").matches,
-            viewport_width: window.innerWidth,
+            viewport_width: document.documentElement.clientWidth,
             viewport_height: window.innerHeight,
+            rem_in_px,
+            now,
+            timezone_offset_minutes,
         },
     });
 
@@ -350,6 +362,7 @@ const toast_cycles = new WeakMap();
 function send(e) {
     const root = root_of(e.target);
     if (!root) return;
+    if (e.type === "submit") e.preventDefault();
 
     const x = e.clientX ?? 0;
     const y = e.clientY ?? 0;
@@ -389,13 +402,20 @@ function root_of(target) {
     return ROOTS.find(r => r && r.contains(target));
 }
 
+function event_value(e) {
+    if (e.target instanceof HTMLFormElement) {
+        return new URLSearchParams(new FormData(e.target)).toString();
+    }
+    return e.target.value ?? "";
+}
+
 function encode_canvas_event(frame, e, x, y, local_x, local_y) {
     let offset = put_u8(frame, 0, EVENT_CANVAS);
     offset = put_u8(frame, offset, Math.max(EVENT_TYPES.indexOf(e.type), 0));
     offset = put_id(frame, offset, e.target.id ?? "");
     offset = put_u8(frame, offset, key_index(e));
     offset = put_u8(frame, offset, key_flags(e));
-    offset = put_str(frame, offset, e.target.value ?? "");
+    offset = put_str(frame, offset, event_value(e));
     offset = put_f32(frame, offset, x);
     offset = put_f32(frame, offset, y);
     offset = put_f32(frame, offset, local_x);
@@ -478,7 +498,7 @@ function bind() {
     window.addEventListener("resize", () => {
         clearTimeout(resize_timer);
         resize_timer = setTimeout(() => {
-            push(encode_resize_event(S.event_frame, window.innerWidth, window.innerHeight));
+            push(encode_resize_event(S.event_frame, document.documentElement.clientWidth, window.innerHeight));
         }, 100);
     });
 
@@ -500,7 +520,7 @@ const VISIBILITY_STATES = [
     "visible",
 ];
 
-const ROOTS = ["header", "main", "form", "toast"]
+const ROOTS = ["header", "main", "modal", "form", "toast"]
     .map(id => document.getElementById(id));
 
 /**
@@ -642,6 +662,7 @@ const TAGS = [
     "body",
     "button",
     "dd",
+    "div",
     "dl",
     "drawer",
     "dt",
@@ -658,12 +679,14 @@ const TAGS = [
     "li",
     "main",
     "modal",
+    "nav",
     "ol",
     "output",
     "p",
     "section",
     "select",
     "span",
+    "strong",
     "table",
     "tbody",
     "td",
@@ -680,6 +703,8 @@ const TAGS = [
  */
 const ATTRIBUTES = [
     null,
+    "aria-current",
+    "data-surround",
     "disabled",
     "hidden",
 ];
@@ -691,7 +716,6 @@ const CLASS_NAMES = [
     null,
     "hide",
     "show",
-    "hidden",
 ];
 
 const METHODS = [
@@ -715,7 +739,10 @@ const STYLE_KEYWORDS = [
 const STYLE_PROPERTIES = [
     null,
     "background",
+    "color",
     "cursor",
+    "grid-template-columns",
+    "grid-template-rows",
     "height",
     "translate",
     "width",
@@ -767,32 +794,50 @@ function view() {
 /**
  * Appends 1 frame to a single-writer, single-reader ring. False if full.
  *
- * Writing the payload need not be atomic; the `Atomics.store` of the
- * write sequence guarantees visibility of the prior writes to the reader.
+ * A frame is a record of a length prefix and the payload padded to
+ * ALIGNMENT, stored contiguously. When the record does not fit before
+ * the end of the payload region, the rest of the region is marked with
+ * PADDING_MARK and the record is stored from the start.
  *
- * @param {{control: number, payload: number, slot: number, slot_count: number}} ring
+ * Writing the payload need not be atomic; the `Atomics.store` of the
+ * write position guarantees visibility of the prior writes to the reader.
+ *
+ * @param {{control: number, payload: number, capacity: number, frame_max: number}} ring
  * @param {Uint8Array} source - frame to write
  * @returns {boolean} whether it was appended
  */
 function ring_push(ring, source) {
-    const { slot, slot_count } = ring;
-    if (source.length + LENGTH_PREFIX > slot) throw new RangeError("frame too large");
+    const { capacity, frame_max } = ring;
+    if (source.length > frame_max) throw new RangeError("frame too large");
 
     const control = S.base + ring.control;
     const payload = S.base + ring.payload;
     const write_index = control >> 2;
     const read_index = (control + CONTROL_READ_OFFSET) >> 2;
 
-    const write = Atomics.load(S.int32, write_index) >>> 0;
+    const size = LENGTH_PREFIX + Math.ceil(source.length / ALIGNMENT) * ALIGNMENT;
+    let write = Atomics.load(S.int32, write_index) >>> 0;
     const read = Atomics.load(S.int32, read_index) >>> 0;
-    if (((write - read) >>> 0) >= slot_count) return false;
+    let used = (write - read) >>> 0;
+    let position = write & (capacity - 1);
 
-    const offset = payload + (write & (slot_count - 1)) * slot;
+    const tail = capacity - position;
+    if (size > tail) {
+        if (used + tail > capacity) return false;
+        S.data_view.setUint32(payload + position, PADDING_MARK, true);
+        write = (write + tail) >>> 0;
+        Atomics.store(S.int32, write_index, write | 0);
+        used += tail;
+        position = 0;
+    }
+    if (used + size > capacity) return false;
+
+    const offset = payload + position;
     S.data_view.setUint32(offset, source.length, true);
     S.uint8.set(source, offset + LENGTH_PREFIX);
 
-    // Commit. Only now does the slot become visible to the reader.
-    Atomics.store(S.int32, write_index, (write + 1) | 0);
+    // Commit. Only now does the record become visible to the reader.
+    Atomics.store(S.int32, write_index, ((write + size) >>> 0) | 0);
     return true;
 }
 
@@ -800,30 +845,41 @@ function ring_push(ring, source) {
  * Copies the front frame of the ring into destination and returns its
  * length. 0 if empty.
  *
- * @param {{control: number, payload: number, slot: number, slot_count: number}} ring
+ * @param {{control: number, payload: number, capacity: number, frame_max: number}} ring
  * @param {Uint8Array} destination - copy destination
  * @returns {number} bytes copied
  */
 function ring_pop(ring, destination) {
-    const { slot, slot_count } = ring;
+    const { capacity, frame_max } = ring;
     const control = S.base + ring.control;
     const payload = S.base + ring.payload;
     const write_index = control >> 2;
     const read_index = (control + CONTROL_READ_OFFSET) >> 2;
 
-    const read = Atomics.load(S.int32, read_index) >>> 0;
-    const write = Atomics.load(S.int32, write_index) >>> 0;
-    if (read === write) return 0;
+    let read = Atomics.load(S.int32, read_index) >>> 0;
+    for (;;) {
+        const write = Atomics.load(S.int32, write_index) >>> 0;
+        if (read === write) return 0;
 
-    const offset = payload + (read & (slot_count - 1)) * slot;
-    // Even if the length prefix is corrupt, this stays inside the slot.
-    const length = Math.min(S.data_view.getUint32(offset, true), slot - LENGTH_PREFIX);
-    destination.set(S.uint8.subarray(offset + LENGTH_PREFIX, offset + LENGTH_PREFIX + length));
+        const position = read & (capacity - 1);
+        const offset = payload + position;
+        const header = S.data_view.getUint32(offset, true);
+        if (header === PADDING_MARK) {
+            read = (read + capacity - position) >>> 0;
+            Atomics.store(S.int32, read_index, read | 0);
+            continue;
+        }
 
-    Atomics.store(S.int32, read_index, (read + 1) | 0);
-    // Wakes a writer that is waiting on a full ring.
-    Atomics.notify(S.int32, read_index);
-    return length;
+        // Even if the length prefix is corrupt, this stays inside the region.
+        const length = Math.min(header, frame_max, capacity - position - LENGTH_PREFIX);
+        destination.set(S.uint8.subarray(offset + LENGTH_PREFIX, offset + LENGTH_PREFIX + length));
+
+        const size = LENGTH_PREFIX + Math.ceil(length / ALIGNMENT) * ALIGNMENT;
+        Atomics.store(S.int32, read_index, ((read + size) >>> 0) | 0);
+        // Wakes a writer that is waiting on a full ring.
+        Atomics.notify(S.int32, read_index);
+        return length;
+    }
 }
 
 function view_of(frame) {

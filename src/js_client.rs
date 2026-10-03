@@ -251,6 +251,45 @@ pub(crate) fn get_string(input: &mut &[u8]) -> Option<String> {
     Some(str::from_utf8(get_bytes(input)?).ok()?.to_string())
 }
 
+pub fn from_url_search_params(input: &str) -> Vec<(String, String)> {
+    input
+        .split('&')
+        .filter(|pair| !pair.is_empty())
+        .map(|pair| {
+            let (key, value) = pair.split_once('=').unwrap_or((pair, ""));
+            (decode_component(key), decode_component(value))
+        })
+        .collect()
+}
+
+fn decode_component(input: &str) -> String {
+    let bytes = input.as_bytes();
+    let mut decoded = Vec::with_capacity(bytes.len());
+    let mut index = 0;
+    while index < bytes.len() {
+        let byte = bytes[index];
+        index += 1;
+        match byte {
+            b'+' => decoded.push(b' '),
+            b'%' => match bytes.get(index..index + 2).and_then(hex_byte) {
+                Some(value) => {
+                    decoded.push(value);
+                    index += 2;
+                }
+                None => decoded.push(b'%'),
+            },
+            other => decoded.push(other),
+        }
+    }
+    String::from_utf8_lossy(&decoded).into_owned()
+}
+
+fn hex_byte(digits: &[u8]) -> Option<u8> {
+    let high = (digits[0] as char).to_digit(16)?;
+    let low = (digits[1] as char).to_digit(16)?;
+    Some((high << 4 | low) as u8)
+}
+
 // === receive (canvas event) ===
 
 ///
@@ -304,7 +343,9 @@ impl CanvasEvent {
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Attribute {
-    Disabled = 1,
+    AriaCurrent = 1,
+    DataSurround,
+    Disabled,
     Hidden,
 }
 
@@ -318,7 +359,6 @@ impl Attribute {
 pub enum ClassName {
     Hide = 1,
     Show,
-    Hidden,
 }
 
 impl ClassName {
@@ -346,7 +386,10 @@ impl Keyword {
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum StyleProperty {
     Background = 1,
+    Color,
     Cursor,
+    GridTemplateColumns,
+    GridTemplateRows,
     Height,
     Translate,
     Width,
@@ -1808,6 +1851,7 @@ pub mod dom {
         Body,
         Button,
         Dd,
+        Div,
         Dl,
         Drawer, // <dialog id="*drawer*">
         Dt,
@@ -1824,12 +1868,14 @@ pub mod dom {
         Li,
         Main,
         Modal, // <dialog id="*modal*">
+        Nav,
         Ol,
         Output,
         P,
         Section,
         Select,
         Span,
+        Strong,
         Table,
         Tbody,
         Td,
@@ -1856,37 +1902,40 @@ pub mod dom {
                 Self::Body => 2,
                 Self::Button => 3,
                 Self::Dd => 4,
-                Self::Dl => 5,
-                Self::Drawer => 6,
-                Self::Dt => 7,
-                Self::Fieldset => 8,
-                Self::Footer => 9,
-                Self::Form => 10,
-                Self::H1 => 11,
-                Self::H2 => 12,
-                Self::H3 => 13,
-                Self::Header => 14,
-                Self::Hgroup => 15,
-                Self::Input => 16,
-                Self::Label => 17,
-                Self::Li => 18,
-                Self::Main => 19,
-                Self::Modal => 20,
-                Self::Ol => 21,
-                Self::Output => 22,
-                Self::P => 23,
-                Self::Section => 24,
-                Self::Select => 25,
-                Self::Span => 26,
-                Self::Table => 27,
-                Self::Tbody => 28,
-                Self::Td => 29,
-                Self::Textarea => 30,
-                Self::Th => 31,
-                Self::Thead => 32,
-                Self::Toast => 33,
-                Self::Tr => 34,
-                Self::Ul => 35,
+                Self::Div => 5,
+                Self::Dl => 6,
+                Self::Drawer => 7,
+                Self::Dt => 8,
+                Self::Fieldset => 9,
+                Self::Footer => 10,
+                Self::Form => 11,
+                Self::H1 => 12,
+                Self::H2 => 13,
+                Self::H3 => 14,
+                Self::Header => 15,
+                Self::Hgroup => 16,
+                Self::Input => 17,
+                Self::Label => 18,
+                Self::Li => 19,
+                Self::Main => 20,
+                Self::Modal => 21,
+                Self::Nav => 22,
+                Self::Ol => 23,
+                Self::Output => 24,
+                Self::P => 25,
+                Self::Section => 26,
+                Self::Select => 27,
+                Self::Span => 28,
+                Self::Strong => 29,
+                Self::Table => 30,
+                Self::Tbody => 31,
+                Self::Td => 32,
+                Self::Textarea => 33,
+                Self::Th => 34,
+                Self::Thead => 35,
+                Self::Toast => 36,
+                Self::Tr => 37,
+                Self::Ul => 38,
                 Self::Other => 0,
             }
         }
@@ -1902,37 +1951,40 @@ pub mod dom {
                 2 => Self::Body,
                 3 => Self::Button,
                 4 => Self::Dd,
-                5 => Self::Dl,
-                6 => Self::Drawer,
-                7 => Self::Dt,
-                8 => Self::Fieldset,
-                9 => Self::Footer,
-                10 => Self::Form,
-                11 => Self::H1,
-                12 => Self::H2,
-                13 => Self::H3,
-                14 => Self::Header,
-                15 => Self::Hgroup,
-                16 => Self::Input,
-                17 => Self::Label,
-                18 => Self::Li,
-                19 => Self::Main,
-                20 => Self::Modal,
-                21 => Self::Ol,
-                22 => Self::Output,
-                23 => Self::P,
-                24 => Self::Section,
-                25 => Self::Select,
-                26 => Self::Span,
-                27 => Self::Table,
-                28 => Self::Tbody,
-                29 => Self::Td,
-                30 => Self::Textarea,
-                31 => Self::Th,
-                32 => Self::Thead,
-                33 => Self::Toast,
-                34 => Self::Tr,
-                35 => Self::Ul,
+                5 => Self::Div,
+                6 => Self::Dl,
+                7 => Self::Drawer,
+                8 => Self::Dt,
+                9 => Self::Fieldset,
+                10 => Self::Footer,
+                11 => Self::Form,
+                12 => Self::H1,
+                13 => Self::H2,
+                14 => Self::H3,
+                15 => Self::Header,
+                16 => Self::Hgroup,
+                17 => Self::Input,
+                18 => Self::Label,
+                19 => Self::Li,
+                20 => Self::Main,
+                21 => Self::Modal,
+                22 => Self::Nav,
+                23 => Self::Ol,
+                24 => Self::Output,
+                25 => Self::P,
+                26 => Self::Section,
+                27 => Self::Select,
+                28 => Self::Span,
+                29 => Self::Strong,
+                30 => Self::Table,
+                31 => Self::Tbody,
+                32 => Self::Td,
+                33 => Self::Textarea,
+                34 => Self::Th,
+                35 => Self::Thead,
+                36 => Self::Toast,
+                37 => Self::Tr,
+                38 => Self::Ul,
                 _ => Self::Other,
             }
         }
@@ -2082,7 +2134,7 @@ mod wire_tests {
     }
 
     fn id_bytes() -> [u8; 11] {
-        [2, 14, 255, 255, 255, 255, 3, 3, 0, 0, 0]
+        [2, 15, 255, 255, 255, 255, 3, 3, 0, 0, 0]
     }
 
     fn header_button_3() -> dom::Id {
@@ -2137,20 +2189,12 @@ mod wire_tests {
 
     #[test]
     fn command_tables_match_init_js() {
-        let tables: [(&str, Vec<(u16, String)>); 3] = [
-            (
-                "ATTRIBUTES",
-                vec![
-                    (Attribute::Disabled as u16, format!("{:?}", Attribute::Disabled)),
-                    (Attribute::Hidden as u16, format!("{:?}", Attribute::Hidden)),
-                ],
-            ),
+        let tables: [(&str, Vec<(u16, String)>); 2] = [
             (
                 "CLASS_NAMES",
                 vec![
                     (ClassName::Hide as u16, format!("{:?}", ClassName::Hide)),
                     (ClassName::Show as u16, format!("{:?}", ClassName::Show)),
-                    (ClassName::Hidden as u16, format!("{:?}", ClassName::Hidden)),
                 ],
             ),
             (
@@ -2174,7 +2218,16 @@ mod wire_tests {
 
     #[test]
     fn style_tables_match_init_js() {
-        let tables: [(&str, Vec<(u16, &str)>); 3] = [
+        let tables: [(&str, Vec<(u16, &str)>); 4] = [
+            (
+                "ATTRIBUTES",
+                vec![
+                    (Attribute::AriaCurrent as u16, "aria-current"),
+                    (Attribute::DataSurround as u16, "data-surround"),
+                    (Attribute::Disabled as u16, "disabled"),
+                    (Attribute::Hidden as u16, "hidden"),
+                ],
+            ),
             (
                 "STYLE_KEYWORDS",
                 vec![
@@ -2190,7 +2243,10 @@ mod wire_tests {
                 "STYLE_PROPERTIES",
                 vec![
                     (StyleProperty::Background as u16, "background"),
+                    (StyleProperty::Color as u16, "color"),
                     (StyleProperty::Cursor as u16, "cursor"),
+                    (StyleProperty::GridTemplateColumns as u16, "grid-template-columns"),
+                    (StyleProperty::GridTemplateRows as u16, "grid-template-rows"),
                     (StyleProperty::Height as u16, "height"),
                     (StyleProperty::Translate as u16, "translate"),
                     (StyleProperty::Width as u16, "width"),
@@ -2342,6 +2398,27 @@ mod wire_tests {
     }
 
     #[test]
+    fn url_search_params_split_decode_and_keep_order() {
+        let pairs = from_url_search_params;
+        let owned = |list: &[(&str, &str)]| {
+            list.iter()
+                .map(|(key, value)| (String::from(*key), String::from(*value)))
+                .collect::<Vec<_>>()
+        };
+        assert!(pairs("").is_empty());
+        assert_eq!(pairs("a=1&b=2"), owned(&[("a", "1"), ("b", "2")]));
+        assert_eq!(pairs("a=1&a=2&a=3"), owned(&[("a", "1"), ("a", "2"), ("a", "3")]));
+        assert_eq!(
+            pairs("note=a+b%26c%3D%2B&empty=&bare"),
+            owned(&[("note", "a b&c=+"), ("empty", ""), ("bare", ""),])
+        );
+        assert_eq!(pairs("t=%E4%BA%88%E5%AE%9A&&"), owned(&[("t", "予定")]));
+        assert_eq!(pairs("a=%zz&b=%4&c=%"), owned(&[("a", "%zz"), ("b", "%4"), ("c", "%")]));
+        assert_eq!(pairs("a=%FF"), owned(&[("a", "\u{FFFD}")]));
+        assert_eq!(pairs("a%20b=c=d"), owned(&[("a b", "c=d")]));
+    }
+
+    #[test]
     fn get_functions_reject_short_or_invalid_input() {
         assert_eq!(get_u32(&mut &[1, 2, 3][..]), None);
         assert_eq!(get_f32(&mut &[0; 3][..]), None);
@@ -2408,11 +2485,11 @@ mod wire_tests {
                 attribute: Attribute::Hidden,
                 value:     String::from("x"),
             }),
-            with_id(3, &[2, 0, 1, 0, 0, 0, b'x'])
+            with_id(3, &[4, 0, 1, 0, 0, 0, b'x'])
         );
         assert_eq!(
-            encode(Command::AddClass { id: id.clone(), value: ClassName::Hidden }),
-            with_id(5, &[3, 0])
+            encode(Command::AddClass { id: id.clone(), value: ClassName::Show }),
+            with_id(5, &[2, 0])
         );
         assert_eq!(
             encode(Command::SetStyle {
@@ -2420,7 +2497,7 @@ mod wire_tests {
                 property: StyleProperty::Width,
                 value:    StyleValue::Length(1.5, Unit::Px),
             }),
-            with_id(7, &[5, 0, 3, 0, 0, 192, 63, 3])
+            with_id(7, &[8, 0, 3, 0, 0, 192, 63, 3])
         );
         assert_eq!(
             encode(Command::SetStyle {
@@ -2428,7 +2505,7 @@ mod wire_tests {
                 property: StyleProperty::ZIndex,
                 value:    StyleValue::Integer(-1),
             }),
-            with_id(7, &[6, 0, 1, 255, 255, 255, 255])
+            with_id(7, &[9, 0, 1, 255, 255, 255, 255])
         );
         assert_eq!(
             encode(Command::SetStyle {
@@ -2436,7 +2513,7 @@ mod wire_tests {
                 property: StyleProperty::Cursor,
                 value:    StyleValue::Keyword(Keyword::Grab),
             }),
-            with_id(7, &[2, 0, 2, 3, 0])
+            with_id(7, &[3, 0, 2, 3, 0])
         );
         assert_eq!(
             encode(Command::SetStyle {
@@ -2455,7 +2532,7 @@ mod wire_tests {
                     StyleValue::Length(-2.5, Unit::Rem),
                 ]),
             }),
-            with_id(7, &[4, 0, 4, 2, 3, 0, 0, 192, 63, 3, 3, 0, 0, 32, 192, 4])
+            with_id(7, &[7, 0, 4, 2, 3, 0, 0, 192, 63, 3, 3, 0, 0, 32, 192, 4])
         );
         assert_eq!(
             encode(Command::SetStyle {
@@ -2463,11 +2540,11 @@ mod wire_tests {
                 property: StyleProperty::Height,
                 value:    StyleValue::Number(0.5),
             }),
-            with_id(7, &[3, 0, 5, 0, 0, 0, 63])
+            with_id(7, &[6, 0, 5, 0, 0, 0, 63])
         );
         assert_eq!(
             encode(Command::RemoveStyle { id: id.clone(), property: StyleProperty::Cursor }),
-            with_id(8, &[2, 0])
+            with_id(8, &[3, 0])
         );
         assert_eq!(encode(Command::Focus { id: id.clone() }), with_id(11, &[]));
         assert_eq!(
