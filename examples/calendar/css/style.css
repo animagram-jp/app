@@ -1,0 +1,111 @@
+@layer app {
+    body {
+        display:        flex;
+        flex-direction: column;
+        min-height:     100dvh;
+    }
+
+    .calendar-header {
+        display:         flex;
+        flex-wrap:       wrap;
+        justify-content: space-between;
+        position:        sticky;
+        top:             0;
+    }
+
+    .calendar-header > nav {
+        display:     flex;
+        flex-wrap:   wrap;
+    }
+
+    .calendar-title {
+        flex-basis:     100%;
+        min-block-size: 1lh;
+        text-align: center;
+    }
+
+    .calendar {
+        --head-title:    2rem;
+        --head-resource: 3rem;
+        --head-height:   calc(var(--head-title) + var(--head-resource));
+        --column-width:  5rem;
+        display:         grid;
+        flex:            1;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        position:        relative;
+    }
+
+    .time-axis {
+        display:     grid;
+        inline-size: 4rem;
+        list-style:  none;
+        margin:      0;
+        padding:     0;
+    }
+
+    .surface {
+        display:            grid;
+        overflow-x:         auto;
+        position:           relative;
+    }
+
+    .surface > ol {
+        list-style: none;
+        margin:     0;
+        padding:    0;
+    }
+
+    .days,
+    .resources {
+        display:     grid;
+        grid-column: 1 / -1;
+    }
+
+    .resources {
+        grid-template-columns: subgrid;
+    }
+
+    .bands,
+    .cards,
+    .previews {
+        grid-area: 3 / 1 / 4 / -1;
+        position:  relative;
+    }
+
+    .band,
+    .card,
+    .preview {
+        inset:    0 auto auto 0;
+        position: absolute;
+    }
+
+    .previews {
+        pointer-events: none;
+        z-index:        1;
+    }
+
+    .card {
+        overflow:     hidden;
+        touch-action: none;
+        user-select:  none;
+    }
+
+    #header_nav-2_input {
+        inline-size: 8rem;
+    }
+
+    #modal {
+        padding: 0;
+    }
+
+    #modal form:not([hidden]) {
+        display:        flex;
+        flex-direction: column;
+        padding:        1rem;
+    }
+
+    #modal dl {
+        display:               grid;
+        grid-template-columns: auto 1fr;
+    }
+}

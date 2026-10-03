@@ -1,0 +1,7615 @@
+{
+ "resources": {
+  "path": "/v1/resources",
+  "meta": {
+   "limit": 50,
+   "offset": 0,
+   "total": 4
+  },
+  "data": [
+   {
+    "id": 101,
+    "name": "Studio 1",
+    "staff_accent": "blue"
+   },
+   {
+    "id": 102,
+    "name": "Studio 2",
+    "staff_accent": "green"
+   },
+   {
+    "id": 103,
+    "name": "Studio 3",
+    "staff_accent": "orange"
+   },
+   {
+    "id": 104,
+    "name": "Studio 4",
+    "staff_accent": "purple"
+   }
+  ]
+ },
+ "statuses": {
+  "path": "/v1/statuses",
+  "meta": {
+   "limit": 50,
+   "offset": 0,
+   "total": 4
+  },
+  "data": [
+   {
+    "code": "scheduled",
+    "label": "S",
+    "accent": "gray"
+   },
+   {
+    "code": "checked_in",
+    "label": "C",
+    "accent": "sky"
+   },
+   {
+    "code": "completed",
+    "label": "D",
+    "accent": "green"
+   },
+   {
+    "code": "canceled",
+    "label": "X",
+    "accent": "red"
+   }
+  ]
+ },
+ "shifts": {
+  "path": "/v1/shifts?from=2026-09-18&to=2026-12-01",
+  "meta": {
+   "limit": 1000,
+   "offset": 0,
+   "total": 201
+  },
+  "data": [
+   {
+    "date": "2026-09-18",
+    "resource_id": 101,
+    "staff_name": "Davis",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-09-18",
+    "resource_id": 102,
+    "staff_name": "Evans",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-09-18",
+    "resource_id": 103,
+    "staff_name": "Morgan",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-09-19",
+    "resource_id": 101,
+    "staff_name": "Evans",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-09-19",
+    "resource_id": 102,
+    "staff_name": "Morgan",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-09-19",
+    "resource_id": 104,
+    "staff_name": "Davis",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-09-21",
+    "resource_id": 102,
+    "staff_name": "Davis",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-09-21",
+    "resource_id": 103,
+    "staff_name": "Evans",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-09-21",
+    "resource_id": 104,
+    "staff_name": "Morgan",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-09-22",
+    "resource_id": 101,
+    "staff_name": "Davis",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-09-22",
+    "resource_id": 102,
+    "staff_name": "Evans",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-09-22",
+    "resource_id": 103,
+    "staff_name": "Morgan",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-09-22",
+    "resource_id": 104,
+    "staff_name": "Carter",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-09-23",
+    "resource_id": 101,
+    "staff_name": "Evans",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-09-23",
+    "resource_id": 102,
+    "staff_name": "Morgan",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-09-23",
+    "resource_id": 103,
+    "staff_name": "Carter",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-09-24",
+    "resource_id": 101,
+    "staff_name": "Morgan",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-09-24",
+    "resource_id": 102,
+    "staff_name": "Carter",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-09-24",
+    "resource_id": 104,
+    "staff_name": "Evans",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-09-25",
+    "resource_id": 101,
+    "staff_name": "Carter",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-09-25",
+    "resource_id": 103,
+    "staff_name": "Evans",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-09-25",
+    "resource_id": 104,
+    "staff_name": "Morgan",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-09-26",
+    "resource_id": 102,
+    "staff_name": "Evans",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-09-26",
+    "resource_id": 103,
+    "staff_name": "Morgan",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-09-26",
+    "resource_id": 104,
+    "staff_name": "Carter",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-09-28",
+    "resource_id": 101,
+    "staff_name": "Morgan",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-09-28",
+    "resource_id": 102,
+    "staff_name": "Carter",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-09-28",
+    "resource_id": 103,
+    "staff_name": "Davis",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-09-29",
+    "resource_id": 101,
+    "staff_name": "Carter",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-09-29",
+    "resource_id": 102,
+    "staff_name": "Davis",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-09-29",
+    "resource_id": 104,
+    "staff_name": "Morgan",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-09-30",
+    "resource_id": 101,
+    "staff_name": "Davis",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-09-30",
+    "resource_id": 103,
+    "staff_name": "Morgan",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-09-30",
+    "resource_id": 104,
+    "staff_name": "Carter",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-01",
+    "resource_id": 102,
+    "staff_name": "Morgan",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-01",
+    "resource_id": 103,
+    "staff_name": "Carter",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-01",
+    "resource_id": 104,
+    "staff_name": "Davis",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-02",
+    "resource_id": 101,
+    "staff_name": "Morgan",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-02",
+    "resource_id": 102,
+    "staff_name": "Carter",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-02",
+    "resource_id": 103,
+    "staff_name": "Davis",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-02",
+    "resource_id": 104,
+    "staff_name": "Evans",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-03",
+    "resource_id": 101,
+    "staff_name": "Carter",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-03",
+    "resource_id": 102,
+    "staff_name": "Davis",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-03",
+    "resource_id": 103,
+    "staff_name": "Evans",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-05",
+    "resource_id": 101,
+    "staff_name": "Evans",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-05",
+    "resource_id": 103,
+    "staff_name": "Carter",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-05",
+    "resource_id": 104,
+    "staff_name": "Davis",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-06",
+    "resource_id": 102,
+    "staff_name": "Carter",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-06",
+    "resource_id": 103,
+    "staff_name": "Davis",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-06",
+    "resource_id": 104,
+    "staff_name": "Evans",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-07",
+    "resource_id": 101,
+    "staff_name": "Carter",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-07",
+    "resource_id": 102,
+    "staff_name": "Davis",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-07",
+    "resource_id": 103,
+    "staff_name": "Evans",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-07",
+    "resource_id": 104,
+    "staff_name": "Morgan",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-08",
+    "resource_id": 101,
+    "staff_name": "Davis",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-08",
+    "resource_id": 102,
+    "staff_name": "Evans",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-08",
+    "resource_id": 103,
+    "staff_name": "Morgan",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-09",
+    "resource_id": 101,
+    "staff_name": "Evans",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-09",
+    "resource_id": 102,
+    "staff_name": "Morgan",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-09",
+    "resource_id": 104,
+    "staff_name": "Davis",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-10",
+    "resource_id": 101,
+    "staff_name": "Morgan",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-10",
+    "resource_id": 103,
+    "staff_name": "Davis",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-10",
+    "resource_id": 104,
+    "staff_name": "Evans",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-12",
+    "resource_id": 101,
+    "staff_name": "Davis",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-12",
+    "resource_id": 102,
+    "staff_name": "Evans",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-12",
+    "resource_id": 103,
+    "staff_name": "Morgan",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-12",
+    "resource_id": 104,
+    "staff_name": "Carter",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-13",
+    "resource_id": 101,
+    "staff_name": "Evans",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-13",
+    "resource_id": 102,
+    "staff_name": "Morgan",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-13",
+    "resource_id": 103,
+    "staff_name": "Carter",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-14",
+    "resource_id": 101,
+    "staff_name": "Morgan",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-14",
+    "resource_id": 102,
+    "staff_name": "Carter",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-14",
+    "resource_id": 104,
+    "staff_name": "Evans",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-15",
+    "resource_id": 101,
+    "staff_name": "Carter",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-15",
+    "resource_id": 103,
+    "staff_name": "Evans",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-15",
+    "resource_id": 104,
+    "staff_name": "Morgan",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-16",
+    "resource_id": 102,
+    "staff_name": "Evans",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-16",
+    "resource_id": 103,
+    "staff_name": "Morgan",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-16",
+    "resource_id": 104,
+    "staff_name": "Carter",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-17",
+    "resource_id": 101,
+    "staff_name": "Evans",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-17",
+    "resource_id": 102,
+    "staff_name": "Morgan",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-17",
+    "resource_id": 103,
+    "staff_name": "Carter",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-17",
+    "resource_id": 104,
+    "staff_name": "Davis",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-19",
+    "resource_id": 101,
+    "staff_name": "Carter",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-19",
+    "resource_id": 102,
+    "staff_name": "Davis",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-19",
+    "resource_id": 104,
+    "staff_name": "Morgan",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-20",
+    "resource_id": 101,
+    "staff_name": "Davis",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-20",
+    "resource_id": 103,
+    "staff_name": "Morgan",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-20",
+    "resource_id": 104,
+    "staff_name": "Carter",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-21",
+    "resource_id": 102,
+    "staff_name": "Morgan",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-21",
+    "resource_id": 103,
+    "staff_name": "Carter",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-21",
+    "resource_id": 104,
+    "staff_name": "Davis",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-22",
+    "resource_id": 101,
+    "staff_name": "Morgan",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-22",
+    "resource_id": 102,
+    "staff_name": "Carter",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-22",
+    "resource_id": 103,
+    "staff_name": "Davis",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-22",
+    "resource_id": 104,
+    "staff_name": "Evans",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-23",
+    "resource_id": 101,
+    "staff_name": "Carter",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-23",
+    "resource_id": 102,
+    "staff_name": "Davis",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-23",
+    "resource_id": 103,
+    "staff_name": "Evans",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-24",
+    "resource_id": 101,
+    "staff_name": "Davis",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-24",
+    "resource_id": 102,
+    "staff_name": "Evans",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-24",
+    "resource_id": 104,
+    "staff_name": "Carter",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-26",
+    "resource_id": 102,
+    "staff_name": "Carter",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-26",
+    "resource_id": 103,
+    "staff_name": "Davis",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-26",
+    "resource_id": 104,
+    "staff_name": "Evans",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-27",
+    "resource_id": 101,
+    "staff_name": "Carter",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-27",
+    "resource_id": 102,
+    "staff_name": "Davis",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-27",
+    "resource_id": 103,
+    "staff_name": "Evans",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-27",
+    "resource_id": 104,
+    "staff_name": "Morgan",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-28",
+    "resource_id": 101,
+    "staff_name": "Davis",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-28",
+    "resource_id": 102,
+    "staff_name": "Evans",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-28",
+    "resource_id": 103,
+    "staff_name": "Morgan",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-29",
+    "resource_id": 101,
+    "staff_name": "Evans",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-29",
+    "resource_id": 102,
+    "staff_name": "Morgan",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-29",
+    "resource_id": 104,
+    "staff_name": "Davis",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-30",
+    "resource_id": 101,
+    "staff_name": "Morgan",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-30",
+    "resource_id": 103,
+    "staff_name": "Davis",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-30",
+    "resource_id": 104,
+    "staff_name": "Evans",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-31",
+    "resource_id": 102,
+    "staff_name": "Davis",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-31",
+    "resource_id": 103,
+    "staff_name": "Evans",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-10-31",
+    "resource_id": 104,
+    "staff_name": "Morgan",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-02",
+    "resource_id": 101,
+    "staff_name": "Evans",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-02",
+    "resource_id": 102,
+    "staff_name": "Morgan",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-02",
+    "resource_id": 103,
+    "staff_name": "Carter",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-03",
+    "resource_id": 101,
+    "staff_name": "Morgan",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-03",
+    "resource_id": 102,
+    "staff_name": "Carter",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-03",
+    "resource_id": 104,
+    "staff_name": "Evans",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-04",
+    "resource_id": 101,
+    "staff_name": "Carter",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-04",
+    "resource_id": 103,
+    "staff_name": "Evans",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-04",
+    "resource_id": 104,
+    "staff_name": "Morgan",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-05",
+    "resource_id": 102,
+    "staff_name": "Evans",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-05",
+    "resource_id": 103,
+    "staff_name": "Morgan",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-05",
+    "resource_id": 104,
+    "staff_name": "Carter",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-06",
+    "resource_id": 101,
+    "staff_name": "Evans",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-06",
+    "resource_id": 102,
+    "staff_name": "Morgan",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-06",
+    "resource_id": 103,
+    "staff_name": "Carter",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-06",
+    "resource_id": 104,
+    "staff_name": "Davis",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-07",
+    "resource_id": 101,
+    "staff_name": "Morgan",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-07",
+    "resource_id": 102,
+    "staff_name": "Carter",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-07",
+    "resource_id": 103,
+    "staff_name": "Davis",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-09",
+    "resource_id": 101,
+    "staff_name": "Davis",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-09",
+    "resource_id": 103,
+    "staff_name": "Morgan",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-09",
+    "resource_id": 104,
+    "staff_name": "Carter",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-10",
+    "resource_id": 102,
+    "staff_name": "Morgan",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-10",
+    "resource_id": 103,
+    "staff_name": "Carter",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-10",
+    "resource_id": 104,
+    "staff_name": "Davis",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-11",
+    "resource_id": 101,
+    "staff_name": "Morgan",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-11",
+    "resource_id": 102,
+    "staff_name": "Carter",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-11",
+    "resource_id": 103,
+    "staff_name": "Davis",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-11",
+    "resource_id": 104,
+    "staff_name": "Evans",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-12",
+    "resource_id": 101,
+    "staff_name": "Carter",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-12",
+    "resource_id": 102,
+    "staff_name": "Davis",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-12",
+    "resource_id": 103,
+    "staff_name": "Evans",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-13",
+    "resource_id": 101,
+    "staff_name": "Davis",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-13",
+    "resource_id": 102,
+    "staff_name": "Evans",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-13",
+    "resource_id": 104,
+    "staff_name": "Carter",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-14",
+    "resource_id": 101,
+    "staff_name": "Evans",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-14",
+    "resource_id": 103,
+    "staff_name": "Carter",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-14",
+    "resource_id": 104,
+    "staff_name": "Davis",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-16",
+    "resource_id": 101,
+    "staff_name": "Carter",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-16",
+    "resource_id": 102,
+    "staff_name": "Davis",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-16",
+    "resource_id": 103,
+    "staff_name": "Evans",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-16",
+    "resource_id": 104,
+    "staff_name": "Morgan",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-17",
+    "resource_id": 101,
+    "staff_name": "Davis",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-17",
+    "resource_id": 102,
+    "staff_name": "Evans",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-17",
+    "resource_id": 103,
+    "staff_name": "Morgan",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-18",
+    "resource_id": 101,
+    "staff_name": "Evans",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-18",
+    "resource_id": 102,
+    "staff_name": "Morgan",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-18",
+    "resource_id": 104,
+    "staff_name": "Davis",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-19",
+    "resource_id": 101,
+    "staff_name": "Morgan",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-19",
+    "resource_id": 103,
+    "staff_name": "Davis",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-19",
+    "resource_id": 104,
+    "staff_name": "Evans",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-20",
+    "resource_id": 102,
+    "staff_name": "Davis",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-20",
+    "resource_id": 103,
+    "staff_name": "Evans",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-20",
+    "resource_id": 104,
+    "staff_name": "Morgan",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-21",
+    "resource_id": 101,
+    "staff_name": "Davis",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-21",
+    "resource_id": 102,
+    "staff_name": "Evans",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-21",
+    "resource_id": 103,
+    "staff_name": "Morgan",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-21",
+    "resource_id": 104,
+    "staff_name": "Carter",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-23",
+    "resource_id": 101,
+    "staff_name": "Morgan",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-23",
+    "resource_id": 102,
+    "staff_name": "Carter",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-23",
+    "resource_id": 104,
+    "staff_name": "Evans",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-24",
+    "resource_id": 101,
+    "staff_name": "Carter",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-24",
+    "resource_id": 103,
+    "staff_name": "Evans",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-24",
+    "resource_id": 104,
+    "staff_name": "Morgan",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-25",
+    "resource_id": 102,
+    "staff_name": "Evans",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-25",
+    "resource_id": 103,
+    "staff_name": "Morgan",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-25",
+    "resource_id": 104,
+    "staff_name": "Carter",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-26",
+    "resource_id": 101,
+    "staff_name": "Evans",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-26",
+    "resource_id": 102,
+    "staff_name": "Morgan",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-26",
+    "resource_id": 103,
+    "staff_name": "Carter",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-26",
+    "resource_id": 104,
+    "staff_name": "Davis",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-27",
+    "resource_id": 101,
+    "staff_name": "Morgan",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-27",
+    "resource_id": 102,
+    "staff_name": "Carter",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-27",
+    "resource_id": 103,
+    "staff_name": "Davis",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-28",
+    "resource_id": 101,
+    "staff_name": "Carter",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-28",
+    "resource_id": 102,
+    "staff_name": "Davis",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-28",
+    "resource_id": 104,
+    "staff_name": "Morgan",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-30",
+    "resource_id": 102,
+    "staff_name": "Morgan",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-30",
+    "resource_id": 103,
+    "staff_name": "Carter",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   },
+   {
+    "date": "2026-11-30",
+    "resource_id": 104,
+    "staff_name": "Davis",
+    "open": "09:30",
+    "close": "18:30",
+    "break_start": "12:30",
+    "break_end": "13:30"
+   }
+  ]
+ },
+ "appointments": {
+  "path": "/v1/appointments?from=2026-09-25&to=2026-10-23",
+  "meta": {
+   "limit": 2000,
+   "offset": 0,
+   "total": 380
+  },
+  "data": [
+   {
+    "id": 5001,
+    "cells": [
+     {
+      "date": "2026-09-25",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "10:15",
+    "end_time": "11:30",
+    "title": "Daniel Evans",
+    "category": "Follow-up",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5002,
+    "cells": [
+     {
+      "date": "2026-09-25",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "12:15",
+    "end_time": "13:00",
+    "title": "Emma Foster",
+    "category": "Follow-up",
+    "status": "completed",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5003,
+    "cells": [
+     {
+      "date": "2026-09-25",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "15:30",
+    "end_time": "16:00",
+    "title": "Daniel Evans",
+    "category": "Consultation",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5004,
+    "cells": [
+     {
+      "date": "2026-09-25",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "11:30",
+    "end_time": "12:30",
+    "title": "Ben Carter",
+    "category": "Intake",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5005,
+    "cells": [
+     {
+      "date": "2026-09-25",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "13:30",
+    "end_time": "14:30",
+    "title": "Ben Carter",
+    "category": "Review",
+    "status": "completed",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5006,
+    "cells": [
+     {
+      "date": "2026-09-25",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "15:00",
+    "end_time": "16:15",
+    "title": "Alice Morgan",
+    "category": "Consultation",
+    "status": "completed",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5007,
+    "cells": [
+     {
+      "date": "2026-09-25",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "16:15",
+    "end_time": "17:30",
+    "title": "Grace Hill",
+    "category": "Review",
+    "status": "completed",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5008,
+    "cells": [
+     {
+      "date": "2026-09-25",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "10:00",
+    "end_time": "11:00",
+    "title": "Grace Hill",
+    "category": "Consultation",
+    "status": "completed",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5009,
+    "cells": [
+     {
+      "date": "2026-09-25",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "11:00",
+    "end_time": "11:30",
+    "title": "Henry Irwin",
+    "category": "Follow-up",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5010,
+    "cells": [
+     {
+      "date": "2026-09-25",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "11:45",
+    "end_time": "13:00",
+    "title": "Chloe Davis",
+    "category": "Review",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5011,
+    "cells": [
+     {
+      "date": "2026-09-25",
+      "resource_id": 103
+     },
+     {
+      "date": "2026-09-25",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "13:30",
+    "end_time": "14:45",
+    "title": "Daniel Evans",
+    "category": "Consultation",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5012,
+    "cells": [
+     {
+      "date": "2026-09-25",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "15:15",
+    "end_time": "15:45",
+    "title": "Grace Hill",
+    "category": "Consultation",
+    "status": "completed",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5013,
+    "cells": [
+     {
+      "date": "2026-09-25",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "16:00",
+    "end_time": "16:45",
+    "title": "Alice Morgan",
+    "category": "Intake",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5014,
+    "cells": [
+     {
+      "date": "2026-09-25",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "17:30",
+    "end_time": "18:00",
+    "title": "Daniel Evans",
+    "category": "Follow-up",
+    "status": "completed",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5015,
+    "cells": [
+     {
+      "date": "2026-09-25",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "13:30",
+    "end_time": "14:45",
+    "title": "Chloe Davis",
+    "category": "Intake",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5016,
+    "cells": [
+     {
+      "date": "2026-09-25",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "15:00",
+    "end_time": "15:45",
+    "title": "Daniel Evans",
+    "category": "Review",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5017,
+    "cells": [
+     {
+      "date": "2026-09-25",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "15:45",
+    "end_time": "17:00",
+    "title": "Ben Carter",
+    "category": "Consultation",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5018,
+    "cells": [
+     {
+      "date": "2026-09-26",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "10:15",
+    "end_time": "11:15",
+    "title": "Henry Irwin",
+    "category": "Intake",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5019,
+    "cells": [
+     {
+      "date": "2026-09-26",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "11:15",
+    "end_time": "12:00",
+    "title": "Ben Carter",
+    "category": "Intake",
+    "status": "completed",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5020,
+    "cells": [
+     {
+      "date": "2026-09-26",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "12:15",
+    "end_time": "12:45",
+    "title": "Grace Hill",
+    "category": "Review",
+    "status": "completed",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5021,
+    "cells": [
+     {
+      "date": "2026-09-26",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "13:30",
+    "end_time": "14:15",
+    "title": "Chloe Davis",
+    "category": "Consultation",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5022,
+    "cells": [
+     {
+      "date": "2026-09-26",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "10:00",
+    "end_time": "11:15",
+    "title": "Emma Foster",
+    "category": "Intake",
+    "status": "completed",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5023,
+    "cells": [
+     {
+      "date": "2026-09-26",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "11:15",
+    "end_time": "11:45",
+    "title": "Frank Green",
+    "category": "Consultation",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5024,
+    "cells": [
+     {
+      "date": "2026-09-26",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "12:00",
+    "end_time": "13:00",
+    "title": "Henry Irwin",
+    "category": "Consultation",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5025,
+    "cells": [
+     {
+      "date": "2026-09-26",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "14:15",
+    "end_time": "15:30",
+    "title": "Alice Morgan",
+    "category": "Consultation",
+    "status": "completed",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5026,
+    "cells": [
+     {
+      "date": "2026-09-26",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "10:15",
+    "end_time": "11:30",
+    "title": "Ben Carter",
+    "category": "Consultation",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5027,
+    "cells": [
+     {
+      "date": "2026-09-26",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "11:30",
+    "end_time": "12:45",
+    "title": "Ben Carter",
+    "category": "Review",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5028,
+    "cells": [
+     {
+      "date": "2026-09-26",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "15:00",
+    "end_time": "16:00",
+    "title": "Daniel Evans",
+    "category": "Follow-up",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5029,
+    "cells": [
+     {
+      "date": "2026-09-26",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "16:30",
+    "end_time": "17:45",
+    "title": "Daniel Evans",
+    "category": "Intake",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5030,
+    "cells": [
+     {
+      "date": "2026-09-26",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "09:45",
+    "end_time": "10:30",
+    "title": "Frank Green",
+    "category": "Follow-up",
+    "status": "completed",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5031,
+    "cells": [
+     {
+      "date": "2026-09-26",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "13:30",
+    "end_time": "14:15",
+    "title": "Henry Irwin",
+    "category": "Intake",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5032,
+    "cells": [
+     {
+      "date": "2026-09-28",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "10:15",
+    "end_time": "11:15",
+    "title": "Alice Morgan",
+    "category": "Intake",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5033,
+    "cells": [
+     {
+      "date": "2026-09-28",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "14:45",
+    "end_time": "16:00",
+    "title": "Emma Foster",
+    "category": "Follow-up",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5034,
+    "cells": [
+     {
+      "date": "2026-09-28",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "16:00",
+    "end_time": "16:30",
+    "title": "Frank Green",
+    "category": "Consultation",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5035,
+    "cells": [
+     {
+      "date": "2026-09-28",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "16:45",
+    "end_time": "18:00",
+    "title": "Alice Morgan",
+    "category": "Review",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5036,
+    "cells": [
+     {
+      "date": "2026-09-28",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "09:30",
+    "end_time": "10:15",
+    "title": "Frank Green",
+    "category": "Follow-up",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5037,
+    "cells": [
+     {
+      "date": "2026-09-28",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "10:30",
+    "end_time": "11:00",
+    "title": "Grace Hill",
+    "category": "Follow-up",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5038,
+    "cells": [
+     {
+      "date": "2026-09-28",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "11:15",
+    "end_time": "11:45",
+    "title": "Frank Green",
+    "category": "Review",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5039,
+    "cells": [
+     {
+      "date": "2026-09-28",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "13:30",
+    "end_time": "14:15",
+    "title": "Grace Hill",
+    "category": "Consultation",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5040,
+    "cells": [
+     {
+      "date": "2026-09-28",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "15:45",
+    "end_time": "16:45",
+    "title": "Alice Morgan",
+    "category": "Review",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5041,
+    "cells": [
+     {
+      "date": "2026-09-28",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "17:30",
+    "end_time": "18:30",
+    "title": "Alice Morgan",
+    "category": "Follow-up",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5042,
+    "cells": [
+     {
+      "date": "2026-09-28",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "12:15",
+    "end_time": "13:30",
+    "title": "Henry Irwin",
+    "category": "Review",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5043,
+    "cells": [
+     {
+      "date": "2026-09-28",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "13:30",
+    "end_time": "14:15",
+    "title": "Emma Foster",
+    "category": "Follow-up",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5044,
+    "cells": [
+     {
+      "date": "2026-09-28",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "10:00",
+    "end_time": "10:30",
+    "title": "Grace Hill",
+    "category": "Consultation",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5045,
+    "cells": [
+     {
+      "date": "2026-09-28",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "14:00",
+    "end_time": "15:00",
+    "title": "Henry Irwin",
+    "category": "Follow-up",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5046,
+    "cells": [
+     {
+      "date": "2026-09-28",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "15:45",
+    "end_time": "16:45",
+    "title": "Grace Hill",
+    "category": "Consultation",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5047,
+    "cells": [
+     {
+      "date": "2026-09-28",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "17:00",
+    "end_time": "17:30",
+    "title": "Chloe Davis",
+    "category": "Follow-up",
+    "status": "completed",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5048,
+    "cells": [
+     {
+      "date": "2026-09-29",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "09:45",
+    "end_time": "11:00",
+    "title": "Ben Carter",
+    "category": "Intake",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5049,
+    "cells": [
+     {
+      "date": "2026-09-29",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "11:45",
+    "end_time": "12:15",
+    "title": "Grace Hill",
+    "category": "Follow-up",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5050,
+    "cells": [
+     {
+      "date": "2026-09-29",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "15:45",
+    "end_time": "16:30",
+    "title": "Frank Green",
+    "category": "Follow-up",
+    "status": "completed",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5051,
+    "cells": [
+     {
+      "date": "2026-09-29",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "16:45",
+    "end_time": "17:15",
+    "title": "Daniel Evans",
+    "category": "Follow-up",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5052,
+    "cells": [
+     {
+      "date": "2026-09-29",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "10:15",
+    "end_time": "11:00",
+    "title": "Alice Morgan",
+    "category": "Consultation",
+    "status": "completed",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5053,
+    "cells": [
+     {
+      "date": "2026-09-29",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "11:30",
+    "end_time": "12:30",
+    "title": "Frank Green",
+    "category": "Follow-up",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5054,
+    "cells": [
+     {
+      "date": "2026-09-29",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "13:30",
+    "end_time": "14:00",
+    "title": "Henry Irwin",
+    "category": "Follow-up",
+    "status": "completed",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5055,
+    "cells": [
+     {
+      "date": "2026-09-29",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "14:00",
+    "end_time": "14:45",
+    "title": "Chloe Davis",
+    "category": "Intake",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5056,
+    "cells": [
+     {
+      "date": "2026-09-29",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "14:45",
+    "end_time": "15:15",
+    "title": "Henry Irwin",
+    "category": "Consultation",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5057,
+    "cells": [
+     {
+      "date": "2026-09-29",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "15:45",
+    "end_time": "17:00",
+    "title": "Frank Green",
+    "category": "Review",
+    "status": "completed",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5058,
+    "cells": [
+     {
+      "date": "2026-09-29",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "09:30",
+    "end_time": "10:15",
+    "title": "Henry Irwin",
+    "category": "Intake",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5059,
+    "cells": [
+     {
+      "date": "2026-09-29",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "11:45",
+    "end_time": "12:15",
+    "title": "Ben Carter",
+    "category": "Review",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5060,
+    "cells": [
+     {
+      "date": "2026-09-29",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "16:15",
+    "end_time": "17:30",
+    "title": "Frank Green",
+    "category": "Intake",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5061,
+    "cells": [
+     {
+      "date": "2026-09-29",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "10:45",
+    "end_time": "12:00",
+    "title": "Frank Green",
+    "category": "Consultation",
+    "status": "completed",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5062,
+    "cells": [
+     {
+      "date": "2026-09-29",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "13:30",
+    "end_time": "14:30",
+    "title": "Grace Hill",
+    "category": "Follow-up",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5063,
+    "cells": [
+     {
+      "date": "2026-09-30",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "09:45",
+    "end_time": "10:45",
+    "title": "Alice Morgan",
+    "category": "Follow-up",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5064,
+    "cells": [
+     {
+      "date": "2026-09-30",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "10:45",
+    "end_time": "11:15",
+    "title": "Emma Foster",
+    "category": "Intake",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5065,
+    "cells": [
+     {
+      "date": "2026-09-30",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "13:30",
+    "end_time": "14:00",
+    "title": "Chloe Davis",
+    "category": "Review",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5066,
+    "cells": [
+     {
+      "date": "2026-09-30",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "14:15",
+    "end_time": "15:30",
+    "title": "Alice Morgan",
+    "category": "Review",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5067,
+    "cells": [
+     {
+      "date": "2026-09-30",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "16:15",
+    "end_time": "17:15",
+    "title": "Emma Foster",
+    "category": "Intake",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5068,
+    "cells": [
+     {
+      "date": "2026-09-30",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "10:00",
+    "end_time": "11:00",
+    "title": "Daniel Evans",
+    "category": "Consultation",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5069,
+    "cells": [
+     {
+      "date": "2026-09-30",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "11:45",
+    "end_time": "13:00",
+    "title": "Frank Green",
+    "category": "Review",
+    "status": "completed",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5070,
+    "cells": [
+     {
+      "date": "2026-09-30",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "16:00",
+    "end_time": "16:45",
+    "title": "Ben Carter",
+    "category": "Review",
+    "status": "completed",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5071,
+    "cells": [
+     {
+      "date": "2026-09-30",
+      "resource_id": 102
+     },
+     {
+      "date": "2026-09-30",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "17:00",
+    "end_time": "17:30",
+    "title": "Grace Hill",
+    "category": "Review",
+    "status": "completed",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5072,
+    "cells": [
+     {
+      "date": "2026-09-30",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "17:30",
+    "end_time": "18:30",
+    "title": "Ben Carter",
+    "category": "Intake",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5073,
+    "cells": [
+     {
+      "date": "2026-09-30",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "14:45",
+    "end_time": "16:00",
+    "title": "Emma Foster",
+    "category": "Intake",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5074,
+    "cells": [
+     {
+      "date": "2026-09-30",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "17:30",
+    "end_time": "18:15",
+    "title": "Daniel Evans",
+    "category": "Consultation",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5075,
+    "cells": [
+     {
+      "date": "2026-09-30",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "09:30",
+    "end_time": "10:30",
+    "title": "Alice Morgan",
+    "category": "Consultation",
+    "status": "completed",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5076,
+    "cells": [
+     {
+      "date": "2026-09-30",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "13:30",
+    "end_time": "14:45",
+    "title": "Daniel Evans",
+    "category": "Intake",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5077,
+    "cells": [
+     {
+      "date": "2026-09-30",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "16:15",
+    "end_time": "17:00",
+    "title": "Emma Foster",
+    "category": "Review",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5078,
+    "cells": [
+     {
+      "date": "2026-10-01",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "10:00",
+    "end_time": "11:00",
+    "title": "Chloe Davis",
+    "category": "Review",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5079,
+    "cells": [
+     {
+      "date": "2026-10-01",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "12:15",
+    "end_time": "12:45",
+    "title": "Henry Irwin",
+    "category": "Review",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5080,
+    "cells": [
+     {
+      "date": "2026-10-01",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "13:30",
+    "end_time": "14:00",
+    "title": "Ben Carter",
+    "category": "Intake",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5081,
+    "cells": [
+     {
+      "date": "2026-10-01",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "11:45",
+    "end_time": "13:00",
+    "title": "Emma Foster",
+    "category": "Review",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5082,
+    "cells": [
+     {
+      "date": "2026-10-01",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "13:45",
+    "end_time": "14:30",
+    "title": "Frank Green",
+    "category": "Consultation",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5083,
+    "cells": [
+     {
+      "date": "2026-10-01",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "17:00",
+    "end_time": "18:15",
+    "title": "Chloe Davis",
+    "category": "Follow-up",
+    "status": "completed",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5084,
+    "cells": [
+     {
+      "date": "2026-10-01",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "11:30",
+    "end_time": "12:00",
+    "title": "Emma Foster",
+    "category": "Consultation",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5085,
+    "cells": [
+     {
+      "date": "2026-10-01",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "14:30",
+    "end_time": "15:00",
+    "title": "Emma Foster",
+    "category": "Consultation",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5086,
+    "cells": [
+     {
+      "date": "2026-10-01",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "10:15",
+    "end_time": "11:15",
+    "title": "Frank Green",
+    "category": "Follow-up",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5087,
+    "cells": [
+     {
+      "date": "2026-10-01",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "11:15",
+    "end_time": "11:45",
+    "title": "Frank Green",
+    "category": "Consultation",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5088,
+    "cells": [
+     {
+      "date": "2026-10-01",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "17:30",
+    "end_time": "18:15",
+    "title": "Grace Hill",
+    "category": "Review",
+    "status": "completed",
+    "note": ""
+   },
+   {
+    "id": 5089,
+    "cells": [
+     {
+      "date": "2026-10-02",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "10:00",
+    "end_time": "10:30",
+    "title": "Ben Carter",
+    "category": "Intake",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5090,
+    "cells": [
+     {
+      "date": "2026-10-02",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "13:30",
+    "end_time": "14:30",
+    "title": "Chloe Davis",
+    "category": "Intake",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5091,
+    "cells": [
+     {
+      "date": "2026-10-02",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "15:15",
+    "end_time": "16:00",
+    "title": "Emma Foster",
+    "category": "Review",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5092,
+    "cells": [
+     {
+      "date": "2026-10-02",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "10:00",
+    "end_time": "10:30",
+    "title": "Daniel Evans",
+    "category": "Review",
+    "status": "scheduled",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5093,
+    "cells": [
+     {
+      "date": "2026-10-02",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "17:15",
+    "end_time": "18:00",
+    "title": "Frank Green",
+    "category": "Follow-up",
+    "status": "checked_in",
+    "note": ""
+   },
+   {
+    "id": 5094,
+    "cells": [
+     {
+      "date": "2026-10-02",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "09:45",
+    "end_time": "10:45",
+    "title": "Alice Morgan",
+    "category": "Follow-up",
+    "status": "scheduled",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5095,
+    "cells": [
+     {
+      "date": "2026-10-02",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "11:00",
+    "end_time": "11:45",
+    "title": "Emma Foster",
+    "category": "Consultation",
+    "status": "canceled",
+    "note": ""
+   },
+   {
+    "id": 5096,
+    "cells": [
+     {
+      "date": "2026-10-02",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "11:45",
+    "end_time": "12:45",
+    "title": "Daniel Evans",
+    "category": "Review",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5097,
+    "cells": [
+     {
+      "date": "2026-10-02",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "13:30",
+    "end_time": "14:45",
+    "title": "Grace Hill",
+    "category": "Review",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5098,
+    "cells": [
+     {
+      "date": "2026-10-02",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "15:15",
+    "end_time": "16:15",
+    "title": "Ben Carter",
+    "category": "Intake",
+    "status": "canceled",
+    "note": ""
+   },
+   {
+    "id": 5099,
+    "cells": [
+     {
+      "date": "2026-10-02",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "16:15",
+    "end_time": "17:15",
+    "title": "Chloe Davis",
+    "category": "Consultation",
+    "status": "canceled",
+    "note": ""
+   },
+   {
+    "id": 5100,
+    "cells": [
+     {
+      "date": "2026-10-02",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "17:15",
+    "end_time": "18:30",
+    "title": "Grace Hill",
+    "category": "Review",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5101,
+    "cells": [
+     {
+      "date": "2026-10-02",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "11:00",
+    "end_time": "11:45",
+    "title": "Grace Hill",
+    "category": "Intake",
+    "status": "checked_in",
+    "note": ""
+   },
+   {
+    "id": 5102,
+    "cells": [
+     {
+      "date": "2026-10-02",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "11:45",
+    "end_time": "12:45",
+    "title": "Grace Hill",
+    "category": "Consultation",
+    "status": "checked_in",
+    "note": ""
+   },
+   {
+    "id": 5103,
+    "cells": [
+     {
+      "date": "2026-10-02",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "16:30",
+    "end_time": "17:00",
+    "title": "Ben Carter",
+    "category": "Follow-up",
+    "status": "scheduled",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5104,
+    "cells": [
+     {
+      "date": "2026-10-03",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "09:30",
+    "end_time": "10:00",
+    "title": "Chloe Davis",
+    "category": "Consultation",
+    "status": "canceled",
+    "note": ""
+   },
+   {
+    "id": 5105,
+    "cells": [
+     {
+      "date": "2026-10-03",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "13:30",
+    "end_time": "14:45",
+    "title": "Grace Hill",
+    "category": "Consultation",
+    "status": "canceled",
+    "note": ""
+   },
+   {
+    "id": 5106,
+    "cells": [
+     {
+      "date": "2026-10-03",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "16:00",
+    "end_time": "17:00",
+    "title": "Frank Green",
+    "category": "Intake",
+    "status": "canceled",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5107,
+    "cells": [
+     {
+      "date": "2026-10-03",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "17:45",
+    "end_time": "18:30",
+    "title": "Emma Foster",
+    "category": "Consultation",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5108,
+    "cells": [
+     {
+      "date": "2026-10-03",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "10:00",
+    "end_time": "10:45",
+    "title": "Chloe Davis",
+    "category": "Follow-up",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5109,
+    "cells": [
+     {
+      "date": "2026-10-03",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "11:45",
+    "end_time": "12:30",
+    "title": "Grace Hill",
+    "category": "Intake",
+    "status": "checked_in",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5110,
+    "cells": [
+     {
+      "date": "2026-10-03",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "13:30",
+    "end_time": "14:30",
+    "title": "Ben Carter",
+    "category": "Review",
+    "status": "scheduled",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5111,
+    "cells": [
+     {
+      "date": "2026-10-03",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "14:30",
+    "end_time": "15:30",
+    "title": "Frank Green",
+    "category": "Follow-up",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5112,
+    "cells": [
+     {
+      "date": "2026-10-03",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "09:30",
+    "end_time": "10:45",
+    "title": "Chloe Davis",
+    "category": "Follow-up",
+    "status": "checked_in",
+    "note": ""
+   },
+   {
+    "id": 5113,
+    "cells": [
+     {
+      "date": "2026-10-03",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "11:30",
+    "end_time": "12:00",
+    "title": "Grace Hill",
+    "category": "Review",
+    "status": "scheduled",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5114,
+    "cells": [
+     {
+      "date": "2026-10-03",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "14:15",
+    "end_time": "15:15",
+    "title": "Emma Foster",
+    "category": "Follow-up",
+    "status": "checked_in",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5115,
+    "cells": [
+     {
+      "date": "2026-10-03",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "15:15",
+    "end_time": "16:00",
+    "title": "Henry Irwin",
+    "category": "Consultation",
+    "status": "canceled",
+    "note": ""
+   },
+   {
+    "id": 5116,
+    "cells": [
+     {
+      "date": "2026-10-03",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "16:45",
+    "end_time": "17:45",
+    "title": "Henry Irwin",
+    "category": "Review",
+    "status": "canceled",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5117,
+    "cells": [
+     {
+      "date": "2026-10-03",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "12:00",
+    "end_time": "12:30",
+    "title": "Grace Hill",
+    "category": "Review",
+    "status": "checked_in",
+    "note": ""
+   },
+   {
+    "id": 5118,
+    "cells": [
+     {
+      "date": "2026-10-03",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "13:30",
+    "end_time": "14:00",
+    "title": "Henry Irwin",
+    "category": "Follow-up",
+    "status": "canceled",
+    "note": ""
+   },
+   {
+    "id": 5119,
+    "cells": [
+     {
+      "date": "2026-10-03",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "14:45",
+    "end_time": "15:15",
+    "title": "Daniel Evans",
+    "category": "Intake",
+    "status": "canceled",
+    "note": ""
+   },
+   {
+    "id": 5120,
+    "cells": [
+     {
+      "date": "2026-10-03",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "17:00",
+    "end_time": "17:45",
+    "title": "Grace Hill",
+    "category": "Consultation",
+    "status": "scheduled",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5121,
+    "cells": [
+     {
+      "date": "2026-10-05",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "10:15",
+    "end_time": "10:45",
+    "title": "Emma Foster",
+    "category": "Consultation",
+    "status": "checked_in",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5122,
+    "cells": [
+     {
+      "date": "2026-10-05",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "13:30",
+    "end_time": "14:15",
+    "title": "Daniel Evans",
+    "category": "Consultation",
+    "status": "checked_in",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5123,
+    "cells": [
+     {
+      "date": "2026-10-05",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "14:45",
+    "end_time": "15:45",
+    "title": "Chloe Davis",
+    "category": "Review",
+    "status": "scheduled",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5124,
+    "cells": [
+     {
+      "date": "2026-10-05",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "15:45",
+    "end_time": "16:30",
+    "title": "Frank Green",
+    "category": "Review",
+    "status": "scheduled",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5125,
+    "cells": [
+     {
+      "date": "2026-10-05",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "16:45",
+    "end_time": "17:30",
+    "title": "Alice Morgan",
+    "category": "Consultation",
+    "status": "checked_in",
+    "note": ""
+   },
+   {
+    "id": 5126,
+    "cells": [
+     {
+      "date": "2026-10-05",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "11:30",
+    "end_time": "12:45",
+    "title": "Daniel Evans",
+    "category": "Intake",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5127,
+    "cells": [
+     {
+      "date": "2026-10-05",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "13:30",
+    "end_time": "14:30",
+    "title": "Daniel Evans",
+    "category": "Intake",
+    "status": "checked_in",
+    "note": ""
+   },
+   {
+    "id": 5128,
+    "cells": [
+     {
+      "date": "2026-10-05",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "15:30",
+    "end_time": "16:15",
+    "title": "Ben Carter",
+    "category": "Review",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5129,
+    "cells": [
+     {
+      "date": "2026-10-05",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "16:15",
+    "end_time": "16:45",
+    "title": "Emma Foster",
+    "category": "Intake",
+    "status": "canceled",
+    "note": ""
+   },
+   {
+    "id": 5130,
+    "cells": [
+     {
+      "date": "2026-10-05",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "16:45",
+    "end_time": "17:30",
+    "title": "Daniel Evans",
+    "category": "Follow-up",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5131,
+    "cells": [
+     {
+      "date": "2026-10-05",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "12:15",
+    "end_time": "12:45",
+    "title": "Frank Green",
+    "category": "Intake",
+    "status": "canceled",
+    "note": ""
+   },
+   {
+    "id": 5132,
+    "cells": [
+     {
+      "date": "2026-10-05",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "15:15",
+    "end_time": "16:30",
+    "title": "Emma Foster",
+    "category": "Follow-up",
+    "status": "checked_in",
+    "note": ""
+   },
+   {
+    "id": 5133,
+    "cells": [
+     {
+      "date": "2026-10-05",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "16:45",
+    "end_time": "18:00",
+    "title": "Daniel Evans",
+    "category": "Consultation",
+    "status": "canceled",
+    "note": ""
+   },
+   {
+    "id": 5134,
+    "cells": [
+     {
+      "date": "2026-10-05",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "09:45",
+    "end_time": "10:45",
+    "title": "Alice Morgan",
+    "category": "Review",
+    "status": "canceled",
+    "note": ""
+   },
+   {
+    "id": 5135,
+    "cells": [
+     {
+      "date": "2026-10-05",
+      "resource_id": 104
+     },
+     {
+      "date": "2026-10-06",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "11:15",
+    "end_time": "11:45",
+    "title": "Chloe Davis",
+    "category": "Follow-up",
+    "status": "scheduled",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5136,
+    "cells": [
+     {
+      "date": "2026-10-05",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "14:30",
+    "end_time": "15:45",
+    "title": "Chloe Davis",
+    "category": "Review",
+    "status": "checked_in",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5137,
+    "cells": [
+     {
+      "date": "2026-10-05",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "16:30",
+    "end_time": "17:45",
+    "title": "Grace Hill",
+    "category": "Review",
+    "status": "checked_in",
+    "note": ""
+   },
+   {
+    "id": 5138,
+    "cells": [
+     {
+      "date": "2026-10-05",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "17:45",
+    "end_time": "18:30",
+    "title": "Chloe Davis",
+    "category": "Follow-up",
+    "status": "canceled",
+    "note": ""
+   },
+   {
+    "id": 5139,
+    "cells": [
+     {
+      "date": "2026-10-06",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "09:30",
+    "end_time": "10:00",
+    "title": "Chloe Davis",
+    "category": "Consultation",
+    "status": "canceled",
+    "note": ""
+   },
+   {
+    "id": 5140,
+    "cells": [
+     {
+      "date": "2026-10-06",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "12:00",
+    "end_time": "12:45",
+    "title": "Ben Carter",
+    "category": "Follow-up",
+    "status": "canceled",
+    "note": ""
+   },
+   {
+    "id": 5141,
+    "cells": [
+     {
+      "date": "2026-10-06",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "13:30",
+    "end_time": "14:30",
+    "title": "Daniel Evans",
+    "category": "Consultation",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5142,
+    "cells": [
+     {
+      "date": "2026-10-06",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "17:15",
+    "end_time": "18:30",
+    "title": "Alice Morgan",
+    "category": "Follow-up",
+    "status": "canceled",
+    "note": ""
+   },
+   {
+    "id": 5143,
+    "cells": [
+     {
+      "date": "2026-10-06",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "09:45",
+    "end_time": "10:30",
+    "title": "Grace Hill",
+    "category": "Follow-up",
+    "status": "canceled",
+    "note": ""
+   },
+   {
+    "id": 5144,
+    "cells": [
+     {
+      "date": "2026-10-06",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "11:15",
+    "end_time": "12:30",
+    "title": "Chloe Davis",
+    "category": "Review",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5145,
+    "cells": [
+     {
+      "date": "2026-10-06",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "13:30",
+    "end_time": "14:00",
+    "title": "Emma Foster",
+    "category": "Intake",
+    "status": "checked_in",
+    "note": ""
+   },
+   {
+    "id": 5146,
+    "cells": [
+     {
+      "date": "2026-10-06",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "14:15",
+    "end_time": "15:15",
+    "title": "Daniel Evans",
+    "category": "Intake",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5147,
+    "cells": [
+     {
+      "date": "2026-10-06",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "15:30",
+    "end_time": "16:30",
+    "title": "Daniel Evans",
+    "category": "Consultation",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5148,
+    "cells": [
+     {
+      "date": "2026-10-06",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "17:15",
+    "end_time": "18:30",
+    "title": "Grace Hill",
+    "category": "Intake",
+    "status": "checked_in",
+    "note": ""
+   },
+   {
+    "id": 5149,
+    "cells": [
+     {
+      "date": "2026-10-06",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "09:30",
+    "end_time": "10:30",
+    "title": "Daniel Evans",
+    "category": "Review",
+    "status": "scheduled",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5150,
+    "cells": [
+     {
+      "date": "2026-10-06",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "10:45",
+    "end_time": "11:15",
+    "title": "Grace Hill",
+    "category": "Review",
+    "status": "canceled",
+    "note": ""
+   },
+   {
+    "id": 5151,
+    "cells": [
+     {
+      "date": "2026-10-06",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "11:30",
+    "end_time": "12:30",
+    "title": "Henry Irwin",
+    "category": "Review",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5152,
+    "cells": [
+     {
+      "date": "2026-10-06",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "13:30",
+    "end_time": "14:45",
+    "title": "Grace Hill",
+    "category": "Intake",
+    "status": "scheduled",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5153,
+    "cells": [
+     {
+      "date": "2026-10-06",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "14:00",
+    "end_time": "15:15",
+    "title": "Henry Irwin",
+    "category": "Review",
+    "status": "checked_in",
+    "note": ""
+   },
+   {
+    "id": 5154,
+    "cells": [
+     {
+      "date": "2026-10-06",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "15:45",
+    "end_time": "16:30",
+    "title": "Grace Hill",
+    "category": "Follow-up",
+    "status": "canceled",
+    "note": ""
+   },
+   {
+    "id": 5155,
+    "cells": [
+     {
+      "date": "2026-10-06",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "17:00",
+    "end_time": "17:45",
+    "title": "Frank Green",
+    "category": "Review",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5156,
+    "cells": [
+     {
+      "date": "2026-10-07",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "09:30",
+    "end_time": "10:45",
+    "title": "Ben Carter",
+    "category": "Review",
+    "status": "checked_in",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5157,
+    "cells": [
+     {
+      "date": "2026-10-07",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "11:30",
+    "end_time": "12:30",
+    "title": "Frank Green",
+    "category": "Intake",
+    "status": "scheduled",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5158,
+    "cells": [
+     {
+      "date": "2026-10-07",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "16:15",
+    "end_time": "17:30",
+    "title": "Frank Green",
+    "category": "Intake",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5159,
+    "cells": [
+     {
+      "date": "2026-10-07",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "10:15",
+    "end_time": "11:30",
+    "title": "Ben Carter",
+    "category": "Review",
+    "status": "canceled",
+    "note": ""
+   },
+   {
+    "id": 5160,
+    "cells": [
+     {
+      "date": "2026-10-07",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "13:30",
+    "end_time": "14:30",
+    "title": "Henry Irwin",
+    "category": "Consultation",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5161,
+    "cells": [
+     {
+      "date": "2026-10-07",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "15:00",
+    "end_time": "15:45",
+    "title": "Daniel Evans",
+    "category": "Follow-up",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5162,
+    "cells": [
+     {
+      "date": "2026-10-07",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "16:30",
+    "end_time": "17:00",
+    "title": "Henry Irwin",
+    "category": "Consultation",
+    "status": "checked_in",
+    "note": ""
+   },
+   {
+    "id": 5163,
+    "cells": [
+     {
+      "date": "2026-10-07",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "17:00",
+    "end_time": "17:30",
+    "title": "Daniel Evans",
+    "category": "Review",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5164,
+    "cells": [
+     {
+      "date": "2026-10-07",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "17:45",
+    "end_time": "18:30",
+    "title": "Henry Irwin",
+    "category": "Intake",
+    "status": "checked_in",
+    "note": ""
+   },
+   {
+    "id": 5165,
+    "cells": [
+     {
+      "date": "2026-10-07",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "10:00",
+    "end_time": "11:15",
+    "title": "Daniel Evans",
+    "category": "Intake",
+    "status": "checked_in",
+    "note": ""
+   },
+   {
+    "id": 5166,
+    "cells": [
+     {
+      "date": "2026-10-07",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "12:00",
+    "end_time": "13:00",
+    "title": "Henry Irwin",
+    "category": "Review",
+    "status": "scheduled",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5167,
+    "cells": [
+     {
+      "date": "2026-10-07",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "13:45",
+    "end_time": "15:00",
+    "title": "Emma Foster",
+    "category": "Review",
+    "status": "canceled",
+    "note": ""
+   },
+   {
+    "id": 5168,
+    "cells": [
+     {
+      "date": "2026-10-07",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "17:00",
+    "end_time": "17:45",
+    "title": "Daniel Evans",
+    "category": "Follow-up",
+    "status": "canceled",
+    "note": ""
+   },
+   {
+    "id": 5169,
+    "cells": [
+     {
+      "date": "2026-10-07",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "09:45",
+    "end_time": "10:30",
+    "title": "Emma Foster",
+    "category": "Follow-up",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5170,
+    "cells": [
+     {
+      "date": "2026-10-07",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "11:15",
+    "end_time": "12:00",
+    "title": "Emma Foster",
+    "category": "Review",
+    "status": "checked_in",
+    "note": ""
+   },
+   {
+    "id": 5171,
+    "cells": [
+     {
+      "date": "2026-10-07",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "15:00",
+    "end_time": "15:30",
+    "title": "Ben Carter",
+    "category": "Consultation",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5172,
+    "cells": [
+     {
+      "date": "2026-10-07",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "15:30",
+    "end_time": "16:45",
+    "title": "Alice Morgan",
+    "category": "Review",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5173,
+    "cells": [
+     {
+      "date": "2026-10-08",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "10:00",
+    "end_time": "10:45",
+    "title": "Grace Hill",
+    "category": "Follow-up",
+    "status": "canceled",
+    "note": ""
+   },
+   {
+    "id": 5174,
+    "cells": [
+     {
+      "date": "2026-10-08",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "12:15",
+    "end_time": "13:30",
+    "title": "Ben Carter",
+    "category": "Intake",
+    "status": "canceled",
+    "note": ""
+   },
+   {
+    "id": 5175,
+    "cells": [
+     {
+      "date": "2026-10-08",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "15:15",
+    "end_time": "16:00",
+    "title": "Grace Hill",
+    "category": "Intake",
+    "status": "checked_in",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5176,
+    "cells": [
+     {
+      "date": "2026-10-08",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "16:45",
+    "end_time": "17:30",
+    "title": "Emma Foster",
+    "category": "Consultation",
+    "status": "scheduled",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5177,
+    "cells": [
+     {
+      "date": "2026-10-08",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "18:00",
+    "end_time": "18:30",
+    "title": "Frank Green",
+    "category": "Review",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5178,
+    "cells": [
+     {
+      "date": "2026-10-08",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "09:45",
+    "end_time": "11:00",
+    "title": "Grace Hill",
+    "category": "Intake",
+    "status": "canceled",
+    "note": ""
+   },
+   {
+    "id": 5179,
+    "cells": [
+     {
+      "date": "2026-10-08",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "11:15",
+    "end_time": "12:15",
+    "title": "Emma Foster",
+    "category": "Follow-up",
+    "status": "canceled",
+    "note": ""
+   },
+   {
+    "id": 5180,
+    "cells": [
+     {
+      "date": "2026-10-08",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "14:30",
+    "end_time": "15:30",
+    "title": "Emma Foster",
+    "category": "Consultation",
+    "status": "canceled",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5181,
+    "cells": [
+     {
+      "date": "2026-10-08",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "09:30",
+    "end_time": "10:45",
+    "title": "Grace Hill",
+    "category": "Intake",
+    "status": "scheduled",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5182,
+    "cells": [
+     {
+      "date": "2026-10-08",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "11:00",
+    "end_time": "11:45",
+    "title": "Frank Green",
+    "category": "Intake",
+    "status": "checked_in",
+    "note": ""
+   },
+   {
+    "id": 5183,
+    "cells": [
+     {
+      "date": "2026-10-08",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "13:30",
+    "end_time": "14:30",
+    "title": "Ben Carter",
+    "category": "Intake",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5184,
+    "cells": [
+     {
+      "date": "2026-10-08",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "14:45",
+    "end_time": "15:30",
+    "title": "Chloe Davis",
+    "category": "Intake",
+    "status": "scheduled",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5185,
+    "cells": [
+     {
+      "date": "2026-10-08",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "15:30",
+    "end_time": "16:15",
+    "title": "Frank Green",
+    "category": "Follow-up",
+    "status": "canceled",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5186,
+    "cells": [
+     {
+      "date": "2026-10-08",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "17:00",
+    "end_time": "17:30",
+    "title": "Frank Green",
+    "category": "Follow-up",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5187,
+    "cells": [
+     {
+      "date": "2026-10-08",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "09:30",
+    "end_time": "10:30",
+    "title": "Daniel Evans",
+    "category": "Review",
+    "status": "canceled",
+    "note": ""
+   },
+   {
+    "id": 5188,
+    "cells": [
+     {
+      "date": "2026-10-08",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "10:45",
+    "end_time": "11:45",
+    "title": "Grace Hill",
+    "category": "Intake",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5189,
+    "cells": [
+     {
+      "date": "2026-10-08",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "13:30",
+    "end_time": "14:00",
+    "title": "Frank Green",
+    "category": "Review",
+    "status": "canceled",
+    "note": ""
+   },
+   {
+    "id": 5190,
+    "cells": [
+     {
+      "date": "2026-10-08",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "17:15",
+    "end_time": "18:30",
+    "title": "Grace Hill",
+    "category": "Consultation",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5191,
+    "cells": [
+     {
+      "date": "2026-10-09",
+      "resource_id": 101
+     },
+     {
+      "date": "2026-10-09",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "10:15",
+    "end_time": "11:30",
+    "title": "Alice Morgan",
+    "category": "Consultation",
+    "status": "checked_in",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5192,
+    "cells": [
+     {
+      "date": "2026-10-09",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "16:00",
+    "end_time": "17:15",
+    "title": "Chloe Davis",
+    "category": "Follow-up",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5193,
+    "cells": [
+     {
+      "date": "2026-10-09",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "09:30",
+    "end_time": "10:30",
+    "title": "Frank Green",
+    "category": "Review",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5194,
+    "cells": [
+     {
+      "date": "2026-10-09",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "11:15",
+    "end_time": "12:00",
+    "title": "Daniel Evans",
+    "category": "Consultation",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5195,
+    "cells": [
+     {
+      "date": "2026-10-09",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "13:30",
+    "end_time": "14:15",
+    "title": "Henry Irwin",
+    "category": "Consultation",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5196,
+    "cells": [
+     {
+      "date": "2026-10-09",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "14:30",
+    "end_time": "15:30",
+    "title": "Frank Green",
+    "category": "Consultation",
+    "status": "checked_in",
+    "note": ""
+   },
+   {
+    "id": 5197,
+    "cells": [
+     {
+      "date": "2026-10-09",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "15:45",
+    "end_time": "16:45",
+    "title": "Chloe Davis",
+    "category": "Review",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5198,
+    "cells": [
+     {
+      "date": "2026-10-09",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "11:00",
+    "end_time": "12:15",
+    "title": "Frank Green",
+    "category": "Intake",
+    "status": "checked_in",
+    "note": ""
+   },
+   {
+    "id": 5199,
+    "cells": [
+     {
+      "date": "2026-10-09",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "13:30",
+    "end_time": "14:15",
+    "title": "Chloe Davis",
+    "category": "Follow-up",
+    "status": "canceled",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5200,
+    "cells": [
+     {
+      "date": "2026-10-09",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "14:45",
+    "end_time": "15:15",
+    "title": "Frank Green",
+    "category": "Intake",
+    "status": "checked_in",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5201,
+    "cells": [
+     {
+      "date": "2026-10-09",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "17:45",
+    "end_time": "18:30",
+    "title": "Emma Foster",
+    "category": "Review",
+    "status": "checked_in",
+    "note": ""
+   },
+   {
+    "id": 5202,
+    "cells": [
+     {
+      "date": "2026-10-09",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "10:15",
+    "end_time": "11:15",
+    "title": "Ben Carter",
+    "category": "Consultation",
+    "status": "checked_in",
+    "note": ""
+   },
+   {
+    "id": 5203,
+    "cells": [
+     {
+      "date": "2026-10-09",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "12:00",
+    "end_time": "12:45",
+    "title": "Ben Carter",
+    "category": "Intake",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5204,
+    "cells": [
+     {
+      "date": "2026-10-10",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "10:00",
+    "end_time": "11:15",
+    "title": "Henry Irwin",
+    "category": "Intake",
+    "status": "checked_in",
+    "note": ""
+   },
+   {
+    "id": 5205,
+    "cells": [
+     {
+      "date": "2026-10-10",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "11:15",
+    "end_time": "12:00",
+    "title": "Frank Green",
+    "category": "Follow-up",
+    "status": "checked_in",
+    "note": ""
+   },
+   {
+    "id": 5206,
+    "cells": [
+     {
+      "date": "2026-10-10",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "13:30",
+    "end_time": "14:30",
+    "title": "Ben Carter",
+    "category": "Consultation",
+    "status": "canceled",
+    "note": ""
+   },
+   {
+    "id": 5207,
+    "cells": [
+     {
+      "date": "2026-10-10",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "14:30",
+    "end_time": "15:30",
+    "title": "Alice Morgan",
+    "category": "Intake",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5208,
+    "cells": [
+     {
+      "date": "2026-10-10",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "15:45",
+    "end_time": "17:00",
+    "title": "Chloe Davis",
+    "category": "Review",
+    "status": "checked_in",
+    "note": ""
+   },
+   {
+    "id": 5209,
+    "cells": [
+     {
+      "date": "2026-10-10",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "09:30",
+    "end_time": "10:00",
+    "title": "Henry Irwin",
+    "category": "Review",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5210,
+    "cells": [
+     {
+      "date": "2026-10-10",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "10:15",
+    "end_time": "11:30",
+    "title": "Chloe Davis",
+    "category": "Review",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5211,
+    "cells": [
+     {
+      "date": "2026-10-10",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "11:30",
+    "end_time": "12:00",
+    "title": "Emma Foster",
+    "category": "Review",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5212,
+    "cells": [
+     {
+      "date": "2026-10-10",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "12:15",
+    "end_time": "12:45",
+    "title": "Frank Green",
+    "category": "Consultation",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5213,
+    "cells": [
+     {
+      "date": "2026-10-10",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "13:30",
+    "end_time": "14:00",
+    "title": "Ben Carter",
+    "category": "Consultation",
+    "status": "scheduled",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5214,
+    "cells": [
+     {
+      "date": "2026-10-10",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "14:00",
+    "end_time": "15:00",
+    "title": "Daniel Evans",
+    "category": "Follow-up",
+    "status": "canceled",
+    "note": ""
+   },
+   {
+    "id": 5215,
+    "cells": [
+     {
+      "date": "2026-10-10",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "15:15",
+    "end_time": "16:30",
+    "title": "Ben Carter",
+    "category": "Review",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5216,
+    "cells": [
+     {
+      "date": "2026-10-10",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "16:30",
+    "end_time": "17:15",
+    "title": "Chloe Davis",
+    "category": "Review",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5217,
+    "cells": [
+     {
+      "date": "2026-10-10",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "17:15",
+    "end_time": "18:00",
+    "title": "Ben Carter",
+    "category": "Review",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5218,
+    "cells": [
+     {
+      "date": "2026-10-10",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "09:30",
+    "end_time": "10:45",
+    "title": "Emma Foster",
+    "category": "Consultation",
+    "status": "canceled",
+    "note": ""
+   },
+   {
+    "id": 5219,
+    "cells": [
+     {
+      "date": "2026-10-10",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "10:45",
+    "end_time": "11:30",
+    "title": "Ben Carter",
+    "category": "Review",
+    "status": "checked_in",
+    "note": ""
+   },
+   {
+    "id": 5220,
+    "cells": [
+     {
+      "date": "2026-10-10",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "15:15",
+    "end_time": "16:15",
+    "title": "Ben Carter",
+    "category": "Review",
+    "status": "canceled",
+    "note": ""
+   },
+   {
+    "id": 5221,
+    "cells": [
+     {
+      "date": "2026-10-10",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "17:00",
+    "end_time": "18:00",
+    "title": "Alice Morgan",
+    "category": "Intake",
+    "status": "scheduled",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5222,
+    "cells": [
+     {
+      "date": "2026-10-10",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "10:15",
+    "end_time": "11:15",
+    "title": "Daniel Evans",
+    "category": "Consultation",
+    "status": "checked_in",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5223,
+    "cells": [
+     {
+      "date": "2026-10-10",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "13:45",
+    "end_time": "14:15",
+    "title": "Ben Carter",
+    "category": "Consultation",
+    "status": "checked_in",
+    "note": ""
+   },
+   {
+    "id": 5224,
+    "cells": [
+     {
+      "date": "2026-10-10",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "16:00",
+    "end_time": "16:30",
+    "title": "Henry Irwin",
+    "category": "Consultation",
+    "status": "checked_in",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5225,
+    "cells": [
+     {
+      "date": "2026-10-10",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "16:30",
+    "end_time": "17:15",
+    "title": "Emma Foster",
+    "category": "Review",
+    "status": "checked_in",
+    "note": ""
+   },
+   {
+    "id": 5226,
+    "cells": [
+     {
+      "date": "2026-10-10",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "17:45",
+    "end_time": "18:15",
+    "title": "Daniel Evans",
+    "category": "Intake",
+    "status": "checked_in",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5227,
+    "cells": [
+     {
+      "date": "2026-10-12",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "12:15",
+    "end_time": "12:45",
+    "title": "Ben Carter",
+    "category": "Follow-up",
+    "status": "checked_in",
+    "note": ""
+   },
+   {
+    "id": 5228,
+    "cells": [
+     {
+      "date": "2026-10-12",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "14:15",
+    "end_time": "15:30",
+    "title": "Ben Carter",
+    "category": "Follow-up",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5229,
+    "cells": [
+     {
+      "date": "2026-10-12",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "17:45",
+    "end_time": "18:15",
+    "title": "Ben Carter",
+    "category": "Consultation",
+    "status": "checked_in",
+    "note": ""
+   },
+   {
+    "id": 5230,
+    "cells": [
+     {
+      "date": "2026-10-12",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "09:30",
+    "end_time": "10:00",
+    "title": "Ben Carter",
+    "category": "Follow-up",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5231,
+    "cells": [
+     {
+      "date": "2026-10-12",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "10:15",
+    "end_time": "10:45",
+    "title": "Emma Foster",
+    "category": "Review",
+    "status": "canceled",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5232,
+    "cells": [
+     {
+      "date": "2026-10-12",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "11:30",
+    "end_time": "12:45",
+    "title": "Henry Irwin",
+    "category": "Review",
+    "status": "canceled",
+    "note": ""
+   },
+   {
+    "id": 5233,
+    "cells": [
+     {
+      "date": "2026-10-12",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "13:30",
+    "end_time": "14:45",
+    "title": "Chloe Davis",
+    "category": "Intake",
+    "status": "scheduled",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5234,
+    "cells": [
+     {
+      "date": "2026-10-12",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "15:00",
+    "end_time": "16:00",
+    "title": "Grace Hill",
+    "category": "Review",
+    "status": "canceled",
+    "note": ""
+   },
+   {
+    "id": 5235,
+    "cells": [
+     {
+      "date": "2026-10-12",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "14:30",
+    "end_time": "15:45",
+    "title": "Daniel Evans",
+    "category": "Review",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5236,
+    "cells": [
+     {
+      "date": "2026-10-12",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "16:30",
+    "end_time": "17:45",
+    "title": "Ben Carter",
+    "category": "Follow-up",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5237,
+    "cells": [
+     {
+      "date": "2026-10-12",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "12:00",
+    "end_time": "13:15",
+    "title": "Frank Green",
+    "category": "Intake",
+    "status": "scheduled",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5238,
+    "cells": [
+     {
+      "date": "2026-10-12",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "14:45",
+    "end_time": "15:15",
+    "title": "Daniel Evans",
+    "category": "Follow-up",
+    "status": "checked_in",
+    "note": ""
+   },
+   {
+    "id": 5239,
+    "cells": [
+     {
+      "date": "2026-10-12",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "16:45",
+    "end_time": "17:45",
+    "title": "Frank Green",
+    "category": "Consultation",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5240,
+    "cells": [
+     {
+      "date": "2026-10-13",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "09:45",
+    "end_time": "10:45",
+    "title": "Emma Foster",
+    "category": "Consultation",
+    "status": "checked_in",
+    "note": ""
+   },
+   {
+    "id": 5241,
+    "cells": [
+     {
+      "date": "2026-10-13",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "11:00",
+    "end_time": "12:15",
+    "title": "Chloe Davis",
+    "category": "Consultation",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5242,
+    "cells": [
+     {
+      "date": "2026-10-13",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "13:30",
+    "end_time": "14:30",
+    "title": "Frank Green",
+    "category": "Follow-up",
+    "status": "canceled",
+    "note": ""
+   },
+   {
+    "id": 5243,
+    "cells": [
+     {
+      "date": "2026-10-13",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "10:30",
+    "end_time": "11:00",
+    "title": "Frank Green",
+    "category": "Intake",
+    "status": "checked_in",
+    "note": ""
+   },
+   {
+    "id": 5244,
+    "cells": [
+     {
+      "date": "2026-10-13",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "11:00",
+    "end_time": "11:30",
+    "title": "Grace Hill",
+    "category": "Follow-up",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5245,
+    "cells": [
+     {
+      "date": "2026-10-13",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "11:45",
+    "end_time": "12:15",
+    "title": "Frank Green",
+    "category": "Review",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5246,
+    "cells": [
+     {
+      "date": "2026-10-13",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "12:15",
+    "end_time": "13:30",
+    "title": "Daniel Evans",
+    "category": "Consultation",
+    "status": "canceled",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5247,
+    "cells": [
+     {
+      "date": "2026-10-13",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "14:45",
+    "end_time": "15:45",
+    "title": "Emma Foster",
+    "category": "Follow-up",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5248,
+    "cells": [
+     {
+      "date": "2026-10-13",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "17:30",
+    "end_time": "18:15",
+    "title": "Chloe Davis",
+    "category": "Consultation",
+    "status": "scheduled",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5249,
+    "cells": [
+     {
+      "date": "2026-10-13",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "10:00",
+    "end_time": "10:30",
+    "title": "Chloe Davis",
+    "category": "Follow-up",
+    "status": "scheduled",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5250,
+    "cells": [
+     {
+      "date": "2026-10-13",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "11:30",
+    "end_time": "12:45",
+    "title": "Daniel Evans",
+    "category": "Intake",
+    "status": "canceled",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5251,
+    "cells": [
+     {
+      "date": "2026-10-13",
+      "resource_id": 103
+     },
+     {
+      "date": "2026-10-13",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "13:30",
+    "end_time": "14:30",
+    "title": "Frank Green",
+    "category": "Intake",
+    "status": "checked_in",
+    "note": ""
+   },
+   {
+    "id": 5252,
+    "cells": [
+     {
+      "date": "2026-10-13",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "14:45",
+    "end_time": "16:00",
+    "title": "Chloe Davis",
+    "category": "Follow-up",
+    "status": "checked_in",
+    "note": ""
+   },
+   {
+    "id": 5253,
+    "cells": [
+     {
+      "date": "2026-10-13",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "16:15",
+    "end_time": "17:15",
+    "title": "Emma Foster",
+    "category": "Intake",
+    "status": "scheduled",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5254,
+    "cells": [
+     {
+      "date": "2026-10-13",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "17:30",
+    "end_time": "18:00",
+    "title": "Frank Green",
+    "category": "Follow-up",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5255,
+    "cells": [
+     {
+      "date": "2026-10-13",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "10:15",
+    "end_time": "11:30",
+    "title": "Grace Hill",
+    "category": "Follow-up",
+    "status": "checked_in",
+    "note": ""
+   },
+   {
+    "id": 5256,
+    "cells": [
+     {
+      "date": "2026-10-13",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "13:30",
+    "end_time": "14:15",
+    "title": "Daniel Evans",
+    "category": "Intake",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5257,
+    "cells": [
+     {
+      "date": "2026-10-13",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "14:45",
+    "end_time": "15:15",
+    "title": "Alice Morgan",
+    "category": "Consultation",
+    "status": "canceled",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5258,
+    "cells": [
+     {
+      "date": "2026-10-13",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "16:45",
+    "end_time": "17:15",
+    "title": "Henry Irwin",
+    "category": "Follow-up",
+    "status": "checked_in",
+    "note": ""
+   },
+   {
+    "id": 5259,
+    "cells": [
+     {
+      "date": "2026-10-14",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "10:00",
+    "end_time": "10:30",
+    "title": "Chloe Davis",
+    "category": "Follow-up",
+    "status": "canceled",
+    "note": ""
+   },
+   {
+    "id": 5260,
+    "cells": [
+     {
+      "date": "2026-10-14",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "10:30",
+    "end_time": "11:30",
+    "title": "Ben Carter",
+    "category": "Follow-up",
+    "status": "checked_in",
+    "note": ""
+   },
+   {
+    "id": 5261,
+    "cells": [
+     {
+      "date": "2026-10-14",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "11:30",
+    "end_time": "12:30",
+    "title": "Ben Carter",
+    "category": "Intake",
+    "status": "canceled",
+    "note": ""
+   },
+   {
+    "id": 5262,
+    "cells": [
+     {
+      "date": "2026-10-14",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "13:30",
+    "end_time": "14:00",
+    "title": "Daniel Evans",
+    "category": "Consultation",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5263,
+    "cells": [
+     {
+      "date": "2026-10-14",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "15:00",
+    "end_time": "16:00",
+    "title": "Henry Irwin",
+    "category": "Intake",
+    "status": "canceled",
+    "note": ""
+   },
+   {
+    "id": 5264,
+    "cells": [
+     {
+      "date": "2026-10-14",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "10:15",
+    "end_time": "10:45",
+    "title": "Alice Morgan",
+    "category": "Follow-up",
+    "status": "canceled",
+    "note": ""
+   },
+   {
+    "id": 5265,
+    "cells": [
+     {
+      "date": "2026-10-14",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "11:00",
+    "end_time": "11:30",
+    "title": "Grace Hill",
+    "category": "Review",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5266,
+    "cells": [
+     {
+      "date": "2026-10-14",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "11:45",
+    "end_time": "12:45",
+    "title": "Emma Foster",
+    "category": "Consultation",
+    "status": "checked_in",
+    "note": ""
+   },
+   {
+    "id": 5267,
+    "cells": [
+     {
+      "date": "2026-10-14",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "13:30",
+    "end_time": "14:45",
+    "title": "Frank Green",
+    "category": "Follow-up",
+    "status": "checked_in",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5268,
+    "cells": [
+     {
+      "date": "2026-10-14",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "15:30",
+    "end_time": "16:45",
+    "title": "Henry Irwin",
+    "category": "Intake",
+    "status": "checked_in",
+    "note": ""
+   },
+   {
+    "id": 5269,
+    "cells": [
+     {
+      "date": "2026-10-14",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "09:45",
+    "end_time": "11:00",
+    "title": "Emma Foster",
+    "category": "Follow-up",
+    "status": "checked_in",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5270,
+    "cells": [
+     {
+      "date": "2026-10-14",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "14:30",
+    "end_time": "15:30",
+    "title": "Ben Carter",
+    "category": "Review",
+    "status": "canceled",
+    "note": ""
+   },
+   {
+    "id": 5271,
+    "cells": [
+     {
+      "date": "2026-10-14",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "16:15",
+    "end_time": "17:30",
+    "title": "Henry Irwin",
+    "category": "Consultation",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5272,
+    "cells": [
+     {
+      "date": "2026-10-14",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "09:30",
+    "end_time": "10:30",
+    "title": "Alice Morgan",
+    "category": "Consultation",
+    "status": "checked_in",
+    "note": ""
+   },
+   {
+    "id": 5273,
+    "cells": [
+     {
+      "date": "2026-10-14",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "14:15",
+    "end_time": "15:30",
+    "title": "Alice Morgan",
+    "category": "Consultation",
+    "status": "canceled",
+    "note": ""
+   },
+   {
+    "id": 5274,
+    "cells": [
+     {
+      "date": "2026-10-14",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "15:45",
+    "end_time": "16:45",
+    "title": "Frank Green",
+    "category": "Follow-up",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5275,
+    "cells": [
+     {
+      "date": "2026-10-15",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "13:30",
+    "end_time": "14:15",
+    "title": "Alice Morgan",
+    "category": "Intake",
+    "status": "canceled",
+    "note": ""
+   },
+   {
+    "id": 5276,
+    "cells": [
+     {
+      "date": "2026-10-15",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "15:45",
+    "end_time": "16:15",
+    "title": "Emma Foster",
+    "category": "Review",
+    "status": "checked_in",
+    "note": ""
+   },
+   {
+    "id": 5277,
+    "cells": [
+     {
+      "date": "2026-10-15",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "11:30",
+    "end_time": "12:45",
+    "title": "Frank Green",
+    "category": "Consultation",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5278,
+    "cells": [
+     {
+      "date": "2026-10-15",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "13:30",
+    "end_time": "14:15",
+    "title": "Ben Carter",
+    "category": "Follow-up",
+    "status": "canceled",
+    "note": ""
+   },
+   {
+    "id": 5279,
+    "cells": [
+     {
+      "date": "2026-10-15",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "14:45",
+    "end_time": "15:30",
+    "title": "Emma Foster",
+    "category": "Consultation",
+    "status": "checked_in",
+    "note": ""
+   },
+   {
+    "id": 5280,
+    "cells": [
+     {
+      "date": "2026-10-15",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "15:30",
+    "end_time": "16:00",
+    "title": "Emma Foster",
+    "category": "Review",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5281,
+    "cells": [
+     {
+      "date": "2026-10-15",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "16:30",
+    "end_time": "17:15",
+    "title": "Henry Irwin",
+    "category": "Consultation",
+    "status": "scheduled",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5282,
+    "cells": [
+     {
+      "date": "2026-10-15",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "09:45",
+    "end_time": "10:45",
+    "title": "Frank Green",
+    "category": "Follow-up",
+    "status": "canceled",
+    "note": ""
+   },
+   {
+    "id": 5283,
+    "cells": [
+     {
+      "date": "2026-10-15",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "10:45",
+    "end_time": "11:45",
+    "title": "Frank Green",
+    "category": "Intake",
+    "status": "canceled",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5284,
+    "cells": [
+     {
+      "date": "2026-10-15",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "13:30",
+    "end_time": "14:00",
+    "title": "Henry Irwin",
+    "category": "Review",
+    "status": "checked_in",
+    "note": ""
+   },
+   {
+    "id": 5285,
+    "cells": [
+     {
+      "date": "2026-10-15",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "14:45",
+    "end_time": "15:15",
+    "title": "Daniel Evans",
+    "category": "Follow-up",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5286,
+    "cells": [
+     {
+      "date": "2026-10-15",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "09:30",
+    "end_time": "10:00",
+    "title": "Grace Hill",
+    "category": "Consultation",
+    "status": "canceled",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5287,
+    "cells": [
+     {
+      "date": "2026-10-15",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "11:00",
+    "end_time": "12:00",
+    "title": "Henry Irwin",
+    "category": "Follow-up",
+    "status": "canceled",
+    "note": ""
+   },
+   {
+    "id": 5288,
+    "cells": [
+     {
+      "date": "2026-10-15",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "13:45",
+    "end_time": "15:00",
+    "title": "Chloe Davis",
+    "category": "Follow-up",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5289,
+    "cells": [
+     {
+      "date": "2026-10-15",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "15:45",
+    "end_time": "16:15",
+    "title": "Grace Hill",
+    "category": "Review",
+    "status": "scheduled",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5290,
+    "cells": [
+     {
+      "date": "2026-10-16",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "13:30",
+    "end_time": "14:30",
+    "title": "Ben Carter",
+    "category": "Intake",
+    "status": "canceled",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5291,
+    "cells": [
+     {
+      "date": "2026-10-16",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "15:15",
+    "end_time": "16:00",
+    "title": "Frank Green",
+    "category": "Follow-up",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5292,
+    "cells": [
+     {
+      "date": "2026-10-16",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "16:30",
+    "end_time": "17:00",
+    "title": "Henry Irwin",
+    "category": "Review",
+    "status": "canceled",
+    "note": ""
+   },
+   {
+    "id": 5293,
+    "cells": [
+     {
+      "date": "2026-10-16",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "11:30",
+    "end_time": "12:45",
+    "title": "Emma Foster",
+    "category": "Follow-up",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5294,
+    "cells": [
+     {
+      "date": "2026-10-16",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "13:30",
+    "end_time": "14:45",
+    "title": "Grace Hill",
+    "category": "Intake",
+    "status": "canceled",
+    "note": ""
+   },
+   {
+    "id": 5295,
+    "cells": [
+     {
+      "date": "2026-10-16",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "10:00",
+    "end_time": "11:15",
+    "title": "Henry Irwin",
+    "category": "Review",
+    "status": "checked_in",
+    "note": ""
+   },
+   {
+    "id": 5296,
+    "cells": [
+     {
+      "date": "2026-10-16",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "12:00",
+    "end_time": "12:45",
+    "title": "Alice Morgan",
+    "category": "Review",
+    "status": "canceled",
+    "note": ""
+   },
+   {
+    "id": 5297,
+    "cells": [
+     {
+      "date": "2026-10-16",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "15:45",
+    "end_time": "16:15",
+    "title": "Chloe Davis",
+    "category": "Intake",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5298,
+    "cells": [
+     {
+      "date": "2026-10-16",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "16:45",
+    "end_time": "17:30",
+    "title": "Alice Morgan",
+    "category": "Intake",
+    "status": "canceled",
+    "note": ""
+   },
+   {
+    "id": 5299,
+    "cells": [
+     {
+      "date": "2026-10-17",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "09:45",
+    "end_time": "10:30",
+    "title": "Ben Carter",
+    "category": "Consultation",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5300,
+    "cells": [
+     {
+      "date": "2026-10-17",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "11:00",
+    "end_time": "11:30",
+    "title": "Alice Morgan",
+    "category": "Intake",
+    "status": "checked_in",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5301,
+    "cells": [
+     {
+      "date": "2026-10-17",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "12:00",
+    "end_time": "13:00",
+    "title": "Daniel Evans",
+    "category": "Review",
+    "status": "checked_in",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5302,
+    "cells": [
+     {
+      "date": "2026-10-17",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "13:30",
+    "end_time": "14:30",
+    "title": "Daniel Evans",
+    "category": "Intake",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5303,
+    "cells": [
+     {
+      "date": "2026-10-17",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "11:15",
+    "end_time": "12:00",
+    "title": "Alice Morgan",
+    "category": "Follow-up",
+    "status": "canceled",
+    "note": ""
+   },
+   {
+    "id": 5304,
+    "cells": [
+     {
+      "date": "2026-10-17",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "13:30",
+    "end_time": "14:00",
+    "title": "Frank Green",
+    "category": "Review",
+    "status": "canceled",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5305,
+    "cells": [
+     {
+      "date": "2026-10-17",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "14:00",
+    "end_time": "15:15",
+    "title": "Chloe Davis",
+    "category": "Intake",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5306,
+    "cells": [
+     {
+      "date": "2026-10-17",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "15:45",
+    "end_time": "16:15",
+    "title": "Emma Foster",
+    "category": "Follow-up",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5307,
+    "cells": [
+     {
+      "date": "2026-10-17",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "16:45",
+    "end_time": "17:15",
+    "title": "Emma Foster",
+    "category": "Intake",
+    "status": "checked_in",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5308,
+    "cells": [
+     {
+      "date": "2026-10-17",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "09:45",
+    "end_time": "10:45",
+    "title": "Chloe Davis",
+    "category": "Consultation",
+    "status": "canceled",
+    "note": ""
+   },
+   {
+    "id": 5309,
+    "cells": [
+     {
+      "date": "2026-10-17",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "11:00",
+    "end_time": "12:00",
+    "title": "Henry Irwin",
+    "category": "Follow-up",
+    "status": "canceled",
+    "note": ""
+   },
+   {
+    "id": 5310,
+    "cells": [
+     {
+      "date": "2026-10-17",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "13:30",
+    "end_time": "14:30",
+    "title": "Daniel Evans",
+    "category": "Intake",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5311,
+    "cells": [
+     {
+      "date": "2026-10-17",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "15:45",
+    "end_time": "17:00",
+    "title": "Daniel Evans",
+    "category": "Intake",
+    "status": "canceled",
+    "note": ""
+   },
+   {
+    "id": 5312,
+    "cells": [
+     {
+      "date": "2026-10-17",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "17:45",
+    "end_time": "18:15",
+    "title": "Daniel Evans",
+    "category": "Follow-up",
+    "status": "scheduled",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5313,
+    "cells": [
+     {
+      "date": "2026-10-17",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "10:00",
+    "end_time": "11:15",
+    "title": "Emma Foster",
+    "category": "Consultation",
+    "status": "checked_in",
+    "note": ""
+   },
+   {
+    "id": 5314,
+    "cells": [
+     {
+      "date": "2026-10-17",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "11:15",
+    "end_time": "11:45",
+    "title": "Chloe Davis",
+    "category": "Review",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5315,
+    "cells": [
+     {
+      "date": "2026-10-17",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "14:15",
+    "end_time": "14:45",
+    "title": "Daniel Evans",
+    "category": "Review",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5316,
+    "cells": [
+     {
+      "date": "2026-10-17",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "15:15",
+    "end_time": "15:45",
+    "title": "Daniel Evans",
+    "category": "Consultation",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5317,
+    "cells": [
+     {
+      "date": "2026-10-17",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "17:00",
+    "end_time": "17:45",
+    "title": "Daniel Evans",
+    "category": "Follow-up",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5318,
+    "cells": [
+     {
+      "date": "2026-10-19",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "09:45",
+    "end_time": "11:00",
+    "title": "Alice Morgan",
+    "category": "Follow-up",
+    "status": "checked_in",
+    "note": ""
+   },
+   {
+    "id": 5319,
+    "cells": [
+     {
+      "date": "2026-10-19",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "11:15",
+    "end_time": "11:45",
+    "title": "Chloe Davis",
+    "category": "Follow-up",
+    "status": "canceled",
+    "note": ""
+   },
+   {
+    "id": 5320,
+    "cells": [
+     {
+      "date": "2026-10-19",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "13:30",
+    "end_time": "14:45",
+    "title": "Grace Hill",
+    "category": "Review",
+    "status": "canceled",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5321,
+    "cells": [
+     {
+      "date": "2026-10-19",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "15:15",
+    "end_time": "15:45",
+    "title": "Frank Green",
+    "category": "Intake",
+    "status": "checked_in",
+    "note": ""
+   },
+   {
+    "id": 5322,
+    "cells": [
+     {
+      "date": "2026-10-19",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "16:00",
+    "end_time": "16:45",
+    "title": "Henry Irwin",
+    "category": "Follow-up",
+    "status": "canceled",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5323,
+    "cells": [
+     {
+      "date": "2026-10-19",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "16:45",
+    "end_time": "17:15",
+    "title": "Alice Morgan",
+    "category": "Follow-up",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5324,
+    "cells": [
+     {
+      "date": "2026-10-19",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "12:00",
+    "end_time": "13:00",
+    "title": "Alice Morgan",
+    "category": "Consultation",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5325,
+    "cells": [
+     {
+      "date": "2026-10-19",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "13:45",
+    "end_time": "14:30",
+    "title": "Alice Morgan",
+    "category": "Follow-up",
+    "status": "checked_in",
+    "note": ""
+   },
+   {
+    "id": 5326,
+    "cells": [
+     {
+      "date": "2026-10-19",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "14:30",
+    "end_time": "15:00",
+    "title": "Chloe Davis",
+    "category": "Follow-up",
+    "status": "canceled",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5327,
+    "cells": [
+     {
+      "date": "2026-10-19",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "16:00",
+    "end_time": "16:30",
+    "title": "Grace Hill",
+    "category": "Review",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5328,
+    "cells": [
+     {
+      "date": "2026-10-19",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "16:30",
+    "end_time": "17:45",
+    "title": "Emma Foster",
+    "category": "Consultation",
+    "status": "scheduled",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5329,
+    "cells": [
+     {
+      "date": "2026-10-19",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "10:15",
+    "end_time": "11:15",
+    "title": "Chloe Davis",
+    "category": "Follow-up",
+    "status": "canceled",
+    "note": ""
+   },
+   {
+    "id": 5330,
+    "cells": [
+     {
+      "date": "2026-10-19",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "12:15",
+    "end_time": "13:15",
+    "title": "Emma Foster",
+    "category": "Follow-up",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5331,
+    "cells": [
+     {
+      "date": "2026-10-19",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "15:15",
+    "end_time": "16:15",
+    "title": "Ben Carter",
+    "category": "Review",
+    "status": "checked_in",
+    "note": ""
+   },
+   {
+    "id": 5332,
+    "cells": [
+     {
+      "date": "2026-10-20",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "10:15",
+    "end_time": "10:45",
+    "title": "Alice Morgan",
+    "category": "Review",
+    "status": "checked_in",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5333,
+    "cells": [
+     {
+      "date": "2026-10-20",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "11:30",
+    "end_time": "12:15",
+    "title": "Alice Morgan",
+    "category": "Intake",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5334,
+    "cells": [
+     {
+      "date": "2026-10-20",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "13:30",
+    "end_time": "14:30",
+    "title": "Frank Green",
+    "category": "Consultation",
+    "status": "scheduled",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5335,
+    "cells": [
+     {
+      "date": "2026-10-20",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "16:15",
+    "end_time": "16:45",
+    "title": "Daniel Evans",
+    "category": "Review",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5336,
+    "cells": [
+     {
+      "date": "2026-10-20",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "10:15",
+    "end_time": "11:00",
+    "title": "Henry Irwin",
+    "category": "Follow-up",
+    "status": "scheduled",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5337,
+    "cells": [
+     {
+      "date": "2026-10-20",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "11:15",
+    "end_time": "11:45",
+    "title": "Chloe Davis",
+    "category": "Follow-up",
+    "status": "checked_in",
+    "note": ""
+   },
+   {
+    "id": 5338,
+    "cells": [
+     {
+      "date": "2026-10-20",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "11:45",
+    "end_time": "12:45",
+    "title": "Alice Morgan",
+    "category": "Follow-up",
+    "status": "canceled",
+    "note": ""
+   },
+   {
+    "id": 5339,
+    "cells": [
+     {
+      "date": "2026-10-20",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "13:30",
+    "end_time": "14:30",
+    "title": "Frank Green",
+    "category": "Consultation",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5340,
+    "cells": [
+     {
+      "date": "2026-10-20",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "14:30",
+    "end_time": "15:45",
+    "title": "Alice Morgan",
+    "category": "Follow-up",
+    "status": "scheduled",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5341,
+    "cells": [
+     {
+      "date": "2026-10-20",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "16:15",
+    "end_time": "17:00",
+    "title": "Frank Green",
+    "category": "Consultation",
+    "status": "checked_in",
+    "note": ""
+   },
+   {
+    "id": 5342,
+    "cells": [
+     {
+      "date": "2026-10-20",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "10:45",
+    "end_time": "11:45",
+    "title": "Emma Foster",
+    "category": "Review",
+    "status": "canceled",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5343,
+    "cells": [
+     {
+      "date": "2026-10-20",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "15:30",
+    "end_time": "16:15",
+    "title": "Alice Morgan",
+    "category": "Follow-up",
+    "status": "checked_in",
+    "note": ""
+   },
+   {
+    "id": 5344,
+    "cells": [
+     {
+      "date": "2026-10-20",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "16:15",
+    "end_time": "17:15",
+    "title": "Grace Hill",
+    "category": "Intake",
+    "status": "canceled",
+    "note": ""
+   },
+   {
+    "id": 5345,
+    "cells": [
+     {
+      "date": "2026-10-20",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "10:30",
+    "end_time": "11:45",
+    "title": "Chloe Davis",
+    "category": "Review",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5346,
+    "cells": [
+     {
+      "date": "2026-10-20",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "13:30",
+    "end_time": "14:30",
+    "title": "Grace Hill",
+    "category": "Follow-up",
+    "status": "scheduled",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5347,
+    "cells": [
+     {
+      "date": "2026-10-20",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "14:45",
+    "end_time": "16:00",
+    "title": "Chloe Davis",
+    "category": "Follow-up",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5348,
+    "cells": [
+     {
+      "date": "2026-10-20",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "16:00",
+    "end_time": "16:45",
+    "title": "Henry Irwin",
+    "category": "Follow-up",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5349,
+    "cells": [
+     {
+      "date": "2026-10-21",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "09:30",
+    "end_time": "10:30",
+    "title": "Daniel Evans",
+    "category": "Consultation",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5350,
+    "cells": [
+     {
+      "date": "2026-10-21",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "12:15",
+    "end_time": "12:45",
+    "title": "Chloe Davis",
+    "category": "Review",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5351,
+    "cells": [
+     {
+      "date": "2026-10-21",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "15:30",
+    "end_time": "16:15",
+    "title": "Frank Green",
+    "category": "Follow-up",
+    "status": "checked_in",
+    "note": ""
+   },
+   {
+    "id": 5352,
+    "cells": [
+     {
+      "date": "2026-10-21",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "09:45",
+    "end_time": "11:00",
+    "title": "Ben Carter",
+    "category": "Follow-up",
+    "status": "scheduled",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5353,
+    "cells": [
+     {
+      "date": "2026-10-21",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "13:45",
+    "end_time": "14:45",
+    "title": "Ben Carter",
+    "category": "Follow-up",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5354,
+    "cells": [
+     {
+      "date": "2026-10-21",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "15:00",
+    "end_time": "15:45",
+    "title": "Grace Hill",
+    "category": "Review",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5355,
+    "cells": [
+     {
+      "date": "2026-10-21",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "17:30",
+    "end_time": "18:30",
+    "title": "Frank Green",
+    "category": "Intake",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5356,
+    "cells": [
+     {
+      "date": "2026-10-21",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "10:15",
+    "end_time": "10:45",
+    "title": "Frank Green",
+    "category": "Consultation",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5357,
+    "cells": [
+     {
+      "date": "2026-10-21",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "13:30",
+    "end_time": "14:00",
+    "title": "Henry Irwin",
+    "category": "Follow-up",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5358,
+    "cells": [
+     {
+      "date": "2026-10-21",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "10:00",
+    "end_time": "11:15",
+    "title": "Ben Carter",
+    "category": "Review",
+    "status": "scheduled",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5359,
+    "cells": [
+     {
+      "date": "2026-10-21",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "11:15",
+    "end_time": "12:00",
+    "title": "Henry Irwin",
+    "category": "Intake",
+    "status": "checked_in",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5360,
+    "cells": [
+     {
+      "date": "2026-10-21",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "13:30",
+    "end_time": "14:45",
+    "title": "Chloe Davis",
+    "category": "Intake",
+    "status": "scheduled",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5361,
+    "cells": [
+     {
+      "date": "2026-10-21",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "15:30",
+    "end_time": "16:00",
+    "title": "Chloe Davis",
+    "category": "Intake",
+    "status": "checked_in",
+    "note": ""
+   },
+   {
+    "id": 5362,
+    "cells": [
+     {
+      "date": "2026-10-21",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "17:00",
+    "end_time": "18:15",
+    "title": "Frank Green",
+    "category": "Consultation",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5363,
+    "cells": [
+     {
+      "date": "2026-10-22",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "10:15",
+    "end_time": "11:30",
+    "title": "Chloe Davis",
+    "category": "Consultation",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5364,
+    "cells": [
+     {
+      "date": "2026-10-22",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "12:00",
+    "end_time": "12:30",
+    "title": "Henry Irwin",
+    "category": "Follow-up",
+    "status": "checked_in",
+    "note": ""
+   },
+   {
+    "id": 5365,
+    "cells": [
+     {
+      "date": "2026-10-22",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "14:45",
+    "end_time": "15:15",
+    "title": "Grace Hill",
+    "category": "Consultation",
+    "status": "scheduled",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5366,
+    "cells": [
+     {
+      "date": "2026-10-22",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "15:45",
+    "end_time": "16:30",
+    "title": "Daniel Evans",
+    "category": "Review",
+    "status": "canceled",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5367,
+    "cells": [
+     {
+      "date": "2026-10-22",
+      "resource_id": 101
+     }
+    ],
+    "start_time": "16:30",
+    "end_time": "17:45",
+    "title": "Chloe Davis",
+    "category": "Follow-up",
+    "status": "canceled",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5368,
+    "cells": [
+     {
+      "date": "2026-10-22",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "10:15",
+    "end_time": "11:30",
+    "title": "Henry Irwin",
+    "category": "Follow-up",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5369,
+    "cells": [
+     {
+      "date": "2026-10-22",
+      "resource_id": 102
+     }
+    ],
+    "start_time": "13:30",
+    "end_time": "14:00",
+    "title": "Chloe Davis",
+    "category": "Intake",
+    "status": "scheduled",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5370,
+    "cells": [
+     {
+      "date": "2026-10-22",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "09:45",
+    "end_time": "10:30",
+    "title": "Grace Hill",
+    "category": "Intake",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5371,
+    "cells": [
+     {
+      "date": "2026-10-22",
+      "resource_id": 103
+     },
+     {
+      "date": "2026-10-22",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "12:00",
+    "end_time": "12:30",
+    "title": "Frank Green",
+    "category": "Consultation",
+    "status": "checked_in",
+    "note": ""
+   },
+   {
+    "id": 5372,
+    "cells": [
+     {
+      "date": "2026-10-22",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "13:30",
+    "end_time": "14:45",
+    "title": "Chloe Davis",
+    "category": "Consultation",
+    "status": "checked_in",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5373,
+    "cells": [
+     {
+      "date": "2026-10-22",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "15:45",
+    "end_time": "16:30",
+    "title": "Frank Green",
+    "category": "Review",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5374,
+    "cells": [
+     {
+      "date": "2026-10-22",
+      "resource_id": 103
+     }
+    ],
+    "start_time": "17:00",
+    "end_time": "17:30",
+    "title": "Frank Green",
+    "category": "Consultation",
+    "status": "canceled",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5375,
+    "cells": [
+     {
+      "date": "2026-10-22",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "10:00",
+    "end_time": "10:30",
+    "title": "Frank Green",
+    "category": "Follow-up",
+    "status": "scheduled",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5376,
+    "cells": [
+     {
+      "date": "2026-10-22",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "11:00",
+    "end_time": "12:15",
+    "title": "Frank Green",
+    "category": "Follow-up",
+    "status": "scheduled",
+    "note": ""
+   },
+   {
+    "id": 5377,
+    "cells": [
+     {
+      "date": "2026-10-22",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "12:15",
+    "end_time": "12:45",
+    "title": "Emma Foster",
+    "category": "Review",
+    "status": "canceled",
+    "note": ""
+   },
+   {
+    "id": 5378,
+    "cells": [
+     {
+      "date": "2026-10-22",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "13:30",
+    "end_time": "14:00",
+    "title": "Grace Hill",
+    "category": "Intake",
+    "status": "canceled",
+    "note": "Bring documents"
+   },
+   {
+    "id": 5379,
+    "cells": [
+     {
+      "date": "2026-10-22",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "14:00",
+    "end_time": "14:30",
+    "title": "Emma Foster",
+    "category": "Intake",
+    "status": "canceled",
+    "note": ""
+   },
+   {
+    "id": 5380,
+    "cells": [
+     {
+      "date": "2026-10-22",
+      "resource_id": 104
+     }
+    ],
+    "start_time": "15:00",
+    "end_time": "16:00",
+    "title": "Alice Morgan",
+    "category": "Intake",
+    "status": "canceled",
+    "note": ""
+   }
+  ]
+ }
+}

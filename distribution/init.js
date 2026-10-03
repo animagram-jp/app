@@ -7,6 +7,7 @@ const LENGTH_PREFIX = 4;
 const ALIGNMENT = 4;
 const PADDING_MARK = 0xFFFFFFFF;
 const FETCH_HEADER = 1 + 4 + 2 + 1 + LENGTH_PREFIX;
+const API_BASE = document.querySelector("meta[name='api-base']")?.content ?? "./api/{version}";
 
 const EVENT_CONTROL = 0;
 const EVENT_PAYLOAD = EVENT_CONTROL + CONTROL_SIZE; // range start
@@ -289,7 +290,7 @@ async function fetch_request(request, method, path, body) {
     let status;
     let bytes;
     try {
-        const response = await fetch(`./api/{version}${path}`, {
+        const response = await fetch(`${API_BASE}${path}`, {
             method,
             credentials: "same-origin",
             ...(body.length > 0

@@ -13,11 +13,14 @@ use core::{
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::wasm_bindgen;
 
+#[cfg(feature = "calendar")]
+use crate::calendar::handler::Handler;
+#[cfg(not(feature = "calendar"))]
+use crate::handler::Handler;
 use crate::{
     Error,
     arena::{APP, RUNNING, emit},
     event::{Event, EventError, Response, WindowEvent, decode_event},
-    handler::Handler,
     js_client::{
         CanvasEvent, Command, EventType, Thresholds, TouchTracker, detect_device, encode_command,
     },
@@ -46,7 +49,7 @@ impl App {
         now: f64,
         timezone_offset_minutes: i32,
     ) {
-        let app = App::new(
+        let mut app = App::new(
             pointer_coarse,
             Handler::ready(
                 viewport_width,
@@ -184,6 +187,8 @@ mod tests {
         pin::pin,
         task::{Context, Poll, Waker},
     };
+    #[cfg(feature = "calendar")]
+    use std::fs;
 
     use super::*;
     use crate::{
@@ -308,5 +313,45 @@ mod tests {
         app.process(&pointer_frame(POINTER_DOWN, &section(1), 10.0, 1, 0.0));
         app.process(&pointer_frame(POINTER_UP, &section(1), 10.0, 1, 50.0));
         assert!(app.events.is_empty());
+    }
+
+    #[cfg(feature = "calendar")]
+    fn fetch_frame(request: u32, status: u16, last: bool, bytes: &[u8]) -> Vec<u8> {
+        let mut frame = Vec::new();
+        frame.push(crate::event::EVENT_FETCH);
+        put_u32(&mut frame, request);
+        frame.extend_from_slice(&status.to_le_bytes());
+        frame.push(last as u8);
+        put_u32(&mut frame, bytes.len() as u32);
+        frame.extend_from_slice(bytes);
+        frame
+    }
+
+    #[cfg(feature = "calendar")]
+    #[test]
+    fn fetch_chunks_are_joined_until_the_last_one() {
+        let body =
+            fs::read(concat!(env!("CARGO_MANIFEST_DIR"), "/examples/calendar/data/calendar.json"))
+                .unwrap();
+        let mut app = new_app();
+
+        let chunks: Vec<&[u8]> = body.chunks(4000).collect();
+        let last = chunks.len() - 1;
+        for (index, chunk) in chunks.iter().enumerate() {
+            assert!(app.handler.calendar().is_none());
+            app.process(&fetch_frame(1, 200, index == last, chunk));
+        }
+        assert_eq!(app.handler.calendar().unwrap().appointments.len(), 380);
+        assert!(app.responses.is_empty());
+    }
+
+    #[cfg(feature = "calendar")]
+    #[test]
+    fn interleaved_requests_do_not_mix() {
+        let mut app = new_app();
+        app.process(&fetch_frame(1, 200, false, b"{"));
+        app.process(&fetch_frame(2, 200, true, b"x"));
+        assert!(app.handler.calendar().is_none());
+        assert_eq!(app.responses.len(), 1);
     }
 }

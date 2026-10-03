@@ -42,10 +42,10 @@ pub trait WireError {
 }
 
 macro_rules! wire_error {
-    ($name:ident { $($variant:ident($inner:ty) = $identifier:expr),+ $(,)? }) => {
+    ($name:ident { $($(#[$meta:meta])* $variant:ident($inner:ty) = $identifier:expr),+ $(,)? }) => {
         #[derive(Debug)]
         pub enum $name {
-            $($variant($inner)),+
+            $($(#[$meta])* $variant($inner)),+
         }
 
         impl ::core::fmt::Display for $name {
@@ -57,7 +57,7 @@ macro_rules! wire_error {
         impl $crate::js_client::WireError for $name {
             fn identifiers(&self, path: &mut ::alloc::vec::Vec<u16>) {
                 match self {
-                    $($name::$variant(error) => {
+                    $($(#[$meta])* $name::$variant(error) => {
                         path.push($identifier);
                         $crate::js_client::WireError::identifiers(error, path);
                     })+
@@ -66,13 +66,13 @@ macro_rules! wire_error {
 
             fn detail(&self) -> ::alloc::string::String {
                 match self {
-                    $($name::$variant(error) => $crate::js_client::WireError::detail(error)),+
+                    $($(#[$meta])* $name::$variant(error) => $crate::js_client::WireError::detail(error)),+
                 }
             }
 
             fn is_serious(&self) -> bool {
                 match self {
-                    $($name::$variant(error) => $crate::js_client::WireError::is_serious(error)),+
+                    $($(#[$meta])* $name::$variant(error) => $crate::js_client::WireError::is_serious(error)),+
                 }
             }
         }
@@ -2577,7 +2577,7 @@ mod wire_tests {
                 message:  String::from("boom"),
             }),
         });
-        assert_eq!(&panic[..7], [13, 1, 2, 4, 0, 1, 0]);
+        assert_eq!(&panic[..7], [13, 1, 2, 3, 0, 1, 0]);
         assert_eq!(
             encode(Command::Fetch {
                 request: 258,

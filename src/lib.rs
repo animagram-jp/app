@@ -21,6 +21,8 @@ extern crate core;
 #[cfg(any(test, not(target_arch = "wasm32")))]
 extern crate std;
 
+#[cfg(feature = "calendar")]
+use crate::calendar::data::DataError;
 use crate::{
     arena::{ArenaError, PanicError},
     event::EventError,
@@ -30,6 +32,8 @@ use crate::{
 
 pub mod app;
 pub mod arena;
+#[cfg(feature = "calendar")]
+pub mod calendar;
 pub mod data_struct;
 pub mod event;
 pub mod field;
@@ -47,8 +51,10 @@ wire_error! {
     Error {
         Arena(ArenaError) = 1,
         Event(EventError) = 2,
-        FileStore(FileStoreError) = 3,
-        Panic(PanicError) = 4,
+        Panic(PanicError) = 3,
+        FileStore(FileStoreError) = 4,
+        #[cfg(feature = "calendar")]
+        Data(DataError) = 5,
     }
 }
 
@@ -121,9 +127,11 @@ mod error_tests {
     fn identifiers_are_the_composed_variant_then_the_module_variant() {
         assert_eq!(identifiers(&Error::Arena(ArenaError::CommandOverflow)), [1, 1]);
         assert_eq!(identifiers(&Error::Event(EventError::Decode)), [2, 1]);
-        assert_eq!(identifiers(&Error::FileStore(FileStoreError::Unknown(String::new()))), [3, 5]);
+        assert_eq!(identifiers(&Error::FileStore(FileStoreError::Unknown(String::new()))), [4, 5]);
         let panic = PanicError { location: String::new(), message: String::new() };
-        assert_eq!(identifiers(&Error::Panic(panic)), [4, 1]);
+        assert_eq!(identifiers(&Error::Panic(panic)), [3, 1]);
+        #[cfg(feature = "calendar")]
+        assert_eq!(identifiers(&Error::Data(DataError::Status(404))), [5, 1]);
     }
 
     #[test]

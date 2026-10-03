@@ -115,7 +115,7 @@ impl Handler {
         (vec![], vec![])
     }
 
-    pub fn initial_draw(&self) -> (Vec<Event>, Vec<Command>) {
+    pub fn initial_draw(&mut self) -> (Vec<Event>, Vec<Command>) {
         (vec![], vec![])
     }
 
