@@ -1,24 +1,28 @@
-name: "Deploy to GitHub Pages"
+name: "Deploy to Pages"
 
 on:
     push:
         tags: ["*.*.*"]
     workflow_dispatch:
+        inputs:
+            cloudflare:
+                description: "deploy to Cloudflare Workers (static assets)"
+                type: boolean
+                default: true
+            github:
+                description: "deploy to GitHub Pages"
+                type: boolean
+                default: false
 
 permissions:
     contents: read
-    pages: write
-    id-token: write
 
 concurrency:
     group: "pages"
     cancel-in-progress: false
 
 jobs:
-    deploy:
-        environment:
-            name: github-pages
-            url: ${{ steps.deployment.outputs.page_url }}
+    build:
         runs-on: ubuntu-latest
         steps:
             - name: "git checkout"
@@ -27,21 +31,10 @@ jobs:
                   fetch-depth: 0
 
             - name: "resolve version"
-              run: |
-                  if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
-                      VERSION="${GITHUB_REF_NAME}"
-                  else
-                      VERSION="$(git describe --tags --always)"
-                  fi
-                  echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
+              run: echo "VERSION=$(git describe --tags --always)" >> "$GITHUB_ENV"
 
-            - name: "add wasm32 target"
-              run: rustup target add wasm32-unknown-unknown
-
-            - name: "install nightly toolchain (for -Z build-std)"
-              run: |
-                  rustup toolchain install nightly --component rust-src
-                  rustup override set nightly
+            - name: "install toolchain"
+              run: rustup toolchain install
 
             - name: "install wasm-bindgen-cli"
               run: |
@@ -49,29 +42,84 @@ jobs:
                   cargo install wasm-bindgen-cli --version "$version" --locked
 
             - name: "cargo test (doctest only; --lib requires a browser runner)"
-              run: cargo test --doc --locked
-
-            - name: "cargo build (wasm32, web worker)"
               run: |
-                  RUSTFLAGS="-Ctarget-feature=+atomics,+bulk-memory -Clink-arg=--import-memory -Clink-arg=--shared-memory -Clink-arg=--max-memory=134217728 -Clink-arg=--export=__wasm_init_tls -Clink-arg=--export=__tls_size -Clink-arg=--export=__tls_align -Clink-arg=--export=__tls_base" \
-                  cargo build --release --target wasm32-unknown-unknown -Zbuild-std=std,panic_abort
+                  cargo test --doc --locked
+                  cargo test --doc --locked --features calendar
 
-            - name: "wasm-bindgen"
-              run: |
-                  wasm-bindgen --target web --out-dir distribution/app --out-name app \
-                    target/wasm32-unknown-unknown/release/app.wasm
+            - name: "build both sites"
+              run: reference/build.sh
 
-            - name: "remove wasm-bindgen package boilerplate (no suppression flag exists)"
-              run: rm -f distribution/app/README.md distribution/app/LICENSE
+            - name: "upload app"
+              uses: actions/upload-artifact@v7
+              with:
+                  name: "app"
+                  path: "target/cloudflare/app"
 
-            - name: "inject version into distribution files"
-              # sw.js の VERSION 定数がビルドごとに変わらないと、ブラウザが
-              # 新しい Service Worker への更新を検知できない
-              # (byte 単位比較のため)。PRECACHE / index.html / manifest.json
-              # の ?v={version} も同様にキャッシュバスティング用。
-              run: |
-                  sed -i "s/{version}/${VERSION}/g" \
-                      distribution/sw.js distribution/index.html distribution/manifest.json distribution/init.js distribution/worker.js
+            - name: "upload calendar"
+              uses: actions/upload-artifact@v7
+              with:
+                  name: "calendar"
+                  path: "target/cloudflare/calendar"
+
+    deploy-app:
+        needs: build
+        if: github.event_name == 'push' || inputs.cloudflare
+        runs-on: ubuntu-latest
+        steps:
+            - name: "git checkout"
+              uses: actions/checkout@v7
+
+            - name: "download app"
+              uses: actions/download-artifact@v8
+              with:
+                  name: "app"
+                  path: "target/cloudflare/app"
+
+            - name: "wrangler deploy"
+              uses: cloudflare/wrangler-action@v4
+              with:
+                  apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+                  accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+                  command: deploy --config reference/app/wrangler.toml
+
+    deploy-calendar:
+        needs: deploy-app
+        if: github.event_name == 'push' || inputs.cloudflare
+        runs-on: ubuntu-latest
+        steps:
+            - name: "git checkout"
+              uses: actions/checkout@v7
+
+            - name: "download calendar"
+              uses: actions/download-artifact@v8
+              with:
+                  name: "calendar"
+                  path: "target/cloudflare/calendar"
+
+            - name: "wrangler deploy"
+              uses: cloudflare/wrangler-action@v4
+              with:
+                  apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+                  accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+                  command: deploy --config reference/calendar/wrangler.toml
+
+    deploy-github:
+        needs: build
+        if: github.event_name == 'workflow_dispatch' && inputs.github
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            pages: write
+            id-token: write
+        environment:
+            name: github-pages
+            url: ${{ steps.deployment.outputs.page_url }}
+        steps:
+            - name: "download app"
+              uses: actions/download-artifact@v8
+              with:
+                  name: "app"
+                  path: "distribution"
 
             - name: "setup Github Pages"
               uses: actions/configure-pages@v6
@@ -79,7 +127,7 @@ jobs:
             - name: "upload artifact as Github Pages"
               uses: actions/upload-pages-artifact@v5
               with:
-                path: "./distribution"
+                  path: "./distribution"
 
             - name: "deploy to GitHub Pages"
               id: "deployment"

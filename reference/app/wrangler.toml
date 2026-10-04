@@ -1,0 +1,15 @@
+name = "animagram-app"
+compatibility_date = "2026-10-04"
+
+[[routes]]
+pattern = "app.animagram.jp"
+custom_domain = true
+
+[assets]
+directory = "../../target/cloudflare/app"
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+invocation_logs = true
+persist = true

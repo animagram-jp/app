@@ -1,3 +1,10 @@
+# thread = "worker" | "main":
+
+| Thread | Memory |
+|-|-|
+| dedicated worker | WebAssembly.Memory(shared=true)  |
+| main thread      | WebAssembly.Memory(shared=false) |
+
 # FileStore の初期化
 
 `Handler::ready` は app repository と同じく `async fn` で、

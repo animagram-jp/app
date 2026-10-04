@@ -1,11 +1,7 @@
-// fixed bits layout for pooling lists
 // note:
 // - Value 0...0 means null in each field.
 // - // <- meanins idx
 
-// state
-// note:
-// - ui, html: only for browser
 //
 // | category | field        | bit |
 // |----------|--------------|-----|
