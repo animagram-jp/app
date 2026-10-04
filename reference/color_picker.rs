@@ -3,7 +3,8 @@
 // state: hsl only. hex / swatch / slider are different views of it.
 // - slider (Input event) edits one channel of hsl by its position, so a gray keeps its hue.
 // - hex (Input event) replaces hsl. Anything but "#RRGGBB" is ignored.
-// - swatch (Click event) replaces hsl with the swatch.
+// - swatch (Click event) replaces the lightness with the swatch's. The swatch at the current
+//   lightness is the checked radio; there is no other state for it.
 //
 // Temporary wiring for verification (lib.rs), then remove it again:
 //
@@ -22,6 +23,7 @@ use core::{
 };
 
 use crate::js_client::{
+    Attribute::Checked,
     CanvasEvent, Command, EventType,
     StyleProperty::{Background, Color},
     StyleValue,
@@ -62,7 +64,7 @@ impl ColorPicker {
                     return vec![];
                 }
             }
-            EventType::Click => match (0..7).find(|&n| event.id == swatch(n)) {
+            EventType::Click => match (0..7).find(|&n| event.id == swatch(n, Tag::Input)) {
                 Some(n) => self.hsl[2] = SWATCH_LIGHTNESS[n],
                 None => return vec![],
             },
@@ -72,7 +74,7 @@ impl ColorPicker {
     }
 
     pub fn draw(&self) -> Vec<Command> {
-        let [hue, saturation, _] = self.hsl;
+        let [hue, saturation, lightness] = self.hsl;
         let rgb = to_rgb(self.hsl);
         let text = |id, value: String| Command::SetText { id, value };
         let style = |id, property, value: String| Command::SetStyle {
@@ -98,9 +100,15 @@ impl ColorPicker {
         }
         for (n, l) in SWATCH_LIGHTNESS.into_iter().enumerate() {
             let rgb = to_rgb([hue, saturation, l]);
-            commands.push(style(swatch(n), Background, hex(rgb)));
-            commands.push(style(swatch(n), Color, String::from(ink(rgb))));
-            commands.push(text(swatch(n), hex(rgb)));
+            let input = swatch(n, Tag::Input);
+            commands.push(style(input.clone(), Background, hex(rgb)));
+            commands.push(style(input.clone(), Color, String::from(ink(rgb))));
+            commands.push(text(swatch(n, Tag::Span), hex(rgb)));
+            commands.push(if libm::round(lightness) == l {
+                Command::SetAttribute { id: input, attribute: Checked, value: String::new() }
+            } else {
+                Command::RemoveAttribute { id: input, attribute: Checked }
+            });
         }
         commands
     }
@@ -160,13 +168,14 @@ fn slider(n: usize, tag: Tag) -> Id {
     Id::new(&[(Tag::Main, None), (Tag::Section, Some(1)), (Tag::Label, Some(n as u32 + 1)), (tag, None)])
 }
 
-fn swatch(n: usize) -> Id {
+/// tag: Input (radio) or Span (hex text).
+fn swatch(n: usize, tag: Tag) -> Id {
     Id::new(&[
         (Tag::Main, None),
         (Tag::Section, Some(1)),
-        (Tag::Ul, None),
-        (Tag::Li, Some(n as u32 + 1)),
-        (Tag::Button, None),
+        (Tag::Fieldset, None),
+        (Tag::Label, Some(n as u32 + 1)),
+        (tag, None),
     ])
 }
 
@@ -319,8 +328,8 @@ mod tests {
         let [hue, saturation, _] = picker.hsl;
 
         let drawn = picker.draw();
-        let swatch_hex = value_of(&drawn, &swatch(6)).unwrap();
-        let commands = picker.process_canvas(&event(EventType::Click, swatch(6), ""));
+        let swatch_hex = value_of(&drawn, &swatch(6, Tag::Span)).unwrap();
+        let commands = picker.process_canvas(&event(EventType::Click, swatch(6, Tag::Input), ""));
 
         assert_eq!(picker.hsl[0..2], [hue, saturation]);
         assert_eq!(picker.hsl[2], 90.0);
@@ -332,10 +341,42 @@ mod tests {
         let mut picker = ColorPicker::new();
         let before = picker.hsl;
         assert!(picker.process_canvas(&event(EventType::Click, hex_input(), "")).is_empty());
-        assert!(picker.process_canvas(&event(EventType::Click, swatch(7), "")).is_empty());
-        assert!(picker.process_canvas(&input(swatch(0), "#ff0000")).is_empty());
+        assert!(picker.process_canvas(&event(EventType::Click, swatch(7, Tag::Input), "")).is_empty());
+        assert!(picker.process_canvas(&input(swatch(0, Tag::Input), "#ff0000")).is_empty());
         assert!(picker.process_canvas(&event(EventType::Change, hex_input(), "#ff0000")).is_empty());
         assert_eq!(picker.hsl, before);
+    }
+
+    fn checked(commands: &[Command]) -> Vec<bool> {
+        (0..7)
+            .map(|n| {
+                commands.iter().any(|command| {
+                    matches!(command, Command::SetAttribute { id, attribute: Checked, .. }
+                        if *id == swatch(n, Tag::Input))
+                })
+            })
+            .collect()
+    }
+
+    #[test]
+    fn only_the_swatch_at_the_current_lightness_is_checked_and_the_rest_are_cleared() {
+        let mut picker = ColorPicker::new();
+
+        let commands = picker.process_canvas(&input(slider(2, Tag::Input), "35"));
+        assert_eq!(checked(&commands), [false, false, true, false, false, false, false]);
+        let cleared = commands
+            .iter()
+            .filter(|command| matches!(command, Command::RemoveAttribute { attribute: Checked, .. }))
+            .count();
+        assert_eq!(cleared, 6);
+
+        // lightness between swatches: none is checked, and the old one is cleared
+        let commands = picker.process_canvas(&input(slider(2, Tag::Input), "40"));
+        assert_eq!(checked(&commands), [false; 7]);
+
+        // a click checks its own swatch; the browser-side check follows the lightness
+        let commands = picker.process_canvas(&event(EventType::Click, swatch(0, Tag::Input), ""));
+        assert_eq!(checked(&commands), [true, false, false, false, false, false, false]);
     }
 
     #[test]
@@ -378,7 +419,9 @@ mod tests {
         for command in ColorPicker::new().draw() {
             let (Command::SetText { id, .. }
             | Command::SetValue { id, .. }
-            | Command::SetStyle { id, .. }) = command
+            | Command::SetStyle { id, .. }
+            | Command::SetAttribute { id, .. }
+            | Command::RemoveAttribute { id, .. }) = command
             else {
                 unreachable!()
             };
@@ -386,7 +429,13 @@ mod tests {
             assert!(html.contains(&element), "{element} is not in color_picker.html");
         }
         // events come from these too
-        for id in [slider(0, Tag::Input), slider(2, Tag::Input), hex_input(), swatch(0), swatch(6)] {
+        for id in [
+            slider(0, Tag::Input),
+            slider(2, Tag::Input),
+            hex_input(),
+            swatch(0, Tag::Input),
+            swatch(6, Tag::Input),
+        ] {
             assert!(html.contains(&format!("id=\"{}\"", element_id(&id))));
         }
     }
