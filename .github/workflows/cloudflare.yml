@@ -73,7 +73,7 @@ jobs:
               with:
                   apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
                   accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-                  command: deploy --config cloudflare/app/wrangler.jsonc
+                  command: deploy --config cloudflare/app/wrangler.toml
 
     deploy-calendar:
         needs: deploy-app
@@ -93,4 +93,4 @@ jobs:
               with:
                   apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
                   accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-                  command: deploy --config cloudflare/calendar/wrangler.jsonc
+                  command: deploy --config cloudflare/calendar/wrangler.toml
