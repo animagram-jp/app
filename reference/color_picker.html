@@ -1,36 +1,34 @@
 <!--
-    color_picker.rs の DOM。id は dom::Id の経路 (tag[-n] を "_" で連結)。class は使わない。
-    hex の検証は Rust 側 (#RRGGBB 以外は無視)。HTML 側は maxlength のみ。
+    color_picker.rs の DOM。id は dom::Id の経路 (tag[-n] を "_" で連結)。
+    値・文字・色は初期描画 (ColorPicker::draw) が設定する。
 -->
 <section id="main_section-1" aria-label="Color Picker">
     <div id="main_section-1_div">
-        <input id="main_section-1_div_input" type="text" value="#6366F1" maxlength="7" spellcheck="false" aria-label="HEX"></div>
-
-    <label id="main_section-1_label-1">
+        <input id="main_section-1_div_input" type="text" maxlength="7" aria-label="HEX"></div>
+    <label>
         <span>H</span>
-        <input id="main_section-1_label-1_input" type="range" min="0" max="360" step="1" value="239">
-        <output id="main_section-1_label-1_output">239°</output></label>
-    <label id="main_section-1_label-2">
+        <input id="main_section-1_label-1_input" type="range" min="0" max="360">
+        <output id="main_section-1_label-1_output"></output></label>
+    <label>
         <span>S</span>
-        <input id="main_section-1_label-2_input" type="range" min="0" max="100" step="1" value="84">
-        <output id="main_section-1_label-2_output">84%</output></label>
-    <label id="main_section-1_label-3">
+        <input id="main_section-1_label-2_input" type="range" min="0" max="100">
+        <output id="main_section-1_label-2_output"></output></label>
+    <label>
         <span>L</span>
-        <input id="main_section-1_label-3_input" type="range" min="0" max="100" step="1" value="67">
-        <output id="main_section-1_label-3_output">67%</output></label>
-
-    <ul id="main_section-1_ul">
-        <li id="main_section-1_ul_li-1">
+        <input id="main_section-1_label-3_input" type="range" min="0" max="100">
+        <output id="main_section-1_label-3_output"></output></label>
+    <ul>
+        <li>
             <button id="main_section-1_ul_li-1_button" type="button" data-surround="outline"></button></li>
-        <li id="main_section-1_ul_li-2">
+        <li>
             <button id="main_section-1_ul_li-2_button" type="button" data-surround="outline"></button></li>
-        <li id="main_section-1_ul_li-3">
+        <li>
             <button id="main_section-1_ul_li-3_button" type="button" data-surround="outline"></button></li>
-        <li id="main_section-1_ul_li-4">
+        <li>
             <button id="main_section-1_ul_li-4_button" type="button" data-surround="outline"></button></li>
-        <li id="main_section-1_ul_li-5">
+        <li>
             <button id="main_section-1_ul_li-5_button" type="button" data-surround="outline"></button></li>
-        <li id="main_section-1_ul_li-6">
+        <li>
             <button id="main_section-1_ul_li-6_button" type="button" data-surround="outline"></button></li>
-        <li id="main_section-1_ul_li-7">
+        <li>
             <button id="main_section-1_ul_li-7_button" type="button" data-surround="outline"></button></li></ul></section>
