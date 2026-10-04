@@ -356,6 +356,7 @@ impl CanvasEvent {
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Attribute {
     AriaCurrent = 1,
+    Checked,
     DataSurround,
     Disabled,
     Hidden,
@@ -2235,6 +2236,7 @@ mod wire_tests {
                 "ATTRIBUTES",
                 vec![
                     (Attribute::AriaCurrent as u16, "aria-current"),
+                    (Attribute::Checked as u16, "checked"),
                     (Attribute::DataSurround as u16, "data-surround"),
                     (Attribute::Disabled as u16, "disabled"),
                     (Attribute::Hidden as u16, "hidden"),
@@ -2497,7 +2499,7 @@ mod wire_tests {
                 attribute: Attribute::Hidden,
                 value:     String::from("x"),
             }),
-            with_id(3, &[4, 0, 1, 0, 0, 0, b'x'])
+            with_id(3, &[5, 0, 1, 0, 0, 0, b'x'])
         );
         assert_eq!(
             encode(Command::AddClass { id: id.clone(), value: ClassName::Show }),

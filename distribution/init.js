@@ -261,10 +261,17 @@ function execute(frame) {
             break;
         case  3: {
             const [attribute, after] = get_u16(frame, offset);
-            el.setAttribute(ATTRIBUTES[attribute], get_str(frame, after)[0] ?? "");
+            // checked: the attribute is only the default. Once the user has toggled, only the property counts.
+            if (ATTRIBUTES[attribute] === "checked") el.checked = true;
+            else el.setAttribute(ATTRIBUTES[attribute], get_str(frame, after)[0] ?? "");
             break;
         }
-        case  4: el.removeAttribute(ATTRIBUTES[get_u16(frame, offset)[0]]); break;
+        case  4: {
+            const name = ATTRIBUTES[get_u16(frame, offset)[0]];
+            if (name === "checked") el.checked = false;
+            else el.removeAttribute(name);
+            break;
+        }
         case  5: el.classList.add(CLASS_NAMES[get_u16(frame, offset)[0]]); break;
         case  6: el.classList.remove(CLASS_NAMES[get_u16(frame, offset)[0]]); break;
         case  7: {
@@ -706,6 +713,7 @@ const TAGS = [
 const ATTRIBUTES = [
     null,
     "aria-current",
+    "checked",
     "data-surround",
     "disabled",
     "hidden",
