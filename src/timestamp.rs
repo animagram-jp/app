@@ -89,7 +89,7 @@ impl Timezone {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Weekday {
+pub enum Youbi {
     Monday = 1,
     Tuesday = 2,
     Wednesday = 3,
@@ -98,7 +98,7 @@ pub enum Weekday {
     Saturday = 6,
     Sunday = 7,
 }
-impl Weekday {
+impl Youbi {
     pub const fn label(self, lang: Lang) -> &'static str {
         let names = match lang {
             Lang::En(_) => ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
@@ -140,28 +140,28 @@ pub enum Format {
 /// // 2000-01-01 00:00:00 UTC = 946684800000 ms
 /// let ut = 946684800000.0_f64;
 ///
-/// let ts = from_ut(ut, true, &Timezone::AsiaTokyo);
-/// let (year, month, day, hour, ..) = unpack(ts);
+/// let timestamp = from_ut(ut, true, &Timezone::AsiaTokyo);
+/// let (year, month, day, hour, ..) = unpack(timestamp);
 /// assert_eq!(year, 2000);
 /// assert_eq!(month, 1);
 /// assert_eq!(day, 1);
 /// assert_eq!(hour, 0);
 ///
-/// let ts = from_ut(ut, false, &Timezone::AsiaTokyo);
-/// let (year, month, day, hour, ..) = unpack(ts);
+/// let timestamp = from_ut(ut, false, &Timezone::AsiaTokyo);
+/// let (year, month, day, hour, ..) = unpack(timestamp);
 /// assert_eq!(year, 2000);
 /// assert_eq!(month, 1);
 /// assert_eq!(day, 1);
 /// assert_eq!(hour, 9);
 /// ```
-pub fn from_ut(ut: f64, is_utc: bool, tz: &Timezone) -> u64 {
-    let ms = ut as i64;
-    let centisecond = ms.rem_euclid(1000) / 10;
-    let s = ms.div_euclid(1000);
-    let (s, is_utc_bit, tz_id) = if is_utc {
-        (s, 1u64, 0u64)
+pub fn from_ut(ut: f64, is_utc: bool, timezone: &Timezone) -> u64 {
+    let milliseconds = ut as i64;
+    let centisecond = milliseconds.rem_euclid(1000) / 10;
+    let seconds = milliseconds.div_euclid(1000);
+    let (seconds, is_utc_bit, timezone_id) = if is_utc {
+        (seconds, 1u64, 0u64)
     } else {
-        let offset_s = match tz {
+        let offset_seconds = match timezone {
             Timezone::None => 0,
             Timezone::AsiaSeoul => 9 * 3600,
             Timezone::AsiaTokyo => 9 * 3600,
@@ -173,15 +173,15 @@ pub fn from_ut(ut: f64, is_utc: bool, tz: &Timezone) -> u64 {
             Timezone::AmericaNewYork => -5 * 3600,
             Timezone::AmericaLosAngeles => -8 * 3600,
         };
-        (s + offset_s, 0u64, tz.id() as u64)
+        (seconds + offset_seconds, 0u64, timezone.id() as u64)
     };
 
-    let time_s = s.rem_euclid(86400);
-    let hour = time_s / 3600;
-    let minute = (time_s % 3600) / 60;
-    let second = time_s % 60;
+    let seconds_of_day = seconds.rem_euclid(86400);
+    let hour = seconds_of_day / 3600;
+    let minute = (seconds_of_day % 3600) / 60;
+    let second = seconds_of_day % 60;
 
-    let shifted = s.div_euclid(86400) + 719468;
+    let shifted = seconds.div_euclid(86400) + 719468;
     let era = shifted.div_euclid(146097);
     let day_of_era = shifted.rem_euclid(146097);
     let year_of_era =
@@ -192,7 +192,7 @@ pub fn from_ut(ut: f64, is_utc: bool, tz: &Timezone) -> u64 {
     let month = if month_index < 10 { month_index + 3 } else { month_index - 9 };
     let year = year_of_era + era * 400 + if month <= 2 { 1 } else { 0 };
 
-    pack(year, month, day, hour, minute, second, centisecond, is_utc_bit, tz_id)
+    pack(year, month, day, hour, minute, second, centisecond, is_utc_bit, timezone_id)
 }
 
 pub fn new(
@@ -212,34 +212,34 @@ pub fn new(
 /// ```
 /// use app::{En, Lang, timestamp::*};
 ///
-/// let ts = pack(2026, 10, 2, 9, 30, 0, 0, 0, 0);
-/// assert_eq!(display(ts, Lang::Ja, Format::Date), "2026-10-02");
-/// assert_eq!(display(ts, Lang::Ja, Format::DateTime), "2026-10-02 09:30");
-/// assert_eq!(display(ts, Lang::Ja, Format::Time), "09:30");
-/// assert_eq!(display(ts, Lang::Ja, Format::Short), "10/2(金)");
-/// assert_eq!(display(ts, Lang::Ja, Format::Long), "2026年10月2日(金)");
-/// assert_eq!(display(ts, Lang::En(En::Us), Format::Short), "Fri 10/2");
-/// assert_eq!(display(ts, Lang::En(En::Us), Format::Long), "Fri, Oct 2, 2026");
+/// let timestamp = pack(2026, 10, 2, 9, 30, 0, 0, 0, 0);
+/// assert_eq!(display(timestamp, Lang::Ja, Format::Date), "2026-10-02");
+/// assert_eq!(display(timestamp, Lang::Ja, Format::DateTime), "2026-10-02 09:30");
+/// assert_eq!(display(timestamp, Lang::Ja, Format::Time), "09:30");
+/// assert_eq!(display(timestamp, Lang::Ja, Format::Short), "10/2(金)");
+/// assert_eq!(display(timestamp, Lang::Ja, Format::Long), "2026年10月2日(金)");
+/// assert_eq!(display(timestamp, Lang::En(En::Us), Format::Short), "Fri 10/2");
+/// assert_eq!(display(timestamp, Lang::En(En::Us), Format::Long), "Fri, Oct 2, 2026");
 /// ```
-pub fn display(ts: u64, lang: Lang, format: Format) -> String {
-    let year: u64 = LAYOUT.get(ts, YEAR);
-    let month: u64 = LAYOUT.get(ts, MONTH);
-    let day: u64 = LAYOUT.get(ts, DAY);
-    let hour: u64 = LAYOUT.get(ts, HOUR);
-    let minute: u64 = LAYOUT.get(ts, MINUTE);
+pub fn display(timestamp: u64, lang: Lang, format: Format) -> String {
+    let year: u64 = LAYOUT.get(timestamp, YEAR);
+    let month: u64 = LAYOUT.get(timestamp, MONTH);
+    let day: u64 = LAYOUT.get(timestamp, DAY);
+    let hour: u64 = LAYOUT.get(timestamp, HOUR);
+    let minute: u64 = LAYOUT.get(timestamp, MINUTE);
     match format {
         Format::Date => format!("{year:04}-{month:02}-{day:02}"),
         Format::DateTime => format!("{year:04}-{month:02}-{day:02} {hour:02}:{minute:02}"),
         Format::Time => format!("{hour:02}:{minute:02}"),
         Format::Short => {
-            let name = weekday(ts).label(lang);
+            let name = youbi(timestamp).label(lang);
             match lang {
                 Lang::En(_) => format!("{name} {month}/{day}"),
                 Lang::Ja => format!("{month}/{day}({name})"),
             }
         }
         Format::Long => {
-            let name = weekday(ts).label(lang);
+            let name = youbi(timestamp).label(lang);
             match lang {
                 Lang::En(_) => {
                     let month_name = [
@@ -257,44 +257,48 @@ pub fn display(ts: u64, lang: Lang, format: Format) -> String {
 /// ```
 /// use app::timestamp::*;
 ///
-/// assert_eq!(weekday(pack(1970, 1, 1, 0, 0, 0, 0, 0, 0)), Weekday::Thursday);
-/// assert_eq!(weekday(pack(2026, 10, 4, 0, 0, 0, 0, 0, 0)), Weekday::Sunday);
-/// assert_eq!(weekday(pack(2026, 1, 5, 0, 0, 0, 0, 0, 0)), Weekday::Monday);
+/// assert_eq!(youbi(pack(1970, 1, 1, 0, 0, 0, 0, 0, 0)), Youbi::Thursday);
+/// assert_eq!(youbi(pack(2026, 10, 4, 0, 0, 0, 0, 0, 0)), Youbi::Sunday);
+/// assert_eq!(youbi(pack(2026, 1, 5, 0, 0, 0, 0, 0, 0)), Youbi::Monday);
 /// ```
-pub fn weekday(ts: u64) -> Weekday {
-    let (year, month, day, ..) = unpack(ts);
-    let t: [i64; 12] = [0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4];
-    let y = if month < 3 { year - 1 } else { year };
-    let w = (y + y / 4 - y / 100 + y / 400 + t[(month - 1) as usize] + day) % 7;
+pub fn youbi(timestamp: u64) -> Youbi {
+    let (year, month, day, ..) = unpack(timestamp);
+    let month_offsets: [i64; 12] = [0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4];
+    let adjusted_year = if month < 3 { year - 1 } else { year };
+    let youbi_index = (adjusted_year + adjusted_year / 4 - adjusted_year / 100
+        + adjusted_year / 400
+        + month_offsets[(month - 1) as usize]
+        + day)
+        % 7;
     [
-        Weekday::Sunday,
-        Weekday::Monday,
-        Weekday::Tuesday,
-        Weekday::Wednesday,
-        Weekday::Thursday,
-        Weekday::Friday,
-        Weekday::Saturday,
-    ][w as usize]
+        Youbi::Sunday,
+        Youbi::Monday,
+        Youbi::Tuesday,
+        Youbi::Wednesday,
+        Youbi::Thursday,
+        Youbi::Friday,
+        Youbi::Saturday,
+    ][youbi_index as usize]
 }
 
 /// ```
 /// use app::timestamp::*;
 ///
-/// let a = pack(2026, 10, 2, 23, 0, 0, 0, 0, 0);
-/// let b = pack(2026, 10, 4, 1, 0, 0, 50, 0, 0);
-/// assert_eq!(diff(a, b), (24 + 2) * 3600 * 100 + 50);
-/// assert_eq!(diff(b, a), -((24 + 2) * 3600 * 100 + 50));
+/// let from = pack(2026, 10, 2, 23, 0, 0, 0, 0, 0);
+/// let to = pack(2026, 10, 4, 1, 0, 0, 50, 0, 0);
+/// assert_eq!(diff(from, to), (24 + 2) * 3600 * 100 + 50);
+/// assert_eq!(diff(to, from), -((24 + 2) * 3600 * 100 + 50));
 /// let day = 24 * 3600 * 100;
 /// assert_eq!(diff(pack(2000, 2, 29, 0, 0, 0, 0, 0, 0), pack(2001, 3, 1, 0, 0, 0, 0, 0, 0)), 366 * day);
 /// ```
 pub fn diff(from: u64, to: u64) -> i64 {
-    let centiseconds = |ts: u64| {
-        let (year, month, day, hour, minute, second, centisecond, ..) = unpack(ts);
-        let y = if month <= 2 { year - 1 } else { year };
-        let year_of_era = y.rem_euclid(400);
+    let centiseconds = |timestamp: u64| {
+        let (year, month, day, hour, minute, second, centisecond, ..) = unpack(timestamp);
+        let adjusted_year = if month <= 2 { year - 1 } else { year };
+        let year_of_era = adjusted_year.rem_euclid(400);
         let shifted_month = if month > 2 { month - 3 } else { month + 9 };
         let day_of_year = (153 * shifted_month + 2) / 5 + day - 1;
-        let days = y.div_euclid(400) * 146097 + year_of_era * 365 + year_of_era / 4
+        let days = adjusted_year.div_euclid(400) * 146097 + year_of_era * 365 + year_of_era / 4
             - year_of_era / 100
             + day_of_year;
         days * 8_640_000 + ((hour * 60 + minute) * 60 + second) * 100 + centisecond
@@ -317,18 +321,18 @@ fn days_in_month(year: i64, month: i64) -> i64 {
     }
 }
 
-pub fn unpack(ts: u64) -> (i64, i64, i64, i64, i64, i64, i64, u64, u64) {
-    let v: [u64; 9] = LAYOUT.unpack(ts);
+pub fn unpack(timestamp: u64) -> (i64, i64, i64, i64, i64, i64, i64, u64, u64) {
+    let fields: [u64; 9] = LAYOUT.unpack(timestamp);
     (
-        v[YEAR] as i64,
-        v[MONTH] as i64,
-        v[DAY] as i64,
-        v[HOUR] as i64,
-        v[MINUTE] as i64,
-        v[SECOND] as i64,
-        v[CENTISECOND] as i64,
-        v[IS_UTC],
-        v[TIMEZONE],
+        fields[YEAR] as i64,
+        fields[MONTH] as i64,
+        fields[DAY] as i64,
+        fields[HOUR] as i64,
+        fields[MINUTE] as i64,
+        fields[SECOND] as i64,
+        fields[CENTISECOND] as i64,
+        fields[IS_UTC],
+        fields[TIMEZONE],
     )
 }
 
@@ -341,7 +345,7 @@ pub fn pack(
     second: i64,
     centisecond: i64,
     is_utc: u64,
-    tz: u64,
+    timezone: u64,
 ) -> u64 {
     LAYOUT.pack([
         year as u64,
@@ -352,7 +356,7 @@ pub fn pack(
         second as u64,
         centisecond as u64,
         is_utc,
-        tz,
+        timezone,
     ])
 }
 
@@ -362,18 +366,18 @@ pub fn pack(
 /// use app::timestamp::*;
 ///
 /// // 2000-02-29
-/// let ts = pack(2000, 2, 29, 0, 0, 0, 0, 0, 0);
-/// let result = add_years(ts, 1);
+/// let timestamp = pack(2000, 2, 29, 0, 0, 0, 0, 0, 0);
+/// let result = add_years(timestamp, 1);
 /// let (year, month, day, ..) = unpack(result);
 /// assert_eq!(year, 2001);
 /// assert_eq!(month, 2);
 /// assert_eq!(day, 28);
 /// ```
-pub fn add_years(ts: u64, n: i64) -> u64 {
-    let (year, month, day, hour, minute, second, centisecond, is_utc, tz) = unpack(ts);
-    let year = year + n;
+pub fn add_years(timestamp: u64, years: i64) -> u64 {
+    let (year, month, day, hour, minute, second, centisecond, is_utc, timezone) = unpack(timestamp);
+    let year = year + years;
     let day = day.min(days_in_month(year, month));
-    pack(year, month, day, hour, minute, second, centisecond, is_utc, tz)
+    pack(year, month, day, hour, minute, second, centisecond, is_utc, timezone)
 }
 
 /// Clamps to Feb 28 when subtracting a year from Feb 29 of a leap year.
@@ -382,15 +386,15 @@ pub fn add_years(ts: u64, n: i64) -> u64 {
 /// use app::timestamp::*;
 ///
 /// // 2000-02-29
-/// let ts = pack(2000, 2, 29, 0, 0, 0, 0, 0, 0);
-/// let result = sub_years(ts, 1);
+/// let timestamp = pack(2000, 2, 29, 0, 0, 0, 0, 0, 0);
+/// let result = sub_years(timestamp, 1);
 /// let (year, month, day, ..) = unpack(result);
 /// assert_eq!(year, 1999);
 /// assert_eq!(month, 2);
 /// assert_eq!(day, 28);
 /// ```
-pub fn sub_years(ts: u64, n: i64) -> u64 {
-    add_years(ts, -n)
+pub fn sub_years(timestamp: u64, years: i64) -> u64 {
+    add_years(timestamp, -years)
 }
 
 /// Clamps to Feb 28 when adding a month to Jan 31.
@@ -399,19 +403,19 @@ pub fn sub_years(ts: u64, n: i64) -> u64 {
 /// use app::timestamp::*;
 ///
 /// // 2001-01-31
-/// let ts = pack(2001, 1, 31, 0, 0, 0, 0, 0, 0);
-/// let result = add_months(ts, 1);
+/// let timestamp = pack(2001, 1, 31, 0, 0, 0, 0, 0, 0);
+/// let result = add_months(timestamp, 1);
 /// let (year, month, day, ..) = unpack(result);
 /// assert_eq!(year, 2001);
 /// assert_eq!(month, 2);
 /// assert_eq!(day, 28);
 /// ```
-pub fn add_months(ts: u64, n: i64) -> u64 {
-    let (year, month, day, hour, minute, second, centisecond, is_utc, tz) = unpack(ts);
-    let total = year * 12 + (month - 1) + n;
+pub fn add_months(timestamp: u64, months: i64) -> u64 {
+    let (year, month, day, hour, minute, second, centisecond, is_utc, timezone) = unpack(timestamp);
+    let total = year * 12 + (month - 1) + months;
     let (year, month) = (total.div_euclid(12), total.rem_euclid(12) + 1);
     let day = day.min(days_in_month(year, month));
-    pack(year, month, day, hour, minute, second, centisecond, is_utc, tz)
+    pack(year, month, day, hour, minute, second, centisecond, is_utc, timezone)
 }
 
 /// Rolls back to the previous January when subtracting 14 months from March.
@@ -420,15 +424,15 @@ pub fn add_months(ts: u64, n: i64) -> u64 {
 /// use app::timestamp::*;
 ///
 /// // 2002-03-01
-/// let ts = pack(2002, 3, 1, 0, 0, 0, 0, 0, 0);
-/// let result = sub_months(ts, 14);
+/// let timestamp = pack(2002, 3, 1, 0, 0, 0, 0, 0, 0);
+/// let result = sub_months(timestamp, 14);
 /// let (year, month, day, ..) = unpack(result);
 /// assert_eq!(year, 2001);
 /// assert_eq!(month, 1);
 /// assert_eq!(day, 1);
 /// ```
-pub fn sub_months(ts: u64, n: i64) -> u64 {
-    add_months(ts, -n)
+pub fn sub_months(timestamp: u64, months: i64) -> u64 {
+    add_months(timestamp, -months)
 }
 
 /// Rolls over to Jan 1 of the next year when adding a day to Dec 31.
@@ -437,23 +441,23 @@ pub fn sub_months(ts: u64, n: i64) -> u64 {
 /// use app::timestamp::*;
 ///
 /// // 2001-12-31
-/// let ts = pack(2001, 12, 31, 0, 0, 0, 0, 0, 0);
-/// let result = add_days(ts, 1);
+/// let timestamp = pack(2001, 12, 31, 0, 0, 0, 0, 0, 0);
+/// let result = add_days(timestamp, 1);
 /// let (year, month, day, ..) = unpack(result);
 /// assert_eq!(year, 2002);
 /// assert_eq!(month, 1);
 /// assert_eq!(day, 1);
 /// ```
-pub fn add_days(ts: u64, n: i64) -> u64 {
-    let (year, month, day, hour, minute, second, centisecond, is_utc, tz) = unpack(ts);
-    let y = if month <= 2 { year - 1 } else { year };
-    let year_of_era = y.rem_euclid(400);
+pub fn add_days(timestamp: u64, days: i64) -> u64 {
+    let (year, month, day, hour, minute, second, centisecond, is_utc, timezone) = unpack(timestamp);
+    let adjusted_year = if month <= 2 { year - 1 } else { year };
+    let year_of_era = adjusted_year.rem_euclid(400);
     let shifted_month = if month > 2 { month - 3 } else { month + 9 };
     let day_of_year = (153 * shifted_month + 2) / 5 + day - 1;
-    let shifted = y.div_euclid(400) * 146097 + year_of_era * 365 + year_of_era / 4
+    let shifted = adjusted_year.div_euclid(400) * 146097 + year_of_era * 365 + year_of_era / 4
         - year_of_era / 100
         + day_of_year
-        + n;
+        + days;
     let era = shifted.div_euclid(146097);
     let day_of_era = shifted.rem_euclid(146097);
     let year_of_era =
@@ -463,7 +467,7 @@ pub fn add_days(ts: u64, n: i64) -> u64 {
     let day = day_of_year - (153 * month_index + 2) / 5 + 1;
     let month = if month_index < 10 { month_index + 3 } else { month_index - 9 };
     let year = year_of_era + era * 400 + if month <= 2 { 1 } else { 0 };
-    pack(year, month, day, hour, minute, second, centisecond, is_utc, tz)
+    pack(year, month, day, hour, minute, second, centisecond, is_utc, timezone)
 }
 
 /// Rolls back to the last day of February when subtracting a day from March 1 (Feb 28 in a common year).
@@ -472,15 +476,15 @@ pub fn add_days(ts: u64, n: i64) -> u64 {
 /// use app::timestamp::*;
 ///
 /// // 2001-03-01
-/// let ts = pack(2001, 3, 1, 0, 0, 0, 0, 0, 0);
-/// let result = sub_days(ts, 1);
+/// let timestamp = pack(2001, 3, 1, 0, 0, 0, 0, 0, 0);
+/// let result = sub_days(timestamp, 1);
 /// let (year, month, day, ..) = unpack(result);
 /// assert_eq!(year, 2001);
 /// assert_eq!(month, 2);
 /// assert_eq!(day, 28);
 /// ```
-pub fn sub_days(ts: u64, n: i64) -> u64 {
-    add_days(ts, -n)
+pub fn sub_days(timestamp: u64, days: i64) -> u64 {
+    add_days(timestamp, -days)
 }
 
 /// Rolls over to Feb 1 01:00 when adding 2 hours to Jan 31 23:00.
@@ -489,18 +493,18 @@ pub fn sub_days(ts: u64, n: i64) -> u64 {
 /// use app::timestamp::*;
 ///
 /// // 2001-01-31 23:00
-/// let ts = pack(2001, 1, 31, 23, 0, 0, 0, 0, 0);
-/// let result = add_hours(ts, 2);
+/// let timestamp = pack(2001, 1, 31, 23, 0, 0, 0, 0, 0);
+/// let result = add_hours(timestamp, 2);
 /// let (_, month, day, hour, ..) = unpack(result);
 /// assert_eq!(month, 2);
 /// assert_eq!(day, 1);
 /// assert_eq!(hour, 1);
 /// ```
-pub fn add_hours(ts: u64, n: i64) -> u64 {
-    let (year, month, day, hour, minute, second, centisecond, is_utc, tz) = unpack(ts);
-    let total = hour + n;
+pub fn add_hours(timestamp: u64, hours: i64) -> u64 {
+    let (year, month, day, hour, minute, second, centisecond, is_utc, timezone) = unpack(timestamp);
+    let total = hour + hours;
     let moved =
-        pack(year, month, day, total.rem_euclid(24), minute, second, centisecond, is_utc, tz);
+        pack(year, month, day, total.rem_euclid(24), minute, second, centisecond, is_utc, timezone);
     add_days(moved, total.div_euclid(24))
 }
 
@@ -510,15 +514,15 @@ pub fn add_hours(ts: u64, n: i64) -> u64 {
 /// use app::timestamp::*;
 ///
 /// // 2001-03-01 00:00
-/// let ts = pack(2001, 3, 1, 0, 0, 0, 0, 0, 0);
-/// let result = sub_hours(ts, 2);
+/// let timestamp = pack(2001, 3, 1, 0, 0, 0, 0, 0, 0);
+/// let result = sub_hours(timestamp, 2);
 /// let (_, month, day, hour, ..) = unpack(result);
 /// assert_eq!(month, 2);
 /// assert_eq!(day, 28);
 /// assert_eq!(hour, 22);
 /// ```
-pub fn sub_hours(ts: u64, n: i64) -> u64 {
-    add_hours(ts, -n)
+pub fn sub_hours(timestamp: u64, hours: i64) -> u64 {
+    add_hours(timestamp, -hours)
 }
 
 /// Rolls over to the next day at 00:01 when adding 2 minutes to 23:59.
@@ -527,17 +531,18 @@ pub fn sub_hours(ts: u64, n: i64) -> u64 {
 /// use app::timestamp::*;
 ///
 /// // 2001-01-01 23:59
-/// let ts = pack(2001, 1, 1, 23, 59, 0, 0, 0, 0);
-/// let result = add_minutes(ts, 2);
+/// let timestamp = pack(2001, 1, 1, 23, 59, 0, 0, 0, 0);
+/// let result = add_minutes(timestamp, 2);
 /// let (_, _, day, hour, minute, ..) = unpack(result);
 /// assert_eq!(day, 2);
 /// assert_eq!(hour, 0);
 /// assert_eq!(minute, 1);
 /// ```
-pub fn add_minutes(ts: u64, n: i64) -> u64 {
-    let (year, month, day, hour, minute, second, centisecond, is_utc, tz) = unpack(ts);
-    let total = minute + n;
-    let moved = pack(year, month, day, hour, total.rem_euclid(60), second, centisecond, is_utc, tz);
+pub fn add_minutes(timestamp: u64, minutes: i64) -> u64 {
+    let (year, month, day, hour, minute, second, centisecond, is_utc, timezone) = unpack(timestamp);
+    let total = minute + minutes;
+    let moved =
+        pack(year, month, day, hour, total.rem_euclid(60), second, centisecond, is_utc, timezone);
     add_hours(moved, total.div_euclid(60))
 }
 
@@ -547,15 +552,15 @@ pub fn add_minutes(ts: u64, n: i64) -> u64 {
 /// use app::timestamp::*;
 ///
 /// // 2001-01-02 00:00
-/// let ts = pack(2001, 1, 2, 0, 0, 0, 0, 0, 0);
-/// let result = sub_minutes(ts, 1);
+/// let timestamp = pack(2001, 1, 2, 0, 0, 0, 0, 0, 0);
+/// let result = sub_minutes(timestamp, 1);
 /// let (_, _, day, hour, minute, ..) = unpack(result);
 /// assert_eq!(day, 1);
 /// assert_eq!(hour, 23);
 /// assert_eq!(minute, 59);
 /// ```
-pub fn sub_minutes(ts: u64, n: i64) -> u64 {
-    add_minutes(ts, -n)
+pub fn sub_minutes(timestamp: u64, minutes: i64) -> u64 {
+    add_minutes(timestamp, -minutes)
 }
 
 #[cfg(test)]
@@ -584,118 +589,126 @@ mod tests {
 
     #[test]
     fn fields_are_isolated() {
-        let ts = pack(2026, 12, 31, 23, 59, 59, 99, 1, 2);
-        assert_eq!(unpack(ts), (2026, 12, 31, 23, 59, 59, 99, 1, 2));
-        let ts = pack(0, 0, 0, 0, 0, 0, 99, 0, 0);
-        assert_eq!(unpack(ts), (0, 0, 0, 0, 0, 0, 99, 0, 0));
-        let ts = pack(0, 0, 0, 0, 0, 0, 0, 1, 0);
-        assert_eq!(unpack(ts), (0, 0, 0, 0, 0, 0, 0, 1, 0));
+        let timestamp = pack(2026, 12, 31, 23, 59, 59, 99, 1, 2);
+        assert_eq!(unpack(timestamp), (2026, 12, 31, 23, 59, 59, 99, 1, 2));
+        let timestamp = pack(0, 0, 0, 0, 0, 0, 99, 0, 0);
+        assert_eq!(unpack(timestamp), (0, 0, 0, 0, 0, 0, 99, 0, 0));
+        let timestamp = pack(0, 0, 0, 0, 0, 0, 0, 1, 0);
+        assert_eq!(unpack(timestamp), (0, 0, 0, 0, 0, 0, 0, 1, 0));
     }
 
     #[test]
     fn overflow_is_masked_without_corrupting_neighbours() {
-        let ts = pack(2026, 16, 32, 32, 64, 64, 128, 2, 1024);
-        assert_eq!(unpack(ts), (2026, 0, 0, 0, 0, 0, 0, 0, 0));
+        let timestamp = pack(2026, 16, 32, 32, 64, 64, 128, 2, 1024);
+        assert_eq!(unpack(timestamp), (2026, 0, 0, 0, 0, 0, 0, 0, 0));
     }
 
     #[test]
     fn new_matches_pack() {
-        let a = new(2026, 5, 16, 21, 43, 12, 34, false, &Timezone::AsiaTokyo);
-        let b = pack(2026, 5, 16, 21, 43, 12, 34, 0, Timezone::AsiaTokyo.id() as i64 as u64);
-        assert_eq!(a, b);
+        let created = new(2026, 5, 16, 21, 43, 12, 34, false, &Timezone::AsiaTokyo);
+        let packed = pack(2026, 5, 16, 21, 43, 12, 34, 0, Timezone::AsiaTokyo.id() as i64 as u64);
+        assert_eq!(created, packed);
     }
 
     #[test]
     fn from_ut_centisecond() {
         let base = 946684800000.0_f64;
-        for (ms, cs) in [(0.0, 0), (9.0, 0), (10.0, 1), (123.0, 12), (990.0, 99), (999.0, 99)] {
-            let (.., centisecond, _, _) = unpack(from_ut(base + ms, true, &Timezone::AsiaTokyo));
-            assert_eq!(centisecond, cs, "ms={ms}");
+        for (milliseconds, expected_centisecond) in
+            [(0.0, 0), (9.0, 0), (10.0, 1), (123.0, 12), (990.0, 99), (999.0, 99)]
+        {
+            let (.., centisecond, _, _) =
+                unpack(from_ut(base + milliseconds, true, &Timezone::AsiaTokyo));
+            assert_eq!(centisecond, expected_centisecond, "milliseconds={milliseconds}");
         }
     }
 
     #[test]
     fn from_ut_utc_and_local() {
         let ut = 946684800000.0_f64 + 12_345.0;
-        let ts = from_ut(ut, true, &Timezone::AsiaTokyo);
-        assert_eq!(unpack(ts), (2000, 1, 1, 0, 0, 12, 34, 1, 0));
-        let ts = from_ut(ut, false, &Timezone::AsiaTokyo);
-        let tz = Timezone::AsiaTokyo.id() as u64;
-        assert_eq!(unpack(ts), (2000, 1, 1, 9, 0, 12, 34, 0, tz));
-        let ts = from_ut(ut, false, &Timezone::AmericaLosAngeles);
-        let tz = Timezone::AmericaLosAngeles.id() as u64;
-        assert_eq!(unpack(ts), (1999, 12, 31, 16, 0, 12, 34, 0, tz));
+        let timestamp = from_ut(ut, true, &Timezone::AsiaTokyo);
+        assert_eq!(unpack(timestamp), (2000, 1, 1, 0, 0, 12, 34, 1, 0));
+        let timestamp = from_ut(ut, false, &Timezone::AsiaTokyo);
+        let timezone = Timezone::AsiaTokyo.id() as u64;
+        assert_eq!(unpack(timestamp), (2000, 1, 1, 9, 0, 12, 34, 0, timezone));
+        let timestamp = from_ut(ut, false, &Timezone::AmericaLosAngeles);
+        let timezone = Timezone::AmericaLosAngeles.id() as u64;
+        assert_eq!(unpack(timestamp), (1999, 12, 31, 16, 0, 12, 34, 0, timezone));
     }
 
     #[test]
     fn u64_order_follows_time_order() {
-        let a = pack(2026, 5, 16, 21, 43, 12, 99, 1, 0);
-        let b = pack(2026, 5, 16, 21, 43, 13, 0, 1, 0);
-        let c = pack(2026, 5, 16, 21, 44, 0, 0, 1, 0);
-        let d = pack(2026, 5, 17, 0, 0, 0, 0, 1, 0);
-        let e = pack(2027, 1, 1, 0, 0, 0, 0, 1, 0);
-        assert!(a < b && b < c && c < d && d < e);
+        let base = pack(2026, 5, 16, 21, 43, 12, 99, 1, 0);
+        let next_second = pack(2026, 5, 16, 21, 43, 13, 0, 1, 0);
+        let next_minute = pack(2026, 5, 16, 21, 44, 0, 0, 1, 0);
+        let next_day = pack(2026, 5, 17, 0, 0, 0, 0, 1, 0);
+        let next_year = pack(2027, 1, 1, 0, 0, 0, 0, 1, 0);
+        assert!(
+            base < next_second
+                && next_second < next_minute
+                && next_minute < next_day
+                && next_day < next_year
+        );
     }
 
     #[test]
     fn arithmetic_preserves_centisecond_utc_and_tz() {
-        let ts = pack(2001, 1, 31, 23, 59, 58, 77, 1, 5);
+        let timestamp = pack(2001, 1, 31, 23, 59, 58, 77, 1, 5);
         let cases = [
-            add_years(ts, 1),
-            sub_years(ts, 1),
-            add_months(ts, 1),
-            sub_months(ts, 1),
-            add_days(ts, 1),
-            sub_days(ts, 1),
-            add_hours(ts, 1),
-            sub_hours(ts, 1),
-            add_minutes(ts, 1),
-            sub_minutes(ts, 1),
+            add_years(timestamp, 1),
+            sub_years(timestamp, 1),
+            add_months(timestamp, 1),
+            sub_months(timestamp, 1),
+            add_days(timestamp, 1),
+            sub_days(timestamp, 1),
+            add_hours(timestamp, 1),
+            sub_hours(timestamp, 1),
+            add_minutes(timestamp, 1),
+            sub_minutes(timestamp, 1),
         ];
-        for r in cases {
-            let (.., second, centisecond, is_utc, tz) = unpack(r);
-            assert_eq!((second, centisecond, is_utc, tz), (58, 77, 1, 5));
+        for result in cases {
+            let (.., second, centisecond, is_utc, timezone) = unpack(result);
+            assert_eq!((second, centisecond, is_utc, timezone), (58, 77, 1, 5));
         }
     }
 
     #[test]
     fn display_format() {
-        let ts = pack(2026, 5, 6, 7, 8, 9, 10, 1, 0);
-        assert_eq!(display(ts, Lang::Ja, Format::DateTime), "2026-05-06 07:08");
-        assert_eq!(display(ts, Lang::Ja, Format::Date), "2026-05-06");
-        assert_eq!(display(ts, Lang::Ja, Format::Time), "07:08");
-        assert_eq!(display(ts, Lang::Ja, Format::Short), "5/6(水)");
-        assert_eq!(display(ts, Lang::Ja, Format::Long), "2026年5月6日(水)");
+        let timestamp = pack(2026, 5, 6, 7, 8, 9, 10, 1, 0);
+        assert_eq!(display(timestamp, Lang::Ja, Format::DateTime), "2026-05-06 07:08");
+        assert_eq!(display(timestamp, Lang::Ja, Format::Date), "2026-05-06");
+        assert_eq!(display(timestamp, Lang::Ja, Format::Time), "07:08");
+        assert_eq!(display(timestamp, Lang::Ja, Format::Short), "5/6(水)");
+        assert_eq!(display(timestamp, Lang::Ja, Format::Long), "2026年5月6日(水)");
     }
 
     #[test]
-    fn weekday_matches_the_known_calendar_over_a_leap_cycle() {
-        let mut ts = pack(2024, 2, 26, 0, 0, 0, 0, 0, 0);
+    fn youbi_matches_the_known_calendar_over_a_leap_cycle() {
+        let mut timestamp = pack(2024, 2, 26, 0, 0, 0, 0, 0, 0);
         let names = [
-            Weekday::Monday,
-            Weekday::Tuesday,
-            Weekday::Wednesday,
-            Weekday::Thursday,
-            Weekday::Friday,
-            Weekday::Saturday,
-            Weekday::Sunday,
+            Youbi::Monday,
+            Youbi::Tuesday,
+            Youbi::Wednesday,
+            Youbi::Thursday,
+            Youbi::Friday,
+            Youbi::Saturday,
+            Youbi::Sunday,
         ];
         for step in 0..800 {
-            assert_eq!(weekday(ts), names[step % 7], "step {step}");
-            ts = add_days(ts, 1);
+            assert_eq!(youbi(timestamp), names[step % 7], "step {step}");
+            timestamp = add_days(timestamp, 1);
         }
     }
 
     #[test]
     fn add_days_and_diff_agree_across_centuries() {
         let base = pack(2026, 10, 2, 9, 30, 15, 7, 0, 0);
-        for n in [-146_097, -36_525, -366, -31, -1, 0, 1, 28, 31, 365, 366, 36_524, 146_097] {
-            let moved = add_days(base, n);
-            assert_eq!(diff(base, moved), n * 8_640_000, "n {n}");
-            assert_eq!(add_days(moved, -n), base, "n {n}");
+        for days in [-146_097, -36_525, -366, -31, -1, 0, 1, 28, 31, 365, 366, 36_524, 146_097] {
+            let moved = add_days(base, days);
+            assert_eq!(diff(base, moved), days * 8_640_000, "days {days}");
+            assert_eq!(add_days(moved, -days), base, "days {days}");
             let (.., hour, minute, second, centisecond, _, _) = {
-                let (_, _, _, h, mi, s, cs, a, b) = unpack(moved);
-                (h, mi, s, cs, a, b)
+                let (_, _, _, hour, minute, second, centisecond, is_utc, timezone) = unpack(moved);
+                (hour, minute, second, centisecond, is_utc, timezone)
             };
             assert_eq!((hour, minute, second, centisecond), (9, 30, 15, 7));
         }
@@ -703,15 +716,15 @@ mod tests {
 
     #[test]
     fn time_arithmetic_carries_in_both_directions() {
-        let ts = pack(2001, 3, 1, 0, 0, 0, 0, 0, 0);
-        let back = sub_minutes(ts, 1);
+        let timestamp = pack(2001, 3, 1, 0, 0, 0, 0, 0, 0);
+        let back = sub_minutes(timestamp, 1);
         assert_eq!(unpack(back), (2001, 2, 28, 23, 59, 0, 0, 0, 0));
-        assert_eq!(add_minutes(back, 1), ts);
-        let back = sub_hours(ts, 25);
+        assert_eq!(add_minutes(back, 1), timestamp);
+        let back = sub_hours(timestamp, 25);
         assert_eq!(unpack(back), (2001, 2, 27, 23, 0, 0, 0, 0, 0));
-        assert_eq!(add_hours(back, 25), ts);
-        assert_eq!(add_minutes(ts, 60 * 24 * 400 + 61), pack(2002, 4, 5, 1, 1, 0, 0, 0, 0));
-        assert_eq!(sub_months(ts, 14), pack(2000, 1, 1, 0, 0, 0, 0, 0, 0));
-        assert_eq!(add_months(ts, -3), pack(2000, 12, 1, 0, 0, 0, 0, 0, 0));
+        assert_eq!(add_hours(back, 25), timestamp);
+        assert_eq!(add_minutes(timestamp, 60 * 24 * 400 + 61), pack(2002, 4, 5, 1, 1, 0, 0, 0, 0));
+        assert_eq!(sub_months(timestamp, 14), pack(2000, 1, 1, 0, 0, 0, 0, 0, 0));
+        assert_eq!(add_months(timestamp, -3), pack(2000, 12, 1, 0, 0, 0, 0, 0, 0));
     }
 }

@@ -29,7 +29,7 @@ use crate::{
         StyleProperty, StyleValue, Unit, VisibilityState, dom::Id, from_url_search_params,
     },
     timestamp::{
-        Format, Timezone, add_days, diff, display, from_ut, pack, sub_days, unpack, weekday,
+        Format, Timezone, add_days, diff, display, from_ut, pack, sub_days, unpack, youbi,
     },
 };
 
@@ -1127,7 +1127,7 @@ impl Handler {
             }
             Target::MonthCell(index) => {
                 let first = pack(self.month.0, self.month.1, 1, 0, 0, 0, 0, 0, 0);
-                let origin = sub_days(first, weekday(first) as i64 - 1);
+                let origin = sub_days(first, youbi(first) as i64 - 1);
                 self.base = add_days(origin, index as i64);
                 let mut commands = self.date_commands();
                 commands.push(Command::CloseModal { id: Target::Modal.to_dom() });
@@ -1503,7 +1503,7 @@ impl Handler {
     fn month_commands(&self) -> Vec<Command> {
         let (year, month) = self.month;
         let first = pack(year, month, 1, 0, 0, 0, 0, 0, 0);
-        let origin = sub_days(first, weekday(first) as i64 - 1);
+        let origin = sub_days(first, youbi(first) as i64 - 1);
         let mut commands = vec![Command::SetText {
             id:    Target::MonthTitle.to_dom(),
             value: format!("{year}年{month}月"),
