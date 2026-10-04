@@ -1,6 +1,3 @@
-// Arena
-//
-
 use alloc::{format, string::String, vec::Vec};
 #[cfg(all(target_arch = "wasm32", target_feature = "atomics"))]
 use core::arch::wasm32::{memory_atomic_notify, memory_atomic_wait32};

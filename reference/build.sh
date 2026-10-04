@@ -4,18 +4,25 @@ cd "$(dirname "$0")/.."
 
 VERSION="${VERSION:-$(git describe --tags --always)}"
 OUT="target/cloudflare"
+CAL="examples/calendar"
 WORKER_FLAGS="-Ctarget-feature=+atomics,+bulk-memory -Clink-arg=--import-memory -Clink-arg=--shared-memory -Clink-arg=--max-memory=134217728 -Clink-arg=--export=__wasm_init_tls -Clink-arg=--export=__tls_size -Clink-arg=--export=__tls_align -Clink-arg=--export=__tls_base"
 
 RUSTFLAGS="$WORKER_FLAGS" cargo build --release --target wasm32-unknown-unknown -Zbuild-std=std,panic_abort
 wasm-bindgen --target web --out-dir distribution/app --out-name app target/wasm32-unknown-unknown/release/app.wasm
 rm -f distribution/app/README.md distribution/app/LICENSE distribution/app/.gitignore
-examples/calendar/build.sh
+
+RUSTFLAGS="$WORKER_FLAGS" cargo build --release --target wasm32-unknown-unknown -Zbuild-std=std,panic_abort --features calendar
+wasm-bindgen --target web --out-dir "$CAL/app" --out-name app target/wasm32-unknown-unknown/release/app.wasm
+rm -f "$CAL/app/README.md" "$CAL/app/LICENSE" "$CAL/app/.gitignore"
+cp distribution/init.js distribution/worker.js "$CAL/"
+rm -rf "$CAL/css/library"
+mkdir -p "$CAL/css"
+cp -r distribution/css/library "$CAL/css/library"
 
 rm -rf "$OUT"
 mkdir -p "$OUT/app" "$OUT/calendar/calendar"
 cp -r distribution/. "$OUT/app/"
-cp -r examples/calendar/. "$OUT/calendar/calendar/"
-rm -f "$OUT/calendar/calendar/build.sh"
+cp -r "$CAL/." "$OUT/calendar/calendar/"
 find "$OUT" -name .gitignore -delete
 
 find "$OUT" -type f \( -name "*.html" -o -name "*.js" -o -name "*.json" -o -name "*.css" \) \

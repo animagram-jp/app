@@ -10,11 +10,11 @@ use core::{
 
 use crate::timestamp::{Month, Weekday, add_days, pack, unpack, weekday};
 
-// - time: 時。
-// - timeline: 時系列。
-// - timestamp: ex. 2026-05-16 21:43:00
-// - timerange: 視点と終点を持つ時間。(start: timestamp, end: timestamp)
-// - period: 期間。
+// - time
+// - timeline
+// - timestamp: e.g., 2000-01-01T00:00:00.00
+// - timerange: [start: timestamp, end: timestamp]
+// - period: [includes: [timestamp,], excludes: [timestamp,]]
 // - timevolume: 時間。2日間など。
 
 #[derive(Default, Clone, Debug, PartialEq)]
