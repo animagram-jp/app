@@ -1,17 +1,6 @@
-<!--
-  color-picker.html
-  すべてのDOM操作はworker.js → execute({ op, id, attr, value }) 経由。
-  このHTMLはIDを固定して持つだけ。イベントはdispatch()経由でWorkerへ。
--->
 <div class="cp-root">
 
-  <!-- プレビュー（背景色・HEX入力） -->
   <div class="cp-preview" id="cp-preview">
-    <!--
-      HEXバリデーションはHTML側で完結:
-        pattern="#[0-9A-Fa-f]{6}" → ブラウザがinvalidをブロック
-        inputイベントで7文字かつ valid のときだけWorkerへ送信
-    -->
     <input
       type="text"
       id="cp-hex-input"
@@ -23,7 +12,6 @@
     >
   </div>
 
-  <!-- HSL スライダー -->
   <div class="cp-panel">
     <div class="cp-panel-label">HSL</div>
     <div class="cp-slider-group">
@@ -49,7 +37,6 @@
     </div>
   </div>
 
-  <!-- パレット（固定7個） -->
   <div class="cp-panel">
     <div class="cp-panel-label">Palette</div>
     <div class="cp-swatches">
@@ -78,31 +65,3 @@
   </div>
 
 </div>
-
-<!--
-  // ── スライダー（inputイベント → workerへvalue付きで送信）──
-  ['cp-h-slider','cp-s-slider','cp-l-slider'].forEach(id => {
-    document.getElementById(id)?.addEventListener('input', (e) => {
-      worker.postMessage({
-        type: 'event',
-        payload: {
-          event_type: 0,          // inputはEVENT_TYPEに無いので0でOK
-          target_id:  e.target.id,
-          value:      +e.target.value,
-          ctrl: 0, meta: 0,
-        },
-      });
-    });
-  });
-
-  // ── HEX入力（7文字 & patternマッチ時のみ送信）────────────
-  document.getElementById('cp-hex-input')?.addEventListener('input', (e) => {
-    const v = e.target.value;
-    if (v.length === 7 && e.target.validity.valid) {
-      worker.postMessage({ type: 'hex_input', payload: { value: v } });
-    }
-  });
-
-  // ── swatchクリックは既存の click dispatch() で自動ルーティング ──
-  // cp-swatch-0 〜 cp-swatch-6 のclickは worker.js 内で swatchIndex() が処理
--->

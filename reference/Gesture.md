@@ -11,7 +11,7 @@ Reference data for `js_client::detect_gesture()`
 
 判定アルゴリズム（distance / velocity / duration の閾値比較）に埋め込まれた値を、 `gesture_fixed.rs` の `Thresholds` / `detect_gesture` に、両ライブラリの値をpx・ms単位に揃えて統合した。
 
-`detect_gesture` は `PointerState` と `Event` 1 個だけから `Gesture` を導出する関数であり、タイマー等の第二の入口は持たない。`app.rs` の `dispatch` が `Event` を FIFO キューで捌く都度確定型アーキテクチャのため、時間経過そのものを表す `Event` は存在しない。`LongPress` もこの制約の中で、既存の `PointerMove` / `PointerUp` の判定に組み込んでいる（詳細は後述）。
+`detect_gesture` は `PointerState` と `Event` 1 個だけから `Gesture` を導出する関数であり、タイマー等の第二の入口は持たない。`app.rs` の `dispatch` が `Event` を FIFO キューで捌く都度確定型アーキテクチャのため、時間経過そのものを表す `Event` は存在しない。`LongPress` もこの制約の中で、既存の `PointerMove` / `PointerUp` の判定に組み込んでいる。
 
 ## Hammer.js, use-gesture 共通の関数と定数
 
@@ -36,25 +36,6 @@ drag_start_px       = 10    # Hammer.js: pan.threshold        (use-gesture: axis
 swipe_min_px        = 50    # use-gesture: DEFAULT_SWIPE_DISTANCE (Hammer.js: swipe.threshold = 10)
 swipe_min_velocity  = 0.5   # use-gesture: DEFAULT_SWIPE_VELOCITY (Hammer.js: swipe.velocity = 0.3)
 swipe_max_ms        = 250   # use-gesture: DEFAULT_SWIPE_DURATION (Hammer.jsに対応項目なし)
-```
-
-## detect_gesture
-
-```rust
-use js_client::{
-    PointerState, 
-    Thresholds::{MOUSE, TOUCH}, 
-    detect_gesture, 
-    detect_on_release, 
-    detect_on_move,
-    gesture_tests,
-};
-
-// app::App::init()
-use js_client::{pointer_coarse, detect_device, Thresholds::for_device};
-
-// app::App::dispatch(Event::Canvas)
-use js_client::{PointerState::update, detect_gesture};
 ```
 
 ### 状態遷移

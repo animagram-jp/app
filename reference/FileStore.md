@@ -287,3 +287,19 @@ panic するため、tsv の typo でテストが空振り（vacuous pass）す�
 | `issue_id_monotonic_within_process` | プロセス内で issue_id が単調増加 |
 | `issue_id_reissues_deleted_id_after_reopen` | 削除済み id が reopen 後に再発行される（README で仕様化した挙動の固定） |
 | `issue_id_follows_caller_supplied_id_after_save` | caller が直接 set した id を save が next_id に反映し、次の発行が単調性を保つ |
+
+## Store
+
+データの構造体は、インスタンスと、スキーマからなる。
+instanceは、null(未入力)をlistの out of range で表現し、メモリ占有量の発散を防ぐ。
+
+```
+┌──────────────────────┐OutOfRange┌──────────┐
+│ instance             │--------->│          │request
+│ (VariableList, List) │<---------│          │<------┌────────┐
+└──────────────────────┘new,get,  │ runtime  │       │ client │
+┌──────────────────────┐set,delete│ operator │------>└────────┘
+│ schema               │--------->│          │ key,
+│ (set of item and fn) │ item.fn  │          │ value
+└──────────────────────┘          └──────────┘
+```

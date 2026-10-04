@@ -1,7 +1,3 @@
-// ─── JS側統合メモ（worker.jsより）────────────────────────────
-//
-// カレンダー本体の worker.js に統合する際の注意点:
-//
 // 1. スライダーは既存の dispatch() を使わず input イベントで value を直接送る
 //    ['cp-h-slider','cp-s-slider','cp-l-slider'].forEach(id => {
 //      document.getElementById(id)?.addEventListener('input', (e) => {
