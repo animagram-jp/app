@@ -18,16 +18,11 @@
 //
 // 3. swatch クリックは既存の click dispatch() で自動ルーティング済み
 //    worker側で id が /^cp-swatch-(\d)$/ にマッチすれば swatchIndex() が処理する
-//
-// ──────────────────────────────────────────────────────────────
 
 use wasm_bindgen::prelude::*;
 
-// ─── op コード ────────────────────────────────────────────────
 const OP_SET_ATTR: u8 = 0b01;
 const OP_SET_TEXT: u8 = 0b10;
-
-// ─── Color ───────────────────────────────────────────────────
 
 #[derive(Clone, Copy)]
 struct Color { r: u8, g: u8, b: u8 }
@@ -95,8 +90,6 @@ impl Color {
     }
 }
 
-// ─── DomOpPod（内部）→ serialize_ops で JsValue へ ───────────
-
 struct Pod { op: u8, id: &'static str, attr: &'static str, value: String }
 
 fn sa(id: &'static str, attr: &'static str, value: String) -> Pod {
@@ -119,8 +112,6 @@ fn to_js(pods: &[Pod]) -> JsValue {
     arr.into()
 }
 
-// ─── PickerState ─────────────────────────────────────────────
-
 #[wasm_bindgen]
 pub struct PickerState {
     color: Color,
@@ -136,8 +127,6 @@ impl PickerState {
         Self { color, h, s, l }
     }
 
-    // ── 入力ハンドラ（全部 JsValue を返す）──────────────────
-
     pub fn on_hex_input(&mut self, hex: &str) -> JsValue {
         if let Some(c) = Color::from_hex(hex) {
             self.color = c;
@@ -145,7 +134,7 @@ impl PickerState {
             self.h = h; self.s = s; self.l = l;
             self.render()
         } else {
-            JsValue::NULL // pattern属性でフロント側ブロック済み
+            JsValue::NULL
         }
     }
 
@@ -179,8 +168,6 @@ impl PickerState {
 
     pub fn render_init(&self) -> JsValue { self.render() }
 
-    // ── 全DOM命令生成 ─────────────────────────────────────────
-
     fn render(&self) -> JsValue {
         let hex      = self.color.to_hex();
         let text_col = self.color.contrast_text();
@@ -188,24 +175,18 @@ impl PickerState {
         let palette  = self.color.palette();
 
         let mut ops: Vec<Pod> = vec![
-            // プレビュー
             sa("cp-preview",   "style", format!("background:{hex}")),
             sa("cp-hex-input", "style", format!("color:{text_col}")),
             sa("cp-hex-input", "value", hex.clone()),
-            // スライダー値
             sa("cp-h-slider", "value", format!("{:.0}", self.h)),
             sa("cp-s-slider", "value", format!("{:.0}", self.s)),
             sa("cp-l-slider", "value", format!("{:.0}", self.l)),
-            // スライダーグラデーション
-            sa("cp-s-slider", "style",
-                format!("background:linear-gradient(to right,#808080,{hue_hex})")),
-            // 数値表示
+            sa("cp-s-slider", "style", format!("background:linear-gradient(to right,#808080,{hue_hex})")),
             st("cp-h-val", format!("{:.0}°", self.h)),
             st("cp-s-val", format!("{:.0}%", self.s)),
             st("cp-l-val", format!("{:.0}%", self.l)),
         ];
 
-        // パレット（固定7個）
         let ids: [&'static str; 7] = [
             "cp-swatch-0","cp-swatch-1","cp-swatch-2","cp-swatch-3",
             "cp-swatch-4","cp-swatch-5","cp-swatch-6",

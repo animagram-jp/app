@@ -12,10 +12,11 @@ use crate::timestamp::{Month, Weekday, add_days, pack, unpack, weekday};
 
 // - time
 // - timeline
-// - timestamp: e.g., 2000-01-01T00:00:00.00
-// - timerange: [start: timestamp, end: timestamp]
-// - period: [includes: [timestamp,], excludes: [timestamp,]]
-// - timevolume: 時間。2日間など。
+// - Timestamp: u64 e.g., 2000-01-01T00:00:00.00
+// - Range: [start: Timestamp, end: Timestamp]
+// - Volume: Timestamp - Timestamp
+// - Period: [includes: Vec<Range>, excludes: Vec<Range>]
+// - Recurrence::generate(start: Timestamp, end: Timestamp) -> Vec<Range>
 
 #[derive(Default, Clone, Debug, PartialEq)]
 pub struct Timerange {
@@ -97,7 +98,6 @@ impl Schedule {
     /// assert_eq!((h2, mi2), (12, 0));
     /// ```
     pub fn generate(&self, scope: &Timerange) -> Vec<Timerange> {
-        // 有効区間 = self.range ∩ scope
         let eff_start = match (self.range.start, scope.start) {
             (Some(a), Some(b)) => Some(a.max(b)),
             (Some(a), None) => Some(a),

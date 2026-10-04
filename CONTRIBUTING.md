@@ -1,8 +1,8 @@
 // This file includes untranslated text (ja).
 
-# Contrinbuting
+# Development
 
-## Development rule
+## Rule
 
 - Follow [ORG_CONTRIBUTING.md](./ORG_CONTRIBUTING.md)
 
@@ -50,6 +50,10 @@ Gui application system for editing and reading structured data. Handles event lo
 
 ---
 
+## Links
+
+- [Debug link with eruda (for iPhone)](https://app.animagram.jp/?eruda)
+
 ## Commands for development
 
 - Setup: `rustup toolchain install`
@@ -91,13 +95,6 @@ wasm-bindgen --target web --out-dir distribution/app --out-name app target/wasm3
 # Generate glue JS scripts
 wasm-bindgen --target web --out-dir distribution/app --out-name app target/wasm32-unknown-unknown/release/app.wasm
 ```
-
-OPFS files are in:
-- `C:\Users\<User>\AppData\Roaming\Mozilla\Firefox\Profiles\<Profile>\storage\default\`.
-- `C:\Users\<User>\AppData\Local\Google\Chrome\User Data\Default\Storage\ext\`
-
-Debug link is:
-- [for iPhone: url with eruda](https://animagram-jp.github.io/app/?eruda)
 
 ---
 

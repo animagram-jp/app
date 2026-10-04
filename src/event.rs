@@ -140,15 +140,15 @@ mod tests {
         INIT_JS[start..].split(';').next().unwrap().parse().unwrap()
     }
 
-    fn section_2() -> dom::Id {
-        dom::Id::new(&[(dom::Tag::Main, None), (dom::Tag::Section, Some(2))])
+    fn section(n: u32) -> dom::Id {
+        dom::Id::new(&[(dom::Tag::Main, None), (dom::Tag::Section, Some(n))])
     }
 
     fn canvas_frame() -> Vec<u8> {
         let mut frame = Vec::new();
         frame.push(EVENT_CANVAS);
         frame.push(KEY_DOWN);
-        section_2().encode(&mut frame);
+        section(2).encode(&mut frame);
         frame.push(ENTER);
         frame.push(CTRL_REPEAT_SHIFT);
         put_str(&mut frame, "a");
@@ -180,7 +180,7 @@ mod tests {
             panic!("not a canvas event");
         };
         assert_eq!(event.event_type, EventType::KeyDown);
-        assert_eq!(event.id, section_2());
+        assert_eq!(event.id, section(2));
         assert_eq!(event.key, KeyName::Enter);
         assert_eq!(
             [event.alt(), event.ctrl(), event.meta(), event.repeat(), event.shift()],
