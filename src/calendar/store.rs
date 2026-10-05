@@ -204,7 +204,7 @@ mod tests {
 
     fn sample() -> Calendar {
         let bytes =
-            fs::read(concat!(env!("CARGO_MANIFEST_DIR"), "/examples/calendar/data/calendar.json"))
+            fs::read(concat!(env!("CARGO_MANIFEST_DIR"), "/distribution/calendar/data/calendar.json"))
                 .unwrap();
         Calendar::decode(&bytes).unwrap()
     }

@@ -12,7 +12,7 @@ Cargo.lock
 
 reference/character.json
 
-/examples/calendar/app/
-/examples/calendar/init.js
-/examples/calendar/worker.js
-/examples/calendar/css/library/
+/distribution/calendar/app/
+/distribution/calendar/init.js
+/distribution/calendar/worker.js
+/distribution/calendar/css/library/

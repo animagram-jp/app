@@ -331,7 +331,7 @@ mod tests {
     #[test]
     fn fetch_chunks_are_joined_until_the_last_one() {
         let body =
-            fs::read(concat!(env!("CARGO_MANIFEST_DIR"), "/examples/calendar/data/calendar.json"))
+            fs::read(concat!(env!("CARGO_MANIFEST_DIR"), "/distribution/calendar/data/calendar.json"))
                 .unwrap();
         let mut app = new_app();
 

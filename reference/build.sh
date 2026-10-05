@@ -4,7 +4,7 @@ cd "$(dirname "$0")/.."
 
 VERSION="${VERSION:-$(git describe --tags --always)}"
 OUT="target/cloudflare"
-CAL="examples/calendar"
+CAL="distribution/calendar"
 WORKER_FLAGS="-Ctarget-feature=+atomics,+bulk-memory -Clink-arg=--import-memory -Clink-arg=--shared-memory -Clink-arg=--max-memory=134217728 -Clink-arg=--export=__wasm_init_tls -Clink-arg=--export=__tls_size -Clink-arg=--export=__tls_align -Clink-arg=--export=__tls_base"
 
 RUSTFLAGS="$WORKER_FLAGS" cargo build --release --target wasm32-unknown-unknown -Zbuild-std=std,panic_abort
@@ -22,6 +22,7 @@ cp -r distribution/css/library "$CAL/css/library"
 rm -rf "$OUT"
 mkdir -p "$OUT/app" "$OUT/calendar/calendar"
 cp -r distribution/. "$OUT/app/"
+rm -rf "$OUT/app/calendar"
 cp -r "$CAL/." "$OUT/calendar/calendar/"
 find "$OUT" -name .gitignore -delete
 

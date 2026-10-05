@@ -2106,7 +2106,7 @@ mod tests {
 
     fn sample_response(request: u32, status: u16) -> Response {
         let body =
-            fs::read(concat!(env!("CARGO_MANIFEST_DIR"), "/examples/calendar/data/calendar.json"))
+            fs::read(concat!(env!("CARGO_MANIFEST_DIR"), "/distribution/calendar/data/calendar.json"))
                 .unwrap();
         Response { request, status, body }
     }
@@ -2359,8 +2359,8 @@ mod tests {
 
     #[test]
     fn rem_constants_match_the_markup() {
-        let html = include_str!("../../examples/calendar/index.html");
-        let css = include_str!("../../examples/calendar/css/style.css");
+        let html = include_str!("../../distribution/calendar/index.html");
+        let css = include_str!("../../distribution/calendar/css/style.css");
         assert!(html.contains(&format!("var(--head-height) repeat({SLOT_COUNT}, {SLOT_REM}rem)")));
         assert!(html.contains(&format!(
             "var(--head-title) var(--head-resource) calc({SLOT_REM}rem * {SLOT_COUNT})"
@@ -3624,7 +3624,7 @@ mod tests {
                 &Calendar::decode(
                     &fs::read(concat!(
                         env!("CARGO_MANIFEST_DIR"),
-                        "/examples/calendar/data/calendar.json"
+                        "/distribution/calendar/data/calendar.json"
                     ))
                     .unwrap(),
                 )

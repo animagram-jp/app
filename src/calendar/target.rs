@@ -341,7 +341,7 @@ mod tests {
     fn every_target_exists_in_the_html() {
         let html = fs::read_to_string(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/examples/calendar/index.html"
+            "/distribution/calendar/index.html"
         ))
         .unwrap();
         let present = |id: &str| html.contains(&format!("id=\"{id}\""));

@@ -546,7 +546,7 @@ impl Calendar {
 
     /// ```
     /// # use app::calendar::data::Calendar;
-    /// let calendar = Calendar::decode(include_bytes!("../../examples/calendar/data/calendar.json")).unwrap();
+    /// let calendar = Calendar::decode(include_bytes!("../../distribution/calendar/data/calendar.json")).unwrap();
     /// assert_eq!(Calendar::decode(&calendar.encode()).unwrap().appointments.len(), 380);
     /// ```
     pub fn encode(&self) -> Vec<u8> {
@@ -669,7 +669,7 @@ mod tests {
     use crate::{data_struct::ID_CREATED_AT, timestamp::diff};
 
     fn sample() -> Vec<u8> {
-        fs::read(concat!(env!("CARGO_MANIFEST_DIR"), "/examples/calendar/data/calendar.json"))
+        fs::read(concat!(env!("CARGO_MANIFEST_DIR"), "/distribution/calendar/data/calendar.json"))
             .unwrap()
     }
 
