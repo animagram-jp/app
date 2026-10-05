@@ -43,13 +43,7 @@
     }
 }
 
-html {
-    overflow-x: hidden;
-}
-
 body {
-    max-width: 100%;
-    overflow-x: hidden;
     padding: 0.25rem;
 }
 
@@ -259,12 +253,4 @@ main>section {
     display: flex;
     align-items: flex-end;
     gap: 0.2rem;
-}
-
-#main_modal {
-    position: absolute;
-    opacity: 0;
-    pointer-events: none;
-    width: 0;
-    height: 0;
 }

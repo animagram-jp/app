@@ -132,6 +132,68 @@ impl TimeAxis {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct MonthAxis {
+    weeks: u32,
+    rows:  u32,
+}
+
+impl MonthAxis {
+    pub const WEEKDAYS: u32 = 7;
+
+    pub const fn new(weeks: u32, rows: u32) -> Self {
+        Self { weeks, rows }
+    }
+
+    pub const fn days(&self) -> u32 {
+        self.weeks * Self::WEEKDAYS
+    }
+
+    pub const fn rows(&self) -> u32 {
+        self.rows
+    }
+
+    pub const fn count(&self) -> u32 {
+        self.weeks * (self.rows + 1)
+    }
+
+    /// ```
+    /// # use app::calendar::grid::MonthAxis;
+    /// let axis = MonthAxis::new(5, 3);
+    /// let bx = axis.bbox(8, Some(2)).unwrap();
+    /// assert_eq!((bx.base()[0].get(), bx.base()[1].get()), (1.0, 7.0));
+    /// assert_eq!((bx.offset()[0].get(), bx.offset()[1].get()), (1.0, 1.0));
+    /// assert_eq!(axis.bbox(8, None).unwrap().base()[1].get(), 4.0);
+    /// assert!(axis.bbox(35, None).is_none());
+    /// assert!(axis.bbox(0, Some(3)).is_none());
+    /// ```
+    pub fn bbox(&self, day: u32, row: Option<u32>) -> Option<BBox<2>> {
+        if day >= self.days() || row.is_some_and(|row| row >= self.rows) {
+            return None;
+        }
+        let top = day / Self::WEEKDAYS * (self.rows + 1) + row.map_or(0, |row| row + 1);
+        Some(BBox::new(
+            [Unit::new((day % Self::WEEKDAYS) as f64), Unit::new(top as f64)],
+            [Unit::new(1.0), Unit::new(1.0)],
+        ))
+    }
+
+    /// ```
+    /// # use app::calendar::grid::MonthAxis;
+    /// let axis = MonthAxis::new(5, 3);
+    /// assert_eq!(axis.locate([1, 7]), Some((8, Some(2))));
+    /// assert_eq!(axis.locate([1, 4]), Some((8, None)));
+    /// assert_eq!(axis.locate([7, 0]), None);
+    /// assert_eq!(axis.locate([0, 20]), None);
+    /// ```
+    pub fn locate(&self, unit: [i32; 2]) -> Option<(u32, Option<u32>)> {
+        let column = u32::try_from(unit[0]).ok().filter(|column| *column < Self::WEEKDAYS)?;
+        let row = u32::try_from(unit[1]).ok().filter(|row| *row < self.count())?;
+        let (week, rest) = (row / (self.rows + 1), row % (self.rows + 1));
+        Some((week * Self::WEEKDAYS + column, rest.checked_sub(1)))
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Resolved {
     pub cells: Vec<Cell>,
@@ -338,6 +400,21 @@ mod tests {
         let grid = grid(1);
         assert!(grid.bbox(Cell { day: 1, resource: 0 }, 600, 660).is_none());
         assert!(grid.bbox(Cell { day: 0, resource: 0 }, 1300, 1400).is_none());
+    }
+
+    #[test]
+    fn month_bbox_and_locate_are_inverse_for_every_day_and_row() {
+        for rows in [1, 3, 5] {
+            let axis = MonthAxis::new(5, rows);
+            for day in 0..axis.days() {
+                for row in core::iter::once(None).chain((0..rows).map(Some)) {
+                    let bx = axis.bbox(day, row).unwrap();
+                    let unit = [bx.base()[0].get() as i32, bx.base()[1].get() as i32];
+                    assert_eq!(axis.locate(unit), Some((day, row)));
+                }
+            }
+            assert_eq!(axis.locate([0, axis.count() as i32]), None);
+        }
     }
 
     #[test]

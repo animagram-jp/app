@@ -19,104 +19,127 @@
     --font-family-monospace: "Fira Code", "BIZ UDGothic", monospace;
 }
 
-@layer app {
-    body {
-        display:        flex;
-        flex-direction: column;
+#header {
+    display:         flex;
+    flex-wrap:       wrap;
+    justify-content: space-between;
+}
+
+#header > nav {
+    display:     flex;
+    flex-wrap:   wrap;
+}
+
+#header_nav-1_fieldset {
+    grid-auto-flow: column;
+}
+
+#header_h2 {
+    flex-basis:     100%;
+    min-block-size: 1lh;
+    text-align: center;
+}
+
+#main {
+    --head-title:    2rem;
+    --head-resource: 3rem;
+    --head-height:   calc(var(--head-title) + var(--head-resource));
+    --column-width:  5rem;
+    --axis-width:    4rem;
+    display:         grid;
+    grid-template-columns: var(--axis-width) minmax(0, 1fr) var(--axis-width);
+}
+
+#main_ol {
+    display:               grid;
+    grid-area:             1 / 1 / 2 / -1;
+    grid-template-columns: subgrid;
+}
+
+#main_ol > li {
+    display:               grid;
+    grid-column:           1 / -1;
+    grid-template-columns: subgrid;
+}
+
+#main_ol > li > span:last-child {
+    grid-column: 3;
+}
+
+#main_section {
+    display:            grid;
+    grid-area:          1 / 2;
+    overflow-x:         auto;
+}
+
+#main_section_ol-1,
+#main_section_ol-2 {
+    display:     grid;
+    grid-column: 1 / -1;
+}
+
+#main_section_ol-2 {
+    grid-template-columns: subgrid;
+}
+
+#main_section_ol-3,
+#main_section_ol-4,
+#main_section_ol-5 {
+    grid-area: 3 / 1 / 4 / -1;
+    position:  relative;
+}
+
+:is(#main_section_ol-3, #main_section_ol-4, #main_section_ol-5) > li {
+    inset:    0 auto auto 0;
+    position: absolute;
+}
+
+#main_section_ol-5 {
+    pointer-events: none;
+}
+
+#main_section_ol-4 > li {
+    container-type: size;
+    overflow:       hidden;
+    touch-action:   none;
+    user-select:    none;
+}
+
+@container (block-size < 2rem) {
+    #main_section_ol-4 > li > * {
+        display: inline;
     }
 
-    .calendar-header {
-        display:         flex;
-        flex-wrap:       wrap;
-        justify-content: space-between;
-        position:        sticky;
-        top:             0;
+    #main_section_ol-4 > li > p:nth-of-type(n + 2) {
+        display: none;
     }
+}
 
-    .calendar-header > nav {
-        display:     flex;
-        flex-wrap:   wrap;
-    }
+#main_section_ol-3 > li {
+    background:     var(--color-paper-mix);
+    overflow:       hidden;
+    padding-inline: 0.25rem;
+}
 
-    .calendar-title {
-        flex-basis:     100%;
-        min-block-size: 1lh;
-        text-align: center;
-    }
+#main_section_ol-3 > li[aria-current="date"] {
+    font-weight: 600;
+}
 
-    .calendar {
-        --head-title:    2rem;
-        --head-resource: 3rem;
-        --head-height:   calc(var(--head-title) + var(--head-resource));
-        --column-width:  5rem;
-        display:         grid;
-        flex:            1;
-        grid-template-columns: auto minmax(0, 1fr) auto;
-        position:        relative;
-    }
+#header_nav-2_input {
+    inline-size: 8rem;
+}
 
-    .time-axis {
-        display:     grid;
-        inline-size: 4rem;
-    }
+#modal {
+    padding: 0;
+}
 
-    .surface {
-        display:            grid;
-        overflow-x:         auto;
-        position:           relative;
-    }
+#modal form {
+    display:        flex;
+    flex-direction: column;
+    padding:        1rem;
+}
 
-    .days,
-    .resources {
-        display:     grid;
-        grid-column: 1 / -1;
-    }
-
-    .resources {
-        grid-template-columns: subgrid;
-    }
-
-    .bands,
-    .cards,
-    .previews {
-        grid-area: 3 / 1 / 4 / -1;
-        position:  relative;
-    }
-
-    .band,
-    .card,
-    .preview {
-        inset:    0 auto auto 0;
-        position: absolute;
-    }
-
-    .previews {
-        pointer-events: none;
-        z-index:        1;
-    }
-
-    .card {
-        overflow:     hidden;
-        touch-action: none;
-        user-select:  none;
-    }
-
-    #header_nav-2_input {
-        inline-size: 8rem;
-    }
-
-    #modal {
-        padding: 0;
-    }
-
-    #modal form:not([hidden]) {
-        display:        flex;
-        flex-direction: column;
-        padding:        1rem;
-    }
-
-    #modal dl {
-        display:               grid;
-        grid-template-columns: auto 1fr;
-    }
+#modal dl {
+    display:               grid;
+    grid-template-columns: auto 1fr;
 }

@@ -193,12 +193,22 @@
         }
     }
     @media print {
-        :root {
-            --color-ink:            rgb(var(--rgb-black));
-            --color-paper:          rgb(var(--rgb-white));
+        :root,
+        :root[data-color-scheme] {
+            color-scheme:       light;
+            print-color-adjust: exact;
+
+            --color-ink:       rgb(var(--rgb-black));
+            --color-paper:     rgb(var(--rgb-white));
+            --color-ink-mix:   color-mix(in srgb, var(--color-ink) 60%, var(--color-paper));
+            --color-paper-mix: color-mix(in srgb, var(--color-ink) 16%, var(--color-paper));
+
+            --color-highlight-ink:   color-mix(in srgb, rgb(var(--rgb-accent-yellow)) 46%, rgb(0,0,0));
+            --color-highlight-paper: rgb(var(--rgb-accent-yellow));
+            --color-visited:         color-mix(in srgb, rgb(var(--rgb-accent-purple)) 74%, rgb(0,0,0));
+
             --color-emphasis-ink:   rgb(var(--rgb-accent-purple));
             --color-emphasis-paper: color-mix(in srgb, rgb(var(--rgb-accent-purple)) 54%, rgb(255,255,255));
-            --color-visited:        color-mix(in srgb, rgb(var(--rgb-accent-purple)) 74%, rgb(0,0,0));
         }
     }
 
@@ -274,7 +284,6 @@
     input:where(
         [type="tel"],
         [type="number"],
-        [type="password"],
         [inputmode="numeric"]
     ) {
         font-family: var(--font-family-monospace);

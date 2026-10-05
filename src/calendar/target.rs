@@ -5,13 +5,13 @@ use core::{
     fmt::Debug,
     marker::Copy,
     option::Option::{self, None, Some},
-    primitive::{u32, usize},
+    primitive::u32,
 };
 
 use super::handler::View;
 use crate::js_client::dom::{Id, Tag};
 
-const VIEWS: [View; 3] = [View::Day, View::ThreeDays, View::Week];
+const VIEWS: [View; 4] = [View::Day, View::ThreeDays, View::Week, View::Month];
 const FIELDS: [EditField; 8] = [
     EditField::Title,
     EditField::Category,
@@ -23,10 +23,7 @@ const FIELDS: [EditField; 8] = [
     EditField::Note,
 ];
 const RELOAD_BUTTON: u32 = 1;
-const MONTH_BUTTON: u32 = 2;
-const SAVE_BUTTON: u32 = 3;
-const MONTH_COLUMNS: u32 = 7;
-const MONTH_ROWS: u32 = 6;
+const SAVE_BUTTON: u32 = 2;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum EditField {
@@ -40,6 +37,17 @@ pub enum EditField {
     Note,
 }
 
+impl EditField {
+    /// ```
+    /// # use app::calendar::target::EditField;
+    /// assert_eq!(EditField::Title.number(), 1);
+    /// assert_eq!(EditField::Note.number(), 8);
+    /// ```
+    pub fn number(self) -> u32 {
+        FIELDS.iter().position(|f| *f == self).map_or(0, |i| i as u32 + 1)
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum CardPart {
     Status,
@@ -51,14 +59,15 @@ pub enum CardPart {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Target {
+    Body,
     Title,
-    ViewButton(View),
+    ViewRadio(View),
     Step(u32),
     Zoom,
     Reload,
-    MonthOpen,
     Save,
-    TimeAxis(u32),
+    TimeAxis,
+    AxisLabel(u32, u32),
     Surface,
     DayList,
     Day(u32),
@@ -67,18 +76,17 @@ pub enum Target {
     ResourceName(u32),
     ResourcePerson(u32),
     Band(u32),
+    BandLabel(u32),
     Card(u32),
     CardPart(u32, CardPart),
     Preview,
     Modal,
-    MonthForm,
-    MonthTitle,
-    MonthPrev,
-    MonthNext,
-    MonthCell(usize),
     EditForm,
     EditHeading,
     EditField(EditField),
+    CategoryOption(u32),
+    StatusOption(u32),
+    ResourceOption(u32),
     EditMessage,
 }
 
@@ -86,7 +94,7 @@ impl Target {
     pub fn to_dom(self) -> Id {
         let surface = || Vec::from([(Tag::Main, None), (Tag::Section, None)]);
         let nav = |n| [(Tag::Header, None), (Tag::Nav, Some(n))];
-        let modal_form = |n| [(Tag::Modal, None), (Tag::Form, Some(n))];
+        let modal_form = || Vec::from([(Tag::Modal, None), (Tag::Form, None)]);
         let list = |n, item| {
             let mut path = surface();
             path.extend([(Tag::Ol, Some(n)), (Tag::Li, item)]);
@@ -96,18 +104,32 @@ impl Target {
             path.extend_from_slice(tail);
             path
         };
+        let option = |field: EditField| {
+            let mut path = modal_form();
+            path.extend([(Tag::Dl, None), (Tag::Dd, Some(field.number())), (Tag::Select, None)]);
+            path
+        };
         let path = match self {
+            Self::Body => Vec::from([(Tag::Body, None)]),
             Self::Title => Vec::from([(Tag::Header, None), (Tag::H2, None)]),
-            Self::ViewButton(view) => {
+            Self::ViewRadio(view) => {
                 let n = VIEWS.iter().position(|v| *v == view).map_or(0, |i| i as u32 + 1);
-                join(nav(1).into(), &[(Tag::Div, Some(1)), (Tag::Button, Some(n))])
+                join(
+                    nav(1).into(),
+                    &[(Tag::Fieldset, None), (Tag::Label, Some(n)), (Tag::Input, None)],
+                )
             }
-            Self::Step(n) => join(nav(1).into(), &[(Tag::Div, Some(2)), (Tag::Button, Some(n))]),
+            Self::Step(n) => join(nav(1).into(), &[(Tag::Div, None), (Tag::Button, Some(n))]),
             Self::Zoom => join(nav(2).into(), &[(Tag::Input, None)]),
             Self::Reload => join(nav(2).into(), &[(Tag::Button, Some(RELOAD_BUTTON))]),
-            Self::MonthOpen => join(nav(2).into(), &[(Tag::Button, Some(MONTH_BUTTON))]),
             Self::Save => join(nav(2).into(), &[(Tag::Button, Some(SAVE_BUTTON))]),
-            Self::TimeAxis(n) => Vec::from([(Tag::Main, None), (Tag::Ol, Some(n))]),
+            Self::TimeAxis => Vec::from([(Tag::Main, None), (Tag::Ol, None)]),
+            Self::AxisLabel(side, row) => Vec::from([
+                (Tag::Main, None),
+                (Tag::Ol, None),
+                (Tag::Li, Some(row)),
+                (Tag::Span, Some(side)),
+            ]),
             Self::Surface => surface(),
             Self::DayList => join(surface(), &[(Tag::Ol, Some(1))]),
             Self::Day(n) => list(1, Some(n)),
@@ -116,6 +138,7 @@ impl Target {
             Self::ResourceName(n) => join(list(2, Some(n)), &[(Tag::Strong, None)]),
             Self::ResourcePerson(n) => join(list(2, Some(n)), &[(Tag::Span, None)]),
             Self::Band(n) => list(3, Some(n)),
+            Self::BandLabel(n) => join(list(3, Some(n)), &[(Tag::Span, None)]),
             Self::Card(n) => list(4, Some(n)),
             Self::CardPart(n, part) => join(
                 list(4, Some(n)),
@@ -129,42 +152,21 @@ impl Target {
             ),
             Self::Preview => list(5, None),
             Self::Modal => Vec::from([(Tag::Modal, None)]),
-            Self::MonthForm => modal_form(1).into(),
-            Self::MonthTitle => join(modal_form(1).into(), &[(Tag::Header, None), (Tag::H3, None)]),
-            Self::MonthPrev => {
-                join(modal_form(1).into(), &[(Tag::Header, None), (Tag::Button, Some(1))])
-            }
-            Self::MonthNext => {
-                join(modal_form(1).into(), &[(Tag::Header, None), (Tag::Button, Some(2))])
-            }
-            Self::MonthCell(index) => {
-                let (row, column) =
-                    (index as u32 / MONTH_COLUMNS + 1, index as u32 % MONTH_COLUMNS + 1);
-                join(
-                    modal_form(1).into(),
-                    &[
-                        (Tag::Table, None),
-                        (Tag::Tbody, None),
-                        (Tag::Tr, Some(row)),
-                        (Tag::Td, Some(column)),
-                        (Tag::Button, None),
-                    ],
-                )
-            }
-            Self::EditForm => modal_form(2).into(),
-            Self::EditHeading => {
-                join(modal_form(2).into(), &[(Tag::Header, None), (Tag::H3, None)])
-            }
+            Self::EditForm => modal_form(),
+            Self::EditHeading => join(modal_form(), &[(Tag::Header, None), (Tag::H3, None)]),
             Self::EditField(field) => {
-                let n = FIELDS.iter().position(|f| *f == field).map_or(0, |i| i as u32 + 1);
+                let n = field.number();
                 let tag = match field {
-                    EditField::Status | EditField::Resource => Tag::Select,
+                    EditField::Category | EditField::Status | EditField::Resource => Tag::Select,
                     EditField::Note => Tag::Textarea,
                     _ => Tag::Input,
                 };
-                join(modal_form(2).into(), &[(Tag::Dl, None), (Tag::Dd, Some(n)), (tag, None)])
+                join(modal_form(), &[(Tag::Dl, None), (Tag::Dd, Some(n)), (tag, None)])
             }
-            Self::EditMessage => join(modal_form(2).into(), &[(Tag::Output, None)]),
+            Self::CategoryOption(n) => join(option(EditField::Category), &[(Tag::Option, Some(n))]),
+            Self::StatusOption(n) => join(option(EditField::Status), &[(Tag::Option, Some(n))]),
+            Self::ResourceOption(n) => join(option(EditField::Resource), &[(Tag::Option, Some(n))]),
+            Self::EditMessage => join(modal_form(), &[(Tag::Output, None)]),
         };
         Id::new(&path)
     }
@@ -172,27 +174,31 @@ impl Target {
     pub fn from_dom(id: &Id) -> Option<Self> {
         let path: Vec<(&Tag, Option<u32>)> = id.0.iter().map(|s| (&s.tag, s.n)).collect();
         Some(match path.as_slice() {
+            [(Tag::Body, None)] => Self::Body,
             [(Tag::Header, None), (Tag::H2, None)] => Self::Title,
             [
                 (Tag::Header, None),
                 (Tag::Nav, Some(1)),
-                (Tag::Div, Some(1)),
-                (Tag::Button, Some(n)),
-            ] => Self::ViewButton(*VIEWS.get(n.checked_sub(1)? as usize)?),
+                (Tag::Fieldset, None),
+                (Tag::Label, Some(n)),
+                (Tag::Input, None),
+            ] => Self::ViewRadio(*VIEWS.get(n.checked_sub(1)? as usize)?),
             [
                 (Tag::Header, None),
                 (Tag::Nav, Some(1)),
-                (Tag::Div, Some(2)),
+                (Tag::Div, None),
                 (Tag::Button, Some(n)),
             ] => Self::Step(*n),
             [(Tag::Header, None), (Tag::Nav, Some(2)), (Tag::Input, None)] => Self::Zoom,
             [(Tag::Header, None), (Tag::Nav, Some(2)), (Tag::Button, Some(n))] => match *n {
                 RELOAD_BUTTON => Self::Reload,
-                MONTH_BUTTON => Self::MonthOpen,
                 SAVE_BUTTON => Self::Save,
                 _ => return None,
             },
-            [(Tag::Main, None), (Tag::Ol, Some(n))] => Self::TimeAxis(*n),
+            [(Tag::Main, None), (Tag::Ol, None)] => Self::TimeAxis,
+            [(Tag::Main, None), (Tag::Ol, None), (Tag::Li, Some(row)), (Tag::Span, Some(side))] => {
+                Self::AxisLabel(*side, *row)
+            }
             [(Tag::Main, None), (Tag::Section, None), rest @ ..] => match rest {
                 [] => Self::Surface,
                 [(Tag::Ol, Some(1))] => Self::DayList,
@@ -206,6 +212,7 @@ impl Target {
                     Self::ResourcePerson(*n)
                 }
                 [(Tag::Ol, Some(3)), (Tag::Li, Some(n))] => Self::Band(*n),
+                [(Tag::Ol, Some(3)), (Tag::Li, Some(n)), (Tag::Span, None)] => Self::BandLabel(*n),
                 [(Tag::Ol, Some(4)), (Tag::Li, Some(n)), tail @ ..] => match tail {
                     [(Tag::P, Some(1)), (Tag::Span, Some(1))] => {
                         Self::CardPart(*n, CardPart::Status)
@@ -221,28 +228,22 @@ impl Target {
             },
             [(Tag::Modal, None), rest @ ..] => match rest {
                 [] => Self::Modal,
-                [(Tag::Form, Some(1))] => Self::MonthForm,
-                [(Tag::Form, Some(1)), (Tag::Header, None), (Tag::H3, None)] => Self::MonthTitle,
-                [(Tag::Form, Some(1)), (Tag::Header, None), (Tag::Button, Some(1))] => {
-                    Self::MonthPrev
-                }
-                [(Tag::Form, Some(1)), (Tag::Header, None), (Tag::Button, Some(2))] => {
-                    Self::MonthNext
-                }
+                [(Tag::Form, None)] => Self::EditForm,
+                [(Tag::Form, None), (Tag::Header, None), (Tag::H3, None)] => Self::EditHeading,
+                [(Tag::Form, None), (Tag::Output, None)] => Self::EditMessage,
                 [
-                    (Tag::Form, Some(1)),
-                    (Tag::Table, None),
-                    (Tag::Tbody, None),
-                    (Tag::Tr, Some(row)),
-                    (Tag::Td, Some(column)),
-                    (Tag::Button, None),
-                ] if (1..=MONTH_ROWS).contains(row) && (1..=MONTH_COLUMNS).contains(column) => {
-                    Self::MonthCell(((row - 1) * MONTH_COLUMNS + column - 1) as usize)
-                }
-                [(Tag::Form, Some(2))] => Self::EditForm,
-                [(Tag::Form, Some(2)), (Tag::Header, None), (Tag::H3, None)] => Self::EditHeading,
-                [(Tag::Form, Some(2)), (Tag::Output, None)] => Self::EditMessage,
-                [(Tag::Form, Some(2)), (Tag::Dl, None), (Tag::Dd, Some(n)), (tag, None)] => {
+                    (Tag::Form, None),
+                    (Tag::Dl, None),
+                    (Tag::Dd, Some(n)),
+                    (Tag::Select, None),
+                    (Tag::Option, Some(k)),
+                ] => match FIELDS.get(n.checked_sub(1)? as usize)? {
+                    EditField::Category => Self::CategoryOption(*k),
+                    EditField::Status => Self::StatusOption(*k),
+                    EditField::Resource => Self::ResourceOption(*k),
+                    _ => return None,
+                },
+                [(Tag::Form, None), (Tag::Dl, None), (Tag::Dd, Some(n)), (tag, None)] => {
                     let field = *FIELDS.get(n.checked_sub(1)? as usize)?;
                     let expected = Self::EditField(field).to_dom();
                     (expected.0.last()?.tag == **tag).then_some(Self::EditField(field))?
@@ -263,31 +264,33 @@ mod tests {
 
     fn every_target() -> Vec<Target> {
         let mut targets = Vec::from([
+            Target::Body,
             Target::Title,
             Target::Zoom,
             Target::Reload,
-            Target::MonthOpen,
             Target::Save,
             Target::Surface,
             Target::DayList,
             Target::Preview,
             Target::Modal,
-            Target::MonthForm,
-            Target::MonthTitle,
-            Target::MonthPrev,
-            Target::MonthNext,
             Target::EditForm,
             Target::EditHeading,
             Target::EditMessage,
         ]);
-        targets.extend(VIEWS.map(Target::ViewButton));
+        targets.extend(VIEWS.map(Target::ViewRadio));
         targets.extend(FIELDS.map(Target::EditField));
+        targets.extend((1..=4).flat_map(|n| {
+            [Target::CategoryOption(n), Target::StatusOption(n), Target::ResourceOption(n)]
+        }));
         targets.extend((1..=5).map(Target::Step));
-        targets.extend((1..=2).map(Target::TimeAxis));
-        targets.extend((0..42).map(Target::MonthCell));
+        targets.push(Target::TimeAxis);
+        targets.extend((1..=35).flat_map(|n| [Target::Band(n), Target::BandLabel(n)]));
+        for side in 1..=2 {
+            targets.extend((2..=45).map(|row| Target::AxisLabel(side, row)));
+        }
         for n in 1..=7 {
             targets.extend([Target::Day(n), Target::DayTitle(n), Target::Resource(n)]);
-            targets.extend([Target::ResourceName(n), Target::ResourcePerson(n), Target::Band(n)]);
+            targets.extend([Target::ResourceName(n), Target::ResourcePerson(n)]);
         }
         for n in 1..=3 {
             targets.push(Target::Card(n));
@@ -344,10 +347,7 @@ mod tests {
         let present = |id: &str| html.contains(&format!("id=\"{id}\""));
         for target in every_target() {
             let id = html_id(&target.to_dom());
-            let pooled = matches!(
-                target,
-                Target::Card(_) | Target::CardPart(..) | Target::Band(_) | Target::Preview
-            );
+            let pooled = matches!(target, Target::Card(_) | Target::CardPart(..) | Target::Preview);
             assert!(pooled || present(&id), "{target:?} -> {id}");
         }
     }
@@ -374,7 +374,7 @@ mod tests {
                 (Tag::Header, None),
                 (Tag::Nav, Some(1)),
                 (Tag::Div, Some(1)),
-                (Tag::Button, Some(4)),
+                (Tag::Button, Some(5)),
             ]),
             Id::new(&[(Tag::Header, None), (Tag::Nav, Some(2)), (Tag::Button, Some(9))]),
             Id::new(&[(Tag::Modal, None), (Tag::Form, Some(3))]),

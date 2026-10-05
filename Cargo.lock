@@ -19,7 +19,6 @@ dependencies = [
  "log",
  "rand",
  "rectgrid",
- "serde",
  "serde_json",
  "spinning_top",
  "talc",

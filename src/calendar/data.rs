@@ -1,6 +1,5 @@
 use alloc::{format, string::String, vec::Vec};
 use core::{
-    array,
     clone::Clone,
     cmp::PartialEq,
     fmt::{self, Debug, Display, Formatter},
@@ -10,7 +9,7 @@ use core::{
     result::Result::{self, Err, Ok},
 };
 
-use serde::{Deserialize, Serialize};
+use serde_json::{Value, json};
 
 use crate::{
     Lang,
@@ -60,83 +59,11 @@ impl WireError for DataError {
     }
 }
 
-#[derive(Deserialize)]
-struct Page<T> {
-    path: String,
-    meta: PageMeta,
-    data: Vec<T>,
-}
-
-#[derive(Deserialize)]
-struct PageMeta {
-    limit:  u32,
-    offset: u32,
-    total:  u32,
-}
-
-#[derive(Deserialize)]
-struct RawResource {
-    id:           u32,
-    name:         String,
-    staff_accent: String,
-}
-
-#[derive(Deserialize)]
-struct RawStatus {
-    code:   String,
-    label:  String,
-    accent: String,
-}
-
-#[derive(Deserialize)]
-struct RawShift {
-    date:        String,
-    resource_id: u32,
-    staff_name:  String,
-    open:        String,
-    close:       String,
-    break_start: Option<String>,
-    break_end:   Option<String>,
-}
-
-#[derive(Deserialize)]
-struct RawCell {
-    date:        String,
-    resource_id: u32,
-}
-
-#[derive(Deserialize)]
-struct RawAppointment {
-    id:         u32,
-    cells:      Vec<RawCell>,
-    start_time: String,
-    end_time:   String,
-    title:      String,
-    category:   String,
-    status:     String,
-    note:       String,
-}
-
-#[derive(Deserialize)]
-struct RawCalendar {
-    resources:    Page<RawResource>,
-    statuses:     Page<RawStatus>,
-    shifts:       Page<RawShift>,
-    appointments: Page<RawAppointment>,
-}
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(C)]
 pub struct Place {
     pub day:      u64,
     pub resource: u32,
-}
-
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct PageHeader {
-    pub path:   String,
-    pub limit:  u32,
-    pub offset: u32,
-    pub total:  u32,
 }
 
 pub fn key(kind: u32, n: u32) -> Result<u32, DataError> {
@@ -208,6 +135,7 @@ pub trait Record: Sized {
 macro_rules! record {
     ($name:ident, $kind:expr, $size:expr) => {
         #[derive(Clone)]
+        #[repr(transparent)]
         pub struct $name(DataStruct);
 
         impl Record for $name {
@@ -247,44 +175,51 @@ pub const KIND_RESOURCE: u32 = 1;
 pub const KIND_STATUS: u32 = 2;
 pub const KIND_SHIFT_ENTRY: u32 = 3;
 pub const KIND_APPOINTMENT: u32 = 4;
+pub const KIND_CATEGORY: u32 = 5;
+pub const PAGE_COUNT: usize = 5;
+const PAGES: [&str; PAGE_COUNT] = ["resources", "statuses", "categories", "shifts", "appointments"];
 
-record!(Meta, KIND_META, 8);
-record!(Resource, KIND_RESOURCE, 5);
-record!(Status, KIND_STATUS, 6);
+record!(Meta, KIND_META, 9);
+record!(Resource, KIND_RESOURCE, 4);
+record!(Status, KIND_STATUS, 5);
+record!(Category, KIND_CATEGORY, 5);
 record!(Shift, KIND_SHIFT_ENTRY, 8);
 record!(Appointment, KIND_APPOINTMENT, 9);
 
-const META_COMPLETE: u32 = 8;
+const META_PAGE: u32 = 4;
+const META_COMPLETE: u32 = 9;
 
 impl Meta {
-    pub fn new(headers: &[PageHeader; 4], complete: bool) -> Self {
+    pub fn new(complete: bool) -> Self {
         let mut meta = Self::blank(1);
-        for (index, header) in headers.iter().enumerate() {
-            let mut bytes = Vec::from(header.limit.to_le_bytes());
-            bytes.extend_from_slice(&header.offset.to_le_bytes());
-            bytes.extend_from_slice(&header.total.to_le_bytes());
-            bytes.extend_from_slice(header.path.as_bytes());
-            meta.put(4 + index as u32, &bytes);
-        }
-        meta.put(META_COMPLETE, &[u8::from(complete)]);
+        meta.set_complete(complete);
         meta
     }
 
-    pub fn headers(&self) -> [PageHeader; 4] {
-        array::from_fn(|index| {
-            let bytes = self.data().get(4 + index as u32).unwrap_or(&[]);
-            let word = |at: usize| {
-                bytes.get(at..at + 4).and_then(|b| b.try_into().ok()).map_or(0, u32::from_le_bytes)
-            };
-            PageHeader {
-                path:   String::from(
-                    bytes.get(12..).and_then(|b| core::str::from_utf8(b).ok()).unwrap_or(""),
-                ),
-                limit:  word(0),
-                offset: word(4),
-                total:  word(8),
-            }
-        })
+    pub fn set_complete(&mut self, complete: bool) {
+        self.put(META_COMPLETE, &[u8::from(complete)]);
+    }
+
+    pub fn set_page(&mut self, page: usize, path: &str, counts: [u32; 3]) {
+        let mut bytes: Vec<u8> = counts.iter().flat_map(|count| count.to_le_bytes()).collect();
+        bytes.extend_from_slice(path.as_bytes());
+        self.put(META_PAGE + page as u32, &bytes);
+    }
+
+    /// ```
+    /// # use app::calendar::data::Meta;
+    /// let mut meta = Meta::new(true);
+    /// meta.set_page(2, "/v1/categories", [50, 0, 4]);
+    /// assert_eq!(meta.page(2), ("/v1/categories", [50, 0, 4]));
+    /// assert_eq!(meta.page(0), ("", [0, 0, 0]));
+    /// ```
+    pub fn page(&self, page: usize) -> (&str, [u32; 3]) {
+        let bytes = self.data().get(META_PAGE + page as u32).unwrap_or(&[]);
+        let count = |at: usize| {
+            bytes.get(at..at + 4).and_then(|b| b.try_into().ok()).map_or(0, u32::from_le_bytes)
+        };
+        let path = bytes.get(12..).and_then(|b| core::str::from_utf8(b).ok()).unwrap_or("");
+        (path, [count(0), count(4), count(8)])
     }
 
     pub fn complete(&self) -> bool {
@@ -293,13 +228,11 @@ impl Meta {
 }
 
 const RESOURCE_NAME: u32 = 4;
-const RESOURCE_ACCENT: u32 = 5;
 
 impl Resource {
-    pub fn new(id: u32, name: &str, accent: &str) -> Self {
+    pub fn new(id: u32, name: &str) -> Self {
         let mut resource = Self::blank(id);
         resource.put(RESOURCE_NAME, name.as_bytes());
-        resource.put(RESOURCE_ACCENT, accent.as_bytes());
         resource
     }
 
@@ -310,37 +243,34 @@ impl Resource {
     pub fn name(&self) -> &str {
         self.text(RESOURCE_NAME)
     }
-
-    pub fn accent(&self) -> &str {
-        self.text(RESOURCE_ACCENT)
-    }
 }
 
-const STATUS_CODE: u32 = 4;
-const STATUS_LABEL: u32 = 5;
-const STATUS_ACCENT: u32 = 6;
+const CHOICE_CODE: u32 = 4;
+const CHOICE_LABEL: u32 = 5;
 
-impl Status {
-    pub fn new(index: u32, code: &str, label: &str, accent: &str) -> Self {
-        let mut status = Self::blank(index);
-        status.put(STATUS_CODE, code.as_bytes());
-        status.put(STATUS_LABEL, label.as_bytes());
-        status.put(STATUS_ACCENT, accent.as_bytes());
-        status
-    }
+macro_rules! choice {
+    ($name:ident) => {
+        impl $name {
+            pub fn new(index: u32, code: &str, label: &str) -> Self {
+                let mut choice = Self::blank(index);
+                choice.put(CHOICE_CODE, code.as_bytes());
+                choice.put(CHOICE_LABEL, label.as_bytes());
+                choice
+            }
 
-    pub fn code(&self) -> &str {
-        self.text(STATUS_CODE)
-    }
+            pub fn code(&self) -> &str {
+                self.text(CHOICE_CODE)
+            }
 
-    pub fn label(&self) -> &str {
-        self.text(STATUS_LABEL)
-    }
-
-    pub fn accent(&self) -> &str {
-        self.text(STATUS_ACCENT)
-    }
+            pub fn label(&self) -> &str {
+                self.text(CHOICE_LABEL)
+            }
+        }
+    };
 }
+
+choice!(Status);
+choice!(Category);
 
 const SHIFT_DAY: u32 = 4;
 const SHIFT_RESOURCE: u32 = 5;
@@ -412,8 +342,8 @@ impl Appointment {
         start: u32,
         end: u32,
         title: &str,
-        category: &str,
-        status: &str,
+        category: u32,
+        status: u32,
         note: &str,
     ) -> Self {
         let mut appointment = Self::blank(id);
@@ -457,12 +387,12 @@ impl Appointment {
         self.text(APPOINTMENT_TITLE)
     }
 
-    pub fn category(&self) -> &str {
-        self.text(APPOINTMENT_CATEGORY)
+    pub fn category(&self) -> u32 {
+        self.number(APPOINTMENT_CATEGORY)
     }
 
-    pub fn status(&self) -> &str {
-        self.text(APPOINTMENT_STATUS)
+    pub fn status(&self) -> u32 {
+        self.number(APPOINTMENT_STATUS)
     }
 
     pub fn note(&self) -> &str {
@@ -489,12 +419,12 @@ impl Appointment {
         self.put(APPOINTMENT_TITLE, title.as_bytes());
     }
 
-    pub fn set_category(&mut self, category: &str) {
-        self.put(APPOINTMENT_CATEGORY, category.as_bytes());
+    pub fn set_category(&mut self, category: u32) {
+        self.put(APPOINTMENT_CATEGORY, &category.to_le_bytes());
     }
 
-    pub fn set_status(&mut self, status: &str) {
-        self.put(APPOINTMENT_STATUS, status.as_bytes());
+    pub fn set_status(&mut self, status: u32) {
+        self.put(APPOINTMENT_STATUS, &status.to_le_bytes());
     }
 
     pub fn set_note(&mut self, note: &str) {
@@ -503,248 +433,181 @@ impl Appointment {
 }
 
 pub struct Calendar {
-    pub headers:      [PageHeader; 4],
+    pub meta:         Meta,
     pub resources:    Vec<Resource>,
     pub statuses:     Vec<Status>,
+    pub categories:   Vec<Category>,
     pub shifts:       Vec<Shift>,
     pub appointments: Vec<Appointment>,
-    pub complete:     bool,
 }
 
 impl Calendar {
     /// ```
     /// # use app::calendar::data::Calendar;
-    /// assert!(Calendar::parse(b"{").is_err());
+    /// assert!(Calendar::decode(b"{").is_err());
     /// ```
-    pub fn parse(body: &[u8]) -> Result<Self, DataError> {
-        let raw: RawCalendar =
+    pub fn decode(body: &[u8]) -> Result<Self, DataError> {
+        let root: Value =
             serde_json::from_slice(body).map_err(|error| DataError::Parse(format!("{error}")))?;
-        let complete = raw.resources.meta.total as usize == raw.resources.data.len()
-            && raw.statuses.meta.total as usize == raw.statuses.data.len()
-            && raw.shifts.meta.total as usize == raw.shifts.data.len()
-            && raw.appointments.meta.total as usize == raw.appointments.data.len();
-        let resources = raw
-            .resources
-            .data
-            .into_iter()
-            .map(|r| Resource::new(r.id, &r.name, &r.staff_accent))
-            .collect();
-        let statuses = raw
-            .statuses
-            .data
-            .into_iter()
-            .enumerate()
-            .map(|(index, s)| Status::new(index as u32, &s.code, &s.label, &s.accent))
-            .collect();
-        let shifts = raw
-            .shifts
-            .data
-            .into_iter()
-            .enumerate()
-            .map(|(index, s)| {
-                let break_range = match (s.break_start, s.break_end) {
-                    (Some(start), Some(end)) => Some((parse_time(&start)?, parse_time(&end)?)),
-                    _ => None,
-                };
-                Ok(Shift::new(
-                    index as u32,
-                    parse_date(&s.date)?,
-                    s.resource_id,
-                    &s.staff_name,
-                    parse_time(&s.open)?,
-                    parse_time(&s.close)?,
-                    break_range,
-                ))
-            })
-            .collect::<Result<Vec<_>, DataError>>()?;
-        let appointments = raw
-            .appointments
-            .data
-            .into_iter()
-            .map(|a| {
-                if a.cells.is_empty() {
-                    return Err(format_error("cells", &format!("appointment {}", a.id)));
-                }
-                let cells = a
-                    .cells
-                    .into_iter()
-                    .map(|cell| {
-                        Ok(Place { day: parse_date(&cell.date)?, resource: cell.resource_id })
-                    })
-                    .collect::<Result<Vec<_>, DataError>>()?;
-                Ok(Appointment::new(
-                    a.id,
-                    &cells,
-                    parse_time(&a.start_time)?,
-                    parse_time(&a.end_time)?,
-                    &a.title,
-                    &a.category,
-                    &a.status,
-                    &a.note,
-                ))
-            })
-            .collect::<Result<Vec<_>, DataError>>()?;
-        let header = |path: String, meta: PageMeta| PageHeader {
-            path,
-            limit: meta.limit,
-            offset: meta.offset,
-            total: meta.total,
+        let mut meta = Meta::new(true);
+        let mut pages: [&[Value]; PAGE_COUNT] = [&[]; PAGE_COUNT];
+        let mut complete = true;
+        for (index, name) in PAGES.iter().enumerate() {
+            let page = field(&root, name)?;
+            let data = field(page, "data")?.as_array().ok_or_else(|| shape("data"))?;
+            let header = field(page, "meta")?;
+            let total = number(header, "total")?;
+            complete &= total as usize == data.len();
+            meta.set_page(
+                index,
+                text(page, "path")?,
+                [number(header, "limit")?, number(header, "offset")?, total],
+            );
+            pages[index] = data;
+        }
+        meta.set_complete(complete);
+        let [resources, statuses, categories, shifts, appointments] = pages;
+        let (status_codes, category_codes) = (choices(statuses)?, choices(categories)?);
+        let index_of = |codes: &[(&str, &str)], kind: &str, code: &str| {
+            codes
+                .iter()
+                .position(|(known, _)| *known == code)
+                .map(|index| index as u32)
+                .ok_or_else(|| format_error(kind, code))
         };
-        let headers = [
-            header(raw.resources.path, raw.resources.meta),
-            header(raw.statuses.path, raw.statuses.meta),
-            header(raw.shifts.path, raw.shifts.meta),
-            header(raw.appointments.path, raw.appointments.meta),
-        ];
-        Ok(Self { headers, resources, statuses, shifts, appointments, complete })
+        Ok(Self {
+            meta,
+            resources: resources
+                .iter()
+                .map(|r| Ok(Resource::new(number(r, "id")?, text(r, "name")?)))
+                .collect::<Result<_, DataError>>()?,
+            statuses: status_codes
+                .iter()
+                .zip(0..)
+                .map(|((code, label), index)| Status::new(index, code, label))
+                .collect(),
+            categories: category_codes
+                .iter()
+                .zip(0..)
+                .map(|((code, label), index)| Category::new(index, code, label))
+                .collect(),
+            shifts: shifts
+                .iter()
+                .zip(0..)
+                .map(|(s, index)| {
+                    let rest = |key| s.get(key).and_then(Value::as_str);
+                    let break_range = match (rest("break_start"), rest("break_end")) {
+                        (Some(start), Some(end)) => Some((parse_time(start)?, parse_time(end)?)),
+                        _ => None,
+                    };
+                    Ok(Shift::new(
+                        index,
+                        parse_date(text(s, "date")?)?,
+                        number(s, "resource_id")?,
+                        text(s, "staff_name")?,
+                        parse_time(text(s, "open")?)?,
+                        parse_time(text(s, "close")?)?,
+                        break_range,
+                    ))
+                })
+                .collect::<Result<_, DataError>>()?,
+            appointments: appointments
+                .iter()
+                .map(|a| {
+                    let id = number(a, "id")?;
+                    let cells = field(a, "cells")?
+                        .as_array()
+                        .ok_or_else(|| shape("cells"))?
+                        .iter()
+                        .map(|cell| {
+                            Ok(Place {
+                                day:      parse_date(text(cell, "date")?)?,
+                                resource: number(cell, "resource_id")?,
+                            })
+                        })
+                        .collect::<Result<Vec<_>, DataError>>()?;
+                    if cells.is_empty() {
+                        return Err(format_error("cells", &format!("appointment {id}")));
+                    }
+                    Ok(Appointment::new(
+                        id,
+                        &cells,
+                        parse_time(text(a, "start_time")?)?,
+                        parse_time(text(a, "end_time")?)?,
+                        text(a, "title")?,
+                        index_of(&category_codes, "category", text(a, "category")?)?,
+                        index_of(&status_codes, "status", text(a, "status")?)?,
+                        text(a, "note")?,
+                    ))
+                })
+                .collect::<Result<_, DataError>>()?,
+        })
     }
 
     /// ```
     /// # use app::calendar::data::Calendar;
-    /// let calendar = Calendar::parse(include_bytes!("../../examples/calendar/data/calendar.json")).unwrap();
-    /// assert_eq!(Calendar::parse(&calendar.to_json()).unwrap().appointments.len(), 380);
+    /// let calendar = Calendar::decode(include_bytes!("../../examples/calendar/data/calendar.json")).unwrap();
+    /// assert_eq!(Calendar::decode(&calendar.encode()).unwrap().appointments.len(), 380);
     /// ```
-    pub fn to_json(&self) -> Vec<u8> {
-        let page = |header: &PageHeader, count: usize| OutMeta {
-            limit:  header.limit,
-            offset: header.offset,
-            total:  header.total.max(count as u32),
+    pub fn encode(&self) -> Vec<u8> {
+        let page = |index: usize, data: Vec<Value>| {
+            let (path, [limit, offset, total]) = self.meta.page(index);
+            let total = total.max(data.len() as u32);
+            json!({"path": path, "meta": {"limit": limit, "offset": offset, "total": total}, "data": data})
         };
-        let out = OutCalendar {
-            resources:    OutPage {
-                path: &self.headers[0].path,
-                meta: page(&self.headers[0], self.resources.len()),
-                data: self
-                    .resources
-                    .iter()
-                    .map(|r| OutResource {
-                        id:           r.id(),
-                        name:         r.name(),
-                        staff_accent: r.accent(),
-                    })
-                    .collect(),
-            },
-            statuses:     OutPage {
-                path: &self.headers[1].path,
-                meta: page(&self.headers[1], self.statuses.len()),
-                data: self
-                    .statuses
-                    .iter()
-                    .map(|s| OutStatus { code: s.code(), label: s.label(), accent: s.accent() })
-                    .collect(),
-            },
-            shifts:       OutPage {
-                path: &self.headers[2].path,
-                meta: page(&self.headers[2], self.shifts.len()),
-                data: self
-                    .shifts
-                    .iter()
-                    .map(|s| OutShift {
-                        date:        display(s.day(), Lang::Ja, Format::Date),
-                        resource_id: s.resource(),
-                        staff_name:  s.person(),
-                        open:        format_hhmm(s.open()),
-                        close:       format_hhmm(s.close()),
-                        break_start: s.break_range().map(|(start, _)| format_hhmm(start)),
-                        break_end:   s.break_range().map(|(_, end)| format_hhmm(end)),
-                    })
-                    .collect(),
-            },
-            appointments: OutPage {
-                path: &self.headers[3].path,
-                meta: page(&self.headers[3], self.appointments.len()),
-                data: self
-                    .appointments
-                    .iter()
-                    .map(|a| OutAppointment {
-                        id:         a.id(),
-                        cells:      a
-                            .cells()
-                            .iter()
-                            .map(|c| OutCell {
-                                date:        display(c.day, Lang::Ja, Format::Date),
-                                resource_id: c.resource,
-                            })
-                            .collect(),
-                        start_time: format_hhmm(a.start()),
-                        end_time:   format_hhmm(a.end()),
-                        title:      a.title(),
-                        category:   a.category(),
-                        status:     a.status(),
-                        note:       a.note(),
-                    })
-                    .collect(),
-            },
-        };
-        serde_json::to_vec_pretty(&out).unwrap_or_default()
+        let choice = |code: &str, label: &str| json!({"code": code, "label": label});
+        let date = |day: u64| display(day, Lang::Ja, Format::Date);
+        let root = json!({
+            "resources": page(0, self.resources.iter().map(|r| json!({"id": r.id(), "name": r.name()})).collect()),
+            "statuses": page(1, self.statuses.iter().map(|s| choice(s.code(), s.label())).collect()),
+            "categories": page(2, self.categories.iter().map(|c| choice(c.code(), c.label())).collect()),
+            "shifts": page(3, self.shifts.iter().map(|s| {
+                let mut shift = json!({
+                    "date": date(s.day()),
+                    "resource_id": s.resource(),
+                    "staff_name": s.person(),
+                    "open": format_hhmm(s.open()),
+                    "close": format_hhmm(s.close()),
+                });
+                if let Some((start, end)) = s.break_range() {
+                    shift["break_start"] = json!(format_hhmm(start));
+                    shift["break_end"] = json!(format_hhmm(end));
+                }
+                shift
+            }).collect()),
+            "appointments": page(4, self.appointments.iter().map(|a| json!({
+                "id": a.id(),
+                "cells": a.cells().iter().map(|c| json!({"date": date(c.day), "resource_id": c.resource})).collect::<Vec<_>>(),
+                "start_time": format_hhmm(a.start()),
+                "end_time": format_hhmm(a.end()),
+                "title": a.title(),
+                "category": self.categories.get(a.category() as usize).map_or("", |c| c.code()),
+                "status": self.statuses.get(a.status() as usize).map_or("", |s| s.code()),
+                "note": a.note(),
+            })).collect()),
+        });
+        serde_json::to_vec_pretty(&root).unwrap_or_default()
     }
 }
 
-#[derive(Serialize)]
-struct OutPage<'a, T> {
-    path: &'a str,
-    meta: OutMeta,
-    data: Vec<T>,
+fn choices(page: &[Value]) -> Result<Vec<(&str, &str)>, DataError> {
+    page.iter().map(|c| Ok((text(c, "code")?, text(c, "label")?))).collect()
 }
 
-#[derive(Serialize)]
-struct OutMeta {
-    limit:  u32,
-    offset: u32,
-    total:  u32,
+fn field<'a>(value: &'a Value, key: &str) -> Result<&'a Value, DataError> {
+    value.get(key).ok_or_else(|| DataError::Parse(format!("missing: {key}")))
 }
 
-#[derive(Serialize)]
-struct OutResource<'a> {
-    id:           u32,
-    name:         &'a str,
-    staff_accent: &'a str,
+fn text<'a>(value: &'a Value, key: &str) -> Result<&'a str, DataError> {
+    field(value, key)?.as_str().ok_or_else(|| shape(key))
 }
 
-#[derive(Serialize)]
-struct OutStatus<'a> {
-    code:   &'a str,
-    label:  &'a str,
-    accent: &'a str,
+fn number(value: &Value, key: &str) -> Result<u32, DataError> {
+    field(value, key)?.as_u64().and_then(|n| u32::try_from(n).ok()).ok_or_else(|| shape(key))
 }
 
-#[derive(Serialize)]
-struct OutShift<'a> {
-    date:        String,
-    resource_id: u32,
-    staff_name:  &'a str,
-    open:        String,
-    close:       String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    break_start: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    break_end:   Option<String>,
-}
-
-#[derive(Serialize)]
-struct OutCell {
-    date:        String,
-    resource_id: u32,
-}
-
-#[derive(Serialize)]
-struct OutAppointment<'a> {
-    id:         u32,
-    cells:      Vec<OutCell>,
-    start_time: String,
-    end_time:   String,
-    title:      &'a str,
-    category:   &'a str,
-    status:     &'a str,
-    note:       &'a str,
-}
-
-#[derive(Serialize)]
-struct OutCalendar<'a> {
-    resources:    OutPage<'a, OutResource<'a>>,
-    statuses:     OutPage<'a, OutStatus<'a>>,
-    shifts:       OutPage<'a, OutShift<'a>>,
-    appointments: OutPage<'a, OutAppointment<'a>>,
+fn shape(key: &str) -> DataError {
+    DataError::Parse(format!("type: {key}"))
 }
 
 /// ```
@@ -812,17 +675,18 @@ mod tests {
 
     #[test]
     fn parse_reads_every_page_of_the_sample() {
-        let calendar = Calendar::parse(&sample()).unwrap();
+        let calendar = Calendar::decode(&sample()).unwrap();
         assert_eq!(calendar.resources.len(), 4);
         assert_eq!(calendar.statuses.len(), 4);
+        assert_eq!(calendar.categories.len(), 4);
         assert_eq!(calendar.shifts.len(), 201);
         assert_eq!(calendar.appointments.len(), 380);
-        assert!(calendar.complete);
+        assert!(calendar.meta.complete());
     }
 
     #[test]
     fn parse_converts_dates_and_times() {
-        let calendar = Calendar::parse(&sample()).unwrap();
+        let calendar = Calendar::decode(&sample()).unwrap();
         let first = &calendar.appointments[0];
         assert_eq!(first.id(), 5001);
         assert_eq!(first.cells().len(), 1);
@@ -835,7 +699,7 @@ mod tests {
 
     #[test]
     fn parse_keeps_every_cell_of_a_multi_cell_appointment() {
-        let calendar = Calendar::parse(&sample()).unwrap();
+        let calendar = Calendar::decode(&sample()).unwrap();
         let multi: Vec<_> = calendar.appointments.iter().filter(|a| a.cells().len() > 1).collect();
         assert_eq!(multi.len(), 6);
         assert_eq!(calendar.appointments.iter().map(|a| a.cells().len()).sum::<usize>(), 386);
@@ -850,23 +714,45 @@ mod tests {
         let start = text.find("\"cells\": [").unwrap();
         let end = start + text[start..].find("],").unwrap() + 1;
         let bad = alloc::format!("{}\"cells\": []{}", &text[..start], &text[end..]);
-        assert!(matches!(Calendar::parse(bad.as_bytes()), Err(DataError::Format(_))));
+        assert!(matches!(Calendar::decode(bad.as_bytes()), Err(DataError::Format(_))));
+    }
+
+    #[test]
+    fn parse_refers_to_statuses_and_categories_by_position() {
+        let calendar = Calendar::decode(&sample()).unwrap();
+        let first = &calendar.appointments[0];
+        let raw = value(&sample());
+        let source = &raw["appointments"]["data"][0];
+        assert_eq!(calendar.statuses[first.status() as usize].code(), source["status"]);
+        assert_eq!(calendar.categories[first.category() as usize].code(), source["category"]);
+    }
+
+    #[test]
+    fn parse_rejects_an_unknown_status_or_category() {
+        let text = alloc::string::String::from_utf8(sample()).unwrap();
+        for (from, to) in [
+            ("\"status\": \"scheduled\"", "\"status\": \"x\""),
+            ("\"category\": \"intake\"", "\"category\": \"x\""),
+        ] {
+            let bad = text.replacen(from, to, 1);
+            assert!(matches!(Calendar::decode(bad.as_bytes()), Err(DataError::Format(_))), "{to}");
+        }
     }
 
     #[test]
     fn parse_flags_a_truncated_page() {
         let mut text = alloc::string::String::from_utf8(sample()).unwrap();
         text = text.replacen("\"total\": 4", "\"total\": 9", 1);
-        assert!(!Calendar::parse(text.as_bytes()).unwrap().complete);
+        assert!(!Calendar::decode(text.as_bytes()).unwrap().meta.complete());
     }
 
     #[test]
     fn parse_rejects_malformed_input() {
-        assert!(matches!(Calendar::parse(b"{"), Err(DataError::Parse(_))));
-        assert!(matches!(Calendar::parse(b"{}"), Err(DataError::Parse(_))));
+        assert!(matches!(Calendar::decode(b"{"), Err(DataError::Parse(_))));
+        assert!(matches!(Calendar::decode(b"{}"), Err(DataError::Parse(_))));
         let text = alloc::string::String::from_utf8(sample()).unwrap();
         let bad = text.replacen("\"start_time\": \"", "\"start_time\": \"x", 1);
-        assert!(matches!(Calendar::parse(bad.as_bytes()), Err(DataError::Format(_))));
+        assert!(matches!(Calendar::decode(bad.as_bytes()), Err(DataError::Format(_))));
     }
 
     #[test]
@@ -884,17 +770,17 @@ mod tests {
     }
 
     #[test]
-    fn to_json_reproduces_the_loaded_document() {
+    fn encode_reproduces_the_loaded_document() {
         let source = sample();
-        let calendar = Calendar::parse(&source).unwrap();
-        assert_eq!(value(&calendar.to_json()), value(&source));
+        let calendar = Calendar::decode(&source).unwrap();
+        assert_eq!(value(&calendar.encode()), value(&source));
     }
 
     #[test]
-    fn to_json_round_trips_the_typed_model() {
-        let calendar = Calendar::parse(&sample()).unwrap();
-        let again = Calendar::parse(&calendar.to_json()).unwrap();
-        assert_eq!(again.headers, calendar.headers);
+    fn encode_round_trips_the_typed_model() {
+        let calendar = Calendar::decode(&sample()).unwrap();
+        let again = Calendar::decode(&calendar.encode()).unwrap();
+        assert_eq!(again.meta, calendar.meta);
         assert_eq!(again.appointments.len(), calendar.appointments.len());
         for (a, b) in again.appointments.iter().zip(&calendar.appointments) {
             assert_eq!(
@@ -912,7 +798,7 @@ mod tests {
     #[test]
     fn touch_stamps_only_the_modified_time() {
         let mut appointment =
-            Appointment::new(1, &[Place { day: 1, resource: 101 }], 600, 660, "t", "c", "done", "");
+            Appointment::new(1, &[Place { day: 1, resource: 101 }], 600, 660, "t", 0, 0, "");
         let created = appointment.data().get(ID_CREATED_AT).unwrap().to_vec();
         appointment.touch(77);
         assert_eq!(appointment.data().get(ID_MODIFIED_AT).unwrap(), 77u64.to_le_bytes());
@@ -922,14 +808,14 @@ mod tests {
     }
 
     #[test]
-    fn to_json_reflects_edits() {
-        let mut calendar = Calendar::parse(&sample()).unwrap();
+    fn encode_reflects_edits() {
+        let mut calendar = Calendar::decode(&sample()).unwrap();
         let mut cells = calendar.appointments[0].cells();
         cells[0].resource = 104;
         calendar.appointments[0].set_start(11 * 60);
         calendar.appointments[0].set_end(12 * 60 + 15);
         calendar.appointments[0].set_cells(&cells);
-        let document = value(&calendar.to_json());
+        let document = value(&calendar.encode());
         let first = &document["appointments"]["data"][0];
         assert_eq!(first["start_time"], "11:00");
         assert_eq!(first["end_time"], "12:15");
@@ -937,10 +823,10 @@ mod tests {
     }
 
     #[test]
-    fn to_json_keeps_the_declared_total_of_a_partial_page() {
+    fn encode_keeps_the_declared_total_of_a_partial_page() {
         let source = alloc::string::String::from_utf8(sample()).unwrap();
         let partial = source.replacen("\"total\": 4", "\"total\": 9", 1);
-        let calendar = Calendar::parse(partial.as_bytes()).unwrap();
-        assert_eq!(value(&calendar.to_json())["resources"]["meta"]["total"], 9);
+        let calendar = Calendar::decode(partial.as_bytes()).unwrap();
+        assert_eq!(value(&calendar.encode())["resources"]["meta"]["total"], 9);
     }
 }

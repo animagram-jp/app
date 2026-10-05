@@ -17,7 +17,7 @@ use crate::{
         data::{
             Appointment, Calendar, DataError, Place, Record, format_hhmm, parse_date, parse_time,
         },
-        grid::{Cell, ColumnAxis, Grid, TimeAxis},
+        grid::{Cell, ColumnAxis, Grid, MonthAxis, TimeAxis},
         layout::lanes,
         store::{self, Store},
         target::{CardPart, EditField, Target},
@@ -46,7 +46,6 @@ const HANDLE_MAX: f64 = 0.35;
 const EPSILON: f64 = 1e-9;
 #[cfg(target_arch = "wasm32")]
 const STORE_NAME: &str = "calendar";
-const BAND_POOL: usize = 3;
 const NEW_MINUTES: u32 = 60;
 const SLOT_REM: f64 = 1.75;
 const ZOOM_MIN: f64 = 1.0;
@@ -54,20 +53,27 @@ const ZOOM_MAX: f64 = 3.0;
 const COLUMN_MIN_REM: f64 = 5.0;
 const AXIS_REM: f64 = 4.0;
 const HEAD_REM: f64 = 5.0;
-const STEP_DAYS: [i64; 5] = [-7, -1, 0, 1, 7];
+const STEP_COUNT: u32 = 5;
 const LANG: Lang = Lang::Ja;
 const DAY: i64 = 8_640_000;
-const MONTH_CELL_COUNT: usize = 42;
 const STEP_TODAY: u32 = 3;
 const LOAD_REQUEST: u32 = 1;
 const LOAD_PATH: &str = "data/calendar.json";
 const STATUS_OK: u16 = 200;
+const STATUS_POOL: u32 = 4;
+const CATEGORY_POOL: u32 = 4;
+const MONTH_WEEKS: u32 = 5;
+const DAY_ROWS: u32 = 3;
+const MONTH_ROW_REM: f64 = 3.0;
+const MONTH_AXIS: MonthAxis = MonthAxis::new(MONTH_WEEKS, DAY_ROWS);
+const BAND_POOL: usize = MONTH_AXIS.days() as usize;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum View {
     Day,
     ThreeDays,
     Week,
+    Month,
 }
 
 impl View {
@@ -75,7 +81,14 @@ impl View {
         match self {
             Self::Day => 1,
             Self::ThreeDays => 3,
-            Self::Week => 7,
+            Self::Week | Self::Month => MonthAxis::WEEKDAYS,
+        }
+    }
+
+    fn columns(self) -> u32 {
+        match self {
+            Self::Month => MonthAxis::WEEKDAYS,
+            _ => ColumnAxis::new(self.days(), RESOURCE_COUNT).count(),
         }
     }
 }
@@ -112,6 +125,7 @@ struct Placed {
 pub enum BandKind {
     Closed,
     Break,
+    Date(u64),
 }
 
 #[derive(Clone, Copy)]
@@ -138,35 +152,6 @@ struct CreateDrag {
     moved:   bool,
 }
 
-struct EditForm {
-    title:    String,
-    category: String,
-    status:   String,
-    date:     String,
-    resource: String,
-    start:    String,
-    end:      String,
-    note:     String,
-}
-
-impl EditForm {
-    fn parse(value: &str) -> Option<Self> {
-        let pairs = from_url_search_params(value);
-        let field =
-            |name: &str| pairs.iter().find(|(key, _)| key == name).map(|(_, value)| value.clone());
-        Some(Self {
-            title:    field("title")?,
-            category: field("category")?,
-            status:   field("status")?,
-            date:     field("date")?,
-            resource: field("resource")?,
-            start:    field("start")?,
-            end:      field("end")?,
-            note:     field("note")?,
-        })
-    }
-}
-
 struct Card {
     index: usize,
     cell:  usize,
@@ -181,7 +166,6 @@ pub struct Handler {
     now:               u64,
     today:             u64,
     base:              u64,
-    month:             (i64, i64),
     calendar:          Option<Calendar>,
     placed:            RefCell<Vec<Placed>>,
     bands:             RefCell<Vec<Band>>,
@@ -232,13 +216,11 @@ impl Handler {
     pub fn new(viewport_width_px: f64, today: u64, rem_in_px: f64) -> Self {
         let view = View::Week;
         let column_px = column_px(viewport_width_px, view, rem_in_px);
-        let (year, month, ..) = unpack(today);
         Self {
             view,
             now: 0,
             today,
             base: today,
-            month: (year, month),
             calendar: None,
             placed: RefCell::new(Vec::new()),
             bands: RefCell::new(Vec::new()),
@@ -286,6 +268,7 @@ impl Handler {
                 body:    Vec::new(),
             });
         }
+        commands.push(hidden(Target::Body.to_dom(), false));
         (vec![], commands)
     }
 
@@ -296,7 +279,7 @@ impl Handler {
         if response.status != STATUS_OK {
             return (vec![], vec![data_error(DataError::Status(response.status))]);
         }
-        match Calendar::parse(&response.body) {
+        match Calendar::decode(&response.body) {
             Ok(calendar) => {
                 let mut commands = self.seed_commands(&calendar);
                 self.calendar = Some(calendar);
@@ -322,6 +305,10 @@ impl Handler {
                 (vec![], target.map_or(vec![], |target| self.click_control(target)))
             }
             EventType::Input if target == Some(Target::Zoom) => (vec![], self.zoom(&event.value)),
+            EventType::Change => match target {
+                Some(Target::ViewRadio(view)) => (vec![], self.change_view(view)),
+                _ => (vec![], vec![]),
+            },
             EventType::PointerDown => (vec![], self.press(event, target)),
             EventType::Submit if target == Some(Target::EditForm) => {
                 (vec![], self.submit(&event.value))
@@ -384,6 +371,7 @@ impl Handler {
                 self.pending_tap = Some([event.x, event.y]);
                 self.create = self
                     .unit_at([event.x, event.y])
+                    .filter(|_| !self.month())
                     .filter(|[column, row]| {
                         (0..self.columns() as i32).contains(column)
                             && (0..SLOT_COUNT as i32).contains(row)
@@ -399,7 +387,7 @@ impl Handler {
         let pointer = [Px::new(event.x), Px::new(event.y)];
         let offset =
             self.rectgrid.offset(pointer, [Px::new(placed.base[0]), Px::new(placed.base[1])]);
-        let corner = self.handle_at(&placed, pointer);
+        let corner = if self.month() { None } else { self.handle_at(&placed, pointer) };
         let kind = match corner.and_then(|corner| self.resize_kind(&placed, pointer, corner)) {
             Some(kind) => kind,
             None => DragKind::Move,
@@ -574,6 +562,7 @@ impl Handler {
         };
         let mut commands = self.release_commands(&drag);
         let changed = match &drag.kind {
+            DragKind::Move if self.month() => self.move_in_month(&drag),
             DragKind::Move => match self.drop_target(&drag) {
                 Some((cell, start)) => self.move_appointment(drag.index, drag.cell, cell, start),
                 None => false,
@@ -607,29 +596,34 @@ impl Handler {
         &mut self,
         editing: Editing,
         heading: String,
-        fields: EditForm,
+        draft: &Appointment,
+        place: Place,
         hint: &str,
     ) -> Vec<Command> {
-        self.editing = Some(editing);
-        let value = |field, value: String| Command::SetValue {
-            id: Target::EditField(field).to_dom(),
-            value,
+        let Some(calendar) = self.calendar.as_ref() else {
+            return vec![];
         };
-        vec![
-            hidden(Target::MonthForm.to_dom(), true),
-            hidden(Target::EditForm.to_dom(), false),
+        let values = [
+            (EditField::Title, String::from(draft.title())),
+            (EditField::Category, option_number(draft.category(), calendar.categories.len())),
+            (EditField::Status, option_number(draft.status(), calendar.statuses.len())),
+            (EditField::Date, display(place.day, LANG, Format::Date)),
+            (EditField::Resource, option_value(&calendar.resources, |r| r.id() == place.resource)),
+            (EditField::Start, format_hhmm(draft.start())),
+            (EditField::End, format_hhmm(draft.end())),
+            (EditField::Note, String::from(draft.note())),
+        ];
+        let mut commands = vec![
             Command::SetText { id: Target::EditHeading.to_dom(), value: heading },
             Command::SetText { id: Target::EditMessage.to_dom(), value: String::from(hint) },
-            value(EditField::Title, fields.title),
-            value(EditField::Category, fields.category),
-            value(EditField::Status, fields.status),
-            value(EditField::Date, fields.date),
-            value(EditField::Resource, fields.resource),
-            value(EditField::Start, fields.start),
-            value(EditField::End, fields.end),
-            value(EditField::Note, fields.note),
-            Command::ShowModal { id: Target::Modal.to_dom() },
-        ]
+        ];
+        commands.extend(values.into_iter().map(|(field, value)| Command::SetValue {
+            id: Target::EditField(field).to_dom(),
+            value,
+        }));
+        commands.push(Command::ShowModal { id: Target::Modal.to_dom() });
+        self.editing = Some(editing);
+        commands
     }
 
     fn zoom(&mut self, value: &str) -> Vec<Command> {
@@ -637,32 +631,12 @@ impl Handler {
             return vec![];
         };
         let slot_rem = slot_rem.clamp(ZOOM_MIN, ZOOM_MAX);
-        if slot_rem == self.slot_rem {
+        if slot_rem == self.slot_rem || self.month() {
             return vec![];
         }
         self.slot_rem = slot_rem;
         self.fit_rectgrid();
-        let rem = self.slot_rem;
-        let axis = format!("var(--head-height) repeat({SLOT_COUNT}, {rem}rem)");
-        let surface_rows =
-            format!("var(--head-title) var(--head-resource) calc({rem}rem * {SLOT_COUNT})");
-        let mut commands = vec![
-            style(
-                Target::TimeAxis(1).to_dom(),
-                StyleProperty::GridTemplateRows,
-                StyleValue::Text(axis.clone()),
-            ),
-            style(
-                Target::TimeAxis(2).to_dom(),
-                StyleProperty::GridTemplateRows,
-                StyleValue::Text(axis),
-            ),
-            style(
-                Target::Surface.to_dom(),
-                StyleProperty::GridTemplateRows,
-                StyleValue::Text(surface_rows),
-            ),
-        ];
+        let mut commands = self.row_commands();
         commands.extend(self.band_commands());
         commands.extend(self.card_commands());
         commands
@@ -767,31 +741,17 @@ impl Handler {
         end: u32,
         pointer: [f64; 2],
     ) -> Vec<Command> {
-        let Some(calendar) = self.calendar.as_ref() else {
-            return vec![];
-        };
         let Some(first) = cells.first() else {
             return vec![];
         };
         let hint = match self.band_hit([Px::new(pointer[0]), Px::new(pointer[1])]) {
-            None => "",
+            None | Some(BandKind::Date(_)) => "",
             Some(BandKind::Break) => "休憩中",
             Some(BandKind::Closed) => "営業時間外",
         };
-        let fields = EditForm {
-            title:    String::new(),
-            category: String::new(),
-            status:   calendar
-                .statuses
-                .first()
-                .map_or_else(String::new, |s| String::from(s.code())),
-            date:     display(first.day, LANG, Format::Date),
-            resource: format!("{}", first.resource),
-            start:    format_hhmm(start),
-            end:      format_hhmm(end),
-            note:     String::new(),
-        };
-        self.form_commands(Editing::New(cells), String::from("新規"), fields, hint)
+        let place = *first;
+        let draft = Appointment::new(0, &[place], start, end, "", 0, 0, "");
+        self.form_commands(Editing::New(cells), String::from("新規"), &draft, place, hint)
     }
 
     fn create_commands(&mut self) -> Vec<Command> {
@@ -801,6 +761,28 @@ impl Handler {
         let Some(calendar) = self.calendar.as_ref() else {
             return vec![];
         };
+        if self.month() {
+            if let Some(BandKind::Date(day)) =
+                self.band_hit([Px::new(pointer[0]), Px::new(pointer[1])])
+            {
+                self.base = day;
+                return self.change_view(View::Day);
+            }
+            let Some((day, _)) = self.unit_at(pointer).and_then(|unit| MONTH_AXIS.locate(unit))
+            else {
+                return vec![];
+            };
+            let Some(resource) = calendar.resources.first() else {
+                return vec![];
+            };
+            let open = hours(calendar).map_or(DAY_START_MINUTES, |hours| hours.open);
+            let start = TIME_AXIS.clamp_start(open, NEW_MINUTES);
+            let place = Place {
+                day:      add_days(self.first_day(), i64::from(day)),
+                resource: resource.id(),
+            };
+            return self.new_form(vec![place], start, start + NEW_MINUTES, pointer);
+        }
         let [Ok(column), Ok(row)] =
             self.rectgrid.point_to_unit([Px::new(pointer[0]), Px::new(pointer[1])])
         else {
@@ -826,26 +808,19 @@ impl Handler {
     }
 
     fn edit_commands(&mut self, index: usize, cell: usize) -> Vec<Command> {
-        let Some(appointment) = self.calendar.as_ref().and_then(|c| c.appointments.get(index))
-        else {
+        let Some(calendar) = self.calendar.as_ref() else {
+            return vec![];
+        };
+        let Some(appointment) = calendar.appointments.get(index) else {
             return vec![];
         };
         let cells = appointment.cells();
         let Some(place) = cells.get(cell).or_else(|| cells.first()) else {
             return vec![];
         };
-        let fields = EditForm {
-            title:    String::from(appointment.title()),
-            category: String::from(appointment.category()),
-            status:   String::from(appointment.status()),
-            date:     display(place.day, LANG, Format::Date),
-            resource: format!("{}", place.resource),
-            start:    format_hhmm(appointment.start()),
-            end:      format_hhmm(appointment.end()),
-            note:     String::from(appointment.note()),
-        };
+        let (draft, place) = (appointment.clone(), *place);
         let heading = format!("#{}", appointment.id());
-        self.form_commands(Editing::Existing(index), heading, fields, "")
+        self.form_commands(Editing::Existing(index), heading, &draft, place, "")
     }
 
     fn reject(message: &str) -> Vec<Command> {
@@ -856,10 +831,12 @@ impl Handler {
         let Some(editing) = self.editing.clone() else {
             return vec![];
         };
-        let Some(form) = EditForm::parse(value) else {
-            return Self::reject("入力を読み取れません");
+        let draft = match self.calendar.as_ref().map(|calendar| decode_form(value, calendar)) {
+            Some(Ok(draft)) => draft,
+            Some(Err(message)) => return Self::reject(message),
+            None => return Self::reject("データがありません"),
         };
-        match self.apply_form(editing, form) {
+        match self.apply_form(editing, draft) {
             Ok(index) => {
                 self.editing = None;
                 let mut commands = self.persist(index);
@@ -872,46 +849,38 @@ impl Handler {
         }
     }
 
-    fn apply_form(&mut self, editing: Editing, form: EditForm) -> Result<usize, &'static str> {
-        let day = parse_date(&form.date).map_err(|_| "日付が不正です")?;
-        let start = parse_time(&form.start).map_err(|_| "開始時刻が不正です")?;
-        let end = parse_time(&form.end).map_err(|_| "終了時刻が不正です")?;
-        if start >= end || start < TIME_AXIS.minutes(0).unwrap_or(0) || end > TIME_AXIS.end() {
-            return Err("時間帯が不正です");
-        }
+    fn apply_form(&mut self, editing: Editing, draft: Appointment) -> Result<usize, &'static str> {
         let calendar = self.calendar.as_mut().ok_or("データがありません")?;
-        let resource_id: u32 = form.resource.parse().map_err(|_| "資源が不正です")?;
+        let place = *draft.cells().first().ok_or("入力を読み取れません")?;
         let resource = calendar
             .resources
             .iter()
-            .position(|r| r.id() == resource_id)
+            .position(|r| r.id() == place.resource)
             .ok_or("資源が不正です")?;
-        if !calendar.statuses.iter().any(|s| s.code() == form.status) {
-            return Err("状態が不正です");
-        }
+        let (start, end) = (draft.start(), draft.end());
         match editing {
             Editing::New(pending) => {
                 if !fits(calendar, start, end) {
                     return Err("営業時間外です");
                 }
-                let cells = shift_cells(calendar, &pending, day, resource)?;
+                let cells = shift_cells(calendar, &pending, place.day, resource)?;
                 let id = calendar.appointments.iter().map(|a| a.id()).max().map_or(1, |id| id + 1);
                 calendar.appointments.push(Appointment::new(
                     id,
                     &cells,
                     start,
                     end,
-                    &form.title,
-                    &form.category,
-                    &form.status,
-                    &form.note,
+                    draft.title(),
+                    draft.category(),
+                    draft.status(),
+                    draft.note(),
                 ));
                 Ok(calendar.appointments.len() - 1)
             }
             Editing::Existing(index) => {
                 let appointment = calendar.appointments.get(index).ok_or("予約がありません")?;
                 let current_cells = appointment.cells();
-                let cells = shift_cells(calendar, &current_cells, day, resource)?;
+                let cells = shift_cells(calendar, &current_cells, place.day, resource)?;
                 let current = &calendar.appointments[index];
                 let changed = current.start() != start || current.end() != end;
                 if changed && !fits(calendar, start, end) {
@@ -921,10 +890,10 @@ impl Handler {
                 appointment.set_cells(&cells);
                 appointment.set_start(start);
                 appointment.set_end(end);
-                appointment.set_title(&form.title);
-                appointment.set_category(&form.category);
-                appointment.set_status(&form.status);
-                appointment.set_note(&form.note);
+                appointment.set_title(draft.title());
+                appointment.set_category(draft.category());
+                appointment.set_status(draft.status());
+                appointment.set_note(draft.note());
                 Ok(index)
             }
         }
@@ -1028,6 +997,33 @@ impl Handler {
         Some((cell, grid.time.clamp_start(resolved.start, duration)))
     }
 
+    fn move_in_month(&mut self, drag: &Drag) -> bool {
+        let first = self.first_day();
+        let Some((target, _)) = self.unit_at(drag.pointer).and_then(|unit| MONTH_AXIS.locate(unit))
+        else {
+            return false;
+        };
+        let Some(appointment) =
+            self.calendar.as_mut().and_then(|calendar| calendar.appointments.get_mut(drag.index))
+        else {
+            return false;
+        };
+        let cells = appointment.cells();
+        let Some(pressed) = cells.get(drag.cell) else {
+            return false;
+        };
+        let delta = i64::from(target) - diff(first, pressed.day) / DAY;
+        if delta == 0 {
+            return false;
+        }
+        let moved: Vec<Place> = cells
+            .iter()
+            .map(|place| Place { day: add_days(place.day, delta), resource: place.resource })
+            .collect();
+        appointment.set_cells(&moved);
+        true
+    }
+
     fn move_appointment(&mut self, index: usize, pressed: usize, target: Cell, start: u32) -> bool {
         let base = self.base;
         let axis = self.grid().columns;
@@ -1093,12 +1089,11 @@ impl Handler {
 
     fn click_control(&mut self, target: Target) -> Vec<Command> {
         match target {
-            Target::ViewButton(view) => self.change_view(view),
-            Target::Step(n) if (1..=STEP_DAYS.len() as u32).contains(&n) => {
+            Target::Step(n) if (1..=STEP_COUNT).contains(&n) => {
                 self.base = if n == STEP_TODAY {
                     self.today
                 } else {
-                    add_days(self.base, STEP_DAYS[n as usize - 1])
+                    add_days(self.base, self.step_days(n))
                 };
                 self.date_commands()
             }
@@ -1108,33 +1103,17 @@ impl Handler {
             }
             Target::Save => self.save_commands(),
             Target::Reload => self.discard_commands(),
-            Target::MonthOpen => {
-                let (year, month, ..) = unpack(self.base);
-                self.month = (year, month);
-                let mut commands = vec![
-                    hidden(Target::EditForm.to_dom(), true),
-                    hidden(Target::MonthForm.to_dom(), false),
-                ];
-                commands.extend(self.month_commands());
-                commands.push(Command::ShowModal { id: Target::Modal.to_dom() });
-                commands
-            }
-            Target::MonthPrev | Target::MonthNext => {
-                let delta = if target == Target::MonthPrev { -1 } else { 1 };
-                let index = self.month.0 * 12 + (self.month.1 - 1) + delta;
-                self.month = (index.div_euclid(12), index.rem_euclid(12) + 1);
-                self.month_commands()
-            }
-            Target::MonthCell(index) => {
-                let first = pack(self.month.0, self.month.1, 1, 0, 0, 0, 0, 0, 0);
-                let origin = sub_days(first, youbi(first) as i64 - 1);
-                self.base = add_days(origin, index as i64);
-                let mut commands = self.date_commands();
-                commands.push(Command::CloseModal { id: Target::Modal.to_dom() });
-                commands
-            }
             _ => vec![],
         }
+    }
+
+    fn step_days(&self, n: u32) -> i64 {
+        let (unit, page) = if self.month() {
+            (7, i64::from(MONTH_AXIS.days()))
+        } else {
+            (1, i64::from(self.view.days()))
+        };
+        [-page, -unit, 0, unit, page][n as usize - 1]
     }
 
     fn resource_text(&self, n: u32) -> Command {
@@ -1150,8 +1129,40 @@ impl Handler {
     fn loaded_commands(&self) -> Vec<Command> {
         let mut commands: Vec<Command> =
             (1..=heading_axis().count()).map(|n| self.resource_text(n)).collect();
+        commands.extend(self.option_commands());
         commands.extend(self.band_commands());
         commands.extend(self.card_commands());
+        commands
+    }
+
+    fn option_commands(&self) -> Vec<Command> {
+        let Some(calendar) = self.calendar.as_ref() else {
+            return vec![];
+        };
+        let mut commands = Vec::new();
+        let options = (1..=STATUS_POOL)
+            .map(|n| {
+                (Target::StatusOption(n), calendar.statuses.get(n as usize - 1).map(|s| s.label()))
+            })
+            .chain((1..=CATEGORY_POOL).map(|n| {
+                (
+                    Target::CategoryOption(n),
+                    calendar.categories.get(n as usize - 1).map(|c| c.label()),
+                )
+            }))
+            .chain((1..=RESOURCE_COUNT).map(|n| {
+                (
+                    Target::ResourceOption(n),
+                    calendar.resources.get(n as usize - 1).map(|r| r.name()),
+                )
+            }));
+        for (target, text) in options {
+            commands.push(Command::SetText {
+                id:    target.to_dom(),
+                value: String::from(text.unwrap_or_default()),
+            });
+            commands.push(hidden(target.to_dom(), text.is_none()));
+        }
         commands
     }
 
@@ -1210,7 +1221,47 @@ impl Handler {
         cards
     }
 
+    fn month_cards(&self, calendar: &Calendar) -> Vec<Card> {
+        let first = self.first_day();
+        let mut days: BTreeMap<u32, Vec<(u32, usize, usize)>> = BTreeMap::new();
+        for (index, appointment) in calendar.appointments.iter().enumerate() {
+            for (cell, place) in appointment.cells().iter().enumerate() {
+                let Ok(day) = u32::try_from(diff(first, place.day) / DAY) else {
+                    continue;
+                };
+                if day >= MONTH_AXIS.days() {
+                    continue;
+                }
+                let items = days.entry(day).or_default();
+                if !items.iter().any(|(_, other, _)| *other == index) {
+                    items.push((appointment.id(), index, cell));
+                }
+            }
+        }
+        let mut cards = Vec::new();
+        for (day, mut items) in days {
+            items.sort_unstable_by_key(|(id, ..)| *id);
+            for (row, (_, index, cell)) in (0..MONTH_AXIS.rows()).zip(items) {
+                let Some(bx) = MONTH_AXIS.bbox(day, Some(row)) else {
+                    continue;
+                };
+                cards.push(Card { index, cell, bx, lane: 0, lanes: 1, outer: [false; 2] });
+            }
+        }
+        cards.truncate(CARD_POOL);
+        cards
+    }
+
     fn band_list(&self, calendar: &Calendar) -> Vec<Band> {
+        if self.month() {
+            let first = self.first_day();
+            return (0..MONTH_AXIS.days())
+                .filter_map(|day| {
+                    let bx = MONTH_AXIS.bbox(day, None)?;
+                    Some(Band { kind: BandKind::Date(add_days(first, i64::from(day))), bx })
+                })
+                .collect();
+        }
         let Some(hours) = hours(calendar) else {
             return vec![];
         };
@@ -1243,7 +1294,7 @@ impl Handler {
     }
 
     fn person_commands(&self) -> Vec<Command> {
-        let days = self.view.days();
+        let days = if self.month() { 0 } else { self.view.days() };
         let mut commands = Vec::new();
         for n in 1..=heading_axis().count() {
             let person =
@@ -1297,11 +1348,28 @@ impl Handler {
                 StyleProperty::Height,
                 rem(height.get(), self.rem_in_px),
             ));
-            commands.push(style(
-                Target::Band(n).to_dom(),
-                StyleProperty::Background,
-                StyleValue::Text(String::from("var(--color-paper-mix)")),
-            ));
+            let (label, current) = match band.kind {
+                BandKind::Date(day) => {
+                    let (_, month, date, ..) = unpack(day);
+                    let label =
+                        if date == 1 { format!("{month}/{date}") } else { format!("{date}") };
+                    (label, day == self.today)
+                }
+                _ => (String::new(), false),
+            };
+            commands.push(Command::SetText { id: Target::BandLabel(n).to_dom(), value: label });
+            commands.push(if current {
+                Command::SetAttribute {
+                    id:        Target::Band(n).to_dom(),
+                    attribute: Attribute::AriaCurrent,
+                    value:     String::from("date"),
+                }
+            } else {
+                Command::RemoveAttribute {
+                    id:        Target::Band(n).to_dom(),
+                    attribute: Attribute::AriaCurrent,
+                }
+            });
         }
         let shown = self.bands.borrow().len() as u32;
         for n in placed.len() as u32 + 1..=shown {
@@ -1322,7 +1390,8 @@ impl Handler {
         let Some(calendar) = self.calendar.as_ref() else {
             return vec![];
         };
-        let cards = self.visible_cards(calendar);
+        let cards =
+            if self.month() { self.month_cards(calendar) } else { self.visible_cards(calendar) };
         let boxes: Vec<BBox<2>> = cards.iter().map(|card| card.bx).collect();
         let resolved = self.rectgrid.box_as_px(&boxes);
         let mut commands = Vec::new();
@@ -1341,11 +1410,10 @@ impl Handler {
                 outer: card.outer,
             });
             let appointment = &calendar.appointments[card.index];
-            let status = calendar
-                .statuses
-                .iter()
-                .find(|s| s.code() == appointment.status())
-                .map_or(appointment.status(), |s| s.label());
+            let status =
+                calendar.statuses.get(appointment.status() as usize).map_or("", |s| s.label());
+            let category =
+                calendar.categories.get(appointment.category() as usize).map_or("", |c| c.label());
             commands.push(Command::RemoveAttribute {
                 id:        Target::Card(n).to_dom(),
                 attribute: Attribute::Hidden,
@@ -1378,10 +1446,7 @@ impl Handler {
                     ),
                 ),
                 (Target::CardPart(n, CardPart::Title).to_dom(), String::from(appointment.title())),
-                (
-                    Target::CardPart(n, CardPart::Category).to_dom(),
-                    String::from(appointment.category()),
-                ),
+                (Target::CardPart(n, CardPart::Category).to_dom(), String::from(category)),
                 (Target::CardPart(n, CardPart::Note).to_dom(), String::from(appointment.note())),
             ] {
                 commands.push(Command::SetText { id, value });
@@ -1478,69 +1543,37 @@ impl Handler {
     }
 
     fn date_commands(&self) -> Vec<Command> {
+        let first = self.first_day();
         let days = self.view.days();
         let mut commands: Vec<Command> = (1..=days)
-            .map(|n| Command::SetText {
-                id:    Target::DayTitle(n).to_dom(),
-                value: display(add_days(self.base, i64::from(n) - 1), LANG, Format::Short),
+            .map(|n| {
+                let day = add_days(first, i64::from(n) - 1);
+                Command::SetText {
+                    id:    Target::DayTitle(n).to_dom(),
+                    value: if self.month() {
+                        String::from(youbi(day).label(LANG))
+                    } else {
+                        display(day, LANG, Format::Short)
+                    },
+                }
             })
             .collect();
-        let first = display(self.base, LANG, Format::Long);
-        let value = if days == 1 {
-            first
+        let span = if self.month() { MONTH_AXIS.days() } else { days };
+        let start = display(first, LANG, Format::Long);
+        let value = if span == 1 {
+            start
         } else {
             format!(
-                "{first} – {}",
-                display(add_days(self.base, i64::from(days) - 1), LANG, Format::Long,)
+                "{start} – {}",
+                display(add_days(first, i64::from(span) - 1), LANG, Format::Long,)
             )
         };
         commands.push(Command::SetText { id: Target::Title.to_dom(), value });
+        if self.month() {
+            commands.extend(self.axis_commands());
+        }
         commands.extend(self.band_commands());
         commands.extend(self.card_commands());
-        commands
-    }
-
-    fn month_commands(&self) -> Vec<Command> {
-        let (year, month) = self.month;
-        let first = pack(year, month, 1, 0, 0, 0, 0, 0, 0);
-        let origin = sub_days(first, youbi(first) as i64 - 1);
-        let mut commands = vec![Command::SetText {
-            id:    Target::MonthTitle.to_dom(),
-            value: format!("{year}年{month}月"),
-        }];
-        for index in 0..MONTH_CELL_COUNT {
-            let day = add_days(origin, index as i64);
-            let (_, cell_month, cell_day, ..) = unpack(day);
-            let id = Target::MonthCell(index).to_dom();
-            commands.push(Command::SetText { id: id.clone(), value: format!("{cell_day}") });
-            commands.push(if cell_month == month {
-                Command::RemoveAttribute { id: id.clone(), attribute: Attribute::Disabled }
-            } else {
-                Command::SetAttribute {
-                    id:        id.clone(),
-                    attribute: Attribute::Disabled,
-                    value:     String::new(),
-                }
-            });
-            let current = day == self.base;
-            commands.push(if current {
-                Command::SetAttribute {
-                    id:        id.clone(),
-                    attribute: Attribute::AriaCurrent,
-                    value:     String::from("date"),
-                }
-            } else {
-                Command::RemoveAttribute {
-                    id:        id.clone(),
-                    attribute: Attribute::AriaCurrent,
-                }
-            });
-            commands.push(Command::SetAttribute {
-                id,
-                attribute: Attribute::DataSurround,
-                value: String::from(if current { "fill" } else { "transparent" }),
-            });
-        }
         commands
     }
 
@@ -1549,7 +1582,19 @@ impl Handler {
     }
 
     fn columns(&self) -> u32 {
-        self.grid().columns.count()
+        self.view.columns()
+    }
+
+    fn month(&self) -> bool {
+        self.view == View::Month
+    }
+
+    fn first_day(&self) -> u64 {
+        if self.month() { sub_days(self.base, youbi(self.base) as i64 - 1) } else { self.base }
+    }
+
+    fn row_rem(&self) -> f64 {
+        if self.month() { MONTH_ROW_REM } else { self.slot_rem }
     }
 
     fn fit_rectgrid(&mut self) {
@@ -1559,7 +1604,7 @@ impl Handler {
         );
         let _ = self
             .rectgrid
-            .set_definition(IncrementFunction::Scale(self.slot_rem * self.rem_in_px), 1);
+            .set_definition(IncrementFunction::Scale(self.row_rem() * self.rem_in_px), 1);
     }
 
     fn change_view(&mut self, view: View) -> Vec<Command> {
@@ -1569,6 +1614,51 @@ impl Handler {
         self.view = view;
         self.fit_rectgrid();
         self.view_commands()
+    }
+
+    fn row_commands(&self) -> Vec<Command> {
+        let rem = self.row_rem();
+        let count = if self.month() { MONTH_AXIS.count() } else { SLOT_COUNT };
+        let axis = format!("var(--head-height) repeat({count}, {rem}rem)");
+        vec![
+            style(
+                Target::TimeAxis.to_dom(),
+                StyleProperty::GridTemplateRows,
+                StyleValue::Text(axis),
+            ),
+            style(
+                Target::Surface.to_dom(),
+                StyleProperty::GridTemplateRows,
+                StyleValue::Text(format!(
+                    "var(--head-title) var(--head-resource) calc({rem}rem * {count})"
+                )),
+            ),
+        ]
+    }
+
+    fn axis_commands(&self) -> Vec<Command> {
+        let first = self.first_day();
+        let mut commands = Vec::new();
+        for row in 0..SLOT_COUNT {
+            let value = if self.month() {
+                match MONTH_AXIS.locate([0, row as i32]) {
+                    Some((day, None)) => {
+                        let (_, month, date, ..) = unpack(add_days(first, i64::from(day)));
+                        format!("{month}/{date}")
+                    }
+                    _ => String::new(),
+                }
+            } else {
+                TIME_AXIS.minutes(row).map_or_else(String::new, format_hhmm)
+            };
+            for side in 1..=2 {
+                commands.push(Command::SetText {
+                    id:    Target::AxisLabel(side, row + 2).to_dom(),
+                    value: value.clone(),
+                });
+            }
+        }
+        commands
     }
 
     fn view_commands(&self) -> Vec<Command> {
@@ -1591,17 +1681,21 @@ impl Handler {
         }
         commands.extend(self.date_commands());
         for n in 1..=heading_axis().count() {
-            commands.push(hidden(Target::Resource(n).to_dom(), n > columns));
+            commands.push(hidden(Target::Resource(n).to_dom(), self.month() || n > columns));
             commands.push(self.resource_text(n));
         }
-        for view in [View::Day, View::ThreeDays, View::Week] {
-            let id = Target::ViewButton(view).to_dom();
-            commands.push(if view == self.view {
-                Command::SetAttribute { id, attribute: Attribute::Disabled, value: format!("") }
-            } else {
-                Command::RemoveAttribute { id, attribute: Attribute::Disabled }
-            });
+        for view in [View::Day, View::ThreeDays, View::Week, View::Month] {
+            commands.push(toggle(
+                Target::ViewRadio(view).to_dom(),
+                Attribute::Checked,
+                view == self.view,
+            ));
         }
+        commands.push(toggle(Target::Zoom.to_dom(), Attribute::Disabled, self.month()));
+        if !self.month() {
+            commands.extend(self.axis_commands());
+        }
+        commands.extend(self.row_commands());
         commands
     }
 }
@@ -1629,6 +1723,55 @@ fn shift_cells(
         .collect()
 }
 
+fn decode_form(value: &str, calendar: &Calendar) -> Result<Appointment, &'static str> {
+    let pairs = from_url_search_params(value);
+    let field = |field: EditField| {
+        let name = format!("{}", field.number());
+        pairs
+            .iter()
+            .find(|(key, _)| *key == name)
+            .map(|(_, value)| value.as_str())
+            .ok_or("入力を読み取れません")
+    };
+    let [title, category, status, date, resource, start, end, note] = [
+        EditField::Title,
+        EditField::Category,
+        EditField::Status,
+        EditField::Date,
+        EditField::Resource,
+        EditField::Start,
+        EditField::End,
+        EditField::Note,
+    ]
+    .map(field);
+    let (title, category, status, date) = (title?, category?, status?, date?);
+    let (resource, start, end, note) = (resource?, start?, end?, note?);
+    let day = parse_date(date).map_err(|_| "日付が不正です")?;
+    let start = parse_time(start).map_err(|_| "開始時刻が不正です")?;
+    let end = parse_time(end).map_err(|_| "終了時刻が不正です")?;
+    if start >= end || start < TIME_AXIS.minutes(0).unwrap_or(0) || end > TIME_AXIS.end() {
+        return Err("時間帯が不正です");
+    }
+    let resource = option_position(&calendar.resources, resource).ok_or("資源が不正です")?;
+    let status = option_position(&calendar.statuses, status).ok_or("状態が不正です")?;
+    let category = option_position(&calendar.categories, category).ok_or("カテゴリが不正です")?;
+    let place = Place { day, resource: calendar.resources[resource].id() };
+    Ok(Appointment::new(0, &[place], start, end, title, category as u32, status as u32, note))
+}
+
+fn option_number(index: u32, count: usize) -> String {
+    if (index as usize) < count { format!("{}", index + 1) } else { String::new() }
+}
+
+fn option_value<T>(items: &[T], selected: impl Fn(&T) -> bool) -> String {
+    items.iter().position(selected).map_or_else(String::new, |index| format!("{}", index + 1))
+}
+
+fn option_position<T>(items: &[T], value: &str) -> Option<usize> {
+    let index = value.parse::<usize>().ok()?.checked_sub(1)?;
+    (index < items.len()).then_some(index)
+}
+
 fn hours(calendar: &Calendar) -> Option<Hours> {
     let first = calendar.shifts.first()?;
     let mut hours = Hours { open: first.open(), close: first.close(), rest: first.break_range() };
@@ -1648,7 +1791,7 @@ fn fits(calendar: &Calendar, start: u32, end: u32) -> bool {
 }
 
 fn column_px(viewport_width_px: f64, view: View, rem_in_px: f64) -> f64 {
-    let columns = ColumnAxis::new(view.days(), RESOURCE_COUNT).count() as f64;
+    let columns = view.columns() as f64;
     let visible = viewport_width_px - 2.0 * AXIS_REM * rem_in_px;
     (visible / columns).max(COLUMN_MIN_REM * rem_in_px)
 }
@@ -1674,10 +1817,14 @@ fn style(id: Id, property: StyleProperty, value: StyleValue) -> Command {
 }
 
 fn hidden(id: Id, on: bool) -> Command {
+    toggle(id, Attribute::Hidden, on)
+}
+
+fn toggle(id: Id, attribute: Attribute, on: bool) -> Command {
     if on {
-        Command::SetAttribute { id, attribute: Attribute::Hidden, value: format!("") }
+        Command::SetAttribute { id, attribute, value: String::new() }
     } else {
-        Command::RemoveAttribute { id, attribute: Attribute::Hidden }
+        Command::RemoveAttribute { id, attribute }
     }
 }
 
@@ -1832,32 +1979,38 @@ mod tests {
         let (_, commands) = handler.initial_draw();
         assert_eq!(grid_columns(&commands), week_grid(28, 7));
         assert_eq!(hidden_count(&commands), 0);
+        assert!(matches!(commands.last(),
+            Some(Command::RemoveAttribute { id, attribute: Attribute::Hidden })
+                if *id == Target::Body.to_dom()));
     }
 
     #[test]
-    fn view_button_switches_days_columns_and_hides_the_rest() {
+    fn view_radio_switches_days_columns_and_hides_the_rest() {
         let mut handler = Handler::new(VIEWPORT, today(), REM);
-        let (_, commands) = handler.process_canvas(
-            &click(Target::ViewButton(View::ThreeDays).to_dom(), 10.0, 10.0),
-            &state(),
-        );
+        let commands = choose(&mut handler, View::ThreeDays);
         assert_eq!(handler.view(), View::ThreeDays);
         assert_eq!(grid_columns(&commands), week_grid(12, 3));
         assert_eq!(hidden_count(&commands), 4 + 16);
+        let checked: Vec<Id> = commands
+            .iter()
+            .filter_map(|command| match command {
+                Command::SetAttribute { id, attribute: Attribute::Checked, .. } => Some(id.clone()),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(checked, [Target::ViewRadio(View::ThreeDays).to_dom()]);
 
-        let (_, commands) = handler
-            .process_canvas(&click(Target::ViewButton(View::Day).to_dom(), 10.0, 10.0), &state());
+        let commands = choose(&mut handler, View::Day);
         assert_eq!(handler.view(), View::Day);
         assert_eq!(grid_columns(&commands), week_grid(4, 1));
         assert_eq!(hidden_count(&commands), 6 + 24);
     }
 
     #[test]
-    fn view_button_for_the_current_view_emits_nothing() {
+    fn view_radio_for_the_current_view_or_a_click_emits_nothing() {
         let mut handler = Handler::new(VIEWPORT, today(), REM);
-        let (_, commands) = handler
-            .process_canvas(&click(Target::ViewButton(View::Week).to_dom(), 10.0, 10.0), &state());
-        assert!(commands.is_empty());
+        assert!(choose(&mut handler, View::Week).is_empty());
+        assert!(press(&mut handler, Target::ViewRadio(View::Day).to_dom()).is_empty());
         assert_eq!(handler.view(), View::Week);
     }
 
@@ -1906,6 +2059,14 @@ mod tests {
         texts(commands).into_iter().find(|(target, _)| target == id).map(|(_, value)| value)
     }
 
+    fn choose(handler: &mut Handler, view: View) -> Vec<Command> {
+        let event = CanvasEvent {
+            event_type: EventType::Change,
+            ..click(Target::ViewRadio(view).to_dom(), 10.0, 10.0)
+        };
+        handler.process_canvas(&event, &state()).1
+    }
+
     fn press(handler: &mut Handler, id: Id) -> Vec<Command> {
         handler.process_canvas(&click(id, 10.0, 10.0), &state()).1
     }
@@ -1937,76 +2098,10 @@ mod tests {
     #[test]
     fn single_day_view_titles_one_date() {
         let mut handler = Handler::new(VIEWPORT, today(), REM);
-        press(&mut handler, Target::ViewButton(View::Day).to_dom());
+        choose(&mut handler, View::Day);
         let commands = press(&mut handler, Target::Step(4).to_dom());
         assert_eq!(text_of(&commands, &Target::Title.to_dom()).unwrap(), "2026年10月3日(土)");
         assert_eq!(texts(&commands).len(), 2);
-    }
-
-    #[test]
-    fn month_button_opens_the_modal_filled_with_the_base_month() {
-        let mut handler = Handler::new(VIEWPORT, today(), REM);
-        let commands = press(&mut handler, Target::MonthOpen.to_dom());
-        assert!(
-            matches!(commands.last(), Some(Command::ShowModal { id }) if *id == Target::Modal.to_dom())
-        );
-        assert_eq!(text_of(&commands, &Target::MonthTitle.to_dom()).unwrap(), "2026年10月");
-        assert_eq!(text_of(&commands, &Target::MonthCell(0).to_dom()).unwrap(), "28");
-        assert_eq!(text_of(&commands, &Target::MonthCell(4).to_dom()).unwrap(), "2");
-        let current: Vec<_> = commands
-            .iter()
-            .filter(|command| {
-                matches!(command, Command::SetAttribute { attribute: Attribute::AriaCurrent, .. })
-            })
-            .collect();
-        assert!(matches!(
-            current.as_slice(),
-            [Command::SetAttribute { id, value, .. }] if *id == Target::MonthCell(4).to_dom() && value == "date"
-        ));
-        let enabled = commands
-            .iter()
-            .filter(|command| {
-                matches!(command, Command::RemoveAttribute { attribute: Attribute::Disabled, .. })
-            })
-            .count();
-        assert_eq!(enabled, 31);
-        let filled: Vec<_> = commands
-            .iter()
-            .filter_map(|command| match command {
-                Command::SetAttribute { id, attribute: Attribute::DataSurround, value }
-                    if value == "fill" =>
-                {
-                    Some(id.clone())
-                }
-                _ => None,
-            })
-            .collect();
-        assert_eq!(filled, [Target::MonthCell(4).to_dom()]);
-    }
-
-    #[test]
-    fn month_steps_wrap_the_year() {
-        let mut handler = Handler::new(VIEWPORT, pack(2026, 1, 15, 0, 0, 0, 0, 0, 0), REM);
-        press(&mut handler, Target::MonthOpen.to_dom());
-        let commands = press(&mut handler, Target::MonthPrev.to_dom());
-        assert_eq!(text_of(&commands, &Target::MonthTitle.to_dom()).unwrap(), "2025年12月");
-        let commands = press(&mut handler, Target::MonthNext.to_dom());
-        let commands_next = press(&mut handler, Target::MonthNext.to_dom());
-        assert_eq!(text_of(&commands, &Target::MonthTitle.to_dom()).unwrap(), "2026年1月");
-        assert_eq!(text_of(&commands_next, &Target::MonthTitle.to_dom()).unwrap(), "2026年2月");
-    }
-
-    #[test]
-    fn month_cell_selects_the_date_and_closes_the_modal() {
-        let mut handler = Handler::new(VIEWPORT, today(), REM);
-        press(&mut handler, Target::MonthOpen.to_dom());
-        press(&mut handler, Target::MonthNext.to_dom());
-        let commands = press(&mut handler, Target::MonthCell(16).to_dom());
-        assert_eq!(handler.base(), pack(2026, 11, 11, 0, 0, 0, 0, 0, 0));
-        assert!(
-            matches!(commands.last(), Some(Command::CloseModal { id }) if *id == Target::Modal.to_dom())
-        );
-        assert_eq!(text_of(&commands, &Target::DayTitle(1).to_dom()).unwrap(), "11/11(水)");
     }
 
     fn sample_response(request: u32, status: u16) -> Response {
@@ -2048,7 +2143,7 @@ mod tests {
     fn view_change_keeps_loaded_resource_names() {
         let mut handler = Handler::new(VIEWPORT, today(), REM);
         handler.process_fetched(&sample_response(1, 200));
-        let commands = press(&mut handler, Target::ViewButton(View::Day).to_dom());
+        let commands = choose(&mut handler, View::Day);
         assert_eq!(text_of(&commands, &Target::ResourceName(2).to_dom()).unwrap(), "Studio 2");
     }
 
@@ -2090,25 +2185,20 @@ mod tests {
             start,
             end,
             &format!("t{id}"),
-            "c",
-            "done",
+            0,
+            0,
             "",
         )
     }
 
     fn calendar_with(appointments: Vec<crate::calendar::data::Appointment>) -> Calendar {
         Calendar {
-            headers: Default::default(),
+            meta: crate::calendar::data::Meta::new(true),
             resources: (101..105)
-                .map(|id| {
-                    crate::calendar::data::Resource::new(
-                        id,
-                        &format!("Studio {}", id - 100),
-                        "blue",
-                    )
-                })
+                .map(|id| crate::calendar::data::Resource::new(id, &format!("Studio {}", id - 100)))
                 .collect(),
-            statuses: vec![crate::calendar::data::Status::new(0, "done", "D", "green")],
+            statuses: vec![crate::calendar::data::Status::new(0, "done", "D")],
+            categories: vec![crate::calendar::data::Category::new(0, "c", "C")],
             shifts: (-3..11)
                 .flat_map(|day| (101..105).map(move |resource| (day, resource)))
                 .enumerate()
@@ -2125,7 +2215,6 @@ mod tests {
                 })
                 .collect(),
             appointments,
-            complete: true,
         }
     }
 
@@ -2206,7 +2295,7 @@ mod tests {
             appointment(3, after(base, 2), 101, 600, 660),
         ]));
         assert_eq!(shown_count(&handler.card_commands()), 3);
-        let commands = press(&mut handler, Target::ViewButton(View::Day).to_dom());
+        let commands = choose(&mut handler, View::Day);
         assert_eq!(shown_count(&commands), 1);
         let hidden_cards: Vec<u32> = commands
             .iter()
@@ -2233,7 +2322,7 @@ mod tests {
         let base = today();
         let mut handler = Handler::new(VIEWPORT, base, REM);
         handler.calendar = Some(calendar_with(vec![appointment(1, base, 103, 540, 600)]));
-        let commands = press(&mut handler, Target::ViewButton(View::Day).to_dom());
+        let commands = choose(&mut handler, View::Day);
         let column_px = (VIEWPORT - 2.0 * AXIS_PX) / 4.0;
         let (x, y, width, height) = card_box(&commands, 1).unwrap();
         assert_eq!(x, (column_px * 2.0) as f32);
@@ -2262,7 +2351,7 @@ mod tests {
         let mut handler = Handler::new(VIEWPORT, base, REM);
         handler.calendar = Some(calendar_with(vec![appointment(1, base, 101, 600, 660)]));
         handler.card_commands();
-        press(&mut handler, Target::ViewButton(View::Day).to_dom());
+        choose(&mut handler, View::Day);
         let (_, commands) = handler.process_resize(1000.0, 800.0);
         let column_px = (1000.0 - 2.0 * AXIS_PX) / 4.0;
         assert_eq!(card_box(&commands, 1).unwrap().2, column_px as f32);
@@ -2277,10 +2366,12 @@ mod tests {
             "var(--head-title) var(--head-resource) calc({SLOT_REM}rem * {SLOT_COUNT})"
         )));
         assert!(css.contains(&format!("--column-width:  {COLUMN_MIN_REM}rem")));
-        assert!(css.contains(&format!("inline-size: {AXIS_REM}rem")));
+        assert!(css.contains(&format!("--axis-width:    {AXIS_REM}rem")));
         assert!(css.contains("--head-title:    2rem"));
         assert!(css.contains("--head-resource: 3rem"));
         assert_eq!(HEAD_REM, 2.0 + 3.0);
+        let library = include_str!("../../distribution/css/library/base.css");
+        assert!(library.contains(&format!("--md-box-height:     {MONTH_ROW_REM}rem")));
     }
 
     #[test]
@@ -2354,7 +2445,7 @@ mod tests {
         grab(&mut handler, 1);
         assert!(handler.drag.as_ref().is_some_and(|drag| drag.n == 1 && !drag.moved));
         handler.process_canvas(
-            &pointer_down(Target::ViewButton(View::Day).to_dom(), 10.0, 10.0),
+            &pointer_down(Target::ViewRadio(View::Day).to_dom(), 10.0, 10.0),
             &state(),
         );
         assert!(handler.drag.is_none());
@@ -2471,7 +2562,7 @@ mod tests {
     #[test]
     fn drag_in_the_day_view_uses_the_wider_columns() {
         let (mut handler, base) = drag_fixture();
-        press(&mut handler, Target::ViewButton(View::Day).to_dom());
+        choose(&mut handler, View::Day);
         handler.card_commands();
         let column_px = (VIEWPORT - 2.0 * AXIS_PX) / 4.0;
         let (ox, oy) = grid_origin();
@@ -2495,7 +2586,7 @@ mod tests {
             let base = today();
             let mut handler = Handler::new(VIEWPORT, base, REM);
             handler.calendar = Some(calendar_with(vec![appointment(1, base, 101, 600, 660)]));
-            press(&mut handler, Target::ViewButton(view).to_dom());
+            choose(&mut handler, view);
             let axis = ColumnAxis::new(days, RESOURCE_COUNT);
             let column_px = column_px(VIEWPORT, handler.view(), REM);
             let (ox, oy) = grid_origin();
@@ -2532,9 +2623,9 @@ mod tests {
         let week = handler.grid();
         let bx = week.bbox(Cell { day: 1, resource: 1 }, 600, 660).unwrap();
         assert_eq!(week.resolve(&bx).unwrap().cells, [Cell { day: 1, resource: 1 }]);
-        press(&mut handler, Target::ViewButton(View::Day).to_dom());
+        choose(&mut handler, View::Day);
         assert!(handler.grid().resolve(&bx).is_none());
-        press(&mut handler, Target::ViewButton(View::Week).to_dom());
+        choose(&mut handler, View::Week);
         assert_eq!(handler.grid().resolve(&bx).unwrap().cells, [Cell { day: 1, resource: 1 }]);
     }
 
@@ -2546,7 +2637,7 @@ mod tests {
         cells.push(crate::calendar::data::Place { day: base, resource: 103 });
         spanning.set_cells(&cells);
         handler.calendar = Some(calendar_with(vec![spanning]));
-        press(&mut handler, Target::ViewButton(view).to_dom());
+        choose(&mut handler, view);
         handler.card_commands();
         (handler, base)
     }
@@ -2634,7 +2725,7 @@ mod tests {
         cells.push(crate::calendar::data::Place { day: after(base, 1), resource: 101 });
         crossing.set_cells(&cells);
         handler.calendar = Some(calendar_with(vec![crossing]));
-        press(&mut handler, Target::ViewButton(View::Day).to_dom());
+        choose(&mut handler, View::Day);
         let commands = handler.card_commands();
         assert_eq!(shown_count(&commands), 1);
         drag_piece(&mut handler, 1, 3, 0);
@@ -2886,7 +2977,7 @@ mod tests {
             cells.push(crate::calendar::data::Place { day: after(base, 1), resource: 101 });
             crossing.set_cells(&cells);
             handler.calendar = Some(calendar_with(vec![crossing]));
-            press(&mut handler, Target::ViewButton(View::Day).to_dom());
+            choose(&mut handler, View::Day);
             handler.card_commands();
             handler
         };
@@ -3071,7 +3162,7 @@ mod tests {
         assert!(commands.iter().any(|command| matches!(command, Command::Fetch { .. })));
         assert_eq!(store.committed_len(), 0);
         handler.process_fetched(&sample_response(1, 200));
-        assert_eq!(store.committed_len(), 590);
+        assert_eq!(store.committed_len(), 594);
         assert_eq!(store.pending_len(), 0);
         assert!(!handler.dirty());
     }
@@ -3177,7 +3268,7 @@ mod tests {
         handler.process_fetched(&sample_response(1, 200));
         let width = |handler: &Handler| handler.bands.borrow()[0].bx.offset()[0].get();
         assert_eq!(width(&handler), 28.0);
-        press(&mut handler, Target::ViewButton(View::Day).to_dom());
+        choose(&mut handler, View::Day);
         assert_eq!(width(&handler), 4.0);
     }
 
@@ -3204,7 +3295,7 @@ mod tests {
         );
         assert_eq!(
             value_of(&commands, &Target::EditField(EditField::Resource).to_dom()).unwrap(),
-            "101"
+            "1"
         );
         assert_eq!(
             value_of(&commands, &Target::EditField(EditField::Start).to_dom()).unwrap(),
@@ -3227,9 +3318,7 @@ mod tests {
     }
 
     fn form_query(title: &str, date: &str, resource: u32, start: &str, end: &str) -> String {
-        format!(
-            "title={title}&category=k&status=done&date={date}&resource={resource}&start={start}&end={end}&note=n"
-        )
+        format!("1={title}&2=1&3=1&4={date}&5={resource}&6={start}&7={end}&8=n")
     }
 
     fn submit(handler: &mut Handler, query: &str) -> Vec<Command> {
@@ -3252,7 +3341,7 @@ mod tests {
         );
         assert_eq!(
             value_of(&commands, &Target::EditField(EditField::Resource).to_dom()).unwrap(),
-            "103"
+            "3"
         );
         assert_eq!(
             value_of(&commands, &Target::EditField(EditField::Start).to_dom()).unwrap(),
@@ -3298,7 +3387,7 @@ mod tests {
         );
         assert_eq!(
             value_of(&commands, &Target::EditField(EditField::Resource).to_dom()).unwrap(),
-            "103"
+            "3"
         );
         assert_eq!(
             value_of(&commands, &Target::EditField(EditField::Date).to_dom()).unwrap(),
@@ -3319,11 +3408,7 @@ mod tests {
         assert_eq!(cells.len(), 4);
         assert_eq!(cells[0], Place { day: base, resource: 103 });
         assert_eq!(cells[3], Place { day: after(base, 1), resource: 102 });
-        let query =
-            form_query("Span", &display(base, Lang::Ja, Format::Date), 103, "12:30", "14:30")
-                .replace("done", "scheduled");
-        handler.calendar.as_mut().unwrap().statuses[0] =
-            crate::calendar::data::Status::new(0, "scheduled", "D", "green");
+        let query = form_query("Span", &display(base, Lang::Ja, Format::Date), 3, "12:30", "14:30");
         submit(&mut handler, &query);
         let added = handler.calendar().unwrap().appointments.last().unwrap();
         assert_eq!(added.cells().len(), 4);
@@ -3368,12 +3453,10 @@ mod tests {
         let (mut handler, _) = drag_fixture();
         let before = handler.placed.borrow()[0].base[1];
         let (_, commands) = handler.process_canvas(&input(Target::Zoom.to_dom(), "3"), &state());
-        let axis = String::from("var(--head-height) repeat(44, 3rem)");
         assert_eq!(
             grid_rows(&commands),
             [
-                (Target::TimeAxis(1).to_dom(), axis.clone()),
-                (Target::TimeAxis(2).to_dom(), axis),
+                (Target::TimeAxis.to_dom(), String::from("var(--head-height) repeat(44, 3rem)")),
                 (
                     Target::Surface.to_dom(),
                     String::from("var(--head-title) var(--head-resource) calc(3rem * 44)")
@@ -3429,8 +3512,7 @@ mod tests {
         tap_empty(&mut handler, 0.0, 0.0);
         let date = display(shift.day(), Lang::Ja, Format::Date);
         let (start, end) = (format_hhmm(shift.open()), format_hhmm(shift.open() + 60));
-        let query =
-            form_query("Neo", &date, shift.resource(), &start, &end).replace("done", "scheduled");
+        let query = form_query("Neo", &date, shift.resource() - 100, &start, &end);
         let commands = submit(&mut handler, &query);
         let calendar = handler.calendar().unwrap();
         assert_eq!(calendar.appointments.len(), before + 1);
@@ -3439,6 +3521,7 @@ mod tests {
             (added.title(), added.start(), added.end()),
             ("Neo", shift.open(), shift.open() + 60)
         );
+        assert_eq!((added.category(), added.status()), (0, 0));
         assert!(handler.dirty());
         assert!(commands.iter().any(|c| matches!(c, Command::CloseModal { .. })));
         assert!(store.pending_len() == 1);
@@ -3452,8 +3535,8 @@ mod tests {
     fn a_form_missing_a_field_is_rejected() {
         let (mut handler, base) = drag_fixture();
         tap_empty(&mut handler, 0.0, 0.0);
-        let query = form_query("x", &display(base, Lang::Ja, Format::Date), 101, "09:30", "10:30");
-        let missing = query.replace("&note=n", "");
+        let query = form_query("x", &display(base, Lang::Ja, Format::Date), 1, "09:30", "10:30");
+        let missing = query.replace("&8=n", "");
         let commands = submit(&mut handler, &missing);
         assert_eq!(
             text_of(&commands, &Target::EditMessage.to_dom()).unwrap(),
@@ -3468,14 +3551,13 @@ mod tests {
         let (mut handler, base) = drag_fixture();
         tap_empty(&mut handler, 0.0, 0.0);
         open_at(&mut handler, 660);
-        let early = form_query("x", &display(base, Lang::Ja, Format::Date), 101, "09:30", "10:30");
+        let early = form_query("x", &display(base, Lang::Ja, Format::Date), 1, "09:30", "10:30");
         let commands = submit(&mut handler, &early);
         assert_eq!(text_of(&commands, &Target::EditMessage.to_dom()).unwrap(), "営業時間外です");
         assert_eq!(handler.calendar().unwrap().appointments.len(), 2);
         grab(&mut handler, 1);
         handler.process_gesture(&Gesture::Tap, &state(), None);
-        let same =
-            form_query("kept", &display(base, Lang::Ja, Format::Date), 101, "10:00", "11:00");
+        let same = form_query("kept", &display(base, Lang::Ja, Format::Date), 1, "10:00", "11:00");
         submit(&mut handler, &same);
         assert_eq!(handler.calendar().unwrap().appointments[0].title(), "kept");
     }
@@ -3499,14 +3581,6 @@ mod tests {
         let commands = press(&mut handler, Target::Modal.to_dom());
         assert!(matches!(commands.as_slice(), [Command::CloseModal { .. }]));
         assert!(handler.editing.is_none());
-    }
-
-    #[test]
-    fn month_button_shows_the_month_form_again() {
-        let mut handler = Handler::new(VIEWPORT, today(), REM);
-        let commands = press(&mut handler, Target::MonthOpen.to_dom());
-        assert!(commands.iter().any(|c| matches!(c,
-            Command::SetAttribute { id, attribute: Attribute::Hidden, .. } if *id == Target::EditForm.to_dom())));
     }
 
     #[test]
@@ -3547,7 +3621,7 @@ mod tests {
         }
         store.0.borrow_mut().committed.insert(
             crate::calendar::data::Record::key(
-                &Calendar::parse(
+                &Calendar::decode(
                     &fs::read(concat!(
                         env!("CARGO_MANIFEST_DIR"),
                         "/examples/calendar/data/calendar.json"
@@ -3575,5 +3649,239 @@ mod tests {
         let mut handler = Handler::new(VIEWPORT, today(), REM);
         assert!(press(&mut handler, Target::Save.to_dom()).is_empty());
         assert!(handler.discard_commands().is_empty());
+    }
+
+    fn month_fixture(appointments: Vec<crate::calendar::data::Appointment>) -> Handler {
+        let mut handler = Handler::new(VIEWPORT, today(), REM);
+        handler.calendar = Some(calendar_with(appointments));
+        choose(&mut handler, View::Month);
+        handler
+    }
+
+    fn month_first() -> u64 {
+        pack(2026, 9, 28, 0, 0, 0, 0, 0, 0)
+    }
+
+    fn month_point(day: u32, row: Option<u32>) -> (f64, f64) {
+        let bx = MONTH_AXIS.bbox(day, row).unwrap();
+        let (ox, oy) = grid_origin();
+        (
+            ox + (bx.base()[0].get() + 0.5) * column_px(VIEWPORT, View::Month, REM),
+            oy + (bx.base()[1].get() + 0.5) * MONTH_ROW_REM * REM,
+        )
+    }
+
+    fn placed_ids(handler: &Handler) -> Vec<(u32, [f64; 2])> {
+        let calendar = handler.calendar().unwrap();
+        handler
+            .placed
+            .borrow()
+            .iter()
+            .map(|placed| {
+                let base = [placed.bx.base()[0].get(), placed.bx.base()[1].get()];
+                (calendar.appointments[placed.index].id(), base)
+            })
+            .collect()
+    }
+
+    fn multi(id: u32, places: &[(u64, u32)]) -> crate::calendar::data::Appointment {
+        let places: Vec<Place> =
+            places.iter().map(|(day, resource)| Place { day: *day, resource: *resource }).collect();
+        crate::calendar::data::Appointment::new(id, &places, 600, 660, "m", 0, 0, "")
+    }
+
+    #[test]
+    fn month_button_lays_out_weeks_inside_the_shared_frame() {
+        let mut handler = Handler::new(VIEWPORT, today(), REM);
+        handler.calendar = Some(calendar_with(vec![]));
+        let commands = choose(&mut handler, View::Month);
+        assert_eq!(handler.view(), View::Month);
+        assert_eq!(grid_columns(&commands), week_grid(7, 7));
+        let count = MONTH_WEEKS * (DAY_ROWS + 1);
+        let axis = format!("var(--head-height) repeat({count}, {MONTH_ROW_REM}rem)");
+        assert_eq!(
+            grid_rows(&commands),
+            [
+                (Target::TimeAxis.to_dom(), axis),
+                (
+                    Target::Surface.to_dom(),
+                    format!(
+                        "var(--head-title) var(--head-resource) calc({MONTH_ROW_REM}rem * {count})"
+                    )
+                ),
+            ]
+        );
+        assert_eq!(hidden_count(&commands), 28);
+        let text = |target: Target| text_of(&commands, &target.to_dom()).unwrap();
+        assert_eq!(text(Target::DayTitle(1)), "月");
+        assert_eq!(text(Target::DayTitle(7)), "日");
+        assert_eq!(text(Target::Title), "2026年9月28日(月) – 2026年11月1日(日)");
+        assert_eq!(text(Target::BandLabel(1)), "28");
+        assert_eq!(text(Target::BandLabel(4)), "10/1");
+        assert_eq!(text(Target::BandLabel(35)), "11/1");
+        assert_eq!(text(Target::AxisLabel(1, 2)), "9/28");
+        assert_eq!(text(Target::AxisLabel(2, 2 + DAY_ROWS + 1)), "10/5");
+        assert_eq!(text(Target::AxisLabel(1, 3)), "");
+        assert!(commands.iter().any(|command| matches!(command,
+            Command::SetAttribute { id, attribute: Attribute::AriaCurrent, .. }
+                if *id == Target::Band(5).to_dom())));
+        assert!(commands.iter().any(|command| matches!(command,
+            Command::SetAttribute { id, attribute: Attribute::Disabled, .. }
+                if *id == Target::Zoom.to_dom())));
+    }
+
+    #[test]
+    fn month_cards_stack_up_to_the_row_count_per_day_in_id_order() {
+        let base = today();
+        let handler = month_fixture(vec![
+            appointment(5, base, 101, 540, 600),
+            appointment(2, base, 102, 900, 960),
+            appointment(9, base, 103, 600, 660),
+            appointment(7, base, 104, 1100, 1160),
+            multi(3, &[(after(base, 1), 101), (after(base, 1), 102)]),
+            appointment(4, after(base, -10), 101, 600, 660),
+            appointment(8, after(base, 35), 101, 600, 660),
+        ]);
+        assert_eq!(
+            placed_ids(&handler),
+            [(2, [4.0, 1.0]), (5, [4.0, 2.0]), (7, [4.0, 3.0]), (3, [5.0, 1.0])]
+        );
+        assert!(
+            handler
+                .placed
+                .borrow()
+                .iter()
+                .all(|placed| placed.bx.offset()[0].get() == 1.0
+                    && placed.bx.offset()[1].get() == 1.0)
+        );
+    }
+
+    #[test]
+    fn dragging_a_month_card_shifts_its_days_and_keeps_the_time_and_resources() {
+        let base = today();
+        let mut handler = month_fixture(vec![multi(1, &[(base, 101), (after(base, 1), 102)])]);
+        let (x, y) = month_point(4, Some(0));
+        handler.process_canvas(
+            &pointer_down(Target::CardPart(1, CardPart::Title).to_dom(), x, y),
+            &state(),
+        );
+        let (x, y) = month_point(13, Some(2));
+        drag_to(&mut handler, x, y);
+        end(&mut handler);
+        let appointment = &handler.calendar().unwrap().appointments[0];
+        assert_eq!(
+            appointment.cells(),
+            [
+                Place { day: after(base, 9), resource: 101 },
+                Place { day: after(base, 10), resource: 102 },
+            ]
+        );
+        assert_eq!((appointment.start(), appointment.end()), (600, 660));
+        assert!(handler.dirty());
+        assert_eq!(placed_ids(&handler), [(1, [6.0, 5.0]), (1, [0.0, 9.0])]);
+    }
+
+    #[test]
+    fn tapping_an_empty_month_cell_opens_a_new_form_on_that_day() {
+        let mut handler = month_fixture(vec![]);
+        let (x, y) = month_point(10, Some(2));
+        handler.process_canvas(&pointer_down(Target::Surface.to_dom(), x, y), &state());
+        let commands = handler.process_gesture(&Gesture::Tap, &state(), None).1;
+        let value = |field| value_of(&commands, &Target::EditField(field).to_dom()).unwrap();
+        assert_eq!(value(EditField::Date), "2026-10-08");
+        assert_eq!(value(EditField::Resource), "1");
+        assert_eq!(value(EditField::Start), "09:00");
+        assert_eq!(value(EditField::End), "10:00");
+    }
+
+    #[test]
+    fn tapping_a_month_date_opens_its_day_and_restores_the_time_axis() {
+        let mut handler = month_fixture(vec![]);
+        let (x, y) = month_point(9, None);
+        handler.process_canvas(&pointer_down(Target::Surface.to_dom(), x, y), &state());
+        let commands = handler.process_gesture(&Gesture::Tap, &state(), None).1;
+        assert_eq!(handler.view(), View::Day);
+        assert_eq!(handler.base(), after(month_first(), 9));
+        assert_eq!(text_of(&commands, &Target::AxisLabel(1, 2).to_dom()).unwrap(), "09:00");
+        assert_eq!(text_of(&commands, &Target::AxisLabel(2, 45).to_dom()).unwrap(), "19:45");
+        assert!(commands.iter().any(|command| matches!(command,
+            Command::SetAttribute { id, attribute: Attribute::Hidden, .. }
+                if *id == Target::Band(4).to_dom())));
+        assert!(commands.iter().any(|command| matches!(command,
+            Command::RemoveAttribute { id, attribute: Attribute::Disabled }
+                if *id == Target::Zoom.to_dom())));
+        assert!(handler.editing.is_none());
+    }
+
+    #[test]
+    fn the_zoom_slider_does_not_rescale_the_month() {
+        let mut handler = month_fixture(vec![appointment(1, today(), 101, 600, 660)]);
+        assert!(handler.process_canvas(&input(Target::Zoom.to_dom(), "3"), &state()).1.is_empty());
+        assert_eq!(handler.slot_rem, SLOT_REM);
+        let height = card_box(&handler.card_commands(), 1).unwrap().3;
+        assert_eq!(height as f64, MONTH_ROW_REM * REM);
+    }
+
+    #[test]
+    fn page_steps_skip_the_span_of_each_view() {
+        let mut handler = Handler::new(VIEWPORT, today(), REM);
+        for (view, page) in [(View::Day, 1), (View::ThreeDays, 3), (View::Week, 7)] {
+            choose(&mut handler, view);
+            press(&mut handler, Target::Step(5).to_dom());
+            assert_eq!(diff(today(), handler.base()) / DAY, page, "{view:?}");
+            press(&mut handler, Target::Step(1).to_dom());
+            assert_eq!(handler.base(), today(), "{view:?}");
+        }
+    }
+
+    #[test]
+    fn month_steps_scroll_a_week_or_a_page() {
+        let mut handler = month_fixture(vec![]);
+        let commands = press(&mut handler, Target::Step(4).to_dom());
+        assert_eq!(text_of(&commands, &Target::BandLabel(1).to_dom()).unwrap(), "5");
+        let commands = press(&mut handler, Target::Step(5).to_dom());
+        assert_eq!(text_of(&commands, &Target::BandLabel(1).to_dom()).unwrap(), "9");
+        let commands = press(&mut handler, Target::Step(1).to_dom());
+        assert_eq!(text_of(&commands, &Target::BandLabel(1).to_dom()).unwrap(), "5");
+        choose(&mut handler, View::Week);
+        let commands = press(&mut handler, Target::Step(5).to_dom());
+        assert_eq!(text_of(&commands, &Target::DayTitle(1).to_dom()).unwrap(), "10/16(金)");
+    }
+
+    #[test]
+    fn options_follow_the_loaded_statuses_and_resources() {
+        let mut handler = Handler::new(VIEWPORT, today(), REM);
+        let commands = handler.process_fetched(&sample_response(1, 200)).1;
+        assert_eq!(text_of(&commands, &Target::StatusOption(2).to_dom()).unwrap(), "C");
+        assert_eq!(text_of(&commands, &Target::ResourceOption(4).to_dom()).unwrap(), "Studio 4");
+        assert_eq!(text_of(&commands, &Target::CategoryOption(2).to_dom()).unwrap(), "Follow-up");
+
+        let (handler, _) = drag_fixture();
+        let hidden: Vec<Id> = handler
+            .option_commands()
+            .into_iter()
+            .filter_map(|command| match command {
+                Command::SetAttribute { id, attribute: Attribute::Hidden, .. } => Some(id),
+                _ => None,
+            })
+            .collect();
+        let surplus = (2..=4).map(Target::StatusOption).chain((2..=4).map(Target::CategoryOption));
+        assert_eq!(hidden, surplus.map(Target::to_dom).collect::<Vec<_>>());
+    }
+
+    #[test]
+    fn a_form_with_an_option_outside_the_data_is_rejected() {
+        let (mut handler, base) = drag_fixture();
+        let date = display(base, Lang::Ja, Format::Date);
+        for (query, message) in [
+            (form_query("x", &date, 1, "10:00", "11:00").replace("&3=1", "&3=2"), "状態が不正です"),
+            (form_query("x", &date, 5, "10:00", "11:00"), "資源が不正です"),
+            (form_query("x", &date, 0, "10:00", "11:00"), "資源が不正です"),
+        ] {
+            tap_empty(&mut handler, 0.0, 6.0);
+            let commands = submit(&mut handler, &query);
+            assert_eq!(text_of(&commands, &Target::EditMessage.to_dom()).unwrap(), message);
+        }
+        assert_eq!(handler.calendar().unwrap().appointments.len(), 2);
     }
 }

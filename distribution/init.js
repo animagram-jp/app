@@ -692,6 +692,7 @@ const TAGS = [
     "modal",
     "nav",
     "ol",
+    "option",
     "output",
     "p",
     "section",

@@ -5,7 +5,9 @@ use core::{
 };
 
 use crate::{
-    calendar::data::{Appointment, Calendar, DataError, Meta, Record, Resource, Shift, Status},
+    calendar::data::{
+        Appointment, Calendar, Category, DataError, Meta, Record, Resource, Shift, Status,
+    },
     file_store::{FileStore, FileStoreError},
 };
 
@@ -59,13 +61,16 @@ pub fn seed(store: &mut dyn Store, calendar: &Calendar) -> Result<(), DataError>
     for status in &calendar.statuses {
         put(store, status)?;
     }
+    for category in &calendar.categories {
+        put(store, category)?;
+    }
     for shift in &calendar.shifts {
         put(store, shift)?;
     }
     for appointment in &calendar.appointments {
         put(store, appointment)?;
     }
-    put(store, &Meta::new(&calendar.headers, calendar.complete))
+    put(store, &calendar.meta)
 }
 
 fn records<R: Record>(store: &dyn Store) -> Result<Vec<R>, DataError> {
@@ -80,12 +85,11 @@ pub fn load(store: &dyn Store) -> Result<Option<Calendar>, DataError> {
     let Some(bytes) = store.get(META_KEY) else {
         return Ok(None);
     };
-    let meta = Meta::from_bytes(&bytes)?;
     Ok(Some(Calendar {
-        headers:      meta.headers(),
-        complete:     meta.complete(),
+        meta:         Meta::from_bytes(&bytes)?,
         resources:    records::<Resource>(store)?,
         statuses:     records::<Status>(store)?,
+        categories:   records::<Category>(store)?,
         shifts:       records::<Shift>(store)?,
         appointments: records::<Appointment>(store)?,
     }))
@@ -202,14 +206,14 @@ mod tests {
         let bytes =
             fs::read(concat!(env!("CARGO_MANIFEST_DIR"), "/examples/calendar/data/calendar.json"))
                 .unwrap();
-        Calendar::parse(&bytes).unwrap()
+        Calendar::decode(&bytes).unwrap()
     }
 
     fn same(a: &Calendar, b: &Calendar) -> bool {
-        a.headers == b.headers
-            && a.complete == b.complete
+        a.meta == b.meta
             && a.resources == b.resources
             && a.statuses == b.statuses
+            && a.categories == b.categories
             && a.shifts == b.shifts
             && a.appointments == b.appointments
     }
@@ -224,9 +228,9 @@ mod tests {
         let calendar = sample();
         let mut store = MemoryStore::default();
         seed(&mut store, &calendar).unwrap();
-        assert_eq!(store.pending_len(), 4 + 4 + 201 + 380 + 1);
+        assert_eq!(store.pending_len(), 4 + 4 + 4 + 201 + 380 + 1);
         store.save().unwrap();
-        assert_eq!(store.committed_len(), 590);
+        assert_eq!(store.committed_len(), 594);
         let loaded = load(&store).unwrap().unwrap();
         assert!(same(&loaded, &calendar));
     }
@@ -291,7 +295,7 @@ mod tests {
             }
         }
         assert_eq!(calendar.appointments[0].key().unwrap() >> 28, KIND_APPOINTMENT);
-        assert_eq!(Meta::new(&calendar.headers, true).key().unwrap(), META_KEY);
+        assert_eq!(calendar.meta.key().unwrap(), META_KEY);
         assert_eq!(KIND_META, 0);
         assert_eq!(KIND_RESOURCE, 1);
         assert_eq!(KIND_STATUS, 2);

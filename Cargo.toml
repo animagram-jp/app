@@ -32,7 +32,6 @@ rand  = { version = "0.10", default-features = false, features = ["alloc", "sys_
 log   = { version = "0.4", default-features = false, optional = true }
 libm  = { version = "0.2", default-features = false }
 rectgrid   = { version = "0.3.0", features = ["geometry"], optional = true }
-serde      = { version = "1", default-features = false, features = ["derive", "alloc"], optional = true }
 serde_json = { version = "1", default-features = false, features = ["alloc"], optional = true }
 
 [dev-dependencies]
@@ -46,7 +45,7 @@ spinning_top  = { version = "0.3", default-features = false }
 [features]
 default = ["worker"]
 logging = ["dep:log"]
-calendar = ["dep:rectgrid", "dep:serde", "dep:serde_json"]
+calendar = ["dep:rectgrid", "dep:serde_json"]
 worker = [] # for dedicated worker. Alse required RUSTFLAGS -Ctarget-feature=+atomics
 
 [profile.release]
