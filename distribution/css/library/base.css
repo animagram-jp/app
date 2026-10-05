@@ -304,10 +304,6 @@
 
     /* --- class, attribute --- */
 
-    .hidden {
-        display: none !important;
-    }
-
     .visually-hidden {
         clip: rect(0 0 0 0) !important;
         clip-path: inset(50%) !important;

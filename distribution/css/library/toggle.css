@@ -25,13 +25,6 @@
     }
 
     label > input[type="checkbox"][role="switch"] {
-        --toggle-dir: 1;
-    }
-    label > input[type="checkbox"][role="switch"]:dir(rtl) {
-        --toggle-dir: -1;
-    }
-
-    label > input[type="checkbox"][role="switch"] {
         background-color: var(--color-ink-mix);
     }
 
@@ -116,7 +109,10 @@
             }
 
             &:checked::after {
-                transform: translateX(calc(calc(var(--xs-box-height) - var(--xs-border-width) * 4) * var(--toggle-dir, 1)));
+                transform: translateX(calc(var(--xs-box-height) - var(--xs-border-width) * 4));
+            }
+            &:checked:dir(rtl)::after {
+                transform: translateX(calc(calc(var(--xs-box-height) - var(--xs-border-width) * 4) * -1));
             }
         }
 
@@ -136,7 +132,10 @@
             }
 
             &:checked::after {
-                transform: translateX(calc(calc(var(--sm-box-height) - var(--sm-border-width) * 4) * var(--toggle-dir, 1)));
+                transform: translateX(calc(var(--sm-box-height) - var(--sm-border-width) * 4));
+            }
+            &:checked:dir(rtl)::after {
+                transform: translateX(calc(calc(var(--sm-box-height) - var(--sm-border-width) * 4) * -1));
             }
         }
 
@@ -159,7 +158,10 @@
             }
 
             &:checked::after {
-                transform: translateX(calc(calc(var(--md-box-height) - var(--md-border-width) * 4) * var(--toggle-dir, 1)));
+                transform: translateX(calc(var(--md-box-height) - var(--md-border-width) * 4));
+            }
+            &:checked:dir(rtl)::after {
+                transform: translateX(calc(calc(var(--md-box-height) - var(--md-border-width) * 4) * -1));
             }
         }
 
@@ -179,7 +181,10 @@
             }
 
             &:checked::after {
-                transform: translateX(calc(calc(var(--lg-box-height) - var(--lg-border-width) * 4) * var(--toggle-dir, 1)));
+                transform: translateX(calc(var(--lg-box-height) - var(--lg-border-width) * 4));
+            }
+            &:checked:dir(rtl)::after {
+                transform: translateX(calc(calc(var(--lg-box-height) - var(--lg-border-width) * 4) * -1));
             }
         }
 
@@ -199,7 +204,10 @@
             }
 
             &:checked::after {
-                transform: translateX(calc(calc(var(--xl-box-height) - var(--xl-border-width) * 4) * var(--toggle-dir, 1)));
+                transform: translateX(calc(var(--xl-box-height) - var(--xl-border-width) * 4));
+            }
+            &:checked:dir(rtl)::after {
+                transform: translateX(calc(calc(var(--xl-box-height) - var(--xl-border-width) * 4) * -1));
             }
         }
 
@@ -219,7 +227,10 @@
             }
 
             &:checked::after {
-                transform: translateX(calc(calc(var(--2xl-box-height) - var(--2xl-border-width) * 4) * var(--toggle-dir, 1)));
+                transform: translateX(calc(var(--2xl-box-height) - var(--2xl-border-width) * 4));
+            }
+            &:checked:dir(rtl)::after {
+                transform: translateX(calc(calc(var(--2xl-box-height) - var(--2xl-border-width) * 4) * -1));
             }
         }
     }

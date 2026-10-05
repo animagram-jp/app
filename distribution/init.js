@@ -321,7 +321,8 @@ async function push_fetched(request, status, bytes) {
 const js_fn = {
     show_toast: (el) => {
         cancel_toast_cycle(el);
-        el.classList.remove("hidden", "hide");
+        el.classList.remove("hide");
+        el.hidden = false;
         requestAnimationFrame(() => requestAnimationFrame(() => {
             el.classList.add("show");
             const timer = setTimeout(() => js_fn.hide_toast(el), 3000);
@@ -333,7 +334,8 @@ const js_fn = {
         const controller = new AbortController();
         const finish = () => {
             clearTimeout(fallback);
-            el.classList.replace("hide", "hidden");
+            el.classList.remove("hide");
+            el.hidden = true;
         };
         el.classList.replace("show", "hide");
         el.addEventListener("transitionend", finish, { once: true, signal: controller.signal });
