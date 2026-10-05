@@ -87,15 +87,14 @@
     :where(dialog:modal) {
         all: revert;
         box-sizing: border-box;
+        scrollbar-gutter: stable;
     }
 
-    :where(html):has(:modal) {
-        overflow: clip;
-        scrollbar-gutter: auto;
-    }
-    :where(body):has(:modal) {
-        overflow: auto;
+    :where(html) {
         scrollbar-gutter: stable;
+    }
+    :where(html):has(:modal) {
+        overflow: hidden;
     }
 
     :where(dialog, [popover]) { /* per kiso.css:483-493 */

@@ -49,7 +49,6 @@ html {
 
 body {
     max-width: 100%;
-    min-height: 100dvh;
     overflow-x: hidden;
     padding: 0.25rem;
 }
@@ -139,10 +138,6 @@ main>section {
     background-color: var(--color-layer-3);
     padding-top: 0;
     vertical-align: bottom;
-}
-
-#main_section-2 fieldset {
-    border: none;
 }
 
 #main_section-2_fieldset-2,
