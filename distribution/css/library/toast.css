@@ -1,10 +1,10 @@
 /* Usage:
 
     <section data-type="toast" aria-live="polite" aria-atomic="true">
-        <output class="hidden">
+        <output>
             <span></span>
             <p></p></output>
-        <button data-sign="x" class="hidden">
+        <button data-sign="x">
             <span></span>
             <p></p></button></section>
 

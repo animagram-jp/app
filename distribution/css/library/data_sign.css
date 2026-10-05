@@ -1,9 +1,9 @@
 /*  Usage:
 
-    <* data-surround="" data-sign|facet="" (data-inline-axis="start|end|center")></>
+    <* data-surround="" data-sign|facet="" (data-inline-align="start|end|center")></>
 
     <* data-surround="">
-        <* data-sign-style="inline" data-sign|facet="" (data-inline-axis="start|end|center")></*></*>
+        <* data-sign-style="inline" data-sign|facet="" (data-inline-align="start|end|center")></*></*>
 
     <summary (data-facet="chevron")></summary>
 
