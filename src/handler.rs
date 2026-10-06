@@ -188,11 +188,11 @@ mod tests {
         dom::Id::new(&[(dom::Tag::Header, None), (dom::Tag::Button, Some(3))]).encode(&mut frame);
         frame.push(0);
         frame.push(0);
-        frame.encode::<str>("");
-        frame.encode::<f32>(&0.0);
-        frame.encode::<f32>(&0.0);
-        frame.encode::<f32>(&0.0);
-        frame.encode::<f32>(&0.0);
+        str::encode("", &mut frame);
+        0.0f32.encode(&mut frame);
+        0.0f32.encode(&mut frame);
+        0.0f32.encode(&mut frame);
+        0.0f32.encode(&mut frame);
         frame.extend_from_slice(&0f64.to_le_bytes());
         frame.extend_from_slice(&0u32.to_le_bytes());
         assert!(ARENA.ring_push(EVENT_RING, &frame));

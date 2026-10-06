@@ -82,37 +82,37 @@ pub enum WindowEvent {
 /// ```
 pub fn decode_event(frame: &[u8]) -> Option<Event> {
     let mut input = frame;
-    let kind = input.decode::<u8>()?;
+    let kind = u8::decode(&mut input)?;
     Some(match kind {
         EVENT_CANVAS => Event::Canvas(CanvasEvent {
-            event_type: EventType::decode_u8(input.decode::<u8>()?),
-            id:         input.decode()?,
-            key:        KeyName::decode_u8(input.decode::<u8>()?),
-            flags:      input.decode()?,
-            value:      input.decode()?,
-            x:          input.decode::<f32>()? as f64,
-            y:          input.decode::<f32>()? as f64,
-            local_x:    input.decode::<f32>()? as f64,
-            local_y:    input.decode::<f32>()? as f64,
-            time:       input.decode()?,
-            pointer_id: input.decode()?,
+            event_type: EventType::decode_u8(u8::decode(&mut input)?),
+            id:         Input::decode(&mut input)?,
+            key:        KeyName::decode_u8(u8::decode(&mut input)?),
+            flags:      Input::decode(&mut input)?,
+            value:      Input::decode(&mut input)?,
+            x:          f32::decode(&mut input)? as f64,
+            y:          f32::decode(&mut input)? as f64,
+            local_x:    f32::decode(&mut input)? as f64,
+            local_y:    f32::decode(&mut input)? as f64,
+            time:       Input::decode(&mut input)?,
+            pointer_id: Input::decode(&mut input)?,
         }),
         EVENT_RESIZE => Event::Window(WindowEvent::Resize {
-            width:  input.decode::<f32>()? as f64,
-            height: input.decode::<f32>()? as f64,
+            width:  f32::decode(&mut input)? as f64,
+            height: f32::decode(&mut input)? as f64,
         }),
         EVENT_SCROLL => Event::Window(WindowEvent::Scroll {
-            x: input.decode::<f32>()? as f64,
-            y: input.decode::<f32>()? as f64,
+            x: f32::decode(&mut input)? as f64,
+            y: f32::decode(&mut input)? as f64,
         }),
         EVENT_VISIBILITY => Event::Window(WindowEvent::Visibility {
-            state: VisibilityState::decode_u8(input.decode::<u8>()?),
+            state: VisibilityState::decode_u8(u8::decode(&mut input)?),
         }),
         EVENT_FETCH => Event::FetchChunk(FetchChunk {
-            request: input.decode()?,
-            status:  input.decode()?,
-            last:    input.decode::<u8>()? != 0,
-            bytes:   input.decode()?,
+            request: Input::decode(&mut input)?,
+            status:  Input::decode(&mut input)?,
+            last:    u8::decode(&mut input)? != 0,
+            bytes:   Input::decode(&mut input)?,
         }),
         EVENT_SHUTDOWN => Event::Window(WindowEvent::Shutdown),
         _ => return None,
@@ -125,7 +125,7 @@ mod tests {
     use core::matches;
 
     use super::*;
-    use crate::js_client::{Encode, Output, dom};
+    use crate::js_client::{Output, dom};
 
     const INIT_JS: &str = include_str!("../distribution/init.js");
 
@@ -150,13 +150,13 @@ mod tests {
         section(2).encode(&mut frame);
         frame.push(ENTER);
         frame.push(CTRL_REPEAT_SHIFT);
-        frame.encode::<str>("a");
-        frame.encode::<f32>(&1.5);
-        frame.encode::<f32>(&2.5);
-        frame.encode::<f32>(&0.5);
-        frame.encode::<f32>(&1.0);
+        str::encode("a", &mut frame);
+        1.5f32.encode(&mut frame);
+        2.5f32.encode(&mut frame);
+        0.5f32.encode(&mut frame);
+        1.0f32.encode(&mut frame);
         frame.extend_from_slice(&3.0f64.to_le_bytes());
-        frame.encode::<u32>(&9);
+        9u32.encode(&mut frame);
         frame
     }
 
@@ -203,8 +203,8 @@ mod tests {
     fn decodes_window_events() {
         let mut resize = Vec::new();
         resize.push(EVENT_RESIZE);
-        resize.encode::<f32>(&640.0);
-        resize.encode::<f32>(&480.0);
+        640.0f32.encode(&mut resize);
+        480.0f32.encode(&mut resize);
         assert!(matches!(
             decode_event(&resize),
             Some(Event::Window(WindowEvent::Resize { width: 640.0, height: 480.0 }))
@@ -212,8 +212,8 @@ mod tests {
 
         let mut scroll = Vec::new();
         scroll.push(EVENT_SCROLL);
-        scroll.encode::<f32>(&12.5);
-        scroll.encode::<f32>(&300.0);
+        12.5f32.encode(&mut scroll);
+        300.0f32.encode(&mut scroll);
         assert!(matches!(
             decode_event(&scroll),
             Some(Event::Window(WindowEvent::Scroll { x: 12.5, y: 300.0 }))
@@ -255,10 +255,10 @@ mod tests {
     fn decodes_fetch_chunks() {
         let mut frame = Vec::new();
         frame.push(EVENT_FETCH);
-        frame.encode::<u32>(&7);
+        7u32.encode(&mut frame);
         frame.extend_from_slice(&404u16.to_le_bytes());
         frame.push(1);
-        frame.encode::<u32>(&2);
+        2u32.encode(&mut frame);
         frame.extend_from_slice(&[5, 6]);
         let Some(Event::FetchChunk(chunk)) = decode_event(&frame) else {
             panic!("not a fetch chunk");

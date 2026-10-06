@@ -193,7 +193,7 @@ mod tests {
     use super::*;
     use crate::{
         event::EVENT_CANVAS,
-        js_client::{Encode, Gesture, Output, dom},
+        js_client::{Gesture, Output, dom},
     };
 
     const POINTER_DOWN: u8 = 10;
@@ -224,13 +224,13 @@ mod tests {
         id.encode(&mut frame);
         frame.push(0);
         frame.push(0);
-        frame.encode::<str>("");
-        frame.encode(&x);
-        frame.encode::<f32>(&0.0);
-        frame.encode(&x);
-        frame.encode::<f32>(&0.0);
+        str::encode("", &mut frame);
+        x.encode(&mut frame);
+        0.0f32.encode(&mut frame);
+        x.encode(&mut frame);
+        0.0f32.encode(&mut frame);
         frame.extend_from_slice(&time.to_le_bytes());
-        frame.encode(&pointer_id);
+        pointer_id.encode(&mut frame);
         frame
     }
 
@@ -319,10 +319,10 @@ mod tests {
     fn fetch_frame(request: u32, status: u16, last: bool, bytes: &[u8]) -> Vec<u8> {
         let mut frame = Vec::new();
         frame.push(crate::event::EVENT_FETCH);
-        frame.encode(&request);
+        request.encode(&mut frame);
         frame.extend_from_slice(&status.to_le_bytes());
         frame.push(last as u8);
-        frame.encode(&(bytes.len() as u32));
+        (bytes.len() as u32).encode(&mut frame);
         frame.extend_from_slice(bytes);
         frame
     }
