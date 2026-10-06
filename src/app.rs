@@ -26,8 +26,6 @@ use crate::{
     },
 };
 
-// === App ===
-
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 pub struct App {
     touch:      TouchTracker,

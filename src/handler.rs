@@ -195,14 +195,14 @@ mod tests {
         0.0f32.encode(&mut frame);
         frame.extend_from_slice(&0f64.to_le_bytes());
         frame.extend_from_slice(&0u32.to_le_bytes());
-        assert!(ARENA.ring_push(EVENT_RING, &frame));
+        assert!(ARENA.write_ring(EVENT_RING, &frame));
 
         process_event();
 
         let mut operations = Vec::new();
-        while let Some(command) = ARENA.ring_peek(COMMAND_RING) {
+        while let Some(command) = ARENA.read_ring(COMMAND_RING) {
             operations.push(command[0]);
-            ARENA.ring_commit_pop(COMMAND_RING);
+            ARENA.advance_ring(COMMAND_RING);
         }
         assert_eq!(operations, [OPERATION_REMOVE_ATTRIBUTE, OPERATION_SET_ATTRIBUTE]);
     }
