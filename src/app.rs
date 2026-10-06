@@ -72,20 +72,8 @@ impl App {
         };
     }
 
-    /// process(Event) and FIFO queue command (layout `[event:u8][payload...]`)
-    ///
-    /// ```no_run
-    /// # async fn example() {
-    /// # use app::app::App;
-    /// # use app::arena::APP;
-    /// # use app::js_client::Command;
-    /// App::init(false, 0.0, 0.0, 16.0, 0.0, 0).await;
-    /// let app = unsafe { (*(&raw mut APP)).as_mut() }.unwrap();
-    /// app.clear();
-    /// app.process(&[]);
-    /// assert!(matches!(app.commands()[0], Command::Error { .. }));
-    /// # }
-    /// ```
+    /// Decode a event frame and dispatch it together with every event
+    /// it derives, in FIFO order, appending the resulting commands. 
     pub fn process(&mut self, frame: &[u8]) {
         let Some(event) = decode_event(frame) else {
             self.commands.push(Command::Error { error: Error::Event(EventError::Decode) });
@@ -311,6 +299,38 @@ mod tests {
         app.process(&pointer_frame(POINTER_DOWN, &section(1), 10.0, 1, 0.0));
         app.process(&pointer_frame(POINTER_UP, &section(1), 10.0, 1, 50.0));
         assert!(app.events.is_empty());
+    }
+
+    #[cfg(not(feature = "calendar"))]
+    #[test]
+    fn commands_accumulate_across_frames_and_a_bad_frame_does_not_break_the_queue() {
+        const CLICK: u8 = 2;
+        let toggle = dom::Id::new(&[(dom::Tag::Header, None), (dom::Tag::Button, Some(3))]);
+        let mut app = new_app();
+
+        app.process(&pointer_frame(CLICK, &toggle, 0.0, 0, 0.0));
+        assert!(matches!(
+            app.commands(),
+            [Command::RemoveAttribute { .. }, Command::SetAttribute { .. }]
+        ));
+
+        app.process(&[]);
+        assert!(matches!(
+            app.commands(),
+            [.., Command::Error { error: Error::Event(EventError::Decode) }]
+        ));
+        assert_eq!(app.commands().len(), 3);
+
+        app.process(&pointer_frame(CLICK, &toggle, 0.0, 0, 0.0));
+        let [.., Command::SetAttribute { id: hidden, .. }] = app.commands() else {
+            panic!("not toggled back");
+        };
+        assert_eq!(*hidden, section(2));
+        assert_eq!(app.commands().len(), 5);
+        assert!(app.events.is_empty());
+
+        app.clear();
+        assert!(app.commands().is_empty());
     }
 
     #[cfg(feature = "calendar")]
