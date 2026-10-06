@@ -25,8 +25,9 @@ use crate::{
     event::{Event, Response},
     file_store::FileStoreError,
     js_client::{
-        Attribute, CanvasEvent, Command, EventType, Gesture, Keyword, Method, PointerState,
-        StyleProperty, StyleValue, Unit, VisibilityState, dom::Id, from_url_search_params,
+        Attribute, CanvasEvent, Command, Decimal, EventType, Gesture, Keyword, Method,
+        PointerState, StyleProperty, StyleValue, Unit, VisibilityState, dom::Id,
+        from_url_search_params, parse, text,
     },
     timestamp::{
         Format, Timezone, add_days, diff, display, from_ut, pack, sub_days, unpack, youbi,
@@ -67,6 +68,18 @@ const DAY_ROWS: u32 = 3;
 const MONTH_ROW_REM: f64 = 3.0;
 const MONTH_AXIS: MonthAxis = MonthAxis::new(MONTH_WEEKS, DAY_ROWS);
 const BAND_POOL: usize = MONTH_AXIS.days() as usize;
+
+struct RowRem(f64);
+
+impl Decimal for RowRem {
+    fn from_f64(value: f64) -> Self {
+        Self(value)
+    }
+
+    fn to_f64(&self) -> f64 {
+        self.0
+    }
+}
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum View {
@@ -627,7 +640,7 @@ impl Handler {
     }
 
     fn zoom(&mut self, value: &str) -> Vec<Command> {
-        let Ok(slot_rem) = value.parse::<f64>() else {
+        let Some(RowRem(slot_rem)) = parse(value.as_bytes()) else {
             return vec![];
         };
         let slot_rem = slot_rem.clamp(ZOOM_MIN, ZOOM_MAX);
@@ -1617,7 +1630,7 @@ impl Handler {
     }
 
     fn row_commands(&self) -> Vec<Command> {
-        let rem = self.row_rem();
+        let rem = text(&RowRem(self.row_rem()));
         let count = if self.month() { MONTH_AXIS.count() } else { SLOT_COUNT };
         let axis = format!("var(--head-height) repeat({count}, {rem}rem)");
         vec![

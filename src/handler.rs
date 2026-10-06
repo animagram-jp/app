@@ -171,9 +171,7 @@ mod tests {
         app::App,
         arena::{ARENA, COMMAND_RING, EVENT_RING, initialize, process_event},
         event::EVENT_CANVAS,
-        js_client::{
-            EventType, OPERATION_REMOVE_ATTRIBUTE, OPERATION_SET_ATTRIBUTE, dom, put_f32, put_str,
-        },
+        js_client::{EventType, OPERATION_REMOVE_ATTRIBUTE, OPERATION_SET_ATTRIBUTE, Output, dom},
     };
 
     const CLICK: u8 = 2;
@@ -190,11 +188,11 @@ mod tests {
         dom::Id::new(&[(dom::Tag::Header, None), (dom::Tag::Button, Some(3))]).encode(&mut frame);
         frame.push(0);
         frame.push(0);
-        put_str(&mut frame, "");
-        put_f32(&mut frame, 0.0);
-        put_f32(&mut frame, 0.0);
-        put_f32(&mut frame, 0.0);
-        put_f32(&mut frame, 0.0);
+        frame.encode::<str>("");
+        frame.encode::<f32>(&0.0);
+        frame.encode::<f32>(&0.0);
+        frame.encode::<f32>(&0.0);
+        frame.encode::<f32>(&0.0);
         frame.extend_from_slice(&0f64.to_le_bytes());
         frame.extend_from_slice(&0u32.to_le_bytes());
         assert!(ARENA.ring_push(EVENT_RING, &frame));

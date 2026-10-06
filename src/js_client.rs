@@ -1,7 +1,4 @@
-use alloc::{
-    string::{String, ToString},
-    vec::Vec,
-};
+use alloc::{string::String, vec::Vec};
 use core::{
     clone::Clone,
     cmp::{Eq, PartialEq},
@@ -112,44 +109,44 @@ pub fn encode_command(frame: &mut Vec<u8>, command: &Command) {
         Command::SetText { ref id, ref value } => {
             frame.push(OPERATION_SET_TEXT);
             id.encode(frame);
-            put_str(frame, value);
+            frame.encode::<str>(value);
         }
         Command::SetValue { ref id, ref value } => {
             frame.push(OPERATION_SET_VALUE);
             id.encode(frame);
-            put_str(frame, value);
+            frame.encode::<str>(value);
         }
         Command::SetAttribute { ref id, attribute, ref value } => {
             frame.push(OPERATION_SET_ATTRIBUTE);
             id.encode(frame);
-            put_u16(frame, attribute.encode_u16());
-            put_str(frame, value);
+            frame.encode(&attribute.encode_u16());
+            frame.encode::<str>(value);
         }
         Command::RemoveAttribute { ref id, attribute } => {
             frame.push(OPERATION_REMOVE_ATTRIBUTE);
             id.encode(frame);
-            put_u16(frame, attribute.encode_u16());
+            frame.encode(&attribute.encode_u16());
         }
         Command::AddClass { ref id, value } => {
             frame.push(OPERATION_ADD_CLASS);
             id.encode(frame);
-            put_u16(frame, value.encode_u16());
+            frame.encode(&value.encode_u16());
         }
         Command::RemoveClass { ref id, value } => {
             frame.push(OPERATION_REMOVE_CLASS);
             id.encode(frame);
-            put_u16(frame, value.encode_u16());
+            frame.encode(&value.encode_u16());
         }
         Command::SetStyle { ref id, property, ref value } => {
             frame.push(OPERATION_SET_STYLE);
             id.encode(frame);
-            put_u16(frame, property.encode_u16());
+            frame.encode(&property.encode_u16());
             value.encode(frame);
         }
         Command::RemoveStyle { ref id, property } => {
             frame.push(OPERATION_REMOVE_STYLE);
             id.encode(frame);
-            put_u16(frame, property.encode_u16());
+            frame.encode(&property.encode_u16());
         }
         Command::ShowModal { ref id } => {
             frame.push(OPERATION_SHOW_MODAL);
@@ -166,14 +163,14 @@ pub fn encode_command(frame: &mut Vec<u8>, command: &Command) {
         Command::JsFn { ref id, name } => {
             frame.push(OPERATION_JS_FN);
             id.encode(frame);
-            put_u16(frame, name.encode_u16());
+            frame.encode(&name.encode_u16());
         }
         Command::Fetch { request, method, ref path, ref body } => {
             frame.push(OPERATION_FETCH);
-            put_u32(frame, request);
+            frame.encode(&request);
             frame.push(method.encode_u8());
-            put_str(frame, path);
-            put_bytes(frame, body);
+            frame.encode::<str>(path);
+            frame.encode::<[u8]>(body);
         }
         Command::Error { ref error } => encode_error(frame, error, &error.detail()),
     }
@@ -186,34 +183,37 @@ pub(crate) fn encode_error(frame: &mut Vec<u8>, error: &Error, detail: &str) {
     error.identifiers(&mut path);
     frame.push(path.len() as u8);
     for identifier in path {
-        put_u16(frame, identifier);
+        frame.encode(&identifier);
     }
-    put_str(frame, detail);
+    frame.encode::<str>(detail);
 }
 
-pub(crate) fn put_u16(frame: &mut Vec<u8>, value: u16) {
-    frame.extend_from_slice(&value.to_le_bytes());
+pub trait Decode: Sized {
+    fn decode(input: &mut &[u8]) -> Option<Self>;
 }
 
-pub(crate) fn put_u32(frame: &mut Vec<u8>, value: u32) {
-    frame.extend_from_slice(&value.to_le_bytes());
+pub trait Encode {
+    fn encode(&self, output: &mut Vec<u8>);
 }
 
-pub(crate) fn put_i32(frame: &mut Vec<u8>, value: i32) {
-    frame.extend_from_slice(&value.to_le_bytes());
+pub trait Input {
+    fn decode<T: Decode>(&mut self) -> Option<T>;
 }
 
-pub(crate) fn put_f32(frame: &mut Vec<u8>, value: f32) {
-    frame.extend_from_slice(&value.to_le_bytes());
+pub trait Output {
+    fn encode<T: Encode + ?Sized>(&mut self, value: &T);
 }
 
-pub(crate) fn put_bytes(frame: &mut Vec<u8>, value: &[u8]) {
-    put_u32(frame, value.len() as u32);
-    frame.extend_from_slice(value);
+impl Input for &[u8] {
+    fn decode<T: Decode>(&mut self) -> Option<T> {
+        T::decode(self)
+    }
 }
 
-pub(crate) fn put_str(frame: &mut Vec<u8>, value: &str) {
-    put_bytes(frame, value.as_bytes());
+impl Output for Vec<u8> {
+    fn encode<T: Encode + ?Sized>(&mut self, value: &T) {
+        value.encode(self);
+    }
 }
 
 fn take<'a>(input: &mut &'a [u8], count: usize) -> Option<&'a [u8]> {
@@ -222,33 +222,129 @@ fn take<'a>(input: &mut &'a [u8], count: usize) -> Option<&'a [u8]> {
     Some(head)
 }
 
-pub(crate) fn get_u8(input: &mut &[u8]) -> Option<u8> {
-    Some(take(input, 1)?[0])
+macro_rules! scalar {
+    ($($type:ty),*) => {$(
+        impl Decode for $type {
+            fn decode(input: &mut &[u8]) -> Option<Self> {
+                Some(<$type>::from_le_bytes(take(input, size_of::<$type>())?.try_into().ok()?))
+            }
+        }
+
+        impl Encode for $type {
+            fn encode(&self, output: &mut Vec<u8>) {
+                output.extend_from_slice(&self.to_le_bytes());
+            }
+        }
+    )*};
 }
 
-pub(crate) fn get_u32(input: &mut &[u8]) -> Option<u32> {
-    Some(u32::from_le_bytes(take(input, 4)?.try_into().ok()?))
+scalar!(u8, u16, u32, i32, f32, f64);
+
+impl Decode for Vec<u8> {
+    fn decode(input: &mut &[u8]) -> Option<Self> {
+        let length = u32::decode(input)? as usize;
+        Some(take(input, length)?.to_vec())
+    }
 }
 
-pub(crate) fn get_f32(input: &mut &[u8]) -> Option<f32> {
-    Some(f32::from_le_bytes(take(input, 4)?.try_into().ok()?))
+impl Decode for String {
+    fn decode(input: &mut &[u8]) -> Option<Self> {
+        String::from_utf8(Vec::<u8>::decode(input)?).ok()
+    }
 }
 
-pub(crate) fn get_f64(input: &mut &[u8]) -> Option<f64> {
-    Some(f64::from_le_bytes(take(input, 8)?.try_into().ok()?))
+impl Encode for [u8] {
+    fn encode(&self, output: &mut Vec<u8>) {
+        output.encode(&(self.len() as u32));
+        output.extend_from_slice(self);
+    }
 }
 
-pub(crate) fn get_u16(input: &mut &[u8]) -> Option<u16> {
-    Some(u16::from_le_bytes(take(input, 2)?.try_into().ok()?))
+impl Encode for str {
+    fn encode(&self, output: &mut Vec<u8>) {
+        self.as_bytes().encode(output);
+    }
 }
 
-pub(crate) fn get_bytes<'a>(input: &mut &'a [u8]) -> Option<&'a [u8]> {
-    let length = get_u32(input)? as usize;
-    take(input, length)
+pub trait Decimal: Sized {
+    fn from_f64(value: f64) -> Self;
+    fn to_f64(&self) -> f64;
 }
 
-pub(crate) fn get_string(input: &mut &[u8]) -> Option<String> {
-    Some(str::from_utf8(get_bytes(input)?).ok()?.to_string())
+const FRACTION_UNIT: u64 = 1000;
+const FRACTION_WIDTH: usize = 3;
+
+impl<T: Decimal> Decode for T {
+    fn decode(input: &mut &[u8]) -> Option<Self> {
+        let (whole, rest) = input.split_at_checked(leading_digits(input))?;
+        let (fraction, rest) = match rest.split_first() {
+            Some((b'.', tail)) => tail.split_at_checked(leading_digits(tail))?,
+            _ => (&[][..], rest),
+        };
+        if whole.is_empty() && fraction.is_empty() {
+            return None;
+        }
+        *input = rest;
+        let mantissa = whole
+            .iter()
+            .chain(fraction)
+            .fold(0.0, |sum, &byte| sum * 10.0 + f64::from(byte - b'0'));
+        let scale = fraction.iter().fold(1.0, |scale, _| scale * 10.0);
+        Some(T::from_f64(mantissa / scale))
+    }
+}
+
+impl<T: Decimal> Encode for T {
+    fn encode(&self, output: &mut Vec<u8>) {
+        let value = self.to_f64();
+        let scaled = if value.is_finite() {
+            libm::round(libm::fabs(value) * FRACTION_UNIT as f64) as u64
+        } else {
+            0
+        };
+        if scaled != 0 && value.is_sign_negative() {
+            output.push(b'-');
+        }
+        push_decimal(output, scaled / FRACTION_UNIT, 1);
+        let mut fraction = scaled % FRACTION_UNIT;
+        if fraction == 0 {
+            return;
+        }
+        let mut width = FRACTION_WIDTH;
+        while fraction % 10 == 0 {
+            fraction /= 10;
+            width -= 1;
+        }
+        output.push(b'.');
+        push_decimal(output, fraction, width);
+    }
+}
+
+fn leading_digits(bytes: &[u8]) -> usize {
+    bytes.iter().take_while(|byte| byte.is_ascii_digit()).count()
+}
+
+fn push_decimal(output: &mut Vec<u8>, mut value: u64, width: usize) {
+    let mut digits = [b'0'; 20];
+    let mut start = digits.len();
+    while value > 0 || digits.len() - start < width {
+        start -= 1;
+        digits[start] = b'0' + (value % 10) as u8;
+        value /= 10;
+    }
+    output.extend_from_slice(&digits[start..]);
+}
+
+pub fn parse<T: Decode>(source: &[u8]) -> Option<T> {
+    let mut rest = source;
+    let value = rest.decode::<T>()?;
+    rest.is_empty().then_some(value)
+}
+
+pub fn text<T: Encode + ?Sized>(value: &T) -> String {
+    let mut output = Vec::new();
+    output.encode(value);
+    String::from_utf8(output).unwrap_or_default()
 }
 
 /// ```
@@ -443,20 +539,20 @@ pub enum StyleValue {
     Text(String),
 }
 
-impl StyleValue {
+impl Encode for StyleValue {
     fn encode(&self, frame: &mut Vec<u8>) {
         match self {
             Self::Integer(value) => {
                 frame.push(1);
-                put_i32(frame, *value);
+                frame.encode(value);
             }
             Self::Keyword(keyword) => {
                 frame.push(2);
-                put_u16(frame, keyword.encode_u16());
+                frame.encode(&keyword.encode_u16());
             }
             Self::Length(value, unit) => {
                 frame.push(3);
-                put_f32(frame, *value);
+                frame.encode(value);
                 frame.push(unit.encode_u8());
             }
             Self::List(items) => {
@@ -468,11 +564,11 @@ impl StyleValue {
             }
             Self::Number(value) => {
                 frame.push(5);
-                put_f32(frame, *value);
+                frame.encode(value);
             }
             Self::Text(text) => {
                 frame.push(6);
-                put_str(frame, text);
+                frame.encode::<str>(text);
             }
         }
     }
@@ -1856,7 +1952,7 @@ pub mod dom {
         primitive::{u8, u32, usize},
     };
 
-    use super::{get_u8, get_u32, put_u32};
+    use super::{Decode, Encode, Input, Output};
 
     #[derive(Debug, Clone, PartialEq)]
     pub enum Tag {
@@ -2020,25 +2116,121 @@ pub mod dom {
         pub fn new(segs: &[(Tag, Option<u32>)]) -> Self {
             Self(segs.iter().map(|(tag, n)| Segment { tag: tag.clone(), n: *n }).collect())
         }
+    }
 
-        pub fn encode(&self, frame: &mut Vec<u8>) {
-            frame.push(self.0.len() as u8);
+    impl Encode for Id {
+        fn encode(&self, output: &mut Vec<u8>) {
+            output.push(self.0.len() as u8);
             for segment in &self.0 {
-                frame.push(segment.tag.encode_u8());
-                put_u32(frame, segment.n.unwrap_or(u32::MAX));
+                output.push(segment.tag.encode_u8());
+                output.encode(&segment.n.unwrap_or(u32::MAX));
             }
         }
+    }
 
-        pub fn decode(input: &mut &[u8]) -> Option<Self> {
-            let count = get_u8(input)? as usize;
+    impl Decode for Id {
+        fn decode(input: &mut &[u8]) -> Option<Self> {
+            let count = input.decode::<u8>()? as usize;
             let mut segments = Vec::with_capacity(count);
             for _ in 0..count {
-                let tag = Tag::decode_u8(get_u8(input)?);
-                let number = get_u32(input)?;
+                let tag = Tag::decode_u8(input.decode()?);
+                let number = input.decode::<u32>()?;
                 segments
                     .push(Segment { tag, n: if number == u32::MAX { None } else { Some(number) } });
             }
             Some(Self(segments))
+        }
+    }
+}
+
+#[cfg(test)]
+mod decimal_tests {
+    use alloc::format;
+
+    use super::*;
+
+    struct Sample(f64);
+
+    impl Decimal for Sample {
+        fn from_f64(value: f64) -> Self {
+            Self(value)
+        }
+
+        fn to_f64(&self) -> f64 {
+            self.0
+        }
+    }
+
+    const SAMPLES: [f64; 14] =
+        [0.0, 0.05, 0.25, 0.35, 0.5, 1.0, 1.25, 1.5, 1.75, 2.0, 2.75, 3.0, 5.0, 123.456];
+
+    fn number(source: &str) -> Option<f64> {
+        parse::<Sample>(source.as_bytes()).map(|Sample(value)| value)
+    }
+
+    #[test]
+    fn decode_matches_std_parse() {
+        for value in SAMPLES {
+            let source = format!("{value}");
+            assert_eq!(number(&source), source.parse::<f64>().ok(), "{source}");
+        }
+        assert_eq!(number(".5"), Some(0.5));
+        assert_eq!(number("1."), Some(1.0));
+        assert_eq!(number("007.50"), Some(7.5));
+    }
+
+    #[test]
+    fn decode_rejects_non_decimal_text() {
+        for source in ["", ".", "-1", "+1", "1e3", "1.2.3", "abc", " 1", "1 ", "NaN", "inf"] {
+            assert_eq!(number(source), None, "{source:?}");
+        }
+    }
+
+    #[test]
+    fn decode_approximates_beyond_f64_precision() {
+        assert_eq!(number("9007199254740993"), Some(9007199254740992.0));
+        let tiny = number("0.000000000000000000000001").unwrap();
+        assert!((tiny - 1e-24).abs() < 1e-36);
+    }
+
+    #[test]
+    fn decode_advances_the_cursor_only_on_success() {
+        let mut rest: &[u8] = b"1.75rem";
+        assert_eq!(rest.decode::<Sample>().map(|Sample(value)| value), Some(1.75));
+        assert_eq!(rest, b"rem");
+        let mut rest: &[u8] = b"1.2.3";
+        assert_eq!(rest.decode::<Sample>().map(|Sample(value)| value), Some(1.2));
+        assert_eq!(rest, b".3");
+        let mut rest: &[u8] = b"rem";
+        assert!(rest.decode::<Sample>().is_none());
+        assert_eq!(rest, b"rem");
+    }
+
+    #[test]
+    fn encode_matches_std_display() {
+        for value in SAMPLES {
+            assert_eq!(text(&Sample(value)), format!("{value}"));
+            assert_eq!(
+                text(&Sample(-value)),
+                if value == 0.0 { "0".into() } else { format!("-{value}") }
+            );
+        }
+    }
+
+    #[test]
+    fn encode_rounds_to_three_fraction_digits() {
+        assert_eq!(text(&Sample(1.23456)), "1.235");
+        assert_eq!(text(&Sample(0.0004)), "0");
+        assert_eq!(text(&Sample(f64::NAN)), "0");
+        assert_eq!(text(&Sample(f64::INFINITY)), "0");
+    }
+
+    #[test]
+    fn round_trips_on_slider_steps() {
+        let mut value = 1.0;
+        while value <= 3.0 {
+            assert_eq!(number(&text(&Sample(value))), Some(value));
+            value += 0.25;
         }
     }
 }
@@ -2380,38 +2572,38 @@ mod wire_tests {
     fn primitives_round_trip() {
         let mut frame = Vec::new();
         frame.push(7);
-        put_u16(&mut frame, 0x0102);
-        put_u32(&mut frame, 0xDEAD_BEEF);
-        put_i32(&mut frame, -2);
-        put_f32(&mut frame, 1.5);
-        frame.extend_from_slice(&2.5f64.to_le_bytes());
-        put_str(&mut frame, "日本語");
+        frame.encode::<u16>(&0x0102);
+        frame.encode::<u32>(&0xDEAD_BEEF);
+        frame.encode::<i32>(&-2);
+        frame.encode::<f32>(&1.5);
+        frame.encode::<f64>(&2.5);
+        frame.encode::<str>("日本語");
         assert_eq!(&frame[1..3], [0x02, 0x01]);
         assert_eq!(&frame[7..11], (-2i32).to_le_bytes());
 
         let mut input = &frame[..];
-        assert_eq!(get_u8(&mut input), Some(7));
+        assert_eq!(input.decode::<u8>(), Some(7));
         input = &input[2..];
-        assert_eq!(get_u32(&mut input), Some(0xDEAD_BEEF));
+        assert_eq!(input.decode::<u32>(), Some(0xDEAD_BEEF));
         input = &input[4..];
-        assert_eq!(get_f32(&mut input), Some(1.5));
-        assert_eq!(get_f64(&mut input), Some(2.5));
-        assert_eq!(get_string(&mut input).as_deref(), Some("日本語"));
+        assert_eq!(input.decode::<f32>(), Some(1.5));
+        assert_eq!(input.decode::<f64>(), Some(2.5));
+        assert_eq!(input.decode::<String>().as_deref(), Some("日本語"));
         assert!(input.is_empty());
-        assert_eq!(get_u8(&mut input), None);
+        assert_eq!(input.decode::<u8>(), None);
     }
 
     #[test]
     fn bytes_round_trip_and_reject_short_input() {
         let mut frame = Vec::new();
-        put_bytes(&mut frame, &[1, 2, 3]);
-        put_u16(&mut frame, 0x0102);
+        frame.encode::<[u8]>(&[1, 2, 3]);
+        frame.encode::<u16>(&0x0102);
         let mut input = &frame[..];
-        assert_eq!(get_bytes(&mut input), Some(&[1, 2, 3][..]));
-        assert_eq!(get_u16(&mut input), Some(0x0102));
+        assert_eq!(input.decode::<Vec<u8>>(), Some(vec![1, 2, 3]));
+        assert_eq!(input.decode::<u16>(), Some(0x0102));
         assert!(input.is_empty());
-        assert_eq!(get_bytes(&mut &[4, 0, 0, 0, 1][..]), None);
-        assert_eq!(get_u16(&mut &[1][..]), None);
+        assert_eq!((&[4u8, 0, 0, 0, 1][..]).decode::<Vec<u8>>(), None);
+        assert_eq!((&[1u8][..]).decode::<u16>(), None);
     }
 
     #[test]
@@ -2437,19 +2629,19 @@ mod wire_tests {
 
     #[test]
     fn get_functions_reject_short_or_invalid_input() {
-        assert_eq!(get_u32(&mut &[1, 2, 3][..]), None);
-        assert_eq!(get_f32(&mut &[0; 3][..]), None);
-        assert_eq!(get_f64(&mut &[0; 7][..]), None);
+        assert_eq!((&[1u8, 2, 3][..]).decode::<u32>(), None);
+        assert_eq!((&[0u8; 3][..]).decode::<f32>(), None);
+        assert_eq!((&[0u8; 7][..]).decode::<f64>(), None);
 
         let mut too_long = Vec::new();
-        put_u32(&mut too_long, 5);
+        too_long.encode::<u32>(&5);
         too_long.extend_from_slice(b"abcd");
-        assert_eq!(get_string(&mut &too_long[..]), None);
+        assert_eq!((&too_long[..]).decode::<String>(), None);
 
         let mut invalid = Vec::new();
-        put_u32(&mut invalid, 2);
+        invalid.encode::<u32>(&2);
         invalid.extend_from_slice(&[0xFF, 0xFE]);
-        assert_eq!(get_string(&mut &invalid[..]), None);
+        assert_eq!((&invalid[..]).decode::<String>(), None);
     }
 
     #[test]
