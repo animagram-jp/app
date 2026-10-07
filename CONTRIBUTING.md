@@ -82,7 +82,7 @@ cargo test --no-default-features --features calendar --lib
 ```bash
 cargo install wasm-bindgen-cli --version "$(grep -A1 '^name = "wasm-bindgen"$' Cargo.lock | sed -n 's/^version = "\(.*\)"$/\1/p')" --locked
 
-geckodriver --port 8000 & GECKODRIVER_REMOTE=http://127.0.0.1:8000 cargo test --target wasm32-unknown-unknown --lib --tests
+geckodriver --port 8000 & GECKODRIVER_REMOTE=http://127.0.0.1:8000 WASM_BINDGEN_TEST_TIMEOUT=60 cargo test --target wasm32-unknown-unknown --lib --tests
 pkill -f "geckodriver --port 8000"
 ```
 
