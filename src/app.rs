@@ -35,6 +35,7 @@ pub struct App {
     commands:   Vec<Command>,
     origin:     Option<CanvasEvent>,
     responses:  BTreeMap<u32, Vec<u8>>,
+    reopen:     Option<&'static str>,
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
@@ -80,13 +81,7 @@ impl App {
             return;
         };
 
-        self.events.push_back(event);
-
-        while let Some(event) = self.events.pop_front() {
-            let (new_events, new_commands) = self.dispatch(event);
-            self.events.extend(new_events);
-            self.commands.extend(new_commands);
-        }
+        self.run(event);
     }
 
     pub fn clear(&mut self) {
@@ -94,7 +89,7 @@ impl App {
     }
 
     fn dispatch(&mut self, event: Event) -> (Vec<Event>, Vec<Command>) {
-        let Self { handler, touch, thresholds, origin, responses, .. } = self;
+        let Self { handler, touch, thresholds, origin, responses, reopen, .. } = self;
 
         match event {
             Event::Canvas(canvas_event) => {
@@ -139,6 +134,11 @@ impl App {
                 (vec![Event::Fetched(response)], vec![])
             }
             Event::Fetched(response) => handler.process_fetched(&response),
+            Event::StoreLost { name } => {
+                *reopen = Some(name);
+                handler.process_lost()
+            }
+            Event::StoreOpened(opened) => handler.process_opened(opened),
             Event::Window(WindowEvent::Shutdown) => {
                 unsafe { RUNNING = false };
                 (vec![], self.handler.close())
@@ -157,7 +157,22 @@ impl App {
             commands: Vec::new(),
             origin: None,
             responses: BTreeMap::new(),
+            reopen: None,
         }
+    }
+
+    pub(crate) fn run(&mut self, event: Event) {
+        self.events.push_back(event);
+
+        while let Some(event) = self.events.pop_front() {
+            let (new_events, new_commands) = self.dispatch(event);
+            self.events.extend(new_events);
+            self.commands.extend(new_commands);
+        }
+    }
+
+    pub(crate) fn reopen_wanted(&mut self) -> Option<&'static str> {
+        self.reopen.take()
     }
 
     pub fn commands(&self) -> &[Command] {
@@ -174,6 +189,7 @@ mod tests {
     use super::*;
     use crate::{
         event::EVENT_CANVAS,
+        file_store::{Backend, FileStore},
         js_client::{Gesture, Output, dom},
         testing::{Rng, block_on},
     };
@@ -412,5 +428,16 @@ mod tests {
                 assert!(app.events.is_empty(), "seed {seed} step {step}");
             }
         }
+    }
+
+    #[test]
+    fn a_lost_store_is_remembered_once_for_the_serve_loop() {
+        let mut app = new_app();
+        assert_eq!(app.reopen_wanted(), None);
+        app.run(Event::StoreLost { name: "x" });
+        assert_eq!(app.reopen_wanted(), Some("x"));
+        assert_eq!(app.reopen_wanted(), None);
+        app.run(Event::StoreOpened(block_on(Backend::open("x"))));
+        assert!(app.events.is_empty());
     }
 }

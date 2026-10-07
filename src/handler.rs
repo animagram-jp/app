@@ -15,14 +15,11 @@ use crate::{
 use crate::{
     Lang,
     data_struct::DataStruct,
-    event::{Event, Response},
+    event::{Event, Opened, Response},
     js_client::{
         Attribute, CanvasEvent, Command, EventType, Gesture, PointerState, VisibilityState, dom,
     },
 };
-
-#[cfg(feature = "worker")]
-const RETRY_LIMIT: u8 = 3;
 
 pub enum CharacterSheet {
     Immutable,
@@ -49,9 +46,9 @@ pub struct Handler {
     character:       DataStruct,
     #[cfg(feature = "worker")]
     characters:      Backend,
-    logs:            Vec<Log>,
     #[cfg(feature = "worker")]
-    store_failures:  u8,
+    lost:            Vec<(u32, Option<Vec<u8>>)>,
+    logs:            Vec<Log>,
 }
 
 impl Handler {
@@ -73,9 +70,9 @@ impl Handler {
                 .await
                 .and_then(Backend::new)
                 .unwrap_or_else(|e| panic!("FileStore open failed: {e}")),
-            logs: Vec::new(),
             #[cfg(feature = "worker")]
-            store_failures: 0,
+            lost: Vec::new(),
+            logs: Vec::new(),
         }
     }
 
@@ -86,26 +83,46 @@ impl Handler {
     }
 
     #[cfg(feature = "worker")]
-    pub fn save(&mut self) -> Vec<Command> {
+    pub fn save(&mut self) -> (Vec<Event>, Vec<Command>) {
         match self.characters.save() {
-            Ok(()) => {
-                self.store_failures = 0;
-                vec![]
+            Ok(()) => (vec![], vec![]),
+            Err(e @ crate::file_store::FileStoreError::InvalidState(_)) => (
+                vec![Event::StoreLost { name: CHARACTER_SCHEMA_NAME }],
+                vec![Command::Error { error: Error::FileStore(e) }],
+            ),
+            Err(e) => (vec![], vec![Command::Error { error: Error::FileStore(e) }]),
+        }
+    }
+
+    #[cfg(feature = "worker")]
+    pub fn process_lost(&mut self) -> (Vec<Event>, Vec<Command>) {
+        self.lost = self.characters.pending();
+        self.characters.close();
+        (vec![], vec![])
+    }
+
+    #[cfg(feature = "worker")]
+    pub fn process_opened(&mut self, opened: Opened) -> (Vec<Event>, Vec<Command>) {
+        match opened.and_then(Backend::new) {
+            Ok(mut store) => {
+                store.replay(core::mem::take(&mut self.lost));
+                self.characters = store;
+                (vec![], vec![])
             }
-            Err(_) if self.store_failures + 1 < RETRY_LIMIT => {
-                self.store_failures += 1;
-                vec![]
-            }
-            Err(e) => {
-                self.store_failures = 0;
-                match e {
-                    crate::file_store::FileStoreError::InvalidState(_) => {
-                        vec![Command::Error { error: Error::FileStore(e) }, Command::Reload]
-                    }
-                    _ => vec![Command::Error { error: Error::FileStore(e) }],
-                }
+            Err(error) => {
+                (vec![], vec![Command::Error { error: Error::FileStore(error) }, Command::Reload])
             }
         }
+    }
+
+    #[cfg(not(feature = "worker"))]
+    pub fn process_lost(&mut self) -> (Vec<Event>, Vec<Command>) {
+        (vec![], vec![])
+    }
+
+    #[cfg(not(feature = "worker"))]
+    pub fn process_opened(&mut self, _opened: Opened) -> (Vec<Event>, Vec<Command>) {
+        (vec![], vec![])
     }
 
     pub fn process_resize(&mut self, _width: f64, _height: f64) -> (Vec<Event>, Vec<Command>) {
@@ -277,5 +294,38 @@ mod toggle_tests {
         let first: Vec<_> =
             click(&mut handler, toggle_button()).iter().map(hidden_change).collect();
         assert_eq!(first, [(false, section(2)), (true, section(1))]);
+    }
+
+    #[cfg(feature = "worker")]
+    #[test]
+    fn closing_the_handler_releases_the_store() {
+        let mut handler = block_on(Handler::ready(0.0, 0.0, 16.0, 0.0, 0));
+        assert!(handler.save().1.is_empty());
+        assert!(handler.close().is_empty());
+        let (events, commands) = handler.save();
+        assert!(matches!(events.as_slice(), [Event::StoreLost { .. }]));
+        assert!(matches!(
+            commands.as_slice(),
+            [Command::Error {
+                error: Error::FileStore(crate::file_store::FileStoreError::InvalidState(_)),
+            }]
+        ));
+    }
+
+    #[cfg(feature = "worker")]
+    #[test]
+    fn a_lost_store_is_replaced_and_the_pending_change_survives() {
+        let mut handler = block_on(Handler::ready(0.0, 0.0, 16.0, 0.0, 0));
+        handler.characters.set(1, b"kept".to_vec());
+        let disk = block_on(Backend::open(CHARACTER_SCHEMA_NAME)).unwrap();
+
+        handler.close();
+        let (events, _) = handler.save();
+        assert!(matches!(events.as_slice(), [Event::StoreLost { .. }]));
+        handler.process_lost();
+        handler.process_opened(Ok(disk.clone()));
+        assert_eq!(handler.characters.get(1), Some(&b"kept"[..]));
+        assert!(handler.save().1.is_empty());
+        assert_eq!(Backend::new(disk).unwrap().get(1), Some(&b"kept"[..]));
     }
 }

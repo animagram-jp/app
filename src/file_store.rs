@@ -33,7 +33,10 @@ use alloc::{
     vec::Vec,
 };
 #[cfg(test)]
-use core::{cell::RefCell, future::ready};
+use core::{
+    cell::{Cell, RefCell},
+    future::ready,
+};
 use core::{
     clone::Clone,
     cmp::PartialEq,
@@ -386,6 +389,22 @@ pub trait FileStore: Sized {
         let index = self.index_mut();
         index.next_id += 1;
         index.next_id
+    }
+
+    fn pending(&self) -> Vec<(u32, Option<Vec<u8>>)> {
+        let index = self.index();
+        let sets =
+            index.unsaved.iter().filter_map(|id| Some((*id, Some(index.memory.get(id)?.clone()))));
+        sets.chain(index.deleted.iter().map(|id| (*id, None))).collect()
+    }
+
+    fn replay(&mut self, diff: Vec<(u32, Option<Vec<u8>>)>) {
+        for (id, value) in diff {
+            match value {
+                Some(bytes) => self.set(id, bytes),
+                None => self.delete(id),
+            }
+        }
     }
 
     /// Current value for `id`, straight from the RAM index — no disk access,
@@ -772,8 +791,15 @@ struct MemoryFileState {
 }
 
 #[cfg(test)]
-#[derive(Clone, Default)]
-pub struct MemoryFile(Rc<RefCell<MemoryFileState>>);
+#[derive(Default)]
+pub struct MemoryFile(Rc<RefCell<MemoryFileState>>, Cell<bool>);
+
+#[cfg(test)]
+impl Clone for MemoryFile {
+    fn clone(&self) -> Self {
+        Self(self.0.clone(), Cell::new(false))
+    }
+}
 
 #[cfg(test)]
 #[derive(Clone, Default)]
@@ -802,6 +828,13 @@ impl MemoryStore {
             File::Log => &self.log,
         }
     }
+
+    fn alive(&self, file: File) -> Result<(), FileStoreError> {
+        if self.file(file).1.get() {
+            return Err(FileStoreError::InvalidState(String::from("closed")));
+        }
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -827,10 +860,12 @@ impl FileStore for MemoryStore {
     }
 
     fn size(&self, file: File) -> Result<u32, FileStoreError> {
+        self.alive(file)?;
         Ok(self.file(file).0.borrow().bytes.len() as u32)
     }
 
     fn read_at(&self, file: File, buffer: &mut [u8], at: u32) -> Result<usize, FileStoreError> {
+        self.alive(file)?;
         let state = self.file(file).0.borrow();
         let start = (at as usize).min(state.bytes.len());
         let count = buffer.len().min(state.bytes.len() - start);
@@ -839,6 +874,7 @@ impl FileStore for MemoryStore {
     }
 
     fn write_at(&self, file: File, data: &[u8], at: u32) -> Result<usize, FileStoreError> {
+        self.alive(file)?;
         let mut state = self.file(file).0.borrow_mut();
         if state.failing {
             return Err(FileStoreError::QuotaExceeded(String::from("full")));
@@ -864,6 +900,7 @@ impl FileStore for MemoryStore {
     }
 
     fn flush(&self, file: File) -> Result<(), FileStoreError> {
+        self.alive(file)?;
         if self.file(file).0.borrow().flush_fails {
             return Err(FileStoreError::InvalidState(String::from("flush")));
         }
@@ -871,11 +908,15 @@ impl FileStore for MemoryStore {
     }
 
     fn truncate(&self, file: File, size: u32) -> Result<(), FileStoreError> {
+        self.alive(file)?;
         self.file(file).0.borrow_mut().bytes.resize(size as usize, 0);
         Ok(())
     }
 
-    fn close(&self) {}
+    fn close(&self) {
+        self.snap.1.set(true);
+        self.log.1.set(true);
+    }
 }
 
 #[cfg(test)]
@@ -1232,6 +1273,25 @@ mod tests {
                     "seed {seed} flip at {position}"
                 );
             }
+        }
+    }
+
+    #[test]
+    fn replaying_the_pending_diff_on_a_reopened_store_reproduces_the_current_state() {
+        for seed in 0..500 {
+            let mut rng = Rng::new(seed);
+            let disk = MemoryHandles::default();
+            let mut store = MemoryStore::new(disk.clone()).unwrap();
+            for _ in 0..rng.below(4) {
+                apply(&mut store, &random_records(&mut rng));
+                if rng.chance(60) {
+                    store.save().unwrap();
+                }
+            }
+            let mut reopened = MemoryStore::new(disk).unwrap();
+            reopened.replay(store.pending());
+            assert_eq!(contents(&reopened), contents(&store), "seed {seed}");
+            assert_eq!(reopened.pending(), store.pending(), "seed {seed}");
         }
     }
 

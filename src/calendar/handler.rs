@@ -22,7 +22,7 @@ use crate::{
         layout::lanes,
         target::{CardPart, EditField, Target},
     },
-    event::{Event, Response},
+    event::{Event, Opened, Response},
     file_store::{Backend, FileStore, FileStoreError},
     js_client::{
         Attribute, CanvasEvent, Command, Decimal, EventType, Gesture, Keyword, Method,
@@ -45,7 +45,6 @@ const DRAG_Z_INDEX: i32 = 1000;
 const HANDLE_REM: f64 = 0.5;
 const HANDLE_MAX: f64 = 0.35;
 const EPSILON: f64 = 1e-9;
-#[cfg(target_arch = "wasm32")]
 const STORE_NAME: &str = "calendar";
 const NEW_MINUTES: u32 = 60;
 const SLOT_REM: f64 = 1.75;
@@ -189,6 +188,7 @@ pub struct Handler {
     drag:              Option<Drag>,
     dirty:             bool,
     store:             Option<Backend>,
+    lost:              Vec<(u32, Option<Vec<u8>>)>,
     startup:           Vec<Error>,
     viewport_width_px: f64,
     rem_in_px:         f64,
@@ -244,6 +244,7 @@ impl Handler {
             drag: None,
             dirty: false,
             store: None,
+            lost: Vec::new(),
             startup: Vec::new(),
             viewport_width_px,
             rem_in_px,
@@ -260,6 +261,9 @@ impl Handler {
     }
 
     pub fn close(&self) -> Vec<Command> {
+        if let Some(store) = &self.store {
+            store.close();
+        }
         vec![]
     }
 
@@ -294,10 +298,10 @@ impl Handler {
         }
         match Calendar::decode(&response.body) {
             Ok(calendar) => {
-                let mut commands = self.seed_commands(&calendar);
+                let (events, mut commands) = self.seed_commands(&calendar);
                 self.calendar = Some(calendar);
                 commands.extend(self.loaded_commands());
-                (vec![], commands)
+                (events, commands)
             }
             Err(error) => (vec![], vec![data_error(error)]),
         }
@@ -315,7 +319,7 @@ impl Handler {
         let target = Target::from_dom(&event.id);
         match event.event_type {
             EventType::Click => {
-                (vec![], target.map_or(vec![], |target| self.click_control(target)))
+                target.map_or((vec![], vec![]), |target| self.click_control(target))
             }
             EventType::Input if target == Some(Target::Zoom) => (vec![], self.zoom(&event.value)),
             EventType::Change => match target {
@@ -1100,7 +1104,7 @@ impl Handler {
         self.base
     }
 
-    fn click_control(&mut self, target: Target) -> Vec<Command> {
+    fn click_control(&mut self, target: Target) -> (Vec<Event>, Vec<Command>) {
         match target {
             Target::Step(n) if (1..=STEP_COUNT).contains(&n) => {
                 self.base = if n == STEP_TODAY {
@@ -1108,15 +1112,15 @@ impl Handler {
                 } else {
                     add_days(self.base, self.step_days(n))
                 };
-                self.date_commands()
+                (vec![], self.date_commands())
             }
             Target::Modal => {
                 self.editing = None;
-                vec![Command::CloseModal { id: Target::Modal.to_dom() }]
+                (vec![], vec![Command::CloseModal { id: Target::Modal.to_dom() }])
             }
             Target::Save => self.save_commands(),
             Target::Reload => self.discard_commands(),
-            _ => vec![],
+            _ => (vec![], vec![]),
         }
     }
 
@@ -1484,15 +1488,15 @@ impl Handler {
         })
     }
 
-    fn seed_commands(&mut self, calendar: &Calendar) -> Vec<Command> {
+    fn seed_commands(&mut self, calendar: &Calendar) -> (Vec<Event>, Vec<Command>) {
         let Some(store) = self.store.as_mut() else {
-            return vec![];
+            return (vec![], vec![]);
         };
         if let Err(error) = data::seed(store, calendar) {
-            return vec![data_error(error)];
+            return (vec![], vec![data_error(error)]);
         }
         match store.save() {
-            Ok(()) => vec![],
+            Ok(()) => (vec![], vec![]),
             Err(error) => file_store_error(error),
         }
     }
@@ -1512,32 +1516,35 @@ impl Handler {
         }
     }
 
-    fn save_commands(&mut self) -> Vec<Command> {
+    fn save_commands(&mut self) -> (Vec<Event>, Vec<Command>) {
         let Some(store) = self.store.as_mut() else {
-            return vec![];
+            return (vec![], vec![]);
         };
         if let Err(error) = store.save() {
             return file_store_error(error);
         }
         self.dirty = false;
-        vec![Command::SetAttribute {
-            id:        Target::Save.to_dom(),
-            attribute: Attribute::Disabled,
-            value:     String::new(),
-        }]
+        (
+            vec![],
+            vec![Command::SetAttribute {
+                id:        Target::Save.to_dom(),
+                attribute: Attribute::Disabled,
+                value:     String::new(),
+            }],
+        )
     }
 
-    pub fn discard_commands(&mut self) -> Vec<Command> {
+    pub fn discard_commands(&mut self) -> (Vec<Event>, Vec<Command>) {
         let Some(store) = self.store.as_mut() else {
-            return vec![];
+            return (vec![], vec![]);
         };
         if let Err(error) = store.discard() {
             return file_store_error(error);
         }
         match data::load(&*store) {
             Ok(Some(calendar)) => self.calendar = Some(calendar),
-            Ok(None) => return vec![],
-            Err(error) => return vec![data_error(error)],
+            Ok(None) => return (vec![], vec![]),
+            Err(error) => return (vec![], vec![data_error(error)]),
         }
         let mut commands = self.card_commands();
         if self.dirty {
@@ -1548,7 +1555,28 @@ impl Handler {
                 value:     String::new(),
             });
         }
-        commands
+        (vec![], commands)
+    }
+
+    pub fn process_lost(&mut self) -> (Vec<Event>, Vec<Command>) {
+        if let Some(store) = self.store.take() {
+            self.lost = store.pending();
+            store.close();
+        }
+        (vec![], vec![])
+    }
+
+    pub fn process_opened(&mut self, opened: Opened) -> (Vec<Event>, Vec<Command>) {
+        match opened.and_then(Backend::new) {
+            Ok(mut store) => {
+                store.replay(core::mem::take(&mut self.lost));
+                self.store = Some(store);
+                (vec![], vec![])
+            }
+            Err(error) => {
+                (vec![], vec![Command::Error { error: Error::FileStore(error) }, Command::Reload])
+            }
+        }
     }
 
     pub fn dirty(&self) -> bool {
@@ -1850,12 +1878,13 @@ fn corner_cursor(corner: Corner) -> Option<Keyword> {
     }
 }
 
-fn file_store_error(error: FileStoreError) -> Vec<Command> {
+fn file_store_error(error: FileStoreError) -> (Vec<Event>, Vec<Command>) {
     match error {
-        FileStoreError::InvalidState(_) => {
-            vec![Command::Error { error: Error::FileStore(error) }, Command::Reload]
-        }
-        _ => vec![Command::Error { error: Error::FileStore(error) }],
+        FileStoreError::InvalidState(_) => (
+            vec![Event::StoreLost { name: STORE_NAME }],
+            vec![Command::Error { error: Error::FileStore(error) }],
+        ),
+        _ => (vec![], vec![Command::Error { error: Error::FileStore(error) }]),
     }
 }
 
@@ -3223,7 +3252,7 @@ mod tests {
         let (mut handler, _) = with_store();
         handler.process_fetched(&sample_response(1, 200));
         let (index, before) = drag_first_card_by(&mut handler, 2.0 * SLOT_PX);
-        let commands = handler.discard_commands();
+        let commands = handler.discard_commands().1;
         assert_eq!(handler.calendar().unwrap().appointments[index].start(), before);
         assert!(!handler.dirty());
         assert_eq!(pending(&handler), 0);
@@ -3619,17 +3648,71 @@ mod tests {
     }
 
     #[test]
-    fn only_an_invalid_handle_asks_for_a_reload() {
+    fn closing_the_handler_releases_the_store() {
+        let (mut handler, _) = with_store();
+        handler.process_fetched(&sample_response(1, 200));
+        drag_first_card_by(&mut handler, 2.0 * SLOT_PX);
+        assert!(handler.close().is_empty());
+        let (events, commands) = save_pressed(&mut handler);
+        assert!(matches!(events.as_slice(), [Event::StoreLost { .. }]));
         assert!(matches!(
-            file_store_error(FileStoreError::InvalidState(String::new())).as_slice(),
+            commands.as_slice(),
+            [Command::Error { error: Error::FileStore(FileStoreError::InvalidState(_)) }]
+        ));
+    }
+
+    #[test]
+    fn only_an_invalid_handle_asks_for_a_new_one() {
+        let (events, commands) = file_store_error(FileStoreError::InvalidState(String::new()));
+        assert!(matches!(events.as_slice(), [Event::StoreLost { name: "calendar" }]));
+        assert!(matches!(
+            commands.as_slice(),
+            [Command::Error { error: Error::FileStore(FileStoreError::InvalidState(_)) }]
+        ));
+        let (events, commands) = file_store_error(FileStoreError::QuotaExceeded(String::new()));
+        assert!(events.is_empty());
+        assert!(matches!(
+            commands.as_slice(),
+            [Command::Error { error: Error::FileStore(FileStoreError::QuotaExceeded(_)) }]
+        ));
+    }
+
+    fn save_pressed(handler: &mut Handler) -> (Vec<Event>, Vec<Command>) {
+        handler.process_canvas(&click(Target::Save.to_dom(), 10.0, 10.0), &state())
+    }
+
+    #[test]
+    fn a_lost_store_is_replaced_and_the_pending_edit_survives() {
+        let (mut handler, disk) = with_store();
+        handler.process_fetched(&sample_response(1, 200));
+        let (index, _) = drag_first_card_by(&mut handler, 2.0 * SLOT_PX);
+        let after = handler.calendar().unwrap().appointments[index].start();
+
+        handler.close();
+        let (events, _) = save_pressed(&mut handler);
+        assert!(matches!(events.as_slice(), [Event::StoreLost { .. }]));
+        assert!(handler.process_lost().1.is_empty());
+        assert!(save_pressed(&mut handler).1.is_empty());
+
+        let reopened = handler.process_opened(Ok(disk.clone()));
+        assert!(reopened.0.is_empty() && reopened.1.is_empty());
+        assert!(handler.dirty());
+        save_pressed(&mut handler);
+        assert!(!handler.dirty());
+        assert_eq!(committed_calendar(&disk).appointments[index].start(), after);
+    }
+
+    #[test]
+    fn a_store_that_cannot_be_reopened_asks_for_a_reload() {
+        let (mut handler, _) = with_store();
+        let failed = Err(FileStoreError::InvalidState(String::new()));
+        let (_, commands) = handler.process_opened(failed);
+        assert!(matches!(
+            commands.as_slice(),
             [
                 Command::Error { error: Error::FileStore(FileStoreError::InvalidState(_)) },
                 Command::Reload
             ]
-        ));
-        assert!(matches!(
-            file_store_error(FileStoreError::QuotaExceeded(String::new())).as_slice(),
-            [Command::Error { error: Error::FileStore(FileStoreError::QuotaExceeded(_)) }]
         ));
     }
 
@@ -3658,7 +3741,7 @@ mod tests {
     fn save_and_discard_without_a_store_do_nothing() {
         let mut handler = Handler::new(VIEWPORT, today(), REM);
         assert!(press(&mut handler, Target::Save.to_dom()).is_empty());
-        assert!(handler.discard_commands().is_empty());
+        assert!(handler.discard_commands().1.is_empty());
     }
 
     fn month_fixture(appointments: Vec<crate::calendar::data::Appointment>) -> Handler {

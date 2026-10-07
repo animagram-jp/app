@@ -115,6 +115,7 @@ mod error_tests {
     #[test]
     fn every_error_has_a_stable_wire_path_and_detail() {
         let message = || String::from("m");
+        #[cfg_attr(not(feature = "calendar"), allow(unused_mut))]
         let mut cases: Vec<(Error, Vec<u16>, &str)> = vec![
             (Error::Arena(ArenaError::CommandOverflow), vec![1, 1], ""),
             (Error::Event(EventError::Decode), vec![2, 1], ""),

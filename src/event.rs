@@ -5,8 +5,9 @@ use core::{
     primitive::{f64, u8},
 };
 
-use crate::js_client::{
-    CanvasEvent, EventType, Gesture, Input, KeyName, VisibilityState, WireError,
+use crate::{
+    file_store::{Backend, FileStore, FileStoreError},
+    js_client::{CanvasEvent, EventType, Gesture, Input, KeyName, VisibilityState, WireError},
 };
 
 #[derive(Debug)]
@@ -48,7 +49,13 @@ pub enum Event {
     Window(WindowEvent),
     FetchChunk(FetchChunk),
     Fetched(Response),
+    StoreLost {
+        name: &'static str,
+    },
+    StoreOpened(Opened),
 }
+
+pub type Opened = Result<<Backend as FileStore>::Handle, FileStoreError>;
 
 pub struct FetchChunk {
     pub request: u32,

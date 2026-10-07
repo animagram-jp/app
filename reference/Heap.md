@@ -45,16 +45,23 @@ Wasm からの要求は `OPERATION_*` としてコマンドリングへ出す。
 「ハンドルが閉じている」だけでなく「書き込み自体が何らかの理由で失敗
 した」も同じ名前で来る。前者と後者は区別できない。
 
-そこで `Handler::save` / `discard` / `compact` は `RETRY_LIMIT` (= 3) 回まで呼び直す。
-試行中の未保存の差分は `OpfsStore` 側に残る。
+保存の失敗は再試行せず、そのまま `Command::Error` にする。未保存の差分は
+`OpfsStore` 側に残るので、caller が `save()` を呼び直せる (冪等)。
 **復帰は wasm 内で完結しない。** 再取得は必ず `OpfsStore::open` を通り、
 `getDirectory()` → `getFileHandle()` → `createSyncAccessHandle()` の
 すべてが `await` を要する。同期なのは取得後の read/write だけである。
-`serve_event` はブロックしているので Promise は解決しない。したがって
-wasm は `Command::Error` に続けて `Command::Reload` を送り、JavaScript 側
-がページを reload して、新しい worker の `App::init` に開き直させる
-(連続 reload は時間窓つきの回数で止める)。直前の `save` が成功した時点までは残る (log ベースで
-あり、確定していない末尾は次回の `save` が切り落とす)。
+`serve_event` はブロックしているので Promise は解決しない。そこで
+`serve_event` を `async fn` にし、`Handler` が `InvalidState` を受けたら
+`Event::StoreLost { name }` を積む。`App::dispatch` がそれを `match` で受けて
+「開き直したい」と記憶し、`Handler` は旧ストアを閉じて未保存の差分を保持する。
+`serve_event` のループは、1 フレームを処理し終えた時点でそれを見つけ、
+`Backend::open(name).await` で JavaScript のイベントループに戻る。結果は
+`Event::StoreOpened(Result<..>)` として同じ処理経路に再投入され、
+`Handler` が `new` でストアを組み立て、保持していた差分を `replay` で再適用する。
+失敗したときだけ `Command::Error` に続けて `Command::Reload` を送る
+(連続 reload は時間窓つきの回数で止める)。event ring には書かない
+(書き手は main のみ)。入口は `serve_event` の 1 つのまま、`worker.js` は
+`await serve_event()` と書くだけである。
 
 ### 他の WebAPI に個別の復帰 command を置くか
 

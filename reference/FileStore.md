@@ -11,6 +11,8 @@
 | open   | name: &str | `impl Future<Output = Result<Self::Handle, FileStoreError>>` | 永続化先から snap/log のハンドルを取得する（非同期。OPFS の取得は Promise）。実装ごとに書く |
 | new    | handle: Self::Handle | `Result<Self, FileStoreError>` | ハンドルから snap/log を読み、RAM index（`Index`）を復元する（同期）。デフォルト実装 |
 | issue_id | &mut self | `u32` | 新規 id を発行する。デフォルト実装 |
+| pending | &self | `Vec<(u32, Option<Vec<u8>>)>` | 未保存の差分（`Some` は set、`None` は delete）を取り出す。ハンドルの失効で開き直すとき、旧ストアから差分を持ち出すために使う。デフォルト実装 |
+| replay  | &mut self, diff: Vec<(u32, Option<Vec<u8>>)> | | 差分を `set` / `delete` として積み直す。デフォルト実装 |
 | get    | &self, id: u32 | `Option<&[u8]>` | id に対応する現在値を返す（memory 参照のみ）。デフォルト実装 |
 | range  | &self, from: u32, to: u32 | `impl Iterator<Item = (u32, &[u8])>` | `from <= id < to` の現在値を id 順に返す。デフォルト実装 |
 | set    | &mut self, id: u32, bytes: Vec<u8> | | memory を更新し `unsaved` に積む。ディスクには一切触れない。デフォルト実装 |

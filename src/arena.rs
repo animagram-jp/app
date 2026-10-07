@@ -22,6 +22,11 @@ use crate::{
     app::App,
     js_client::{WireError, encode_command, encode_error},
 };
+#[cfg(all(target_arch = "wasm32", target_feature = "atomics"))]
+use crate::{
+    event::Event,
+    file_store::{Backend, FileStore},
+};
 
 // === ring ===
 
@@ -235,6 +240,10 @@ pub fn process_event() {
     app.clear();
     app.process(frame);
     ARENA.advance_ring(EVENT_RING);
+    flush(app);
+}
+
+fn flush(app: &App) {
     let mut frame = Vec::new();
     let emitted = app.commands().iter().all(|command| {
         frame.clear();
@@ -248,9 +257,21 @@ pub fn process_event() {
 
 #[cfg(all(target_arch = "wasm32", target_feature = "atomics"))]
 #[wasm_bindgen]
-pub fn serve_event() {
+pub async fn serve_event() {
     while unsafe { RUNNING } {
         process_event();
+        #[allow(clippy::deref_addrof)]
+        let wanted = unsafe { (*(&raw mut APP)).as_mut() }.and_then(App::reopen_wanted);
+        if let Some(name) = wanted {
+            let opened = Backend::open(name).await;
+            #[allow(clippy::deref_addrof)]
+            if let Some(app) = unsafe { (*(&raw mut APP)).as_mut() } {
+                app.clear();
+                app.run(Event::StoreOpened(opened));
+                flush(app);
+            }
+            continue;
+        }
         let write = ARENA.get_write_count(EVENT_RING);
         if ARENA.get_read_count(EVENT_RING) == write {
             unsafe {

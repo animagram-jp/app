@@ -17,5 +17,5 @@ self.addEventListener("message", async (e) => {
         payload.now,
         payload.timezone_offset_minutes,
     );
-    serve_event();
+    await serve_event();
 });

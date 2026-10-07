@@ -37,8 +37,8 @@ Gui application system for editing and reading structured data. Handles event lo
 
 | Filename | Description |
 |-|-|
-| app.rs | - initとprocessの公開apiを持つ、Appインスタンス。eventsとcommandsの2つのキューを持ち、handler::Handler.process_*へevents消費を移譲ループする。 |
-| arena.rs | JavaScriptとappが共有するメモリのレイアウトと、event / commandのリングバッファ。 |
+| app.rs | - initとprocessの公開apiを持つ、Appインスタンス。eventsとcommandsの2つのキューを持ち、handler::Handler.process_*へevents消費を移譲ループする。保存するアプリに共通の`StoreLost`(ストアの失効)は、ここで`serve_event`への「開き直したい」要求(`reopen`)に変え、`StoreOpened`は`Handler`へ渡す。 |
+| arena.rs | JavaScriptとappが共有するメモリのレイアウトと、event / commandのリングバッファ。`serve_event`(async)が、処理待ちの要求があれば`Backend::open`をawaitして、結果を`StoreOpened`として再投入する。 |
 | js_client.rs | JavaScriptとの境界。Command, Eventのフレーム形式(operation番号、put_* / get_*)、dom::Id、ジェスチャー認識。 |
 | list.rs | 可変長論理バイト列の宣言と、固定長要素列操作Listと可変長(バイト倍数)要素列操作VariabeList。バイト列読み取り関数new_from_bytesとget_from_bytesも含む。 |
 | field.rs | ビットフィールド(position, mask)の汎用get/set。timestampやobjectのビット配置の定義に使う。 |
@@ -46,7 +46,7 @@ Gui application system for editing and reading structured data. Handles event lo
 | timestamp.rs | タイムゾーンとセンチ秒、カレンダー加減算に対応した、u64 timestampモジュール。 |
 | data_struct.rs | データモデル固有のフィールド数(schema_size)固定Listと可変部VariableListによるデータインスタンス操作モジュール。フィールド1にid(u32), 2にcreated_at(timestamp), 3にmodified_at(timestamp)を確定し、4~を開放。 |
 | object.rs | ドメイン固有のデータモデルの全フィールドとロジックを、各自公開されたenumのネスト群で表現したモジュール。関数はitemのドメイン意味(表示)を定義する`label`, 一意なschema_idを発行する`id`, バイト列とdomからの流入(u32,str,f64)を相互変換する`read` / `write`, 値の表示を導出する`display`などを各enum itemに対して定義する。 |
-| event.rs | appが受け取るeventの型(Canvas / Gesture / Window)と、ワイヤ上のフレーム種別、`decode_event`。 |
+| event.rs | appが受け取るeventの型(Canvas / Gesture / Window / Fetch、ワイヤに出ない内部のGesture / Fetched / StoreLost / StoreOpened)と、ワイヤ上のフレーム種別、`decode_event`。 |
 | calendar/ | カレンダーアプリ(feature `calendar`)。data(JSONとレコードの変換、ストアへの読み書き)、grid / layout / target(座標・レーン・DOM対応)、handler。 |
 | testing.rs | テスト専用(`cfg(test)`)。`block_on`と、seed固定の疑似乱数`Rng`。 |
 | handler.rs | canvasを操作する、ドメイン固有のステートを持つHandler定義。Handlerは、DataStructと、フィールド4~schema_sizeまでの操作ロジックを定義するobjectを束ねて操作を行う。js_clientのdom::Idとobjectのフィールドを相互にバルクマッピングする関数を定義して、canvasと内部データを相互変換する。 |
