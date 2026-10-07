@@ -139,17 +139,15 @@ pub struct OpfsHandles {
 - **`compact` は CPU が支配的**。I/O なしの MemoryStore（ホスト、`opt-level = 3`）でも 10 万件で約 200 ms かかる。修正前のアルゴリズムとの差は 0〜20%（10 万件で、新 330–350 ms に対して旧 290–350 ms。実行ごとにばらつく）。書き込み量は2倍（10 万件で約 42 MB）になるが、OPFS の書き込みが十分速いので、時間にはほとんど出ない。
 - **`compact` は `discard` や `open` + replay の4〜5倍**（全件を読み直す1回に、書き込みが2回加わる）。log が増えるほど `open` + replay も遅くなるので、`compact` は次回の起動を速くする。
 
-一般的な許容値と照らすと（Web の応答性の目安 [RAIL](https://web.dev/rail): 入力への応答は 100 ms 以内、入力の処理は 50 ms 以内、50 ms を超える処理には進捗を示す）:
+Web の応答性の目安（[RAIL](https://web.dev/rail): 入力への応答は 100 ms 以内、入力の処理は 50 ms 以内、50 ms を超える処理には進捗を示す）と照らすと:
 
-| 件数 | `compact` の時間 | 判断 |
+| 件数 | `compact` の時間 | 目安との関係 |
 |-|-|-|
-| 〜1万 | 〜40 ms | いつ実行しても入力が滞らない |
-| 〜3万 | 〜100 ms | 一瞬の引っかかり。操作の合間なら問題ない |
-| 〜10万 | 〜0.35 s | 起動時やアイドル時だけにする。実行中は進捗を示す |
+| 〜1万 | 〜40 ms | 入力処理の 50 ms に収まる |
+| 〜3万 | 〜100 ms | 応答の 100 ms 前後 |
+| 〜10万 | 〜0.35 s | 100 ms を超える。実行中の進捗表示が要る |
 
-`compact` は dedicated worker の同期処理で、実行中は app のイベント処理も止まる（UI のメインスレッドは止まらない）。
-
-**実行する契機は未決定**で、現状 `compact()` を呼ぶ箇所はない（log は増え続ける）。参考として、Redis の AOF rewrite は「前回の rewrite 後のサイズの 100% 増、かつ 64 MB 以上」（`auto-aof-rewrite-percentage 100` / `auto-aof-rewrite-min-size 64mb`、既定）、SQLite の WAL は約 1000 ページで自動 checkpoint（`wal_autocheckpoint`、既定）。共通するのは「基準サイズに対する割合」と「小さいうちはしない」の2条件。本ストアでの案は、起動直後と、`save` のあとで `log_end >= max(snap のサイズ, 256 KiB)` のとき（どちらも未実装）。
+`compact` は dedicated worker の同期処理で、実行中は app のイベント処理も止まる（UI のメインスレッドは止まらない）。いつ呼ぶかは caller が決める。
 
 ---
 
@@ -169,7 +167,7 @@ use web_sys::FileSystemSyncAccessHandle;
 | `flush` | `fn(&self) -> Result<(), JsValue>` | `append`, `compact` | `classify()`で`FileStoreError`に分類し伝播 | `File::sync_all()` / `File::sync_data()` |
 | `truncate_with_u32` | `fn(&self, new_size: u32) -> Result<(), JsValue>` | `OpfsStore::truncate`（`FileStore::compact` と `FileStore::save` の torn 切除が経由する） | `classify()`で`FileStoreError`に分類し伝播 | `File::set_len()` |
 
-未使用の別形（`truncate_with_f64`、`read_with_buffer_source` / `write_with_buffer_source` など）は、u32 を超えるファイルや、Rust の `Vec<u8>` との相互コピーの省略が必要になったときの選択肢。`write_at` が `data.to_vec()` でコピーしているのは不要だが、外しても `compact` の時間は変わらず、メモリが 5% 減る程度だった（10 万件で測定）ので、そのままにしている。
+未使用の別形（`truncate_with_f64`、`read_with_buffer_source` / `write_with_buffer_source` など）は、u32 を超えるファイルが必要になったときの選択肢。
 
 **short read / short write**: `read_all` / `append` が、返り値（実際に読み書きしたバイト数）を見て、足りなければオフセットを進めて続きを読み書きする（VFS の `(p)read` / `(p)write` と同じ性質）。進捗が 0 のまま続く場合は、無限ループを避けるため `Unknown` で打ち切る。テスト: `short_reads_and_writes_are_looped`（1回を3バイトまでに制限）、`a_stalled_io_is_an_error_not_a_hang`（進捗 0）。
 

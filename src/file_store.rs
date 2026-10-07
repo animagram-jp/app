@@ -815,7 +815,7 @@ impl FileStore for OpfsStore {
 
     fn write_at(&self, file: File, data: &[u8], at: u32) -> Result<usize, FileStoreError> {
         self.file(file)
-            .write_with_u8_array_and_options(&mut data.to_vec(), &options_at(at))
+            .write_with_u8_array_and_options(data, &options_at(at))
             .map(|written| written as usize)
             .map_err(|e| classify("write", e))
     }
@@ -2112,7 +2112,7 @@ mod opfs_tests {
         let handle =
             open(dir, &id.file("log"), &FileSystemGetFileOptions::new(), false).await.unwrap();
         let size = handle.get_size().unwrap() as u32;
-        handle.write_with_u8_array_and_options(&mut torn_tail(), &options_at(size)).unwrap();
+        handle.write_with_u8_array_and_options(&torn_tail(), &options_at(size)).unwrap();
         handle.flush().unwrap();
         handle.close();
     }
