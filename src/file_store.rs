@@ -863,7 +863,7 @@ pub struct MemoryHandles {
 
 #[cfg(test)]
 std::thread_local! {
-    static DISKS: RefCell<BTreeMap<String, MemoryHandles>> = RefCell::new(BTreeMap::new());
+    static DISKS: RefCell<BTreeMap<String, MemoryHandles>> = const { RefCell::new(BTreeMap::new()) };
 }
 
 #[cfg(test)]
