@@ -3615,62 +3615,15 @@ impl Memo {
 
 #[cfg(test)]
 mod skill_storage_tests {
-    use alloc::string::ToString;
+    use alloc::{string::ToString, vec::Vec};
 
     use arbitrary_int::{i10, u9};
 
     use super::*;
+    use crate::testing::Rng;
 
     fn character() -> DataStruct {
         DataStruct::new(1, 0.0, 256)
-    }
-
-    #[test]
-    fn skill_trait_round_trips_extreme_values() {
-        let mut c = character();
-        Accounting.write(&mut c, u9::new(511), u9::new(400), i10::new(-512), i10::new(511));
-        let (occupation, interest, change, modifier) = Accounting.read(&c);
-        assert_eq!(occupation.value(), 511);
-        assert_eq!(interest.value(), 400);
-        assert_eq!(change.value(), -512);
-        assert_eq!(modifier.value(), 511);
-    }
-
-    #[test]
-    fn skill_trait_keeps_occupation_top_bit() {
-        let mut c = character();
-        Accounting.write(&mut c, u9::new(256), u9::new(0), i10::new(0), i10::new(0));
-        assert_eq!(Accounting.read(&c).0.value(), 256);
-    }
-
-    #[test]
-    fn skill_trait_fields_are_independent() {
-        let mut c = character();
-        Accounting.write(&mut c, u9::new(1), u9::new(2), i10::new(-3), i10::new(4));
-        let (occupation, interest, change, modifier) = Accounting.read(&c);
-        assert_eq!(
-            (occupation.value(), interest.value(), change.value(), modifier.value()),
-            (1, 2, -3, 4)
-        );
-    }
-
-    #[test]
-    fn skills_use_separate_slots() {
-        let mut c = character();
-        Accounting.write(&mut c, u9::new(10), u9::new(0), i10::new(0), i10::new(0));
-        Anthropology.write(&mut c, u9::new(20), u9::new(0), i10::new(0), i10::new(0));
-        assert_eq!(Accounting.read(&c).0.value(), 10);
-        assert_eq!(Anthropology.read(&c).0.value(), 20);
-    }
-
-    #[test]
-    fn unwritten_skill_reads_zero() {
-        let c = character();
-        let (occupation, interest, change, modifier) = Accounting.read(&c);
-        assert_eq!(
-            (occupation.value(), interest.value(), change.value(), modifier.value()),
-            (0, 0, 0, 0)
-        );
     }
 
     #[test]
@@ -3708,6 +3661,8 @@ mod skill_storage_tests {
         let mut c = character();
         FirearmsCustom(0).write(&mut c, [1000, 1001], 99, 400, 0, 0, 0, "Crossbow");
         assert_eq!(FirearmsCustom(0).read(&c), (99, 400, 0, 0, 0, "Crossbow".to_string()));
+        FirearmsCustom(1).write(&mut c, [1002, 1003], 100, 0, 0, -400, -1, "x");
+        assert_eq!(FirearmsCustom(1).read(&c), (100, 0, 0, -400, -1, "x".to_string()));
     }
 
     #[test]
@@ -3717,45 +3672,94 @@ mod skill_storage_tests {
         assert_eq!(PilotCustom(1).read(&c), (400, 7, -7, 400, "Rocket".to_string()));
     }
 
-    #[test]
-    fn stored_sizes_follow_layouts() {
-        assert_eq!(SKILL_LAYOUT.bytes(), 5);
-        assert_eq!(SKILL_WITH_PERCENT_LAYOUT.bytes(), 6);
-        let mut c = character();
-        Accounting.write(&mut c, u9::new(511), u9::new(511), i10::new(-1), i10::new(-1));
-        assert_eq!(c.get(Skill::Accounting.base_id()).unwrap().len(), 5);
-        FightingCustom(0).write(&mut c, [1000, 1001], 127, 511, 511, -1, -1, "x");
-        assert_eq!(c.get(1000).unwrap().len(), 6);
-        ArtAndCraftCustom(0).write(&mut c, [1002, 1003], 511, 511, -1, -1, "x");
-        assert_eq!(c.get(1002).unwrap().len(), 5);
+    fn random_skill_values(rng: &mut Rng) -> (u9, u9, i10, i10) {
+        let extreme = |rng: &mut Rng, low: i32, high: i32| match rng.below(4) {
+            0 => low,
+            1 => high,
+            _ => low + rng.below((high - low + 1) as usize) as i32,
+        };
+        (
+            u9::new(extreme(rng, 0, 511) as u16),
+            u9::new(extreme(rng, 0, 511) as u16),
+            i10::new(extreme(rng, -512, 511) as i16),
+            i10::new(extreme(rng, -512, 511) as i16),
+        )
+    }
+
+    fn written(c: &DataStruct, skill: &Skill) -> [i32; 4] {
+        let (occupation, interest, change, modifier) = match skill {
+            Skill::Accounting => Accounting.read(c),
+            Skill::Anthropology => Anthropology.read(c),
+            Skill::Appraise => Appraise.read(c),
+            _ => Archaeology.read(c),
+        };
+        [
+            occupation.value() as i32,
+            interest.value() as i32,
+            change.value() as i32,
+            modifier.value() as i32,
+        ]
     }
 
     #[test]
-    fn stored_value_fits_declared_bits() {
-        let mut c = character();
-        Accounting.write(&mut c, u9::new(511), u9::new(511), i10::new(-1), i10::new(-1));
-        let bytes = c.get(Skill::Accounting.base_id()).unwrap();
-        let mut word = [0u8; 8];
-        word[..bytes.len()].copy_from_slice(bytes);
-        assert_eq!(u64::from_le_bytes(word) >> SKILL_LAYOUT.bits(), 0);
-        assert_eq!(u64::from_le_bytes(word), (1u64 << SKILL_LAYOUT.bits()) - 1);
+    fn random_skill_writes_stay_in_their_own_slot_and_fit_the_layout() {
+        let skills = [Skill::Accounting, Skill::Anthropology, Skill::Appraise, Skill::Archaeology];
+        for seed in 0..2000 {
+            let mut rng = Rng::new(seed);
+            let mut c = character();
+            let mut model = [[0i32; 4]; 4];
+            for step in 0..12 {
+                let index = rng.below(skills.len());
+                let (occupation, interest, change, modifier) = random_skill_values(&mut rng);
+                match skills[index] {
+                    Skill::Accounting => {
+                        Accounting.write(&mut c, occupation, interest, change, modifier)
+                    }
+                    Skill::Anthropology => {
+                        Anthropology.write(&mut c, occupation, interest, change, modifier)
+                    }
+                    Skill::Appraise => {
+                        Appraise.write(&mut c, occupation, interest, change, modifier)
+                    }
+                    _ => Archaeology.write(&mut c, occupation, interest, change, modifier),
+                };
+                model[index] = [
+                    occupation.value() as i32,
+                    interest.value() as i32,
+                    change.value() as i32,
+                    modifier.value() as i32,
+                ];
+                for (position, skill) in skills.iter().enumerate() {
+                    assert_eq!(
+                        written(&c, skill),
+                        model[position],
+                        "seed {seed} step {step} position {position}"
+                    );
+                    if let Ok(bytes) = c.get(skill.base_id()) {
+                        assert_eq!(bytes.len(), SKILL_LAYOUT.bytes(), "seed {seed}");
+                    }
+                }
+            }
+        }
     }
 
     #[test]
-    fn negative_values_round_trip_through_percent_layout() {
-        let mut c = character();
-        FirearmsCustom(0).write(&mut c, [1000, 1001], 100, 0, 0, -400, -1, "x");
-        assert_eq!(FirearmsCustom(0).read(&c), (100, 0, 0, -400, -1, "x".to_string()));
+    fn every_skill_owns_a_distinct_ascending_storage_id() {
+        let ids: Vec<u32> = Skill::list().iter().map(Skill::base_id).collect();
+        assert!(ids.windows(2).all(|pair| pair[0] < pair[1]));
     }
 
     #[test]
-    fn short_stored_value_reads_as_zero() {
+    fn a_skill_value_shorter_than_its_layout_reads_as_zero() {
         let mut c = character();
-        let _ = c.set(Skill::Accounting.base_id(), &[0xff; 4], None);
-        let (occupation, interest, change, modifier) = Accounting.read(&c);
-        assert_eq!(
-            (occupation.value(), interest.value(), change.value(), modifier.value()),
-            (0, 0, 0, 0)
-        );
+        for length in 0..SKILL_LAYOUT.bytes() {
+            let _ = c.set(Skill::Accounting.base_id(), &[0xff; 8][..length], None);
+            let (occupation, interest, change, modifier) = Accounting.read(&c);
+            assert_eq!(
+                (occupation.value(), interest.value(), change.value(), modifier.value()),
+                (0, 0, 0, 0),
+                "length {length}"
+            );
+        }
     }
 }

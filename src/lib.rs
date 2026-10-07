@@ -36,6 +36,9 @@ pub mod object;
 pub mod roll;
 pub mod timestamp;
 
+#[cfg(test)]
+mod testing;
+
 // === Error ===
 
 wire_error! {
@@ -97,46 +100,46 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
     };
 
     report_error(Error::Panic(PanicError { location, message: format!("{}", info.message()) }));
+    let _ = crate::arena::emit(&[crate::js_client::OPERATION_RELOAD]);
 
     core::arch::wasm32::unreachable()
 }
 
 #[cfg(test)]
 mod error_tests {
-    use alloc::{format, string::String, vec::Vec};
+    use alloc::{string::String, vec, vec::Vec};
 
     use super::*;
     use crate::js_client::WireError;
 
-    fn identifiers(error: &Error) -> Vec<u16> {
-        let mut path = Vec::new();
-        error.identifiers(&mut path);
-        path
-    }
-
     #[test]
-    fn identifiers_are_the_composed_variant_then_the_module_variant() {
-        assert_eq!(identifiers(&Error::Arena(ArenaError::CommandOverflow)), [1, 1]);
-        assert_eq!(identifiers(&Error::Event(EventError::Decode)), [2, 1]);
-        assert_eq!(identifiers(&Error::FileStore(FileStoreError::Unknown(String::new()))), [4, 5]);
-        let panic = PanicError { location: String::new(), message: String::new() };
-        assert_eq!(identifiers(&Error::Panic(panic)), [3, 1]);
+    fn every_error_has_a_stable_wire_path_and_detail() {
+        let message = || String::from("m");
+        let mut cases: Vec<(Error, Vec<u16>, &str)> = vec![
+            (Error::Arena(ArenaError::CommandOverflow), vec![1, 1], ""),
+            (Error::Event(EventError::Decode), vec![2, 1], ""),
+            (
+                Error::Panic(PanicError { location: String::from("a.rs:1"), message: message() }),
+                vec![3, 1],
+                "a.rs:1: m",
+            ),
+            (Error::FileStore(FileStoreError::InvalidState(message())), vec![4, 1], "m"),
+            (Error::FileStore(FileStoreError::QuotaExceeded(message())), vec![4, 2], "m"),
+            (Error::FileStore(FileStoreError::UnsupportedOp(message())), vec![4, 3], "m"),
+            (Error::FileStore(FileStoreError::InvalidName(message())), vec![4, 4], "m"),
+            (Error::FileStore(FileStoreError::Unknown(message())), vec![4, 5], "m"),
+        ];
         #[cfg(feature = "calendar")]
-        assert_eq!(identifiers(&Error::Data(DataError::Status(404))), [5, 1]);
-    }
-
-    #[test]
-    fn detail_and_seriousness_come_from_the_module() {
-        let quota = Error::FileStore(FileStoreError::QuotaExceeded(String::from("full")));
-        assert_eq!(quota.detail(), "full");
-        assert!(quota.is_serious());
-        assert!(!Error::Event(EventError::Decode).is_serious());
-    }
-
-    #[test]
-    fn display_is_the_debug_representation() {
-        let error = Error::Event(EventError::Decode);
-        assert_eq!(format!("{error}"), format!("{error:?}"));
-        assert_eq!(format!("{error}"), "Event(Decode)");
+        cases.extend([
+            (Error::Data(DataError::Status(404)), vec![5, 1], "404"),
+            (Error::Data(DataError::Parse(message())), vec![5, 2], "m"),
+            (Error::Data(DataError::Format(message())), vec![5, 3], "m"),
+        ]);
+        for (error, path, detail) in cases {
+            let mut actual = Vec::new();
+            error.identifiers(&mut actual);
+            assert_eq!(actual, path, "{error}");
+            assert_eq!(error.detail(), detail, "{error}");
+        }
     }
 }

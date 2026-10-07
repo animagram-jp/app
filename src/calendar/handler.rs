@@ -1,4 +1,4 @@
-use alloc::{boxed::Box, collections::BTreeMap, format, string::String, vec, vec::Vec};
+use alloc::{collections::BTreeMap, format, string::String, vec, vec::Vec};
 use core::{
     cell::RefCell,
     option::Option::{self, None, Some},
@@ -15,15 +15,15 @@ use crate::{
     Error, Lang,
     calendar::{
         data::{
-            Appointment, Calendar, DataError, Place, Record, format_hhmm, parse_date, parse_time,
+            self, Appointment, Calendar, DataError, Place, Record, format_hhmm, parse_date,
+            parse_time,
         },
         grid::{Cell, ColumnAxis, Grid, MonthAxis, TimeAxis},
         layout::lanes,
-        store::{self, Store},
         target::{CardPart, EditField, Target},
     },
     event::{Event, Response},
-    file_store::FileStoreError,
+    file_store::{Backend, FileStore, FileStoreError},
     js_client::{
         Attribute, CanvasEvent, Command, Decimal, EventType, Gesture, Keyword, Method,
         PointerState, StyleProperty, StyleValue, Unit, VisibilityState, dom::Id,
@@ -188,7 +188,7 @@ pub struct Handler {
     slot_rem:          f64,
     drag:              Option<Drag>,
     dirty:             bool,
-    store:             Option<Box<dyn Store>>,
+    store:             Option<Backend>,
     startup:           Vec<Error>,
     viewport_width_px: f64,
     rem_in_px:         f64,
@@ -210,15 +210,15 @@ impl Handler {
         let mut handler = Self::new(viewport_width_px, today, rem_in_px);
         handler.now = from_ut(now, true, &Timezone::None);
         #[cfg(target_arch = "wasm32")]
-        match crate::file_store::FileStore::new(STORE_NAME).await {
-            Ok(opened) => handler.attach(Box::new(opened)),
+        match Backend::open(STORE_NAME).await.and_then(Backend::new) {
+            Ok(opened) => handler.attach(opened),
             Err(error) => handler.startup.push(Error::FileStore(error)),
         }
         handler
     }
 
-    pub fn attach(&mut self, store: Box<dyn Store>) {
-        match store::load(store.as_ref()) {
+    pub fn attach(&mut self, store: Backend) {
+        match data::load(&store) {
             Ok(Some(calendar)) => self.calendar = Some(calendar),
             Ok(None) => {}
             Err(error) => self.startup.push(Error::Data(error)),
@@ -564,7 +564,7 @@ impl Handler {
         for d in 0..2 {
             let origin = self.rectgrid.origin[d].get();
             let local = drag.pointer[d] - origin - edge_offset[d] + unit_px[d] / 2.0;
-            pointer[d] = Px::new(origin + local.clamp(0.0, extent[d]));
+            pointer[d] = Px::new(origin + local.max(0.0).min(extent[d]));
         }
         drag_resize(&self.rectgrid, pointer, bx, *corner).ok()
     }
@@ -1488,12 +1488,12 @@ impl Handler {
         let Some(store) = self.store.as_mut() else {
             return vec![];
         };
-        if let Err(error) = store::seed(store.as_mut(), calendar) {
+        if let Err(error) = data::seed(store, calendar) {
             return vec![data_error(error)];
         }
         match store.save() {
             Ok(()) => vec![],
-            Err(error) => vec![file_store_error(error)],
+            Err(error) => file_store_error(error),
         }
     }
 
@@ -1506,7 +1506,7 @@ impl Handler {
             return vec![];
         };
         appointment.touch(now);
-        match store::put(store.as_mut(), appointment) {
+        match data::put(store, appointment) {
             Ok(()) => vec![],
             Err(error) => vec![data_error(error)],
         }
@@ -1517,7 +1517,7 @@ impl Handler {
             return vec![];
         };
         if let Err(error) = store.save() {
-            return vec![file_store_error(error)];
+            return file_store_error(error);
         }
         self.dirty = false;
         vec![Command::SetAttribute {
@@ -1532,9 +1532,9 @@ impl Handler {
             return vec![];
         };
         if let Err(error) = store.discard() {
-            return vec![file_store_error(error)];
+            return file_store_error(error);
         }
-        match store::load(store.as_ref()) {
+        match data::load(&*store) {
             Ok(Some(calendar)) => self.calendar = Some(calendar),
             Ok(None) => return vec![],
             Err(error) => return vec![data_error(error)],
@@ -1850,8 +1850,13 @@ fn corner_cursor(corner: Corner) -> Option<Keyword> {
     }
 }
 
-fn file_store_error(error: FileStoreError) -> Command {
-    Command::Error { error: Error::FileStore(error) }
+fn file_store_error(error: FileStoreError) -> Vec<Command> {
+    match error {
+        FileStoreError::InvalidState(_) => {
+            vec![Command::Error { error: Error::FileStore(error) }, Command::Reload]
+        }
+        _ => vec![Command::Error { error: Error::FileStore(error) }],
+    }
 }
 
 fn data_error(error: DataError) -> Command {
@@ -1861,18 +1866,15 @@ fn data_error(error: DataError) -> Command {
 #[cfg(test)]
 mod tests {
     use alloc::vec::Vec;
-    use core::{
-        future::Future,
-        pin::pin,
-        task::{Context, Poll, Waker},
-    };
     use std::fs;
 
     use super::*;
     use crate::{
-        calendar::{data::Record, store::memory::MemoryStore},
+        calendar::data::Record,
         data_struct::ID_MODIFIED_AT,
+        file_store::{MemoryHandles, MemoryStore},
         js_client::KeyName,
+        testing::{Rng, block_on},
     };
 
     const VIEWPORT: f64 = 1500.0;
@@ -1883,16 +1885,6 @@ mod tests {
     const SLOT_PX: f64 = SLOT_REM * REM;
     const GRAB_X: f64 = 40.0;
     const GRAB_Y: f64 = 40.0;
-
-    fn block_on<F: Future>(future: F) -> F::Output {
-        let mut future = pin!(future);
-        let mut context = Context::from_waker(Waker::noop());
-        loop {
-            if let Poll::Ready(output) = future.as_mut().poll(&mut context) {
-                return output;
-            }
-        }
-    }
 
     fn after(day: u64, n: i64) -> u64 {
         add_days(day, n)
@@ -3133,11 +3125,15 @@ mod tests {
         assert!(!handler.dirty());
     }
 
-    fn with_store() -> (Handler, MemoryStore) {
-        let store = MemoryStore::default();
+    fn with_store() -> (Handler, MemoryHandles) {
+        let disk = MemoryHandles::default();
         let mut handler = Handler::new(VIEWPORT, today(), REM);
-        handler.attach(Box::new(store.clone()));
-        (handler, store)
+        handler.attach(MemoryStore::new(disk.clone()).unwrap());
+        (handler, disk)
+    }
+
+    fn pending(handler: &Handler) -> usize {
+        handler.store.as_ref().unwrap().index().pending_len()
     }
 
     fn drag_first_card_by(handler: &mut Handler, dy: f64) -> (usize, u32) {
@@ -3161,31 +3157,29 @@ mod tests {
         (index, before)
     }
 
-    fn committed_calendar(store: &MemoryStore) -> Calendar {
-        let reader = MemoryStore::default();
-        reader.0.borrow_mut().committed = store.0.borrow().committed.clone();
-        crate::calendar::store::load(&reader).unwrap().unwrap()
+    fn committed_calendar(disk: &MemoryHandles) -> Calendar {
+        crate::calendar::data::load(&MemoryStore::new(disk.clone()).unwrap()).unwrap().unwrap()
     }
 
     #[test]
     fn a_first_run_fetches_seeds_and_saves_the_records() {
-        let (mut handler, store) = with_store();
+        let (mut handler, disk) = with_store();
         assert!(handler.calendar().is_none());
         let (_, commands) = handler.initial_draw();
         assert!(commands.iter().any(|command| matches!(command, Command::Fetch { .. })));
-        assert_eq!(store.committed_len(), 0);
+        assert_eq!(disk.committed_len(), 0);
         handler.process_fetched(&sample_response(1, 200));
-        assert_eq!(store.committed_len(), 594);
-        assert_eq!(store.pending_len(), 0);
+        assert_eq!(disk.committed_len(), 594);
+        assert_eq!(pending(&handler), 0);
         assert!(!handler.dirty());
     }
 
     #[test]
     fn a_later_run_loads_from_the_store_without_fetching() {
-        let (mut first, store) = with_store();
+        let (mut first, disk) = with_store();
         first.process_fetched(&sample_response(1, 200));
         let mut second = Handler::new(VIEWPORT, today(), REM);
-        second.attach(Box::new(store.clone()));
+        second.attach(MemoryStore::new(disk).unwrap());
         assert_eq!(second.calendar().unwrap().appointments.len(), 380);
         let (_, commands) = second.initial_draw();
         assert!(!commands.iter().any(|command| matches!(command, Command::Fetch { .. })));
@@ -3195,45 +3189,44 @@ mod tests {
 
     #[test]
     fn an_edit_is_pending_until_save_and_survives_a_reload_only_after_it() {
-        let (mut handler, store) = with_store();
+        let (mut handler, disk) = with_store();
         handler.process_fetched(&sample_response(1, 200));
         let (index, before) = drag_first_card_by(&mut handler, 2.0 * SLOT_PX);
         let after = handler.calendar().unwrap().appointments[index].start();
         assert_eq!(after, before + 30);
         assert!(handler.dirty());
-        assert_eq!(store.pending_len(), 1);
-        assert_eq!(committed_calendar(&store).appointments[index].start(), before);
+        assert_eq!(pending(&handler), 1);
+        assert_eq!(committed_calendar(&disk).appointments[index].start(), before);
 
         press(&mut handler, Target::Save.to_dom());
         assert!(!handler.dirty());
-        assert_eq!(store.pending_len(), 0);
-        assert_eq!(committed_calendar(&store).appointments[index].start(), after);
+        assert_eq!(pending(&handler), 0);
+        assert_eq!(committed_calendar(&disk).appointments[index].start(), after);
 
         let mut reloaded = Handler::new(VIEWPORT, today(), REM);
-        reloaded.attach(Box::new(store.clone()));
+        reloaded.attach(MemoryStore::new(disk).unwrap());
         assert_eq!(reloaded.calendar().unwrap().appointments[index].start(), after);
     }
 
     #[test]
     fn an_unsaved_edit_is_gone_after_a_reload() {
-        let (mut handler, store) = with_store();
+        let (mut handler, disk) = with_store();
         handler.process_fetched(&sample_response(1, 200));
         let (index, before) = drag_first_card_by(&mut handler, 2.0 * SLOT_PX);
-        store.0.borrow_mut().pending.clear();
         let mut reloaded = Handler::new(VIEWPORT, today(), REM);
-        reloaded.attach(Box::new(store.clone()));
+        reloaded.attach(MemoryStore::new(disk).unwrap());
         assert_eq!(reloaded.calendar().unwrap().appointments[index].start(), before);
     }
 
     #[test]
     fn discard_restores_the_saved_state_and_redraws() {
-        let (mut handler, store) = with_store();
+        let (mut handler, _) = with_store();
         handler.process_fetched(&sample_response(1, 200));
         let (index, before) = drag_first_card_by(&mut handler, 2.0 * SLOT_PX);
         let commands = handler.discard_commands();
         assert_eq!(handler.calendar().unwrap().appointments[index].start(), before);
         assert!(!handler.dirty());
-        assert_eq!(store.pending_len(), 0);
+        assert_eq!(pending(&handler), 0);
         assert_eq!(save_disabled(&commands), [true]);
         assert!(shown_count(&commands) > 0);
     }
@@ -3517,7 +3510,7 @@ mod tests {
 
     #[test]
     fn submitting_a_new_form_adds_a_persisted_appointment() {
-        let (mut handler, store) = with_store();
+        let (mut handler, _) = with_store();
         handler.now = pack(2026, 10, 2, 12, 0, 0, 0, 1, 0);
         handler.process_fetched(&sample_response(1, 200));
         let before = handler.calendar().unwrap().appointments.len();
@@ -3537,10 +3530,11 @@ mod tests {
         assert_eq!((added.category(), added.status()), (0, 0));
         assert!(handler.dirty());
         assert!(commands.iter().any(|c| matches!(c, Command::CloseModal { .. })));
-        assert!(store.pending_len() == 1);
+        assert!(pending(&handler) == 1);
         assert!(handler.editing.is_none());
         let key = added.key().unwrap();
-        let saved = Appointment::from_bytes(&store.get(key).unwrap()).unwrap();
+        let saved =
+            Appointment::from_bytes(handler.store.as_ref().unwrap().get(key).unwrap()).unwrap();
         assert_eq!(saved.data().get(ID_MODIFIED_AT).unwrap(), handler.now.to_le_bytes());
     }
 
@@ -3598,57 +3592,60 @@ mod tests {
 
     #[test]
     fn reload_button_discards_pending_edits() {
-        let (mut handler, store) = with_store();
+        let (mut handler, _) = with_store();
         handler.process_fetched(&sample_response(1, 200));
         let (index, before) = drag_first_card_by(&mut handler, 2.0 * SLOT_PX);
         let commands = press(&mut handler, Target::Reload.to_dom());
         assert_eq!(handler.calendar().unwrap().appointments[index].start(), before);
-        assert_eq!(store.pending_len(), 0);
+        assert_eq!(pending(&handler), 0);
         assert_eq!(save_disabled(&commands), [true]);
     }
 
     #[test]
     fn a_failed_save_reports_the_error_and_stays_dirty() {
-        let (mut handler, store) = with_store();
+        let (mut handler, disk) = with_store();
         handler.process_fetched(&sample_response(1, 200));
         drag_first_card_by(&mut handler, 2.0 * SLOT_PX);
-        store.failing(true);
+        disk.failing(true);
         let commands = press(&mut handler, Target::Save.to_dom());
         assert!(matches!(
             commands.as_slice(),
             [Command::Error { error: Error::FileStore(FileStoreError::QuotaExceeded(_)) }]
         ));
         assert!(handler.dirty());
-        store.failing(false);
+        disk.failing(false);
         press(&mut handler, Target::Save.to_dom());
         assert!(!handler.dirty());
     }
 
     #[test]
+    fn only_an_invalid_handle_asks_for_a_reload() {
+        assert!(matches!(
+            file_store_error(FileStoreError::InvalidState(String::new())).as_slice(),
+            [
+                Command::Error { error: Error::FileStore(FileStoreError::InvalidState(_)) },
+                Command::Reload
+            ]
+        ));
+        assert!(matches!(
+            file_store_error(FileStoreError::QuotaExceeded(String::new())).as_slice(),
+            [Command::Error { error: Error::FileStore(FileStoreError::QuotaExceeded(_)) }]
+        ));
+    }
+
+    #[test]
     fn a_corrupt_store_is_reported_and_nothing_is_fetched_over_it() {
-        let store = MemoryStore::default();
-        {
-            let mut seeding = Handler::new(VIEWPORT, today(), REM);
-            seeding.attach(Box::new(store.clone()));
-            seeding.process_fetched(&sample_response(1, 200));
-        }
-        store.0.borrow_mut().committed.insert(
-            crate::calendar::data::Record::key(
-                &Calendar::decode(
-                    &fs::read(concat!(
-                        env!("CARGO_MANIFEST_DIR"),
-                        "/distribution/calendar/data/calendar.json"
-                    ))
-                    .unwrap(),
-                )
-                .unwrap()
-                .appointments[0],
-            )
-            .unwrap(),
+        let (mut seeding, disk) = with_store();
+        seeding.process_fetched(&sample_response(1, 200));
+        let mut corrupting = MemoryStore::new(disk.clone()).unwrap();
+        corrupting.set(
+            crate::calendar::data::Record::key(&seeding.calendar().unwrap().appointments[0])
+                .unwrap(),
             b"{".to_vec(),
         );
+        corrupting.save().unwrap();
         let mut handler = Handler::new(VIEWPORT, today(), REM);
-        handler.attach(Box::new(store.clone()));
+        handler.attach(MemoryStore::new(disk).unwrap());
         let (_, commands) = handler.initial_draw();
         assert!(commands.iter().any(|command| matches!(
             command,
@@ -3896,5 +3893,121 @@ mod tests {
             assert_eq!(text_of(&commands, &Target::EditMessage.to_dom()).unwrap(), message);
         }
         assert_eq!(handler.calendar().unwrap().appointments.len(), 2);
+    }
+
+    #[test]
+    fn random_interaction_keeps_the_store_the_dirty_flag_and_the_data_consistent() {
+        let views = [View::Day, View::ThreeDays, View::Week, View::Month];
+        for seed in 0..30 {
+            let mut rng = Rng::new(seed);
+            let (mut handler, disk) = with_store();
+            handler.process_fetched(&sample_response(1, 200));
+            handler.card_commands();
+            let mut saved = committed_calendar(&disk).appointments;
+            for step in 0..60 {
+                let context = format!("seed {seed} step {step}");
+                match rng.below(14) {
+                    0 => {
+                        choose(&mut handler, views[rng.below(views.len())]);
+                    }
+                    1 => {
+                        press(&mut handler, Target::Step(1 + rng.below(5) as u32).to_dom());
+                    }
+                    2..5 => {
+                        let count = handler.placed.borrow().len();
+                        if count > 0 {
+                            let (x, y) = grab(&mut handler, 1 + rng.below(count) as u32);
+                            let dx = rng.below(801) as f64 - 400.0;
+                            let dy = rng.below(801) as f64 - 400.0;
+                            drag_to(&mut handler, x + dx, y + dy);
+                            if rng.chance(70) {
+                                end(&mut handler);
+                            } else {
+                                handler.process_gesture(&Gesture::DragCancel, &state(), None);
+                            }
+                        }
+                    }
+                    5 => {
+                        tap_empty(&mut handler, rng.below(7) as f64, rng.below(40) as f64);
+                    }
+                    6 => {
+                        let (ox, oy) = grid_origin();
+                        let column = column_px(VIEWPORT, handler.view(), REM);
+                        let at = |rng: &mut Rng| {
+                            (
+                                ox + (rng.below(7) as f64 + 0.5) * column,
+                                oy + (rng.below(40) as f64 + 0.5) * SLOT_PX,
+                            )
+                        };
+                        let (x, y) = at(&mut rng);
+                        handler.process_canvas(
+                            &pointer_down(Target::Surface.to_dom(), x, y),
+                            &state(),
+                        );
+                        let (x, y) = at(&mut rng);
+                        drag_to(&mut handler, x, y);
+                        end(&mut handler);
+                    }
+                    7 => {
+                        let day = after(today(), rng.below(21) as i64 - 10);
+                        let titles = ["", "Neo", "x"];
+                        let query = form_query(
+                            titles[rng.below(titles.len())],
+                            &display(day, Lang::Ja, Format::Date),
+                            1 + rng.below(5) as u32,
+                            &format!("{:02}:{:02}", rng.below(24), rng.below(60)),
+                            &format!("{:02}:{:02}", rng.below(24), rng.below(60)),
+                        );
+                        submit(&mut handler, &query);
+                    }
+                    8 => {
+                        press(&mut handler, Target::Save.to_dom());
+                        assert!(!handler.dirty(), "{context}: still dirty after save");
+                        saved = handler.calendar().unwrap().appointments.clone();
+                        assert!(
+                            committed_calendar(&disk).appointments == saved,
+                            "{context}: the store differs from what was saved"
+                        );
+                    }
+                    9 => {
+                        press(&mut handler, Target::Reload.to_dom());
+                        assert!(!handler.dirty(), "{context}: still dirty after reload");
+                    }
+                    10 => {
+                        let value = format!("{}", 1.0 + rng.below(9) as f64 / 4.0);
+                        handler.process_canvas(&input(Target::Zoom.to_dom(), &value), &state());
+                    }
+                    _ => {
+                        let count = handler.placed.borrow().len();
+                        if count > 0 {
+                            press_local(
+                                &mut handler,
+                                1 + rng.below(count) as u32,
+                                rng.below(160) as f64,
+                                rng.below(120) as f64,
+                            );
+                            if handler.drag.is_some() {
+                                drag_by(
+                                    &mut handler,
+                                    rng.below(201) as f64 - 100.0,
+                                    rng.below(201) as f64 - 100.0,
+                                );
+                            }
+                            end(&mut handler);
+                        }
+                    }
+                }
+                if !handler.dirty() {
+                    assert!(
+                        handler.calendar().unwrap().appointments == saved,
+                        "{context}: clean but different from the last save"
+                    );
+                }
+            }
+            assert!(
+                committed_calendar(&disk).appointments == saved,
+                "seed {seed}: the store changed without a save"
+            );
+        }
     }
 }

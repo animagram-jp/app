@@ -42,11 +42,13 @@ Gui application system for editing and reading structured data. Handles event lo
 | js_client.rs | JavaScriptとの境界。Command, Eventのフレーム形式(operation番号、put_* / get_*)、dom::Id、ジェスチャー認識。 |
 | list.rs | 可変長論理バイト列の宣言と、固定長要素列操作Listと可変長(バイト倍数)要素列操作VariabeList。バイト列読み取り関数new_from_bytesとget_from_bytesも含む。 |
 | field.rs | ビットフィールド(position, mask)の汎用get/set。timestampやobjectのビット配置の定義に使う。 |
-| file_store.rs | [トランザクションストアのOPFS実装](./reference/FileStore.md) |
+| file_store.rs | [トランザクションストア](./reference/FileStore.md)。`FileStore` trait(open / new、ファイル操作のプリミティブ、save / discard / compact などのデフォルト実装)と、OPFS実装`OpfsStore`。 |
 | timestamp.rs | タイムゾーンとセンチ秒、カレンダー加減算に対応した、u64 timestampモジュール。 |
 | data_struct.rs | データモデル固有のフィールド数(schema_size)固定Listと可変部VariableListによるデータインスタンス操作モジュール。フィールド1にid(u32), 2にcreated_at(timestamp), 3にmodified_at(timestamp)を確定し、4~を開放。 |
 | object.rs | ドメイン固有のデータモデルの全フィールドとロジックを、各自公開されたenumのネスト群で表現したモジュール。関数はitemのドメイン意味(表示)を定義する`label`, 一意なschema_idを発行する`id`, バイト列とdomからの流入(u32,str,f64)を相互変換する`read` / `write`, 値の表示を導出する`display`などを各enum itemに対して定義する。 |
 | event.rs | appが受け取るeventの型(Canvas / Gesture / Window)と、ワイヤ上のフレーム種別、`decode_event`。 |
+| calendar/ | カレンダーアプリ(feature `calendar`)。data(JSONとレコードの変換、ストアへの読み書き)、grid / layout / target(座標・レーン・DOM対応)、handler。 |
+| testing.rs | テスト専用(`cfg(test)`)。`block_on`と、seed固定の疑似乱数`Rng`。 |
 | handler.rs | canvasを操作する、ドメイン固有のステートを持つHandler定義。Handlerは、DataStructと、フィールド4~schema_sizeまでの操作ロジックを定義するobjectを束ねて操作を行う。js_clientのdom::Idとobjectのフィールドを相互にバルクマッピングする関数を定義して、canvasと内部データを相互変換する。 |
 
 ---
@@ -67,7 +69,8 @@ Gui application system for editing and reading structured data. Handles event lo
 cargo test --doc # docTest
 cargo test --lib # unit test
 cargo test --features calendar --lib
-cargo test --no-default-features --lib # without `worker` feature
+# `worker` featureなし(main thread構成)のビルド確認。テストの内容は上の2つと同じ
+cargo test --no-default-features --lib
 cargo test --no-default-features --features calendar --lib
 ```
 
@@ -88,13 +91,14 @@ pkill -f "geckodriver --port 8000"
 ```bash
 # thread="worker"
 RUSTFLAGS="-Ctarget-feature=+atomics,+bulk-memory -Clink-arg=--import-memory -Clink-arg=--shared-memory -Clink-arg=--max-memory=134217728 -Clink-arg=--export=__wasm_init_tls -Clink-arg=--export=__tls_size -Clink-arg=--export=__tls_align -Clink-arg=--export=__tls_base" cargo build --release --target wasm32-unknown-unknown -Zbuild-std=std,panic_abort
+wasm-bindgen --target web --out-dir distribution/app --out-name app target/wasm32-unknown-unknown/release/app.wasm
 
 # thread="main"
 cargo build --release --target wasm32-unknown-unknown --no-default-features
 wasm-bindgen --target web --out-dir distribution/app --out-name app target/wasm32-unknown-unknown/release/app.wasm
 
-# Generate glue JS scripts
-wasm-bindgen --target web --out-dir distribution/app --out-name app target/wasm32-unknown-unknown/release/app.wasm
+# app + calendar + deploy output (target/cloudflare)
+sh reference/build.sh
 ```
 
 ---

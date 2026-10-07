@@ -41,29 +41,73 @@ fn flush(cluster: &mut Vec<(usize, u32, u32)>, result: &mut [(u32, u32)]) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::testing::Rng;
 
-    #[test]
-    fn lanes_of_nothing_is_empty() {
-        assert!(lanes(&[]).is_empty());
+    fn overlap(a: (u32, u32), b: (u32, u32)) -> bool {
+        a.0 < b.1 && b.0 < a.1
+    }
+
+    fn deepest_overlap(spans: &[(u32, u32)], members: &[usize]) -> u32 {
+        members
+            .iter()
+            .map(|&i| {
+                let at = spans[i].0;
+                members.iter().filter(|&&j| spans[j].0 <= at && at < spans[j].1).count() as u32
+            })
+            .max()
+            .unwrap_or(1)
     }
 
     #[test]
-    fn touching_spans_do_not_share_a_lane_count() {
-        assert_eq!(lanes(&[(0, 4), (4, 8)]), [(0, 1), (0, 1)]);
-    }
+    fn random_spans_get_conflict_free_minimal_lanes_independent_of_input_order() {
+        for seed in 0..3000 {
+            let mut rng = Rng::new(seed);
+            let mut spans: Vec<(u32, u32)> = Vec::new();
+            for _ in 0..rng.below(12) {
+                let start = rng.below(30) as u32;
+                let span = (start, start + 1 + rng.below(12) as u32);
+                if !spans.contains(&span) {
+                    spans.push(span);
+                }
+            }
+            let assigned = lanes(&spans);
+            assert_eq!(assigned.len(), spans.len(), "seed {seed}");
 
-    #[test]
-    fn lanes_are_reused_after_a_span_ends() {
-        assert_eq!(lanes(&[(0, 10), (1, 3), (4, 6)]), [(0, 2), (1, 2), (1, 2)]);
-    }
+            let mut cluster = (0..spans.len()).collect::<Vec<usize>>();
+            for i in 0..spans.len() {
+                for j in 0..spans.len() {
+                    if overlap(spans[i], spans[j]) {
+                        let (low, high) = (cluster[i].min(cluster[j]), cluster[i].max(cluster[j]));
+                        for entry in cluster.iter_mut() {
+                            if *entry == high {
+                                *entry = low;
+                            }
+                        }
+                    }
+                }
+            }
+            for i in 0..spans.len() {
+                let (lane, count) = assigned[i];
+                assert!(lane < count, "seed {seed} span {i}");
+                for j in 0..spans.len() {
+                    if i != j && overlap(spans[i], spans[j]) {
+                        assert_ne!(lane, assigned[j].0, "seed {seed} spans {i} {j}");
+                    }
+                }
+                let members: Vec<usize> =
+                    (0..spans.len()).filter(|&j| cluster[j] == cluster[i]).collect();
+                assert_eq!(count, deepest_overlap(&spans, &members), "seed {seed} span {i}");
+            }
 
-    #[test]
-    fn three_way_overlap_uses_three_lanes() {
-        assert_eq!(lanes(&[(0, 9), (1, 9), (2, 9)]), [(0, 3), (1, 3), (2, 3)]);
-    }
-
-    #[test]
-    fn input_order_does_not_change_the_assignment_per_span() {
-        assert_eq!(lanes(&[(2, 6), (0, 4), (6, 8)]), [(1, 2), (0, 2), (0, 1)]);
+            let mut order: Vec<usize> = (0..spans.len()).collect();
+            for index in (1..order.len()).rev() {
+                order.swap(index, rng.below(index + 1));
+            }
+            let shuffled: Vec<(u32, u32)> = order.iter().map(|&i| spans[i]).collect();
+            let reassigned = lanes(&shuffled);
+            for (position, &original) in order.iter().enumerate() {
+                assert_eq!(reassigned[position], assigned[original], "seed {seed} shuffled");
+            }
+        }
     }
 }

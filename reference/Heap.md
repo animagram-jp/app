@@ -5,19 +5,19 @@
 | dedicated worker | WebAssembly.Memory(shared=true)  |
 | main thread      | WebAssembly.Memory(shared=false) |
 
-# FileStore の初期化
+# OpfsStore の初期化
 
 `Handler::ready` は app repository と同じく `async fn` で、
-`FileStore::new(CHARACTER_SCHEMA_NAME).await` をそのまま呼ぶ。
+`OpfsStore::open(CHARACTER_SCHEMA_NAME).await` のあと `OpfsStore::new` を呼ぶ。
 往復にはしない。
 
 ```
 App::init (async, worker の init フェーズ)
-  └ Handler::ready -> FileStore::new(..).await
+  └ Handler::ready -> OpfsStore::open(..).await -> OpfsStore::new(..)
        └ 失敗時は panic -> #[panic_handler] が Command::Error を送る
 ```
 
-`await` が要るのは `FileStore::new` (と内部の `open`) だけである。
+`await` が要るのは `OpfsStore::open` だけである (`new` は同期)。
 `FileSystemSyncAccessHandle` は名前の通り同期ハンドルであり、取得さえ
 済めば `get` / `set` / `save` / `close` は `serve_event` の中から直接呼べる。
 `serve_event` は `memory_atomic_wait32` で thread ごとブロックし、その間
@@ -46,18 +46,19 @@ Wasm からの要求は `OPERATION_*` としてコマンドリングへ出す。
 した」も同じ名前で来る。前者と後者は区別できない。
 
 そこで `Handler::save` / `discard` / `compact` は `RETRY_LIMIT` (= 3) 回まで呼び直す。
-試行中の未保存の差分は `FileStore` 側に残る。
-**復帰は wasm 内で完結しない。** 再取得は必ず `FileStore::new` を通り、
+試行中の未保存の差分は `OpfsStore` 側に残る。
+**復帰は wasm 内で完結しない。** 再取得は必ず `OpfsStore::open` を通り、
 `getDirectory()` → `getFileHandle()` → `createSyncAccessHandle()` の
 すべてが `await` を要する。同期なのは取得後の read/write だけである。
 `serve_event` はブロックしているので Promise は解決しない。したがって
-JavaScript 側の `restart()` に委ね、新しい worker の `App::init` に
-開き直させる。直前の `save` が成功した時点までは残る (log ベースで
+wasm は `Command::Error` に続けて `Command::Reload` を送り、JavaScript 側
+がページを reload して、新しい worker の `App::init` に開き直させる
+(連続 reload は時間窓つきの回数で止める)。直前の `save` が成功した時点までは残る (log ベースで
 あり、確定していない末尾は次回の `save` が切り落とす)。
 
 ### 他の WebAPI に個別の復帰 command を置くか
 
-`FileStore` が復帰 command を持たないのは、状態機械の実体が wasm 側に
+`OpfsStore` が復帰 command を持たないのは、状態機械の実体が wasm 側に
 あるためである。`Store::Pending` のような再取得待ち状態を持たせると、
 同じ store の状態が wasm と JavaScript に割れる。丸ごと作り直すほうが
 整合的である。
@@ -67,7 +68,7 @@ WebSocket / WebRTC / WebGPU は逆で、状態の実体が最初から JavaScrip
 
 | | 状態の実体 | wasm 側が持つもの |
 |-|-|-|
-| `FileStore` | wasm (`memory`, log) | 全部 |
+| `OpfsStore` | wasm (`memory`, log) | 全部 |
 | WebSocket | JavaScript (`readyState`, バッファ) | 接続しているか否かだけ |
 | WebRTC | JavaScript (ICE, DTLS, SCTP) | 同上 |
 | WebGPU | JavaScript (device, pipeline) | 同上 |
@@ -95,10 +96,10 @@ main でなければならないのは DOM に触るものだけである。切�
 ### 構成の切り替え
 
 `worker` feature (既定で有効) が dedicated worker 構成を選ぶ。
-`FileStore` (OPFS) を持ち、`Handler::save` が生える。
+`OpfsStore` (OPFS) を持ち、`Handler::save` が生える。
 
 ```
-# worker 構成。serve_event と FileStore を持つ。
+# worker 構成。serve_event と OpfsStore を持つ。
 RUSTFLAGS="-Ctarget-feature=+atomics,+bulk-memory" cargo build --release --target wasm32-unknown-unknown -Zbuild-std=std,panic_abort
 
 # main thread

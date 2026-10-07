@@ -113,14 +113,14 @@ impl Predicate {
 }
 
 pub struct Handler {
-    instances: FileStore,
+    instances: OpfsStore,
     data_struct: DataStruct,
 }
 
 impl Handler {
 
-    pub async fn ready(store: FileStore, data_struct) -> Self {
-        instances = store.open(),
+    pub async fn ready(name, data_struct) -> Self {
+        instances = OpfsStore::open(name).await.and_then(OpfsStore::new),
         data_struct
     }
 

@@ -8,7 +8,10 @@ use core::{
 use arbitrary_int::u2;
 
 #[cfg(feature = "worker")]
-use crate::{Error, file_store::FileStore};
+use crate::{
+    Error,
+    file_store::{Backend, FileStore},
+};
 use crate::{
     Lang,
     data_struct::DataStruct,
@@ -45,7 +48,7 @@ pub struct Handler {
     last_toast:      u2,
     character:       DataStruct,
     #[cfg(feature = "worker")]
-    characters:      FileStore,
+    characters:      Backend,
     logs:            Vec<Log>,
     #[cfg(feature = "worker")]
     store_failures:  u8,
@@ -66,9 +69,10 @@ impl Handler {
             last_toast: u2::new(1),
             character: DataStruct::new(0, 0.0, 256),
             #[cfg(feature = "worker")]
-            characters: FileStore::new(CHARACTER_SCHEMA_NAME)
+            characters: Backend::open(CHARACTER_SCHEMA_NAME)
                 .await
-                .unwrap_or_else(|e| panic!("FileStore::new failed: {e}")),
+                .and_then(Backend::new)
+                .unwrap_or_else(|e| panic!("FileStore open failed: {e}")),
             logs: Vec::new(),
             #[cfg(feature = "worker")]
             store_failures: 0,
@@ -94,7 +98,12 @@ impl Handler {
             }
             Err(e) => {
                 self.store_failures = 0;
-                vec![Command::Error { error: Error::FileStore(e) }]
+                match e {
+                    crate::file_store::FileStoreError::InvalidState(_) => {
+                        vec![Command::Error { error: Error::FileStore(e) }, Command::Reload]
+                    }
+                    _ => vec![Command::Error { error: Error::FileStore(e) }],
+                }
             }
         }
     }
@@ -208,27 +217,12 @@ mod tests {
     }
 }
 
-#[cfg(all(test, not(feature = "worker")))]
+#[cfg(test)]
 mod toggle_tests {
     use alloc::{string::String, vec::Vec};
-    use core::{
-        future::Future,
-        pin::pin,
-        task::{Context, Poll, Waker},
-    };
 
     use super::*;
-    use crate::js_client::KeyName;
-
-    fn block_on<F: Future>(future: F) -> F::Output {
-        let mut future = pin!(future);
-        let mut context = Context::from_waker(Waker::noop());
-        loop {
-            if let Poll::Ready(output) = future.as_mut().poll(&mut context) {
-                return output;
-            }
-        }
-    }
+    use crate::{js_client::KeyName, testing::block_on};
 
     fn click(handler: &mut Handler, id: dom::Id) -> Vec<Command> {
         let event = CanvasEvent {

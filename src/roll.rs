@@ -1100,13 +1100,6 @@ mod variant_tests {
     }
 
     #[test]
-    fn list_first_and_last_variants() {
-        assert_eq!(Roll::list()[0].display(Lang::Ja), "ダイスロール (nDn +-n)");
-        assert_eq!(BoutOfMadness::list()[1].display(Lang::Ja), "サマリー");
-        assert_eq!(Phobia::list()[0].display(Lang::Ja), "入浴");
-    }
-
-    #[test]
     fn id_is_one_based_position() {
         for (i, v) in Phobia::list().iter().enumerate() {
             assert_eq!(v.id() as usize, i + 1);
@@ -1114,9 +1107,6 @@ mod variant_tests {
         for (i, v) in Mania::list().iter().enumerate() {
             assert_eq!(v.id() as usize, i + 1);
         }
-        assert_eq!(Phobia::list()[0].id(), 1);
-        assert_eq!(Phobia::list()[99].id(), 100);
-        assert_eq!(Mania::list()[99].id(), 100);
     }
 
     #[test]

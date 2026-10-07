@@ -165,14 +165,9 @@ impl App {
     }
 }
 
-#[cfg(all(test, not(feature = "worker")))]
+#[cfg(test)]
 mod tests {
     use alloc::vec::Vec;
-    use core::{
-        future::Future,
-        pin::pin,
-        task::{Context, Poll, Waker},
-    };
     #[cfg(feature = "calendar")]
     use std::fs;
 
@@ -180,20 +175,11 @@ mod tests {
     use crate::{
         event::EVENT_CANVAS,
         js_client::{Gesture, Output, dom},
+        testing::{Rng, block_on},
     };
 
     const POINTER_DOWN: u8 = 10;
     const POINTER_UP: u8 = 12;
-
-    fn block_on<F: Future>(future: F) -> F::Output {
-        let mut future = pin!(future);
-        let mut context = Context::from_waker(Waker::noop());
-        loop {
-            if let Poll::Ready(output) = future.as_mut().poll(&mut context) {
-                return output;
-            }
-        }
-    }
 
     fn new_app() -> App {
         App::new(false, block_on(Handler::ready(0.0, 0.0, 16.0, 0.0, 0)))
@@ -226,28 +212,6 @@ mod tests {
 
     fn chunk(request: u32, status: u16, last: bool, bytes: &[u8]) -> Event {
         Event::FetchChunk(crate::event::FetchChunk { request, status, last, bytes: bytes.to_vec() })
-    }
-
-    #[test]
-    fn fetch_chunks_are_joined_per_request_and_delivered_once() {
-        let mut app = new_app();
-        assert!(app.dispatch(chunk(1, 200, false, &[1, 2])).0.is_empty());
-        assert!(app.dispatch(chunk(2, 404, false, &[9])).0.is_empty());
-        assert!(app.dispatch(chunk(1, 200, false, &[3])).0.is_empty());
-
-        let (events, commands) = app.dispatch(chunk(1, 200, true, &[4]));
-        assert!(commands.is_empty());
-        let [Event::Fetched(response)] = events.as_slice() else { panic!("not delivered") };
-        assert_eq!((response.request, response.status), (1, 200));
-        assert_eq!(response.body, [1, 2, 3, 4]);
-
-        let (events, _) = app.dispatch(chunk(2, 404, true, &[]));
-        let [Event::Fetched(response)] = events.as_slice() else { panic!("not delivered") };
-        assert_eq!(
-            (response.request, response.status, response.body.as_slice()),
-            (2, 404, &[9][..])
-        );
-        assert!(app.responses.is_empty());
     }
 
     #[test]
@@ -290,15 +254,6 @@ mod tests {
         let (events, commands) = app.dispatch(Event::Canvas(release));
         assert!(matches!(events.as_slice(), [Event::Gesture(Gesture::Tap)]));
         assert!(commands.is_empty());
-    }
-
-    #[test]
-    fn the_event_queue_is_empty_after_a_whole_tap() {
-        let mut app = new_app();
-
-        app.process(&pointer_frame(POINTER_DOWN, &section(1), 10.0, 1, 0.0));
-        app.process(&pointer_frame(POINTER_UP, &section(1), 10.0, 1, 50.0));
-        assert!(app.events.is_empty());
     }
 
     #[cfg(not(feature = "calendar"))]
@@ -363,13 +318,99 @@ mod tests {
         assert!(app.responses.is_empty());
     }
 
-    #[cfg(feature = "calendar")]
     #[test]
-    fn interleaved_requests_do_not_mix() {
-        let mut app = new_app();
-        app.process(&fetch_frame(1, 200, false, b"{"));
-        app.process(&fetch_frame(2, 200, true, b"x"));
-        assert!(app.handler.calendar().is_none());
-        assert_eq!(app.responses.len(), 1);
+    fn random_chunked_responses_arrive_whole_and_exactly_once() {
+        for seed in 0..1000 {
+            let mut rng = Rng::new(seed);
+            let mut app = new_app();
+            let mut queues: Vec<(u32, u16, Vec<Vec<u8>>, Vec<u8>)> = Vec::new();
+            for request in 1..=1 + rng.below(3) as u32 {
+                let length = rng.below(50);
+                let body = rng.bytes(length);
+                let mut chunks = Vec::new();
+                let mut rest = &body[..];
+                while !rest.is_empty() {
+                    let take = 1 + rng.below(rest.len().min(10));
+                    chunks.push(rest[..take].to_vec());
+                    rest = &rest[take..];
+                }
+                chunks.push(Vec::new());
+                let status = if seed % 2 == 0 { 200 } else { 200 + request as u16 };
+                queues.push((request, status, chunks, body));
+            }
+            let mut delivered: Vec<(u32, u16, Vec<u8>)> = Vec::new();
+            while queues.iter().any(|(_, _, chunks, _)| !chunks.is_empty()) {
+                let pick = rng.below(queues.len());
+                let (request, status, chunks, _) = &mut queues[pick];
+                if chunks.is_empty() {
+                    continue;
+                }
+                let bytes = chunks.remove(0);
+                let last = chunks.is_empty();
+                let (events, commands) = app.dispatch(chunk(*request, *status, last, &bytes));
+                assert!(commands.is_empty(), "seed {seed}");
+                for event in events {
+                    let Event::Fetched(response) = event else {
+                        panic!("seed {seed}: not a response")
+                    };
+                    assert!(last, "seed {seed}: delivered before the last chunk");
+                    delivered.push((response.request, response.status, response.body));
+                }
+            }
+            delivered.sort_by_key(|(request, ..)| *request);
+            let expected: Vec<_> = queues
+                .into_iter()
+                .map(|(request, status, _, body)| (request, status, body))
+                .collect();
+            assert_eq!(delivered, expected, "seed {seed}");
+            assert!(app.responses.is_empty(), "seed {seed}");
+        }
+    }
+
+    #[test]
+    fn arbitrary_frames_never_panic_and_the_event_queue_stays_drained() {
+        for seed in 0..400 {
+            let mut rng = Rng::new(seed);
+            let mut app = new_app();
+            for step in 0..60 {
+                let frame = match rng.below(4) {
+                    0 => {
+                        let id = rng.id();
+                        pointer_frame(
+                            rng.below(40) as u8,
+                            &id,
+                            rng.below(400) as f32,
+                            rng.below(3) as u32,
+                            step as f64 * 30.0,
+                        )
+                    }
+                    1 => {
+                        let length = rng.below(60);
+                        rng.bytes(length)
+                    }
+                    2 => {
+                        let length = rng.below(20);
+                        let bytes = rng.bytes(length);
+                        let mut frame = Vec::new();
+                        frame.push(crate::event::EVENT_FETCH);
+                        (1 + rng.below(3) as u32).encode(&mut frame);
+                        frame.extend_from_slice(&(200 + rng.below(300) as u16).to_le_bytes());
+                        frame.push(rng.below(2) as u8);
+                        <[u8]>::encode(&bytes, &mut frame);
+                        frame
+                    }
+                    _ => {
+                        let mut frame = Vec::new();
+                        frame.push(2 + rng.below(3) as u8);
+                        (rng.below(800) as f32).encode(&mut frame);
+                        (rng.below(800) as f32).encode(&mut frame);
+                        frame
+                    }
+                };
+                app.clear();
+                app.process(&frame);
+                assert!(app.events.is_empty(), "seed {seed} step {step}");
+            }
+        }
     }
 }

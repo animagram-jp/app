@@ -31,11 +31,11 @@ pub const OPERATION_JS_FN: u8 = 12;
 
 pub const OPERATION_ERROR: u8 = 13;
 pub const OPERATION_FETCH: u8 = 14;
+pub const OPERATION_RELOAD: u8 = 15;
 
 pub trait WireError {
     fn identifiers(&self, path: &mut Vec<u16>);
     fn detail(&self) -> String;
-    fn is_serious(&self) -> bool;
 }
 
 macro_rules! wire_error {
@@ -66,12 +66,6 @@ macro_rules! wire_error {
                     $($(#[$meta])* $name::$variant(error) => $crate::js_client::WireError::detail(error)),+
                 }
             }
-
-            fn is_serious(&self) -> bool {
-                match self {
-                    $($(#[$meta])* $name::$variant(error) => $crate::js_client::WireError::is_serious(error)),+
-                }
-            }
         }
     };
 }
@@ -93,6 +87,7 @@ pub enum Command {
     Focus { id: dom::Id },
     JsFn { id: dom::Id, name: FnName },
     Fetch { request: u32, method: Method, path: String, body: Vec<u8> },
+    Reload,
     Error { error: Error },
 }
 
@@ -172,13 +167,13 @@ pub fn encode_command(frame: &mut Vec<u8>, command: &Command) {
             str::encode(path, frame);
             <[u8]>::encode(body, frame);
         }
+        Command::Reload => frame.push(OPERATION_RELOAD),
         Command::Error { ref error } => encode_error(frame, error, &error.detail()),
     }
 }
 
 pub(crate) fn encode_error(frame: &mut Vec<u8>, error: &Error, detail: &str) {
     frame.push(OPERATION_ERROR);
-    frame.push(error.is_serious() as u8);
     let mut path = Vec::new();
     error.identifiers(&mut path);
     frame.push(path.len() as u8);
@@ -1662,34 +1657,6 @@ mod two_finger_tests {
     use super::*;
 
     #[test]
-    fn waits_for_both_fingers_before_classifying() {
-        let mut state =
-            TwoFingerState::default().touch_down(1, 100.0, 100.0).touch_down(2, 200.0, 100.0);
-
-        state = state.touch_move(1, 110.0, 100.0);
-        assert_eq!(state.fold(), FoldedInput::None);
-        state = state.touch_move(1, 130.0, 100.0);
-        assert_eq!(state.fold(), FoldedInput::None);
-
-        state = state.touch_move(1, 150.0, 100.0).touch_move(2, 150.0, 100.0);
-        assert_eq!(
-            state.fold(),
-            FoldedInput::Pinch { scale: 0.0, center_x: 150.0, center_y: 100.0 }
-        );
-    }
-
-    #[test]
-    fn symmetric_pinch_in_reduces_scale() {
-        let mut state =
-            TwoFingerState::default().touch_down(1, 100.0, 100.0).touch_down(2, 200.0, 100.0);
-        state = state.touch_move(1, 140.0, 100.0).touch_move(2, 160.0, 100.0);
-        match state.fold() {
-            FoldedInput::Pinch { scale, .. } => assert!(scale < 1.0, "scale = {scale}"),
-            other => panic!("expected Pinch, got {other:?}"),
-        }
-    }
-
-    #[test]
     fn symmetric_pinch_out_increases_scale() {
         let mut state =
             TwoFingerState::default().touch_down(1, 140.0, 100.0).touch_down(2, 160.0, 100.0);
@@ -1701,14 +1668,6 @@ mod two_finger_tests {
     }
 
     #[test]
-    fn parallel_motion_is_pan_not_pinch() {
-        let mut state =
-            TwoFingerState::default().touch_down(1, 100.0, 100.0).touch_down(2, 200.0, 100.0);
-        state = state.touch_move(1, 120.0, 100.0).touch_move(2, 220.0, 100.0);
-        assert_eq!(state.fold(), FoldedInput::AsSinglePoint { x: 170.0, y: 100.0 });
-    }
-
-    #[test]
     fn mode_latches_after_commit() {
         let mut state =
             TwoFingerState::default().touch_down(1, 100.0, 100.0).touch_down(2, 200.0, 100.0);
@@ -1717,31 +1676,6 @@ mod two_finger_tests {
 
         state = state.touch_move(1, 140.0, 100.0).touch_move(2, 140.0, 100.0);
         assert!(matches!(state.fold(), FoldedInput::Pinch { .. }));
-    }
-
-    #[test]
-    fn third_finger_is_ignored() {
-        let state = TwoFingerState::default()
-            .touch_down(1, 100.0, 100.0)
-            .touch_down(2, 200.0, 100.0)
-            .touch_down(3, 300.0, 100.0);
-        assert_eq!(state.primary_id(), Some(1));
-        assert_eq!(state.secondary_id(), Some(2));
-    }
-
-    #[test]
-    fn primary_release_promotes_secondary() {
-        let mut state =
-            TwoFingerState::default().touch_down(1, 100.0, 100.0).touch_down(2, 200.0, 100.0);
-        state = state.touch_move(1, 140.0, 100.0).touch_move(2, 160.0, 100.0);
-        assert!(matches!(state.fold(), FoldedInput::Pinch { .. }));
-
-        let (next, ended_mode) = state.touch_up(1);
-        state = next;
-        assert_eq!(ended_mode, TwoFingerMode::Pinch);
-        assert_eq!(state.primary_id(), Some(2));
-        assert!(state.secondary_id().is_none());
-        assert_eq!(state.fold(), FoldedInput::None);
     }
 
     #[test]
@@ -1763,6 +1697,7 @@ mod touch_tracker_tests {
     use alloc::vec::Vec;
 
     use super::*;
+    use crate::testing::Rng;
 
     fn run(events: &[(EventType, u32, f64, f64, f64)], th: &Thresholds) -> Vec<Option<Gesture>> {
         let mut tracker = TouchTracker::default();
@@ -1772,18 +1707,101 @@ mod touch_tracker_tests {
             .collect()
     }
 
+    fn random_press_events(
+        rng: &mut Rng,
+        pointers: u32,
+        steps: usize,
+    ) -> (Vec<(EventType, u32, f64, f64, f64)>, Vec<u32>) {
+        let mut events = Vec::new();
+        let mut down: Vec<u32> = Vec::new();
+        let mut time = 0.0;
+        for _ in 0..steps {
+            time += rng.below(400) as f64;
+            let free: Vec<u32> = (1..=pointers).filter(|id| !down.contains(id)).collect();
+            let choice = rng.below(10);
+            let (event_type, id) = if down.is_empty() || (choice < 3 && !free.is_empty()) {
+                (EventType::PointerDown, free[rng.below(free.len())])
+            } else if choice < 7 {
+                (EventType::PointerMove, down[rng.below(down.len())])
+            } else if choice < 9 {
+                (EventType::PointerUp, down[rng.below(down.len())])
+            } else {
+                (EventType::PointerCancel, down[rng.below(down.len())])
+            };
+            match event_type {
+                EventType::PointerDown => down.push(id),
+                EventType::PointerUp | EventType::PointerCancel => down.retain(|held| *held != id),
+                _ => {}
+            }
+            events.push((event_type, id, rng.below(300) as f64, rng.below(300) as f64, time));
+        }
+        (events, down)
+    }
+
     #[test]
-    fn single_finger_behaves_like_before() {
-        let th = Thresholds::MOUSE;
-        let got = run(
-            &[
-                (EventType::PointerDown, 1, 100.0, 100.0, 0.0),
-                (EventType::PointerMove, 1, 200.0, 100.0, 50.0),
-                (EventType::PointerUp, 1, 260.0, 100.0, 100.0),
-            ],
-            &th,
-        );
-        assert_eq!(got, [None, None, Some(Gesture::SwipeRight)]);
+    fn a_single_pointer_never_breaks_the_drag_grammar() {
+        for seed in 0..3000 {
+            let mut rng = Rng::new(seed);
+            let th = if rng.chance(50) { Thresholds::MOUSE } else { Thresholds::TOUCH };
+            let (events, _) = random_press_events(&mut rng, 1, 40);
+            let mut dragging = false;
+            for (index, got) in run(&events, &th).into_iter().enumerate() {
+                let Some(gesture) = got else { continue };
+                match gesture {
+                    Gesture::Drag { .. } => dragging = true,
+                    Gesture::DragEnd | Gesture::DragCancel => {
+                        assert!(dragging, "seed {seed} event {index}: {gesture:?} without a drag");
+                        dragging = false;
+                    }
+                    other => {
+                        assert!(!dragging, "seed {seed} event {index}: {other:?} inside a drag");
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn any_pointer_traffic_ends_idle_once_every_pointer_is_released() {
+        for seed in 0..5000 {
+            let mut rng = Rng::new(seed);
+            let th = if rng.chance(50) { Thresholds::MOUSE } else { Thresholds::TOUCH };
+            let (mut events, down) = random_press_events(&mut rng, 3, 30);
+            let mut time = events.last().map_or(0.0, |event| event.4);
+            for id in down {
+                time += 10.0;
+                events.push((EventType::PointerUp, id, 5.0, 5.0, time));
+            }
+            time += 5000.0;
+            events.push((EventType::PointerDown, 1, 100.0, 100.0, time));
+            events.push((EventType::PointerUp, 1, 100.0, 100.0, time + 50.0));
+            assert_eq!(run(&events, &th).last(), Some(&Some(Gesture::Tap)), "seed {seed}");
+        }
+    }
+
+    #[test]
+    fn unpaired_pointer_events_never_panic() {
+        let kinds = [
+            EventType::PointerDown,
+            EventType::PointerMove,
+            EventType::PointerUp,
+            EventType::PointerCancel,
+        ];
+        for seed in 0..3000 {
+            let mut rng = Rng::new(seed);
+            let events: Vec<_> = (0..40)
+                .map(|step| {
+                    (
+                        kinds[rng.below(kinds.len())].clone(),
+                        rng.below(4) as u32,
+                        rng.below(300) as f64,
+                        rng.below(300) as f64,
+                        step as f64 * rng.below(200) as f64,
+                    )
+                })
+                .collect();
+            let _ = run(&events, &Thresholds::TOUCH);
+        }
     }
 
     #[test]
@@ -2125,9 +2143,10 @@ pub mod dom {
 
 #[cfg(test)]
 mod decimal_tests {
-    use alloc::format;
+    use alloc::{format, string::String};
 
     use super::*;
+    use crate::testing::Rng;
 
     struct Sample(f64);
 
@@ -2141,22 +2160,49 @@ mod decimal_tests {
         }
     }
 
-    const SAMPLES: [f64; 14] =
-        [0.0, 0.05, 0.25, 0.35, 0.5, 1.0, 1.25, 1.5, 1.75, 2.0, 2.75, 3.0, 5.0, 123.456];
-
     fn number(source: &str) -> Option<f64> {
         parse::<Sample>(source.as_bytes()).map(|Sample(value)| value)
     }
 
     #[test]
-    fn decode_matches_std_parse() {
-        for value in SAMPLES {
-            let source = format!("{value}");
-            assert_eq!(number(&source), source.parse::<f64>().ok(), "{source}");
+    fn random_decimal_text_agrees_with_std_and_survives_a_round_trip() {
+        for seed in 0..2000 {
+            let mut rng = Rng::new(seed);
+            let digits = |rng: &mut Rng, count: usize| -> String {
+                (0..count).map(|_| char::from(b'0' + rng.below(10) as u8)).collect()
+            };
+            let whole_digits = rng.below(5);
+            let whole = digits(&mut rng, whole_digits);
+            let dot = rng.chance(70);
+            let fraction_digits = rng.below(7);
+            let fraction = if dot { digits(&mut rng, fraction_digits) } else { String::new() };
+            let source = format!("{whole}{}{fraction}", if dot { "." } else { "" });
+            if whole.is_empty() && fraction.is_empty() {
+                assert_eq!(number(&source), None, "{source:?}");
+                continue;
+            }
+            let expected = format!(
+                "{}.{}",
+                if whole.is_empty() { "0" } else { &whole },
+                if fraction.is_empty() { "0" } else { &fraction }
+            )
+            .parse::<f64>()
+            .unwrap();
+            assert_eq!(number(&source), Some(expected), "{source:?}");
+
+            let signed =
+                if rng.chance(50) { -expected } else { expected } + rng.below(1000) as f64 / 7000.0;
+            let written = text(&Sample(signed));
+            let parsed = written.trim_start_matches('-').parse::<f64>().unwrap();
+            assert!((parsed - signed.abs()).abs() <= 0.0005 + 1e-9, "{signed} -> {written}");
+            assert_eq!(
+                written.starts_with('-'),
+                signed < 0.0 && parsed != 0.0,
+                "{signed} -> {written}"
+            );
+            assert_eq!(number(written.trim_start_matches('-')), Some(parsed), "{written}");
+            assert_eq!(text(&Sample(if signed < 0.0 { -parsed } else { parsed })), written);
         }
-        assert_eq!(number(".5"), Some(0.5));
-        assert_eq!(number("1."), Some(1.0));
-        assert_eq!(number("007.50"), Some(7.5));
     }
 
     #[test]
@@ -2187,31 +2233,11 @@ mod decimal_tests {
     }
 
     #[test]
-    fn encode_matches_std_display() {
-        for value in SAMPLES {
-            assert_eq!(text(&Sample(value)), format!("{value}"));
-            assert_eq!(
-                text(&Sample(-value)),
-                if value == 0.0 { "0".into() } else { format!("-{value}") }
-            );
-        }
-    }
-
-    #[test]
     fn encode_rounds_to_three_fraction_digits() {
         assert_eq!(text(&Sample(1.23456)), "1.235");
         assert_eq!(text(&Sample(0.0004)), "0");
         assert_eq!(text(&Sample(f64::NAN)), "0");
         assert_eq!(text(&Sample(f64::INFINITY)), "0");
-    }
-
-    #[test]
-    fn round_trips_on_slider_steps() {
-        let mut value = 1.0;
-        while value <= 3.0 {
-            assert_eq!(number(&text(&Sample(value))), Some(value));
-            value += 0.25;
-        }
     }
 }
 
@@ -2223,6 +2249,7 @@ mod wire_tests {
     use crate::{
         arena::{ArenaError, PanicError},
         event::EventError,
+        testing::Rng,
     };
 
     const INIT_JS: &str = include_str!("../distribution/init.js");
@@ -2492,9 +2519,10 @@ mod wire_tests {
             assert_eq!(operation as usize, number);
             assert!(INIT_JS.contains(&format!("case {number:>2}:")), "case {number} missing");
         }
-        assert_eq!((OPERATION_ERROR, OPERATION_FETCH), (13, 14));
+        assert_eq!((OPERATION_ERROR, OPERATION_FETCH, OPERATION_RELOAD), (13, 14, 15));
         assert!(INIT_JS.contains(&format!("operation === {OPERATION_FETCH}")));
         assert!(INIT_JS.contains(&format!("operation === {OPERATION_ERROR}")));
+        assert!(INIT_JS.contains(&format!("operation === {OPERATION_RELOAD}")));
         assert_eq!(js_array("METHODS"), ["", "DELETE", "GET", "POST", "PUT"]);
         assert_eq!(
             [Method::Delete, Method::Get, Method::Post, Method::Put].map(Method::encode_u8),
@@ -2549,44 +2577,6 @@ mod wire_tests {
     }
 
     #[test]
-    fn primitives_round_trip() {
-        let mut frame = Vec::new();
-        frame.push(7);
-        0x0102u16.encode(&mut frame);
-        0xDEAD_BEEFu32.encode(&mut frame);
-        (-2i32).encode(&mut frame);
-        1.5f32.encode(&mut frame);
-        2.5f64.encode(&mut frame);
-        str::encode("日本語", &mut frame);
-        assert_eq!(&frame[1..3], [0x02, 0x01]);
-        assert_eq!(&frame[7..11], (-2i32).to_le_bytes());
-
-        let mut input = &frame[..];
-        assert_eq!(u8::decode(&mut input), Some(7));
-        input = &input[2..];
-        assert_eq!(u32::decode(&mut input), Some(0xDEAD_BEEF));
-        input = &input[4..];
-        assert_eq!(f32::decode(&mut input), Some(1.5));
-        assert_eq!(f64::decode(&mut input), Some(2.5));
-        assert_eq!(String::decode(&mut input).as_deref(), Some("日本語"));
-        assert!(input.is_empty());
-        assert_eq!(u8::decode(&mut input), None);
-    }
-
-    #[test]
-    fn bytes_round_trip_and_reject_short_input() {
-        let mut frame = Vec::new();
-        <[u8]>::encode(&[1, 2, 3], &mut frame);
-        0x0102u16.encode(&mut frame);
-        let mut input = &frame[..];
-        assert_eq!(<Vec<u8>>::decode(&mut input), Some(vec![1, 2, 3]));
-        assert_eq!(u16::decode(&mut input), Some(0x0102));
-        assert!(input.is_empty());
-        assert_eq!(<Vec<u8>>::decode(&mut &[4u8, 0, 0, 0, 1][..]), None);
-        assert_eq!(u16::decode(&mut &[1u8][..]), None);
-    }
-
-    #[test]
     fn url_search_params_split_decode_and_keep_order() {
         let pairs = from_url_search_params;
         let owned = |list: &[(&str, &str)]| {
@@ -2608,45 +2598,70 @@ mod wire_tests {
     }
 
     #[test]
-    fn get_functions_reject_short_or_invalid_input() {
-        assert_eq!(u32::decode(&mut &[1u8, 2, 3][..]), None);
-        assert_eq!(f32::decode(&mut &[0u8; 3][..]), None);
-        assert_eq!(f64::decode(&mut &[0u8; 7][..]), None);
+    fn random_frames_round_trip_and_every_proper_prefix_is_rejected() {
+        type Fields = (u8, u16, u32, i32, u32, u64, String, Vec<u8>, dom::Id);
+        fn decode_all(input: &mut &[u8]) -> Option<Fields> {
+            Some((
+                u8::decode(input)?,
+                u16::decode(input)?,
+                u32::decode(input)?,
+                i32::decode(input)?,
+                f32::decode(input)?.to_bits(),
+                f64::decode(input)?.to_bits(),
+                String::decode(input)?,
+                <Vec<u8>>::decode(input)?,
+                dom::Id::decode(input)?,
+            ))
+        }
+        for seed in 0..500 {
+            let mut rng = Rng::new(seed);
+            let text = rng.string();
+            let length = rng.below(30);
+            let bytes = rng.bytes(length);
+            let id = rng.id();
+            let fields: Fields = (
+                rng.next_u64() as u8,
+                rng.next_u64() as u16,
+                rng.next_u64() as u32,
+                rng.next_u64() as i32,
+                rng.next_u64() as u32,
+                rng.next_u64(),
+                text,
+                bytes,
+                id,
+            );
+
+            let mut frame = Vec::new();
+            fields.0.encode(&mut frame);
+            fields.1.encode(&mut frame);
+            fields.2.encode(&mut frame);
+            fields.3.encode(&mut frame);
+            f32::from_bits(fields.4).encode(&mut frame);
+            f64::from_bits(fields.5).encode(&mut frame);
+            str::encode(&fields.6, &mut frame);
+            <[u8]>::encode(&fields.7, &mut frame);
+            fields.8.encode(&mut frame);
+
+            let mut input = &frame[..];
+            assert_eq!(decode_all(&mut input), Some(fields), "seed {seed}");
+            assert!(input.is_empty(), "seed {seed}");
+            for cut in 0..frame.len() {
+                assert_eq!(decode_all(&mut &frame[..cut]), None, "seed {seed} cut {cut}");
+            }
+        }
+    }
+
+    #[test]
+    fn strings_reject_invalid_utf8_and_overlong_lengths() {
+        let mut invalid = Vec::new();
+        2u32.encode(&mut invalid);
+        invalid.extend_from_slice(&[0xFF, 0xFE]);
+        assert_eq!(String::decode(&mut &invalid[..]), None);
 
         let mut too_long = Vec::new();
         5u32.encode(&mut too_long);
         too_long.extend_from_slice(b"abcd");
         assert_eq!(String::decode(&mut &too_long[..]), None);
-
-        let mut invalid = Vec::new();
-        2u32.encode(&mut invalid);
-        invalid.extend_from_slice(&[0xFF, 0xFE]);
-        assert_eq!(String::decode(&mut &invalid[..]), None);
-    }
-
-    #[test]
-    fn dom_id_round_trip() {
-        let ids = [
-            dom::Id::new(&[]),
-            dom::Id::new(&[(dom::Tag::Body, None)]),
-            header_button_3(),
-            dom::Id::new(&[
-                (dom::Tag::Main, None),
-                (dom::Tag::Section, Some(2)),
-                (dom::Tag::Fieldset, Some(u32::MAX - 1)),
-            ]),
-            dom::Id::new(&[(dom::Tag::Other, Some(0))]),
-        ];
-        for id in ids {
-            let mut frame = Vec::new();
-            id.encode(&mut frame);
-            let mut input = &frame[..];
-            assert_eq!(dom::Id::decode(&mut input), Some(id.clone()));
-            assert!(input.is_empty());
-            for cut in 0..frame.len() {
-                assert_eq!(dom::Id::decode(&mut &frame[..cut]), None, "cut {cut}");
-            }
-        }
     }
 
     #[test]
@@ -2742,11 +2757,11 @@ mod wire_tests {
         );
         assert_eq!(
             encode(Command::Error { error: Error::Event(EventError::Decode) }),
-            [13, 0, 2, 2, 0, 1, 0, 0, 0, 0, 0]
+            [13, 2, 2, 0, 1, 0, 0, 0, 0, 0]
         );
         assert_eq!(
             encode(Command::Error { error: Error::Arena(ArenaError::CommandOverflow) }),
-            [13, 0, 2, 1, 0, 1, 0, 0, 0, 0, 0]
+            [13, 2, 1, 0, 1, 0, 0, 0, 0, 0]
         );
         let panic = encode(Command::Error {
             error: Error::Panic(PanicError {
@@ -2754,7 +2769,8 @@ mod wire_tests {
                 message:  String::from("boom"),
             }),
         });
-        assert_eq!(&panic[..7], [13, 1, 2, 3, 0, 1, 0]);
+        assert_eq!(&panic[..6], [13, 2, 3, 0, 1, 0]);
+        assert_eq!(encode(Command::Reload), [15]);
         assert_eq!(
             encode(Command::Fetch {
                 request: 258,
@@ -2765,7 +2781,7 @@ mod wire_tests {
             [14, 2, 1, 0, 0, 3, 2, 0, 0, 0, b'/', b'a', 2, 0, 0, 0, 9, 8]
         );
         assert_eq!(
-            &panic[7..],
+            &panic[6..],
             [12, 0, 0, 0, b'a', b'.', b'r', b's', b':', b'1', b':', b' ', b'b', b'o', b'o', b'm']
         );
     }

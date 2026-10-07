@@ -129,55 +129,7 @@ impl<const N: usize> Layout<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn get_set_round_trip_unsigned() {
-        let f = Field::new(5, 9);
-        let raw = f.set(0u64, 400u64);
-        assert_eq!(f.get::<u64>(raw), 400);
-        assert_eq!(f.get::<u16>(raw), 400);
-        assert_eq!(raw, 400 << 5);
-    }
-
-    #[test]
-    fn set_masks_value_and_preserves_neighbours() {
-        let f = Field::new(4, 4);
-        let raw = f.set(!0u64, 0u64);
-        assert_eq!(raw, !(0xf << 4));
-        let raw = f.set(0u64, 0x1ffu64);
-        assert_eq!(raw, 0xf0);
-    }
-
-    #[test]
-    fn signed_field_sign_extends() {
-        let f = Field::new_signed(13, 10);
-        for v in [-512i64, -400, -1, 0, 1, 400, 511] {
-            let raw = f.set(0u64, v as u64);
-            assert_eq!(f.get::<i16>(raw), v as i16, "v={v}");
-            assert_eq!(f.get::<i64>(raw), v, "v={v}");
-        }
-    }
-
-    #[test]
-    fn unsigned_field_never_sign_extends() {
-        let f = Field::new(13, 10);
-        let raw = f.set(0u64, -1i64 as u64);
-        assert_eq!(f.get::<u16>(raw), 1023);
-        assert_eq!(f.get::<i16>(raw), 1023);
-        let g = Field::new(32, 9);
-        let raw = g.set(0u64, 511u64);
-        assert_eq!(g.get::<i16>(raw), 511);
-        assert_eq!(g.get::<i64>(raw), 511);
-    }
-
-    #[test]
-    fn signed_field_does_not_touch_neighbours() {
-        let f = Field::new_signed(4, 4);
-        let raw = f.set(!0u64, 0u64);
-        assert_eq!(raw, !(0xf << 4));
-        let raw = f.set(0u64, -1i64 as u64);
-        assert_eq!(raw, 0xf0);
-    }
+    use crate::testing::Rng;
 
     #[test]
     fn widest_and_topmost_fields() {
@@ -190,72 +142,66 @@ mod tests {
     use super::Spec::{Signed, Unsigned};
 
     #[test]
-    fn layout_assigns_positions_from_the_top() {
-        const L: Layout<3> = Layout::new([Unsigned(13), Signed(10), Unsigned(1)]);
-        assert_eq!(L.bits(), 24);
-        assert_eq!(L.bytes(), 3);
-        assert_eq!(L.field(0).position, 11);
-        assert_eq!(L.field(1).position, 1);
-        assert_eq!(L.field(2).position, 0);
-    }
-
-    #[test]
-    fn layout_padding_sits_at_the_bottom() {
-        const L: Layout<2> = Layout::with_padding([Unsigned(57), Unsigned(1)], 6);
-        assert_eq!(L.bits(), 64);
-        assert_eq!(L.field(0).position, 7);
-        assert_eq!(L.field(1).position, 6);
-        assert_eq!(L.bytes(), 8);
-    }
-
-    #[test]
-    fn layout_bytes_round_up() {
-        assert_eq!(Layout::new([Unsigned(8)]).bytes(), 1);
-        assert_eq!(Layout::new([Unsigned(9)]).bytes(), 2);
-        assert_eq!(Layout::new([Unsigned(9), Unsigned(9), Unsigned(10), Unsigned(10)]).bytes(), 5);
-        assert_eq!(Layout::new([Unsigned(45)]).bytes(), 6);
-        assert_eq!(Layout::new([Unsigned(63), Unsigned(1)]).bytes(), 8);
-    }
-
-    #[test]
-    fn layout_pack_unpack_round_trip() {
-        let l = Layout::new([Unsigned(9), Unsigned(9), Signed(10), Signed(10)]);
-        let raw = l.pack([400, 511, -400i64 as u64, 511]);
-        assert_eq!(l.unpack::<i64>(raw), [400, 511, -400, 511]);
-        assert_eq!(l.get::<i16>(raw, 2), -400);
-        assert_eq!(raw >> l.bits(), 0);
-    }
-
-    #[test]
-    fn layout_pack_masks_overflow_without_touching_neighbours() {
-        let l = Layout::new([Unsigned(4), Unsigned(4)]);
-        assert_eq!(l.pack([0x1f, 0]), 0xf0);
-        assert_eq!(l.pack([0, 0x1f]), 0x0f);
-    }
-
-    #[test]
-    fn layout_set_keeps_other_fields() {
-        let l = Layout::new([Unsigned(4), Signed(4), Unsigned(8)]);
-        let raw = l.pack([3, -2i64 as u64, 200]);
-        let raw = l.set(raw, 1, 5i64);
-        assert_eq!(l.unpack::<i64>(raw), [3, 5, 200]);
-    }
-
-    #[test]
-    fn layout_decode_encode_use_only_needed_bytes() {
-        let l = Layout::new([Unsigned(9), Unsigned(9), Signed(10), Signed(10)]);
-        let raw = l.pack([400, 300, -400i64 as u64, 400]);
-        let (word, len) = l.encode(raw);
-        assert_eq!(len, 5);
-        assert_eq!(&word[5..], &[0, 0, 0]);
-        assert_eq!(l.decode(&word[..len]), Some(raw));
-        assert_eq!(l.decode(&word[..len - 1]), None);
-        assert_eq!(l.decode(&[]), None);
-    }
-
-    #[test]
     fn layout_full_width_has_no_spare_bits() {
         let l = Layout::new([Unsigned(32), Unsigned(32)]);
         assert_eq!(l.pack([u32::MAX as u64, u32::MAX as u64]), !0u64);
+    }
+
+    #[test]
+    fn random_layouts_round_trip_and_fields_never_leak_into_each_other() {
+        const FIELDS: usize = 5;
+        for seed in 0..3000 {
+            let mut rng = Rng::new(seed);
+            let widths: [u32; FIELDS] = core::array::from_fn(|_| 1 + rng.below(12) as u32);
+            let signed: [bool; FIELDS] = core::array::from_fn(|_| rng.chance(50));
+            let specs = core::array::from_fn(|i| {
+                if signed[i] { Signed(widths[i]) } else { Unsigned(widths[i]) }
+            });
+            let padding = rng.below(5) as u32;
+            let layout = Layout::with_padding(specs, padding);
+
+            let bits = widths.iter().sum::<u32>() + padding;
+            assert_eq!((layout.bits(), layout.bytes()), (bits, bits.div_ceil(8) as usize));
+            let mut position = bits;
+            for (index, width) in widths.iter().enumerate() {
+                position -= width;
+                assert_eq!(layout.field(index).position, position, "seed {seed} field {index}");
+            }
+
+            let expect = |index: usize, value: u64| -> i64 {
+                let width = widths[index];
+                let low = value & ((1u64 << width) - 1);
+                if signed[index] && low >> (width - 1) == 1 {
+                    low as i64 - (1i64 << width)
+                } else {
+                    low as i64
+                }
+            };
+            let values: [u64; FIELDS] = core::array::from_fn(|_| rng.next_u64());
+            let raw = layout.pack(values);
+            assert_eq!(raw >> bits, 0, "seed {seed}");
+            assert_eq!(raw & ((1u64 << padding) - 1), 0, "seed {seed}");
+            let unpacked = layout.unpack::<i64>(raw);
+            for index in 0..FIELDS {
+                assert_eq!(
+                    unpacked[index],
+                    expect(index, values[index]),
+                    "seed {seed} field {index}"
+                );
+            }
+
+            let index = rng.below(FIELDS);
+            let replacement = rng.next_u64();
+            let changed = layout.unpack::<i64>(layout.set(raw, index, replacement));
+            for other in 0..FIELDS {
+                let want =
+                    if other == index { expect(index, replacement) } else { unpacked[other] };
+                assert_eq!(changed[other], want, "seed {seed} set {index} field {other}");
+            }
+
+            let (word, length) = layout.encode(raw);
+            assert_eq!(layout.decode(&word[..length]), Some(raw), "seed {seed}");
+            assert_eq!(layout.decode(&word[..length - 1]), None, "seed {seed}");
+        }
     }
 }

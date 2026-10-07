@@ -240,9 +240,10 @@ fn encode_time(time: f64) -> [u8; 8] {
 
 #[cfg(test)]
 mod tests {
-    use alloc::vec;
+    use alloc::{format, vec};
 
     use super::*;
+    use crate::testing::Rng;
 
     const Y2000: f64 = 946684800000.0;
 
@@ -256,11 +257,6 @@ mod tests {
         ds.set(5, b"", None).unwrap();
         ds.set(6, &[1, 2, 3, 4, 5, 6, 7, 8], None).unwrap();
         ds
-    }
-
-    fn modified_year(ds: &DataStruct) -> i64 {
-        let raw = u64::from_le_bytes(ds.get(ID_MODIFIED_AT).unwrap().try_into().unwrap());
-        timestamp::unpack(raw).0
     }
 
     #[test]
@@ -279,40 +275,12 @@ mod tests {
     }
 
     #[test]
-    fn bytes_round_trip_preserves_every_value() {
-        let ds = sample();
-        let restored = DataStruct::from_bytes(&ds.to_bytes(), 8).unwrap();
-        for id in 0..=8 {
-            assert_eq!(ds.get(id).ok(), restored.get(id).ok(), "id={id}");
-        }
-        assert_eq!(restored.to_bytes(), ds.to_bytes());
-    }
-
-    #[test]
-    fn get_from_bytes_matches_get() {
-        let ds = sample();
-        let bytes = ds.to_bytes();
-        for id in 0..=8 {
-            assert_eq!(ds.get_from_bytes(&bytes, id).ok(), ds.get(id).ok(), "id={id}");
-        }
-    }
-
-    #[test]
     fn get_from_bytes_error_kinds() {
         let ds = sample();
         let bytes = ds.to_bytes();
         assert!(matches!(ds.get_from_bytes(&bytes, 7), Err(ListError::NotExist)));
         assert!(matches!(ds.get_from_bytes(&bytes, 9), Err(ListError::OutOfBounds)));
         assert!(matches!(ds.get_from_bytes(&bytes[..10], 4), Err(ListError::OutOfBounds)));
-    }
-
-    #[test]
-    fn get_from_bytes_after_delete_is_not_exist() {
-        let mut ds = sample();
-        ds.delete(4).unwrap();
-        let bytes = ds.to_bytes();
-        assert!(matches!(ds.get_from_bytes(&bytes, 4), Err(ListError::NotExist)));
-        assert_eq!(ds.get_from_bytes(&bytes, 6).unwrap(), &[1, 2, 3, 4, 5, 6, 7, 8]);
     }
 
     #[test]
@@ -327,57 +295,115 @@ mod tests {
     }
 
     #[test]
-    fn compact_keeps_values_and_survives_serialization() {
-        let mut ds = sample();
-        ds.delete(4).unwrap();
-        ds.set(6, &[9], None).unwrap();
-        ds.compact().unwrap();
-        let restored = DataStruct::from_bytes(&ds.to_bytes(), 8).unwrap();
-        assert!(restored.get(4).is_err());
-        assert_eq!(restored.get(6).unwrap(), &[9]);
-        assert_eq!(restored.get(1).unwrap(), &7u32.to_le_bytes());
-    }
+    fn data_struct_follows_a_map_model_through_random_edits_and_byte_round_trips() {
+        const SIZE: u32 = 10;
+        const LIST: u32 = 9;
+        for seed in 0..800 {
+            let mut rng = Rng::new(seed);
+            let start = Y2000 + rng.below(1000) as f64 * 86400000.0;
+            let mut ds = DataStruct::new(7, start, SIZE);
+            let mut model: BTreeMap<u32, Vec<u8>> = BTreeMap::new();
+            model.insert(ID_IDENTITY, 7u32.to_le_bytes().to_vec());
+            model.insert(ID_CREATED_AT, encode_time(start).to_vec());
+            model.insert(ID_MODIFIED_AT, encode_time(start).to_vec());
+            let mut list: Vec<u32> = Vec::new();
+            for step in 0..40 {
+                let context = format!("seed {seed} step {step}");
+                let id = 4 + rng.below(5) as u32;
+                let length = rng.below(8);
+                let value = rng.bytes(length);
+                let time = rng.chance(50).then(|| Y2000 + rng.below(100000) as f64 * 60000.0);
+                match rng.below(10) {
+                    0..4 => {
+                        ds.set(id, &value, time).unwrap();
+                        model.insert(id, value);
+                        if let Some(time) = time {
+                            model.insert(ID_MODIFIED_AT, encode_time(time).to_vec());
+                        }
+                    }
+                    4..6 => {
+                        let result = ds.delete(id);
+                        assert_eq!(result.is_ok(), model.remove(&id).is_some(), "{context}");
+                    }
+                    6..8 => {
+                        let before = ds.to_bytes();
+                        let other = 4 + rng.below(5) as u32;
+                        let beyond = rng.chance(20).then_some(SIZE + 90);
+                        let entries = [
+                            (id, Some(&value[..])),
+                            (other, None),
+                            (beyond.unwrap_or(other), rng.chance(50).then_some(&b"z"[..])),
+                        ];
+                        match ds.set_many(entries, time) {
+                            Ok(()) => {
+                                for (schema_id, bytes) in entries {
+                                    match bytes {
+                                        Some(bytes) => model.insert(schema_id, bytes.to_vec()),
+                                        None => model.remove(&schema_id),
+                                    };
+                                }
+                                if let Some(time) = time {
+                                    model.insert(ID_MODIFIED_AT, encode_time(time).to_vec());
+                                }
+                            }
+                            Err(_) => assert_eq!(ds.to_bytes(), before, "{context}: not atomic"),
+                        }
+                    }
+                    8 => {
+                        let index = rng.below(4);
+                        let ids = [rng.next_u64() as u32, rng.next_u64() as u32];
+                        ds.set_indirect::<1, 2>(LIST, [(index, ids)]).unwrap();
+                        list.resize(list.len().max((index + 1) * 2), 0);
+                        list[index * 2..index * 2 + 2].copy_from_slice(&ids);
+                        model.insert(LIST, list.iter().flat_map(|id| id.to_le_bytes()).collect());
+                    }
+                    _ => {
+                        ds.compact().unwrap();
+                    }
+                }
 
-    #[test]
-    fn new_stamps_created_and_modified_equally() {
-        let ds = DataStruct::new(1, Y2000, 4);
-        assert_eq!(ds.get(ID_CREATED_AT).unwrap(), ds.get(ID_MODIFIED_AT).unwrap());
-        assert_eq!(modified_year(&ds), 2000);
-    }
+                let restored = DataStruct::from_bytes(&ds.to_bytes(), SIZE).unwrap();
+                let bytes = ds.to_bytes();
+                for schema_id in 1..=SIZE {
+                    let expected = model.get(&schema_id).map(Vec::as_slice);
+                    assert_eq!(ds.get(schema_id).ok(), expected, "{context} get {schema_id}");
+                    assert_eq!(
+                        restored.get(schema_id).ok(),
+                        expected,
+                        "{context} restored {schema_id}"
+                    );
+                    assert_eq!(
+                        ds.get_from_bytes(&bytes, schema_id).ok(),
+                        expected,
+                        "{context} from bytes {schema_id}"
+                    );
+                }
+                for index in 0..6 {
+                    let want = list.get(index * 2..index * 2 + 2).map(|ids| [ids[0], ids[1]]);
+                    assert_eq!(
+                        ds.get_indirect::<1, 2>(LIST, [index])[0],
+                        want,
+                        "{context} indirect {index}"
+                    );
+                }
+            }
 
-    #[test]
-    fn set_with_time_updates_modified_only() {
-        let mut ds = DataStruct::new(1, Y2000, 8);
-        let later = Y2000 + 366.0 * 86400.0 * 1000.0;
-        ds.set(4, b"x", Some(later)).unwrap();
-        assert_eq!(modified_year(&ds), 2001);
-        let created = u64::from_le_bytes(ds.get(ID_CREATED_AT).unwrap().try_into().unwrap());
-        assert_eq!(timestamp::unpack(created).0, 2000);
-    }
-
-    #[test]
-    fn set_without_time_leaves_modified() {
-        let mut ds = DataStruct::new(1, Y2000, 8);
-        ds.set(4, b"x", None).unwrap();
-        assert_eq!(modified_year(&ds), 2000);
-    }
-
-    #[test]
-    fn set_many_is_atomic_and_stamps_time() {
-        let mut ds = sample();
-        let later = Y2000 + 366.0 * 86400.0 * 1000.0;
-        ds.set_many([(4, Some(&b"new"[..])), (5, None)], Some(later)).unwrap();
-        assert_eq!(ds.get(4).unwrap(), b"new");
-        assert!(ds.get(5).is_err());
-        assert_eq!(modified_year(&ds), 2001);
-    }
-
-    #[test]
-    fn indirect_round_trip_through_bytes() {
-        let mut ds = sample();
-        ds.set_indirect::<2, 2>(3, [(0, [10, 11]), (2, [20, 21])]).unwrap();
-        let restored = DataStruct::from_bytes(&ds.to_bytes(), 8).unwrap();
-        let got = restored.get_indirect::<3, 2>(3, [0, 1, 2]);
-        assert_eq!(got, [Some([10, 11]), Some([0, 0]), Some([20, 21])]);
+            let bytes = ds.to_bytes();
+            for _ in 0..20 {
+                let mut damaged = bytes[..rng.below(bytes.len() + 1)].to_vec();
+                if !damaged.is_empty() && rng.chance(60) {
+                    let at = rng.below(damaged.len());
+                    damaged[at] ^= 1 + rng.below(255) as u8;
+                }
+                for schema_id in 0..=SIZE + 2 {
+                    let _ = ds.get_from_bytes(&damaged, schema_id);
+                }
+                if let Ok(loaded) = DataStruct::from_bytes(&damaged, SIZE) {
+                    for schema_id in 0..=SIZE + 2 {
+                        let _ = loaded.get(schema_id);
+                    }
+                }
+            }
+        }
     }
 }

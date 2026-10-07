@@ -15,6 +15,7 @@ use crate::{
     Lang,
     data_struct::{DataStruct, ID_IDENTITY, ID_MODIFIED_AT},
     field::{Layout, Spec::Unsigned},
+    file_store::FileStore,
     js_client::WireError,
     timestamp::{Format, display, pack},
 };
@@ -52,10 +53,6 @@ impl WireError for DataError {
             DataError::Status(status) => format!("{status}"),
             DataError::Parse(message) | DataError::Format(message) => message.clone(),
         }
-    }
-
-    fn is_serious(&self) -> bool {
-        false
     }
 }
 
@@ -176,6 +173,7 @@ pub const KIND_STATUS: u32 = 2;
 pub const KIND_SHIFT_ENTRY: u32 = 3;
 pub const KIND_APPOINTMENT: u32 = 4;
 pub const KIND_CATEGORY: u32 = 5;
+pub const META_KEY: u32 = 1;
 pub const PAGE_COUNT: usize = 5;
 const PAGES: [&str; PAGE_COUNT] = ["resources", "statuses", "categories", "shifts", "appointments"];
 
@@ -660,17 +658,71 @@ fn format_error(kind: &str, text: &str) -> DataError {
     DataError::Format(format!("{kind}: {text}"))
 }
 
+pub fn put<R: Record>(store: &mut impl FileStore, record: &R) -> Result<(), DataError> {
+    store.set(record.key()?, record.to_bytes());
+    Ok(())
+}
+
+pub fn seed(store: &mut impl FileStore, calendar: &Calendar) -> Result<(), DataError> {
+    for resource in &calendar.resources {
+        put(store, resource)?;
+    }
+    for status in &calendar.statuses {
+        put(store, status)?;
+    }
+    for category in &calendar.categories {
+        put(store, category)?;
+    }
+    for shift in &calendar.shifts {
+        put(store, shift)?;
+    }
+    for appointment in &calendar.appointments {
+        put(store, appointment)?;
+    }
+    put(store, &calendar.meta)
+}
+
+fn records<R: Record>(store: &impl FileStore) -> Result<Vec<R>, DataError> {
+    store
+        .range(R::KIND << KIND_SHIFT, (R::KIND + 1) << KIND_SHIFT)
+        .map(|(_, bytes)| R::from_bytes(bytes))
+        .collect()
+}
+
+pub fn load(store: &impl FileStore) -> Result<Option<Calendar>, DataError> {
+    let Some(bytes) = store.get(META_KEY) else {
+        return Ok(None);
+    };
+    Ok(Some(Calendar {
+        meta:         Meta::from_bytes(bytes)?,
+        resources:    records::<Resource>(store)?,
+        statuses:     records::<Status>(store)?,
+        categories:   records::<Category>(store)?,
+        shifts:       records::<Shift>(store)?,
+        appointments: records::<Appointment>(store)?,
+    }))
+}
+
 #[cfg(test)]
 mod tests {
-    use alloc::vec::Vec;
+    use alloc::{collections::BTreeMap, vec::Vec};
     use std::fs;
 
     use super::*;
-    use crate::{data_struct::ID_CREATED_AT, timestamp::diff};
+    use crate::{
+        data_struct::ID_CREATED_AT,
+        file_store::{MemoryHandles, MemoryStore},
+        testing::Rng,
+        timestamp::diff,
+    };
 
     fn sample() -> Vec<u8> {
         fs::read(concat!(env!("CARGO_MANIFEST_DIR"), "/distribution/calendar/data/calendar.json"))
             .unwrap()
+    }
+
+    fn sample_calendar() -> Calendar {
+        Calendar::decode(&sample()).unwrap()
     }
 
     #[test]
@@ -755,16 +807,6 @@ mod tests {
         assert!(matches!(Calendar::decode(bad.as_bytes()), Err(DataError::Format(_))));
     }
 
-    #[test]
-    fn data_error_identifiers_and_detail() {
-        let mut path = Vec::new();
-        DataError::Status(404).identifiers(&mut path);
-        assert_eq!(path, [1]);
-        assert_eq!(DataError::Status(404).detail(), "404");
-        assert_eq!(DataError::Format(alloc::string::String::from("x")).detail(), "x");
-        assert!(!DataError::Parse(alloc::string::String::new()).is_serious());
-    }
-
     fn value(bytes: &[u8]) -> serde_json::Value {
         serde_json::from_slice(bytes).unwrap()
     }
@@ -828,5 +870,110 @@ mod tests {
         let partial = source.replacen("\"total\": 4", "\"total\": 9", 1);
         let calendar = Calendar::decode(partial.as_bytes()).unwrap();
         assert_eq!(value(&calendar.encode())["resources"]["meta"]["total"], 9);
+    }
+
+    fn same_but_appointments(a: &Calendar, b: &Calendar) -> bool {
+        a.meta == b.meta
+            && a.resources == b.resources
+            && a.statuses == b.statuses
+            && a.categories == b.categories
+            && a.shifts == b.shifts
+    }
+
+    #[test]
+    fn an_empty_store_loads_nothing() {
+        assert!(load(&MemoryStore::default()).unwrap().is_none());
+    }
+
+    #[test]
+    fn a_corrupt_record_is_reported() {
+        let calendar = sample_calendar();
+        let mut store = MemoryStore::default();
+        seed(&mut store, &calendar).unwrap();
+        store.set(calendar.appointments[0].key().unwrap(), Vec::from(*b"{"));
+        assert!(matches!(load(&store), Err(DataError::Format(_))));
+    }
+
+    #[test]
+    fn keys_are_namespaced_by_kind_and_bounded() {
+        let calendar = sample_calendar();
+        let keys = [
+            calendar.resources[0].key().unwrap(),
+            calendar.statuses[0].key().unwrap(),
+            calendar.shifts[0].key().unwrap(),
+            calendar.appointments[0].key().unwrap(),
+            META_KEY,
+        ];
+        for (i, x) in keys.iter().enumerate() {
+            for y in &keys[i + 1..] {
+                assert_ne!(x, y);
+            }
+        }
+        assert_eq!(calendar.appointments[0].key().unwrap() >> 28, KIND_APPOINTMENT);
+        assert_eq!(calendar.meta.key().unwrap(), META_KEY);
+        assert_eq!(KIND_META, 0);
+        assert_eq!(KIND_RESOURCE, 1);
+        assert_eq!(KIND_STATUS, 2);
+        assert_eq!(KIND_SHIFT_ENTRY, 3);
+        assert!(matches!(
+            crate::calendar::data::key(KIND_APPOINTMENT, 1 << 28),
+            Err(DataError::Format(_))
+        ));
+    }
+
+    #[test]
+    fn the_store_follows_an_appointment_model_through_edits_saves_discards_and_reloads() {
+        for round in 0..40 {
+            let mut rng = Rng::new(round);
+            let calendar = sample_calendar();
+            let disk = MemoryHandles::default();
+            let mut store = MemoryStore::new(disk.clone()).unwrap();
+            seed(&mut store, &calendar).unwrap();
+            store.save().unwrap();
+            let mut committed: BTreeMap<u32, Appointment> = calendar
+                .appointments
+                .iter()
+                .map(|appointment| (appointment.key().unwrap(), appointment.clone()))
+                .collect();
+            let mut current = committed.clone();
+            for step in 0..25 {
+                let context = format!("round {round} step {step}");
+                match rng.below(10) {
+                    0..4 => {
+                        let keys: Vec<u32> = current.keys().copied().collect();
+                        let key = keys[rng.below(keys.len())];
+                        let mut edited = current[&key].clone();
+                        let shift = rng.below(240) as u32;
+                        edited.set_start(edited.start() + shift);
+                        edited.set_end(edited.end() + shift);
+                        put(&mut store, &edited).unwrap();
+                        current.insert(key, edited);
+                    }
+                    4..6 => {
+                        let keys: Vec<u32> = current.keys().copied().collect();
+                        let key = keys[rng.below(keys.len())];
+                        store.delete(key);
+                        current.remove(&key);
+                    }
+                    6..8 => {
+                        store.save().unwrap();
+                        committed = current.clone();
+                    }
+                    8 => {
+                        store.discard().unwrap();
+                        current = committed.clone();
+                    }
+                    _ => {
+                        store = MemoryStore::new(disk.clone()).unwrap();
+                        current = committed.clone();
+                    }
+                }
+                let loaded = load(&store).unwrap().unwrap();
+                assert!(loaded.appointments.iter().eq(current.values()), "{context}");
+                assert!(same_but_appointments(&loaded, &calendar), "{context}");
+            }
+            let reopened = load(&MemoryStore::new(disk).unwrap()).unwrap().unwrap();
+            assert!(reopened.appointments.iter().eq(committed.values()), "round {round}");
+        }
     }
 }

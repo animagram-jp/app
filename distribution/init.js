@@ -33,8 +33,9 @@ const EVENT_SHUTDOWN = 8;
 
 const THREAD = crossOriginIsolated ? "worker" : "main";
 
-// flag of retry of loading when fallback to THREAD === "main"
-const MAIN_RELOAD_KEY = "app:main-thread-reload-attempted";
+const RELOAD_LOG_KEY = "app:reload-log";
+const RELOAD_WINDOW_MS = 60000;
+const RELOAD_LIMIT = 3;
 
 /**
  *  MUST Sync with talc allocator -Clink-arg=--max-memory=134217728, 128MiB = 2048 pages
@@ -52,7 +53,6 @@ const S = {
         maximum: MEMORY_MAXIMUM_PAGES,
         shared: THREAD === "worker",
     }),
-    exports: null,
     arena_offset: 0,
     buffer: null,
     int32: null,
@@ -63,9 +63,6 @@ const S = {
     call_app: () => {},
 };
 
-let worker = null;
-let bound = false;
-let restarting = false;
 let composing_element = null;
 
 const sw_registration = "serviceWorker" in navigator
@@ -106,7 +103,6 @@ function start() {
                 await import("./app/app.js?v={version}");
             await init({ module_or_path: "./app/app_bg.wasm?v={version}", memory: S.memory });
 
-            S.exports = { arena_offset, initialize, process_event };
             S.buffer = null;
             initialize();
             S.arena_offset = arena_offset();
@@ -128,13 +124,10 @@ function start() {
     }
 
     const w = new Worker("./worker.js?v={version}", { type: "module" });
-    worker = w;
 
     w.addEventListener("message", async (e) => {
-        if (e.data.type === "error") { restart(); }
         if (e.data.type === "ready") {
             S.arena_offset = e.data.arena_offset;
-            sessionStorage.removeItem(MAIN_RELOAD_KEY);
 
             for (;;) {
                 drain();
@@ -148,8 +141,8 @@ function start() {
     });
 
     w.addEventListener("error", (e) => {
-        console.error("[worker] restart:", e.message);
-        restart();
+        console.error("[worker] reload:", e.message);
+        execute(Uint8Array.of(15));
     });
 
     w.postMessage({
@@ -168,34 +161,11 @@ function start() {
     bind();
 }
 
-function restart() {
-    if (restarting) return;
-    restarting = true;
-
-    worker?.terminate();
-    worker = null;
-    S.buffer = null;
-
-    if (THREAD === "main") {
-        S.exports?.initialize();
-        S.arena_offset = S.exports?.arena_offset() ?? S.arena_offset;
-        bind();
-        S.call_app();
-    } else {
-        start();
-    }
-
-    restarting = false;
-}
-
 async function try_recover_to_worker_thread() {
-    if (sessionStorage.getItem(MAIN_RELOAD_KEY)) return false;
     if (!(await sw_registration)) return false;
 
-    sessionStorage.setItem(MAIN_RELOAD_KEY, "1");
     await navigator.serviceWorker.ready.catch(() => {});
-    location.reload();
-    return true;
+    return execute(Uint8Array.of(15)) === true;
 }
 
 // === execute command ===
@@ -215,8 +185,7 @@ function drain() {
 function execute(frame) {
     const operation = frame[0];
     if (operation === 13) {
-        const [serious, after_serious] = get_u8(frame, 1);
-        const [depth, first] = get_u8(frame, after_serious);
+        const [depth, first] = get_u8(frame, 1);
         const identifiers = [];
         let next = first;
         for (let i = 0; i < (depth ?? 0); i++) {
@@ -226,7 +195,6 @@ function execute(frame) {
         }
         const [detail] = get_str(frame, next);
         console.error(`[wasm] error ${identifiers.join(".")}:`, detail ?? "");
-        if (serious !== 0) restart();
         return;
     }
     if (operation === 14) {
@@ -237,6 +205,25 @@ function execute(frame) {
         if (request === undefined || !METHODS[method] || path === undefined || body === undefined) return;
         fetch_request(request, METHODS[method], path, body.slice());
         return;
+    }
+
+    if (operation === 15) {
+        try {
+            const now = Date.now();
+            const log = JSON.parse(sessionStorage.getItem(RELOAD_LOG_KEY) ?? "[]")
+                .filter((time) => now - time < RELOAD_WINDOW_MS);
+            if (log.length >= RELOAD_LIMIT) {
+                console.error("[reload] suppressed:", log.length);
+                return false;
+            }
+            log.push(now);
+            sessionStorage.setItem(RELOAD_LOG_KEY, JSON.stringify(log));
+        } catch (err) {
+            console.error("[reload] suppressed:", err);
+            return false;
+        }
+        location.reload();
+        return true;
     }
 
     const [id, offset] = get_id(frame, 1);
@@ -474,9 +461,6 @@ function write_event(frame) {
 }
 
 function bind() {
-    if (bound) return;
-    bound = true;
-
     const EVENTS = [
         "change", "click", "contextmenu", "focusin", "focusout", "input",
         "pointercancel", "pointerdown", "pointerup", "submit"

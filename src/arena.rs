@@ -57,6 +57,19 @@ pub const COMMAND_RING: Ring = Ring {
     frame_max: 1024 * 64,
 };
 
+const _: () = {
+    assert!(COUNTER_WRITE_OFFSET == 0);
+    assert!(COUNTER_READ_OFFSET >= COUNTER_WRITE_OFFSET + size_of::<u32>());
+    assert!(DATA_OFFSET >= COUNTER_READ_OFFSET + size_of::<u32>());
+    assert!(COUNTER_WRITE_OFFSET % 64 == 0);
+    assert!(COUNTER_READ_OFFSET % 64 == 0);
+    assert!(DATA_OFFSET % 64 == 0);
+    assert!(EVENT_RING.data_size.is_power_of_two());
+    assert!(COMMAND_RING.data_size.is_power_of_two());
+    assert!(EVENT_RING.record_size(EVENT_RING.frame_max) * 2 <= EVENT_RING.data_size);
+    assert!(COMMAND_RING.record_size(COMMAND_RING.frame_max) * 2 <= COMMAND_RING.data_size);
+};
+
 // === arena ===
 
 pub const ARENA_SIZE: usize = COMMAND_RING.start + DATA_OFFSET + COMMAND_RING.data_size;
@@ -291,10 +304,6 @@ impl WireError for ArenaError {
     fn detail(&self) -> String {
         String::new()
     }
-
-    fn is_serious(&self) -> bool {
-        false
-    }
 }
 
 #[derive(Debug)]
@@ -316,10 +325,6 @@ impl WireError for PanicError {
 
     fn detail(&self) -> String {
         format!("{}: {}", self.location, self.message)
-    }
-
-    fn is_serious(&self) -> bool {
-        true
     }
 }
 
@@ -349,7 +354,7 @@ pub fn report_error(error: Error) {
 
 #[cfg(test)]
 mod ring_tests {
-    use alloc::{vec, vec::Vec};
+    use alloc::{collections::VecDeque, vec, vec::Vec};
     use core::cell::UnsafeCell;
     use std::{
         format,
@@ -357,6 +362,7 @@ mod ring_tests {
     };
 
     use super::*;
+    use crate::testing::Rng;
 
     const TEST_RING: Ring = Ring { start: 0, data_size: 256, frame_max: 100 };
 
@@ -420,58 +426,6 @@ mod ring_tests {
     }
 
     #[test]
-    fn counters_and_data_sit_on_separate_cache_lines() {
-        assert_eq!(COUNTER_WRITE_OFFSET, 0);
-        assert!(COUNTER_READ_OFFSET >= COUNTER_WRITE_OFFSET + size_of::<u32>());
-        assert!(DATA_OFFSET >= COUNTER_READ_OFFSET + size_of::<u32>());
-        for offset in [COUNTER_WRITE_OFFSET, COUNTER_READ_OFFSET, DATA_OFFSET] {
-            assert_eq!(offset % 64, 0);
-        }
-    }
-
-    #[test]
-    fn data_sizes_are_powers_of_two_that_hold_a_frame_and_its_padding() {
-        for ring in [EVENT_RING, COMMAND_RING] {
-            assert!(ring.data_size.is_power_of_two());
-            assert!(ring.record_size(ring.frame_max) * 2 <= ring.data_size);
-        }
-    }
-
-    #[test]
-    fn record_size_is_the_prefix_plus_the_length_rounded_up() {
-        assert_eq!(TEST_RING.record_size(0), 4);
-        assert_eq!(TEST_RING.record_size(1), 8);
-        assert_eq!(TEST_RING.record_size(4), 8);
-        assert_eq!(TEST_RING.record_size(5), 12);
-    }
-
-    #[test]
-    fn frames_come_out_in_order_with_their_own_lengths() {
-        let _guard = fresh();
-        assert!(TEST_ARENA.read_ring(TEST_RING).is_none());
-        for (seed, length) in [(1, 0), (2, 1), (3, 7), (4, 33)] {
-            assert!(TEST_ARENA.write_ring(TEST_RING, &frame_of(seed, length)));
-        }
-        for (seed, length) in [(1, 0), (2, 1), (3, 7), (4, 33)] {
-            assert_eq!(read_and_advance(TEST_RING).unwrap(), frame_of(seed, length));
-        }
-        assert!(read_and_advance(TEST_RING).is_none());
-    }
-
-    #[test]
-    fn a_full_ring_refuses_and_recovers_after_an_advance() {
-        let _guard = fresh();
-        let mut written = 0;
-        while TEST_ARENA.write_ring(TEST_RING, &[9; 20]) {
-            written += 1;
-        }
-        assert_eq!(written, TEST_RING.data_size / TEST_RING.record_size(20));
-        assert!(!TEST_ARENA.write_ring(TEST_RING, &[1]) || written > 0);
-        assert_eq!(read_and_advance(TEST_RING).unwrap(), vec![9; 20]);
-        assert!(TEST_ARENA.write_ring(TEST_RING, &[9; 20]));
-    }
-
-    #[test]
     fn the_largest_frame_fits_at_every_position_of_an_empty_ring() {
         for step in 0..(TEST_RING.data_size / size_of::<u32>()) {
             let _guard = fresh();
@@ -491,76 +445,41 @@ mod ring_tests {
     }
 
     #[test]
-    fn varied_frames_survive_many_wraps_in_order() {
-        let _guard = fresh();
-        let mut state = 12345u32;
-        let mut next_length = || {
-            state = state.wrapping_mul(1664525).wrapping_add(1013904223);
-            (state >> 16) as usize % (TEST_RING.frame_max + 1)
-        };
-        let mut pending: Vec<(u32, usize)> = Vec::new();
-        let mut produced = 0u32;
-        let mut consumed = 0u32;
-        while consumed < 3000 {
-            let length = next_length();
-            if TEST_ARENA.write_ring(TEST_RING, &frame_of(produced, length)) {
-                pending.push((produced, length));
-                produced += 1;
-            } else {
-                let (seed, length) = pending.remove(0);
-                assert_eq!(read_and_advance(TEST_RING).unwrap(), frame_of(seed, length));
-                consumed += 1;
+    fn a_random_interleaving_of_writes_and_reads_matches_a_fifo_model() {
+        for seed in 0..40 {
+            let _guard = fresh();
+            let mut rng = Rng::new(seed);
+            let mut model: VecDeque<Vec<u8>> = VecDeque::new();
+            for step in 0..3000 {
+                if rng.chance(55) {
+                    let length = rng.below(TEST_RING.frame_max + 20);
+                    let frame = rng.bytes(length);
+                    let accepted = TEST_ARENA.write_ring(TEST_RING, &frame);
+                    if length > TEST_RING.frame_max {
+                        assert!(!accepted, "seed {seed} step {step}: oversized frame accepted");
+                    } else if accepted {
+                        model.push_back(frame);
+                    } else {
+                        assert!(!model.is_empty(), "seed {seed} step {step}: empty ring refused");
+                    }
+                } else {
+                    assert_eq!(
+                        read_and_advance(TEST_RING),
+                        model.pop_front(),
+                        "seed {seed} step {step}"
+                    );
+                }
             }
-            if produced % 7 == 0 && !pending.is_empty() {
-                let (seed, length) = pending.remove(0);
-                assert_eq!(read_and_advance(TEST_RING).unwrap(), frame_of(seed, length));
-                consumed += 1;
+            while let Some(expected) = model.pop_front() {
+                assert_eq!(read_and_advance(TEST_RING), Some(expected), "seed {seed} drain");
             }
+            assert!(read_and_advance(TEST_RING).is_none());
         }
-        for (seed, length) in pending {
-            assert_eq!(read_and_advance(TEST_RING).unwrap(), frame_of(seed, length));
-        }
-        assert!(read_and_advance(TEST_RING).is_none());
-    }
-
-    #[test]
-    fn a_frame_over_the_limit_is_refused() {
-        let _guard = fresh();
-        assert!(!TEST_ARENA.write_ring(TEST_RING, &vec![0; TEST_RING.frame_max + 1]));
     }
 
     #[test]
     #[should_panic(expected = "command frame too large")]
     fn emit_panics_over_the_frame_limit() {
         emit(&vec![0; COMMAND_RING.frame_max + 1]);
-    }
-}
-
-#[cfg(test)]
-mod error_tests {
-    use alloc::{format, string::String, vec::Vec};
-
-    use super::*;
-
-    fn identifiers(error: &impl WireError) -> Vec<u16> {
-        let mut path = Vec::new();
-        error.identifiers(&mut path);
-        path
-    }
-
-    #[test]
-    fn arena_error_command_overflow_is_recoverable_and_has_no_detail() {
-        assert_eq!(identifiers(&ArenaError::CommandOverflow), [1]);
-        assert_eq!(ArenaError::CommandOverflow.detail(), "");
-        assert!(!ArenaError::CommandOverflow.is_serious());
-    }
-
-    #[test]
-    fn panic_error_is_serious_and_reports_location_and_message() {
-        let error = PanicError { location: String::from("a.rs:1"), message: String::from("boom") };
-        assert_eq!(identifiers(&error), [1]);
-        assert_eq!(error.detail(), "a.rs:1: boom");
-        assert!(error.is_serious());
-        assert_eq!(format!("{error}"), format!("{error:?}"));
     }
 }

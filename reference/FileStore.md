@@ -8,33 +8,76 @@
 
 | 関数 | 引数 | 戻り値 | 意味 |
 |-|-|-|-|
-| new    | filename: &str | `Result<Self, FileStoreError>` | OPFS から snap/log を開き、RAM index（`memory`）を復元する |
-| issue_id | &mut self | `u32` | 新規 id を発行する |
-| get    | &self, id: u32 | `Option<&[u8]>` | id に対応する現在値を返す（memory 参照のみ） |
-| set    | &mut self, id: u32, bytes: Vec<u8> | | memory を更新し `unsaved` に積む。ディスクには一切触れない |
-| delete | &mut self, id: u32 | | memory から取り除き `deleted` に積む。ディスクには一切触れない（`set` と対称な予約操作） |
+| open   | name: &str | `impl Future<Output = Result<Self::Handle, FileStoreError>>` | 永続化先から snap/log のハンドルを取得する（非同期。OPFS の取得は Promise）。実装ごとに書く |
+| new    | handle: Self::Handle | `Result<Self, FileStoreError>` | ハンドルから snap/log を読み、RAM index（`Index`）を復元する（同期）。デフォルト実装 |
+| issue_id | &mut self | `u32` | 新規 id を発行する。デフォルト実装 |
+| get    | &self, id: u32 | `Option<&[u8]>` | id に対応する現在値を返す（memory 参照のみ）。デフォルト実装 |
+| range  | &self, from: u32, to: u32 | `impl Iterator<Item = (u32, &[u8])>` | `from <= id < to` の現在値を id 順に返す。デフォルト実装 |
+| set    | &mut self, id: u32, bytes: Vec<u8> | | memory を更新し `unsaved` に積む。ディスクには一切触れない。デフォルト実装 |
+| delete | &mut self, id: u32 | | memory から取り除き `deleted` に積む。ディスクには一切触れない（`set` と対称な予約操作）。デフォルト実装 |
 
 - FileStoreに追加で必要な関数
 
 | 関数 | 引数 | 戻り値 | 意味 |
 |-|-|-|-|
-| save    | &mut self | `Result<(), FileStoreError>` | 検証済み末尾（`log_end`）を超える torn 残留を切除した上で、`unsaved`（Set）と `deleted`（Delete）をまとめて検証済み末尾に一括 append し、成功時に両方 clear して `log_end` を進める |
-| discard | &mut self | `Result<(), FileStoreError>` | rollback。`unsaved`/`deleted` を破棄し、`memory` を flush 確認済みの確定状態（`snap`+`log[..log_end]` を読み直したもの）に巻き戻す。ディスクへの書き込みは一切行わない |
-| `compact` | `&mut self` | `Result<(), FileStoreError>` | snap/log（`log[..log_end]`）を読み直した一時的な状態（memory は参照しない）を元に snap を再構築し、log を空にする |
-| close   | &self | | snap/log の SyncAccessHandle を閉じる |
+| save    | &mut self | `Result<(), FileStoreError>` | 検証済み末尾（`log_end`）を超える torn 残留を切除した上で、`unsaved`（Set）と `deleted`（Delete）をまとめて検証済み末尾に一括 append し、成功時に両方 clear して `log_end` を進める。デフォルト実装 |
+| discard | &mut self | `Result<(), FileStoreError>` | rollback。`unsaved`/`deleted` を破棄し、`memory` を flush 確認済みの確定状態（`snap`+`log[..log_end]` を読み直したもの）に巻き戻す。ディスクへの書き込みは一切行わない。デフォルト実装 |
+| `compact` | `&mut self` | `Result<(), FileStoreError>` | snap/log（`log[..log_end]`）を読み直した一時的な状態（memory は参照しない）を元に snap を再構築し、log を空にする。デフォルト実装 |
+| close   | &self | | snap/log を閉じる。実装ごとに書く |
+
+バックエンドに依存する部分は、`open` / `from_handle`（実装の構築）/ `index` / `index_mut`（`Index` への accessor）と、ファイル操作のプリミティブ6つ（`size` / `read_at` / `write_at` / `flush` / `truncate` / `close`。どちらのファイルかは `File::Snap` / `File::Log` で指定する）だけである。ロジック（`new` / `save` / `discard` / `compact` ほか）は trait のデフォルト実装として1箇所にだけ書き、`OpfsStore` と `MemoryStore` が共有する。short read / short write のループ（`read_all` / `append`）もプリミティブの上に1つだけある。
 
 ```rust
-/// OPFS実装
-pub struct FileStore {
-    snap:    FileSystemSyncAccessHandle,
-    log:     FileSystemSyncAccessHandle,
+pub enum File { Snap, Log }
+
+pub struct Index {
     memory:  BTreeMap<u32, Vec<u8>>,
     next_id: u32,
     log_end: u32,
     unsaved: BTreeSet<u32>,
     deleted: BTreeSet<u32>,
 }
+
+pub trait FileStore: Sized {
+    type Handle;
+
+    fn open(name: &str) -> impl Future<Output = Result<Self::Handle, FileStoreError>>;
+    fn from_handle(handle: Self::Handle) -> Self;
+    fn index(&self) -> &Index;
+    fn index_mut(&mut self) -> &mut Index;
+    fn size(&self, file: File) -> Result<u32, FileStoreError>;
+    fn read_at(&self, file: File, buffer: &mut [u8], at: u32) -> Result<usize, FileStoreError>;
+    fn write_at(&self, file: File, data: &[u8], at: u32) -> Result<usize, FileStoreError>;
+    fn flush(&self, file: File) -> Result<(), FileStoreError>;
+    fn truncate(&self, file: File, size: u32) -> Result<(), FileStoreError>;
+    fn close(&self);
+
+    fn new(handle: Self::Handle) -> Result<Self, FileStoreError> { /* デフォルト実装 */ }
+    fn issue_id(&mut self) -> u32 { /* 同上 */ }
+    fn get(&self, id: u32) -> Option<&[u8]> { /* 同上 */ }
+    fn range(&self, from: u32, to: u32) -> impl Iterator<Item = (u32, &[u8])> { /* 同上 */ }
+    fn set(&mut self, id: u32, bytes: Vec<u8>) { /* 同上 */ }
+    fn delete(&mut self, id: u32) { /* 同上 */ }
+    fn save(&mut self) -> Result<(), FileStoreError> { /* 同上 */ }
+    fn discard(&mut self) -> Result<(), FileStoreError> { /* 同上 */ }
+    fn compact(&mut self) -> Result<(), FileStoreError> { /* 同上 */ }
+}
+
+/// OPFS実装
+pub struct OpfsStore {
+    snap:  FileSystemSyncAccessHandle,
+    log:   FileSystemSyncAccessHandle,
+    index: Index,
+}
+
+/// `OpfsStore::open` の戻り値。`OpfsStore::new` が受け取る
+pub struct OpfsHandles {
+    snap: FileSystemSyncAccessHandle,
+    log:  FileSystemSyncAccessHandle,
+}
 ```
+
+`open` は非同期、`new` は同期である。`Handler::ready` が `open(..).await` のあと `new(..)` を呼ぶ。`Handle` は実装ごとに決まる、`open` の出力と `new` の入力を結ぶ関連型で、`OpfsStore` では snap と log の2つのハンドルを束ねた `OpfsHandles` になる。トレイトは静的ディスパッチ（`dyn` は使わない）で使い、本番とテストの切り替えは `cfg` で行う。
 
 ---
 
@@ -66,12 +109,12 @@ use web_sys::FileSystemSyncAccessHandle;
 
 | メソッド | シグネチャ | 使用箇所 | 返り値の扱い | vfs側の対応候補 |
 |-|-|-|-|-|
-| `close` | `fn(&self)` | `FileStore::close` | 返り値なし（`Result`ではなく`()`）。spec上も例外を投げない操作 | `std::fs::File`のDrop（暗黙close） |
-| `get_size` | `fn(&self) -> Result<f64, JsValue>` | `read_all`, `FileStore::save`（修復判定） | `classify()`で`FileStoreError`に分類し伝播 | `File::metadata()?.len()` |
+| `close` | `fn(&self)` | `OpfsStore::close` | 返り値なし（`Result`ではなく`()`）。spec上も例外を投げない操作 | `std::fs::File`のDrop（暗黙close） |
+| `get_size` | `fn(&self) -> Result<f64, JsValue>` | `OpfsStore::size`（`read_all` と `FileStore::save` の修復判定が経由する） | `classify()`で`FileStoreError`に分類し伝播 | `File::metadata()?.len()` |
 | `read_with_u8_array_and_options` | `fn(&self, buffer: &mut [u8], options: &FileSystemReadWriteOptions) -> Result<f64, JsValue>` | `read_all` | `Result`部分は`classify()`で伝播。**戻り値の`f64`（実際に読めたバイト数）を見て、要求サイズに満たなければオフセットをずらして再度読む（short read 対策のループ）** | `Read::read_exact` / `FileExt::read_at`（Unix） |
 | `write_with_u8_array_and_options` | `fn(&self, buffer: &[u8], options: &FileSystemReadWriteOptions) -> Result<f64, JsValue>` | `append` | `Result`部分は`classify()`で伝播。**戻り値の`f64`（実際に書けたバイト数）を見て、要求サイズに満たなければオフセットをずらして残りを書く（short write 対策のループ）** | `Write::write_all` / `FileExt::write_at`（Unix、こちらも部分書き込みに注意） |
 | `flush` | `fn(&self) -> Result<(), JsValue>` | `append`, `compact` | `classify()`で`FileStoreError`に分類し伝播 | `File::sync_all()` / `File::sync_data()` |
-| `truncate_with_u32` | `fn(&self, new_size: u32) -> Result<(), JsValue>` | `compact`, `FileStore::save`（torn 切除） | `classify()`で`FileStoreError`に分類し伝播 | `File::set_len()` |
+| `truncate_with_u32` | `fn(&self, new_size: u32) -> Result<(), JsValue>` | `OpfsStore::truncate`（`FileStore::compact` と `FileStore::save` の torn 切除が経由する） | `classify()`で`FileStoreError`に分類し伝播 | `File::set_len()` |
 
 **未使用だが存在するバリエーション**（将来 quota 超過やゼロコピー化を検討する際の選択肢）:
 `truncate_with_f64`（u32上限を超えるファイルサイズへの対応）、
@@ -120,10 +163,10 @@ whatwg/fs spec（各メソッドの steps / Exceptions 記載）によれば、`
 「handle が既に closed」だけでなく、spec 上「ファイル内容の変更そのものが
 原因不明で失敗した場合」にも投げられる（例:"if the modification of the file's binary data fails for any reason, then... throw an InvalidStateError"）。つまり`InvalidStateError`という名前に反して「closeし直せば直る」類のエラーとは限らない。
 
-**呼び出し側の判断規約（`FileStore::InvalidState`を受けた caller が
-どう振る舞うべきか）**: `DOMException.name()`だけでは「close済み」と「変更失敗」を区別できず、`FileStore`側に close 済みかどうかを追跡するフィールドを追加するのは過剰な複雑化になるため行わない。代わりに呼び出し規約で切り分ける。
+**呼び出し側の判断規約（`FileStoreError::InvalidState`を受けた caller が
+どう振る舞うべきか）**: `DOMException.name()`だけでは「close済み」と「変更失敗」を区別できず、`OpfsStore`側に close 済みかどうかを追跡するフィールドを追加するのは過剰な複雑化になるため行わない。代わりに呼び出し規約で切り分ける。
 
-- `FileStore::close()`は「Worker 終了直前に一度だけ呼ぶ」契約（README各所の前提）。この契約を守っている限り、`close()`後に`save`/`compact`/ `discard`等が呼ばれることはなく、稼働中に`InvalidState`が発生するとすればそれは「変更処理が原因不明で失敗した」ケースである。
+- `OpfsStore::close()`は「Worker 終了直前に一度だけ呼ぶ」契約（README各所の前提）。この契約を守っている限り、`close()`後に`save`/`compact`/ `discard`等が呼ばれることはなく、稼働中に`InvalidState`が発生するとすればそれは「変更処理が原因不明で失敗した」ケースである。
 - したがって **caller は `InvalidState` を基本的に「一時的な変更失敗」として扱ってよく、`save()`等を再試行する判断をしてよい**（`unsaved`/`deleted`は失敗時も維持されるため冪等に再送可能）。
 - ただし `InvalidState` が繰り返し発生する、または `close()` 呼び出し後の経路で発生する場合は、close 済み handle への誤操作というプログラムバグを疑うべき（呼び出し規約違反の兆候）。
 
@@ -146,13 +189,14 @@ whatwg/fs spec 上、`FileSystemDirectoryHandle.getFileHandle()` と
 |-|-|-|-|
 | `LogRecord::from_bytes` | checksum不一致 / op不明 / buffer不足 | `None` を返すのみ（副作用なし） | 呼び出し元（`apply_log`）が該当レコード以降を無視する。エラー原因の区別は不要（壊れている＝無視、の一択） |
 | `apply_log` / `build_memory` | （呼び出し先の `from_bytes` が `None` を返した時点で走査終了） | `memory` はそこまでの適用結果を保持（部分適用は許容される設計） | 対処不要。仕様通りの動作 |
-| `FileStore::new` | `WorkerGlobalScope` 取得失敗 / `getDirectory` 失敗 / `open`（snap・log）失敗 / `read_all`（snap・log）失敗 | `Err(FileStoreError)` を呼び出し元に返す。ハンドルは未生成、または生成済みだが index 未構築 | caller が起動失敗として扱う以外の選択肢がない（riskyな自動リトライは行わない） |
+| `OpfsStore::open` | `WorkerGlobalScope` 取得失敗 / `getDirectory` 失敗 / `open`（snap・log）失敗 | `Err(FileStoreError)` を呼び出し元に返す。`OpfsHandles` は未生成 | caller が起動失敗として扱う以外の選択肢がない（riskyな自動リトライは行わない） |
+| `FileStore::new` | `read_all`（snap・log）失敗 | `Err(FileStoreError)` を呼び出し元に返す。ハンドルは受け取り済みで、index は未構築 | `open` と同じく、caller が起動失敗として扱う |
 | `FileStore::save` | `get_size` 失敗 / 修復 `truncate` 失敗 / `append`（write失敗 / flush失敗）/ 物理サイズ < `log_end`（単一 writer 前提の破れ） | `unsaved` / `deleted` は **clearされず**、`log_end` も進まない。log の `log_end` 以降に torn バイトが残りうるが、そこは確定領域外であり、次回 save 冒頭の修復で切除される（open 時の replay も無視する） | `Err(FileStoreError)` を受けた caller は原因（`InvalidState`/`QuotaExceeded`/`UnsupportedOp`/`Unknown`）を見た上で再度 `save()` を呼び直せる（冪等に再送可能）。torn 残留の後ろに追記して確定データが読めなくなる事故は `log_end` 修復により構造的に起きない |
-| `FileStore::discard` | `read_all`（snap・log）失敗 / 物理サイズ < `log_end` | `memory`/`unsaved`/`deleted` は失敗前の状態のまま変更されない（`?` で即return、途中で `self.memory` への代入は行われない） | `Err(FileStoreError)` を受けた caller は原因を見た上で再度 `discard()` を呼び直せる。ディスクへの書き込みは行わないため、失敗してもディスク側の状態には一切影響しない |
+| `FileStore::discard` | `read_all`（snap・log）失敗 / 物理サイズ < `log_end` | `memory`/`unsaved`/`deleted` は失敗前の状態のまま変更されない（`?` で即return、途中で `memory` への代入は行われない） | `Err(FileStoreError)` を受けた caller は原因を見た上で再度 `discard()` を呼び直せる。ディスクへの書き込みは行わないため、失敗してもディスク側の状態には一切影響しない |
 | `FileStore::compact` | `read_all`（snap・log）失敗 / 物理サイズ < `log_end` / `snap.truncate` 失敗 / `append(&snap, ..)` 失敗 / `log.truncate` 失敗 / `log.flush` 失敗 | 途中で `?` によりreturnするため、`snap` だけ空にして `append` が失敗すると snap のデータが失われた状態で停止しうる。`memory` には触れないため、compact 自体の失敗が実行時状態に影響することはない | 明示的なロールバックやリトライは実装していないが、4ステップいずれで失敗しても log が失われない限り次回 `new()` は必ず正しい状態を復元できる（kill-safety、詳細は `compact` 関数のコメント参照）: ① snap.truncate 失敗→snap/log とも無傷 ② append 失敗→snap は空/部分状態だが log がまだ生きており復元可能（途中で切れたレコードは checksum 検証で無視される） ③④ log.truncate/flush 失敗→新 snap は書けており古い log が残るが、apply_log の set/delete は冪等なので再適用しても結果は変わらない。`log_end` は log.truncate 成功直後（flush 前）に 0 へ更新する — truncate は自 writer の確定的な内容変更であり、flush 失敗は耐久性のみの未確定のため |
-| `read_all`（helper） | `get_size` 失敗 / `read_with_u8_array_and_options` 失敗 / size に届く前に EOF（`r == 0`）に到達 | `Err(FileStoreError)` を返す。呼び出し側（`new`/`compact`）に `?` でそのまま伝播 | `classify()` により `InvalidState`/`UnsupportedOp`/`Unknown` に分類済み。spec上 `r == 0` はEOFを意味する正常な戻り値だが、`size` 分読み切る前に発生するのは「呼び出し中にファイルが外部で縮んだ」想定外事態（単一writer原則の下では通常起きない）であり `Unknown` として打ち切る（無限ループ回避） |
+| `read_all`（helper） | `get_size` 失敗 / `read_with_u8_array_and_options` 失敗 / size に届く前に EOF（`r == 0`）に到達 | `Err(FileStoreError)` を返す。呼び出し側（`new`/`compact`/`discard`）に `?` でそのまま伝播 | `classify()` により `InvalidState`/`UnsupportedOp`/`Unknown` に分類済み。spec上 `r == 0` はEOFを意味する正常な戻り値だが、`size` 分読み切る前に発生するのは「呼び出し中にファイルが外部で縮んだ」想定外事態（単一writer原則の下では通常起きない）であり `Unknown` として打ち切る（無限ループ回避） |
 | `append`（helper） | `write_with_u8_array_and_options` 失敗 / `flush` 失敗 / write が進捗ゼロ（`w == 0`）で継続 | `Err(FileStoreError)` を返す。呼び出し側（`save`/`compact`）が結果を見て `unsaved`/`deleted`/`log_end` の更新可否を判断 | `classify()` により `InvalidState`/`QuotaExceeded`/`UnsupportedOp`/`Unknown` に分類され、disk full（quota超過）等はある程度区別できるようになった。spec上 `write` が `Ok(0)`（バイト数不明の部分書き込み）を返すことは通常想定されないが、保険として `w == 0` を `Unknown` として打ち切る（無限ループ回避） |
-| `open`（helper） | `getFileHandleWithOptions` 失敗（不正なファイル名で`TypeError`、または`NotAllowedError`/`NotFoundError`/`TypeMismatchError`） / `createSyncAccessHandle` 失敗（`NotAllowedError`/`InvalidStateError`/`NotFoundError`/`NoModificationAllowedError`、既に他ハンドルが排他ロック中など） | `Err(FileStoreError)` として`classify()`/`classify_get_file_handle()`済みの詳細メッセージ付きで返る | `FileStore::new` がそのまま `?` で伝播。`getFileHandle`は`classify_get_file_handle()`経由で`TypeError`を`InvalidName`に分類、`createSyncAccessHandle`は`TypeError`を投げないため`classify()`の一般分類で問題ない |
+| `open`（helper） | `getFileHandleWithOptions` 失敗（不正なファイル名で`TypeError`、または`NotAllowedError`/`NotFoundError`/`TypeMismatchError`） / `createSyncAccessHandle` 失敗（`NotAllowedError`/`InvalidStateError`/`NotFoundError`/`NoModificationAllowedError`、既に他ハンドルが排他ロック中など） | `Err(FileStoreError)` として`classify()`/`classify_get_file_handle()`済みの詳細メッセージ付きで返る | `OpfsStore::open` がそのまま `?` で伝播。`getFileHandle`は`classify_get_file_handle()`経由で`TypeError`を`InvalidName`に分類、`createSyncAccessHandle`は`TypeError`を投げないため`classify()`の一般分類で問題ない |
 
 ---
 
@@ -175,16 +219,16 @@ whatwg/fs spec 上、`FileSystemDirectoryHandle.getFileHandle()` と
 
 | 優先度 | 対象 | 見通し | 根拠 / 残る差分 |
 |-|-|-|-|
-| 1 | 公開 API（`new` 以外の全関数） | **完全共通可** | 全操作が同期（`FileSystemSyncAccessHandle` 採用の帰結）。シグネチャに現れる型は `u32` / `Vec<u8>` / `&[u8]` / `Result<_, FileStoreError>` のみで、platform 型（`JsValue` 等）が一切漏れていない |
-| 1 | 公開 API `new` | 署名差のみ | OPFS は Promise 由来で `async` 必須、POSIX は同期で書ける。wasm と linux は同時リンクされないため `#[cfg]` で同名 API を出し分ければ caller 差は `.await` の有無だけ（POSIX 側も `async` 形に揃えて完全一致させる選択も可） |
+| 1 | 公開 API（`open` 以外の全関数） | **完全共通可** | 全操作が同期（`FileSystemSyncAccessHandle` 採用の帰結）。シグネチャに現れる型は `u32` / `Vec<u8>` / `Result<_, FileStoreError>` のみで、platform 型（`JsValue` 等）が一切漏れていない（`new` の引数 `Handle` のみ実装ごとの型） |
+| 1 | 公開 API `open` | 署名差のみ | OPFS は Promise 由来で `async` 必須、POSIX は同期で書ける。wasm と linux は同時リンクされないため `#[cfg]` で同名 API を出し分ければ caller 差は `.await` の有無だけ（POSIX 側も `async` 形に揃えて完全一致させる選択も可） |
 | 1 | エラー型 `FileStoreError` | enum ごと共通可 | 分類関数（`classify`）だけ platform 別。variant ↔ errno の対応は「JsValue エラーの分類」節の表の「vfs 移植時の対応候補」列が既に引けている |
 | 2 | コア（wire format / replay / RAM index） | **共通済み（事実）** | core + alloc のみに依存。host `cargo test` が既に素通りしていることが証明。checksum 打ち切り・冪等 replay の kill-safety 論証もこの層に閉じている |
-| 2 | `FileStore` メソッド本体（save / discard / compact のロジック） | generic 化で共通可 | ディスク接点は `read_all` / `append` / `truncate` / `flush` の4点に既に集約されている。handle 型を trait パラメータにすればメソッド本体ごと共有できる |
+| 2 | メソッド本体（save / discard / compact のロジック） | **共通済み（trait のデフォルト実装）** | ディスク接点は `size` / `read_at` / `write_at` / `flush` / `truncate` / `close` の6つに集約し、`FileStore` の必須メソッドにした。ロジックは1箇所で、`OpfsStore` と `MemoryStore` が共有する |
 | 2 | I/O ヘルパー（`read_all` / `append`） | ループごと共通可 | short read/write・EOF==0 の意味論が vfs の `(p)read` / `(p)write` と同型（「Web APIs (OPFS)実装」の対応表の通り） |
-| 2 | `open` / `new` の実体 | **共通化しない** | async 性・排他ロック（内蔵 vs `flock`）・親 dir fsync・パス解決が本質的な差。platform 別コンストラクタとして分離するのが素直 |
+| 2 | `open` の実体 | **共通化しない** | async 性・排他ロック（内蔵 vs `flock`）・親 dir fsync・パス解決が本質的な差。platform 別コンストラクタとして分離するのが素直 |
 | - | compact の snap 置換戦略 | 選択の余地 | 現行の truncate→append 方式の kill-safety 論証は POSIX でもそのまま成立（＝共通化可）。POSIX のみ write→fsync→rename→dir fsync の原子置換に強化できるが、実装が分岐し論証も別になる。共通化優先なら現行方式に揃える |
 
-- 優先度2案: 依存APIの共通trait
+- 優先度2案（実装済み。別 trait は設けず、`FileStore` の必須メソッドとして持つ）: 依存API
 
 | trait fn 案 | OPFS 実装 | POSIX 実装 | 差分の吸収 |
 |-|-|-|-|
@@ -202,7 +246,7 @@ whatwg/fs spec 上、`FileSystemDirectoryHandle.getFileHandle()` と
 |-|-|-|
 | fsync エラー後の dirty data 破棄 | fsync が Err を返した時点で page cache 上の該当データは破棄されうる。再 fsync が Ok を返しても書けていない（本 README「VFS API」表の既述知見） | `save()` は失敗時に `unsaved`/`deleted` を保持し **write からやり直す**契約のため既に整合（原本がメモリに残っている）。設計原則がそのまま fsyncgate 対策になっている |
 | EINTR | `(p)write` はシグナルで中断しうる | trait 実装内での再試行に閉じ込め、共通側の short write ループには EINTR を見せない |
-| 親 dir fsync（存在固定） | ファイル作成・rename 後は親 dir を fsync しないと名前が永続しない | `new`（create 時）と rename 戦略採用時のみ関係。OPFS に対応概念が無いため、共通化しない `open` 実体の差分に閉じる |
+| 親 dir fsync（存在固定） | ファイル作成・rename 後は親 dir を fsync しないと名前が永続しない | `open`（create 時）と rename 戦略採用時のみ関係。OPFS に対応概念が無いため、共通化しない `open` 実体の差分に閉じる |
 | flock の明示取得 | 排他が open と別操作 | OPFS は `createSyncAccessHandle` が排他を内蔵。POSIX は取り忘れると単一 writer 前提が破れるため `open` 実体で必ず取得 |
 
 ---
@@ -218,75 +262,52 @@ whatwg/fs spec 上、`FileSystemDirectoryHandle.getFileHandle()` と
 | | `from_bytes` | `buffer: &[u8]` | `Option<(Self, usize)>` | バッファ先頭から1レコードを読み、(record, consumed_bytes) を返す |
 | - | `apply_log` | `memory: &mut BTreeMap<u32, Vec<u8>>, log: &[u8]` | `usize` | log を走査し memory に set/delete を適用し、消費バイト数（有効 prefix 長）を返す |
 | - | `build_memory` | `snap: &[u8], log: &[u8]` | `(BTreeMap<u32, Vec<u8>>, usize)` | snap → log の順で重ね合わせて memory を構築し、log の有効 prefix 長を併せて返す |
-| - | `at` | `shift: u32` | `FileSystemReadWriteOptions` | 指定オフセットの read/write options を構築する |
-| - | `read_all` | `handle: &FileSystemSyncAccessHandle` | `Result<Vec<u8>, FileStoreError>` | ハンドルの内容を全読み込みする |
-| - | `append` | `handle: &FileSystemSyncAccessHandle, base: u32, data: &[u8]` | `Result<(), FileStoreError>` | 呼び出し側が検証した末尾 `base` にデータを書き flush する |
+| - | `options_at` | `shift: u32` | `FileSystemReadWriteOptions` | 指定オフセットの read/write options を構築する（OPFS 実装のみ） |
+| - | `read_all` | `store: &impl FileStore, file: File` | `Result<Vec<u8>, FileStoreError>` | ファイルの内容を全読み込みする（short read のループ） |
+| - | `append` | `store: &impl FileStore, file: File, base: u32, data: &[u8]` | `Result<(), FileStoreError>` | 呼び出し側が検証した末尾 `base` にデータを書き flush する（short write のループ） |
 | - | `open` | `dir: &FileSystemDirectoryHandle, filename: &str, options: &FileSystemGetFileOptions` | `Result<FileSystemSyncAccessHandle, FileStoreError>` | ファイルを開き SyncAccessHandle を取得する |
 | - | `classify` | `context: &str, error: JsValue` | `FileStoreError` | JsValue（DOMException / TypeError 想定）を FileStoreError に決め打ち分類する |
 | - | `classify_get_file_handle` | `context: &str, error: JsValue` | `FileStoreError` | `getFileHandle` 専用の分類。`DomException` にキャストできなければ（TypeError）`classify()`のUnsupportedOpではなく`InvalidName`に分類する |
 
 ## Test
 
-テストは3層構成。レコード列のデータセットは `examples/log_records.tsv` に
-シナリオ名付き（`scenario \t op \t id \t payload`）で一元定義し、テスト内への
-インラインデータ定義を避ける。host 側は `std::fs` で読み、OPFS 側（ブラウザ、
-実行時 fs 不可）は `include_str!` で同一ファイルを埋め込む。未知シナリオ名は
-panic するため、tsv の typo でテストが空振り（vacuous pass）することはない。
+テストは、入力と出力の範囲の広いものを上位に置き、その上位で足りる個別の例示テストは持たない。乱数は
+seed 固定の疑似乱数（`testing::Rng`）で、同じ seed は常に同じ入力列になる。
 
 - **DocTest**（`cargo test --doc`、全て `no_run`）: 各公開関数の使用例と契約
     （save の冪等リトライ、discard のロールバック、set の未確定可視性等）を
     コンパイル検証する。OPFS は host で実行できないため実行はしない。
-    `new`/`close`/`compact` は単体例が無意味なため個別 DocTest を持たず、
-    `FileStore` struct のライフサイクル例（new → issue_id → set → save → get →
-    compact → close）でカバーする。
-- **Host unit test**（`cargo test`）: 純粋関数（wire format / replay）のみ。OPFS には一切触れない。
-- **Opfs integration test**（`wasm-pack test --headless --firefox`）: 実 OPFS +
-    Dedicated Worker 上で公開関数を検証。期待値は同一シナリオから構築した
-    in-memory oracle（`BTreeMap`）との一致で判定する（インライン期待値を持たない）。
-    クラッシュ由来の torn 断片は、store を close した上でテストが raw
-    SyncAccessHandle を開いて log 末尾に注入し再現する。write/flush 自体の
-    エラー注入は実 OPFS では行えないため、`save()` の修復パスのうち
-    「flush 失敗が残す整形済み未確認 batch」の分岐は fault injection 可能な
-    vfs 移植（trait 化）後の検証対象として残っている。
+    `open`/`new`/`close`/`compact` は単体例が無意味なため個別 DocTest を持たず、
+    `OpfsStore` struct のライフサイクル例（open → new → issue_id → set → save →
+    get → compact → close）でカバーする。
+- **MemoryStore**（`cfg(test)`）: `FileStore` の実装の1つ。ディスクの代わりに `Vec<u8>` の snap / log を持ち、trait のデフォルト実装（`save` / `discard` / `compact` など）をそのまま使う。`open(name)` は名前ごとのディスクを共有するので、reopen も再現できる。故障の注入点は3つ: log への書き込み失敗（`MemoryHandles::failing`）、flush の失敗（`flush_fails`。書き込みは成功して log の `log_end` の後ろに完全な形式の未確認バッチが残る）、書き込みの途中でのクラッシュ（`crash_after`。指定バイト数だけ書いて止まる）。calendar の `Handler` テストでも `OpfsStore` の代わりに差し込む。
+- **Host unit test**（`cargo test`）: OPFS には一切触れない。
+- **Opfs integration test**（[CONTRIBUTING.md](../CONTRIBUTING.md) の Headless browser test）: 実 OPFS +
+    Dedicated Worker 上で、host と同じモデルテスト本体を `OpfsStore` で実行する（seed は少数）。
+    torn 断片は、store を close した上でテストが raw SyncAccessHandle を開いて log 末尾に注入し再現する。
 
 ### Host unit tests
 
 | Test | Target |
 |-|-|
-| `fletcher32_empty` | 空入力 → 0（chunks 無しの経路） |
-| `fletcher32_even_length` | 偶数長の既知ベクトル（dataset `checksum`）→ `0x56502D2A` |
-| `fletcher32_odd_length` | 奇数長の既知ベクトル（dataset `checksum_odd`）→ `0xF04FC729`。末尾1バイトの remainder 分岐を通す |
-| `log_record_set_round_trip` | Set レコードが to_bytes → from_bytes で op/id/data/consumed とも完全往復 |
-| `log_record_delete_round_trip` | Delete レコードが完全往復（data 空） |
-| `from_bytes_corrupt_checksum` | checksum の1バイト反転で `None` |
-| `from_bytes_unknown_op` | op バイトが 1/2 以外で `None` |
-| `from_bytes_zero_filled` | 全ゼロ13バイトが `None`（`fletcher32(ゼロ列) == 0` のため、op 0 を欠番にする根拠の固定） |
-| `from_bytes_truncated_header` | ヘッダー9バイトに満たないバッファで `None` |
-| `from_bytes_truncated_record` | 宣言長に1バイト不足で `None` |
-| `apply_log_consumed_clean` | 正常な log で消費バイト数が全長に一致 |
-| `apply_log_consumed_torn_tail` | torn 断片の直前が消費バイト数として返る（`log_end` 初期化と save の切除位置の根拠） |
-| `build_memory_set_then_delete` | delete された id が消え、無関係な id は残る |
-| `build_memory_overwrite_keeps_last` | 同一 id への後続 set が勝つ（dataset の2値が異なることも assert し、空振りを防ぐ） |
-| `build_memory_stops_at_corrupt_record` | 破損レコード以降は無視、直前までは適用 |
-| `build_memory_ignores_truncated_tail` | ヘッダー途中で切れた末尾レコードを無視して停止 |
-| `build_memory_log_overlays_snap` | log の set/delete/新規追加が snap の内容を正しく上書きする（3パターン同時） |
-| `compact_snapshot_round_trip` | compact 相当の snap 再構築（全件 set レコード化）を読み戻すと元の状態と完全一致（非空も assert） |
+| `fletcher32_known_answers` | 空入力 → 0、偶数長（`abcdef`）→ `0x56502D2A`、奇数長（`abcde`）→ `0xF04FC729`。ディスク上の checksum を固定する |
+| `records_use_the_documented_wire_layout` | `to_bytes` が `[op][id][len][data][checksum]` の仕様どおりのバイト列になる（テストが独立に組み立てたバイト列と一致） |
+| `unassigned_ops_are_rejected_even_with_a_valid_checksum` | op 0 と 3 以上は、checksum が正しくても `None`（op 0 を欠番にする根拠: ゼロ埋め領域がレコードとして読めてしまう） |
+| `replay_matches_the_oracle_for_every_truncation_and_corruption` | ランダムな set / delete 列を snap と log として組み、log のあらゆる切り詰め位置と、ランダムな1バイト破損で、`build_memory` の結果と消費バイト数が「完全なレコードの接頭辞」を適用した oracle と一致する |
+| `memory_store_follows_the_model_across_reopens_tears_and_failed_saves` | ランダムな操作列（set / delete / issue_id / save / discard / compact / close → reopen、torn 注入、write 失敗、flush 失敗）を、独立したモデル（現在値、確定値、next_id、flush 失敗が残す未確認バッチ）と1操作ごとに照合する |
+| `a_crash_mid_save_leaves_a_whole_number_of_records_and_the_next_save_repairs_it` | save の途中の任意のバイト位置でのクラッシュ後、reopen した状態が「確定済み + 未保存バッチの先頭 k レコード」のどれかに一致し、その後の save が torn を修復して以降も整合する |
+
+モデルが採用している仕様（これに沿わない実装は上のテストで落ちる）:
+
+- 未確認バッチは次の open で可視になりうる。ただし、その前に `save()` か `compact()` が走れば切除される。
+- `discard` は `next_id` を巻き戻さない。`save` は、caller が直接 `set` した id で `next_id` を押し上げる。
+- `compact` は未保存の差分に触れない。
 
 ### Opfs integration tests
 
 | Test | Target |
 |-|-|
-| `save_persists_sets_across_reopen` | save 済み set が別インスタンスの new 後も oracle と一致 |
-| `save_persists_deletes_across_reopen` | 確定済み set への delete が tombstone として log に残り、reopen 後も削除が保たれる |
-| `set_without_save_not_persisted_across_reopen` | set はディスクに触れない: 未 save 分は memory では見えるが reopen で消える |
-| `discard_restores_last_saved_state` | 未 save の上書き・削除・新規追加がすべて確定済み状態に巻き戻る |
-| `compact_preserves_committed_state_across_reopen` | compact が tombstone を畳み込んでも確定状態が reopen 後も保たれる |
-| `compact_excludes_unsaved_changes` | compact は disk → disk: 未 save の変更が snap に漏れて確定されない |
-| `save_repairs_torn_log_tail` | log 末尾に torn 断片を注入 → 次の save が切除してから追記し、reopen 後も両バッチが生存（修復なしでは後続バッチが消失する回帰テスト） |
-| `compact_clears_torn_log_tail` | torn 断片があっても compact は検証済み prefix のみを snap 化し、log ごと断片を除去する |
-| `issue_id_monotonic_within_process` | プロセス内で issue_id が単調増加 |
-| `issue_id_reissues_deleted_id_after_reopen` | 削除済み id が reopen 後に再発行される（README で仕様化した挙動の固定） |
-| `issue_id_follows_caller_supplied_id_after_save` | caller が直接 set した id を save が next_id に反映し、次の発行が単調性を保つ |
+| `opfs_store_follows_the_model_across_reopens_and_tears` | 上のモデルテストと同じ本体を実 OPFS で実行（torn 注入あり。故障注入は実 OPFS では行えないため無し） |
 
 ## Store
 

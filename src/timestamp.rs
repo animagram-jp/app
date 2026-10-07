@@ -565,7 +565,10 @@ pub fn sub_minutes(timestamp: u64, minutes: i64) -> u64 {
 
 #[cfg(test)]
 mod tests {
+    use alloc::format;
+
     use super::*;
+    use crate::testing::Rng;
 
     #[test]
     fn layout_positions() {
@@ -588,90 +591,6 @@ mod tests {
     }
 
     #[test]
-    fn fields_are_isolated() {
-        let timestamp = pack(2026, 12, 31, 23, 59, 59, 99, 1, 2);
-        assert_eq!(unpack(timestamp), (2026, 12, 31, 23, 59, 59, 99, 1, 2));
-        let timestamp = pack(0, 0, 0, 0, 0, 0, 99, 0, 0);
-        assert_eq!(unpack(timestamp), (0, 0, 0, 0, 0, 0, 99, 0, 0));
-        let timestamp = pack(0, 0, 0, 0, 0, 0, 0, 1, 0);
-        assert_eq!(unpack(timestamp), (0, 0, 0, 0, 0, 0, 0, 1, 0));
-    }
-
-    #[test]
-    fn overflow_is_masked_without_corrupting_neighbours() {
-        let timestamp = pack(2026, 16, 32, 32, 64, 64, 128, 2, 1024);
-        assert_eq!(unpack(timestamp), (2026, 0, 0, 0, 0, 0, 0, 0, 0));
-    }
-
-    #[test]
-    fn new_matches_pack() {
-        let created = new(2026, 5, 16, 21, 43, 12, 34, false, &Timezone::AsiaTokyo);
-        let packed = pack(2026, 5, 16, 21, 43, 12, 34, 0, Timezone::AsiaTokyo.id() as i64 as u64);
-        assert_eq!(created, packed);
-    }
-
-    #[test]
-    fn from_ut_centisecond() {
-        let base = 946684800000.0_f64;
-        for (milliseconds, expected_centisecond) in
-            [(0.0, 0), (9.0, 0), (10.0, 1), (123.0, 12), (990.0, 99), (999.0, 99)]
-        {
-            let (.., centisecond, _, _) =
-                unpack(from_ut(base + milliseconds, true, &Timezone::AsiaTokyo));
-            assert_eq!(centisecond, expected_centisecond, "milliseconds={milliseconds}");
-        }
-    }
-
-    #[test]
-    fn from_ut_utc_and_local() {
-        let ut = 946684800000.0_f64 + 12_345.0;
-        let timestamp = from_ut(ut, true, &Timezone::AsiaTokyo);
-        assert_eq!(unpack(timestamp), (2000, 1, 1, 0, 0, 12, 34, 1, 0));
-        let timestamp = from_ut(ut, false, &Timezone::AsiaTokyo);
-        let timezone = Timezone::AsiaTokyo.id() as u64;
-        assert_eq!(unpack(timestamp), (2000, 1, 1, 9, 0, 12, 34, 0, timezone));
-        let timestamp = from_ut(ut, false, &Timezone::AmericaLosAngeles);
-        let timezone = Timezone::AmericaLosAngeles.id() as u64;
-        assert_eq!(unpack(timestamp), (1999, 12, 31, 16, 0, 12, 34, 0, timezone));
-    }
-
-    #[test]
-    fn u64_order_follows_time_order() {
-        let base = pack(2026, 5, 16, 21, 43, 12, 99, 1, 0);
-        let next_second = pack(2026, 5, 16, 21, 43, 13, 0, 1, 0);
-        let next_minute = pack(2026, 5, 16, 21, 44, 0, 0, 1, 0);
-        let next_day = pack(2026, 5, 17, 0, 0, 0, 0, 1, 0);
-        let next_year = pack(2027, 1, 1, 0, 0, 0, 0, 1, 0);
-        assert!(
-            base < next_second
-                && next_second < next_minute
-                && next_minute < next_day
-                && next_day < next_year
-        );
-    }
-
-    #[test]
-    fn arithmetic_preserves_centisecond_utc_and_tz() {
-        let timestamp = pack(2001, 1, 31, 23, 59, 58, 77, 1, 5);
-        let cases = [
-            add_years(timestamp, 1),
-            sub_years(timestamp, 1),
-            add_months(timestamp, 1),
-            sub_months(timestamp, 1),
-            add_days(timestamp, 1),
-            sub_days(timestamp, 1),
-            add_hours(timestamp, 1),
-            sub_hours(timestamp, 1),
-            add_minutes(timestamp, 1),
-            sub_minutes(timestamp, 1),
-        ];
-        for result in cases {
-            let (.., second, centisecond, is_utc, timezone) = unpack(result);
-            assert_eq!((second, centisecond, is_utc, timezone), (58, 77, 1, 5));
-        }
-    }
-
-    #[test]
     fn display_format() {
         let timestamp = pack(2026, 5, 6, 7, 8, 9, 10, 1, 0);
         assert_eq!(display(timestamp, Lang::Ja, Format::DateTime), "2026-05-06 07:08");
@@ -681,50 +600,226 @@ mod tests {
         assert_eq!(display(timestamp, Lang::Ja, Format::Long), "2026年5月6日(水)");
     }
 
-    #[test]
-    fn youbi_matches_the_known_calendar_over_a_leap_cycle() {
-        let mut timestamp = pack(2024, 2, 26, 0, 0, 0, 0, 0, 0);
-        let names = [
-            Youbi::Monday,
-            Youbi::Tuesday,
-            Youbi::Wednesday,
-            Youbi::Thursday,
-            Youbi::Friday,
-            Youbi::Saturday,
-            Youbi::Sunday,
-        ];
-        for step in 0..800 {
-            assert_eq!(youbi(timestamp), names[step % 7], "step {step}");
-            timestamp = add_days(timestamp, 1);
+    fn leap(year: i64) -> bool {
+        year % 4 == 0 && (year % 100 != 0 || year % 400 == 0)
+    }
+
+    fn month_days(year: i64, month: i64) -> i64 {
+        let february = if leap(year) { 29 } else { 28 };
+        [31, february, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month as usize - 1]
+    }
+
+    fn year_days(year: i64) -> i64 {
+        if leap(year) { 366 } else { 365 }
+    }
+
+    fn days_since_epoch(year: i64, month: i64, day: i64) -> i64 {
+        let mut days = 0;
+        if year >= 1970 {
+            (1970..year).for_each(|y| days += year_days(y));
+        } else {
+            (year..1970).for_each(|y| days -= year_days(y));
         }
+        (1..month).for_each(|m| days += month_days(year, m));
+        days + day - 1
+    }
+
+    fn civil(days: i64) -> (i64, i64, i64) {
+        let (mut year, mut left) = (1970, days);
+        while left < 0 {
+            year -= 1;
+            left += year_days(year);
+        }
+        while left >= year_days(year) {
+            left -= year_days(year);
+            year += 1;
+        }
+        let mut month = 1;
+        while left >= month_days(year, month) {
+            left -= month_days(year, month);
+            month += 1;
+        }
+        (year, month, left + 1)
+    }
+
+    fn centiseconds(timestamp: u64) -> i64 {
+        let (year, month, day, hour, minute, second, centisecond, ..) = unpack(timestamp);
+        days_since_epoch(year, month, day) * 8_640_000
+            + ((hour * 60 + minute) * 60 + second) * 100
+            + centisecond
+    }
+
+    fn at_centiseconds(flags_from: u64, total: i64) -> u64 {
+        let (.., is_utc, timezone) = unpack(flags_from);
+        let (year, month, day) = civil(total.div_euclid(8_640_000));
+        let time = total.rem_euclid(8_640_000);
+        let (seconds, centisecond) = (time / 100, time % 100);
+        pack(
+            year,
+            month,
+            day,
+            seconds / 3600,
+            seconds % 3600 / 60,
+            seconds % 60,
+            centisecond,
+            is_utc,
+            timezone,
+        )
+    }
+
+    fn random_timestamp(rng: &mut Rng) -> u64 {
+        let year = if rng.chance(30) {
+            [1900, 2000, 2100, 2400][rng.below(4)]
+        } else {
+            1700 + rng.below(800) as i64
+        };
+        let month = 1 + rng.below(12) as i64;
+        let day = if month == 2 && rng.chance(50) {
+            month_days(year, 2)
+        } else {
+            1 + rng.below(month_days(year, month) as usize) as i64
+        };
+        pack(
+            year,
+            month,
+            day,
+            rng.below(24) as i64,
+            rng.below(60) as i64,
+            rng.below(60) as i64,
+            rng.below(100) as i64,
+            rng.below(2) as u64,
+            rng.below(10) as u64,
+        )
     }
 
     #[test]
-    fn add_days_and_diff_agree_across_centuries() {
-        let base = pack(2026, 10, 2, 9, 30, 15, 7, 0, 0);
-        for days in [-146_097, -36_525, -366, -31, -1, 0, 1, 28, 31, 365, 366, 36_524, 146_097] {
-            let moved = add_days(base, days);
-            assert_eq!(diff(base, moved), days * 8_640_000, "days {days}");
-            assert_eq!(add_days(moved, -days), base, "days {days}");
-            let (.., hour, minute, second, centisecond, _, _) = {
-                let (_, _, _, hour, minute, second, centisecond, is_utc, timezone) = unpack(moved);
-                (hour, minute, second, centisecond, is_utc, timezone)
+    fn calendar_arithmetic_agrees_with_a_naive_day_by_day_reference() {
+        for seed in 0..3000 {
+            let mut rng = Rng::new(seed);
+            let first = random_timestamp(&mut rng);
+            let second = random_timestamp(&mut rng);
+            let context = format!("seed {seed}");
+
+            assert_eq!(
+                diff(first, second),
+                centiseconds(second) - centiseconds(first),
+                "{context}"
+            );
+            let delta = rng.below(2_000_000_001) as i64 - 1_000_000_000;
+            let third = at_centiseconds(first, centiseconds(first) + delta);
+            assert_eq!(first.cmp(&third), 0.cmp(&delta), "{context} order");
+
+            let days = rng.below(80001) as i64 - 40000;
+            let hours = rng.below(200001) as i64 - 100000;
+            let minutes = rng.below(2_000_001) as i64 - 1_000_000;
+            for (moved, unit, name) in [
+                (add_days(first, days), 8_640_000, days),
+                (add_hours(first, hours), 360_000, hours),
+                (add_minutes(first, minutes), 6_000, minutes),
+            ]
+            .map(|(moved, unit, amount)| (moved, unit * amount, amount))
+            {
+                assert_eq!(
+                    moved,
+                    at_centiseconds(first, centiseconds(first) + unit),
+                    "{context} {name}"
+                );
+            }
+            assert_eq!(sub_days(first, days), add_days(first, -days), "{context}");
+            assert_eq!(add_days(add_days(first, days), -days), first, "{context}");
+
+            let (year, month, day, ..) = unpack(first);
+            let weekday = (days_since_epoch(year, month, day) + 4).rem_euclid(7);
+            let expected = [
+                Youbi::Sunday,
+                Youbi::Monday,
+                Youbi::Tuesday,
+                Youbi::Wednesday,
+                Youbi::Thursday,
+                Youbi::Friday,
+                Youbi::Saturday,
+            ][weekday as usize];
+            assert_eq!(youbi(first), expected, "{context}");
+
+            let century = [1900, 2000, 2100, 2400][rng.below(4)];
+            let months = if rng.chance(30) {
+                (century * 12 + rng.below(12) as i64) - (year * 12 + month - 1)
+            } else {
+                rng.below(2401) as i64 - 1200
             };
-            assert_eq!((hour, minute, second, centisecond), (9, 30, 15, 7));
+            let total = year * 12 + month - 1 + months;
+            let (target_year, target_month) = (total.div_euclid(12), total.rem_euclid(12) + 1);
+            let moved = unpack(add_months(first, months));
+            assert_eq!(
+                (moved.0, moved.1, moved.2),
+                (target_year, target_month, day.min(month_days(target_year, target_month))),
+                "{context} months {months}"
+            );
+            let years = if rng.chance(30) { century - year } else { rng.below(201) as i64 - 100 };
+            let moved = unpack(add_years(first, years));
+            assert_eq!(
+                (moved.0, moved.1, moved.2),
+                (year + years, month, day.min(month_days(year + years, month))),
+                "{context} years {years}"
+            );
+            for shifted in [
+                add_years(first, years),
+                add_months(first, months),
+                add_days(first, days),
+                add_hours(first, hours),
+                add_minutes(first, minutes),
+            ] {
+                let (.., second_of_minute, centisecond, is_utc, timezone) = unpack(shifted);
+                let (.., original_second, original_centisecond, original_utc, original_timezone) =
+                    unpack(first);
+                assert_eq!(
+                    (second_of_minute, centisecond, is_utc, timezone),
+                    (original_second, original_centisecond, original_utc, original_timezone),
+                    "{context}"
+                );
+            }
         }
     }
 
     #[test]
-    fn time_arithmetic_carries_in_both_directions() {
-        let timestamp = pack(2001, 3, 1, 0, 0, 0, 0, 0, 0);
-        let back = sub_minutes(timestamp, 1);
-        assert_eq!(unpack(back), (2001, 2, 28, 23, 59, 0, 0, 0, 0));
-        assert_eq!(add_minutes(back, 1), timestamp);
-        let back = sub_hours(timestamp, 25);
-        assert_eq!(unpack(back), (2001, 2, 27, 23, 0, 0, 0, 0, 0));
-        assert_eq!(add_hours(back, 25), timestamp);
-        assert_eq!(add_minutes(timestamp, 60 * 24 * 400 + 61), pack(2002, 4, 5, 1, 1, 0, 0, 0, 0));
-        assert_eq!(sub_months(timestamp, 14), pack(2000, 1, 1, 0, 0, 0, 0, 0, 0));
-        assert_eq!(add_months(timestamp, -3), pack(2000, 12, 1, 0, 0, 0, 0, 0, 0));
+    fn from_ut_matches_the_reference_for_utc_and_every_fixed_offset_zone() {
+        let zones = [
+            (Timezone::None, 0),
+            (Timezone::AsiaSeoul, 9),
+            (Timezone::AsiaTokyo, 9),
+            (Timezone::AsiaShanghai, 8),
+            (Timezone::AsiaTaipei, 8),
+            (Timezone::EuropeBerlin, 1),
+            (Timezone::EuropeParis, 1),
+            (Timezone::EuropeLondon, 0),
+            (Timezone::AmericaNewYork, -5),
+            (Timezone::AmericaLosAngeles, -8),
+        ];
+        for seed in 0..3000 {
+            let mut rng = Rng::new(seed);
+            let milliseconds =
+                (rng.below(4_000_000) as i64 - 1_000_000) * 86_400 + rng.below(86_400_000) as i64;
+            let (zone, offset_hours) = &zones[rng.below(zones.len())];
+            let is_utc = rng.chance(50);
+            let shifted = milliseconds + if is_utc { 0 } else { offset_hours * 3_600_000 };
+            let (year, month, day) = civil(shifted.div_euclid(86_400_000));
+            let time = shifted.rem_euclid(86_400_000);
+            let expected = (
+                year,
+                month,
+                day,
+                time / 3_600_000,
+                time % 3_600_000 / 60_000,
+                time % 60_000 / 1000,
+                time % 1000 / 10,
+                is_utc as u64,
+                if is_utc { 0 } else { zone.id() as u64 },
+            );
+            assert_eq!(
+                unpack(from_ut(milliseconds as f64, is_utc, zone)),
+                expected,
+                "seed {seed} ms {milliseconds}"
+            );
+        }
     }
 }

@@ -335,7 +335,10 @@ impl VariableList {
 
 #[cfg(test)]
 mod tests {
+    use alloc::{collections::BTreeMap, format, vec::Vec};
+
     use super::*;
+    use crate::testing::Rng;
 
     #[test]
     fn list_set_update_existing() {
@@ -380,46 +383,6 @@ mod tests {
     }
 
     #[test]
-    fn list_set_update_append_when_value_too_large() {
-        let mut vl: VariableList = VariableList::new();
-        vl.set(&0, &[1u8, 2], false, false).unwrap();
-        let r = vl.set(&1, &[10u8, 20, 30], false, true).unwrap();
-        assert!(matches!(r, SetOutcome::Updated(1)));
-        assert_eq!(vl.get(&1).unwrap(), &[10u8, 20, 30]);
-    }
-
-    #[test]
-    fn variable_list_delete_sentinel_returns_not_exist() {
-        let mut vl: VariableList = VariableList::new();
-        let err = vl.delete(&0).unwrap_err();
-        assert!(matches!(err, ListError::NotExist));
-    }
-
-    #[test]
-    fn variable_list_set_intern_false_appends_duplicate() {
-        let mut vl: VariableList = VariableList::new();
-        vl.set(&0, &[1u8, 2, 3], false, false).unwrap();
-        let r = vl.set(&0, &[1u8, 2, 3], false, false).unwrap();
-        assert!(matches!(r, SetOutcome::Created(2)));
-    }
-
-    #[test]
-    fn variable_list_compact_invalidates_old_identity() {
-        let mut vl: VariableList = VariableList::new();
-        vl.set(&0, &[1u8, 2, 3], false, false).unwrap();
-        vl.set(&0, &[4u8, 5, 6], false, false).unwrap();
-        vl.delete(&1).unwrap();
-        vl.compact().unwrap();
-        assert!(vl.get(&2).is_err());
-        assert_eq!(vl.get(&1).unwrap(), &[4u8, 5, 6]);
-    }
-}
-
-#[cfg(test)]
-mod byte_format_tests {
-    use super::*;
-
-    #[test]
     fn read_u32_bounds() {
         let b = [1u8, 0, 0, 0, 2, 0, 0, 0];
         assert_eq!(read_u32(&b, 0), Some(1));
@@ -438,66 +401,121 @@ mod byte_format_tests {
     }
 
     #[test]
-    fn bytes_round_trip() {
-        let mut vl = VariableList::new();
-        vl.set(&0, &[1u8, 2, 3], false, false).unwrap();
-        vl.set(&0, &[9u8], false, false).unwrap();
-        let restored = VariableList::new_from_bytes(&vl.index_to_bytes(), &vl.data);
-        assert_eq!(restored.index, vl.index);
-        assert_eq!(restored.get(&1).unwrap(), &[1u8, 2, 3]);
-        assert_eq!(restored.get(&2).unwrap(), &[9u8]);
-    }
-
-    #[test]
-    fn get_from_bytes_matches_get() {
-        let mut vl = VariableList::new();
-        vl.set(&0, &[1u8, 2, 3], false, false).unwrap();
-        vl.set(&0, &[4u8], false, false).unwrap();
-        vl.delete(&1).unwrap();
-        let index = vl.index_to_bytes();
-        for id in 0..4u32 {
-            assert_eq!(
-                VariableList::get_from_bytes(&index, &vl.data, &id).ok(),
-                vl.get(&id).ok(),
-                "id={id}"
-            );
-        }
-        assert!(matches!(
-            VariableList::get_from_bytes(&index, &vl.data, &1),
-            Err(ListError::NotExist)
-        ));
-        assert!(matches!(
-            VariableList::get_from_bytes(&index, &vl.data, &3),
-            Err(ListError::OutOfBounds)
-        ));
-    }
-
-    #[test]
-    fn empty_value_is_not_vacant() {
-        let mut vl = VariableList::new();
-        let r = vl.set(&0, &[], false, false).unwrap();
-        assert!(matches!(r, SetOutcome::Created(1)));
-        assert_eq!(vl.get(&1).unwrap(), &[] as &[u8]);
-        let index = vl.index_to_bytes();
-        assert_eq!(VariableList::get_from_bytes(&index, &vl.data, &1).unwrap(), &[] as &[u8]);
-    }
-
-    #[test]
-    fn empty_value_survives_compact() {
-        let mut vl = VariableList::new();
-        vl.set(&0, &[], false, false).unwrap();
-        vl.set(&0, &[5u8], false, false).unwrap();
-        vl.compact().unwrap();
-        assert_eq!(vl.get(&1).unwrap(), &[] as &[u8]);
-        assert_eq!(vl.get(&2).unwrap(), &[5u8]);
-    }
-
-    #[test]
     fn fresh_list_has_sentinel_byte_before_first_value() {
         let mut vl = VariableList::new();
         assert_eq!(vl.data, [0u8]);
         vl.set(&0, &[7u8, 8], false, false).unwrap();
         assert_eq!(vl.index[2..4], [1, 3]);
         assert_eq!(vl.data, [0u8, 7, 8]);
+    }
+
+    #[test]
+    fn variable_list_follows_a_map_model_through_random_edits_and_byte_round_trips() {
+        for seed in 0..1500 {
+            let mut rng = Rng::new(seed);
+            let mut list = VariableList::new();
+            let mut model: BTreeMap<u32, Vec<u8>> = BTreeMap::new();
+            let mut count = 1u32;
+            for step in 0..60 {
+                let context = format!("seed {seed} step {step}");
+                let length = rng.below(6);
+                let value = rng.bytes(length).into_iter().map(|byte| byte % 3).collect::<Vec<u8>>();
+                match rng.below(10) {
+                    0..4 => {
+                        let intern = rng.chance(50);
+                        let found = intern
+                            .then(|| {
+                                model.iter().find(|(_, held)| **held == value).map(|(id, _)| *id)
+                            })
+                            .flatten();
+                        let outcome = list.set(&0, &value, intern, false).unwrap();
+                        match found {
+                            Some(id) => assert!(
+                                matches!(outcome, SetOutcome::Updated(got) if got == id),
+                                "{context}"
+                            ),
+                            None => {
+                                assert!(
+                                    matches!(outcome, SetOutcome::Created(got) if got == count),
+                                    "{context}"
+                                );
+                                model.insert(count, value);
+                                count += 1;
+                            }
+                        }
+                    }
+                    4..7 => {
+                        let id = 1 + rng.below(count as usize + 1) as u32;
+                        let sparse = rng.chance(30);
+                        let result = list.set(&id, &value, false, sparse);
+                        if id >= count && !sparse {
+                            assert!(matches!(result, Err(ListError::OutOfBounds)), "{context}");
+                        } else {
+                            let existed = model.contains_key(&id);
+                            let outcome = result.unwrap();
+                            assert_eq!(
+                                matches!(outcome, SetOutcome::Updated(_)),
+                                existed,
+                                "{context}"
+                            );
+                            model.insert(id, value);
+                            count = count.max(id + 1);
+                        }
+                    }
+                    7..9 => {
+                        let id = rng.below(count as usize + 2) as u32;
+                        let result = list.delete(&id);
+                        match (id, id < count) {
+                            (0, _) => {
+                                assert!(matches!(result, Err(ListError::NotExist)), "{context}")
+                            }
+                            (_, false) => {
+                                assert!(matches!(result, Err(ListError::OutOfBounds)), "{context}")
+                            }
+                            _ => {
+                                result.unwrap();
+                                model.remove(&id);
+                            }
+                        }
+                    }
+                    _ => {
+                        let remap = list.compact().unwrap();
+                        let survivors: Vec<u32> = model.keys().copied().collect();
+                        assert_eq!(
+                            remap.keys().copied().collect::<Vec<u32>>(),
+                            survivors,
+                            "{context}"
+                        );
+                        model =
+                            survivors.iter().map(|old| (remap[old], model[old].clone())).collect();
+                        count = survivors.len() as u32 + 1;
+                        assert!(model.keys().copied().eq(1..count), "{context}");
+                    }
+                }
+
+                let restored = VariableList::new_from_bytes(&list.index_to_bytes(), &list.data);
+                let index = list.index_to_bytes();
+                for id in 0..count + 2 {
+                    let expected = match model.get(&id) {
+                        Some(value) => Ok(value.as_slice()),
+                        None if id < count => Err(ListError::NotExist),
+                        None => Err(ListError::OutOfBounds),
+                    };
+                    let same = |got: Result<&[u8], ListError>| match (got, &expected) {
+                        (Ok(a), Ok(b)) => a == *b,
+                        (Err(a), Err(b)) => {
+                            core::mem::discriminant(&a) == core::mem::discriminant(b)
+                        }
+                        _ => false,
+                    };
+                    assert!(same(list.get(&id)), "{context} get {id}");
+                    assert!(same(restored.get(&id)), "{context} restored {id}");
+                    assert!(
+                        same(VariableList::get_from_bytes(&index, &list.data, &id)),
+                        "{context} bytes {id}"
+                    );
+                }
+            }
+        }
     }
 }

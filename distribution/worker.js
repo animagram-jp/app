@@ -19,7 +19,3 @@ self.addEventListener("message", async (e) => {
     );
     serve_event();
 });
-
-self.addEventListener("error", (e) => {
-    self.postMessage({ type: "error", message: e.message });
-});
