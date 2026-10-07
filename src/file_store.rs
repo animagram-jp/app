@@ -1454,6 +1454,28 @@ mod opfs_tests {
     }
 
     #[wasm_bindgen_test]
+    async fn opfs_a_closed_handle_fails_and_a_reopened_store_takes_over_the_pending_diff() {
+        let id = StoreId { name: "opfs_lost", version: VERSION };
+        let kept = format!("kept {}", js_sys::Date::now());
+        let mut store = open_store::<OpfsStore>(id).await;
+        store.set(1, kept.clone().into_bytes());
+        let diff = store.pending();
+
+        assert!(OpfsStore::open(id, true).await.is_err());
+        store.close();
+        assert!(matches!(store.save(), Err(FileStoreError::InvalidState(_))));
+
+        let mut reopened = open_store::<OpfsStore>(id).await;
+        reopened.replay(diff);
+        reopened.save().unwrap();
+        reopened.close();
+
+        let again = open_store::<OpfsStore>(id).await;
+        assert_eq!(again.get(1), Some(kept.as_bytes()));
+        again.close();
+    }
+
+    #[wasm_bindgen_test]
     async fn opfs_store_follows_the_model_across_reopens_and_tears() {
         model_follows_store::<OpfsStore>("opfs_model", 6, 40, tear_log, None).await;
     }
