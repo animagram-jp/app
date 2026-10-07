@@ -1164,6 +1164,10 @@ mod cases {
         pub fail_writes_to:  Cell<Option<&'static str>>,
         /// Fail every flush of this file: what was written stays, unconfirmed.
         pub fail_flushes_of: Cell<Option<&'static str>>,
+        /// Serve at most this many bytes per `read_at` / `write_at` (short I/O).
+        pub chunk:           Cell<Option<usize>>,
+        /// Make `read_at` / `write_at` report no progress (`Ok(0)`).
+        pub stall:           Cell<bool>,
     }
 
     fn file_name(file: File) -> &'static str {
@@ -1211,6 +1215,8 @@ mod cases {
                 fault:           Cell::new(None),
                 fail_writes_to:  Cell::new(None),
                 fail_flushes_of: Cell::new(None),
+                chunk:           Cell::new(None),
+                stall:           Cell::new(false),
             }
         }
 
@@ -1227,11 +1233,21 @@ mod cases {
         }
 
         fn read_at(&self, file: File, buffer: &mut [u8], at: u32) -> Result<usize, FileStoreError> {
-            self.step(file, Io::Read, || self.inner.read_at(file, buffer, at))
+            if self.stall.get() {
+                self.calls.borrow_mut().push((file_name(file), Io::Read));
+                return Ok(0);
+            }
+            let limit = self.chunk.get().map_or(buffer.len(), |chunk| chunk.min(buffer.len()));
+            self.step(file, Io::Read, || self.inner.read_at(file, &mut buffer[..limit], at))
         }
 
         fn write_at(&self, file: File, data: &[u8], at: u32) -> Result<usize, FileStoreError> {
+            let data = &data[..self.chunk.get().map_or(data.len(), |chunk| chunk.min(data.len()))];
             let io = Io::Write(data.len() as u32);
+            if self.stall.get() {
+                self.calls.borrow_mut().push((file_name(file), io));
+                return Ok(0);
+            }
             if let Some((index, Hit::Partial(n))) = self.fault.get() {
                 if index == self.calls.borrow().len() {
                     self.calls.borrow_mut().push((file_name(file), io));
@@ -1523,6 +1539,70 @@ mod cases {
                 }
             }
         }
+    }
+
+    // ── I/O helpers and the single-writer premise ───────────────
+
+    /// `read_all` / `append` must loop on short reads and writes.
+    pub async fn short_reads_and_writes_are_looped<S: FileStore>(name: &str) {
+        let id = unique(name, 0);
+        let (mut store, layout) = arranged::<S>(id, false).await;
+        store.chunk.set(Some(3));
+        store.save().unwrap();
+        store.compact().unwrap();
+        store.discard().unwrap();
+        assert_eq!(contents(&store), layout.current);
+        store.chunk.set(None);
+        store.close();
+
+        let reopened = open_store::<S>(id).await;
+        assert_eq!(contents(&reopened), layout.current);
+        reopened.close();
+    }
+
+    /// A read or write that reports no progress ends in `Unknown`, never in
+    /// a loop, and leaves RAM and the pending diff alone.
+    pub async fn a_stalled_io_is_an_error_not_a_hang<S: FileStore>(name: &str) {
+        let id = unique(name, 0);
+        let (mut store, layout) = arranged::<S>(id, false).await;
+        store.stall.set(true);
+        for method in [Method::Save, Method::Discard, Method::Compact] {
+            let result = run(method, &mut store);
+            assert!(matches!(result, Err(FileStoreError::Unknown(_))), "{method:?}: {result:?}");
+        }
+        store.stall.set(false);
+        assert_eq!(contents(&store), layout.current);
+        assert_eq!(store.index().pending_len(), layout.batch.len());
+        store.save().unwrap();
+        store.close();
+
+        let reopened = open_store::<S>(id).await;
+        assert_eq!(contents(&reopened), layout.current);
+        reopened.close();
+    }
+
+    /// A log shorter than `log_end` means someone else wrote to it. Every
+    /// method reports that and none of them repairs it by extending the file
+    /// (which would zero-fill) or by writing anything else.
+    pub async fn a_shrunken_log_is_an_error_and_changes_nothing<S: FileStore>(name: &str) {
+        let (mut store, layout) = arranged::<S>(unique(name, 0), false).await;
+        let log_end = store.index().log_end;
+        assert!(log_end > 0);
+        store.truncate(File::Log, log_end - 1).unwrap();
+        let sizes = (store.size(File::Snap).unwrap(), store.size(File::Log).unwrap());
+
+        for method in [Method::Save, Method::Discard, Method::Compact] {
+            match run(method, &mut store) {
+                Err(FileStoreError::Unknown(message)) => {
+                    assert!(message.contains("shrank"), "{method:?}: {message}")
+                }
+                other => panic!("{method:?}: {other:?}"),
+            }
+        }
+        assert_eq!(contents(&store), layout.current);
+        assert_eq!(store.index().pending_len(), layout.batch.len());
+        assert_eq!((store.size(File::Snap).unwrap(), store.size(File::Log).unwrap()), sizes);
+        store.close();
     }
 
     // ── Recorded behavior: what the code does today, not a requirement ──
@@ -1973,6 +2053,23 @@ mod tests {
         ));
     }
 
+    // ── I/O helpers and the single-writer premise ─────────────────────────
+
+    #[test]
+    fn memory_short_reads_and_writes_are_looped() {
+        block_on(short_reads_and_writes_are_looped::<MemoryStore>("short_io"));
+    }
+
+    #[test]
+    fn memory_a_stalled_io_is_an_error_not_a_hang() {
+        block_on(a_stalled_io_is_an_error_not_a_hang::<MemoryStore>("stalled_io"));
+    }
+
+    #[test]
+    fn memory_a_shrunken_log_is_an_error_and_changes_nothing() {
+        block_on(a_shrunken_log_is_an_error_and_changes_nothing::<MemoryStore>("shrunken_log"));
+    }
+
     // ── interactions (model) ──────────────────────────────────────────────
 
     #[test]
@@ -2047,6 +2144,23 @@ mod opfs_tests {
     #[wasm_bindgen_test]
     async fn opfs_compact_survives_a_fault_at_every_io_step() {
         survives_a_fault_at_every_io_step::<OpfsStore>("opfs_compact_sweep", Method::Compact).await;
+    }
+
+    // ── I/O helpers and the single-writer premise ─────────────────────────
+
+    #[wasm_bindgen_test]
+    async fn opfs_short_reads_and_writes_are_looped() {
+        short_reads_and_writes_are_looped::<OpfsStore>("opfs_short_io").await;
+    }
+
+    #[wasm_bindgen_test]
+    async fn opfs_a_stalled_io_is_an_error_not_a_hang() {
+        a_stalled_io_is_an_error_not_a_hang::<OpfsStore>("opfs_stalled_io").await;
+    }
+
+    #[wasm_bindgen_test]
+    async fn opfs_a_shrunken_log_is_an_error_and_changes_nothing() {
+        a_shrunken_log_is_an_error_and_changes_nothing::<OpfsStore>("opfs_shrunken_log").await;
     }
 
     // ── close ─────────────────────────────────────────────────────────────
