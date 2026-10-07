@@ -10,7 +10,7 @@ use arbitrary_int::u2;
 #[cfg(feature = "worker")]
 use crate::{
     Error,
-    file_store::{Backend, FileStore},
+    file_store::{Backend, FileStore, StoreId},
 };
 use crate::{
     Lang,
@@ -36,7 +36,7 @@ pub enum Dialog {
 pub struct Log;
 
 #[cfg(feature = "worker")]
-const CHARACTER_SCHEMA_NAME: &str = "characters";
+const CHARACTER_STORE: StoreId = StoreId { name: "characters", version: "0.0" };
 
 pub struct Handler {
     character_sheet: CharacterSheet,
@@ -66,7 +66,7 @@ impl Handler {
             last_toast: u2::new(1),
             character: DataStruct::new(0, 0.0, 256),
             #[cfg(feature = "worker")]
-            characters: Backend::open(CHARACTER_SCHEMA_NAME)
+            characters: Backend::open(CHARACTER_STORE, true)
                 .await
                 .and_then(Backend::new)
                 .unwrap_or_else(|e| panic!("FileStore open failed: {e}")),
@@ -87,7 +87,7 @@ impl Handler {
         match self.characters.save() {
             Ok(()) => (vec![], vec![]),
             Err(e @ crate::file_store::FileStoreError::InvalidState(_)) => (
-                vec![Event::StoreLost { name: CHARACTER_SCHEMA_NAME }],
+                vec![Event::StoreLost(CHARACTER_STORE)],
                 vec![Command::Error { error: Error::FileStore(e) }],
             ),
             Err(e) => (vec![], vec![Command::Error { error: Error::FileStore(e) }]),
@@ -303,7 +303,7 @@ mod toggle_tests {
         assert!(handler.save().1.is_empty());
         assert!(handler.close().is_empty());
         let (events, commands) = handler.save();
-        assert!(matches!(events.as_slice(), [Event::StoreLost { .. }]));
+        assert!(matches!(events.as_slice(), [Event::StoreLost(_)]));
         assert!(matches!(
             commands.as_slice(),
             [Command::Error {
@@ -317,11 +317,11 @@ mod toggle_tests {
     fn a_lost_store_is_replaced_and_the_pending_change_survives() {
         let mut handler = block_on(Handler::ready(0.0, 0.0, 16.0, 0.0, 0));
         handler.characters.set(1, b"kept".to_vec());
-        let disk = block_on(Backend::open(CHARACTER_SCHEMA_NAME)).unwrap();
+        let disk = block_on(Backend::open(CHARACTER_STORE, true)).unwrap();
 
         handler.close();
         let (events, _) = handler.save();
-        assert!(matches!(events.as_slice(), [Event::StoreLost { .. }]));
+        assert!(matches!(events.as_slice(), [Event::StoreLost(_)]));
         handler.process_lost();
         handler.process_opened(Ok(disk.clone()));
         assert_eq!(handler.characters.get(1), Some(&b"kept"[..]));

@@ -23,7 +23,7 @@ use crate::{
         target::{CardPart, EditField, Target},
     },
     event::{Event, Opened, Response},
-    file_store::{Backend, FileStore, FileStoreError},
+    file_store::{Backend, FileStore, FileStoreError, StoreId},
     js_client::{
         Attribute, CanvasEvent, Command, Decimal, EventType, Gesture, Keyword, Method,
         PointerState, StyleProperty, StyleValue, Unit, VisibilityState, dom::Id,
@@ -45,7 +45,7 @@ const DRAG_Z_INDEX: i32 = 1000;
 const HANDLE_REM: f64 = 0.5;
 const HANDLE_MAX: f64 = 0.35;
 const EPSILON: f64 = 1e-9;
-const STORE_NAME: &str = "calendar";
+const STORE: StoreId = StoreId { name: "calendar", version: "0.0" };
 const NEW_MINUTES: u32 = 60;
 const SLOT_REM: f64 = 1.75;
 const ZOOM_MIN: f64 = 1.0;
@@ -210,7 +210,7 @@ impl Handler {
         let mut handler = Self::new(viewport_width_px, today, rem_in_px);
         handler.now = from_ut(now, true, &Timezone::None);
         #[cfg(target_arch = "wasm32")]
-        match Backend::open(STORE_NAME).await.and_then(Backend::new) {
+        match Backend::open(STORE, true).await.and_then(Backend::new) {
             Ok(opened) => handler.attach(opened),
             Err(error) => handler.startup.push(Error::FileStore(error)),
         }
@@ -1880,10 +1880,9 @@ fn corner_cursor(corner: Corner) -> Option<Keyword> {
 
 fn file_store_error(error: FileStoreError) -> (Vec<Event>, Vec<Command>) {
     match error {
-        FileStoreError::InvalidState(_) => (
-            vec![Event::StoreLost { name: STORE_NAME }],
-            vec![Command::Error { error: Error::FileStore(error) }],
-        ),
+        FileStoreError::InvalidState(_) => {
+            (vec![Event::StoreLost(STORE)], vec![Command::Error { error: Error::FileStore(error) }])
+        }
         _ => (vec![], vec![Command::Error { error: Error::FileStore(error) }]),
     }
 }
@@ -2139,9 +2138,11 @@ mod tests {
     }
 
     fn sample_response(request: u32, status: u16) -> Response {
-        let body =
-            fs::read(concat!(env!("CARGO_MANIFEST_DIR"), "/distribution/calendar/data/calendar.json"))
-                .unwrap();
+        let body = fs::read(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/distribution/calendar/data/calendar.json"
+        ))
+        .unwrap();
         Response { request, status, body }
     }
 
@@ -3654,7 +3655,7 @@ mod tests {
         drag_first_card_by(&mut handler, 2.0 * SLOT_PX);
         assert!(handler.close().is_empty());
         let (events, commands) = save_pressed(&mut handler);
-        assert!(matches!(events.as_slice(), [Event::StoreLost { .. }]));
+        assert!(matches!(events.as_slice(), [Event::StoreLost(_)]));
         assert!(matches!(
             commands.as_slice(),
             [Command::Error { error: Error::FileStore(FileStoreError::InvalidState(_)) }]
@@ -3664,7 +3665,9 @@ mod tests {
     #[test]
     fn only_an_invalid_handle_asks_for_a_new_one() {
         let (events, commands) = file_store_error(FileStoreError::InvalidState(String::new()));
-        assert!(matches!(events.as_slice(), [Event::StoreLost { name: "calendar" }]));
+        assert!(
+            matches!(events.as_slice(), [Event::StoreLost(id)] if id.name == "calendar" && id.version == "0.0")
+        );
         assert!(matches!(
             commands.as_slice(),
             [Command::Error { error: Error::FileStore(FileStoreError::InvalidState(_)) }]
@@ -3690,7 +3693,7 @@ mod tests {
 
         handler.close();
         let (events, _) = save_pressed(&mut handler);
-        assert!(matches!(events.as_slice(), [Event::StoreLost { .. }]));
+        assert!(matches!(events.as_slice(), [Event::StoreLost(_)]));
         assert!(handler.process_lost().1.is_empty());
         assert!(save_pressed(&mut handler).1.is_empty());
 

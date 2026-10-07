@@ -8,7 +8,7 @@
 
 | 関数 | 引数 | 戻り値 | 意味 |
 |-|-|-|-|
-| open   | name: &str | `impl Future<Output = Result<Self::Handle, FileStoreError>>` | 永続化先から snap/log のハンドルを取得する（非同期。OPFS の取得は Promise）。実装ごとに書く |
+| open   | id: StoreId, create: bool | `impl Future<Output = Result<Self::Handle, FileStoreError>>` | 永続化先から snap/log のハンドルを取得する（非同期。OPFS の取得は Promise）。`create: false` で無ければ `Err(NotFound)`（古いバージョンを探すとき、空のファイルを作らずに済む）。snap だけ開けて log が失敗したときは、snap を閉じてから返す。ファイル名は `<name>.<version>.snap` / `<name>.<version>.log`（`StoreId::file`）。実装ごとに書く |
 | new    | handle: Self::Handle | `Result<Self, FileStoreError>` | ハンドルから snap/log を読み、RAM index（`Index`）を復元する（同期）。デフォルト実装 |
 | issue_id | &mut self | `u32` | 新規 id を発行する。デフォルト実装 |
 | pending | &self | `Vec<(u32, Option<Vec<u8>>)>` | 未保存の差分（`Some` は set、`None` は delete）を取り出す。ハンドルの失効で開き直すとき、旧ストアから差分を持ち出すために使う。デフォルト実装 |
@@ -30,6 +30,10 @@
 バックエンドに依存する部分は、`open` / `from_handle`（実装の構築）/ `index` / `index_mut`（`Index` への accessor）と、ファイル操作のプリミティブ6つ（`size` / `read_at` / `write_at` / `flush` / `truncate` / `close`。どちらのファイルかは `File::Snap` / `File::Log` で指定する）だけである。ロジック（`new` / `save` / `discard` / `compact` ほか）は trait のデフォルト実装として1箇所にだけ書き、`OpfsStore` と `MemoryStore` が共有する。short read / short write のループ（`read_all` / `append`）もプリミティブの上に1つだけある。
 
 ```rust
+/// ストアの識別。ファイル名にバージョンをフラットに含める（`<name>.<version>.snap` / `.log`）。
+/// レイアウトを変えるときは version を上げ、旧 version のストアを読んで移す。
+pub struct StoreId { pub name: &'static str, pub version: &'static str }
+
 pub enum File { Snap, Log }
 
 pub struct Index {
@@ -43,7 +47,7 @@ pub struct Index {
 pub trait FileStore: Sized {
     type Handle;
 
-    fn open(name: &str) -> impl Future<Output = Result<Self::Handle, FileStoreError>>;
+    fn open(id: StoreId, create: bool) -> impl Future<Output = Result<Self::Handle, FileStoreError>>;
     fn from_handle(handle: Self::Handle) -> Self;
     fn index(&self) -> &Index;
     fn index_mut(&mut self) -> &mut Index;
@@ -179,6 +183,7 @@ whatwg/fs spec（各メソッドの steps / Exceptions 記載）によれば、`
 | `UnsupportedOp` | `TypeError`（`read`/`write`/`truncate`の文脈。`DomException`にキャストできないもの） | オフセット指定 read/write や `set_len` 非対応 |
 | `InvalidName` | `TypeError`（`getFileHandle`の文脈のみ） | 不正なファイル名（POSIX的には invalid path component） |
 | `Unknown` | 上記以外の`DOMException`名、または分類不能 | 未分類（`JsValue`のDebug文字列を保持） |
+| `NotFound` | `NotFoundError`（`create: false` の`getFileHandle`の文脈のみ） | その名前のエントリがない。`createSyncAccessHandle` の `NotFoundError`（取得後にファイルが消えた競合）は、「ない」とは違うので `Unknown` のまま |
 
 **`open`系での`TypeError`の意味を spec 精査で確定**:
 whatwg/fs spec 上、`FileSystemDirectoryHandle.getFileHandle()` と
@@ -269,7 +274,7 @@ whatwg/fs spec 上、`FileSystemDirectoryHandle.getFileHandle()` と
 | - | `append` | `store: &impl FileStore, file: File, base: u32, data: &[u8]` | `Result<(), FileStoreError>` | 呼び出し側が検証した末尾 `base` にデータを書き flush する（short write のループ） |
 | - | `open` | `dir: &FileSystemDirectoryHandle, filename: &str, options: &FileSystemGetFileOptions` | `Result<FileSystemSyncAccessHandle, FileStoreError>` | ファイルを開き SyncAccessHandle を取得する |
 | - | `classify` | `context: &str, error: JsValue` | `FileStoreError` | JsValue（DOMException / TypeError 想定）を FileStoreError に決め打ち分類する |
-| - | `classify_get_file_handle` | `context: &str, error: JsValue` | `FileStoreError` | `getFileHandle` 専用の分類。`DomException` にキャストできなければ（TypeError）`classify()`のUnsupportedOpではなく`InvalidName`に分類する |
+| - | `classify_get_file_handle` | `context: &str, error: JsValue, create: bool` | `FileStoreError` | `getFileHandle` 専用の分類。`DomException` にキャストできなければ（TypeError）`classify()`のUnsupportedOpではなく`InvalidName`に分類する。`create: false` の `NotFoundError` は `NotFound` に分類する |
 
 ## Test
 
@@ -282,7 +287,7 @@ seed 固定の疑似乱数（`testing::Rng`）で、同じ seed は常に同じ�
     `open`/`new`/`close`/`compact` は単体例が無意味なため個別 DocTest を持たず、
     `OpfsStore` struct のライフサイクル例（open → new → issue_id → set → save →
     get → compact → close）でカバーする。
-- **MemoryStore**（`cfg(test)`）: `FileStore` の実装の1つ。ディスクの代わりに `Vec<u8>` の snap / log を持ち、trait のデフォルト実装（`save` / `discard` / `compact` など）をそのまま使う。`open(name)` は名前ごとのディスクを共有するので、reopen も再現できる。故障の注入点は3つ: log への書き込み失敗（`MemoryHandles::failing`）、flush の失敗（`flush_fails`。書き込みは成功して log の `log_end` の後ろに完全な形式の未確認バッチが残る）、書き込みの途中でのクラッシュ（`crash_after`。指定バイト数だけ書いて止まる）。calendar の `Handler` テストでも `OpfsStore` の代わりに差し込む。
+- **MemoryStore**（`cfg(test)`）: `FileStore` の実装の1つ。ディスクの代わりに `Vec<u8>` の snap / log を持ち、trait のデフォルト実装（`save` / `discard` / `compact` など）をそのまま使う。`open(id)` は `StoreId`（名前 + バージョン）ごとのディスクを共有するので、reopen も再現できる。故障の注入点は3つ: log への書き込み失敗（`MemoryHandles::failing`）、flush の失敗（`flush_fails`。書き込みは成功して log の `log_end` の後ろに完全な形式の未確認バッチが残る）、書き込みの途中でのクラッシュ（`crash_after`。指定バイト数だけ書いて止まる）。calendar の `Handler` テストでも `OpfsStore` の代わりに差し込む。
 - **Host unit test**（`cargo test`）: OPFS には一切触れない。
 - **Opfs integration test**（[CONTRIBUTING.md](../CONTRIBUTING.md) の Headless browser test）: 実 OPFS +
     Dedicated Worker 上で、host と同じモデルテスト本体を `OpfsStore` で実行する（seed は少数）。

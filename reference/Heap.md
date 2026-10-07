@@ -52,10 +52,10 @@ Wasm からの要求は `OPERATION_*` としてコマンドリングへ出す。
 すべてが `await` を要する。同期なのは取得後の read/write だけである。
 `serve_event` はブロックしているので Promise は解決しない。そこで
 `serve_event` を `async fn` にし、`Handler` が `InvalidState` を受けたら
-`Event::StoreLost { name }` を積む。`App::dispatch` がそれを `match` で受けて
+`Event::StoreLost(StoreId)` を積む。`App::dispatch` がそれを `match` で受けて
 「開き直したい」と記憶し、`Handler` は旧ストアを閉じて未保存の差分を保持する。
 `serve_event` のループは、1 フレームを処理し終えた時点でそれを見つけ、
-`Backend::open(name).await` で JavaScript のイベントループに戻る。結果は
+`Backend::open(id).await` で JavaScript のイベントループに戻る。結果は
 `Event::StoreOpened(Result<..>)` として同じ処理経路に再投入され、
 `Handler` が `new` でストアを組み立て、保持していた差分を `replay` で再適用する。
 失敗したときだけ `Command::Error` に続けて `Command::Reload` を送る

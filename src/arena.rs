@@ -262,8 +262,8 @@ pub async fn serve_event() {
         process_event();
         #[allow(clippy::deref_addrof)]
         let wanted = unsafe { (*(&raw mut APP)).as_mut() }.and_then(App::reopen_wanted);
-        if let Some(name) = wanted {
-            let opened = Backend::open(name).await;
+        if let Some(id) = wanted {
+            let opened = Backend::open(id, true).await;
             #[allow(clippy::deref_addrof)]
             if let Some(app) = unsafe { (*(&raw mut APP)).as_mut() } {
                 app.clear();

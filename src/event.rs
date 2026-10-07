@@ -6,7 +6,7 @@ use core::{
 };
 
 use crate::{
-    file_store::{Backend, FileStore, FileStoreError},
+    file_store::{Backend, FileStore, FileStoreError, StoreId},
     js_client::{CanvasEvent, EventType, Gesture, Input, KeyName, VisibilityState, WireError},
 };
 
@@ -49,9 +49,7 @@ pub enum Event {
     Window(WindowEvent),
     FetchChunk(FetchChunk),
     Fetched(Response),
-    StoreLost {
-        name: &'static str,
-    },
+    StoreLost(StoreId),
     StoreOpened(Opened),
 }
 

@@ -21,6 +21,7 @@ use crate::{
     Error,
     arena::{APP, RUNNING, emit},
     event::{Event, EventError, Response, WindowEvent, decode_event},
+    file_store::StoreId,
     js_client::{
         CanvasEvent, Command, EventType, Thresholds, TouchTracker, detect_device, encode_command,
     },
@@ -35,7 +36,7 @@ pub struct App {
     commands:   Vec<Command>,
     origin:     Option<CanvasEvent>,
     responses:  BTreeMap<u32, Vec<u8>>,
-    reopen:     Option<&'static str>,
+    reopen:     Option<StoreId>,
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
@@ -74,7 +75,7 @@ impl App {
     }
 
     /// Decode a event frame and dispatch it together with every event
-    /// it derives, in FIFO order, appending the resulting commands. 
+    /// it derives, in FIFO order, appending the resulting commands.
     pub fn process(&mut self, frame: &[u8]) {
         let Some(event) = decode_event(frame) else {
             self.commands.push(Command::Error { error: Error::Event(EventError::Decode) });
@@ -134,8 +135,8 @@ impl App {
                 (vec![Event::Fetched(response)], vec![])
             }
             Event::Fetched(response) => handler.process_fetched(&response),
-            Event::StoreLost { name } => {
-                *reopen = Some(name);
+            Event::StoreLost(id) => {
+                *reopen = Some(id);
                 handler.process_lost()
             }
             Event::StoreOpened(opened) => handler.process_opened(opened),
@@ -171,7 +172,7 @@ impl App {
         }
     }
 
-    pub(crate) fn reopen_wanted(&mut self) -> Option<&'static str> {
+    pub(crate) fn reopen_wanted(&mut self) -> Option<StoreId> {
         self.reopen.take()
     }
 
@@ -189,7 +190,7 @@ mod tests {
     use super::*;
     use crate::{
         event::EVENT_CANVAS,
-        file_store::{Backend, FileStore},
+        file_store::{Backend, FileStore, StoreId},
         js_client::{Gesture, Output, dom},
         testing::{Rng, block_on},
     };
@@ -319,9 +320,11 @@ mod tests {
     #[cfg(feature = "calendar")]
     #[test]
     fn fetch_chunks_are_joined_until_the_last_one() {
-        let body =
-            fs::read(concat!(env!("CARGO_MANIFEST_DIR"), "/distribution/calendar/data/calendar.json"))
-                .unwrap();
+        let body = fs::read(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/distribution/calendar/data/calendar.json"
+        ))
+        .unwrap();
         let mut app = new_app();
 
         let chunks: Vec<&[u8]> = body.chunks(4000).collect();
@@ -433,11 +436,12 @@ mod tests {
     #[test]
     fn a_lost_store_is_remembered_once_for_the_serve_loop() {
         let mut app = new_app();
-        assert_eq!(app.reopen_wanted(), None);
-        app.run(Event::StoreLost { name: "x" });
-        assert_eq!(app.reopen_wanted(), Some("x"));
-        assert_eq!(app.reopen_wanted(), None);
-        app.run(Event::StoreOpened(block_on(Backend::open("x"))));
+        assert!(app.reopen_wanted().is_none());
+        let id = StoreId { name: "x", version: "0.0" };
+        app.run(Event::StoreLost(id));
+        assert_eq!(app.reopen_wanted().map(|id| (id.name, id.version)), Some(("x", "0.0")));
+        assert!(app.reopen_wanted().is_none());
+        app.run(Event::StoreOpened(block_on(Backend::open(id, true))));
         assert!(app.events.is_empty());
     }
 }

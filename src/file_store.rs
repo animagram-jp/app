@@ -1,9 +1,9 @@
 //! OpfsStore — an OPFS-backed store that keeps the whole dataset in RAM and
 //! expresses persistence as explicit operations (`save` / `discard` / `compact`).
 //!
-//! On-disk layout is a snapshot/log pair per store name:
-//! - `<name>.snap` — clean snapshot, rewritten only by `compact`
-//! - `<name>.log`  — append-only diffs accumulated since the last compact
+//! On-disk layout is a snapshot/log pair per store name and version:
+//! - `<name>.<version>.snap` — clean snapshot, rewritten only by `compact`
+//! - `<name>.<version>.log`  — append-only diffs accumulated since the last compact
 //!
 //! Log record wire format (variable length, all integers little-endian):
 //! `[op: 1][id: 4][len: 4][data: len][checksum: 4]`
@@ -205,6 +205,8 @@ pub enum FileStoreError {
     InvalidName(String),
     /// Unrecognized `DOMException` name or unclassifiable value (debug string kept).
     Unknown(String),
+    /// `NotFoundError` on `getFileHandle` without `create`: no entry with that name.
+    NotFound(String),
 }
 
 impl Display for FileStoreError {
@@ -221,6 +223,7 @@ impl WireError for FileStoreError {
             FileStoreError::UnsupportedOp(_) => 3,
             FileStoreError::InvalidName(_) => 4,
             FileStoreError::Unknown(_) => 5,
+            FileStoreError::NotFound(_) => 6,
         });
     }
 
@@ -230,7 +233,8 @@ impl WireError for FileStoreError {
             | FileStoreError::QuotaExceeded(message)
             | FileStoreError::UnsupportedOp(message)
             | FileStoreError::InvalidName(message)
-            | FileStoreError::Unknown(message) => message.clone(),
+            | FileStoreError::Unknown(message)
+            | FileStoreError::NotFound(message) => message.clone(),
         }
     }
 }
@@ -333,10 +337,25 @@ fn append(
     Ok(())
 }
 
+#[derive(Clone, Copy)]
+pub struct StoreId {
+    pub name:    &'static str,
+    pub version: &'static str,
+}
+
+impl StoreId {
+    pub fn file(&self, extension: &str) -> String {
+        format!("{}.{}.{}", self.name, self.version, extension)
+    }
+}
+
 pub trait FileStore: Sized {
     type Handle;
 
-    fn open(name: &str) -> impl Future<Output = Result<Self::Handle, FileStoreError>>;
+    fn open(
+        id: StoreId,
+        create: bool,
+    ) -> impl Future<Output = Result<Self::Handle, FileStoreError>>;
     fn from_handle(handle: Self::Handle) -> Self;
     fn index(&self) -> &Index;
     fn index_mut(&mut self) -> &mut Index;
@@ -378,8 +397,8 @@ pub trait FileStore: Sized {
     ///
     /// ```no_run
     /// # async fn example() -> Result<(), app::file_store::FileStoreError> {
-    /// # use app::file_store::{OpfsStore, FileStore};
-    /// # let mut store = OpfsStore::open("tenant").await.and_then(OpfsStore::new)?;
+    /// # use app::file_store::{FileStore, OpfsStore, StoreId};
+    /// # let mut store = OpfsStore::open(StoreId { name: "tenant", version: "0.0" }, true).await.and_then(OpfsStore::new)?;
     /// let first  = store.issue_id();
     /// let second = store.issue_id();
     /// assert!(first < second);
@@ -412,8 +431,8 @@ pub trait FileStore: Sized {
     ///
     /// ```no_run
     /// # async fn example() -> Result<(), app::file_store::FileStoreError> {
-    /// # use app::file_store::{OpfsStore, FileStore};
-    /// # let store = OpfsStore::open("tenant").await.and_then(OpfsStore::new)?;
+    /// # use app::file_store::{FileStore, OpfsStore, StoreId};
+    /// # let store = OpfsStore::open(StoreId { name: "tenant", version: "0.0" }, true).await.and_then(OpfsStore::new)?;
     /// assert_eq!(store.get(9999), None); // absent id
     /// # Ok(()) }
     /// ```
@@ -431,8 +450,8 @@ pub trait FileStore: Sized {
     ///
     /// ```no_run
     /// # async fn example() -> Result<(), app::file_store::FileStoreError> {
-    /// # use app::file_store::{OpfsStore, FileStore};
-    /// # let mut store = OpfsStore::open("tenant").await.and_then(OpfsStore::new)?;
+    /// # use app::file_store::{FileStore, OpfsStore, StoreId};
+    /// # let mut store = OpfsStore::open(StoreId { name: "tenant", version: "0.0" }, true).await.and_then(OpfsStore::new)?;
     /// store.set(1, b"v".to_vec());
     /// assert_eq!(store.get(1), Some(&b"v"[..])); // visible before any save
     /// # Ok(()) }
@@ -450,8 +469,8 @@ pub trait FileStore: Sized {
     ///
     /// ```no_run
     /// # async fn example() -> Result<(), app::file_store::FileStoreError> {
-    /// # use app::file_store::{OpfsStore, FileStore};
-    /// # let mut store = OpfsStore::open("tenant").await.and_then(OpfsStore::new)?;
+    /// # use app::file_store::{FileStore, OpfsStore, StoreId};
+    /// # let mut store = OpfsStore::open(StoreId { name: "tenant", version: "0.0" }, true).await.and_then(OpfsStore::new)?;
     /// store.set(1, b"v".to_vec());
     /// store.delete(1);
     /// assert_eq!(store.get(1), None); // gone from memory, disk untouched
@@ -478,8 +497,8 @@ pub trait FileStore: Sized {
     ///
     /// ```no_run
     /// # async fn example() -> Result<(), app::file_store::FileStoreError> {
-    /// # use app::file_store::{OpfsStore, FileStore};
-    /// # let mut store = OpfsStore::open("tenant").await.and_then(OpfsStore::new)?;
+    /// # use app::file_store::{FileStore, OpfsStore, StoreId};
+    /// # let mut store = OpfsStore::open(StoreId { name: "tenant", version: "0.0" }, true).await.and_then(OpfsStore::new)?;
     /// store.set(1, b"v".to_vec());
     /// if store.save().is_err() {
     ///     store.save()?; // the pending diff survives a failed save; retrying is safe
@@ -547,8 +566,8 @@ pub trait FileStore: Sized {
     ///
     /// ```no_run
     /// # async fn example() -> Result<(), app::file_store::FileStoreError> {
-    /// # use app::file_store::{OpfsStore, FileStore};
-    /// # let mut store = OpfsStore::open("tenant").await.and_then(OpfsStore::new)?;
+    /// # use app::file_store::{FileStore, OpfsStore, StoreId};
+    /// # let mut store = OpfsStore::open(StoreId { name: "tenant", version: "0.0" }, true).await.and_then(OpfsStore::new)?;
     /// store.set(1, b"draft".to_vec());
     /// store.discard()?;               // unsaved set is rolled back
     /// assert_eq!(store.get(1), None);
@@ -637,8 +656,11 @@ fn classify(context: &str, error: JsValue) -> FileStoreError {
 /// meaning `classify()` assumes — so it maps to `InvalidName` instead.
 /// A genuine `DOMException` (NotAllowedError / NotFoundError /
 /// TypeMismatchError, …) still goes through the common classification.
-fn classify_get_file_handle(context: &str, error: JsValue) -> FileStoreError {
-    if error.dyn_ref::<DomException>().is_some() {
+fn classify_get_file_handle(context: &str, error: JsValue, create: bool) -> FileStoreError {
+    if let Some(exception) = error.dyn_ref::<DomException>() {
+        if !create && exception.name() == "NotFoundError" {
+            return FileStoreError::NotFound(format!("{}: {}", context, exception.message()));
+        }
         return classify(context, error);
     }
     FileStoreError::InvalidName(format!("{}: {:?}", context, error))
@@ -657,10 +679,11 @@ async fn open(
     dir: &FileSystemDirectoryHandle,
     filename: &str,
     options: &FileSystemGetFileOptions,
+    create: bool,
 ) -> Result<FileSystemSyncAccessHandle, FileStoreError> {
     let file_handle = JsFuture::from(dir.get_file_handle_with_options(filename, options))
         .await
-        .map_err(|e| classify_get_file_handle(&format!("getFileHandle {}", filename), e))?;
+        .map_err(|e| classify_get_file_handle(&format!("getFileHandle {}", filename), e, create))?;
 
     // Per spec createSyncAccessHandle never throws TypeError (DOMExceptions
     // only), so the common classifier is sufficient on this path.
@@ -690,9 +713,9 @@ pub struct OpfsHandles {
 ///
 /// ```no_run
 /// # async fn example() -> Result<(), app::file_store::FileStoreError> {
-/// use app::file_store::{OpfsStore, FileStore};
+/// use app::file_store::{FileStore, OpfsStore, StoreId};
 ///
-/// let mut store = OpfsStore::open("tenant").await.and_then(OpfsStore::new)?;
+/// let mut store = OpfsStore::open(StoreId { name: "tenant", version: "0.0" }, true).await.and_then(OpfsStore::new)?;
 /// let id = store.issue_id();
 /// store.set(id, b"payload".to_vec());
 /// store.save()?;                                  // durable from here
@@ -719,7 +742,7 @@ impl OpfsStore {
 impl FileStore for OpfsStore {
     type Handle = OpfsHandles;
 
-    async fn open(filename: &str) -> Result<OpfsHandles, FileStoreError> {
+    async fn open(id: StoreId, create: bool) -> Result<OpfsHandles, FileStoreError> {
         let worker: WorkerGlobalScope = js_sys::global()
             .dyn_into()
             .map_err(|_| FileStoreError::Unknown("not in WorkerGlobalScope".to_string()))?;
@@ -730,10 +753,16 @@ impl FileStore for OpfsStore {
 
         let dir = root.unchecked_ref::<FileSystemDirectoryHandle>();
         let options = FileSystemGetFileOptions::new();
-        options.set_create(true);
+        options.set_create(create);
 
-        let snap = open(dir, &format!("{}.snap", filename), &options).await?;
-        let log = open(dir, &format!("{}.log", filename), &options).await?;
+        let snap = open(dir, &id.file("snap"), &options, create).await?;
+        let log = match open(dir, &id.file("log"), &options, create).await {
+            Ok(log) => log,
+            Err(error) => {
+                snap.close();
+                return Err(error);
+            }
+        };
         Ok(OpfsHandles { snap, log })
     }
 
@@ -841,10 +870,18 @@ impl MemoryStore {
 impl FileStore for MemoryStore {
     type Handle = MemoryHandles;
 
-    fn open(name: &str) -> impl Future<Output = Result<MemoryHandles, FileStoreError>> {
-        ready(Ok(
-            DISKS.with(|disks| disks.borrow_mut().entry(String::from(name)).or_default().clone())
-        ))
+    fn open(
+        id: StoreId,
+        create: bool,
+    ) -> impl Future<Output = Result<MemoryHandles, FileStoreError>> {
+        let key = id.file("mem");
+        ready(DISKS.with(|disks| {
+            let mut disks = disks.borrow_mut();
+            if !create && !disks.contains_key(&key) {
+                return Err(FileStoreError::NotFound(key));
+            }
+            Ok(disks.entry(key).or_default().clone())
+        }))
     }
 
     fn from_handle(handle: MemoryHandles) -> Self {
@@ -962,6 +999,8 @@ impl Index {
 #[cfg(test)]
 #[allow(dead_code)] // the host and wasm suites use different subsets of these helpers
 mod cases {
+    use alloc::boxed::Box;
+
     use super::*;
     use crate::testing::Rng;
 
@@ -1030,8 +1069,10 @@ mod cases {
         LogRecord::set(1, b"aaa".to_vec()).to_bytes()[..7].to_vec()
     }
 
-    async fn open_store<S: FileStore>(name: &str) -> S {
-        S::open(name).await.and_then(S::new).unwrap()
+    pub const VERSION: &str = "0.0";
+
+    pub async fn open_store<S: FileStore>(id: StoreId) -> S {
+        S::open(id, true).await.and_then(S::new).unwrap()
     }
 
     struct Model {
@@ -1082,13 +1123,16 @@ mod cases {
         name: &str,
         seeds: u64,
         steps: usize,
-        tear: impl AsyncFn(&str),
-        fail: Option<fn(&str, Fault, bool)>,
+        tear: impl AsyncFn(StoreId),
+        fail: Option<fn(StoreId, Fault, bool)>,
     ) {
         for seed in 0..seeds {
             let mut rng = Rng::new(seed);
-            let name = format!("{name}_{seed}");
-            let mut store = open_store::<S>(&name).await;
+            let id = StoreId {
+                name:    Box::leak(format!("{name}_{seed}").into_boxed_str()),
+                version: VERSION,
+            };
+            let mut store = open_store::<S>(id).await;
             let mut model = Model::reopened(contents(&store), Vec::new());
             for step in 0..steps {
                 let context = format!("seed {seed} step {step}");
@@ -1122,9 +1166,9 @@ mod cases {
                     55..70 => {
                         if let (Some(fail), true) = (fail, rng.chance(30)) {
                             let fault = if rng.chance(50) { Fault::Write } else { Fault::Flush };
-                            fail(&name, fault, true);
+                            fail(id, fault, true);
                             let attempt = store.save();
-                            fail(&name, fault, false);
+                            fail(id, fault, false);
                             match fault {
                                 Fault::Write if !model.dirty => attempt.unwrap(),
                                 _ => assert!(attempt.is_err(), "{context}"),
@@ -1161,9 +1205,9 @@ mod cases {
                     _ => {
                         store.close();
                         if rng.chance(30) {
-                            tear(&name).await;
+                            tear(id).await;
                         }
-                        store = open_store::<S>(&name).await;
+                        store = open_store::<S>(id).await;
                         model = Model::reopened(model.committed, model.ghost);
                     }
                 }
@@ -1196,16 +1240,16 @@ mod tests {
         records.iter().flat_map(|record| record.to_bytes()).collect()
     }
 
-    fn memory_failing(name: &str, fault: Fault, fail: bool) {
-        let disk = block_on(MemoryStore::open(name)).unwrap();
+    fn memory_failing(id: StoreId, fault: Fault, fail: bool) {
+        let disk = block_on(MemoryStore::open(id, true)).unwrap();
         match fault {
             Fault::Write => disk.failing(fail),
             Fault::Flush => disk.flush_fails(fail),
         }
     }
 
-    async fn tear_log(name: &str) {
-        let disk = MemoryStore::open(name).await.unwrap();
+    async fn tear_log(id: StoreId) {
+        let disk = MemoryStore::open(id, true).await.unwrap();
         disk.log.0.borrow_mut().bytes.extend_from_slice(&torn_tail());
     }
 
@@ -1274,6 +1318,33 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn opening_a_missing_store_without_create_is_not_found_and_does_not_create_it() {
+        let id = StoreId { name: "absent", version: "7" };
+        for _ in 0..2 {
+            assert!(matches!(
+                block_on(MemoryStore::open(id, false)),
+                Err(FileStoreError::NotFound(_))
+            ));
+        }
+        assert!(block_on(MemoryStore::open(id, true)).is_ok());
+        assert!(block_on(MemoryStore::open(id, false)).is_ok());
+    }
+
+    #[test]
+    fn versions_of_one_name_are_separate_flat_files() {
+        let first = StoreId { name: "versions", version: "0.0" };
+        let second = StoreId { name: "versions", version: "0.1" };
+        assert_eq!(second.file("snap"), "versions.0.1.snap");
+        assert_eq!(first.file("log"), "versions.0.0.log");
+
+        let mut store = block_on(cases::open_store::<MemoryStore>(first));
+        store.set(1, b"v1".to_vec());
+        store.save().unwrap();
+        assert!(block_on(cases::open_store::<MemoryStore>(second)).get(1).is_none());
+        assert_eq!(block_on(cases::open_store::<MemoryStore>(first)).get(1), Some(&b"v1"[..]));
     }
 
     #[test]
@@ -1364,16 +1435,22 @@ mod opfs_tests {
     /// Append raw torn bytes (half a record header) to an OPFS file — exactly
     /// the artifact a crash mid-save leaves behind. The store must be closed
     /// first: the SyncAccessHandle lock is exclusive.
-    async fn tear_log(name: &str) {
+    async fn tear_log(id: StoreId) {
         let worker: WorkerGlobalScope = js_sys::global().dyn_into().unwrap();
         let root = JsFuture::from(worker.navigator().storage().get_directory()).await.unwrap();
         let dir = root.unchecked_ref::<FileSystemDirectoryHandle>();
         let handle =
-            open(dir, &format!("{name}.log"), &FileSystemGetFileOptions::new()).await.unwrap();
+            open(dir, &id.file("log"), &FileSystemGetFileOptions::new(), false).await.unwrap();
         let size = handle.get_size().unwrap() as u32;
         handle.write_with_u8_array_and_options(&mut torn_tail(), &options_at(size)).unwrap();
         handle.flush().unwrap();
         handle.close();
+    }
+
+    #[wasm_bindgen_test]
+    async fn opfs_open_without_create_reports_not_found_for_a_missing_store() {
+        let id = StoreId { name: "opfs_never_created", version: "9" };
+        assert!(matches!(OpfsStore::open(id, false).await, Err(FileStoreError::NotFound(_))));
     }
 
     #[wasm_bindgen_test]
