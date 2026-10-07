@@ -24,7 +24,7 @@
 |-|-|-|-|
 | save    | &mut self | `Result<(), FileStoreError>` | 検証済み末尾（`log_end`）を超える torn 残留を切除した上で、`unsaved`（Set）と `deleted`（Delete）をまとめて検証済み末尾に一括 append し、成功時に両方 clear して `log_end` を進める。デフォルト実装 |
 | discard | &mut self | `Result<(), FileStoreError>` | rollback。`unsaved`/`deleted` を破棄し、`memory` を flush 確認済みの確定状態（`snap`+`log[..log_end]` を読み直したもの）に巻き戻す。ディスクへの書き込みは一切行わない。デフォルト実装 |
-| `compact` | `&mut self` | `Result<(), FileStoreError>` | snap/log（`log[..log_end]`）を読み直した一時的な状態（memory は参照しない）を元に snap を再構築し、log を空にする。デフォルト実装 |
+| `compact` | `&mut self` | `Result<(), FileStoreError>` | snap/log（`log[..log_end]`）を読み直した一時的な状態（memory は参照しない）の全件を、まず log の末尾に追記し、そのあと snap を再構築し、log を空にする。デフォルト実装 |
 | close   | &self | | snap/log を閉じる。実装ごとに書く |
 
 バックエンドに依存する部分は、`open` / `from_handle`（実装の構築）/ `index` / `index_mut`（`Index` への accessor）と、ファイル操作のプリミティブ6つ（`size` / `read_at` / `write_at` / `flush` / `truncate` / `close`。どちらのファイルかは `File::Snap` / `File::Log` で指定する）だけである。ロジック（`new` / `save` / `discard` / `compact` ほか）は trait のデフォルト実装として1箇所にだけ書き、`OpfsStore` と `MemoryStore` が共有する。short read / short write のループ（`read_all` / `append`）もプリミティブの上に1つだけある。
@@ -100,7 +100,7 @@ pub struct OpfsHandles {
 
 - `issue_id()` はプロセス生存中の単調増加のみを保証する（削除済み id の再発行を許容）:`new()` は `memory.keys().max()` から `next_id` を復元するため、生存キーの最大値しか見ておらず、削除済みの id は反映されない。プロセス再起動を挟むと過去に発行・削除済みの id を再び払い出しうる。これは次の前提により仕様とする: **store の id を独立した外部参照として保持することは無い**（id は store 内部で閉じ、他ストアや外部に耐久的な参照として保存されない）。この前提の下では:
     - 再発行される id は必ず削除済み（`memory` に生存エントリが無い）ものであり、衝突する相手が存在しないため無害。
-    - log 上に残る旧 set/delete レコードは `build_memory` が順に適用するため復元結果は正しく、compact の kill-safety（③④: 新 snap が書けた後に古い log が残るケース）が依拠する set/delete の冪等性も崩さない。冪等性が救えるのはそのケースだけで、② の旧 snap 消失は救えない。
+    - log 上に残る旧 set/delete レコードは `build_memory` が順に適用するため復元結果は正しく、compact の kill-safety（新 snap が書けた後に古い log が残るケース、および log 末尾の全件コピーが旧 log に重なるケース）が依拠する set/delete の冪等性も崩さない。
     - 削除済み最大 id の watermark 永続化（save/compact 時の書き込み）は不要。再利用禁止に伴う u32 発行回数の生涯上限（2^32-1）も生じない。
     - なお `save()` が set 済み id で `next_id` を押し上げる処理は、caller が`issue_id()` を経由せず任意 idで `set()` した場合にもプロセス内単調性を守るための防御であり、この仕様と両立する。
 
@@ -200,7 +200,7 @@ whatwg/fs spec 上、`FileSystemDirectoryHandle.getFileHandle()` と
 | `FileStore::new` | `read_all`（snap・log）失敗 | `Err(FileStoreError)` を呼び出し元に返す。ハンドルは受け取り済みで、index は未構築 | `open` と同じく、caller が起動失敗として扱う |
 | `FileStore::save` | `get_size` 失敗 / 修復 `truncate` 失敗 / `append`（write失敗 / flush失敗）/ 物理サイズ < `log_end`（単一 writer 前提の破れ） | `unsaved` / `deleted` は **clearされず**、`log_end` も進まない。log の `log_end` 以降に torn バイトが残りうるが、そこは確定領域外であり、次回 save 冒頭の修復で切除される（open 時の replay も無視する） | `Err(FileStoreError)` を受けた caller は原因（`InvalidState`/`QuotaExceeded`/`UnsupportedOp`/`Unknown`）を見た上で再度 `save()` を呼び直せる（冪等に再送可能）。torn 残留の後ろに追記して確定データが読めなくなる事故は `log_end` 修復により構造的に起きない |
 | `FileStore::discard` | `read_all`（snap・log）失敗 / 物理サイズ < `log_end` | `memory`/`unsaved`/`deleted` は失敗前の状態のまま変更されない（`?` で即return、途中で `memory` への代入は行われない） | `Err(FileStoreError)` を受けた caller は原因を見た上で再度 `discard()` を呼び直せる。ディスクへの書き込みは行わないため、失敗してもディスク側の状態には一切影響しない |
-| `FileStore::compact` | `read_all`（snap・log）失敗 / 物理サイズ < `log_end` / `snap.truncate` 失敗 / `append(&snap, ..)` 失敗 / `log.truncate` 失敗 / `log.flush` 失敗 | 途中で `?` によりreturnするため、`snap` だけ空にして `append` が失敗すると snap のデータが失われた状態で停止しうる。`memory`（RAM）には触れないが、disk は旧 snap の内容を失った状態で止まる。以降の `discard` / 再 `compact` / `new()` はいずれも disk を読み直すため、その欠けた状態を確定として扱う（snap 1〜100 / log 101,102 の状態で snap 書き込みが失敗すると、reopen・`discard`・再 `compact` 成功後のいずれも 2 件しか残らない）。したがって失敗が影響しないのは RAM だけで、確定状態には影響する | 明示的なロールバックやリトライは実装していない。kill-safety はステップごとに異なり、**② は成立しない**（既知の穴）: ① snap.truncate 失敗→snap/log とも無傷（安全） ② append 失敗→**旧 snap の内容は `truncate(0)` の時点で消えており、log が持つのは前回 compact 以降の差分だけなので、log が確定状態の全件を含む場合しか復元できない**。snap にだけある id（前回 compact 済みで以後触れていないもの）は失われ、リトライ（再 `compact`）は空の snap と log から snap を作り直すため損失を確定させる。部分書きされた末尾レコードは checksum 検証で無視されるが、欠落そのものは救えない ③④ log.truncate/flush 失敗→新 snap は書けており古い log が残るが、apply_log の set/delete は冪等なので再適用しても結果は変わらない（安全）。`log_end` は log.truncate 成功直後（flush 前）に 0 へ更新する — truncate は自 writer の確定的な内容変更であり、flush 失敗は耐久性のみの未確定のため |
+| `FileStore::compact` | `read_all`（snap・log）失敗 / 物理サイズ < `log_end` / 未確認の尾の切除（`log.truncate`）失敗 / 全件コピーの `append(&log, ..)` 失敗 / `snap.truncate` 失敗 / `append(&snap, ..)` 失敗 / `log.truncate` 失敗 / `log.flush` 失敗 | `memory`（RAM）・未保存の差分は変わらない。disk は、どのステップで止まっても確定状態を保つ（下表）。`log_end` は全件コピーの flush 成功後にだけ進む | 明示的なロールバックは不要で、`compact()` を呼び直せる（再試行は冪等）。**確定状態の全体を持つコピーを、snap を壊す前に log に置く**のが要点（snap に原本が1つしか無い状態を作らない）。各ステップの kill-safety: ⓪ 未確認の尾の切除に失敗→何も書いていない（安全） ① 全件コピーの append 失敗→snap は無傷で、log は `log_end` までが確定のまま。書きかけは `log_end` の後ろに残るだけで、次回の `save` / `compact` の冒頭で切除される（安全） ② snap.truncate / append 失敗や途中のクラッシュ→snap は空または部分だが、snap + log（log は全件コピーを含む）で確定状態を復元できる。部分書きされた snap の末尾レコードは checksum 検証で無視される（安全） ③ log.truncate / flush 失敗→新 snap は書けており古い log が残るが、set/delete は冪等なので再適用しても結果は変わらない（安全）。`log_end` は ③ で **truncate の前に** 0 にする — この時点で snap だけが確定状態の全体を持ち、log に確定の真実は残っていない。truncate が「効いたのにエラーを返す」場合（`write`/`truncate` の `InvalidStateError` の仕様）に `log_end` が空のファイルの先を指し続けると、以後の呼び出しが「log が縮んだ」で恒久的に失敗するため。truncate が効かなかった場合の log の残りは `log_end` の後ろの尾として扱われ、次回の `save` / `compact` で切除される。④ 順序の条件: 相手のファイルに未 flush の書き込みがある間は truncate しない（snap の flush 前に log を空にしない）。Memory 実装の `flush` は何もしないので、挙動ではなく呼び出し列で検査する。トレードオフ: 書き込みは全件コピー分だけ増える（log と snap の2回）。ステップ ② 以降で失敗して再試行を繰り返すと、成功するまで全件コピーが log に1回ずつ追記される |
 | `read_all`（helper） | `get_size` 失敗 / `read_with_u8_array_and_options` 失敗 / size に届く前に EOF（`r == 0`）に到達 | `Err(FileStoreError)` を返す。呼び出し側（`new`/`compact`/`discard`）に `?` でそのまま伝播 | `classify()` により `InvalidState`/`UnsupportedOp`/`Unknown` に分類済み。spec上 `r == 0` はEOFを意味する正常な戻り値だが、`size` 分読み切る前に発生するのは「呼び出し中にファイルが外部で縮んだ」想定外事態（単一writer原則の下では通常起きない）であり `Unknown` として打ち切る（無限ループ回避） |
 | `append`（helper） | `write_with_u8_array_and_options` 失敗 / `flush` 失敗 / write が進捗ゼロ（`w == 0`）で継続 | `Err(FileStoreError)` を返す。呼び出し側（`save`/`compact`）が結果を見て `unsaved`/`deleted`/`log_end` の更新可否を判断 | `classify()` により `InvalidState`/`QuotaExceeded`/`UnsupportedOp`/`Unknown` に分類され、disk full（quota超過）等はある程度区別できるようになった。spec上 `write` が `Ok(0)`（バイト数不明の部分書き込み）を返すことは通常想定されないが、保険として `w == 0` を `Unknown` として打ち切る（無限ループ回避） |
 | `open`（helper） | `getFileHandleWithOptions` 失敗（不正なファイル名で`TypeError`、または`NotAllowedError`/`NotFoundError`/`TypeMismatchError`） / `createSyncAccessHandle` 失敗（`NotAllowedError`/`InvalidStateError`/`NotFoundError`/`NoModificationAllowedError`、既に他ハンドルが排他ロック中など） | `Err(FileStoreError)` として`classify()`/`classify_get_file_handle()`済みの詳細メッセージ付きで返る | `OpfsStore::open` がそのまま `?` で伝播。`getFileHandle`は`classify_get_file_handle()`経由で`TypeError`を`InvalidName`に分類、`createSyncAccessHandle`は`TypeError`を投げないため`classify()`の一般分類で問題ない |
@@ -233,7 +233,7 @@ whatwg/fs spec 上、`FileSystemDirectoryHandle.getFileHandle()` と
 | 2 | メソッド本体（save / discard / compact のロジック） | **共通済み（trait のデフォルト実装）** | ディスク接点は `size` / `read_at` / `write_at` / `flush` / `truncate` / `close` の6つに集約し、`FileStore` の必須メソッドにした。ロジックは1箇所で、`OpfsStore` と `MemoryStore` が共有する |
 | 2 | I/O ヘルパー（`read_all` / `append`） | ループごと共通可 | short read/write・EOF==0 の意味論が vfs の `(p)read` / `(p)write` と同型（「Web APIs (OPFS)実装」の対応表の通り） |
 | 2 | `open` の実体 | **共通化しない** | async 性・排他ロック（内蔵 vs `flock`）・親 dir fsync・パス解決が本質的な差。platform 別コンストラクタとして分離するのが素直 |
-| - | compact の snap 置換戦略 | 見直しが必要 | 現行の truncate→append 方式は、append 失敗・クラッシュ時に旧 snap の内容を失う（snap にだけある id は log から復元できない。Memory 実装と OPFS 実装で再現）。この点は POSIX でも同じで、kill-safety 論証は成立しない。write→fsync→rename→dir fsync の原子置換、または snap を触らず log を末尾に append してから log を truncate する方式なら、旧 snap を壊さずに済む。OPFS には rename が無いため、世代を分ける別ファイル方式などを要検討 |
+| - | compact の snap 置換戦略 | 共通化可 | 「全件コピーを log に置いてから snap を truncate→append し、最後に log を空にする」方式は、truncate→append の途中で止まっても snap + log から復元できるため、kill-safety 論証が POSIX でもそのまま成立する（共通化可）。POSIX のみ write→fsync→rename→dir fsync の原子置換に強化できるが、実装が分岐し論証も別になる。共通化優先なら現行方式に揃える |
 
 - 優先度2案（実装済み。別 trait は設けず、`FileStore` の必須メソッドとして持つ）: 依存API
 
@@ -304,7 +304,7 @@ seed 固定の疑似乱数（`testing::Rng`）で、同じ seed は常に同じ�
 | `issue_id` / `get` / `range` / `set` / `delete` | 空欄（RAM のみ。個別テストは持たない） | 対象外（I/O なし） | | ○ | |
 | `save` | `a_crash_mid_save_…`（host） | ○ `*_save_survives_a_fault_at_every_io_step` | | ○（log の write / flush 失敗） | |
 | `discard` | 空欄（全探索とモデルで足りる） | ○ `*_discard_survives_a_fault_at_every_io_step` | | ○ | |
-| `compact` | 空欄 | ○ `*_compact_survives_a_fault_at_every_io_step`（**ignore: 既知の穴**） | ○ `*_compact_keeps_the_committed_state_when_the_snap_write_fails`（**ignore: 既知の穴**） | ○（**snap の故障は含まない**） | `*_compact_rewrites_an_untouched_snap` |
+| `compact` | 空欄 | ○ `*_compact_survives_a_fault_at_every_io_step` | | ○（snap の write 失敗を含む） | `*_compact_rewrites_an_untouched_snap` |
 | `close` | `opfs_a_closed_handle_fails_…` | 空欄（use-after-close を全メソッドで確認していない） | | | |
 
 空欄は未検査であることを意味する。埋めるかどうかは、そのメソッドが disk を変えるかで決める。
@@ -320,15 +320,17 @@ seed 固定の疑似乱数（`testing::Rng`）で、同じ seed は常に同じ�
 
 | 続き | 確認すること |
 |-|-|
-| クラッシュ（何もしない） | reopen した状態が許容集合に入る。`save` は「確定済み + バッチの先頭 k レコード」のどれか。`discard` / `compact` は確定済みと完全一致 |
+| クラッシュ（何もしない） | reopen した状態が許容集合に入る。`save` は「確定済み + バッチの先頭 k レコード」のどれか。`discard` / `compact` は確定済みと完全一致。未確認の尾（失敗した save が残したバッチ）がある場合は、その先頭 k レコードが見えていてもよい |
 | 同じ呼び出しを再試行 | 成功し、reopen した状態が期待値と一致する |
 | `discard` してから続行 | RAM が確定済みに戻り、続行後の reopen も確定済みと一致する |
 
 どの場合も、失敗した呼び出しの直後は RAM と未保存の差分が変わっていない。ステップはコードではなく呼び出し列から導くので、アルゴリズムにステップを足すとテストを書き足さなくても探索対象になる。
 
+さらに `save` と `compact` は、未確認の尾（失敗した flush が残した、整形済みの6レコード）がある状態からも同じ探索を行う。尾の一部だけを上書きしても、残りが整列した有効レコードとして見えてしまう場合を検出する。全探索は、呼び出し列そのものについて「相手のファイルに未 flush の書き込みがある間は truncate しない」ことも検査する（Memory の `flush` は挙動に現れないため）。
+
 #### 欠陥が見つかったときのテスト追加順
 
-1. **名前付きシナリオ**を書き、落ちることを確認する（読んで理解できる再現）。
+1. **名前付きシナリオ**を書き、落ちることを確認する（読んで理解できる再現）。直って全探索が同じ欠陥を捕まえられるようになったら、重複するので消す。
 2. **全探索がなぜ見逃したか**を考える。見逃した場合は、`Probe` の故障種別、`sites` の列挙、`Layout` の初期状態を広げて、全探索自体が落ちるようにする。これが再発防止の本体。
 3. 呼び出しの**順序**が関係する欠陥なら、モデルの操作と故障を足す。
 4. コードを直す。
@@ -350,10 +352,9 @@ seed 固定の疑似乱数（`testing::Rng`）で、同じ seed は常に同じ�
 | `memory_save_survives_a_fault_at_every_io_step` | 上記「故障の全探索」を `save` に対して実行 |
 | `a_crash_mid_save_leaves_a_whole_number_of_records_and_the_next_save_repairs_it` | save の途中の任意のバイト位置でのクラッシュ後、reopen した状態が「確定済み + 未保存バッチの先頭 k レコード」のどれかに一致し、その後の save が torn を修復して以降も整合する |
 | `memory_discard_survives_a_fault_at_every_io_step` | 同上を `discard` に対して実行 |
-| `memory_compact_survives_a_fault_at_every_io_step` | 同上を `compact` に対して実行。**ignore**（既知の穴: `truncate(snap, 0)` のあと書き直しに失敗すると、snap にだけある id が失われる） |
-| `memory_compact_keeps_the_committed_state_when_the_snap_write_fails` | snap に 1〜100、log に 101,102。`truncate(snap, 0)` の直後の snap 書き込み失敗で、`discard` も reopen も 1〜100 を失わない。**ignore**（同上） |
-| `memory_store_follows_the_model_across_reopens_tears_and_failed_saves` | ランダムな操作列（set / delete / issue_id / save / discard / compact / close → reopen、torn 注入、write 失敗、flush 失敗）を、独立したモデル（現在値、確定値、next_id、flush 失敗が残す未確認バッチ）と1操作ごとに照合する |
-| `memory_compact_rewrites_an_untouched_snap` | 現状の挙動の記録（要件ではない）: snap に 1〜100、log に 101,102 だけの状態で compact すると、誰も触れていない snap も `truncate(0)` され全件（102件）書き直される。`truncate` / `write_at` を記録する `Spy<S>` で観測し、呼び出し列を `[snap truncate 0, log truncate 0]` と照合する |
+| `memory_compact_survives_a_fault_at_every_io_step` | 同上を `compact` に対して実行（未確認の尾がある場合も） |
+| `memory_store_follows_the_model_across_reopens_tears_and_failed_saves` | ランダムな操作列（set / delete / issue_id / save / discard / compact / close → reopen、torn 注入、write 失敗、flush 失敗、compact 中の snap の write 失敗）を、独立したモデル（現在値、確定値、next_id、flush 失敗が残す未確認バッチ）と1操作ごとに照合する |
+| `memory_compact_rewrites_an_untouched_snap` | 現状の挙動の記録（要件ではない）: snap に 1〜100、log に 101,102 だけの状態で compact すると、誰も触れていない snap も `truncate(0)` され全件（102件）書き直される。`truncate` / `write_at` を記録する `Probe<S>` で観測し、truncate が `[snap 0, log 0]` で、snap への書き込み量が snap のサイズに等しいことを照合する |
 
 モデルが採用している仕様（これに沿わない実装は上のテストで落ちる）:
 
@@ -370,13 +371,10 @@ host と同じ本体（`cases`）を `OpfsStore` で実行する。故障注入�
 | `opfs_open_without_create_reports_not_found_for_a_missing_store` | `create = false` で存在しない store は `NotFound` |
 | `opfs_save_survives_a_fault_at_every_io_step` | 故障の全探索（`save`） |
 | `opfs_discard_survives_a_fault_at_every_io_step` | 故障の全探索（`discard`） |
-| `opfs_compact_survives_a_fault_at_every_io_step` | 故障の全探索（`compact`）。**ignore**（既知の穴） |
-| `opfs_compact_keeps_the_committed_state_when_the_snap_write_fails` | 上の名前付きシナリオ。**ignore**（既知の穴） |
+| `opfs_compact_survives_a_fault_at_every_io_step` | 故障の全探索（`compact`） |
 | `opfs_a_closed_handle_fails_and_a_reopened_store_takes_over_the_pending_diff` | close 済みの store は `InvalidState` で失敗し、再オープンした store が未保存の差分を引き継いで save できる |
 | `opfs_store_follows_the_model_across_reopens_and_tears` | 上のモデルテストと同じ本体を実 OPFS で実行（torn 注入あり。故障注入は無し） |
 | `opfs_compact_rewrites_an_untouched_snap` | 上の `memory_compact_rewrites_an_untouched_snap` と同じ本体を実 OPFS で実行 |
-
-ignore したテストは `cargo test --lib file_store -- --ignored`（OPFS は `--include-ignored`）で実行できる。穴を直したら `#[ignore]` を外す。
 
 ## Store
 

@@ -584,9 +584,8 @@ pub trait FileStore: Sized {
         Ok(())
     }
 
-    /// Rebuild the snap from the flush-confirmed state (snap + log up to
-    /// `log_end`) and truncate the log — a torn or unconfirmed log tail is
-    /// dropped along with the truncation.
+    /// Fold the log into the snap: rebuild the snap from the flush-confirmed
+    /// state (snap + log up to `log_end`), then empty the log.
     ///
     /// Deliberately disk -> disk: `memory` may hold unsaved changes, and
     /// deriving the snapshot from it would commit them while bypassing
@@ -594,37 +593,62 @@ pub trait FileStore: Sized {
     /// (validated prefix only) and `memory` is neither consulted nor
     /// modified.
     ///
-    /// Kill-safety: whichever of the four steps fails, the next `new()`
-    /// restores the correct committed state as long as the log survives
-    /// (no explicit rollback or retry is needed):
-    /// 1. `snap.truncate(0)` fails  -> snap and log both intact.
-    /// 2. `append(&snap, ..)` fails -> snap is empty or partial, but the log
-    ///    — not yet truncated — still rebuilds the same committed state; a
-    ///    torn snap record is dropped by checksum validation.
-    /// 3. `log.truncate(0)` fails   -> the new snap is complete and the stale
-    ///    log reapplies on top of it; set/delete replay is idempotent, so
-    ///    the result is unchanged.
-    /// 4. `log.flush()` fails       -> as in 3 if the truncate never reached
-    ///    the disk.
+    /// The new snap is a full image of the committed state, and rewriting the
+    /// snap destroys the old one. The log only holds the diff since the last
+    /// compact, so ids that live only in the old snap would be lost if the
+    /// rewrite died halfway. Hence the order — a complete copy of the
+    /// committed state goes into the log *before* the snap is touched:
     ///
-    /// `log_end` is reset right after the successful `log.truncate(0)` and
-    /// before the final flush: the truncate is this writer's own confirmed
-    /// content change (only its durability is pending), so a failed flush
-    /// must not leave `log_end` pointing past the truncated file.
+    /// 0. Cut whatever lies past `log_end` (torn bytes, an unconfirmed batch)
+    ///    so the copy below cannot land after bytes that stop replay.
+    /// 1. Append the image to the log, flush, then advance `log_end`.
+    ///    Fails -> snap and log's confirmed prefix are intact.
+    /// 2. `snap.truncate(0)`, then write the image into the snap and flush.
+    ///    Fails or dies -> the snap is empty or partial, but snap + log
+    ///    (which now holds the whole image) still replays to the committed
+    ///    state; a torn snap record is dropped by checksum validation.
+    /// 3. `log_end = 0`, `log.truncate(0)`, then flush. Fails -> the new snap
+    ///    is complete and the stale log reapplies on top of it; set/delete
+    ///    replay is idempotent, so the result is unchanged. Whatever the
+    ///    failed truncate left in the log lies past `log_end` and is cut by
+    ///    the next `save` / `compact`.
+    ///
+    /// Every step is therefore safe to fail or to be killed at, and
+    /// `compact()` itself can simply be called again. A retry after a
+    /// failure past step 1 appends one more image to the log until a
+    /// compact completes.
+    ///
+    /// `log_end` advances only once the image is flushed (step 1). It drops
+    /// to 0 *before* the truncate in step 3, because a failed truncate may
+    /// or may not have taken effect and the snap no longer needs the log.
     fn compact(&mut self) -> Result<(), FileStoreError> {
         let snap_bytes = read_all(&*self, File::Snap)?;
         let log_bytes = read_all(&*self, File::Log)?;
+        let log_end = self.index().log_end;
         let (committed, _) = build_memory(&snap_bytes, self.index().confirmed(&log_bytes)?);
 
-        let new_snap: Vec<u8> = committed
+        let image: Vec<u8> = committed
             .iter()
             .flat_map(|(&id, data)| LogRecord::set(id, data.clone()).to_bytes())
             .collect();
 
+        // 0. Precondition repair, as in `save`.
+        if log_bytes.len() as u32 > log_end {
+            self.truncate(File::Log, log_end)?;
+        }
+        // 1. The log holds a whole copy of the committed state.
+        append(&*self, File::Log, log_end, &image)?;
+        self.index_mut().log_end = log_end + image.len() as u32;
+        // 2. Only now is the old snap expendable.
         self.truncate(File::Snap, 0)?;
-        append(&*self, File::Snap, 0, &new_snap)?;
-        self.truncate(File::Log, 0)?;
+        append(&*self, File::Snap, 0, &image)?;
+        // 3. The snap alone now holds the committed state, so nothing in the
+        //    log is committed truth any more: reset `log_end` first. A failed
+        //    truncate has an unknown effect (it may have emptied the file);
+        //    with `log_end` still pointing into it, the next call would see
+        //    a "shrunken" log and fail for good.
         self.index_mut().log_end = 0;
+        self.truncate(File::Log, 0)?;
         self.flush(File::Log)?;
         Ok(())
     }
@@ -974,6 +998,10 @@ impl MemoryHandles {
         self.log.0.borrow_mut().failing = fail;
     }
 
+    pub fn snap_failing(&self, fail: bool) {
+        self.snap.0.borrow_mut().failing = fail;
+    }
+
     pub fn flush_fails(&self, fail: bool) {
         self.log.0.borrow_mut().flush_fails = fail;
     }
@@ -1010,12 +1038,12 @@ mod cases {
     //! |-----------------------------------|---------------------------------------------|
     //! | RAM / disk postcondition          | what a successful call leaves behind        |
     //! | `survives_a_fault_at_every_io_step` | any single I/O failure or crash, per step |
-    //! | named scenario                    | one readable case per finding               |
+    //! | named scenario                    | one readable case per finding (until the sweep covers it) |
     //! | model                             | interactions between calls                  |
     //! | recorded                          | current behavior that is not a requirement  |
     //!
     //! When a defect is found, add tests in this order: (1) a named scenario
-    //! that fails; (2) ask why the sweep did not catch it — if it could not,
+    //! that fails (drop it once the fix lands and the sweep covers it); (2) ask why the sweep did not catch it — if it could not,
     //! widen `Probe` / `sites` / `Layout` so it does; (3) if it needs a
     //! sequence of calls, teach the model; (4) fix the code; (5) fix the doc.
     use alloc::boxed::Box;
@@ -1029,6 +1057,7 @@ mod cases {
     pub enum Fault {
         Write,
         Flush,
+        SnapWrite,
     }
 
     pub fn random_records(rng: &mut Rng) -> Vec<LogRecord> {
@@ -1126,13 +1155,15 @@ mod cases {
 
     /// Delegates to `S`, records every call, and can inject one fault.
     pub struct Probe<S: FileStore> {
-        inner:              S,
+        inner:               S,
         /// Every I/O call since the last clear, in order.
-        pub calls:          RefCell<Vec<(&'static str, Io)>>,
+        pub calls:           RefCell<Vec<(&'static str, Io)>>,
         /// `(index into calls, where)`: the one call to break.
-        pub fault:          Cell<Option<(usize, Hit)>>,
+        pub fault:           Cell<Option<(usize, Hit)>>,
         /// Fail every write to this file (`"snap"` / `"log"`) before it lands.
-        pub fail_writes_to: Cell<Option<&'static str>>,
+        pub fail_writes_to:  Cell<Option<&'static str>>,
+        /// Fail every flush of this file: what was written stays, unconfirmed.
+        pub fail_flushes_of: Cell<Option<&'static str>>,
     }
 
     fn file_name(file: File) -> &'static str {
@@ -1175,10 +1206,11 @@ mod cases {
 
         fn from_handle(handle: S::Handle) -> Self {
             Self {
-                inner:          S::from_handle(handle),
-                calls:          RefCell::new(Vec::new()),
-                fault:          Cell::new(None),
-                fail_writes_to: Cell::new(None),
+                inner:           S::from_handle(handle),
+                calls:           RefCell::new(Vec::new()),
+                fault:           Cell::new(None),
+                fail_writes_to:  Cell::new(None),
+                fail_flushes_of: Cell::new(None),
             }
         }
 
@@ -1215,6 +1247,10 @@ mod cases {
         }
 
         fn flush(&self, file: File) -> Result<(), FileStoreError> {
+            if self.fail_flushes_of.get() == Some(file_name(file)) {
+                self.calls.borrow_mut().push((file_name(file), Io::Flush));
+                return Err(injected());
+            }
             self.step(file, Io::Flush, || self.inner.flush(file))
         }
 
@@ -1284,22 +1320,30 @@ mod cases {
         current:   BTreeMap<u32, Vec<u8>>,
         /// The records `save` will write, in write order.
         batch:     Vec<LogRecord>,
+        /// An unconfirmed batch a failed save left past `log_end` (empty if
+        /// none). Visible to a reopen until a `save` / `compact` cuts it.
+        ghost:     Vec<LogRecord>,
     }
 
     impl Layout {
         /// States a reopen may legitimately show after a crash inside `method`.
         fn allowed(&self, method: Method) -> Vec<BTreeMap<u32, Vec<u8>>> {
-            match method {
-                // Atomicity is per record: any prefix of the batch may be visible.
-                Method::Save => (0..=self.batch.len())
+            let prefixes = |records: &[LogRecord]| -> Vec<BTreeMap<u32, Vec<u8>>> {
+                (0..=records.len())
                     .map(|keep| {
                         let mut state = self.committed.clone();
-                        replay(&mut state, &self.batch[..keep]);
+                        replay(&mut state, &records[..keep]);
                         state
                     })
-                    .collect(),
-                Method::Discard | Method::Compact => vec![self.committed.clone()],
+                    .collect()
+            };
+            // Atomicity is per record: any prefix of an unconfirmed batch may
+            // be visible, and the ghost may still be there if the cut never ran.
+            let mut allowed = prefixes(&self.ghost);
+            if matches!(method, Method::Save) {
+                allowed.extend(prefixes(&self.batch));
             }
+            allowed
         }
 
         /// The disk after `method` succeeded.
@@ -1311,7 +1355,7 @@ mod cases {
         }
     }
 
-    async fn arranged<S: FileStore>(id: StoreId) -> (Probe<S>, Layout) {
+    async fn arranged<S: FileStore>(id: StoreId, ghost: bool) -> (Probe<S>, Layout) {
         let mut store = open_probe::<S>(id).await;
         apply(&mut store, &[LogRecord::set(1, b"s1".to_vec()), LogRecord::set(2, b"s2".to_vec())]);
         store.save().unwrap();
@@ -1319,6 +1363,20 @@ mod cases {
         apply(&mut store, &[LogRecord::set(3, b"l3".to_vec()), LogRecord::set(4, b"l4".to_vec())]);
         store.save().unwrap();
         let committed = contents(&store);
+
+        // A failed flush leaves a whole batch past `log_end`: valid records
+        // that a reopen would replay. Six equal-sized records, so that
+        // overwriting only the first few still leaves aligned ones behind.
+        let mut leftover = Vec::new();
+        if ghost {
+            leftover = (10..=15).map(|id| LogRecord::set(id, b"g!".to_vec())).collect();
+            apply(&mut store, &leftover);
+            store.fail_flushes_of.set(Some("log"));
+            assert!(store.save().is_err());
+            store.fail_flushes_of.set(None);
+            store.discard().unwrap();
+            assert_eq!(contents(&store), committed);
+        }
 
         apply(
             &mut store,
@@ -1333,7 +1391,7 @@ mod cases {
         let mut batch: Vec<LogRecord> =
             index.unsaved.iter().map(|&id| LogRecord::set(id, index.memory[&id].clone())).collect();
         batch.extend(index.deleted.iter().map(|&id| LogRecord::delete(id)));
-        (store, Layout { committed, current, batch })
+        (store, Layout { committed, current, batch, ghost: leftover })
     }
 
     fn run(method: Method, store: &mut impl FileStore) -> Result<(), FileStoreError> {
@@ -1366,9 +1424,10 @@ mod cases {
         method: Method,
         site: (usize, Hit),
         afterwards: Afterwards,
+        ghost: bool,
     ) {
-        let context = format!("{method:?} fault {site:?} then {afterwards:?}");
-        let (mut store, layout) = arranged::<S>(id).await;
+        let context = format!("{method:?} (ghost {ghost}) fault {site:?} then {afterwards:?}");
+        let (mut store, layout) = arranged::<S>(id, ghost).await;
         store.calls.borrow_mut().clear();
         store.fault.set(Some(site));
         let result = run(method, &mut store);
@@ -1410,62 +1469,60 @@ mod cases {
         }
     }
 
-    /// For every I/O call `method` makes, and every way that call can fail
-    /// (before, after, torn at each byte): the committed state survives a
-    /// crash, a retry and a rollback. Sites come from a clean run's call
-    /// log, so a step added to the algorithm is covered automatically.
-    pub async fn survives_a_fault_at_every_io_step<S: FileStore>(name: &str, method: Method) {
-        let (mut dry, _) = arranged::<S>(unique(name, 0)).await;
-        dry.calls.borrow_mut().clear();
-        run(method, &mut dry).unwrap();
-        let calls = dry.calls.take();
-        dry.close();
-
-        let mut n = 0;
-        for site in sites(&calls) {
-            for afterwards in [Afterwards::Crash, Afterwards::Retry, Afterwards::Discard] {
-                if matches!((method, afterwards), (Method::Discard, Afterwards::Discard)) {
-                    continue;
+    /// A file may only be truncated once the *other* file has no unflushed
+    /// writes: the truncate destroys one copy of the committed state, so the
+    /// other copy must already be durable. Memory's `flush` does nothing, so
+    /// this ordering is invisible to the fault sweep and is checked on the
+    /// call log instead.
+    fn assert_flushed_before_truncating_the_other_file(calls: &[(&'static str, Io)]) {
+        let (mut snap_dirty, mut log_dirty) = (false, false);
+        for (index, (file, io)) in calls.iter().enumerate() {
+            match (*file, *io) {
+                ("snap", Io::Write(_)) => snap_dirty = true,
+                ("log", Io::Write(_)) => log_dirty = true,
+                ("snap", Io::Flush) => snap_dirty = false,
+                ("log", Io::Flush) => log_dirty = false,
+                ("snap", Io::Truncate(_)) => {
+                    assert!(!log_dirty, "call {index}: snap truncated with unflushed log writes")
                 }
-                n += 1;
-                check::<S>(unique(name, n), method, site, afterwards).await;
+                ("log", Io::Truncate(_)) => {
+                    assert!(!snap_dirty, "call {index}: log truncated with unflushed snap writes")
+                }
+                _ => {}
             }
         }
     }
 
-    // ── Named scenarios: one readable case per finding ───────────
+    /// For every I/O call `method` makes, and every way that call can fail
+    /// (before, after, torn at each byte): the committed state survives a
+    /// crash, a retry and a rollback. Sites come from a clean run's call
+    /// log, so a step added to the algorithm is covered automatically.
+    ///
+    /// `save` and `compact` run twice: once from a clean log, once with an
+    /// unconfirmed batch lying past `log_end`, which they must cut off.
+    pub async fn survives_a_fault_at_every_io_step<S: FileStore>(name: &str, method: Method) {
+        let ghosts: &[bool] =
+            if matches!(method, Method::Discard) { &[false] } else { &[false, true] };
+        let mut n = 0;
+        for &ghost in ghosts {
+            n += 1;
+            let (mut dry, _) = arranged::<S>(unique(name, n), ghost).await;
+            dry.calls.borrow_mut().clear();
+            run(method, &mut dry).unwrap();
+            let calls = dry.calls.take();
+            dry.close();
+            assert_flushed_before_truncating_the_other_file(&calls);
 
-    /// ids 1..=100 live only in the snap, 101/102 only in the log; the snap
-    /// write fails right after `truncate(snap, 0)` succeeded. Neither a
-    /// rollback nor a reopen may lose 1..=100.
-    pub async fn compact_keeps_the_committed_state_when_the_snap_write_fails<S: FileStore>(
-        name: &'static str,
-    ) {
-        let id = unique(name, 0);
-        let mut store = open_probe::<S>(id).await;
-        for n in 1..=100u32 {
-            store.set(n, n.to_le_bytes().to_vec());
+            for site in sites(&calls) {
+                for afterwards in [Afterwards::Crash, Afterwards::Retry, Afterwards::Discard] {
+                    if matches!((method, afterwards), (Method::Discard, Afterwards::Discard)) {
+                        continue;
+                    }
+                    n += 1;
+                    check::<S>(unique(name, n), method, site, afterwards, ghost).await;
+                }
+            }
         }
-        store.save().unwrap();
-        store.compact().unwrap();
-        store.set(101, b"a".to_vec());
-        store.set(102, b"b".to_vec());
-        store.save().unwrap();
-        let committed = contents(&store);
-
-        store.fail_writes_to.set(Some("snap"));
-        assert!(store.compact().is_err());
-        store.fail_writes_to.set(None);
-
-        // Same process: roll back. `discard` writes nothing, so what the
-        // disk holds is still exactly what a crash here would leave.
-        store.discard().unwrap();
-        assert_eq!(contents(&store), committed, "discard after a failed compact");
-        store.close();
-
-        let reopened = open_store::<S>(id).await;
-        assert_eq!(contents(&reopened), committed, "reopen after a failed compact");
-        reopened.close();
     }
 
     // ── Recorded behavior: what the code does today, not a requirement ──
@@ -1629,7 +1686,7 @@ mod cases {
                             }
                             model.ghost = match fault {
                                 Fault::Flush => model.batch(),
-                                Fault::Write => Vec::new(),
+                                Fault::Write | Fault::SnapWrite => Vec::new(),
                             };
                             assert_eq!(contents(&store), model.current, "{context}");
                             if rng.chance(50) {
@@ -1653,6 +1710,23 @@ mod cases {
                         model.synced();
                     }
                     78..84 => {
+                        if let (Some(fail), true) = (fail, rng.chance(30)) {
+                            // The snap rewrite dies halfway. Nothing is lost:
+                            // an empty committed state has nothing to write,
+                            // so only then may the attempt succeed.
+                            fail(id, Fault::SnapWrite, true);
+                            let attempt = store.compact();
+                            fail(id, Fault::SnapWrite, false);
+                            assert_eq!(attempt.is_err(), !model.committed.is_empty(), "{context}");
+                            // Cut by the repair in front of the rewrite.
+                            model.ghost.clear();
+                            assert_eq!(contents(&store), model.current, "{context}");
+                            if rng.chance(50) {
+                                store.discard().unwrap();
+                                model.current = model.committed.clone();
+                                model.synced();
+                            }
+                        }
                         store.compact().unwrap();
                         model.ghost.clear();
                     }
@@ -1699,6 +1773,7 @@ mod tests {
         match fault {
             Fault::Write => disk.failing(fail),
             Fault::Flush => disk.flush_fails(fail),
+            Fault::SnapWrite => disk.snap_failing(fail),
         }
     }
 
@@ -1891,19 +1966,10 @@ mod tests {
     // ── compact ───────────────────────────────────────────────────────────
 
     #[test]
-    #[ignore = "known hole: truncate(snap, 0) drops snap-only ids if the rewrite fails"]
     fn memory_compact_survives_a_fault_at_every_io_step() {
         block_on(survives_a_fault_at_every_io_step::<MemoryStore>(
             "compact_sweep",
             Method::Compact,
-        ));
-    }
-
-    #[test]
-    #[ignore = "known hole: truncate(snap, 0) drops snap-only ids if the rewrite fails"]
-    fn memory_compact_keeps_the_committed_state_when_the_snap_write_fails() {
-        block_on(compact_keeps_the_committed_state_when_the_snap_write_fails::<MemoryStore>(
-            "compact_snap_write",
         ));
     }
 
@@ -1979,18 +2045,8 @@ mod opfs_tests {
     // ── compact ───────────────────────────────────────────────────────────
 
     #[wasm_bindgen_test]
-    #[ignore = "known hole: truncate(snap, 0) drops snap-only ids if the rewrite fails"]
     async fn opfs_compact_survives_a_fault_at_every_io_step() {
         survives_a_fault_at_every_io_step::<OpfsStore>("opfs_compact_sweep", Method::Compact).await;
-    }
-
-    #[wasm_bindgen_test]
-    #[ignore = "known hole: truncate(snap, 0) drops snap-only ids if the rewrite fails"]
-    async fn opfs_compact_keeps_the_committed_state_when_the_snap_write_fails() {
-        compact_keeps_the_committed_state_when_the_snap_write_fails::<OpfsStore>(
-            "opfs_compact_snap_write",
-        )
-        .await;
     }
 
     // ── close ─────────────────────────────────────────────────────────────
