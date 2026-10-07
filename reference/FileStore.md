@@ -303,6 +303,7 @@ seed 固定の疑似乱数（`testing::Rng`）で、同じ seed は常に同じ�
 | `replay_matches_the_oracle_for_every_truncation_and_corruption` | ランダムな set / delete 列を snap と log として組み、log のあらゆる切り詰め位置と、ランダムな1バイト破損で、`build_memory` の結果と消費バイト数が「完全なレコードの接頭辞」を適用した oracle と一致する |
 | `memory_store_follows_the_model_across_reopens_tears_and_failed_saves` | ランダムな操作列（set / delete / issue_id / save / discard / compact / close → reopen、torn 注入、write 失敗、flush 失敗）を、独立したモデル（現在値、確定値、next_id、flush 失敗が残す未確認バッチ）と1操作ごとに照合する |
 | `a_crash_mid_save_leaves_a_whole_number_of_records_and_the_next_save_repairs_it` | save の途中の任意のバイト位置でのクラッシュ後、reopen した状態が「確定済み + 未保存バッチの先頭 k レコード」のどれかに一致し、その後の save が torn を修復して以降も整合する |
+| `memory_compact_rewrites_an_untouched_snap` | 現状の挙動の記録（要件ではない）: snap に 1〜100、log に 101,102 だけの状態で compact すると、誰も触れていない snap も `truncate(0)` され全件（102件）書き直される。`truncate` / `write_at` を記録する `Spy<S>` で観測し、呼び出し列を `[snap truncate 0, log truncate 0]` と照合する |
 
 モデルが採用している仕様（これに沿わない実装は上のテストで落ちる）:
 
@@ -315,6 +316,7 @@ seed 固定の疑似乱数（`testing::Rng`）で、同じ seed は常に同じ�
 | Test | Target |
 |-|-|
 | `opfs_store_follows_the_model_across_reopens_and_tears` | 上のモデルテストと同じ本体を実 OPFS で実行（torn 注入あり。故障注入は実 OPFS では行えないため無し） |
+| `opfs_compact_rewrites_an_untouched_snap` | 上の `memory_compact_rewrites_an_untouched_snap` と同じ本体を実 OPFS で実行 |
 
 ## Store
 

@@ -1075,6 +1075,126 @@ mod cases {
         S::open(id, true).await.and_then(S::new).unwrap()
     }
 
+    /// Delegates to `S` and records every `truncate` and `write_at` as
+    /// `(file, operation, size or length)`, so a scenario can tell which
+    /// parts of the disk an operation touched.
+    pub struct Spy<S: FileStore> {
+        inner:     S,
+        pub calls: RefCell<Vec<(&'static str, &'static str, u32)>>,
+    }
+
+    fn file_name(file: File) -> &'static str {
+        match file {
+            File::Snap => "snap",
+            File::Log => "log",
+        }
+    }
+
+    impl<S: FileStore> FileStore for Spy<S> {
+        type Handle = S::Handle;
+
+        fn open(
+            id: StoreId,
+            create: bool,
+        ) -> impl Future<Output = Result<S::Handle, FileStoreError>> {
+            S::open(id, create)
+        }
+
+        fn from_handle(handle: S::Handle) -> Self {
+            Self { inner: S::from_handle(handle), calls: RefCell::new(Vec::new()) }
+        }
+
+        fn index(&self) -> &Index {
+            self.inner.index()
+        }
+
+        fn index_mut(&mut self) -> &mut Index {
+            self.inner.index_mut()
+        }
+
+        fn size(&self, file: File) -> Result<u32, FileStoreError> {
+            self.inner.size(file)
+        }
+
+        fn read_at(&self, file: File, buffer: &mut [u8], at: u32) -> Result<usize, FileStoreError> {
+            self.inner.read_at(file, buffer, at)
+        }
+
+        fn write_at(&self, file: File, data: &[u8], at: u32) -> Result<usize, FileStoreError> {
+            self.calls.borrow_mut().push((file_name(file), "write", data.len() as u32));
+            self.inner.write_at(file, data, at)
+        }
+
+        fn flush(&self, file: File) -> Result<(), FileStoreError> {
+            self.inner.flush(file)
+        }
+
+        fn truncate(&self, file: File, size: u32) -> Result<(), FileStoreError> {
+            self.calls.borrow_mut().push((file_name(file), "truncate", size));
+            self.inner.truncate(file, size)
+        }
+
+        fn close(&self) {
+            self.inner.close()
+        }
+    }
+
+    /// What the snap and the log hold on their own, not overlaid.
+    fn on_disk(store: &impl FileStore) -> (BTreeMap<u32, Vec<u8>>, BTreeMap<u32, Vec<u8>>) {
+        let (mut snap, mut log) = (BTreeMap::new(), BTreeMap::new());
+        apply_log(&mut snap, &read_all(store, File::Snap).unwrap());
+        apply_log(&mut log, &read_all(store, File::Log).unwrap());
+        (snap, log)
+    }
+
+    /// Records the current behavior, not a requirement: `compact` has no
+    /// delta path, so a snap nobody touched is still truncated and rewritten
+    /// in full.
+    pub async fn compact_rewrites_an_untouched_snap<S: FileStore>(name: &'static str) {
+        let id = StoreId { name, version: VERSION };
+        let mut store = S::open(id, true).await.and_then(Spy::<S>::new).unwrap();
+
+        // 1. ids 1..=100 compacted: the snap holds them, the log is empty.
+        for _ in 1..=100 {
+            let id = store.issue_id();
+            store.set(id, id.to_le_bytes().to_vec());
+        }
+        store.save().unwrap();
+        store.compact().unwrap();
+        let (snap, log) = on_disk(&store);
+        assert_eq!(snap.keys().copied().collect::<Vec<_>>(), (1..=100).collect::<Vec<_>>());
+        assert!(log.is_empty());
+        assert_eq!(store.size(File::Log).unwrap(), 0);
+
+        // 2. ids 101, 102 saved: only the log has them, nobody touched 1..=100.
+        store.set(101, b"a".to_vec());
+        store.set(102, b"b".to_vec());
+        store.save().unwrap();
+        let (snap, log) = on_disk(&store);
+        assert_eq!(snap.len(), 100);
+        assert_eq!(log.keys().copied().collect::<Vec<_>>(), [101, 102]);
+
+        // 3. the next compact truncates the snap anyway and writes all 102 back.
+        store.calls.borrow_mut().clear();
+        store.compact().unwrap();
+        let calls = store.calls.take();
+        let truncates: Vec<_> =
+            calls.iter().filter(|call| call.1 == "truncate").map(|call| (call.0, call.2)).collect();
+        assert_eq!(truncates, [("snap", 0), ("log", 0)]);
+        let snap_written: u32 =
+            calls.iter().filter(|call| call.0 == "snap" && call.1 == "write").map(|c| c.2).sum();
+        assert_eq!(snap_written, store.size(File::Snap).unwrap());
+
+        let (snap, log) = on_disk(&store);
+        assert_eq!(snap.len(), 102);
+        assert!(log.is_empty());
+        store.close();
+
+        let reopened = open_store::<S>(id).await;
+        assert_eq!(contents(&reopened).len(), 102);
+        reopened.close();
+    }
+
     struct Model {
         current:   BTreeMap<u32, Vec<u8>>,
         committed: BTreeMap<u32, Vec<u8>>,
@@ -1378,6 +1498,11 @@ mod tests {
     }
 
     #[test]
+    fn memory_compact_rewrites_an_untouched_snap() {
+        block_on(compact_rewrites_an_untouched_snap::<MemoryStore>("untouched"));
+    }
+
+    #[test]
     fn a_crash_mid_save_leaves_a_whole_number_of_records_and_the_next_save_repairs_it() {
         for seed in 0..300 {
             let mut rng = Rng::new(seed);
@@ -1473,6 +1598,11 @@ mod opfs_tests {
         let again = open_store::<OpfsStore>(id).await;
         assert_eq!(again.get(1), Some(kept.as_bytes()));
         again.close();
+    }
+
+    #[wasm_bindgen_test]
+    async fn opfs_compact_rewrites_an_untouched_snap() {
+        compact_rewrites_an_untouched_snap::<OpfsStore>("opfs_untouched").await;
     }
 
     #[wasm_bindgen_test]
