@@ -293,6 +293,49 @@ seed 固定の疑似乱数（`testing::Rng`）で、同じ seed は常に同じ�
     Dedicated Worker 上で、host と同じモデルテスト本体を `OpfsStore` で実行する（seed は少数）。
     torn 断片は、store を close した上でテストが raw SyncAccessHandle を開いて log 末尾に注入し再現する。
 
+### テスト地図
+
+メソッドごとに同じ種類の検査を並べ、空欄を見える形にする。`src/file_store.rs` の `cases` モジュール（バックエンド非依存の本体）と、`tests`（host / MemoryStore）・`opfs_tests`（実 OPFS）の並びはこの表の順。
+
+| メソッド | 事後条件（RAM / disk） | 故障の全探索 | 名前付きシナリオ | モデル | 記録 |
+|-|-|-|-|-|-|
+| `open` | `opening_a_missing_store_…` / `versions_of_one_name_…`（host）、`opfs_open_without_create_…` | 対象外（排他ロックの失敗のみ） | | | |
+| `new`（replay） | wire format・replay の純関数テスト、`replaying_the_pending_diff_…` | 空欄（読むだけで disk を変えない。`read_all` を `discard` と共有） | | ○ torn 注入 | |
+| `issue_id` / `get` / `range` / `set` / `delete` | 空欄（RAM のみ。個別テストは持たない） | 対象外（I/O なし） | | ○ | |
+| `save` | `a_crash_mid_save_…`（host） | ○ `*_save_survives_a_fault_at_every_io_step` | | ○（log の write / flush 失敗） | |
+| `discard` | 空欄（全探索とモデルで足りる） | ○ `*_discard_survives_a_fault_at_every_io_step` | | ○ | |
+| `compact` | 空欄 | ○ `*_compact_survives_a_fault_at_every_io_step`（**ignore: 既知の穴**） | ○ `*_compact_keeps_the_committed_state_when_the_snap_write_fails`（**ignore: 既知の穴**） | ○（**snap の故障は含まない**） | `*_compact_rewrites_an_untouched_snap` |
+| `close` | `opfs_a_closed_handle_fails_…` | 空欄（use-after-close を全メソッドで確認していない） | | | |
+
+空欄は未検査であることを意味する。埋めるかどうかは、そのメソッドが disk を変えるかで決める。
+
+#### 故障の全探索
+
+`cases::survives_a_fault_at_every_io_step` は、`Probe<S>`（`FileStore` を包み、`size` / `read_at` / `write_at` / `flush` / `truncate` の全呼び出しを記録する）で次を行う。
+
+1. 状態を用意する: snap `{1, 2}`、log `{3, 4}`、その上に未保存の差分（snap にだけある id の削除、log にだけある id の上書き、新規 id）。
+2. 故障なしで1回実行し、呼び出し列（どのファイルへの何の呼び出しか）を得る。
+3. 呼び出しごとに、前（効果なしで失敗）・後（効果ありで失敗）、write はさらに先頭 n バイトだけ書けて失敗、を注入する。
+4. 注入のたびに、次の3通りの続きを確認する。
+
+| 続き | 確認すること |
+|-|-|
+| クラッシュ（何もしない） | reopen した状態が許容集合に入る。`save` は「確定済み + バッチの先頭 k レコード」のどれか。`discard` / `compact` は確定済みと完全一致 |
+| 同じ呼び出しを再試行 | 成功し、reopen した状態が期待値と一致する |
+| `discard` してから続行 | RAM が確定済みに戻り、続行後の reopen も確定済みと一致する |
+
+どの場合も、失敗した呼び出しの直後は RAM と未保存の差分が変わっていない。ステップはコードではなく呼び出し列から導くので、アルゴリズムにステップを足すとテストを書き足さなくても探索対象になる。
+
+#### 欠陥が見つかったときのテスト追加順
+
+1. **名前付きシナリオ**を書き、落ちることを確認する（読んで理解できる再現）。
+2. **全探索がなぜ見逃したか**を考える。見逃した場合は、`Probe` の故障種別、`sites` の列挙、`Layout` の初期状態を広げて、全探索自体が落ちるようにする。これが再発防止の本体。
+3. 呼び出しの**順序**が関係する欠陥なら、モデルの操作と故障を足す。
+4. コードを直す。
+5. この文書の該当箇所を直す。
+
+全探索が既に落としていた欠陥は 1 だけで足りる（2 以降は不要）。
+
 ### Host unit tests
 
 | Test | Target |
@@ -301,8 +344,15 @@ seed 固定の疑似乱数（`testing::Rng`）で、同じ seed は常に同じ�
 | `records_use_the_documented_wire_layout` | `to_bytes` が `[op][id][len][data][checksum]` の仕様どおりのバイト列になる（テストが独立に組み立てたバイト列と一致） |
 | `unassigned_ops_are_rejected_even_with_a_valid_checksum` | op 0 と 3 以上は、checksum が正しくても `None`（op 0 を欠番にする根拠: ゼロ埋め領域がレコードとして読めてしまう） |
 | `replay_matches_the_oracle_for_every_truncation_and_corruption` | ランダムな set / delete 列を snap と log として組み、log のあらゆる切り詰め位置と、ランダムな1バイト破損で、`build_memory` の結果と消費バイト数が「完全なレコードの接頭辞」を適用した oracle と一致する |
-| `memory_store_follows_the_model_across_reopens_tears_and_failed_saves` | ランダムな操作列（set / delete / issue_id / save / discard / compact / close → reopen、torn 注入、write 失敗、flush 失敗）を、独立したモデル（現在値、確定値、next_id、flush 失敗が残す未確認バッチ）と1操作ごとに照合する |
+| `opening_a_missing_store_without_create_is_not_found_and_does_not_create_it` | `create = false` で存在しない store は `NotFound` で、作られもしない |
+| `versions_of_one_name_are_separate_flat_files` | 同名で version が違う store は別ファイル |
+| `replaying_the_pending_diff_on_a_reopened_store_reproduces_the_current_state` | 再オープンした store に未保存の差分を `replay` すると、元の現在値と未保存の差分が一致する |
+| `memory_save_survives_a_fault_at_every_io_step` | 上記「故障の全探索」を `save` に対して実行 |
 | `a_crash_mid_save_leaves_a_whole_number_of_records_and_the_next_save_repairs_it` | save の途中の任意のバイト位置でのクラッシュ後、reopen した状態が「確定済み + 未保存バッチの先頭 k レコード」のどれかに一致し、その後の save が torn を修復して以降も整合する |
+| `memory_discard_survives_a_fault_at_every_io_step` | 同上を `discard` に対して実行 |
+| `memory_compact_survives_a_fault_at_every_io_step` | 同上を `compact` に対して実行。**ignore**（既知の穴: `truncate(snap, 0)` のあと書き直しに失敗すると、snap にだけある id が失われる） |
+| `memory_compact_keeps_the_committed_state_when_the_snap_write_fails` | snap に 1〜100、log に 101,102。`truncate(snap, 0)` の直後の snap 書き込み失敗で、`discard` も reopen も 1〜100 を失わない。**ignore**（同上） |
+| `memory_store_follows_the_model_across_reopens_tears_and_failed_saves` | ランダムな操作列（set / delete / issue_id / save / discard / compact / close → reopen、torn 注入、write 失敗、flush 失敗）を、独立したモデル（現在値、確定値、next_id、flush 失敗が残す未確認バッチ）と1操作ごとに照合する |
 | `memory_compact_rewrites_an_untouched_snap` | 現状の挙動の記録（要件ではない）: snap に 1〜100、log に 101,102 だけの状態で compact すると、誰も触れていない snap も `truncate(0)` され全件（102件）書き直される。`truncate` / `write_at` を記録する `Spy<S>` で観測し、呼び出し列を `[snap truncate 0, log truncate 0]` と照合する |
 
 モデルが採用している仕様（これに沿わない実装は上のテストで落ちる）:
@@ -313,10 +363,20 @@ seed 固定の疑似乱数（`testing::Rng`）で、同じ seed は常に同じ�
 
 ### Opfs integration tests
 
+host と同じ本体（`cases`）を `OpfsStore` で実行する。故障注入は `Probe` が trait の層で行うので、実 OPFS でも行える（OPFS の API 自体は壊さない）。torn 断片は、store を close した上でテストが raw SyncAccessHandle を開いて log 末尾に注入する。
+
 | Test | Target |
 |-|-|
-| `opfs_store_follows_the_model_across_reopens_and_tears` | 上のモデルテストと同じ本体を実 OPFS で実行（torn 注入あり。故障注入は実 OPFS では行えないため無し） |
+| `opfs_open_without_create_reports_not_found_for_a_missing_store` | `create = false` で存在しない store は `NotFound` |
+| `opfs_save_survives_a_fault_at_every_io_step` | 故障の全探索（`save`） |
+| `opfs_discard_survives_a_fault_at_every_io_step` | 故障の全探索（`discard`） |
+| `opfs_compact_survives_a_fault_at_every_io_step` | 故障の全探索（`compact`）。**ignore**（既知の穴） |
+| `opfs_compact_keeps_the_committed_state_when_the_snap_write_fails` | 上の名前付きシナリオ。**ignore**（既知の穴） |
+| `opfs_a_closed_handle_fails_and_a_reopened_store_takes_over_the_pending_diff` | close 済みの store は `InvalidState` で失敗し、再オープンした store が未保存の差分を引き継いで save できる |
+| `opfs_store_follows_the_model_across_reopens_and_tears` | 上のモデルテストと同じ本体を実 OPFS で実行（torn 注入あり。故障注入は無し） |
 | `opfs_compact_rewrites_an_untouched_snap` | 上の `memory_compact_rewrites_an_untouched_snap` と同じ本体を実 OPFS で実行 |
+
+ignore したテストは `cargo test --lib file_store -- --ignored`（OPFS は `--include-ignored`）で実行できる。穴を直したら `#[ignore]` を外す。
 
 ## Store
 

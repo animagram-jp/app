@@ -999,6 +999,25 @@ impl Index {
 #[cfg(test)]
 #[allow(dead_code)] // the host and wasm suites use different subsets of these helpers
 mod cases {
+    //! Backend-independent scenarios, written once over `S: FileStore` and
+    //! run on `MemoryStore` (host) and `OpfsStore` (browser) by the thin
+    //! wrappers in `tests` / `opfs_tests`, which list them in the same order.
+    //!
+    //! Test map — one row per trait method, one column per kind of check, so
+    //! a gap is a blank cell (the same table is in `reference/FileStore.md`):
+    //!
+    //! | kind                              | what it pins down                           |
+    //! |-----------------------------------|---------------------------------------------|
+    //! | RAM / disk postcondition          | what a successful call leaves behind        |
+    //! | `survives_a_fault_at_every_io_step` | any single I/O failure or crash, per step |
+    //! | named scenario                    | one readable case per finding               |
+    //! | model                             | interactions between calls                  |
+    //! | recorded                          | current behavior that is not a requirement  |
+    //!
+    //! When a defect is found, add tests in this order: (1) a named scenario
+    //! that fails; (2) ask why the sweep did not catch it — if it could not,
+    //! widen `Probe` / `sites` / `Layout` so it does; (3) if it needs a
+    //! sequence of calls, teach the model; (4) fix the code; (5) fix the doc.
     use alloc::boxed::Box;
 
     use super::*;
@@ -1075,12 +1094,45 @@ mod cases {
         S::open(id, true).await.and_then(S::new).unwrap()
     }
 
-    /// Delegates to `S` and records every `truncate` and `write_at` as
-    /// `(file, operation, size or length)`, so a scenario can tell which
-    /// parts of the disk an operation touched.
-    pub struct Spy<S: FileStore> {
-        inner:     S,
-        pub calls: RefCell<Vec<(&'static str, &'static str, u32)>>,
+    // ── Probe: the one fault-injection point ─────────────────────
+    //
+    // Every scenario below drives the store through `Probe<S>`, which sees
+    // each I/O call the algorithm makes. A new step added to `save` /
+    // `discard` / `compact` shows up in `calls` and is therefore swept by
+    // `survives_a_fault_at_every_io_step` without touching any test.
+
+    /// One I/O call as the algorithm issues it; `Write` carries the byte
+    /// length, `Truncate` the new size.
+    #[derive(Clone, Copy, PartialEq, Debug)]
+    pub enum Io {
+        Size,
+        Read,
+        Write(u32),
+        Flush,
+        Truncate(u32),
+    }
+
+    /// Where inside call number `index` an injected fault lands.
+    #[derive(Clone, Copy, PartialEq, Debug)]
+    pub enum Hit {
+        /// The call fails without taking effect.
+        Before,
+        /// The call takes full effect, then reports failure (written but
+        /// unconfirmed — what a failed flush leaves behind).
+        After,
+        /// Only the first `n` bytes of a write land, then it fails.
+        Partial(u32),
+    }
+
+    /// Delegates to `S`, records every call, and can inject one fault.
+    pub struct Probe<S: FileStore> {
+        inner:              S,
+        /// Every I/O call since the last clear, in order.
+        pub calls:          RefCell<Vec<(&'static str, Io)>>,
+        /// `(index into calls, where)`: the one call to break.
+        pub fault:          Cell<Option<(usize, Hit)>>,
+        /// Fail every write to this file (`"snap"` / `"log"`) before it lands.
+        pub fail_writes_to: Cell<Option<&'static str>>,
     }
 
     fn file_name(file: File) -> &'static str {
@@ -1090,7 +1142,28 @@ mod cases {
         }
     }
 
-    impl<S: FileStore> FileStore for Spy<S> {
+    fn injected() -> FileStoreError {
+        FileStoreError::InvalidState(String::from("injected"))
+    }
+
+    impl<S: FileStore> Probe<S> {
+        fn step<T>(
+            &self,
+            file: File,
+            io: Io,
+            run: impl FnOnce() -> Result<T, FileStoreError>,
+        ) -> Result<T, FileStoreError> {
+            let index = self.calls.borrow().len();
+            self.calls.borrow_mut().push((file_name(file), io));
+            match self.fault.get() {
+                Some((at, Hit::Before)) if at == index => Err(injected()),
+                Some((at, Hit::After)) if at == index => run().and(Err(injected())),
+                _ => run(),
+            }
+        }
+    }
+
+    impl<S: FileStore> FileStore for Probe<S> {
         type Handle = S::Handle;
 
         fn open(
@@ -1101,7 +1174,12 @@ mod cases {
         }
 
         fn from_handle(handle: S::Handle) -> Self {
-            Self { inner: S::from_handle(handle), calls: RefCell::new(Vec::new()) }
+            Self {
+                inner:          S::from_handle(handle),
+                calls:          RefCell::new(Vec::new()),
+                fault:          Cell::new(None),
+                fail_writes_to: Cell::new(None),
+            }
         }
 
         fn index(&self) -> &Index {
@@ -1113,29 +1191,56 @@ mod cases {
         }
 
         fn size(&self, file: File) -> Result<u32, FileStoreError> {
-            self.inner.size(file)
+            self.step(file, Io::Size, || self.inner.size(file))
         }
 
         fn read_at(&self, file: File, buffer: &mut [u8], at: u32) -> Result<usize, FileStoreError> {
-            self.inner.read_at(file, buffer, at)
+            self.step(file, Io::Read, || self.inner.read_at(file, buffer, at))
         }
 
         fn write_at(&self, file: File, data: &[u8], at: u32) -> Result<usize, FileStoreError> {
-            self.calls.borrow_mut().push((file_name(file), "write", data.len() as u32));
-            self.inner.write_at(file, data, at)
+            let io = Io::Write(data.len() as u32);
+            if let Some((index, Hit::Partial(n))) = self.fault.get() {
+                if index == self.calls.borrow().len() {
+                    self.calls.borrow_mut().push((file_name(file), io));
+                    self.inner.write_at(file, &data[..n as usize], at)?;
+                    return Err(injected());
+                }
+            }
+            if self.fail_writes_to.get() == Some(file_name(file)) {
+                self.calls.borrow_mut().push((file_name(file), io));
+                return Err(injected());
+            }
+            self.step(file, io, || self.inner.write_at(file, data, at))
         }
 
         fn flush(&self, file: File) -> Result<(), FileStoreError> {
-            self.inner.flush(file)
+            self.step(file, Io::Flush, || self.inner.flush(file))
         }
 
         fn truncate(&self, file: File, size: u32) -> Result<(), FileStoreError> {
-            self.calls.borrow_mut().push((file_name(file), "truncate", size));
-            self.inner.truncate(file, size)
+            self.step(file, Io::Truncate(size), || self.inner.truncate(file, size))
         }
 
         fn close(&self) {
             self.inner.close()
+        }
+    }
+
+    pub async fn open_probe<S: FileStore>(id: StoreId) -> Probe<S> {
+        S::open(id, true).await.and_then(Probe::<S>::new).unwrap()
+    }
+
+    fn unique(name: &str, n: usize) -> StoreId {
+        StoreId { name: Box::leak(format!("{name}_{n}").into_boxed_str()), version: VERSION }
+    }
+
+    fn replay(state: &mut BTreeMap<u32, Vec<u8>>, records: &[LogRecord]) {
+        for record in records {
+            match record.operation {
+                Operation::Set => state.insert(record.id, record.data.clone()),
+                Operation::Delete => state.remove(&record.id),
+            };
         }
     }
 
@@ -1147,12 +1252,229 @@ mod cases {
         (snap, log)
     }
 
-    /// Records the current behavior, not a requirement: `compact` has no
-    /// delta path, so a snap nobody touched is still truncated and rewritten
-    /// in full.
+    // ── Fault sweep: the same contract for every I/O method ──────
+
+    /// The methods that touch the disk. `new` is read-only and shares
+    /// `read_all` with `discard`, so a fault there cannot change the disk.
+    #[derive(Clone, Copy, Debug)]
+    pub enum Method {
+        Save,
+        Discard,
+        Compact,
+    }
+
+    /// What the caller does after the fault surfaced.
+    #[derive(Clone, Copy, Debug)]
+    enum Afterwards {
+        /// Nothing: the process dies here. Reopen sees what the disk holds.
+        Crash,
+        /// Retry the same call, the way `save`'s contract invites.
+        Retry,
+        /// Roll back with `discard`, then carry on.
+        Discard,
+    }
+
+    /// State every sweep starts from: snap `{1, 2}`, log `{3, 4}`, and a
+    /// pending diff on top that deletes a snap-only id, overwrites a
+    /// log-only id and adds a new one.
+    struct Layout {
+        /// Flush-confirmed truth.
+        committed: BTreeMap<u32, Vec<u8>>,
+        /// Committed plus the pending diff (what RAM shows).
+        current:   BTreeMap<u32, Vec<u8>>,
+        /// The records `save` will write, in write order.
+        batch:     Vec<LogRecord>,
+    }
+
+    impl Layout {
+        /// States a reopen may legitimately show after a crash inside `method`.
+        fn allowed(&self, method: Method) -> Vec<BTreeMap<u32, Vec<u8>>> {
+            match method {
+                // Atomicity is per record: any prefix of the batch may be visible.
+                Method::Save => (0..=self.batch.len())
+                    .map(|keep| {
+                        let mut state = self.committed.clone();
+                        replay(&mut state, &self.batch[..keep]);
+                        state
+                    })
+                    .collect(),
+                Method::Discard | Method::Compact => vec![self.committed.clone()],
+            }
+        }
+
+        /// The disk after `method` succeeded.
+        fn settled(&self, method: Method) -> &BTreeMap<u32, Vec<u8>> {
+            match method {
+                Method::Save => &self.current,
+                Method::Discard | Method::Compact => &self.committed,
+            }
+        }
+    }
+
+    async fn arranged<S: FileStore>(id: StoreId) -> (Probe<S>, Layout) {
+        let mut store = open_probe::<S>(id).await;
+        apply(&mut store, &[LogRecord::set(1, b"s1".to_vec()), LogRecord::set(2, b"s2".to_vec())]);
+        store.save().unwrap();
+        store.compact().unwrap();
+        apply(&mut store, &[LogRecord::set(3, b"l3".to_vec()), LogRecord::set(4, b"l4".to_vec())]);
+        store.save().unwrap();
+        let committed = contents(&store);
+
+        apply(
+            &mut store,
+            &[
+                LogRecord::delete(1),
+                LogRecord::set(3, b"p3".to_vec()),
+                LogRecord::set(5, b"p5".to_vec()),
+            ],
+        );
+        let current = contents(&store);
+        let index = store.index();
+        let mut batch: Vec<LogRecord> =
+            index.unsaved.iter().map(|&id| LogRecord::set(id, index.memory[&id].clone())).collect();
+        batch.extend(index.deleted.iter().map(|&id| LogRecord::delete(id)));
+        (store, Layout { committed, current, batch })
+    }
+
+    fn run(method: Method, store: &mut impl FileStore) -> Result<(), FileStoreError> {
+        match method {
+            Method::Save => store.save(),
+            Method::Discard => store.discard(),
+            Method::Compact => store.compact(),
+        }
+    }
+
+    /// Every `(call, hit)` worth breaking, derived from the calls a clean run made.
+    fn sites(calls: &[(&'static str, Io)]) -> Vec<(usize, Hit)> {
+        let mut sites = Vec::new();
+        for (index, (_, io)) in calls.iter().enumerate() {
+            sites.push((index, Hit::Before));
+            match *io {
+                Io::Size | Io::Read => {}
+                Io::Flush | Io::Truncate(_) => sites.push((index, Hit::After)),
+                Io::Write(length) => {
+                    sites.push((index, Hit::After));
+                    sites.extend((1..length).map(|n| (index, Hit::Partial(n))));
+                }
+            }
+        }
+        sites
+    }
+
+    async fn check<S: FileStore>(
+        id: StoreId,
+        method: Method,
+        site: (usize, Hit),
+        afterwards: Afterwards,
+    ) {
+        let context = format!("{method:?} fault {site:?} then {afterwards:?}");
+        let (mut store, layout) = arranged::<S>(id).await;
+        store.calls.borrow_mut().clear();
+        store.fault.set(Some(site));
+        let result = run(method, &mut store);
+        store.fault.set(None);
+        assert!(result.is_err(), "{context}: the fault must surface");
+
+        // A failed call leaves RAM and the pending diff alone.
+        assert_eq!(contents(&store), layout.current, "{context}: RAM");
+        assert_eq!(store.index().pending_len(), layout.batch.len(), "{context}: pending diff");
+
+        match afterwards {
+            Afterwards::Crash => {}
+            Afterwards::Retry => {
+                run(method, &mut store).unwrap_or_else(|e| panic!("{context}: retry: {e}"));
+            }
+            Afterwards::Discard => {
+                store.discard().unwrap();
+                assert_eq!(contents(&store), layout.committed, "{context}: discard");
+                if !matches!(method, Method::Discard) {
+                    run(method, &mut store).unwrap_or_else(|e| panic!("{context}: rerun: {e}"));
+                }
+            }
+        }
+        store.close();
+
+        let reopened = open_store::<S>(id).await;
+        let seen = contents(&reopened);
+        reopened.close();
+        match afterwards {
+            Afterwards::Crash => {
+                assert!(layout.allowed(method).contains(&seen), "{context}: reopened {seen:?}")
+            }
+            Afterwards::Retry => {
+                assert_eq!(&seen, layout.settled(method), "{context}: reopened after retry")
+            }
+            Afterwards::Discard => {
+                assert_eq!(seen, layout.committed, "{context}: reopened after discard")
+            }
+        }
+    }
+
+    /// For every I/O call `method` makes, and every way that call can fail
+    /// (before, after, torn at each byte): the committed state survives a
+    /// crash, a retry and a rollback. Sites come from a clean run's call
+    /// log, so a step added to the algorithm is covered automatically.
+    pub async fn survives_a_fault_at_every_io_step<S: FileStore>(name: &str, method: Method) {
+        let (mut dry, _) = arranged::<S>(unique(name, 0)).await;
+        dry.calls.borrow_mut().clear();
+        run(method, &mut dry).unwrap();
+        let calls = dry.calls.take();
+        dry.close();
+
+        let mut n = 0;
+        for site in sites(&calls) {
+            for afterwards in [Afterwards::Crash, Afterwards::Retry, Afterwards::Discard] {
+                if matches!((method, afterwards), (Method::Discard, Afterwards::Discard)) {
+                    continue;
+                }
+                n += 1;
+                check::<S>(unique(name, n), method, site, afterwards).await;
+            }
+        }
+    }
+
+    // ── Named scenarios: one readable case per finding ───────────
+
+    /// ids 1..=100 live only in the snap, 101/102 only in the log; the snap
+    /// write fails right after `truncate(snap, 0)` succeeded. Neither a
+    /// rollback nor a reopen may lose 1..=100.
+    pub async fn compact_keeps_the_committed_state_when_the_snap_write_fails<S: FileStore>(
+        name: &'static str,
+    ) {
+        let id = unique(name, 0);
+        let mut store = open_probe::<S>(id).await;
+        for n in 1..=100u32 {
+            store.set(n, n.to_le_bytes().to_vec());
+        }
+        store.save().unwrap();
+        store.compact().unwrap();
+        store.set(101, b"a".to_vec());
+        store.set(102, b"b".to_vec());
+        store.save().unwrap();
+        let committed = contents(&store);
+
+        store.fail_writes_to.set(Some("snap"));
+        assert!(store.compact().is_err());
+        store.fail_writes_to.set(None);
+
+        // Same process: roll back. `discard` writes nothing, so what the
+        // disk holds is still exactly what a crash here would leave.
+        store.discard().unwrap();
+        assert_eq!(contents(&store), committed, "discard after a failed compact");
+        store.close();
+
+        let reopened = open_store::<S>(id).await;
+        assert_eq!(contents(&reopened), committed, "reopen after a failed compact");
+        reopened.close();
+    }
+
+    // ── Recorded behavior: what the code does today, not a requirement ──
+
+    /// `compact` has no delta path, so a snap nobody touched is still
+    /// truncated and rewritten in full.
     pub async fn compact_rewrites_an_untouched_snap<S: FileStore>(name: &'static str) {
-        let id = StoreId { name, version: VERSION };
-        let mut store = S::open(id, true).await.and_then(Spy::<S>::new).unwrap();
+        let id = unique(name, 0);
+        let mut store = open_probe::<S>(id).await;
 
         // 1. ids 1..=100 compacted: the snap holds them, the log is empty.
         for _ in 1..=100 {
@@ -1178,11 +1500,21 @@ mod cases {
         store.calls.borrow_mut().clear();
         store.compact().unwrap();
         let calls = store.calls.take();
-        let truncates: Vec<_> =
-            calls.iter().filter(|call| call.1 == "truncate").map(|call| (call.0, call.2)).collect();
+        let truncates: Vec<_> = calls
+            .iter()
+            .filter_map(|call| match call.1 {
+                Io::Truncate(size) => Some((call.0, size)),
+                _ => None,
+            })
+            .collect();
         assert_eq!(truncates, [("snap", 0), ("log", 0)]);
-        let snap_written: u32 =
-            calls.iter().filter(|call| call.0 == "snap" && call.1 == "write").map(|c| c.2).sum();
+        let snap_written: u32 = calls
+            .iter()
+            .filter_map(|call| match call.1 {
+                Io::Write(length) if call.0 == "snap" => Some(length),
+                _ => None,
+            })
+            .sum();
         assert_eq!(snap_written, store.size(File::Snap).unwrap());
 
         let (snap, log) = on_disk(&store);
@@ -1194,6 +1526,8 @@ mod cases {
         assert_eq!(contents(&reopened).len(), 102);
         reopened.close();
     }
+
+    // ── Interactions: random sequences against an independent model ──
 
     struct Model {
         current:   BTreeMap<u32, Vec<u8>>,
@@ -1373,6 +1707,8 @@ mod tests {
         disk.log.0.borrow_mut().bytes.extend_from_slice(&torn_tail());
     }
 
+    // ── wire format (pure) ────────────────────────────────────────────────
+
     #[test]
     fn fletcher32_known_answers() {
         assert_eq!(fletcher32(&[]), 0);
@@ -1394,6 +1730,8 @@ mod tests {
         }
         assert!(LogRecord::from_bytes(&[0u8; 13]).is_none());
     }
+
+    // ── replay (pure) ─────────────────────────────────────────────────────
 
     #[test]
     fn replay_matches_the_oracle_for_every_truncation_and_corruption() {
@@ -1440,6 +1778,8 @@ mod tests {
         }
     }
 
+    // ── open ──────────────────────────────────────────────────────────────
+
     #[test]
     fn opening_a_missing_store_without_create_is_not_found_and_does_not_create_it() {
         let id = StoreId { name: "absent", version: "7" };
@@ -1467,6 +1807,8 @@ mod tests {
         assert_eq!(block_on(cases::open_store::<MemoryStore>(first)).get(1), Some(&b"v1"[..]));
     }
 
+    // ── new / pending diff (replay) ───────────────────────────────────────
+
     #[test]
     fn replaying_the_pending_diff_on_a_reopened_store_reproduces_the_current_state() {
         for seed in 0..500 {
@@ -1486,20 +1828,11 @@ mod tests {
         }
     }
 
-    #[test]
-    fn memory_store_follows_the_model_across_reopens_tears_and_failed_saves() {
-        block_on(model_follows_store::<MemoryStore>(
-            "model",
-            300,
-            80,
-            tear_log,
-            Some(memory_failing),
-        ));
-    }
+    // ── save ──────────────────────────────────────────────────────────────
 
     #[test]
-    fn memory_compact_rewrites_an_untouched_snap() {
-        block_on(compact_rewrites_an_untouched_snap::<MemoryStore>("untouched"));
+    fn memory_save_survives_a_fault_at_every_io_step() {
+        block_on(survives_a_fault_at_every_io_step::<MemoryStore>("save_sweep", Method::Save));
     }
 
     #[test]
@@ -1544,6 +1877,55 @@ mod tests {
             assert_eq!(contents(&MemoryStore::new(disk).unwrap()), expected, "seed {seed}");
         }
     }
+
+    // ── discard ───────────────────────────────────────────────────────────
+
+    #[test]
+    fn memory_discard_survives_a_fault_at_every_io_step() {
+        block_on(survives_a_fault_at_every_io_step::<MemoryStore>(
+            "discard_sweep",
+            Method::Discard,
+        ));
+    }
+
+    // ── compact ───────────────────────────────────────────────────────────
+
+    #[test]
+    #[ignore = "known hole: truncate(snap, 0) drops snap-only ids if the rewrite fails"]
+    fn memory_compact_survives_a_fault_at_every_io_step() {
+        block_on(survives_a_fault_at_every_io_step::<MemoryStore>(
+            "compact_sweep",
+            Method::Compact,
+        ));
+    }
+
+    #[test]
+    #[ignore = "known hole: truncate(snap, 0) drops snap-only ids if the rewrite fails"]
+    fn memory_compact_keeps_the_committed_state_when_the_snap_write_fails() {
+        block_on(compact_keeps_the_committed_state_when_the_snap_write_fails::<MemoryStore>(
+            "compact_snap_write",
+        ));
+    }
+
+    // ── interactions (model) ──────────────────────────────────────────────
+
+    #[test]
+    fn memory_store_follows_the_model_across_reopens_tears_and_failed_saves() {
+        block_on(model_follows_store::<MemoryStore>(
+            "model",
+            300,
+            80,
+            tear_log,
+            Some(memory_failing),
+        ));
+    }
+
+    // ── recorded behavior ─────────────────────────────────────────────────
+
+    #[test]
+    fn memory_compact_rewrites_an_untouched_snap() {
+        block_on(compact_rewrites_an_untouched_snap::<MemoryStore>("untouched"));
+    }
 }
 
 #[cfg(all(test, target_arch = "wasm32"))]
@@ -1572,11 +1954,46 @@ mod opfs_tests {
         handle.close();
     }
 
+    // ── open ──────────────────────────────────────────────────────────────
+
     #[wasm_bindgen_test]
     async fn opfs_open_without_create_reports_not_found_for_a_missing_store() {
         let id = StoreId { name: "opfs_never_created", version: "9" };
         assert!(matches!(OpfsStore::open(id, false).await, Err(FileStoreError::NotFound(_))));
     }
+
+    // ── save ──────────────────────────────────────────────────────────────
+
+    #[wasm_bindgen_test]
+    async fn opfs_save_survives_a_fault_at_every_io_step() {
+        survives_a_fault_at_every_io_step::<OpfsStore>("opfs_save_sweep", Method::Save).await;
+    }
+
+    // ── discard ───────────────────────────────────────────────────────────
+
+    #[wasm_bindgen_test]
+    async fn opfs_discard_survives_a_fault_at_every_io_step() {
+        survives_a_fault_at_every_io_step::<OpfsStore>("opfs_discard_sweep", Method::Discard).await;
+    }
+
+    // ── compact ───────────────────────────────────────────────────────────
+
+    #[wasm_bindgen_test]
+    #[ignore = "known hole: truncate(snap, 0) drops snap-only ids if the rewrite fails"]
+    async fn opfs_compact_survives_a_fault_at_every_io_step() {
+        survives_a_fault_at_every_io_step::<OpfsStore>("opfs_compact_sweep", Method::Compact).await;
+    }
+
+    #[wasm_bindgen_test]
+    #[ignore = "known hole: truncate(snap, 0) drops snap-only ids if the rewrite fails"]
+    async fn opfs_compact_keeps_the_committed_state_when_the_snap_write_fails() {
+        compact_keeps_the_committed_state_when_the_snap_write_fails::<OpfsStore>(
+            "opfs_compact_snap_write",
+        )
+        .await;
+    }
+
+    // ── close ─────────────────────────────────────────────────────────────
 
     #[wasm_bindgen_test]
     async fn opfs_a_closed_handle_fails_and_a_reopened_store_takes_over_the_pending_diff() {
@@ -1600,13 +2017,17 @@ mod opfs_tests {
         again.close();
     }
 
-    #[wasm_bindgen_test]
-    async fn opfs_compact_rewrites_an_untouched_snap() {
-        compact_rewrites_an_untouched_snap::<OpfsStore>("opfs_untouched").await;
-    }
+    // ── interactions (model) ──────────────────────────────────────────────
 
     #[wasm_bindgen_test]
     async fn opfs_store_follows_the_model_across_reopens_and_tears() {
         model_follows_store::<OpfsStore>("opfs_model", 6, 40, tear_log, None).await;
+    }
+
+    // ── recorded behavior ─────────────────────────────────────────────────
+
+    #[wasm_bindgen_test]
+    async fn opfs_compact_rewrites_an_untouched_snap() {
+        compact_rewrites_an_untouched_snap::<OpfsStore>("opfs_untouched").await;
     }
 }
