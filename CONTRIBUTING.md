@@ -12,6 +12,9 @@ If "ORG_CONTRIBUTING.md" does not exist in the repository root of your working e
 curl -fsSL -H "Accept: application/vnd.github.raw+json" "https://api.github.com/repos/animagram-jp/.github/contents/.github/CONTRIBUTING.md?ref=main" -o "ORG_CONTRIBUTING.md"
 ```
 
+- moduleなどitemは、概念名を表すnounとして語彙選定する。
+- 関数名はnamespaceで上位に既に並ぶ語彙・引数に現れている目的語は重複して含まず、その上で{verb}_{adje
+  ctive}_{object}のような構成であるべき。
 - コメントによる仕切り線は `//(/) === text ===`、または`// --- text ---`とする。`/* */`はなるべく使わない。
 - hrefの値は、相対パスは"./"、絶対パスは"/"で始める。原則相対パスに統一する。
 - HTMLのID, フォーマット規則は[ORG_CONTRIBUTING.md](./ORG_CONTRIBUTING.md)に従う。

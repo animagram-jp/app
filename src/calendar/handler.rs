@@ -3158,12 +3158,12 @@ mod tests {
     fn with_store() -> (Handler, MemoryHandles) {
         let disk = MemoryHandles::default();
         let mut handler = Handler::new(VIEWPORT, today(), REM);
-        handler.attach(MemoryStore::new(disk.clone()).unwrap());
+        handler.attach(Backend::new(disk.clone()).unwrap());
         (handler, disk)
     }
 
     fn pending(handler: &Handler) -> usize {
-        handler.store.as_ref().unwrap().index().pending_len()
+        handler.store.as_ref().unwrap().index().count_pending()
     }
 
     fn drag_first_card_by(handler: &mut Handler, dy: f64) -> (usize, u32) {
@@ -3197,9 +3197,9 @@ mod tests {
         assert!(handler.calendar().is_none());
         let (_, commands) = handler.initial_draw();
         assert!(commands.iter().any(|command| matches!(command, Command::Fetch { .. })));
-        assert_eq!(disk.committed_len(), 0);
+        assert_eq!(disk.count_committed(), 0);
         handler.process_fetched(&sample_response(1, 200));
-        assert_eq!(disk.committed_len(), 594);
+        assert_eq!(disk.count_committed(), 594);
         assert_eq!(pending(&handler), 0);
         assert!(!handler.dirty());
     }
@@ -3209,7 +3209,7 @@ mod tests {
         let (mut first, disk) = with_store();
         first.process_fetched(&sample_response(1, 200));
         let mut second = Handler::new(VIEWPORT, today(), REM);
-        second.attach(MemoryStore::new(disk).unwrap());
+        second.attach(Backend::new(disk).unwrap());
         assert_eq!(second.calendar().unwrap().appointments.len(), 380);
         let (_, commands) = second.initial_draw();
         assert!(!commands.iter().any(|command| matches!(command, Command::Fetch { .. })));
@@ -3234,7 +3234,7 @@ mod tests {
         assert_eq!(committed_calendar(&disk).appointments[index].start(), after);
 
         let mut reloaded = Handler::new(VIEWPORT, today(), REM);
-        reloaded.attach(MemoryStore::new(disk).unwrap());
+        reloaded.attach(Backend::new(disk).unwrap());
         assert_eq!(reloaded.calendar().unwrap().appointments[index].start(), after);
     }
 
@@ -3244,7 +3244,7 @@ mod tests {
         handler.process_fetched(&sample_response(1, 200));
         let (index, before) = drag_first_card_by(&mut handler, 2.0 * SLOT_PX);
         let mut reloaded = Handler::new(VIEWPORT, today(), REM);
-        reloaded.attach(MemoryStore::new(disk).unwrap());
+        reloaded.attach(Backend::new(disk).unwrap());
         assert_eq!(reloaded.calendar().unwrap().appointments[index].start(), before);
     }
 
@@ -3633,17 +3633,17 @@ mod tests {
 
     #[test]
     fn a_failed_save_reports_the_error_and_stays_dirty() {
-        let (mut handler, disk) = with_store();
+        let (mut handler, _) = with_store();
         handler.process_fetched(&sample_response(1, 200));
         drag_first_card_by(&mut handler, 2.0 * SLOT_PX);
-        disk.failing(true);
+        handler.store.as_ref().unwrap().fail_writes_to.set(Some("log"));
         let commands = press(&mut handler, Target::Save.to_dom());
         assert!(matches!(
             commands.as_slice(),
-            [Command::Error { error: Error::FileStore(FileStoreError::QuotaExceeded(_)) }]
+            [Command::Error { error: Error::FileStore(FileStoreError::InvalidState(_)) }]
         ));
         assert!(handler.dirty());
-        disk.failing(false);
+        handler.store.as_ref().unwrap().fail_writes_to.set(None);
         press(&mut handler, Target::Save.to_dom());
         assert!(!handler.dirty());
     }
@@ -3731,7 +3731,7 @@ mod tests {
         );
         corrupting.save().unwrap();
         let mut handler = Handler::new(VIEWPORT, today(), REM);
-        handler.attach(MemoryStore::new(disk).unwrap());
+        handler.attach(Backend::new(disk).unwrap());
         let (_, commands) = handler.initial_draw();
         assert!(commands.iter().any(|command| matches!(
             command,

@@ -56,7 +56,7 @@ use web_sys::{
 
 use crate::js_client::WireError;
 
-// === Wire format & replay (pure, host-testable) ===
+// === wire format & replay ===
 
 /// Fletcher-32 over `data`, consumed as little-endian u16 words with a
 /// trailing odd byte folded in as-is. Detects torn or corrupt log records.
@@ -364,9 +364,6 @@ pub trait FileStore: Sized {
     fn write_at(&self, file: File, data: &[u8], at: u32) -> Result<usize, FileStoreError>;
     fn flush(&self, file: File) -> Result<(), FileStoreError>;
     fn truncate(&self, file: File, size: u32) -> Result<(), FileStoreError>;
-    /// Close both sync access handles. Call once, right before worker
-    /// shutdown. Per spec `close()` cannot throw, hence no `Result` and
-    /// nothing that could be swallowed here.
     fn close(&self);
 
     /// `next_id` is restored from the highest *live* key, so ids of deleted
@@ -837,10 +834,7 @@ impl FileStore for OpfsStore {
 #[cfg(test)]
 #[derive(Default)]
 struct MemoryFileState {
-    bytes:       Vec<u8>,
-    failing:     bool,
-    flush_fails: bool,
-    crash_after: Option<usize>,
+    bytes: Vec<u8>,
 }
 
 #[cfg(test)]
@@ -875,15 +869,15 @@ pub struct MemoryStore {
 
 #[cfg(test)]
 impl MemoryStore {
-    fn file(&self, file: File) -> &MemoryFile {
+    fn select(&self, file: File) -> &MemoryFile {
         match file {
             File::Snap => &self.snap,
             File::Log => &self.log,
         }
     }
 
-    fn alive(&self, file: File) -> Result<(), FileStoreError> {
-        if self.file(file).1.get() {
+    fn ensure_open(&self, file: File) -> Result<(), FileStoreError> {
+        if self.select(file).1.get() {
             return Err(FileStoreError::InvalidState(String::from("closed")));
         }
         Ok(())
@@ -921,13 +915,13 @@ impl FileStore for MemoryStore {
     }
 
     fn size(&self, file: File) -> Result<u32, FileStoreError> {
-        self.alive(file)?;
-        Ok(self.file(file).0.borrow().bytes.len() as u32)
+        self.ensure_open(file)?;
+        Ok(self.select(file).0.borrow().bytes.len() as u32)
     }
 
     fn read_at(&self, file: File, buffer: &mut [u8], at: u32) -> Result<usize, FileStoreError> {
-        self.alive(file)?;
-        let state = self.file(file).0.borrow();
+        self.ensure_open(file)?;
+        let state = self.select(file).0.borrow();
         let start = (at as usize).min(state.bytes.len());
         let count = buffer.len().min(state.bytes.len() - start);
         buffer[..count].copy_from_slice(&state.bytes[start..start + count]);
@@ -935,42 +929,23 @@ impl FileStore for MemoryStore {
     }
 
     fn write_at(&self, file: File, data: &[u8], at: u32) -> Result<usize, FileStoreError> {
-        self.alive(file)?;
-        let mut state = self.file(file).0.borrow_mut();
-        if state.failing {
-            return Err(FileStoreError::QuotaExceeded(String::from("full")));
-        }
-        let mut data = data;
-        let mut crashed = false;
-        if let Some(budget) = state.crash_after {
-            if budget < data.len() {
-                data = &data[..budget];
-                crashed = true;
-            }
-            state.crash_after = Some(budget - data.len());
-        }
+        self.ensure_open(file)?;
+        let mut state = self.select(file).0.borrow_mut();
         let end = at as usize + data.len();
         if state.bytes.len() < end {
             state.bytes.resize(end, 0);
         }
         state.bytes[at as usize..end].copy_from_slice(data);
-        if crashed {
-            return Err(FileStoreError::Unknown(String::from("crash")));
-        }
         Ok(data.len())
     }
 
     fn flush(&self, file: File) -> Result<(), FileStoreError> {
-        self.alive(file)?;
-        if self.file(file).0.borrow().flush_fails {
-            return Err(FileStoreError::InvalidState(String::from("flush")));
-        }
-        Ok(())
+        self.ensure_open(file)
     }
 
     fn truncate(&self, file: File, size: u32) -> Result<(), FileStoreError> {
-        self.alive(file)?;
-        self.file(file).0.borrow_mut().bytes.resize(size as usize, 0);
+        self.ensure_open(file)?;
+        self.select(file).0.borrow_mut().bytes.resize(size as usize, 0);
         Ok(())
     }
 
@@ -981,7 +956,7 @@ impl FileStore for MemoryStore {
 }
 
 #[cfg(test)]
-pub type Backend = MemoryStore;
+pub type Backend = cases::FaultInjector<MemoryStore>;
 #[cfg(not(test))]
 pub type Backend = OpfsStore;
 
@@ -994,23 +969,7 @@ impl Default for MemoryStore {
 
 #[cfg(test)]
 impl MemoryHandles {
-    pub fn failing(&self, fail: bool) {
-        self.log.0.borrow_mut().failing = fail;
-    }
-
-    pub fn snap_failing(&self, fail: bool) {
-        self.snap.0.borrow_mut().failing = fail;
-    }
-
-    pub fn flush_fails(&self, fail: bool) {
-        self.log.0.borrow_mut().flush_fails = fail;
-    }
-
-    pub fn crash_after(&self, budget: Option<usize>) {
-        self.log.0.borrow_mut().crash_after = budget;
-    }
-
-    pub fn committed_len(&self) -> usize {
+    pub fn count_committed(&self) -> usize {
         let snap = self.snap.0.borrow();
         let log = self.log.0.borrow();
         build_memory(&snap.bytes, &log.bytes).0.len()
@@ -1019,14 +978,14 @@ impl MemoryHandles {
 
 #[cfg(test)]
 impl Index {
-    pub fn pending_len(&self) -> usize {
+    pub fn count_pending(&self) -> usize {
         self.unsaved.len() + self.deleted.len()
     }
 }
 
 #[cfg(test)]
 #[allow(dead_code)] // the host and wasm suites use different subsets of these helpers
-mod cases {
+pub mod cases {
     //! Backend-independent scenarios, written once over `S: FileStore` and
     //! run on `MemoryStore` (host) and `OpfsStore` (browser) by the thin
     //! wrappers in `tests` / `opfs_tests`, which list them in the same order.
@@ -1037,15 +996,9 @@ mod cases {
     //! | kind                              | what it pins down                           |
     //! |-----------------------------------|---------------------------------------------|
     //! | RAM / disk postcondition          | what a successful call leaves behind        |
-    //! | `survives_a_fault_at_every_io_step` | any single I/O failure or crash, per step |
-    //! | named scenario                    | one readable case per finding (until the sweep covers it) |
-    //! | model                             | interactions between calls                  |
+    //! | sweep                             | any single I/O failure or crash, per step   |
+    //! | scenario                          | interactions between calls                  |
     //! | recorded                          | current behavior that is not a requirement  |
-    //!
-    //! When a defect is found, add tests in this order: (1) a named scenario
-    //! that fails (drop it once the fix lands and the sweep covers it); (2) ask why the sweep did not catch it — if it could not,
-    //! widen `Probe` / `sites` / `Layout` so it does; (3) if it needs a
-    //! sequence of calls, teach the model; (4) fix the code; (5) fix the doc.
     use alloc::boxed::Box;
 
     use super::*;
@@ -1053,14 +1006,7 @@ mod cases {
 
     pub const ID_LIMIT: u32 = u32::MAX;
 
-    #[derive(Clone, Copy)]
-    pub enum Fault {
-        Write,
-        Flush,
-        SnapWrite,
-    }
-
-    pub fn random_records(rng: &mut Rng) -> Vec<LogRecord> {
+    pub fn fuzz_records(rng: &mut Rng) -> Vec<LogRecord> {
         (0..rng.below(12))
             .map(|_| {
                 let id = rng.below(6) as u32;
@@ -1109,26 +1055,26 @@ mod cases {
             .collect()
     }
 
-    pub fn contents(store: &impl FileStore) -> BTreeMap<u32, Vec<u8>> {
+    pub fn snapshot(store: &impl FileStore) -> BTreeMap<u32, Vec<u8>> {
         store.range(0, ID_LIMIT).map(|(id, bytes)| (id, bytes.to_vec())).collect()
     }
 
-    pub fn torn_tail() -> Vec<u8> {
+    pub fn sever_record() -> Vec<u8> {
         LogRecord::set(1, b"aaa".to_vec()).to_bytes()[..7].to_vec()
     }
 
     pub const VERSION: &str = "0.0";
 
-    pub async fn open_store<S: FileStore>(id: StoreId) -> S {
+    pub async fn mount<S: FileStore>(id: StoreId) -> S {
         S::open(id, true).await.and_then(S::new).unwrap()
     }
 
-    // ── Probe: the one fault-injection point ─────────────────────
+    // === fault injector ===
     //
-    // Every scenario below drives the store through `Probe<S>`, which sees
+    // Every scenario below drives the store through `FaultInjector<S>`, which sees
     // each I/O call the algorithm makes. A new step added to `save` /
     // `discard` / `compact` shows up in `calls` and is therefore swept by
-    // `survives_a_fault_at_every_io_step` without touching any test.
+    // `sweep` without touching any test.
 
     /// One I/O call as the algorithm issues it; `Write` carries the byte
     /// length, `Truncate` the new size.
@@ -1154,12 +1100,12 @@ mod cases {
     }
 
     /// Delegates to `S`, records every call, and can inject one fault.
-    pub struct Probe<S: FileStore> {
+    pub struct FaultInjector<S: FileStore> {
         inner:               S,
         /// Every I/O call since the last clear, in order.
         pub calls:           RefCell<Vec<(&'static str, Io)>>,
         /// `(index into calls, where)`: the one call to break.
-        pub fault:           Cell<Option<(usize, Hit)>>,
+        pub at:              Cell<Option<(usize, Hit)>>,
         /// Fail every write to this file (`"snap"` / `"log"`) before it lands.
         pub fail_writes_to:  Cell<Option<&'static str>>,
         /// Fail every flush of this file: what was written stays, unconfirmed.
@@ -1170,35 +1116,35 @@ mod cases {
         pub stall:           Cell<bool>,
     }
 
-    fn file_name(file: File) -> &'static str {
+    fn label(file: File) -> &'static str {
         match file {
             File::Snap => "snap",
             File::Log => "log",
         }
     }
 
-    fn injected() -> FileStoreError {
+    fn forge_error() -> FileStoreError {
         FileStoreError::InvalidState(String::from("injected"))
     }
 
-    impl<S: FileStore> Probe<S> {
-        fn step<T>(
+    impl<S: FileStore> FaultInjector<S> {
+        fn trace<T>(
             &self,
             file: File,
             io: Io,
             run: impl FnOnce() -> Result<T, FileStoreError>,
         ) -> Result<T, FileStoreError> {
             let index = self.calls.borrow().len();
-            self.calls.borrow_mut().push((file_name(file), io));
-            match self.fault.get() {
-                Some((at, Hit::Before)) if at == index => Err(injected()),
-                Some((at, Hit::After)) if at == index => run().and(Err(injected())),
+            self.calls.borrow_mut().push((label(file), io));
+            match self.at.get() {
+                Some((at, Hit::Before)) if at == index => Err(forge_error()),
+                Some((at, Hit::After)) if at == index => run().and(Err(forge_error())),
                 _ => run(),
             }
         }
     }
 
-    impl<S: FileStore> FileStore for Probe<S> {
+    impl<S: FileStore> FileStore for FaultInjector<S> {
         type Handle = S::Handle;
 
         fn open(
@@ -1212,7 +1158,7 @@ mod cases {
             Self {
                 inner:           S::from_handle(handle),
                 calls:           RefCell::new(Vec::new()),
-                fault:           Cell::new(None),
+                at:              Cell::new(None),
                 fail_writes_to:  Cell::new(None),
                 fail_flushes_of: Cell::new(None),
                 chunk:           Cell::new(None),
@@ -1229,49 +1175,49 @@ mod cases {
         }
 
         fn size(&self, file: File) -> Result<u32, FileStoreError> {
-            self.step(file, Io::Size, || self.inner.size(file))
+            self.trace(file, Io::Size, || self.inner.size(file))
         }
 
         fn read_at(&self, file: File, buffer: &mut [u8], at: u32) -> Result<usize, FileStoreError> {
             if self.stall.get() {
-                self.calls.borrow_mut().push((file_name(file), Io::Read));
+                self.calls.borrow_mut().push((label(file), Io::Read));
                 return Ok(0);
             }
             let limit = self.chunk.get().map_or(buffer.len(), |chunk| chunk.min(buffer.len()));
-            self.step(file, Io::Read, || self.inner.read_at(file, &mut buffer[..limit], at))
+            self.trace(file, Io::Read, || self.inner.read_at(file, &mut buffer[..limit], at))
         }
 
         fn write_at(&self, file: File, data: &[u8], at: u32) -> Result<usize, FileStoreError> {
             let data = &data[..self.chunk.get().map_or(data.len(), |chunk| chunk.min(data.len()))];
             let io = Io::Write(data.len() as u32);
             if self.stall.get() {
-                self.calls.borrow_mut().push((file_name(file), io));
+                self.calls.borrow_mut().push((label(file), io));
                 return Ok(0);
             }
-            if let Some((index, Hit::Partial(n))) = self.fault.get() {
+            if let Some((index, Hit::Partial(n))) = self.at.get() {
                 if index == self.calls.borrow().len() {
-                    self.calls.borrow_mut().push((file_name(file), io));
+                    self.calls.borrow_mut().push((label(file), io));
                     self.inner.write_at(file, &data[..n as usize], at)?;
-                    return Err(injected());
+                    return Err(forge_error());
                 }
             }
-            if self.fail_writes_to.get() == Some(file_name(file)) {
-                self.calls.borrow_mut().push((file_name(file), io));
-                return Err(injected());
+            if self.fail_writes_to.get() == Some(label(file)) {
+                self.calls.borrow_mut().push((label(file), io));
+                return Err(forge_error());
             }
-            self.step(file, io, || self.inner.write_at(file, data, at))
+            self.trace(file, io, || self.inner.write_at(file, data, at))
         }
 
         fn flush(&self, file: File) -> Result<(), FileStoreError> {
-            if self.fail_flushes_of.get() == Some(file_name(file)) {
-                self.calls.borrow_mut().push((file_name(file), Io::Flush));
-                return Err(injected());
+            if self.fail_flushes_of.get() == Some(label(file)) {
+                self.calls.borrow_mut().push((label(file), Io::Flush));
+                return Err(forge_error());
             }
-            self.step(file, Io::Flush, || self.inner.flush(file))
+            self.trace(file, Io::Flush, || self.inner.flush(file))
         }
 
         fn truncate(&self, file: File, size: u32) -> Result<(), FileStoreError> {
-            self.step(file, Io::Truncate(size), || self.inner.truncate(file, size))
+            self.trace(file, Io::Truncate(size), || self.inner.truncate(file, size))
         }
 
         fn close(&self) {
@@ -1279,11 +1225,11 @@ mod cases {
         }
     }
 
-    pub async fn open_probe<S: FileStore>(id: StoreId) -> Probe<S> {
-        S::open(id, true).await.and_then(Probe::<S>::new).unwrap()
+    pub async fn instrument<S: FileStore>(id: StoreId) -> FaultInjector<S> {
+        S::open(id, true).await.and_then(FaultInjector::<S>::new).unwrap()
     }
 
-    fn unique(name: &str, n: usize) -> StoreId {
+    fn derive_id(name: &str, n: usize) -> StoreId {
         StoreId { name: Box::leak(format!("{name}_{n}").into_boxed_str()), version: VERSION }
     }
 
@@ -1297,14 +1243,78 @@ mod cases {
     }
 
     /// What the snap and the log hold on their own, not overlaid.
-    fn on_disk(store: &impl FileStore) -> (BTreeMap<u32, Vec<u8>>, BTreeMap<u32, Vec<u8>>) {
+    fn separate(store: &impl FileStore) -> (BTreeMap<u32, Vec<u8>>, BTreeMap<u32, Vec<u8>>) {
         let (mut snap, mut log) = (BTreeMap::new(), BTreeMap::new());
         apply_log(&mut snap, &read_all(store, File::Snap).unwrap());
         apply_log(&mut log, &read_all(store, File::Log).unwrap());
         (snap, log)
     }
 
-    // ── Fault sweep: the same contract for every I/O method ──────
+    // === i/o helpers and the single-writer premise ===
+
+    /// `read_all` / `append` must loop on short reads and writes.
+    pub async fn trickle_io<S: FileStore>(name: &str) {
+        let id = derive_id(name, 0);
+        let (mut store, layout) = arrange::<S>(id, false).await;
+        store.chunk.set(Some(3));
+        store.save().unwrap();
+        store.compact().unwrap();
+        store.discard().unwrap();
+        assert_eq!(snapshot(&store), layout.current);
+        store.chunk.set(None);
+        store.close();
+
+        let reopened = mount::<S>(id).await;
+        assert_eq!(snapshot(&reopened), layout.current);
+        reopened.close();
+    }
+
+    /// A read or write that reports no progress ends in `Unknown`, never in
+    /// a loop, and leaves RAM and the pending diff alone.
+    pub async fn stall_io<S: FileStore>(name: &str) {
+        let id = derive_id(name, 0);
+        let (mut store, layout) = arrange::<S>(id, false).await;
+        store.stall.set(true);
+        for method in [Method::Save, Method::Discard, Method::Compact] {
+            let result = invoke(method, &mut store);
+            assert!(matches!(result, Err(FileStoreError::Unknown(_))), "{method:?}: {result:?}");
+        }
+        store.stall.set(false);
+        assert_eq!(snapshot(&store), layout.current);
+        assert_eq!(store.index().count_pending(), layout.batch.len());
+        store.save().unwrap();
+        store.close();
+
+        let reopened = mount::<S>(id).await;
+        assert_eq!(snapshot(&reopened), layout.current);
+        reopened.close();
+    }
+
+    /// A log shorter than `log_end` means someone else wrote to it. Every
+    /// method reports that and none of them repairs it by extending the file
+    /// (which would zero-fill) or by writing anything else.
+    pub async fn shrink_log<S: FileStore>(name: &str) {
+        let (mut store, layout) = arrange::<S>(derive_id(name, 0), false).await;
+        let log_end = store.index().log_end;
+        assert!(log_end > 0);
+        store.truncate(File::Log, log_end - 1).unwrap();
+        let sizes = (store.size(File::Snap).unwrap(), store.size(File::Log).unwrap());
+
+        for method in [Method::Save, Method::Discard, Method::Compact] {
+            match invoke(method, &mut store) {
+                Err(FileStoreError::Unknown(message)) => {
+                    assert!(message.contains("shrank"), "{method:?}: {message}")
+                }
+                other => panic!("{method:?}: {other:?}"),
+            }
+        }
+        assert_eq!(snapshot(&store), layout.current);
+        assert_eq!(store.index().count_pending(), layout.batch.len());
+        assert_eq!((store.size(File::Snap).unwrap(), store.size(File::Log).unwrap()), sizes);
+        store.close();
+    }
+
+    // === sweep ===
 
     /// The methods that touch the disk. `new` is read-only and shares
     /// `read_all` with `discard`, so a fault there cannot change the disk.
@@ -1343,7 +1353,7 @@ mod cases {
 
     impl Layout {
         /// States a reopen may legitimately show after a crash inside `method`.
-        fn allowed(&self, method: Method) -> Vec<BTreeMap<u32, Vec<u8>>> {
+        fn admit(&self, method: Method) -> Vec<BTreeMap<u32, Vec<u8>>> {
             let prefixes = |records: &[LogRecord]| -> Vec<BTreeMap<u32, Vec<u8>>> {
                 (0..=records.len())
                     .map(|keep| {
@@ -1363,7 +1373,7 @@ mod cases {
         }
 
         /// The disk after `method` succeeded.
-        fn settled(&self, method: Method) -> &BTreeMap<u32, Vec<u8>> {
+        fn resolve(&self, method: Method) -> &BTreeMap<u32, Vec<u8>> {
             match method {
                 Method::Save => &self.current,
                 Method::Discard | Method::Compact => &self.committed,
@@ -1371,14 +1381,14 @@ mod cases {
         }
     }
 
-    async fn arranged<S: FileStore>(id: StoreId, ghost: bool) -> (Probe<S>, Layout) {
-        let mut store = open_probe::<S>(id).await;
+    async fn arrange<S: FileStore>(id: StoreId, ghost: bool) -> (FaultInjector<S>, Layout) {
+        let mut store = instrument::<S>(id).await;
         apply(&mut store, &[LogRecord::set(1, b"s1".to_vec()), LogRecord::set(2, b"s2".to_vec())]);
         store.save().unwrap();
         store.compact().unwrap();
         apply(&mut store, &[LogRecord::set(3, b"l3".to_vec()), LogRecord::set(4, b"l4".to_vec())]);
         store.save().unwrap();
-        let committed = contents(&store);
+        let committed = snapshot(&store);
 
         // A failed flush leaves a whole batch past `log_end`: valid records
         // that a reopen would replay. Six equal-sized records, so that
@@ -1391,7 +1401,7 @@ mod cases {
             assert!(store.save().is_err());
             store.fail_flushes_of.set(None);
             store.discard().unwrap();
-            assert_eq!(contents(&store), committed);
+            assert_eq!(snapshot(&store), committed);
         }
 
         apply(
@@ -1402,7 +1412,7 @@ mod cases {
                 LogRecord::set(5, b"p5".to_vec()),
             ],
         );
-        let current = contents(&store);
+        let current = snapshot(&store);
         let index = store.index();
         let mut batch: Vec<LogRecord> =
             index.unsaved.iter().map(|&id| LogRecord::set(id, index.memory[&id].clone())).collect();
@@ -1410,7 +1420,7 @@ mod cases {
         (store, Layout { committed, current, batch, ghost: leftover })
     }
 
-    fn run(method: Method, store: &mut impl FileStore) -> Result<(), FileStoreError> {
+    fn invoke(method: Method, store: &mut impl FileStore) -> Result<(), FileStoreError> {
         match method {
             Method::Save => store.save(),
             Method::Discard => store.discard(),
@@ -1419,7 +1429,7 @@ mod cases {
     }
 
     /// Every `(call, hit)` worth breaking, derived from the calls a clean run made.
-    fn sites(calls: &[(&'static str, Io)]) -> Vec<(usize, Hit)> {
+    fn enumerate_sites(calls: &[(&'static str, Io)]) -> Vec<(usize, Hit)> {
         let mut sites = Vec::new();
         for (index, (_, io)) in calls.iter().enumerate() {
             sites.push((index, Hit::Before));
@@ -1435,7 +1445,7 @@ mod cases {
         sites
     }
 
-    async fn check<S: FileStore>(
+    async fn verify<S: FileStore>(
         id: StoreId,
         method: Method,
         site: (usize, Hit),
@@ -1443,41 +1453,41 @@ mod cases {
         ghost: bool,
     ) {
         let context = format!("{method:?} (ghost {ghost}) fault {site:?} then {afterwards:?}");
-        let (mut store, layout) = arranged::<S>(id, ghost).await;
+        let (mut store, layout) = arrange::<S>(id, ghost).await;
         store.calls.borrow_mut().clear();
-        store.fault.set(Some(site));
-        let result = run(method, &mut store);
-        store.fault.set(None);
+        store.at.set(Some(site));
+        let result = invoke(method, &mut store);
+        store.at.set(None);
         assert!(result.is_err(), "{context}: the fault must surface");
 
         // A failed call leaves RAM and the pending diff alone.
-        assert_eq!(contents(&store), layout.current, "{context}: RAM");
-        assert_eq!(store.index().pending_len(), layout.batch.len(), "{context}: pending diff");
+        assert_eq!(snapshot(&store), layout.current, "{context}: RAM");
+        assert_eq!(store.index().count_pending(), layout.batch.len(), "{context}: pending diff");
 
         match afterwards {
             Afterwards::Crash => {}
             Afterwards::Retry => {
-                run(method, &mut store).unwrap_or_else(|e| panic!("{context}: retry: {e}"));
+                invoke(method, &mut store).unwrap_or_else(|e| panic!("{context}: retry: {e}"));
             }
             Afterwards::Discard => {
                 store.discard().unwrap();
-                assert_eq!(contents(&store), layout.committed, "{context}: discard");
+                assert_eq!(snapshot(&store), layout.committed, "{context}: discard");
                 if !matches!(method, Method::Discard) {
-                    run(method, &mut store).unwrap_or_else(|e| panic!("{context}: rerun: {e}"));
+                    invoke(method, &mut store).unwrap_or_else(|e| panic!("{context}: rerun: {e}"));
                 }
             }
         }
         store.close();
 
-        let reopened = open_store::<S>(id).await;
-        let seen = contents(&reopened);
+        let reopened = mount::<S>(id).await;
+        let seen = snapshot(&reopened);
         reopened.close();
         match afterwards {
             Afterwards::Crash => {
-                assert!(layout.allowed(method).contains(&seen), "{context}: reopened {seen:?}")
+                assert!(layout.admit(method).contains(&seen), "{context}: reopened {seen:?}")
             }
             Afterwards::Retry => {
-                assert_eq!(&seen, layout.settled(method), "{context}: reopened after retry")
+                assert_eq!(&seen, layout.resolve(method), "{context}: reopened after retry")
             }
             Afterwards::Discard => {
                 assert_eq!(seen, layout.committed, "{context}: reopened after discard")
@@ -1488,9 +1498,9 @@ mod cases {
     /// A file may only be truncated once the *other* file has no unflushed
     /// writes: the truncate destroys one copy of the committed state, so the
     /// other copy must already be durable. Memory's `flush` does nothing, so
-    /// this ordering is invisible to the fault sweep and is checked on the
+    /// this ordering is invisible to the sweep and is checked on the
     /// call log instead.
-    fn assert_flushed_before_truncating_the_other_file(calls: &[(&'static str, Io)]) {
+    fn assert_flush_before_truncate(calls: &[(&'static str, Io)]) {
         let (mut snap_dirty, mut log_dirty) = (false, false);
         for (index, (file, io)) in calls.iter().enumerate() {
             match (*file, *io) {
@@ -1516,155 +1526,32 @@ mod cases {
     ///
     /// `save` and `compact` run twice: once from a clean log, once with an
     /// unconfirmed batch lying past `log_end`, which they must cut off.
-    pub async fn survives_a_fault_at_every_io_step<S: FileStore>(name: &str, method: Method) {
+    pub async fn sweep<S: FileStore>(name: &str, method: Method) {
         let ghosts: &[bool] =
             if matches!(method, Method::Discard) { &[false] } else { &[false, true] };
         let mut n = 0;
         for &ghost in ghosts {
             n += 1;
-            let (mut dry, _) = arranged::<S>(unique(name, n), ghost).await;
+            let (mut dry, _) = arrange::<S>(derive_id(name, n), ghost).await;
             dry.calls.borrow_mut().clear();
-            run(method, &mut dry).unwrap();
+            invoke(method, &mut dry).unwrap();
             let calls = dry.calls.take();
             dry.close();
-            assert_flushed_before_truncating_the_other_file(&calls);
+            assert_flush_before_truncate(&calls);
 
-            for site in sites(&calls) {
+            for site in enumerate_sites(&calls) {
                 for afterwards in [Afterwards::Crash, Afterwards::Retry, Afterwards::Discard] {
                     if matches!((method, afterwards), (Method::Discard, Afterwards::Discard)) {
                         continue;
                     }
                     n += 1;
-                    check::<S>(unique(name, n), method, site, afterwards, ghost).await;
+                    verify::<S>(derive_id(name, n), method, site, afterwards, ghost).await;
                 }
             }
         }
     }
 
-    // ── I/O helpers and the single-writer premise ───────────────
-
-    /// `read_all` / `append` must loop on short reads and writes.
-    pub async fn short_reads_and_writes_are_looped<S: FileStore>(name: &str) {
-        let id = unique(name, 0);
-        let (mut store, layout) = arranged::<S>(id, false).await;
-        store.chunk.set(Some(3));
-        store.save().unwrap();
-        store.compact().unwrap();
-        store.discard().unwrap();
-        assert_eq!(contents(&store), layout.current);
-        store.chunk.set(None);
-        store.close();
-
-        let reopened = open_store::<S>(id).await;
-        assert_eq!(contents(&reopened), layout.current);
-        reopened.close();
-    }
-
-    /// A read or write that reports no progress ends in `Unknown`, never in
-    /// a loop, and leaves RAM and the pending diff alone.
-    pub async fn a_stalled_io_is_an_error_not_a_hang<S: FileStore>(name: &str) {
-        let id = unique(name, 0);
-        let (mut store, layout) = arranged::<S>(id, false).await;
-        store.stall.set(true);
-        for method in [Method::Save, Method::Discard, Method::Compact] {
-            let result = run(method, &mut store);
-            assert!(matches!(result, Err(FileStoreError::Unknown(_))), "{method:?}: {result:?}");
-        }
-        store.stall.set(false);
-        assert_eq!(contents(&store), layout.current);
-        assert_eq!(store.index().pending_len(), layout.batch.len());
-        store.save().unwrap();
-        store.close();
-
-        let reopened = open_store::<S>(id).await;
-        assert_eq!(contents(&reopened), layout.current);
-        reopened.close();
-    }
-
-    /// A log shorter than `log_end` means someone else wrote to it. Every
-    /// method reports that and none of them repairs it by extending the file
-    /// (which would zero-fill) or by writing anything else.
-    pub async fn a_shrunken_log_is_an_error_and_changes_nothing<S: FileStore>(name: &str) {
-        let (mut store, layout) = arranged::<S>(unique(name, 0), false).await;
-        let log_end = store.index().log_end;
-        assert!(log_end > 0);
-        store.truncate(File::Log, log_end - 1).unwrap();
-        let sizes = (store.size(File::Snap).unwrap(), store.size(File::Log).unwrap());
-
-        for method in [Method::Save, Method::Discard, Method::Compact] {
-            match run(method, &mut store) {
-                Err(FileStoreError::Unknown(message)) => {
-                    assert!(message.contains("shrank"), "{method:?}: {message}")
-                }
-                other => panic!("{method:?}: {other:?}"),
-            }
-        }
-        assert_eq!(contents(&store), layout.current);
-        assert_eq!(store.index().pending_len(), layout.batch.len());
-        assert_eq!((store.size(File::Snap).unwrap(), store.size(File::Log).unwrap()), sizes);
-        store.close();
-    }
-
-    // ── Recorded behavior: what the code does today, not a requirement ──
-
-    /// `compact` has no delta path, so a snap nobody touched is still
-    /// truncated and rewritten in full.
-    pub async fn compact_rewrites_an_untouched_snap<S: FileStore>(name: &'static str) {
-        let id = unique(name, 0);
-        let mut store = open_probe::<S>(id).await;
-
-        // 1. ids 1..=100 compacted: the snap holds them, the log is empty.
-        for _ in 1..=100 {
-            let id = store.issue_id();
-            store.set(id, id.to_le_bytes().to_vec());
-        }
-        store.save().unwrap();
-        store.compact().unwrap();
-        let (snap, log) = on_disk(&store);
-        assert_eq!(snap.keys().copied().collect::<Vec<_>>(), (1..=100).collect::<Vec<_>>());
-        assert!(log.is_empty());
-        assert_eq!(store.size(File::Log).unwrap(), 0);
-
-        // 2. ids 101, 102 saved: only the log has them, nobody touched 1..=100.
-        store.set(101, b"a".to_vec());
-        store.set(102, b"b".to_vec());
-        store.save().unwrap();
-        let (snap, log) = on_disk(&store);
-        assert_eq!(snap.len(), 100);
-        assert_eq!(log.keys().copied().collect::<Vec<_>>(), [101, 102]);
-
-        // 3. the next compact truncates the snap anyway and writes all 102 back.
-        store.calls.borrow_mut().clear();
-        store.compact().unwrap();
-        let calls = store.calls.take();
-        let truncates: Vec<_> = calls
-            .iter()
-            .filter_map(|call| match call.1 {
-                Io::Truncate(size) => Some((call.0, size)),
-                _ => None,
-            })
-            .collect();
-        assert_eq!(truncates, [("snap", 0), ("log", 0)]);
-        let snap_written: u32 = calls
-            .iter()
-            .filter_map(|call| match call.1 {
-                Io::Write(length) if call.0 == "snap" => Some(length),
-                _ => None,
-            })
-            .sum();
-        assert_eq!(snap_written, store.size(File::Snap).unwrap());
-
-        let (snap, log) = on_disk(&store);
-        assert_eq!(snap.len(), 102);
-        assert!(log.is_empty());
-        store.close();
-
-        let reopened = open_store::<S>(id).await;
-        assert_eq!(contents(&reopened).len(), 102);
-        reopened.close();
-    }
-
-    // ── Interactions: random sequences against an independent model ──
+    // === scenario ===
 
     struct Model {
         current:   BTreeMap<u32, Vec<u8>>,
@@ -1677,7 +1564,7 @@ mod cases {
     }
 
     impl Model {
-        fn reopened(
+        fn reopen(
             mut committed: BTreeMap<u32, Vec<u8>>,
             ghost: Vec<(u32, Option<Vec<u8>>)>,
         ) -> Self {
@@ -1703,19 +1590,18 @@ mod cases {
             sets.chain(self.deleted.iter().map(|id| (*id, None))).collect()
         }
 
-        fn synced(&mut self) {
+        fn sync(&mut self) {
             self.unsaved.clear();
             self.deleted.clear();
             self.dirty = false;
         }
     }
 
-    pub async fn model_follows_store<S: FileStore>(
+    pub async fn walk<S: FileStore>(
         name: &str,
         seeds: u64,
         steps: usize,
         tear: impl AsyncFn(StoreId),
-        fail: Option<fn(StoreId, Fault, bool)>,
     ) {
         for seed in 0..seeds {
             let mut rng = Rng::new(seed);
@@ -1723,8 +1609,8 @@ mod cases {
                 name:    Box::leak(format!("{name}_{seed}").into_boxed_str()),
                 version: VERSION,
             };
-            let mut store = open_store::<S>(id).await;
-            let mut model = Model::reopened(contents(&store), Vec::new());
+            let mut store = instrument::<S>(id).await;
+            let mut model = Model::reopen(snapshot(&store), Vec::new());
             for step in 0..steps {
                 let context = format!("seed {seed} step {step}");
                 match rng.below(100) {
@@ -1755,24 +1641,27 @@ mod cases {
                         assert_eq!(store.issue_id(), model.next_id, "{context}");
                     }
                     55..70 => {
-                        if let (Some(fail), true) = (fail, rng.chance(30)) {
-                            let fault = if rng.chance(50) { Fault::Write } else { Fault::Flush };
-                            fail(id, fault, true);
-                            let attempt = store.save();
-                            fail(id, fault, false);
-                            match fault {
-                                Fault::Write if !model.dirty => attempt.unwrap(),
-                                _ => assert!(attempt.is_err(), "{context}"),
+                        if rng.chance(30) {
+                            let flush = rng.chance(50);
+                            if flush {
+                                store.fail_flushes_of.set(Some("log"));
+                            } else {
+                                store.fail_writes_to.set(Some("log"));
                             }
-                            model.ghost = match fault {
-                                Fault::Flush => model.batch(),
-                                Fault::Write | Fault::SnapWrite => Vec::new(),
-                            };
-                            assert_eq!(contents(&store), model.current, "{context}");
+                            let attempt = store.save();
+                            store.fail_flushes_of.set(None);
+                            store.fail_writes_to.set(None);
+                            if !flush && !model.dirty {
+                                attempt.unwrap();
+                            } else {
+                                assert!(attempt.is_err(), "{context}");
+                            }
+                            model.ghost = if flush { model.batch() } else { Vec::new() };
+                            assert_eq!(snapshot(&store), model.current, "{context}");
                             if rng.chance(50) {
                                 store.discard().unwrap();
                                 model.current = model.committed.clone();
-                                model.synced();
+                                model.sync();
                                 continue;
                             }
                         }
@@ -1782,29 +1671,29 @@ mod cases {
                             model.next_id = model.next_id.max(*id);
                         }
                         model.ghost.clear();
-                        model.synced();
+                        model.sync();
                     }
                     70..78 => {
                         store.discard().unwrap();
                         model.current = model.committed.clone();
-                        model.synced();
+                        model.sync();
                     }
                     78..84 => {
-                        if let (Some(fail), true) = (fail, rng.chance(30)) {
+                        if rng.chance(30) {
                             // The snap rewrite dies halfway. Nothing is lost:
                             // an empty committed state has nothing to write,
                             // so only then may the attempt succeed.
-                            fail(id, Fault::SnapWrite, true);
+                            store.fail_writes_to.set(Some("snap"));
                             let attempt = store.compact();
-                            fail(id, Fault::SnapWrite, false);
+                            store.fail_writes_to.set(None);
                             assert_eq!(attempt.is_err(), !model.committed.is_empty(), "{context}");
                             // Cut by the repair in front of the rewrite.
                             model.ghost.clear();
-                            assert_eq!(contents(&store), model.current, "{context}");
+                            assert_eq!(snapshot(&store), model.current, "{context}");
                             if rng.chance(50) {
                                 store.discard().unwrap();
                                 model.current = model.committed.clone();
-                                model.synced();
+                                model.sync();
                             }
                         }
                         store.compact().unwrap();
@@ -1815,25 +1704,82 @@ mod cases {
                         if rng.chance(30) {
                             tear(id).await;
                         }
-                        store = open_store::<S>(id).await;
-                        model = Model::reopened(model.committed, model.ghost);
+                        store = instrument::<S>(id).await;
+                        model = Model::reopen(model.committed, model.ghost);
                     }
                 }
-                assert_eq!(contents(&store), model.current, "{context}");
+                assert_eq!(snapshot(&store), model.current, "{context}");
             }
             store.close();
         }
     }
+
+    // === recorded behavior ===
+
+    /// `compact` has no delta path, so a snap nobody touched is still
+    /// truncated and rewritten in full.
+    pub async fn pin_compact_rewrite<S: FileStore>(name: &'static str) {
+        let id = derive_id(name, 0);
+        let mut store = instrument::<S>(id).await;
+
+        // 1. ids 1..=100 compacted: the snap holds them, the log is empty.
+        for _ in 1..=100 {
+            let id = store.issue_id();
+            store.set(id, id.to_le_bytes().to_vec());
+        }
+        store.save().unwrap();
+        store.compact().unwrap();
+        let (snap, log) = separate(&store);
+        assert_eq!(snap.keys().copied().collect::<Vec<_>>(), (1..=100).collect::<Vec<_>>());
+        assert!(log.is_empty());
+        assert_eq!(store.size(File::Log).unwrap(), 0);
+
+        // 2. ids 101, 102 saved: only the log has them, nobody touched 1..=100.
+        store.set(101, b"a".to_vec());
+        store.set(102, b"b".to_vec());
+        store.save().unwrap();
+        let (snap, log) = separate(&store);
+        assert_eq!(snap.len(), 100);
+        assert_eq!(log.keys().copied().collect::<Vec<_>>(), [101, 102]);
+
+        // 3. the next compact truncates the snap anyway and writes all 102 back.
+        store.calls.borrow_mut().clear();
+        store.compact().unwrap();
+        let calls = store.calls.take();
+        let truncates: Vec<_> = calls
+            .iter()
+            .filter_map(|call| match call.1 {
+                Io::Truncate(size) => Some((call.0, size)),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(truncates, [("snap", 0), ("log", 0)]);
+        let snap_written: u32 = calls
+            .iter()
+            .filter_map(|call| match call.1 {
+                Io::Write(length) if call.0 == "snap" => Some(length),
+                _ => None,
+            })
+            .sum();
+        assert_eq!(snap_written, store.size(File::Snap).unwrap());
+
+        let (snap, log) = separate(&store);
+        assert_eq!(snap.len(), 102);
+        assert!(log.is_empty());
+        store.close();
+
+        let reopened = mount::<S>(id).await;
+        assert_eq!(snapshot(&reopened).len(), 102);
+        reopened.close();
+    }
 }
 
-// === OPFS integration tests (headless browser) ===
-
 #[cfg(all(test, not(target_arch = "wasm32")))]
-mod tests {
+mod memory_tests {
     use super::{cases::*, *};
     use crate::testing::{Rng, block_on};
 
-    fn raw_record(op: u8, id: u32, data: &[u8]) -> Vec<u8> {
+    fn handcraft_record(op: u8, id: u32, data: &[u8]) -> Vec<u8> {
         let mut record = Vec::new();
         record.push(op);
         record.extend_from_slice(&id.to_le_bytes());
@@ -1848,52 +1794,46 @@ mod tests {
         records.iter().flat_map(|record| record.to_bytes()).collect()
     }
 
-    fn memory_failing(id: StoreId, fault: Fault, fail: bool) {
-        let disk = block_on(MemoryStore::open(id, true)).unwrap();
-        match fault {
-            Fault::Write => disk.failing(fail),
-            Fault::Flush => disk.flush_fails(fail),
-            Fault::SnapWrite => disk.snap_failing(fail),
-        }
-    }
-
     async fn tear_log(id: StoreId) {
         let disk = MemoryStore::open(id, true).await.unwrap();
-        disk.log.0.borrow_mut().bytes.extend_from_slice(&torn_tail());
+        disk.log.0.borrow_mut().bytes.extend_from_slice(&sever_record());
     }
 
-    // ── wire format (pure) ────────────────────────────────────────────────
+    // === wire format ===
 
     #[test]
-    fn fletcher32_known_answers() {
+    fn match_known_checksums() {
         assert_eq!(fletcher32(&[]), 0);
         assert_eq!(fletcher32(b"abcdef"), 0x56502D2A);
         assert_eq!(fletcher32(b"abcde"), 0xF04FC729);
     }
 
     #[test]
-    fn records_use_the_documented_wire_layout() {
-        assert_eq!(LogRecord::set(42, b"hello".to_vec()).to_bytes(), raw_record(1, 42, b"hello"));
-        assert_eq!(LogRecord::delete(7).to_bytes(), raw_record(2, 7, b""));
+    fn match_wire_layout() {
+        assert_eq!(
+            LogRecord::set(42, b"hello".to_vec()).to_bytes(),
+            handcraft_record(1, 42, b"hello")
+        );
+        assert_eq!(LogRecord::delete(7).to_bytes(), handcraft_record(2, 7, b""));
     }
 
     #[test]
-    fn unassigned_ops_are_rejected_even_with_a_valid_checksum() {
+    fn reject_unassigned_ops() {
         for op in [0u8, 3, 4, 0x80, 0xFF] {
-            assert!(LogRecord::from_bytes(&raw_record(op, 0, b"")).is_none(), "op {op}");
-            assert!(LogRecord::from_bytes(&raw_record(op, 9, b"xyz")).is_none(), "op {op}");
+            assert!(LogRecord::from_bytes(&handcraft_record(op, 0, b"")).is_none(), "op {op}");
+            assert!(LogRecord::from_bytes(&handcraft_record(op, 9, b"xyz")).is_none(), "op {op}");
         }
         assert!(LogRecord::from_bytes(&[0u8; 13]).is_none());
     }
 
-    // ── replay (pure) ─────────────────────────────────────────────────────
+    // === replay ===
 
     #[test]
-    fn replay_matches_the_oracle_for_every_truncation_and_corruption() {
+    fn replay_damaged_log() {
         for seed in 0..300 {
             let mut rng = Rng::new(seed);
-            let snap_records = random_records(&mut rng);
-            let log_records = random_records(&mut rng);
+            let snap_records = fuzz_records(&mut rng);
+            let log_records = fuzz_records(&mut rng);
             let snap = encode(&snap_records);
             let log = encode(&log_records);
             let mut ends = Vec::new();
@@ -1933,10 +1873,10 @@ mod tests {
         }
     }
 
-    // ── open ──────────────────────────────────────────────────────────────
+    // === open ===
 
     #[test]
-    fn opening_a_missing_store_without_create_is_not_found_and_does_not_create_it() {
+    fn open_missing() {
         let id = StoreId { name: "absent", version: "7" };
         for _ in 0..2 {
             assert!(matches!(
@@ -1949,145 +1889,90 @@ mod tests {
     }
 
     #[test]
-    fn versions_of_one_name_are_separate_flat_files() {
+    fn separate_versions() {
         let first = StoreId { name: "versions", version: "0.0" };
         let second = StoreId { name: "versions", version: "0.1" };
         assert_eq!(second.file("snap"), "versions.0.1.snap");
         assert_eq!(first.file("log"), "versions.0.0.log");
 
-        let mut store = block_on(cases::open_store::<MemoryStore>(first));
+        let mut store = block_on(cases::mount::<MemoryStore>(first));
         store.set(1, b"v1".to_vec());
         store.save().unwrap();
-        assert!(block_on(cases::open_store::<MemoryStore>(second)).get(1).is_none());
-        assert_eq!(block_on(cases::open_store::<MemoryStore>(first)).get(1), Some(&b"v1"[..]));
+        assert!(block_on(cases::mount::<MemoryStore>(second)).get(1).is_none());
+        assert_eq!(block_on(cases::mount::<MemoryStore>(first)).get(1), Some(&b"v1"[..]));
     }
 
-    // ── new / pending diff (replay) ───────────────────────────────────────
+    // === new / pending diff ===
 
     #[test]
-    fn replaying_the_pending_diff_on_a_reopened_store_reproduces_the_current_state() {
+    fn replay_pending_diff() {
         for seed in 0..500 {
             let mut rng = Rng::new(seed);
             let disk = MemoryHandles::default();
             let mut store = MemoryStore::new(disk.clone()).unwrap();
             for _ in 0..rng.below(4) {
-                apply(&mut store, &random_records(&mut rng));
+                apply(&mut store, &fuzz_records(&mut rng));
                 if rng.chance(60) {
                     store.save().unwrap();
                 }
             }
             let mut reopened = MemoryStore::new(disk).unwrap();
             reopened.replay(store.pending());
-            assert_eq!(contents(&reopened), contents(&store), "seed {seed}");
+            assert_eq!(snapshot(&reopened), snapshot(&store), "seed {seed}");
             assert_eq!(reopened.pending(), store.pending(), "seed {seed}");
         }
     }
 
-    // ── save ──────────────────────────────────────────────────────────────
+    // === i/o helpers and the single-writer premise ===
 
     #[test]
-    fn memory_save_survives_a_fault_at_every_io_step() {
-        block_on(survives_a_fault_at_every_io_step::<MemoryStore>("save_sweep", Method::Save));
+    fn trickle_io() {
+        block_on(cases::trickle_io::<MemoryStore>("short_io"));
     }
 
     #[test]
-    fn a_crash_mid_save_leaves_a_whole_number_of_records_and_the_next_save_repairs_it() {
-        for seed in 0..300 {
-            let mut rng = Rng::new(seed);
-            let disk = MemoryHandles::default();
-            let mut store = MemoryStore::new(disk.clone()).unwrap();
-            let committed = random_records(&mut rng);
-            apply(&mut store, &committed);
-            store.save().unwrap();
-
-            let pending = random_records(&mut rng);
-            apply(&mut store, &pending);
-            let mut batch: Vec<LogRecord> = store
-                .index()
-                .unsaved
-                .iter()
-                .map(|&id| LogRecord::set(id, store.index().memory[&id].clone()))
-                .collect();
-            batch.extend(store.index().deleted.iter().map(|&id| LogRecord::delete(id)));
-            disk.crash_after(Some(rng.below(encode(&batch).len() + 1)));
-            let _ = store.save();
-            disk.crash_after(None);
-
-            let after_crash = contents(&MemoryStore::new(disk.clone()).unwrap());
-            let candidates: Vec<_> =
-                (0..=batch.len()).map(|keep| oracle(&concat(&committed, &batch[..keep]))).collect();
-            assert!(candidates.contains(&after_crash), "seed {seed}");
-
-            let mut recovered = MemoryStore::new(disk.clone()).unwrap();
-            let more = random_records(&mut rng);
-            apply(&mut recovered, &more);
-            recovered.save().unwrap();
-            let mut expected = after_crash;
-            for record in &more {
-                match record.operation {
-                    Operation::Set => expected.insert(record.id, record.data.clone()),
-                    Operation::Delete => expected.remove(&record.id),
-                };
-            }
-            assert_eq!(contents(&MemoryStore::new(disk).unwrap()), expected, "seed {seed}");
-        }
-    }
-
-    // ── discard ───────────────────────────────────────────────────────────
-
-    #[test]
-    fn memory_discard_survives_a_fault_at_every_io_step() {
-        block_on(survives_a_fault_at_every_io_step::<MemoryStore>(
-            "discard_sweep",
-            Method::Discard,
-        ));
-    }
-
-    // ── compact ───────────────────────────────────────────────────────────
-
-    #[test]
-    fn memory_compact_survives_a_fault_at_every_io_step() {
-        block_on(survives_a_fault_at_every_io_step::<MemoryStore>(
-            "compact_sweep",
-            Method::Compact,
-        ));
-    }
-
-    // ── I/O helpers and the single-writer premise ─────────────────────────
-
-    #[test]
-    fn memory_short_reads_and_writes_are_looped() {
-        block_on(short_reads_and_writes_are_looped::<MemoryStore>("short_io"));
+    fn stall_io() {
+        block_on(cases::stall_io::<MemoryStore>("stalled_io"));
     }
 
     #[test]
-    fn memory_a_stalled_io_is_an_error_not_a_hang() {
-        block_on(a_stalled_io_is_an_error_not_a_hang::<MemoryStore>("stalled_io"));
+    fn shrink_log() {
+        block_on(cases::shrink_log::<MemoryStore>("shrunken_log"));
     }
 
+    // === save ===
+
     #[test]
-    fn memory_a_shrunken_log_is_an_error_and_changes_nothing() {
-        block_on(a_shrunken_log_is_an_error_and_changes_nothing::<MemoryStore>("shrunken_log"));
+    fn sweep_save() {
+        block_on(cases::sweep::<MemoryStore>("save_sweep", Method::Save));
     }
 
-    // ── interactions (model) ──────────────────────────────────────────────
+    // === discard ===
 
     #[test]
-    fn memory_store_follows_the_model_across_reopens_tears_and_failed_saves() {
-        block_on(model_follows_store::<MemoryStore>(
-            "model",
-            300,
-            80,
-            tear_log,
-            Some(memory_failing),
-        ));
+    fn sweep_discard() {
+        block_on(cases::sweep::<MemoryStore>("discard_sweep", Method::Discard));
     }
 
-    // ── recorded behavior ─────────────────────────────────────────────────
+    // === compact ===
 
     #[test]
-    fn memory_compact_rewrites_an_untouched_snap() {
-        block_on(compact_rewrites_an_untouched_snap::<MemoryStore>("untouched"));
+    fn sweep_compact() {
+        block_on(cases::sweep::<MemoryStore>("compact_sweep", Method::Compact));
+    }
+
+    // === scenario ===
+
+    #[test]
+    fn walk_faults() {
+        block_on(cases::walk::<MemoryStore>("model", 300, 80, tear_log));
+    }
+
+    // === recorded behavior ===
+
+    #[test]
+    fn pin_compact_rewrite() {
+        block_on(cases::pin_compact_rewrite::<MemoryStore>("untouched"));
     }
 }
 
@@ -2112,64 +1997,64 @@ mod opfs_tests {
         let handle =
             open(dir, &id.file("log"), &FileSystemGetFileOptions::new(), false).await.unwrap();
         let size = handle.get_size().unwrap() as u32;
-        handle.write_with_u8_array_and_options(&torn_tail(), &options_at(size)).unwrap();
+        handle.write_with_u8_array_and_options(&sever_record(), &options_at(size)).unwrap();
         handle.flush().unwrap();
         handle.close();
     }
 
-    // ── open ──────────────────────────────────────────────────────────────
+    // === open ===
 
     #[wasm_bindgen_test]
-    async fn opfs_open_without_create_reports_not_found_for_a_missing_store() {
+    async fn open_missing() {
         let id = StoreId { name: "opfs_never_created", version: "9" };
         assert!(matches!(OpfsStore::open(id, false).await, Err(FileStoreError::NotFound(_))));
     }
 
-    // ── save ──────────────────────────────────────────────────────────────
+    // === i/o helpers and the single-writer premise ===
 
     #[wasm_bindgen_test]
-    async fn opfs_save_survives_a_fault_at_every_io_step() {
-        survives_a_fault_at_every_io_step::<OpfsStore>("opfs_save_sweep", Method::Save).await;
-    }
-
-    // ── discard ───────────────────────────────────────────────────────────
-
-    #[wasm_bindgen_test]
-    async fn opfs_discard_survives_a_fault_at_every_io_step() {
-        survives_a_fault_at_every_io_step::<OpfsStore>("opfs_discard_sweep", Method::Discard).await;
-    }
-
-    // ── compact ───────────────────────────────────────────────────────────
-
-    #[wasm_bindgen_test]
-    async fn opfs_compact_survives_a_fault_at_every_io_step() {
-        survives_a_fault_at_every_io_step::<OpfsStore>("opfs_compact_sweep", Method::Compact).await;
-    }
-
-    // ── I/O helpers and the single-writer premise ─────────────────────────
-
-    #[wasm_bindgen_test]
-    async fn opfs_short_reads_and_writes_are_looped() {
-        short_reads_and_writes_are_looped::<OpfsStore>("opfs_short_io").await;
+    async fn trickle_io() {
+        cases::trickle_io::<OpfsStore>("opfs_short_io").await;
     }
 
     #[wasm_bindgen_test]
-    async fn opfs_a_stalled_io_is_an_error_not_a_hang() {
-        a_stalled_io_is_an_error_not_a_hang::<OpfsStore>("opfs_stalled_io").await;
+    async fn stall_io() {
+        cases::stall_io::<OpfsStore>("opfs_stalled_io").await;
     }
 
     #[wasm_bindgen_test]
-    async fn opfs_a_shrunken_log_is_an_error_and_changes_nothing() {
-        a_shrunken_log_is_an_error_and_changes_nothing::<OpfsStore>("opfs_shrunken_log").await;
+    async fn shrink_log() {
+        cases::shrink_log::<OpfsStore>("opfs_shrunken_log").await;
     }
 
-    // ── close ─────────────────────────────────────────────────────────────
+    // === save ===
 
     #[wasm_bindgen_test]
-    async fn opfs_a_closed_handle_fails_and_a_reopened_store_takes_over_the_pending_diff() {
+    async fn sweep_save() {
+        cases::sweep::<OpfsStore>("opfs_save_sweep", Method::Save).await;
+    }
+
+    // === discard ===
+
+    #[wasm_bindgen_test]
+    async fn sweep_discard() {
+        cases::sweep::<OpfsStore>("opfs_discard_sweep", Method::Discard).await;
+    }
+
+    // === compact ===
+
+    #[wasm_bindgen_test]
+    async fn sweep_compact() {
+        cases::sweep::<OpfsStore>("opfs_compact_sweep", Method::Compact).await;
+    }
+
+    // === close ===
+
+    #[wasm_bindgen_test]
+    async fn hand_over_pending_diff() {
         let id = StoreId { name: "opfs_lost", version: VERSION };
         let kept = format!("kept {}", js_sys::Date::now());
-        let mut store = open_store::<OpfsStore>(id).await;
+        let mut store = mount::<OpfsStore>(id).await;
         store.set(1, kept.clone().into_bytes());
         let diff = store.pending();
 
@@ -2177,27 +2062,27 @@ mod opfs_tests {
         store.close();
         assert!(matches!(store.save(), Err(FileStoreError::InvalidState(_))));
 
-        let mut reopened = open_store::<OpfsStore>(id).await;
+        let mut reopened = mount::<OpfsStore>(id).await;
         reopened.replay(diff);
         reopened.save().unwrap();
         reopened.close();
 
-        let again = open_store::<OpfsStore>(id).await;
+        let again = mount::<OpfsStore>(id).await;
         assert_eq!(again.get(1), Some(kept.as_bytes()));
         again.close();
     }
 
-    // ── interactions (model) ──────────────────────────────────────────────
+    // === scenario ===
 
     #[wasm_bindgen_test]
-    async fn opfs_store_follows_the_model_across_reopens_and_tears() {
-        model_follows_store::<OpfsStore>("opfs_model", 6, 40, tear_log, None).await;
+    async fn walk_faults() {
+        cases::walk::<OpfsStore>("opfs_model", 6, 40, tear_log).await;
     }
 
-    // ── recorded behavior ─────────────────────────────────────────────────
+    // === recorded behavior ===
 
     #[wasm_bindgen_test]
-    async fn opfs_compact_rewrites_an_untouched_snap() {
-        compact_rewrites_an_untouched_snap::<OpfsStore>("opfs_untouched").await;
+    async fn pin_compact_rewrite() {
+        cases::pin_compact_rewrite::<OpfsStore>("opfs_untouched").await;
     }
 }
