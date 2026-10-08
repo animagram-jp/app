@@ -124,6 +124,7 @@ impl App {
             }
             Event::Window(WindowEvent::Scroll { x, y }) => handler.process_scroll(x, y),
             Event::Window(WindowEvent::Visibility { state }) => handler.process_visibility(state),
+            Event::Window(WindowEvent::Fullscreen(event)) => handler.process_fullscreen(event),
             Event::FetchChunk(chunk) => {
                 let body = responses.entry(chunk.request).or_default();
                 body.extend_from_slice(&chunk.bytes);
@@ -195,8 +196,8 @@ mod tests {
         testing::{Rng, block_on},
     };
 
-    const POINTER_DOWN: u8 = 10;
-    const POINTER_UP: u8 = 12;
+    const POINTER_DOWN: u8 = 16;
+    const POINTER_UP: u8 = 18;
 
     fn new_app() -> App {
         App::new(false, block_on(Handler::ready(0.0, 0.0, 16.0, 0.0, 0)))
@@ -276,7 +277,7 @@ mod tests {
     #[cfg(not(feature = "calendar"))]
     #[test]
     fn commands_accumulate_across_frames_and_a_bad_frame_does_not_break_the_queue() {
-        const CLICK: u8 = 2;
+        const CLICK: u8 = 3;
         let toggle = dom::Id::new(&[(dom::Tag::Header, None), (dom::Tag::Button, Some(3))]);
         let mut app = new_app();
 

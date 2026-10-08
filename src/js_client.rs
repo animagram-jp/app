@@ -551,7 +551,10 @@ impl Output for StyleValue {
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum FnName {
-    HideToast = 1,
+    CopyText = 1,
+    EnterFullscreen,
+    ExitFullscreen,
+    HideToast,
     ShowToast,
 }
 
@@ -587,14 +590,20 @@ pub fn detect_device(pointer_coarse: bool) -> Device {
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum EventType {
+    Cancel,
     Change,
     Click,
+    Close,
     ContextMenu,
+    Copy,
+    Cut,
     Drop,
     FocusIn,
     FocusOut,
     Input,
     KeyDown,
+    KeyUp,
+    Paste,
     PointerCancel,
     PointerDown,
     PointerMove,
@@ -609,25 +618,31 @@ impl EventType {
     ///
     /// ```
     /// # use app::js_client::EventType;
-    /// assert_eq!(EventType::decode_u8(10), EventType::PointerDown);
+    /// assert_eq!(EventType::decode_u8(16), EventType::PointerDown);
     /// assert_eq!(EventType::decode_u8(200), EventType::Other);
     /// ```
     pub fn decode_u8(value: u8) -> Self {
         match value {
-            1 => Self::Change,
-            2 => Self::Click,
-            3 => Self::ContextMenu,
-            4 => Self::Drop,
-            5 => Self::FocusIn,
-            6 => Self::FocusOut,
-            7 => Self::Input,
-            8 => Self::KeyDown,
-            9 => Self::PointerCancel,
-            10 => Self::PointerDown,
-            11 => Self::PointerMove,
-            12 => Self::PointerUp,
-            13 => Self::Scroll,
-            14 => Self::Submit,
+            1 => Self::Cancel,
+            2 => Self::Change,
+            3 => Self::Click,
+            4 => Self::Close,
+            5 => Self::ContextMenu,
+            6 => Self::Copy,
+            7 => Self::Cut,
+            8 => Self::Drop,
+            9 => Self::FocusIn,
+            10 => Self::FocusOut,
+            11 => Self::Input,
+            12 => Self::KeyDown,
+            13 => Self::KeyUp,
+            14 => Self::Paste,
+            15 => Self::PointerCancel,
+            16 => Self::PointerDown,
+            17 => Self::PointerMove,
+            18 => Self::PointerUp,
+            19 => Self::Scroll,
+            20 => Self::Submit,
             _ => Self::Other,
         }
     }
@@ -850,6 +865,28 @@ impl KeyName {
             100 => Self::Tab,
             101 => Self::Tilde,
             102 => Self::Underscore,
+            _ => Self::Other,
+        }
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum FullscreenEvent {
+    Change,
+    Error,
+    Other,
+}
+
+impl FullscreenEvent {
+    /// ```
+    /// # use app::js_client::FullscreenEvent;
+    /// assert_eq!(FullscreenEvent::decode_u8(1), FullscreenEvent::Change);
+    /// assert_eq!(FullscreenEvent::decode_u8(0), FullscreenEvent::Other);
+    /// ```
+    pub fn decode_u8(value: u8) -> Self {
+        match value {
+            1 => Self::Change,
+            2 => Self::Error,
             _ => Self::Other,
         }
     }
@@ -2403,6 +2440,18 @@ mod wire_tests {
     }
 
     #[test]
+    fn fullscreen_events_match_init_js() {
+        let js = js_array("FULLSCREEN_EVENTS");
+        assert_eq!(js[0], "");
+        for (i, name) in js.iter().enumerate().skip(1) {
+            let event = FullscreenEvent::decode_u8(i as u8);
+            assert_eq!(&format!("fullscreen{event:?}").to_lowercase(), name, "index {i}");
+        }
+        assert_eq!(FullscreenEvent::decode_u8(js.len() as u8), FullscreenEvent::Other);
+        assert_eq!(FullscreenEvent::decode_u8(0), FullscreenEvent::Other);
+    }
+
+    #[test]
     fn command_tables_match_init_js() {
         let tables: [(&str, Vec<(u16, String)>); 2] = [
             (
@@ -2415,6 +2464,9 @@ mod wire_tests {
             (
                 "FN_NAMES",
                 vec![
+                    (FnName::CopyText as u16, format!("{:?}", FnName::CopyText)),
+                    (FnName::EnterFullscreen as u16, format!("{:?}", FnName::EnterFullscreen)),
+                    (FnName::ExitFullscreen as u16, format!("{:?}", FnName::ExitFullscreen)),
                     (FnName::HideToast as u16, format!("{:?}", FnName::HideToast)),
                     (FnName::ShowToast as u16, format!("{:?}", FnName::ShowToast)),
                 ],
@@ -2753,7 +2805,7 @@ mod wire_tests {
         assert_eq!(encode(Command::Focus { id: id.clone() }), with_id(11, &[]));
         assert_eq!(
             encode(Command::JsFn { id: id.clone(), name: FnName::ShowToast }),
-            with_id(12, &[2, 0])
+            with_id(12, &[5, 0])
         );
         assert_eq!(
             encode(Command::Error { error: Error::Event(EventError::Decode) }),

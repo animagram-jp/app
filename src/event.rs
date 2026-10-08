@@ -7,7 +7,10 @@ use core::{
 
 use crate::{
     file_store::{Backend, FileStore, FileStoreError, StoreId},
-    js_client::{CanvasEvent, EventType, Gesture, Input, KeyName, VisibilityState, WireError},
+    js_client::{
+        CanvasEvent, EventType, FullscreenEvent, Gesture, Input, KeyName, VisibilityState,
+        WireError,
+    },
 };
 
 #[derive(Debug)]
@@ -39,6 +42,7 @@ pub const EVENT_RESIZE: u8 = 2;
 pub const EVENT_SCROLL: u8 = 3;
 pub const EVENT_VISIBILITY: u8 = 4;
 pub const EVENT_FETCH: u8 = 5;
+pub const EVENT_FULLSCREEN: u8 = 6;
 pub const EVENT_SHUTDOWN: u8 = 8;
 
 pub enum Event {
@@ -73,6 +77,7 @@ pub enum WindowEvent {
     Scroll { x: f64, y: f64 },
     Shutdown,
     Visibility { state: VisibilityState },
+    Fullscreen(FullscreenEvent),
 }
 
 /// ```
@@ -115,6 +120,9 @@ pub fn decode_event(frame: &[u8]) -> Option<Event> {
             last:    u8::decode(&mut input)? != 0,
             bytes:   Input::decode(&mut input)?,
         }),
+        EVENT_FULLSCREEN => Event::Window(WindowEvent::Fullscreen(FullscreenEvent::decode_u8(
+            u8::decode(&mut input)?,
+        ))),
         EVENT_SHUTDOWN => Event::Window(WindowEvent::Shutdown),
         _ => return None,
     })
@@ -143,6 +151,7 @@ mod tests {
         assert_eq!(js_constant("EVENT_SCROLL"), EVENT_SCROLL);
         assert_eq!(js_constant("EVENT_VISIBILITY"), EVENT_VISIBILITY);
         assert_eq!(js_constant("EVENT_FETCH"), EVENT_FETCH);
+        assert_eq!(js_constant("EVENT_FULLSCREEN"), EVENT_FULLSCREEN);
         assert_eq!(js_constant("EVENT_SHUTDOWN"), EVENT_SHUTDOWN);
     }
 
@@ -174,6 +183,7 @@ mod tests {
             EVENT_SCROLL,
             EVENT_VISIBILITY,
             EVENT_FETCH,
+            EVENT_FULLSCREEN,
             EVENT_SHUTDOWN,
         ];
         for seed in 0..500 {
@@ -249,6 +259,17 @@ mod tests {
                     };
                     assert_eq!(decoded, VisibilityState::decode_u8(state), "seed {seed}");
                 }
+                EVENT_FULLSCREEN => {
+                    let event = rng.next_u64() as u8;
+                    let frame = pack(EVENT_FULLSCREEN, &[&|f| f.push(event)]);
+                    assert_decodes_only_whole(&frame, seed);
+                    let Some(Event::Window(WindowEvent::Fullscreen(decoded))) =
+                        decode_event(&frame)
+                    else {
+                        panic!("seed {seed}: not a fullscreen event");
+                    };
+                    assert_eq!(decoded, FullscreenEvent::decode_u8(event), "seed {seed}");
+                }
                 EVENT_FETCH => {
                     let (request, status, last) =
                         (rng.next_u64() as u32, rng.next_u64() as u16, rng.next_u64() as u8);
@@ -285,6 +306,7 @@ mod tests {
             EVENT_SCROLL,
             EVENT_VISIBILITY,
             EVENT_FETCH,
+            EVENT_FULLSCREEN,
             EVENT_SHUTDOWN,
         ];
         for seed in 0..2000 {

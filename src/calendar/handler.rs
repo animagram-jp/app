@@ -25,8 +25,8 @@ use crate::{
     event::{Event, Opened, Response},
     file_store::{Backend, FileStore, FileStoreError, StoreId},
     js_client::{
-        Attribute, CanvasEvent, Command, Decimal, EventType, Gesture, Keyword, Method,
-        PointerState, StyleProperty, StyleValue, Unit, VisibilityState, dom::Id,
+        Attribute, CanvasEvent, Command, Decimal, EventType, FullscreenEvent, Gesture, Keyword,
+        Method, PointerState, StyleProperty, StyleValue, Unit, VisibilityState, dom::Id,
         from_url_search_params, parse, text,
     },
     timestamp::{
@@ -327,6 +327,10 @@ impl Handler {
                 _ => (vec![], vec![]),
             },
             EventType::PointerDown => (vec![], self.press(event, target)),
+            EventType::Close if target == Some(Target::Modal) => {
+                self.editing = None;
+                (vec![], vec![])
+            }
             EventType::Submit if target == Some(Target::EditForm) => {
                 (vec![], self.submit(&event.value))
             }
@@ -364,6 +368,10 @@ impl Handler {
     }
 
     pub fn process_scroll(&mut self, _x: f64, _y: f64) -> (Vec<Event>, Vec<Command>) {
+        (vec![], vec![])
+    }
+
+    pub fn process_fullscreen(&mut self, _event: FullscreenEvent) -> (Vec<Event>, Vec<Command>) {
         (vec![], vec![])
     }
 
@@ -3617,6 +3625,31 @@ mod tests {
         tap_empty(&mut handler, 0.0, 0.0);
         let commands = press(&mut handler, Target::Modal.to_dom());
         assert!(matches!(commands.as_slice(), [Command::CloseModal { .. }]));
+        assert!(handler.editing.is_none());
+    }
+
+    fn modal_closed(handler: &mut Handler) -> Vec<Command> {
+        let event =
+            CanvasEvent { event_type: EventType::Close, ..click(Target::Modal.to_dom(), 0.0, 0.0) };
+        handler.process_canvas(&event, &state()).1
+    }
+
+    #[test]
+    fn closing_the_dialog_natively_clears_the_editing_state() {
+        let (mut handler, _) = drag_fixture();
+        tap_empty(&mut handler, 0.0, 0.0);
+        assert!(handler.editing.is_some());
+        assert!(modal_closed(&mut handler).is_empty());
+        assert!(handler.editing.is_none());
+    }
+
+    #[test]
+    fn the_close_echo_of_an_app_closed_dialog_changes_nothing() {
+        let (mut handler, _) = drag_fixture();
+        tap_empty(&mut handler, 0.0, 0.0);
+        press(&mut handler, Target::Modal.to_dom());
+        assert!(handler.editing.is_none());
+        assert!(modal_closed(&mut handler).is_empty());
         assert!(handler.editing.is_none());
     }
 

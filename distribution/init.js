@@ -29,6 +29,7 @@ const EVENT_RESIZE = 2;
 const EVENT_SCROLL = 3;
 const EVENT_VISIBILITY = 4;
 const EVENT_FETCH = 5;
+const EVENT_FULLSCREEN = 6;
 const EVENT_SHUTDOWN = 8;
 
 const THREAD = crossOriginIsolated ? "worker" : "main";
@@ -303,6 +304,17 @@ async function write_fetched(request, status, bytes) {
 }
 
 const js_fn = {
+    copy_text: (el) => {
+        navigator.clipboard.writeText(el.value ?? el.textContent).catch((err) => {
+            console.warn("clipboard write failed:", err);
+        });
+    },
+    enter_fullscreen: () => {
+        document.documentElement.requestFullscreen?.()?.catch(() => {});
+    },
+    exit_fullscreen: () => {
+        if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    },
     show_toast: (el) => {
         cancel_toast_cycle(el);
         el.classList.remove("hide");
@@ -347,7 +359,7 @@ const toast_cycles = new WeakMap();
  */
 function send(e) {
     const root = root_of(e.target);
-    if (!root) return;
+    if (!root && !(e.type.startsWith("key") && [document.body, document.documentElement].includes(e.target))) return;
     if (e.type === "submit") e.preventDefault();
 
     const x = e.clientX ?? 0;
@@ -357,7 +369,14 @@ function send(e) {
 }
 
 function send_key(e) {
-    if (e.isComposing || e.keyCode === 229 || e.target === composing_element) return;
+    const target = e.target;
+    if (e.isComposing || e.keyCode === 229 || target === composing_element) return;
+    if (e.type === "keydown" && e.key === "Enter" && !e.repeat && (e.ctrlKey || e.metaKey)
+        && target instanceof HTMLTextAreaElement && target.form && !target.disabled && !target.readOnly) {
+        e.preventDefault();
+        target.form.requestSubmit();
+        return;
+    }
     send(e);
 }
 
@@ -389,6 +408,7 @@ function root_of(target) {
 }
 
 function event_value(e) {
+    if (e.type === "paste") return e.clipboardData?.getData("text/plain") ?? "";
     if (e.target instanceof HTMLFormElement) {
         return new URLSearchParams(new FormData(e.target)).toString();
     }
@@ -431,6 +451,12 @@ function encode_visibility_event(frame, state) {
     return frame.subarray(0, offset);
 }
 
+function encode_fullscreen_event(frame, type) {
+    let offset = put_u8(frame, 0, EVENT_FULLSCREEN);
+    offset = put_u8(frame, offset, Math.max(FULLSCREEN_EVENTS.indexOf(type), 0));
+    return frame.subarray(0, offset);
+}
+
 function encode_fetch_event(frame, request, status, last, bytes) {
     let offset = put_u8(frame, 0, EVENT_FETCH);
     offset = put_u32(frame, offset, request);
@@ -462,11 +488,14 @@ function write_event(frame) {
 
 function bind() {
     const EVENTS = [
-        "change", "click", "contextmenu", "focusin", "focusout", "input",
-        "pointercancel", "pointerdown", "pointerup", "submit"
+        "change", "click", "contextmenu", "copy", "cut", "focusin", "focusout", "input",
+        "paste", "pointercancel", "pointerdown", "pointerup", "submit"
     ];
     for (const type of EVENTS) {
         document.addEventListener(type, send);
+    }
+    for (const type of ["cancel", "close"]) {
+        document.addEventListener(type, send, true);
     }
     document.addEventListener("pointermove", send, { passive: true });
 
@@ -492,6 +521,12 @@ function bind() {
         write_event(encode_shutdown_event(S.event_frame));
     });
 
+    for (const type of FULLSCREEN_EVENTS.slice(1)) {
+        document.addEventListener(type, (e) => {
+            write_event(encode_fullscreen_event(S.event_frame, e.type));
+        });
+    }
+
     document.addEventListener("visibilitychange", () => {
         write_event(encode_visibility_event(S.event_frame, document.visibilityState));
     });
@@ -503,6 +538,12 @@ const VISIBILITY_STATES = [
     "visible",
 ];
 
+const FULLSCREEN_EVENTS = [
+    null,
+    "fullscreenchange",
+    "fullscreenerror",
+];
+
 const ROOTS = ["header", "main", "modal", "form", "toast"]
     .map(id => document.getElementById(id));
 
@@ -511,14 +552,20 @@ const ROOTS = ["header", "main", "modal", "form", "toast"]
  */
 const EVENT_TYPES = [
     null,
+    "cancel",
     "change",
     "click",
+    "close",
     "contextmenu",
+    "copy",
+    "cut",
     "drop",
     "focusin",
     "focusout",
     "input",
     "keydown",
+    "keyup",
+    "paste",
     "pointercancel",
     "pointerdown",
     "pointermove",
@@ -751,6 +798,9 @@ const STYLE_UNITS = [
  */
 const FN_NAMES = [
     null,
+    "copy_text",
+    "enter_fullscreen",
+    "exit_fullscreen",
     "hide_toast",
     "show_toast",
 ];

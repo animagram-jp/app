@@ -17,7 +17,8 @@ use crate::{
     data_struct::DataStruct,
     event::{Event, Opened, Response},
     js_client::{
-        Attribute, CanvasEvent, Command, EventType, Gesture, PointerState, VisibilityState, dom,
+        Attribute, CanvasEvent, Command, EventType, FullscreenEvent, Gesture, PointerState,
+        VisibilityState, dom,
     },
 };
 
@@ -137,6 +138,10 @@ impl Handler {
         (vec![], vec![])
     }
 
+    pub fn process_fullscreen(&mut self, _event: FullscreenEvent) -> (Vec<Event>, Vec<Command>) {
+        (vec![], vec![])
+    }
+
     pub fn process_fetched(&mut self, _response: &Response) -> (Vec<Event>, Vec<Command>) {
         (vec![], vec![])
     }
@@ -200,7 +205,7 @@ mod tests {
         js_client::{EventType, OPERATION_REMOVE_ATTRIBUTE, OPERATION_SET_ATTRIBUTE, Output, dom},
     };
 
-    const CLICK: u8 = 2;
+    const CLICK: u8 = 3;
 
     #[wasm_bindgen_test]
     async fn process_event_emits_one_frame_per_command() {
