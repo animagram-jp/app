@@ -73,8 +73,6 @@ const sw_registration = "serviceWorker" in navigator
     })
     : Promise.resolve(null);
 
-start();
-
 // === start ===
 
 function start() {
@@ -1068,3 +1066,4 @@ function get_id(frame, offset) {
 const TEXT_ENCODER = new TextEncoder();
 const TEXT_DECODER = new TextDecoder();
 
+start();
