@@ -26,8 +26,8 @@ use crate::{
     file_store::{Backend, FileStore, FileStoreError, StoreId},
     js_client::{
         Attribute, CanvasEvent, Command, Decimal, EventType, FullscreenEvent, Gesture, Keyword,
-        Method, Pointer, StyleProperty, StyleValue, Unit, VisibilityState, dom::Id,
-        from_url_search_params, parse, text,
+        Method, Pointer, StyleProperty, StyleValue, Unit, VisibilityState, dom::Id, parse,
+        parse_url_search_params, stringify,
     },
     timestamp::{
         Format, Timezone, add_days, diff, display, from_ut, pack, sub_days, unpack, youbi,
@@ -1666,7 +1666,7 @@ impl Handler {
     }
 
     fn row_commands(&self) -> Vec<Command> {
-        let rem = text(&RowRem(self.row_rem()));
+        let rem = stringify(&RowRem(self.row_rem()));
         let count = if self.month() { MONTH_AXIS.count() } else { SLOT_COUNT };
         let axis = format!("var(--head-height) repeat({count}, {rem}rem)");
         vec![
@@ -1773,7 +1773,7 @@ fn shift_cells(
 }
 
 fn decode_form(value: &str, calendar: &Calendar) -> Result<Appointment, &'static str> {
-    let pairs = from_url_search_params(value);
+    let pairs = parse_url_search_params(value);
     let field = |field: EditField| {
         let name = format!("{}", field.number());
         pairs

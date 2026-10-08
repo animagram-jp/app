@@ -265,9 +265,9 @@ const FRACTION_WIDTH: usize = 3;
 
 impl<T: Decimal> Input for T {
     fn decode(input: &mut &[u8]) -> Option<Self> {
-        let (whole, rest) = input.split_at_checked(leading_digits(input))?;
+        let (whole, rest) = input.split_at_checked(count_leading_digits(input))?;
         let (fraction, rest) = match rest.split_first() {
-            Some((b'.', tail)) => tail.split_at_checked(leading_digits(tail))?,
+            Some((b'.', tail)) => tail.split_at_checked(count_leading_digits(tail))?,
             _ => (&[][..], rest),
         };
         if whole.is_empty() && fraction.is_empty() {
@@ -309,7 +309,7 @@ impl<T: Decimal> Output for T {
     }
 }
 
-fn leading_digits(bytes: &[u8]) -> usize {
+fn count_leading_digits(bytes: &[u8]) -> usize {
     bytes.iter().take_while(|byte| byte.is_ascii_digit()).count()
 }
 
@@ -330,15 +330,15 @@ pub fn parse<T: Input>(source: &[u8]) -> Option<T> {
     rest.is_empty().then_some(value)
 }
 
-pub fn text<T: Output + ?Sized>(value: &T) -> String {
+pub fn stringify<T: Output + ?Sized>(value: &T) -> String {
     let mut output = Vec::new();
     value.encode(&mut output);
     String::from_utf8(output).unwrap_or_default()
 }
 
 /// ```
-/// # use app::js_client::from_url_search_params;
-/// let pairs = from_url_search_params("a=1&b=%E4%BA%88+%E5%AE%9A&a=2");
+/// # use app::js_client::parse_url_search_params;
+/// let pairs = parse_url_search_params("a=1&b=%E4%BA%88+%E5%AE%9A&a=2");
 /// assert_eq!(
 ///     pairs,
 ///     [
@@ -348,7 +348,7 @@ pub fn text<T: Output + ?Sized>(value: &T) -> String {
 ///     ]
 /// );
 /// ```
-pub fn from_url_search_params(input: &str) -> Vec<(String, String)> {
+pub fn parse_url_search_params(input: &str) -> Vec<(String, String)> {
     input
         .split('&')
         .filter(|pair| !pair.is_empty())
@@ -368,7 +368,7 @@ fn decode_component(input: &str) -> String {
         index += 1;
         match byte {
             b'+' => decoded.push(b' '),
-            b'%' => match bytes.get(index..index + 2).and_then(hex_byte) {
+            b'%' => match bytes.get(index..index + 2).and_then(parse_hex) {
                 Some(value) => {
                     decoded.push(value);
                     index += 2;
@@ -381,7 +381,7 @@ fn decode_component(input: &str) -> String {
     String::from_utf8_lossy(&decoded).into_owned()
 }
 
-fn hex_byte(digits: &[u8]) -> Option<u8> {
+fn parse_hex(digits: &[u8]) -> Option<u8> {
     let high = (digits[0] as char).to_digit(16)?;
     let low = (digits[1] as char).to_digit(16)?;
     Some((high << 4 | low) as u8)
@@ -2187,7 +2187,7 @@ mod decimal_tests {
 
             let signed =
                 if rng.chance(50) { -expected } else { expected } + rng.below(1000) as f64 / 7000.0;
-            let written = text(&Sample(signed));
+            let written = stringify(&Sample(signed));
             let parsed = written.trim_start_matches('-').parse::<f64>().unwrap();
             assert!((parsed - signed.abs()).abs() <= 0.0005 + 1e-9, "{signed} -> {written}");
             assert_eq!(
@@ -2196,7 +2196,7 @@ mod decimal_tests {
                 "{signed} -> {written}"
             );
             assert_eq!(number(written.trim_start_matches('-')), Some(parsed), "{written}");
-            assert_eq!(text(&Sample(if signed < 0.0 { -parsed } else { parsed })), written);
+            assert_eq!(stringify(&Sample(if signed < 0.0 { -parsed } else { parsed })), written);
         }
     }
 
@@ -2229,10 +2229,10 @@ mod decimal_tests {
 
     #[test]
     fn encode_rounds_to_three_fraction_digits() {
-        assert_eq!(text(&Sample(1.23456)), "1.235");
-        assert_eq!(text(&Sample(0.0004)), "0");
-        assert_eq!(text(&Sample(f64::NAN)), "0");
-        assert_eq!(text(&Sample(f64::INFINITY)), "0");
+        assert_eq!(stringify(&Sample(1.23456)), "1.235");
+        assert_eq!(stringify(&Sample(0.0004)), "0");
+        assert_eq!(stringify(&Sample(f64::NAN)), "0");
+        assert_eq!(stringify(&Sample(f64::INFINITY)), "0");
     }
 }
 
@@ -2589,7 +2589,7 @@ mod wire_tests {
 
     #[test]
     fn url_search_params_split_decode_and_keep_order() {
-        let pairs = from_url_search_params;
+        let pairs = parse_url_search_params;
         let owned = |list: &[(&str, &str)]| {
             list.iter()
                 .map(|(key, value)| (String::from(*key), String::from(*value)))
