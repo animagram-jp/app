@@ -2,16 +2,16 @@
 
 # Gesture
 
-Reference data for `js_client::detect_gesture()`
+Reference data for `js_client::Pointer::detect()`
 
 ## References
 
 - [hammerjs](https://github.com/hammerjs/hammer.js/)
 - [use-gesture](https://github.com/pmndrs/use-gesture)
 
-判定アルゴリズム（distance / velocity / duration の閾値比較）に埋め込まれた値を、 `gesture_fixed.rs` の `Thresholds` / `detect_gesture` に、両ライブラリの値をpx・ms単位に揃えて統合した。
+判定アルゴリズム（distance / velocity / duration の閾値比較）に埋め込まれた値を、 `gesture_fixed.rs` の `Thresholds` / `Pointer::detect` に、両ライブラリの値をpx・ms単位に揃えて統合した。
 
-`detect_gesture` は `PointerState` と `Event` 1 個だけから `Gesture` を導出する関数であり、タイマー等の第二の入口は持たない。`app.rs` の `dispatch` が `Event` を FIFO キューで捌く都度確定型アーキテクチャのため、時間経過そのものを表す `Event` は存在しない。`LongPress` もこの制約の中で、既存の `PointerMove` / `PointerUp` の判定に組み込んでいる。
+`Pointer::detect` は `Pointer` の状態と `Event` 1 個だけから `Gesture` を導出する関数であり、タイマー等の第二の入口は持たない。`app.rs` の `dispatch` が `Event` を FIFO キューで捌く都度確定型アーキテクチャのため、時間経過そのものを表す `Event` は存在しない。`LongPress` もこの制約の中で、既存の `PointerMove` / `PointerUp` の判定に組み込んでいる。
 
 ## Hammer.js, use-gesture 共通の関数と定数
 
@@ -49,16 +49,16 @@ PointerUp/Cancel → current_x/y, cancelled フラグを更新, is_down = false
 
 `last_move_x/y/time` は直近の `PointerMove` の座標・時刻（無ければ `PointerDown` のそれ）。swipe の速度計算窓（後述）に使う。
 
-### 判定順（`detect_gesture`）
+### 判定順（`Pointer::detect`）
 
-1. **終了イベント** (`PointerUp` / `PointerCancel`) → `detect_on_release`
+1. **終了イベント** (`PointerUp` / `PointerCancel`) → `detect_release`
    1. ドラッグ中だった (`prev_state.is_dragging`) → `DragEnd` / `DragCancel` で確定
    2. `cancelled` → 何も返さない（tap/swipeに昇格させない）
    3. `velocity > swipe_min_velocity && distance > swipe_min_px && dt < swipe_max_ms` → `Swipe{Up,Down,Left,Right}`（dx/dyの絶対値が大きい方向で4方向判定。`velocity` と `distance` の計算窓は異なる。後述）
    4. `long_press_fired` 済み → 何も返さない（tapを重ねない）
    5. `dt > long_press_ms && distance < long_press_slop_px` → `LongPress`（動かないまま保持時間を超えて離したケース。`PointerMove`が一度も来ていないため、ここが最後の判定機会）
    6. `dt < tap_max_ms && distance < tap_slop_px` → `Tap`
-2. **移動イベント** (`PointerMove`) → `detect_on_move`
+2. **移動イベント** (`PointerMove`) → `detect_move`
    1. `!long_press_fired && !is_dragging && distance < long_press_slop_px && dt > long_press_ms` → `LongPress`（動かないまま保持時間を超えた後、わずかに動いた最初の`PointerMove`で確定。ラッチして以後は発火しない）
    2. `distance <= drag_start_px` → 何もしない
    3. 既に `is_dragging` → `Drag{x,y}` を継続発火
@@ -69,7 +69,7 @@ PointerUp/Cancel → current_x/y, cancelled フラグを更新, is_down = false
 
 ### velocity の計算窓
 
-`detect_on_release` の swipe 判定で、`distance`（方向判定にも使う）と `velocity` は異なる区間から計算する。
+`detect_release` の swipe 判定で、`distance`（方向判定にも使う）と `velocity` は異なる区間から計算する。
 
 - `distance` / 方向 (`dx`, `dy`) : `start` → `current`（ジェスチャ全体の変位）
 - `velocity` : `last_move` → `current`（直近の `PointerMove` からの区間）
@@ -77,7 +77,7 @@ PointerUp/Cancel → current_x/y, cancelled フラグを更新, is_down = false
 `start` からの平均だけで速度を出すと、序盤に大きく速く動いた後に指を止めたまま保持してから離した場合、距離が大きいままなので平均速度が閾値を超え続け、実際には止まっていたのに swipe と誤判定される。直近区間（`last_move` → `current`）で計算すれば、動きが止まっていた分だけ区間の時間 (`move_dt = current_time - last_move_time`) が伸びて速度は自然に下がる。`PointerMove` が一度も来ていない場合は `last_move` は `start` と等しいため、この式は従来の平均計算と一致する（`swipe_without_move_event` のケース）。
 
 これは Hammer.js `COMPUTE_INTERVAL`（velocity の再計算間隔、25ms）や @use-gesture
-`BEFORE_LAST_KINEMATICS_DELAY`（最終イベント直前の運動量計算を有効とみなす時間差の閾値、32ms。「pointerup とその直前の pointermove の時間差がこれ以上なら『止まってから離した』と判断して velocity=0 を確定する」）と同じ問題意識に基づく。両ライブラリは複数サンプルの窓や明示的なゼロ化で対処するが、本実装は 1 Event = 1 Gesture の制約下で「速度計算に使う 2 点を `last_move`/`current` に変える」だけで同じ効果を得ている（`last_move` から動いていなければ距離 0 になり、自動的に velocity が下がるため、明示的なゼロ化は不要）。`detect_on_move` 側の deferral 判定（項目 2.4）は `start` からの平均のままで、この窓の変更は release 側のみに適用してある。
+`BEFORE_LAST_KINEMATICS_DELAY`（最終イベント直前の運動量計算を有効とみなす時間差の閾値、32ms。「pointerup とその直前の pointermove の時間差がこれ以上なら『止まってから離した』と判断して velocity=0 を確定する」）と同じ問題意識に基づく。両ライブラリは複数サンプルの窓や明示的なゼロ化で対処するが、本実装は 1 Event = 1 Gesture の制約下で「速度計算に使う 2 点を `last_move`/`current` に変える」だけで同じ効果を得ている（`last_move` から動いていなければ距離 0 になり、自動的に velocity が下がるため、明示的なゼロ化は不要）。`detect_move` 側の deferral 判定（項目 2.4）は `start` からの平均のままで、この窓の変更は release 側のみに適用してある。
 
 ### 閾値（`Thresholds`）— px / ms に統一
 
@@ -94,4 +94,4 @@ PointerUp/Cancel → current_x/y, cancelled フラグを更新, is_down = false
 
 - `swipe_min_velocity` と `swipe_min_px` は @use-gesture のより保守的な値（誤発火が少ない）を採用。
 - `TOUCH`はタッチの接触面の広さ・座標ブレを考慮し、ブレ許容系（`*_slop_px`, `drag_start_px`）と時間系（`long_press_ms`, `tap_max_ms`, `swipe_max_ms`）を`MOUSE`より広げている。Hammer.js/@use-gestureともにデバイス別の既定値分岐は持たないため、ここは実装側の独自拡張。
-- pinch/rotate/pan(2本指)・wheel系はどちらのライブラリにも定数はあるが、`detect_gesture`は単一ポインタのtap/press/swipe/dragのみを扱うため対象外（2本指ジェスチャーの検討は別途進めている。追加する場合は本表と同じ形式で追記する）。
+- pinch/rotate/pan(2本指)・wheel系はどちらのライブラリにも定数はあるが、`Pointer::detect`は単一ポインタのtap/press/swipe/dragのみを扱うため対象外（2本指ジェスチャーの検討は別途進めている。追加する場合は本表と同じ形式で追記する）。

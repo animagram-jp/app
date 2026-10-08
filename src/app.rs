@@ -23,13 +23,13 @@ use crate::{
     event::{Event, EventError, Response, WindowEvent},
     file_store::StoreId,
     js_client::{
-        CanvasEvent, Command, EventType, Input, Output, Thresholds, TouchTracker, detect_device,
+        CanvasEvent, Command, EventType, Input, Output, Pointer, Thresholds, detect_device,
     },
 };
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 pub struct App {
-    touch:      TouchTracker,
+    pointer:    Pointer,
     thresholds: Thresholds,
     events:     VecDeque<Event>,
     handler:    Handler,
@@ -90,16 +90,14 @@ impl App {
     }
 
     fn dispatch(&mut self, event: Event) -> (Vec<Event>, Vec<Command>) {
-        let Self { handler, touch, thresholds, origin, responses, reopen, .. } = self;
+        let Self { handler, pointer, thresholds, origin, responses, reopen, .. } = self;
 
         match event {
             Event::Canvas(canvas_event) => {
-                if canvas_event.event_type == EventType::PointerDown
-                    && !touch.active_state().is_down()
-                {
+                if canvas_event.event_type == EventType::PointerDown && !pointer.is_down() {
                     *origin = Some(canvas_event.clone());
                 }
-                match touch.handle(
+                match pointer.track(
                     &canvas_event.event_type,
                     canvas_event.pointer_id,
                     canvas_event.x,
@@ -112,13 +110,11 @@ impl App {
                         EventType::PointerMove
                         | EventType::PointerUp
                         | EventType::PointerCancel => (vec![], vec![]),
-                        _ => handler.process_canvas(&canvas_event, touch.active_state()),
+                        _ => handler.process_canvas(&canvas_event, pointer),
                     },
                 }
             }
-            Event::Gesture(gesture) => {
-                handler.process_gesture(&gesture, touch.active_state(), origin.as_ref())
-            }
+            Event::Gesture(gesture) => handler.process_gesture(&gesture, pointer, origin.as_ref()),
             Event::Window(WindowEvent::Resize { width, height }) => {
                 handler.process_resize(width, height)
             }
@@ -152,7 +148,7 @@ impl App {
 impl App {
     pub(crate) fn new(pointer_coarse: bool, handler: Handler) -> Self {
         Self {
-            touch: TouchTracker::default(),
+            pointer: Pointer::default(),
             thresholds: Thresholds::for_device(detect_device(pointer_coarse)),
             events: VecDeque::new(),
             handler,

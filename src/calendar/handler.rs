@@ -26,7 +26,7 @@ use crate::{
     file_store::{Backend, FileStore, FileStoreError, StoreId},
     js_client::{
         Attribute, CanvasEvent, Command, Decimal, EventType, FullscreenEvent, Gesture, Keyword,
-        Method, PointerState, StyleProperty, StyleValue, Unit, VisibilityState, dom::Id,
+        Method, Pointer, StyleProperty, StyleValue, Unit, VisibilityState, dom::Id,
         from_url_search_params, parse, text,
     },
     timestamp::{
@@ -314,7 +314,7 @@ impl Handler {
     pub fn process_canvas(
         &mut self,
         event: &CanvasEvent,
-        _state: &PointerState,
+        _pointer: &Pointer,
     ) -> (Vec<Event>, Vec<Command>) {
         let target = Target::from_dom(&event.id);
         match event.event_type {
@@ -347,7 +347,7 @@ impl Handler {
     pub fn process_gesture(
         &mut self,
         gesture: &Gesture,
-        _state: &PointerState,
+        _pointer: &Pointer,
         _origin: Option<&CanvasEvent>,
     ) -> (Vec<Event>, Vec<Command>) {
         match gesture {
@@ -1963,8 +1963,8 @@ mod tests {
         }
     }
 
-    fn state() -> PointerState {
-        PointerState::default()
+    fn pointer() -> Pointer {
+        Pointer::default()
     }
 
     fn grid_columns(commands: &[Command]) -> Vec<(Id, String)> {
@@ -2105,11 +2105,11 @@ mod tests {
             event_type: EventType::Change,
             ..click(Target::ViewRadio(view).to_dom(), 10.0, 10.0)
         };
-        handler.process_canvas(&event, &state()).1
+        handler.process_canvas(&event, &pointer()).1
     }
 
     fn press(handler: &mut Handler, id: Id) -> Vec<Command> {
-        handler.process_canvas(&click(id, 10.0, 10.0), &state()).1
+        handler.process_canvas(&click(id, 10.0, 10.0), &pointer()).1
     }
 
     #[test]
@@ -2454,17 +2454,17 @@ mod tests {
         let (x, y) = (ox + GRAB_X, oy + 4.0 * SLOT_PX + GRAB_Y);
         handler.process_canvas(
             &pointer_down(Target::CardPart(n, CardPart::Title).to_dom(), x, y),
-            &state(),
+            &pointer(),
         );
         (x, y)
     }
 
     fn drag_to(handler: &mut Handler, x: f64, y: f64) -> Vec<Command> {
-        handler.process_gesture(&Gesture::Drag { x, y }, &state(), None).1
+        handler.process_gesture(&Gesture::Drag { x, y }, &pointer(), None).1
     }
 
     fn end(handler: &mut Handler) -> Vec<Command> {
-        handler.process_gesture(&Gesture::DragEnd, &state(), None).1
+        handler.process_gesture(&Gesture::DragEnd, &pointer(), None).1
     }
 
     fn translate_of(commands: &[Command], n: u32) -> Option<(f32, f32)> {
@@ -2489,7 +2489,7 @@ mod tests {
         assert!(handler.drag.as_ref().is_some_and(|drag| drag.n == 1 && !drag.moved));
         handler.process_canvas(
             &pointer_down(Target::ViewRadio(View::Day).to_dom(), 10.0, 10.0),
-            &state(),
+            &pointer(),
         );
         assert!(handler.drag.is_none());
     }
@@ -2555,7 +2555,7 @@ mod tests {
                 ox + GRAB_X,
                 oy + 4.0 * SLOT_PX + grab_y,
             ),
-            &state(),
+            &pointer(),
         );
         drag_to(&mut handler, ox + 5.0, oy + 43.2 * SLOT_PX + grab_y);
         end(&mut handler);
@@ -2588,7 +2588,7 @@ mod tests {
         let (mut handler, base) = drag_fixture();
         let (x, y) = grab(&mut handler, 1);
         drag_to(&mut handler, x + 200.0, y + 200.0);
-        let commands = handler.process_gesture(&Gesture::DragCancel, &state(), None).1;
+        let commands = handler.process_gesture(&Gesture::DragCancel, &pointer(), None).1;
         assert!(handler.drag.is_none());
         assert_eq!(translate_of(&commands, 1), Some((0.0, 112.0)));
         let unchanged = &handler.calendar().unwrap().appointments[0];
@@ -2615,7 +2615,7 @@ mod tests {
                 ox + GRAB_X,
                 oy + 4.0 * SLOT_PX + GRAB_Y,
             ),
-            &state(),
+            &pointer(),
         );
         drag_to(&mut handler, ox + column_px * 3.0 + 5.0, oy + 4.0 * SLOT_PX + GRAB_Y);
         end(&mut handler);
@@ -2638,7 +2638,7 @@ mod tests {
                 let (grab_x, grab_y) = (ox + GRAB_X, oy + 4.0 * SLOT_PX + GRAB_Y);
                 handler.process_canvas(
                     &pointer_down(Target::CardPart(1, CardPart::Title).to_dom(), grab_x, grab_y),
-                    &state(),
+                    &pointer(),
                 );
                 drag_to(&mut handler, ox + unit as f64 * column_px + 3.0, grab_y);
                 end(&mut handler);
@@ -2709,7 +2709,7 @@ mod tests {
                 ox + from_unit as f64 * column_px + GRAB_X,
                 y,
             ),
-            &state(),
+            &pointer(),
         );
         drag_to(handler, ox + to_unit as f64 * column_px + 5.0, y);
         end(handler);
@@ -2796,7 +2796,7 @@ mod tests {
         handler
             .process_canvas(
                 &pointer_down(Target::CardPart(n, CardPart::Title).to_dom(), ox + x, oy + y),
-                &state(),
+                &pointer(),
             )
             .1
     }
@@ -3078,7 +3078,7 @@ mod tests {
         let mut handler = lone(102);
         press_local(&mut handler, 1, 157.0, 221.0);
         drag_by(&mut handler, COLUMN_MIN_PX, 3.0 * SLOT_PX);
-        let commands = handler.process_gesture(&Gesture::DragCancel, &state(), None).1;
+        let commands = handler.process_gesture(&Gesture::DragCancel, &pointer(), None).1;
         assert_eq!(times(&handler), (600, 660));
         assert_eq!(places(&handler), [(today(), 102)]);
         assert_eq!(translate_of(&commands, 1), Some((COLUMN_MIN_PX as f32, 112.0)));
@@ -3159,7 +3159,7 @@ mod tests {
         end(&mut handler);
         press_local(&mut handler, 1, 120.0, 168.0);
         drag_by(&mut handler, 100.0, 100.0);
-        handler.process_gesture(&Gesture::DragCancel, &state(), None);
+        handler.process_gesture(&Gesture::DragCancel, &pointer(), None);
         assert!(!handler.dirty());
     }
 
@@ -3188,7 +3188,7 @@ mod tests {
                 ox + base[0] + 40.0,
                 oy + base[1] + 20.0,
             ),
-            &state(),
+            &pointer(),
         );
         drag_by(handler, 0.0, dy);
         end(handler);
@@ -3327,7 +3327,7 @@ mod tests {
     fn clicking_a_card_without_moving_opens_the_edit_form() {
         let (mut handler, base) = drag_fixture();
         grab(&mut handler, 1);
-        let (_, commands) = handler.process_gesture(&Gesture::Tap, &state(), None);
+        let (_, commands) = handler.process_gesture(&Gesture::Tap, &pointer(), None);
         let appointment = handler.calendar().unwrap().appointments[0].clone();
         assert_eq!(
             value_of(&commands, &Target::EditField(EditField::Title).to_dom()).unwrap(),
@@ -3357,8 +3357,8 @@ mod tests {
             ox + (column + 0.5) * column_px(VIEWPORT, handler.view(), REM),
             oy + (slot + 0.5) * SLOT_PX,
         );
-        handler.process_canvas(&pointer_down(Target::Surface.to_dom(), x, y), &state());
-        handler.process_gesture(&Gesture::Tap, &state(), None).1
+        handler.process_canvas(&pointer_down(Target::Surface.to_dom(), x, y), &pointer());
+        handler.process_gesture(&Gesture::Tap, &pointer(), None).1
     }
 
     fn form_query(title: &str, date: &str, resource: u32, start: &str, end: &str) -> String {
@@ -3371,7 +3371,7 @@ mod tests {
             value: String::from(query),
             ..click(Target::EditForm.to_dom(), 0.0, 0.0)
         };
-        handler.process_canvas(&event, &state()).1
+        handler.process_canvas(&event, &pointer()).1
     }
 
     #[test]
@@ -3406,7 +3406,7 @@ mod tests {
         let column = column_px(VIEWPORT, handler.view(), REM);
         let at = |(c, s): (f64, f64)| (ox + (c + 0.5) * column, oy + (s + 0.5) * SLOT_PX);
         let (x, y) = at(from);
-        handler.process_canvas(&pointer_down(Target::Surface.to_dom(), x, y), &state());
+        handler.process_canvas(&pointer_down(Target::Surface.to_dom(), x, y), &pointer());
         let (x, y) = at(to);
         let mid = drag_to(handler, x, y);
         assert!(
@@ -3475,10 +3475,10 @@ mod tests {
         let (ox, oy) = grid_origin();
         handler.process_canvas(
             &pointer_down(Target::Surface.to_dom(), ox + 10.0, oy + 10.0),
-            &state(),
+            &pointer(),
         );
         drag_to(&mut handler, ox + 10.0, oy + 3.0 * SLOT_PX);
-        let (_, commands) = handler.process_gesture(&Gesture::DragCancel, &state(), None);
+        let (_, commands) = handler.process_gesture(&Gesture::DragCancel, &pointer(), None);
         assert!(commands.iter().any(|c| matches!(c,
             Command::SetAttribute { id, attribute: Attribute::Hidden, .. } if *id == Target::Preview.to_dom())));
         assert!(handler.create.is_none());
@@ -3496,7 +3496,7 @@ mod tests {
     fn the_zoom_slider_rescales_the_rows_and_redraws() {
         let (mut handler, _) = drag_fixture();
         let before = handler.placed.borrow()[0].base[1];
-        let (_, commands) = handler.process_canvas(&input(Target::Zoom.to_dom(), "3"), &state());
+        let (_, commands) = handler.process_canvas(&input(Target::Zoom.to_dom(), "3"), &pointer());
         assert_eq!(
             grid_rows(&commands),
             [
@@ -3509,20 +3509,22 @@ mod tests {
         );
         let after = handler.placed.borrow()[0].base[1];
         assert_eq!(after, before / SLOT_REM * 3.0);
-        assert!(handler.process_canvas(&input(Target::Zoom.to_dom(), "3"), &state()).1.is_empty());
-        handler.process_canvas(&input(Target::Zoom.to_dom(), "9"), &state());
+        assert!(
+            handler.process_canvas(&input(Target::Zoom.to_dom(), "3"), &pointer()).1.is_empty()
+        );
+        handler.process_canvas(&input(Target::Zoom.to_dom(), "9"), &pointer());
         assert_eq!(handler.slot_rem, ZOOM_MAX);
     }
 
     #[test]
     fn a_drag_after_zooming_still_snaps_to_slots() {
         let (mut handler, _) = drag_fixture();
-        handler.process_canvas(&input(Target::Zoom.to_dom(), "2.5"), &state());
+        handler.process_canvas(&input(Target::Zoom.to_dom(), "2.5"), &pointer());
         let (ox, oy) = grid_origin();
         let slot = 2.5 * REM;
         handler.process_canvas(
             &pointer_down(Target::Surface.to_dom(), ox + 10.0, oy + 5.0 * slot + 3.0),
-            &state(),
+            &pointer(),
         );
         drag_to(&mut handler, ox + 10.0, oy + 7.0 * slot + 3.0);
         let commands = end(&mut handler);
@@ -3540,9 +3542,11 @@ mod tests {
     fn tapping_the_header_does_not_open_a_form() {
         let (mut handler, _) = drag_fixture();
         let (ox, oy) = grid_origin();
-        handler
-            .process_canvas(&pointer_down(Target::Surface.to_dom(), ox + 10.0, oy - 5.0), &state());
-        let (_, commands) = handler.process_gesture(&Gesture::Tap, &state(), None);
+        handler.process_canvas(
+            &pointer_down(Target::Surface.to_dom(), ox + 10.0, oy - 5.0),
+            &pointer(),
+        );
+        let (_, commands) = handler.process_gesture(&Gesture::Tap, &pointer(), None);
         assert!(commands.is_empty());
     }
 
@@ -3601,7 +3605,7 @@ mod tests {
         assert_eq!(text_of(&commands, &Target::EditMessage.to_dom()).unwrap(), "営業時間外です");
         assert_eq!(handler.calendar().unwrap().appointments.len(), 2);
         grab(&mut handler, 1);
-        handler.process_gesture(&Gesture::Tap, &state(), None);
+        handler.process_gesture(&Gesture::Tap, &pointer(), None);
         let same = form_query("kept", &display(base, Lang::Ja, Format::Date), 1, "10:00", "11:00");
         submit(&mut handler, &same);
         assert_eq!(handler.calendar().unwrap().appointments[0].title(), "kept");
@@ -3631,7 +3635,7 @@ mod tests {
     fn modal_closed(handler: &mut Handler) -> Vec<Command> {
         let event =
             CanvasEvent { event_type: EventType::Close, ..click(Target::Modal.to_dom(), 0.0, 0.0) };
-        handler.process_canvas(&event, &state()).1
+        handler.process_canvas(&event, &pointer()).1
     }
 
     #[test]
@@ -3714,7 +3718,7 @@ mod tests {
     }
 
     fn save_pressed(handler: &mut Handler) -> (Vec<Event>, Vec<Command>) {
-        handler.process_canvas(&click(Target::Save.to_dom(), 10.0, 10.0), &state())
+        handler.process_canvas(&click(Target::Save.to_dom(), 10.0, 10.0), &pointer())
     }
 
     #[test]
@@ -3892,7 +3896,7 @@ mod tests {
         let (x, y) = month_point(4, Some(0));
         handler.process_canvas(
             &pointer_down(Target::CardPart(1, CardPart::Title).to_dom(), x, y),
-            &state(),
+            &pointer(),
         );
         let (x, y) = month_point(13, Some(2));
         drag_to(&mut handler, x, y);
@@ -3914,8 +3918,8 @@ mod tests {
     fn tapping_an_empty_month_cell_opens_a_new_form_on_that_day() {
         let mut handler = month_fixture(vec![]);
         let (x, y) = month_point(10, Some(2));
-        handler.process_canvas(&pointer_down(Target::Surface.to_dom(), x, y), &state());
-        let commands = handler.process_gesture(&Gesture::Tap, &state(), None).1;
+        handler.process_canvas(&pointer_down(Target::Surface.to_dom(), x, y), &pointer());
+        let commands = handler.process_gesture(&Gesture::Tap, &pointer(), None).1;
         let value = |field| value_of(&commands, &Target::EditField(field).to_dom()).unwrap();
         assert_eq!(value(EditField::Date), "2026-10-08");
         assert_eq!(value(EditField::Resource), "1");
@@ -3927,8 +3931,8 @@ mod tests {
     fn tapping_a_month_date_opens_its_day_and_restores_the_time_axis() {
         let mut handler = month_fixture(vec![]);
         let (x, y) = month_point(9, None);
-        handler.process_canvas(&pointer_down(Target::Surface.to_dom(), x, y), &state());
-        let commands = handler.process_gesture(&Gesture::Tap, &state(), None).1;
+        handler.process_canvas(&pointer_down(Target::Surface.to_dom(), x, y), &pointer());
+        let commands = handler.process_gesture(&Gesture::Tap, &pointer(), None).1;
         assert_eq!(handler.view(), View::Day);
         assert_eq!(handler.base(), after(month_first(), 9));
         assert_eq!(text_of(&commands, &Target::AxisLabel(1, 2).to_dom()).unwrap(), "09:00");
@@ -3945,7 +3949,9 @@ mod tests {
     #[test]
     fn the_zoom_slider_does_not_rescale_the_month() {
         let mut handler = month_fixture(vec![appointment(1, today(), 101, 600, 660)]);
-        assert!(handler.process_canvas(&input(Target::Zoom.to_dom(), "3"), &state()).1.is_empty());
+        assert!(
+            handler.process_canvas(&input(Target::Zoom.to_dom(), "3"), &pointer()).1.is_empty()
+        );
         assert_eq!(handler.slot_rem, SLOT_REM);
         let height = card_box(&handler.card_commands(), 1).unwrap().3;
         assert_eq!(height as f64, MONTH_ROW_REM * REM);
@@ -4042,7 +4048,7 @@ mod tests {
                             if rng.chance(70) {
                                 end(&mut handler);
                             } else {
-                                handler.process_gesture(&Gesture::DragCancel, &state(), None);
+                                handler.process_gesture(&Gesture::DragCancel, &pointer(), None);
                             }
                         }
                     }
@@ -4061,7 +4067,7 @@ mod tests {
                         let (x, y) = at(&mut rng);
                         handler.process_canvas(
                             &pointer_down(Target::Surface.to_dom(), x, y),
-                            &state(),
+                            &pointer(),
                         );
                         let (x, y) = at(&mut rng);
                         drag_to(&mut handler, x, y);
@@ -4094,7 +4100,7 @@ mod tests {
                     }
                     10 => {
                         let value = format!("{}", 1.0 + rng.below(9) as f64 / 4.0);
-                        handler.process_canvas(&input(Target::Zoom.to_dom(), &value), &state());
+                        handler.process_canvas(&input(Target::Zoom.to_dom(), &value), &pointer());
                     }
                     _ => {
                         let count = handler.placed.borrow().len();

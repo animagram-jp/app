@@ -17,7 +17,7 @@ use crate::{
     data_struct::DataStruct,
     event::{Event, Opened, Response},
     js_client::{
-        Attribute, CanvasEvent, Command, EventType, FullscreenEvent, Gesture, PointerState,
+        Attribute, CanvasEvent, Command, EventType, FullscreenEvent, Gesture, Pointer,
         VisibilityState, dom,
     },
 };
@@ -153,7 +153,7 @@ impl Handler {
     pub fn process_canvas(
         &mut self,
         event: &CanvasEvent,
-        _state: &PointerState,
+        _pointer: &Pointer,
     ) -> (Vec<Event>, Vec<Command>) {
         let toggle = dom::Id::new(&[(dom::Tag::Header, None), (dom::Tag::Button, Some(3))]);
         if !matches!(event.event_type, EventType::Click) || event.id != toggle {
@@ -185,7 +185,7 @@ impl Handler {
     pub fn process_gesture(
         &mut self,
         _gesture: &Gesture,
-        _state: &PointerState,
+        _pointer: &Pointer,
         _origin: Option<&CanvasEvent>,
     ) -> (Vec<Event>, Vec<Command>) {
         (vec![], vec![])
@@ -260,7 +260,7 @@ mod toggle_tests {
             time: 0.0,
             pointer_id: 0,
         };
-        handler.process_canvas(&event, &PointerState::default()).1
+        handler.process_canvas(&event, &Pointer::default()).1
     }
 
     fn toggle_button() -> dom::Id {

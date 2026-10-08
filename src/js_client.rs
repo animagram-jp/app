@@ -938,75 +938,6 @@ impl Default for Thresholds {
     }
 }
 
-#[derive(Debug, Default, Clone, Copy)]
-pub struct PointerState {
-    is_down:          bool,
-    start_x:          f64,
-    start_y:          f64,
-    current_x:        f64,
-    current_y:        f64,
-    start_time:       f64,
-    last_move_x:      f64,
-    last_move_y:      f64,
-    last_move_time:   f64,
-    is_dragging:      bool,
-    long_press_fired: bool,
-    cancelled:        bool,
-}
-
-impl PointerState {
-    #[must_use]
-    pub const fn is_down(&self) -> bool {
-        self.is_down
-    }
-
-    #[must_use]
-    pub fn update(self, event_type: &EventType, x: f64, y: f64, time: f64) -> Self {
-        match event_type {
-            EventType::PointerDown => Self {
-                is_down:          true,
-                start_x:          x,
-                start_y:          y,
-                current_x:        x,
-                current_y:        y,
-                start_time:       time,
-                last_move_x:      x,
-                last_move_y:      y,
-                last_move_time:   time,
-                is_dragging:      false,
-                long_press_fired: false,
-                cancelled:        false,
-            },
-            EventType::PointerMove => Self {
-                current_x: x,
-                current_y: y,
-                last_move_x: x,
-                last_move_y: y,
-                last_move_time: time,
-                ..self
-            },
-            EventType::PointerUp => {
-                Self { is_down: false, current_x: x, current_y: y, cancelled: false, ..self }
-            }
-            EventType::PointerCancel => {
-                Self { is_down: false, current_x: x, current_y: y, cancelled: true, ..self }
-            }
-            _ => self,
-        }
-    }
-
-    fn distance(&self) -> f64 {
-        let dx = self.current_x - self.start_x;
-        let dy = self.current_y - self.start_y;
-        libm::sqrt(dx * dx + dy * dy)
-    }
-
-    #[must_use]
-    pub const fn current(&self) -> (f64, f64) {
-        (self.current_x, self.current_y)
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Gesture {
     Tap,
@@ -1022,123 +953,6 @@ pub enum Gesture {
     PinchEnd,
 }
 
-#[must_use]
-pub fn detect_gesture(
-    state: &mut PointerState,
-    prev_state: &PointerState,
-    event_type: &EventType,
-    current_time: f64,
-    thresholds: &Thresholds,
-) -> Option<Gesture> {
-    match event_type {
-        EventType::PointerUp | EventType::PointerCancel => {
-            detect_on_release(state, prev_state, current_time, thresholds)
-        }
-        EventType::PointerMove => detect_on_move(state, current_time, thresholds),
-        _ => None,
-    }
-}
-
-fn detect_on_release(
-    state: &mut PointerState,
-    prev_state: &PointerState,
-    current_time: f64,
-    thresholds: &Thresholds,
-) -> Option<Gesture> {
-    if prev_state.is_dragging {
-        state.is_dragging = false;
-        return Some(if state.cancelled { Gesture::DragCancel } else { Gesture::DragEnd });
-    }
-
-    if state.cancelled {
-        return None;
-    }
-
-    let dt = current_time - state.start_time;
-    if dt <= 0.0 {
-        return None;
-    }
-    let distance = state.distance();
-
-    //
-    let move_dt = current_time - state.last_move_time;
-    let velocity = if move_dt > 0.0 {
-        let mdx = state.current_x - state.last_move_x;
-        let mdy = state.current_y - state.last_move_y;
-        libm::sqrt(mdx * mdx + mdy * mdy) / move_dt
-    } else {
-        0.0
-    };
-    if velocity > thresholds.swipe_min_velocity
-        && distance > thresholds.swipe_min_px
-        && dt < thresholds.swipe_max_ms
-    {
-        let dx = state.current_x - state.start_x;
-        let dy = state.current_y - state.start_y;
-        return Some(if libm::fabs(dx) > libm::fabs(dy) {
-            if dx > 0.0 { Gesture::SwipeRight } else { Gesture::SwipeLeft }
-        } else if dy > 0.0 {
-            Gesture::SwipeDown
-        } else {
-            Gesture::SwipeUp
-        });
-    }
-
-    if state.long_press_fired {
-        return None;
-    }
-
-    if dt > thresholds.long_press_ms && distance < thresholds.long_press_slop_px {
-        return Some(Gesture::LongPress);
-    }
-
-    if dt < thresholds.tap_max_ms && distance < thresholds.tap_slop_px {
-        return Some(Gesture::Tap);
-    }
-
-    None
-}
-
-fn detect_on_move(
-    state: &mut PointerState,
-    current_time: f64,
-    thresholds: &Thresholds,
-) -> Option<Gesture> {
-    if !state.is_down {
-        return None;
-    }
-
-    let distance = state.distance();
-
-    if !state.long_press_fired
-        && !state.is_dragging
-        && distance < thresholds.long_press_slop_px
-        && current_time - state.start_time > thresholds.long_press_ms
-    {
-        state.long_press_fired = true;
-        return Some(Gesture::LongPress);
-    }
-
-    if distance <= thresholds.drag_start_px {
-        return None;
-    }
-
-    if state.is_dragging {
-        return Some(Gesture::Drag { x: state.current_x, y: state.current_y });
-    }
-
-    let dt = current_time - state.start_time;
-    if dt > 0.0 && dt < thresholds.swipe_max_ms {
-        let velocity = distance / dt;
-        if velocity > thresholds.swipe_min_velocity && distance > thresholds.swipe_min_px {
-            return None;
-        }
-    }
-
-    state.is_dragging = true;
-    Some(Gesture::Drag { x: state.current_x, y: state.current_y })
-}
-
 #[cfg(test)]
 mod gesture_tests {
     use alloc::vec::Vec;
@@ -1146,12 +960,11 @@ mod gesture_tests {
     use super::*;
 
     fn run(events: &[(EventType, f64, f64, f64)], th: &Thresholds) -> Vec<Gesture> {
-        let mut state = PointerState::default();
+        let mut pointer = Pointer::default();
         let mut out = Vec::new();
         for (event_type, x, y, time) in events {
-            let prev = state;
-            state = state.update(event_type, *x, *y, *time);
-            if let Some(g) = detect_gesture(&mut state, &prev, event_type, *time, th) {
+            pointer.update(event_type, *x, *y, *time);
+            if let Some(g) = pointer.detect(event_type, *time, th) {
                 out.push(g);
             }
         }
@@ -1390,7 +1203,7 @@ struct TwoFingerState {
 
 impl TwoFingerState {
     #[must_use]
-    fn touch_down(self, id: u32, x: f64, y: f64) -> Self {
+    fn add_touch(self, id: u32, x: f64, y: f64) -> Self {
         match (self.primary, self.secondary) {
             (None, _) => Self { primary: Some(TouchPoint::new(id, x, y)), ..self },
             (Some(_), None) => Self {
@@ -1403,7 +1216,7 @@ impl TwoFingerState {
     }
 
     #[must_use]
-    fn touch_move(self, id: u32, x: f64, y: f64) -> Self {
+    fn move_touch(self, id: u32, x: f64, y: f64) -> Self {
         if self.primary.is_some_and(|p| p.id == id) {
             Self {
                 primary: self.primary.map(|p| TouchPoint { current_x: x, current_y: y, ..p }),
@@ -1420,7 +1233,7 @@ impl TwoFingerState {
     }
 
     #[must_use]
-    fn touch_up(self, id: u32) -> (Self, TwoFingerMode) {
+    fn remove_touch(self, id: u32) -> (Self, TwoFingerMode) {
         let ended_mode = self.mode;
         if self.primary.is_some_and(|p| p.id == id) {
             (
@@ -1449,7 +1262,7 @@ impl TwoFingerState {
     }
 
     #[must_use]
-    fn primary_current(&self) -> Option<(f64, f64)> {
+    fn primary_position(&self) -> Option<(f64, f64)> {
         self.primary.map(|p| (p.current_x, p.current_y))
     }
 
@@ -1479,12 +1292,12 @@ impl TwoFingerState {
                 y: (p.current_y + s.current_y) / 2.0,
             },
             TwoFingerMode::Pinch => {
-                let start_distance = two_point_distance(p.start_x, p.start_y, s.start_x, s.start_y);
+                let start_distance = measure_distance(p.start_x, p.start_y, s.start_x, s.start_y);
                 if start_distance <= 0.0 {
                     return FoldedInput::None;
                 }
                 let current_distance =
-                    two_point_distance(p.current_x, p.current_y, s.current_x, s.current_y);
+                    measure_distance(p.current_x, p.current_y, s.current_x, s.current_y);
                 FoldedInput::Pinch {
                     scale:    current_distance / start_distance,
                     center_x: (p.current_x + s.current_x) / 2.0,
@@ -1495,22 +1308,33 @@ impl TwoFingerState {
     }
 }
 
-fn two_point_distance(x0: f64, y0: f64, x1: f64, y1: f64) -> f64 {
+fn measure_distance(x0: f64, y0: f64, x1: f64, y1: f64) -> f64 {
     let dx = x1 - x0;
     let dy = y1 - y0;
     libm::sqrt(dx * dx + dy * dy)
 }
 
 #[derive(Debug, Default)]
-pub struct TouchTracker {
-    primary_state: PointerState,
-    two_fingers:   TwoFingerState,
-    pan_state:     Option<PointerState>,
+pub struct Pointer {
+    is_down:          bool,
+    start_x:          f64,
+    start_y:          f64,
+    current_x:        f64,
+    current_y:        f64,
+    start_time:       f64,
+    last_move_x:      f64,
+    last_move_y:      f64,
+    last_move_time:   f64,
+    is_dragging:      bool,
+    long_press_fired: bool,
+    cancelled:        bool,
+    two_fingers:      TwoFingerState,
+    panning:          bool,
 }
 
-impl TouchTracker {
+impl Pointer {
     #[must_use]
-    pub fn handle(
+    pub fn track(
         &mut self,
         event_type: &EventType,
         pointer_id: u32,
@@ -1521,38 +1345,190 @@ impl TouchTracker {
     ) -> Option<Gesture> {
         match event_type {
             EventType::PointerDown => {
-                self.on_down(pointer_id, x, y, time);
+                self.track_down(pointer_id, x, y, time);
                 None
             }
-            EventType::PointerMove => self.on_move(pointer_id, x, y, time, thresholds),
+            EventType::PointerMove => self.track_move(pointer_id, x, y, time, thresholds),
             EventType::PointerUp | EventType::PointerCancel => {
-                self.on_up(event_type, pointer_id, x, y, time, thresholds)
+                self.track_up(event_type, pointer_id, x, y, time, thresholds)
             }
             _ => None,
         }
     }
 
     #[must_use]
-    pub const fn active_state(&self) -> &PointerState {
-        match &self.pan_state {
-            Some(state) => state,
-            None => &self.primary_state,
+    pub const fn is_down(&self) -> bool {
+        self.is_down
+    }
+
+    #[must_use]
+    pub const fn current(&self) -> (f64, f64) {
+        (self.current_x, self.current_y)
+    }
+
+    fn distance(&self) -> f64 {
+        measure_distance(self.start_x, self.start_y, self.current_x, self.current_y)
+    }
+
+    fn update(&mut self, event_type: &EventType, x: f64, y: f64, time: f64) {
+        match event_type {
+            EventType::PointerDown => {
+                *self = Self {
+                    is_down:          true,
+                    start_x:          x,
+                    start_y:          y,
+                    current_x:        x,
+                    current_y:        y,
+                    start_time:       time,
+                    last_move_x:      x,
+                    last_move_y:      y,
+                    last_move_time:   time,
+                    is_dragging:      false,
+                    long_press_fired: false,
+                    cancelled:        false,
+                    two_fingers:      self.two_fingers,
+                    panning:          self.panning,
+                };
+            }
+            EventType::PointerMove => {
+                self.current_x = x;
+                self.current_y = y;
+                self.last_move_x = x;
+                self.last_move_y = y;
+                self.last_move_time = time;
+            }
+            EventType::PointerUp | EventType::PointerCancel => {
+                self.is_down = false;
+                self.current_x = x;
+                self.current_y = y;
+                self.cancelled = matches!(event_type, EventType::PointerCancel);
+            }
+            _ => {}
         }
     }
 
-    fn on_down(&mut self, id: u32, x: f64, y: f64, time: f64) {
+    fn clear(&mut self) {
+        *self = Self { two_fingers: self.two_fingers, panning: self.panning, ..Self::default() };
+    }
+
+    fn detect(
+        &mut self,
+        event_type: &EventType,
+        current_time: f64,
+        thresholds: &Thresholds,
+    ) -> Option<Gesture> {
+        match event_type {
+            EventType::PointerUp | EventType::PointerCancel => {
+                self.detect_release(current_time, thresholds)
+            }
+            EventType::PointerMove => self.detect_move(current_time, thresholds),
+            _ => None,
+        }
+    }
+
+    fn detect_release(&mut self, current_time: f64, thresholds: &Thresholds) -> Option<Gesture> {
+        if self.is_dragging {
+            self.is_dragging = false;
+            return Some(if self.cancelled { Gesture::DragCancel } else { Gesture::DragEnd });
+        }
+
+        if self.cancelled {
+            return None;
+        }
+
+        let dt = current_time - self.start_time;
+        if dt <= 0.0 {
+            return None;
+        }
+        let distance = self.distance();
+
+        let move_dt = current_time - self.last_move_time;
+        let velocity = if move_dt > 0.0 {
+            let mdx = self.current_x - self.last_move_x;
+            let mdy = self.current_y - self.last_move_y;
+            libm::sqrt(mdx * mdx + mdy * mdy) / move_dt
+        } else {
+            0.0
+        };
+        if velocity > thresholds.swipe_min_velocity
+            && distance > thresholds.swipe_min_px
+            && dt < thresholds.swipe_max_ms
+        {
+            let dx = self.current_x - self.start_x;
+            let dy = self.current_y - self.start_y;
+            return Some(if libm::fabs(dx) > libm::fabs(dy) {
+                if dx > 0.0 { Gesture::SwipeRight } else { Gesture::SwipeLeft }
+            } else if dy > 0.0 {
+                Gesture::SwipeDown
+            } else {
+                Gesture::SwipeUp
+            });
+        }
+
+        if self.long_press_fired {
+            return None;
+        }
+
+        if dt > thresholds.long_press_ms && distance < thresholds.long_press_slop_px {
+            return Some(Gesture::LongPress);
+        }
+
+        if dt < thresholds.tap_max_ms && distance < thresholds.tap_slop_px {
+            return Some(Gesture::Tap);
+        }
+
+        None
+    }
+
+    fn detect_move(&mut self, current_time: f64, thresholds: &Thresholds) -> Option<Gesture> {
+        if !self.is_down {
+            return None;
+        }
+
+        let distance = self.distance();
+
+        if !self.long_press_fired
+            && !self.is_dragging
+            && distance < thresholds.long_press_slop_px
+            && current_time - self.start_time > thresholds.long_press_ms
+        {
+            self.long_press_fired = true;
+            return Some(Gesture::LongPress);
+        }
+
+        if distance <= thresholds.drag_start_px {
+            return None;
+        }
+
+        if self.is_dragging {
+            return Some(Gesture::Drag { x: self.current_x, y: self.current_y });
+        }
+
+        let dt = current_time - self.start_time;
+        if dt > 0.0 && dt < thresholds.swipe_max_ms {
+            let velocity = distance / dt;
+            if velocity > thresholds.swipe_min_velocity && distance > thresholds.swipe_min_px {
+                return None;
+            }
+        }
+
+        self.is_dragging = true;
+        Some(Gesture::Drag { x: self.current_x, y: self.current_y })
+    }
+
+    fn track_down(&mut self, id: u32, x: f64, y: f64, time: f64) {
         if self.two_fingers.primary_id() == Some(id) || self.two_fingers.secondary_id() == Some(id)
         {
-            self.two_fingers = self.two_fingers.touch_move(id, x, y);
+            self.two_fingers = self.two_fingers.move_touch(id, x, y);
             return;
         }
         if self.two_fingers.primary_id().is_none() {
-            self.primary_state = self.primary_state.update(&EventType::PointerDown, x, y, time);
+            self.update(&EventType::PointerDown, x, y, time);
         }
-        self.two_fingers = self.two_fingers.touch_down(id, x, y);
+        self.two_fingers = self.two_fingers.add_touch(id, x, y);
     }
 
-    fn on_move(
+    fn track_move(
         &mut self,
         id: u32,
         x: f64,
@@ -1565,18 +1541,17 @@ impl TouchTracker {
         if !is_primary && !is_secondary {
             return None;
         }
-        self.two_fingers = self.two_fingers.touch_move(id, x, y);
+        self.two_fingers = self.two_fingers.move_touch(id, x, y);
 
         if self.two_fingers.secondary_id().is_some() {
-            return self.fold_and_emit(time, thresholds);
+            return self.track_fold(time, thresholds);
         }
 
-        let prev = self.primary_state;
-        self.primary_state = self.primary_state.update(&EventType::PointerMove, x, y, time);
-        detect_gesture(&mut self.primary_state, &prev, &EventType::PointerMove, time, thresholds)
+        self.update(&EventType::PointerMove, x, y, time);
+        self.detect(&EventType::PointerMove, time, thresholds)
     }
 
-    fn on_up(
+    fn track_up(
         &mut self,
         event_type: &EventType,
         id: u32,
@@ -1590,24 +1565,22 @@ impl TouchTracker {
         let had_secondary = self.two_fingers.secondary_id().is_some();
 
         if is_secondary || (is_primary && had_secondary) {
-            let (next, ended_mode) = self.two_fingers.touch_up(id);
+            let (next, ended_mode) = self.two_fingers.remove_touch(id);
             self.two_fingers = next;
-            let gesture = self.end_two_finger_session(event_type, ended_mode, time, thresholds);
+            let gesture = self.end_session(event_type, ended_mode, time, thresholds);
             self.resync_primary(time);
             gesture
         } else if is_primary {
-            let prev = self.primary_state;
-            self.primary_state = self.primary_state.update(event_type, x, y, time);
-            let gesture =
-                detect_gesture(&mut self.primary_state, &prev, event_type, time, thresholds);
-            self.two_fingers = self.two_fingers.touch_up(id).0;
+            self.update(event_type, x, y, time);
+            let gesture = self.detect(event_type, time, thresholds);
+            self.two_fingers = self.two_fingers.remove_touch(id).0;
             gesture
         } else {
             None
         }
     }
 
-    fn end_two_finger_session(
+    fn end_session(
         &mut self,
         event_type: &EventType,
         ended_mode: TwoFingerMode,
@@ -1618,43 +1591,38 @@ impl TouchTracker {
             TwoFingerMode::Undetermined => None,
             TwoFingerMode::Pinch => Some(Gesture::PinchEnd),
             TwoFingerMode::Pan => {
-                let state = self.pan_state.take()?;
-                let (cx, cy) = state.current();
-                let prev = state;
-                let mut next = state.update(event_type, cx, cy, time);
-                detect_gesture(&mut next, &prev, event_type, time, thresholds)
+                if !core::mem::take(&mut self.panning) {
+                    return None;
+                }
+                let (cx, cy) = self.current();
+                self.update(event_type, cx, cy, time);
+                self.detect(event_type, time, thresholds)
             }
         }
     }
 
     fn resync_primary(&mut self, time: f64) {
-        self.primary_state = match self.two_fingers.primary_current() {
-            Some((x, y)) => PointerState::default().update(&EventType::PointerDown, x, y, time),
-            None => PointerState::default(),
-        };
+        match self.two_fingers.primary_position() {
+            Some((x, y)) => self.update(&EventType::PointerDown, x, y, time),
+            None => self.clear(),
+        }
     }
 
-    fn fold_and_emit(&mut self, time: f64, thresholds: &Thresholds) -> Option<Gesture> {
+    fn track_fold(&mut self, time: f64, thresholds: &Thresholds) -> Option<Gesture> {
         match self.two_fingers.fold() {
             FoldedInput::None => None,
             FoldedInput::Pinch { scale, center_x, center_y } => {
                 Some(Gesture::Pinch { scale, center_x, center_y })
             }
-            FoldedInput::AsSinglePoint { x, y } => match self.pan_state {
-                None => {
-                    self.pan_state =
-                        Some(PointerState::default().update(&EventType::PointerDown, x, y, time));
-                    None
+            FoldedInput::AsSinglePoint { x, y } => {
+                if !self.panning {
+                    self.panning = true;
+                    self.update(&EventType::PointerDown, x, y, time);
+                    return None;
                 }
-                Some(state) => {
-                    let prev = state;
-                    let mut next = state.update(&EventType::PointerMove, x, y, time);
-                    let gesture =
-                        detect_gesture(&mut next, &prev, &EventType::PointerMove, time, thresholds);
-                    self.pan_state = Some(next);
-                    gesture
-                }
-            },
+                self.update(&EventType::PointerMove, x, y, time);
+                self.detect(&EventType::PointerMove, time, thresholds)
+            }
         }
     }
 }
@@ -1666,8 +1634,8 @@ mod two_finger_tests {
     #[test]
     fn symmetric_pinch_out_increases_scale() {
         let mut state =
-            TwoFingerState::default().touch_down(1, 140.0, 100.0).touch_down(2, 160.0, 100.0);
-        state = state.touch_move(1, 100.0, 100.0).touch_move(2, 200.0, 100.0);
+            TwoFingerState::default().add_touch(1, 140.0, 100.0).add_touch(2, 160.0, 100.0);
+        state = state.move_touch(1, 100.0, 100.0).move_touch(2, 200.0, 100.0);
         match state.fold() {
             FoldedInput::Pinch { scale, .. } => assert!(scale > 1.0, "scale = {scale}"),
             other => panic!("expected Pinch, got {other:?}"),
@@ -1677,40 +1645,40 @@ mod two_finger_tests {
     #[test]
     fn mode_latches_after_commit() {
         let mut state =
-            TwoFingerState::default().touch_down(1, 100.0, 100.0).touch_down(2, 200.0, 100.0);
-        state = state.touch_move(1, 140.0, 100.0).touch_move(2, 160.0, 100.0);
+            TwoFingerState::default().add_touch(1, 100.0, 100.0).add_touch(2, 200.0, 100.0);
+        state = state.move_touch(1, 140.0, 100.0).move_touch(2, 160.0, 100.0);
         assert!(matches!(state.fold(), FoldedInput::Pinch { .. }));
 
-        state = state.touch_move(1, 140.0, 100.0).touch_move(2, 140.0, 100.0);
+        state = state.move_touch(1, 140.0, 100.0).move_touch(2, 140.0, 100.0);
         assert!(matches!(state.fold(), FoldedInput::Pinch { .. }));
     }
 
     #[test]
     fn new_session_reclassifies_independently() {
         let mut state =
-            TwoFingerState::default().touch_down(1, 100.0, 100.0).touch_down(2, 200.0, 100.0);
-        state = state.touch_move(1, 140.0, 100.0).touch_move(2, 160.0, 100.0);
+            TwoFingerState::default().add_touch(1, 100.0, 100.0).add_touch(2, 200.0, 100.0);
+        state = state.move_touch(1, 140.0, 100.0).move_touch(2, 160.0, 100.0);
         assert!(matches!(state.fold(), FoldedInput::Pinch { .. }));
 
-        state = state.touch_up(2).0.touch_up(1).0;
-        state = state.touch_down(3, 0.0, 0.0).touch_down(4, 50.0, 0.0);
-        state = state.touch_move(3, 0.0, 50.0).touch_move(4, 50.0, 50.0);
+        state = state.remove_touch(2).0.remove_touch(1).0;
+        state = state.add_touch(3, 0.0, 0.0).add_touch(4, 50.0, 0.0);
+        state = state.move_touch(3, 0.0, 50.0).move_touch(4, 50.0, 50.0);
         assert_eq!(state.fold(), FoldedInput::AsSinglePoint { x: 25.0, y: 50.0 });
     }
 }
 
 #[cfg(test)]
-mod touch_tracker_tests {
+mod pointer_tests {
     use alloc::vec::Vec;
 
     use super::*;
     use crate::testing::Rng;
 
     fn run(events: &[(EventType, u32, f64, f64, f64)], th: &Thresholds) -> Vec<Option<Gesture>> {
-        let mut tracker = TouchTracker::default();
+        let mut pointer = Pointer::default();
         events
             .iter()
-            .map(|(event_type, id, x, y, time)| tracker.handle(event_type, *id, *x, *y, *time, th))
+            .map(|(event_type, id, x, y, time)| pointer.track(event_type, *id, *x, *y, *time, th))
             .collect()
     }
 
@@ -1848,6 +1816,26 @@ mod touch_tracker_tests {
             &th,
         );
         assert_eq!(got[4], Some(Gesture::PinchEnd));
+    }
+
+    #[test]
+    fn a_second_two_finger_pan_behaves_like_the_first() {
+        let th = Thresholds::MOUSE;
+        let pan = |offset: f64| {
+            [
+                (EventType::PointerDown, 1, 0.0, 0.0, offset),
+                (EventType::PointerDown, 2, 100.0, 0.0, offset),
+                (EventType::PointerMove, 1, 30.0, 0.0, offset + 50.0),
+                (EventType::PointerMove, 2, 130.0, 0.0, offset + 60.0),
+                (EventType::PointerMove, 1, 60.0, 0.0, offset + 120.0),
+                (EventType::PointerUp, 2, 130.0, 0.0, offset + 200.0),
+                (EventType::PointerUp, 1, 60.0, 0.0, offset + 210.0),
+            ]
+        };
+        let events = [pan(0.0), pan(1000.0)].concat();
+        let got = run(&events, &th);
+        assert_eq!(got[0..7], got[7..14]);
+        assert_eq!(got[4], Some(Gesture::Drag { x: 95.0, y: 0.0 }));
     }
 
     #[test]
