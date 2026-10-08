@@ -81,51 +81,55 @@ pub enum WindowEvent {
 }
 
 /// ```
-/// # use app::event::{decode_event, Event, WindowEvent, EVENT_SHUTDOWN};
-/// assert!(matches!(decode_event(&[EVENT_SHUTDOWN]), Some(Event::Window(WindowEvent::Shutdown))));
-/// assert!(decode_event(&[200]).is_none());
-/// assert!(decode_event(&[]).is_none());
+/// # use app::{event::{Event, WindowEvent, EVENT_SHUTDOWN}, js_client::Input};
+/// assert!(matches!(Event::decode(&mut &[EVENT_SHUTDOWN][..]), Some(Event::Window(WindowEvent::Shutdown))));
+/// assert!(Event::decode(&mut &[200][..]).is_none());
+/// assert!(Event::decode(&mut &[][..]).is_none());
 /// ```
-pub fn decode_event(frame: &[u8]) -> Option<Event> {
-    let mut input = frame;
-    let kind = u8::decode(&mut input)?;
-    Some(match kind {
-        EVENT_CANVAS => Event::Canvas(CanvasEvent {
-            event_type: EventType::decode_u8(u8::decode(&mut input)?),
-            id:         Input::decode(&mut input)?,
-            key:        KeyName::decode_u8(u8::decode(&mut input)?),
-            flags:      Input::decode(&mut input)?,
-            value:      Input::decode(&mut input)?,
-            x:          f32::decode(&mut input)? as f64,
-            y:          f32::decode(&mut input)? as f64,
-            local_x:    f32::decode(&mut input)? as f64,
-            local_y:    f32::decode(&mut input)? as f64,
-            time:       Input::decode(&mut input)?,
-            pointer_id: Input::decode(&mut input)?,
-        }),
-        EVENT_RESIZE => Event::Window(WindowEvent::Resize {
-            width:  f32::decode(&mut input)? as f64,
-            height: f32::decode(&mut input)? as f64,
-        }),
-        EVENT_SCROLL => Event::Window(WindowEvent::Scroll {
-            x: f32::decode(&mut input)? as f64,
-            y: f32::decode(&mut input)? as f64,
-        }),
-        EVENT_VISIBILITY => Event::Window(WindowEvent::Visibility {
-            state: VisibilityState::decode_u8(u8::decode(&mut input)?),
-        }),
-        EVENT_FETCH => Event::FetchChunk(FetchChunk {
-            request: Input::decode(&mut input)?,
-            status:  Input::decode(&mut input)?,
-            last:    u8::decode(&mut input)? != 0,
-            bytes:   Input::decode(&mut input)?,
-        }),
-        EVENT_FULLSCREEN => Event::Window(WindowEvent::Fullscreen(FullscreenEvent::decode_u8(
-            u8::decode(&mut input)?,
-        ))),
-        EVENT_SHUTDOWN => Event::Window(WindowEvent::Shutdown),
-        _ => return None,
-    })
+impl Input for Event {
+    fn decode(source: &mut &[u8]) -> Option<Self> {
+        let mut input = *source;
+        let kind = u8::decode(&mut input)?;
+        let event = match kind {
+            EVENT_CANVAS => Event::Canvas(CanvasEvent {
+                event_type: EventType::from_u8(u8::decode(&mut input)?),
+                id:         Input::decode(&mut input)?,
+                key:        KeyName::from_u8(u8::decode(&mut input)?),
+                flags:      Input::decode(&mut input)?,
+                value:      Input::decode(&mut input)?,
+                x:          f32::decode(&mut input)? as f64,
+                y:          f32::decode(&mut input)? as f64,
+                local_x:    f32::decode(&mut input)? as f64,
+                local_y:    f32::decode(&mut input)? as f64,
+                time:       Input::decode(&mut input)?,
+                pointer_id: Input::decode(&mut input)?,
+            }),
+            EVENT_RESIZE => Event::Window(WindowEvent::Resize {
+                width:  f32::decode(&mut input)? as f64,
+                height: f32::decode(&mut input)? as f64,
+            }),
+            EVENT_SCROLL => Event::Window(WindowEvent::Scroll {
+                x: f32::decode(&mut input)? as f64,
+                y: f32::decode(&mut input)? as f64,
+            }),
+            EVENT_VISIBILITY => Event::Window(WindowEvent::Visibility {
+                state: VisibilityState::from_u8(u8::decode(&mut input)?),
+            }),
+            EVENT_FETCH => Event::FetchChunk(FetchChunk {
+                request: Input::decode(&mut input)?,
+                status:  Input::decode(&mut input)?,
+                last:    u8::decode(&mut input)? != 0,
+                bytes:   Input::decode(&mut input)?,
+            }),
+            EVENT_FULLSCREEN => Event::Window(WindowEvent::Fullscreen(FullscreenEvent::from_u8(
+                u8::decode(&mut input)?,
+            ))),
+            EVENT_SHUTDOWN => Event::Window(WindowEvent::Shutdown),
+            _ => return None,
+        };
+        *source = input;
+        Some(event)
+    }
 }
 
 #[cfg(test)]
@@ -135,6 +139,10 @@ mod tests {
 
     use super::*;
     use crate::{js_client::Output, testing::Rng};
+
+    fn decode_event(frame: &[u8]) -> Option<Event> {
+        Event::decode(&mut { frame })
+    }
 
     const INIT_JS: &str = include_str!("../distribution/init.js");
 
@@ -214,8 +222,8 @@ mod tests {
                     let Some(Event::Canvas(event)) = decode_event(&frame) else {
                         panic!("seed {seed}: not a canvas event");
                     };
-                    assert_eq!(event.event_type, EventType::decode_u8(kind), "seed {seed}");
-                    assert_eq!(event.key, KeyName::decode_u8(key), "seed {seed}");
+                    assert_eq!(event.event_type, EventType::from_u8(kind), "seed {seed}");
+                    assert_eq!(event.key, KeyName::from_u8(key), "seed {seed}");
                     assert_eq!(
                         (&event.id, &event.value, event.flags),
                         (&id, &value, flags),
@@ -257,7 +265,7 @@ mod tests {
                     else {
                         panic!("seed {seed}: not a visibility event");
                     };
-                    assert_eq!(decoded, VisibilityState::decode_u8(state), "seed {seed}");
+                    assert_eq!(decoded, VisibilityState::from_u8(state), "seed {seed}");
                 }
                 EVENT_FULLSCREEN => {
                     let event = rng.next_u64() as u8;
@@ -268,7 +276,7 @@ mod tests {
                     else {
                         panic!("seed {seed}: not a fullscreen event");
                     };
-                    assert_eq!(decoded, FullscreenEvent::decode_u8(event), "seed {seed}");
+                    assert_eq!(decoded, FullscreenEvent::from_u8(event), "seed {seed}");
                 }
                 EVENT_FETCH => {
                     let (request, status, last) =

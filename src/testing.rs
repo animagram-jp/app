@@ -55,7 +55,7 @@ impl Rng {
         let depth = self.below(5);
         let segments: Vec<(dom::Tag, Option<u32>)> = (0..depth)
             .map(|_| {
-                let tag = dom::Tag::decode_u8(self.below(24) as u8);
+                let tag = dom::Tag::from_u8(self.below(24) as u8);
                 let number =
                     self.chance(50).then(|| (self.next_u64() % u64::from(u32::MAX)) as u32);
                 (tag, number)

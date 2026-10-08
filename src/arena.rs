@@ -20,7 +20,7 @@ use wasm_bindgen::prelude::wasm_bindgen;
 use crate::{
     Error,
     app::App,
-    js_client::{WireError, encode_command, encode_error},
+    js_client::{Output, WireError},
 };
 #[cfg(all(target_arch = "wasm32", target_feature = "atomics"))]
 use crate::{
@@ -247,7 +247,7 @@ fn flush(app: &App) {
     let mut frame = Vec::new();
     let emitted = app.commands().iter().all(|command| {
         frame.clear();
-        encode_command(&mut frame, command);
+        command.encode(&mut frame);
         emit(&frame)
     });
     if !emitted {
@@ -352,24 +352,8 @@ impl WireError for PanicError {
 // === error report ===
 
 pub fn report_error(error: Error) {
-    let mut path = Vec::new();
-    error.identifiers(&mut path);
-    let overhead = LENGTH_PREFIX + 1 + 1 + 1 + 2 * path.len() + 4;
-    let limit = COMMAND_RING.frame_max - overhead;
-
-    let full_detail = error.detail();
-    let detail = if full_detail.len() <= limit {
-        &full_detail[..]
-    } else {
-        let mut end = limit;
-        while end > 0 && !full_detail.is_char_boundary(end) {
-            end -= 1;
-        }
-        &full_detail[..end]
-    };
-
-    let mut frame = Vec::with_capacity(detail.len() + overhead);
-    encode_error(&mut frame, &error, detail);
+    let mut frame = Vec::new();
+    error.encode(&mut frame);
     let _ = emit(&frame);
 }
 

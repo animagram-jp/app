@@ -20,10 +20,10 @@ use crate::handler::Handler;
 use crate::{
     Error,
     arena::{APP, RUNNING, emit},
-    event::{Event, EventError, Response, WindowEvent, decode_event},
+    event::{Event, EventError, Response, WindowEvent},
     file_store::StoreId,
     js_client::{
-        CanvasEvent, Command, EventType, Thresholds, TouchTracker, detect_device, encode_command,
+        CanvasEvent, Command, EventType, Input, Output, Thresholds, TouchTracker, detect_device,
     },
 };
 
@@ -64,7 +64,7 @@ impl App {
         let (_events, commands) = app.handler.initial_draw();
         for command in &commands {
             let mut frame = Vec::new();
-            encode_command(&mut frame, command);
+            command.encode(&mut frame);
             emit(&frame);
         }
 
@@ -77,7 +77,7 @@ impl App {
     /// Decode a event frame and dispatch it together with every event
     /// it derives, in FIFO order, appending the resulting commands.
     pub fn process(&mut self, frame: &[u8]) {
-        let Some(event) = decode_event(frame) else {
+        let Some(event) = Event::decode(&mut { frame }) else {
             self.commands.push(Command::Error { error: Error::Event(EventError::Decode) });
             return;
         };
@@ -234,8 +234,8 @@ mod tests {
 
     #[test]
     fn origin_follows_the_pointerdown_that_starts_a_sequence() {
-        assert_eq!(EventType::decode_u8(POINTER_DOWN), EventType::PointerDown);
-        assert_eq!(EventType::decode_u8(POINTER_UP), EventType::PointerUp);
+        assert_eq!(EventType::from_u8(POINTER_DOWN), EventType::PointerDown);
+        assert_eq!(EventType::from_u8(POINTER_UP), EventType::PointerUp);
 
         let mut app = new_app();
         assert_eq!(origin_id(&app), None);
@@ -265,7 +265,7 @@ mod tests {
         app.process(&pointer_frame(POINTER_DOWN, &section(1), 10.0, 1, 0.0));
 
         let Some(Event::Canvas(release)) =
-            decode_event(&pointer_frame(POINTER_UP, &section(1), 10.0, 1, 50.0))
+            Event::decode(&mut &pointer_frame(POINTER_UP, &section(1), 10.0, 1, 50.0)[..])
         else {
             panic!("not a canvas event");
         };

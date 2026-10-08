@@ -209,7 +209,7 @@ mod tests {
 
     #[wasm_bindgen_test]
     async fn process_event_emits_one_frame_per_command() {
-        assert_eq!(EventType::decode_u8(CLICK), EventType::Click);
+        assert_eq!(EventType::from_u8(CLICK), EventType::Click);
         initialize();
         App::init(false, 0.0, 0.0, 16.0, 0.0, 0).await;
 

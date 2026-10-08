@@ -92,95 +92,97 @@ pub enum Command {
 }
 
 /// ```
-/// # use app::js_client::{encode_command, Command, dom, OPERATION_FOCUS};
+/// # use app::js_client::{Command, Output, dom, OPERATION_FOCUS};
 /// let mut frame = Vec::new();
-/// encode_command(&mut frame, &Command::Focus {
-///     id: dom::Id::new(&[(dom::Tag::Body, None)]),
-/// });
+/// Command::Focus { id: dom::Id::new(&[(dom::Tag::Body, None)]) }.encode(&mut frame);
 /// assert_eq!(frame[0], OPERATION_FOCUS);
 /// ```
-pub fn encode_command(frame: &mut Vec<u8>, command: &Command) {
-    match *command {
-        Command::SetText { ref id, ref value } => {
-            frame.push(OPERATION_SET_TEXT);
-            id.encode(frame);
-            str::encode(value, frame);
+impl Output for Command {
+    fn encode(&self, frame: &mut Vec<u8>) {
+        match *self {
+            Command::SetText { ref id, ref value } => {
+                frame.push(OPERATION_SET_TEXT);
+                id.encode(frame);
+                str::encode(value, frame);
+            }
+            Command::SetValue { ref id, ref value } => {
+                frame.push(OPERATION_SET_VALUE);
+                id.encode(frame);
+                str::encode(value, frame);
+            }
+            Command::SetAttribute { ref id, attribute, ref value } => {
+                frame.push(OPERATION_SET_ATTRIBUTE);
+                id.encode(frame);
+                attribute.encode(frame);
+                str::encode(value, frame);
+            }
+            Command::RemoveAttribute { ref id, attribute } => {
+                frame.push(OPERATION_REMOVE_ATTRIBUTE);
+                id.encode(frame);
+                attribute.encode(frame);
+            }
+            Command::AddClass { ref id, value } => {
+                frame.push(OPERATION_ADD_CLASS);
+                id.encode(frame);
+                value.encode(frame);
+            }
+            Command::RemoveClass { ref id, value } => {
+                frame.push(OPERATION_REMOVE_CLASS);
+                id.encode(frame);
+                value.encode(frame);
+            }
+            Command::SetStyle { ref id, property, ref value } => {
+                frame.push(OPERATION_SET_STYLE);
+                id.encode(frame);
+                property.encode(frame);
+                value.encode(frame);
+            }
+            Command::RemoveStyle { ref id, property } => {
+                frame.push(OPERATION_REMOVE_STYLE);
+                id.encode(frame);
+                property.encode(frame);
+            }
+            Command::ShowModal { ref id } => {
+                frame.push(OPERATION_SHOW_MODAL);
+                id.encode(frame);
+            }
+            Command::CloseModal { ref id } => {
+                frame.push(OPERATION_CLOSE_MODAL);
+                id.encode(frame);
+            }
+            Command::Focus { ref id } => {
+                frame.push(OPERATION_FOCUS);
+                id.encode(frame);
+            }
+            Command::JsFn { ref id, name } => {
+                frame.push(OPERATION_JS_FN);
+                id.encode(frame);
+                name.encode(frame);
+            }
+            Command::Fetch { request, method, ref path, ref body } => {
+                frame.push(OPERATION_FETCH);
+                request.encode(frame);
+                method.encode(frame);
+                str::encode(path, frame);
+                <[u8]>::encode(body, frame);
+            }
+            Command::Reload => frame.push(OPERATION_RELOAD),
+            Command::Error { ref error } => error.encode(frame),
         }
-        Command::SetValue { ref id, ref value } => {
-            frame.push(OPERATION_SET_VALUE);
-            id.encode(frame);
-            str::encode(value, frame);
-        }
-        Command::SetAttribute { ref id, attribute, ref value } => {
-            frame.push(OPERATION_SET_ATTRIBUTE);
-            id.encode(frame);
-            attribute.encode_u16().encode(frame);
-            str::encode(value, frame);
-        }
-        Command::RemoveAttribute { ref id, attribute } => {
-            frame.push(OPERATION_REMOVE_ATTRIBUTE);
-            id.encode(frame);
-            attribute.encode_u16().encode(frame);
-        }
-        Command::AddClass { ref id, value } => {
-            frame.push(OPERATION_ADD_CLASS);
-            id.encode(frame);
-            value.encode_u16().encode(frame);
-        }
-        Command::RemoveClass { ref id, value } => {
-            frame.push(OPERATION_REMOVE_CLASS);
-            id.encode(frame);
-            value.encode_u16().encode(frame);
-        }
-        Command::SetStyle { ref id, property, ref value } => {
-            frame.push(OPERATION_SET_STYLE);
-            id.encode(frame);
-            property.encode_u16().encode(frame);
-            value.encode(frame);
-        }
-        Command::RemoveStyle { ref id, property } => {
-            frame.push(OPERATION_REMOVE_STYLE);
-            id.encode(frame);
-            property.encode_u16().encode(frame);
-        }
-        Command::ShowModal { ref id } => {
-            frame.push(OPERATION_SHOW_MODAL);
-            id.encode(frame);
-        }
-        Command::CloseModal { ref id } => {
-            frame.push(OPERATION_CLOSE_MODAL);
-            id.encode(frame);
-        }
-        Command::Focus { ref id } => {
-            frame.push(OPERATION_FOCUS);
-            id.encode(frame);
-        }
-        Command::JsFn { ref id, name } => {
-            frame.push(OPERATION_JS_FN);
-            id.encode(frame);
-            name.encode_u16().encode(frame);
-        }
-        Command::Fetch { request, method, ref path, ref body } => {
-            frame.push(OPERATION_FETCH);
-            request.encode(frame);
-            frame.push(method.encode_u8());
-            str::encode(path, frame);
-            <[u8]>::encode(body, frame);
-        }
-        Command::Reload => frame.push(OPERATION_RELOAD),
-        Command::Error { ref error } => encode_error(frame, error, &error.detail()),
     }
 }
 
-pub(crate) fn encode_error(frame: &mut Vec<u8>, error: &Error, detail: &str) {
-    frame.push(OPERATION_ERROR);
-    let mut path = Vec::new();
-    error.identifiers(&mut path);
-    frame.push(path.len() as u8);
-    for identifier in path {
-        identifier.encode(frame);
+impl Output for Error {
+    fn encode(&self, frame: &mut Vec<u8>) {
+        frame.push(OPERATION_ERROR);
+        let mut path = Vec::new();
+        self.identifiers(&mut path);
+        frame.push(path.len() as u8);
+        for identifier in path {
+            identifier.encode(frame);
+        }
+        str::encode(&self.detail(), frame);
     }
-    str::encode(detail, frame);
 }
 
 pub trait Input: Sized {
@@ -214,6 +216,18 @@ macro_rules! scalar {
 }
 
 scalar!(u8, u16, u32, i32, f32, f64);
+
+macro_rules! wire_enum {
+    ($($repr:ty: $($type:ty),+);+ $(;)?) => {$($(
+        impl Output for $type {
+            fn encode(&self, output: &mut Vec<u8>) {
+                (*self as $repr).encode(output);
+            }
+        }
+    )+)+};
+}
+
+wire_enum!(u16: Attribute, ClassName, FnName, Keyword, StyleProperty; u8: Method, Unit);
 
 impl Input for Vec<u8> {
     fn decode(input: &mut &[u8]) -> Option<Self> {
@@ -375,8 +389,6 @@ fn hex_byte(digits: &[u8]) -> Option<u8> {
 
 // === receive (canvas event) ===
 
-///
-/// crate::event::decode_event
 #[derive(Clone)]
 pub struct CanvasEvent {
     pub event_type: EventType,
@@ -433,22 +445,10 @@ pub enum Attribute {
     Hidden,
 }
 
-impl Attribute {
-    fn encode_u16(self) -> u16 {
-        self as u16
-    }
-}
-
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum ClassName {
     Hide = 1,
     Show,
-}
-
-impl ClassName {
-    fn encode_u16(self) -> u16 {
-        self as u16
-    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -459,12 +459,6 @@ pub enum Keyword {
     NeswResize,
     NsResize,
     NwseResize,
-}
-
-impl Keyword {
-    fn encode_u16(self) -> u16 {
-        self as u16
-    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -480,12 +474,6 @@ pub enum StyleProperty {
     ZIndex,
 }
 
-impl StyleProperty {
-    fn encode_u16(self) -> u16 {
-        self as u16
-    }
-}
-
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Unit {
     Em = 1,
@@ -496,12 +484,6 @@ pub enum Unit {
     Vmax,
     Vmin,
     Vw,
-}
-
-impl Unit {
-    fn encode_u8(self) -> u8 {
-        self as u8
-    }
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -523,12 +505,12 @@ impl Output for StyleValue {
             }
             Self::Keyword(keyword) => {
                 frame.push(2);
-                keyword.encode_u16().encode(frame);
+                keyword.encode(frame);
             }
             Self::Length(value, unit) => {
                 frame.push(3);
                 value.encode(frame);
-                frame.push(unit.encode_u8());
+                unit.encode(frame);
             }
             Self::List(items) => {
                 frame.push(4);
@@ -558,24 +540,12 @@ pub enum FnName {
     ShowToast,
 }
 
-impl FnName {
-    fn encode_u16(self) -> u16 {
-        self as u16
-    }
-}
-
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Method {
     Delete = 1,
     Get,
     Post,
     Put,
-}
-
-impl Method {
-    fn encode_u8(self) -> u8 {
-        self as u8
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -618,10 +588,10 @@ impl EventType {
     ///
     /// ```
     /// # use app::js_client::EventType;
-    /// assert_eq!(EventType::decode_u8(16), EventType::PointerDown);
-    /// assert_eq!(EventType::decode_u8(200), EventType::Other);
+    /// assert_eq!(EventType::from_u8(16), EventType::PointerDown);
+    /// assert_eq!(EventType::from_u8(200), EventType::Other);
     /// ```
-    pub fn decode_u8(value: u8) -> Self {
+    pub fn from_u8(value: u8) -> Self {
         match value {
             1 => Self::Cancel,
             2 => Self::Change,
@@ -758,10 +728,10 @@ pub enum KeyName {
 impl KeyName {
     /// ```
     /// # use app::js_client::KeyName;
-    /// assert_eq!(KeyName::decode_u8(37), KeyName::Enter);
-    /// assert_eq!(KeyName::decode_u8(200), KeyName::Other);
+    /// assert_eq!(KeyName::from_u8(37), KeyName::Enter);
+    /// assert_eq!(KeyName::from_u8(200), KeyName::Other);
     /// ```
-    pub fn decode_u8(value: u8) -> Self {
+    pub fn from_u8(value: u8) -> Self {
         match value {
             1 => Self::Alt,
             2 => Self::AltGraph,
@@ -880,10 +850,10 @@ pub enum FullscreenEvent {
 impl FullscreenEvent {
     /// ```
     /// # use app::js_client::FullscreenEvent;
-    /// assert_eq!(FullscreenEvent::decode_u8(1), FullscreenEvent::Change);
-    /// assert_eq!(FullscreenEvent::decode_u8(0), FullscreenEvent::Other);
+    /// assert_eq!(FullscreenEvent::from_u8(1), FullscreenEvent::Change);
+    /// assert_eq!(FullscreenEvent::from_u8(0), FullscreenEvent::Other);
     /// ```
-    pub fn decode_u8(value: u8) -> Self {
+    pub fn from_u8(value: u8) -> Self {
         match value {
             1 => Self::Change,
             2 => Self::Error,
@@ -904,10 +874,10 @@ impl VisibilityState {
     ///
     /// ```
     /// # use app::js_client::VisibilityState;
-    /// assert_eq!(VisibilityState::decode_u8(2), VisibilityState::Visible);
-    /// assert_eq!(VisibilityState::decode_u8(0), VisibilityState::Other);
+    /// assert_eq!(VisibilityState::from_u8(2), VisibilityState::Visible);
+    /// assert_eq!(VisibilityState::from_u8(0), VisibilityState::Other);
     /// ```
-    pub fn decode_u8(value: u8) -> Self {
+    pub fn from_u8(value: u8) -> Self {
         match value {
             1 => Self::Hidden,
             2 => Self::Visible,
@@ -2038,10 +2008,10 @@ pub mod dom {
         ///
         /// ```
         /// # use app::js_client::dom::Tag;
-        /// assert_eq!(Tag::Article.encode_u8(), 1);
-        /// assert_eq!(Tag::Other.encode_u8(), 0);
+        /// assert_eq!(Tag::Article.as_u8(), 1);
+        /// assert_eq!(Tag::Other.as_u8(), 0);
         /// ```
-        pub fn encode_u8(&self) -> u8 {
+        pub fn as_u8(&self) -> u8 {
             match self {
                 Self::Article => 1,
                 Self::Body => 2,
@@ -2088,10 +2058,10 @@ pub mod dom {
 
         /// ```
         /// # use app::js_client::dom::Tag;
-        /// assert_eq!(Tag::decode_u8(1), Tag::Article);
-        /// assert_eq!(Tag::decode_u8(200), Tag::Other);
+        /// assert_eq!(Tag::from_u8(1), Tag::Article);
+        /// assert_eq!(Tag::from_u8(200), Tag::Other);
         /// ```
-        pub fn decode_u8(value: u8) -> Self {
+        pub fn from_u8(value: u8) -> Self {
             match value {
                 1 => Self::Article,
                 2 => Self::Body,
@@ -2157,7 +2127,7 @@ pub mod dom {
         fn encode(&self, output: &mut Vec<u8>) {
             output.push(self.0.len() as u8);
             for segment in &self.0 {
-                output.push(segment.tag.encode_u8());
+                output.push(segment.tag.as_u8());
                 segment.n.unwrap_or(u32::MAX).encode(output);
             }
         }
@@ -2168,7 +2138,7 @@ pub mod dom {
             let count = u8::decode(input)? as usize;
             let mut segments = Vec::with_capacity(count);
             for _ in 0..count {
-                let tag = Tag::decode_u8(Input::decode(input)?);
+                let tag = Tag::from_u8(Input::decode(input)?);
                 let number = u32::decode(input)?;
                 segments
                     .push(Segment { tag, n: if number == u32::MAX { None } else { Some(number) } });
@@ -2398,10 +2368,10 @@ mod wire_tests {
         let js = js_array("KEY_NAMES");
         assert_eq!(js[0], "");
         for (i, name) in js.iter().enumerate().skip(1) {
-            assert_eq!(&key_string(KeyName::decode_u8(i as u8)), name, "index {i}");
+            assert_eq!(&key_string(KeyName::from_u8(i as u8)), name, "index {i}");
         }
-        assert_eq!(KeyName::decode_u8(js.len() as u8), KeyName::Other);
-        assert_eq!(KeyName::decode_u8(0), KeyName::Other);
+        assert_eq!(KeyName::from_u8(js.len() as u8), KeyName::Other);
+        assert_eq!(KeyName::from_u8(0), KeyName::Other);
     }
 
     #[test]
@@ -2409,11 +2379,11 @@ mod wire_tests {
         let js = js_array("EVENT_TYPES");
         assert_eq!(js[0], "");
         for (i, name) in js.iter().enumerate().skip(1) {
-            let event_type = EventType::decode_u8(i as u8);
+            let event_type = EventType::from_u8(i as u8);
             assert_eq!(&format!("{event_type:?}").to_lowercase(), name, "index {i}");
         }
-        assert_eq!(EventType::decode_u8(js.len() as u8), EventType::Other);
-        assert_eq!(EventType::decode_u8(0), EventType::Other);
+        assert_eq!(EventType::from_u8(js.len() as u8), EventType::Other);
+        assert_eq!(EventType::from_u8(0), EventType::Other);
     }
 
     #[test]
@@ -2421,22 +2391,22 @@ mod wire_tests {
         let js = js_array("TAGS");
         assert_eq!(js[0], "");
         for (i, name) in js.iter().enumerate().skip(1) {
-            let tag = dom::Tag::decode_u8(i as u8);
+            let tag = dom::Tag::from_u8(i as u8);
             assert_eq!(&format!("{tag:?}").to_lowercase(), name, "index {i}");
-            assert_eq!(tag.encode_u8() as usize, i);
+            assert_eq!(tag.as_u8() as usize, i);
         }
-        assert_eq!(dom::Tag::decode_u8(js.len() as u8), dom::Tag::Other);
-        assert_eq!(dom::Tag::Other.encode_u8(), 0);
+        assert_eq!(dom::Tag::from_u8(js.len() as u8), dom::Tag::Other);
+        assert_eq!(dom::Tag::Other.as_u8(), 0);
     }
 
     #[test]
     fn visibility_states_match_init_js() {
         let js = js_array("VISIBILITY_STATES");
         assert_eq!(js, ["", "hidden", "visible"]);
-        assert_eq!(VisibilityState::decode_u8(1), VisibilityState::Hidden);
-        assert_eq!(VisibilityState::decode_u8(2), VisibilityState::Visible);
-        assert_eq!(VisibilityState::decode_u8(0), VisibilityState::Other);
-        assert_eq!(VisibilityState::decode_u8(3), VisibilityState::Other);
+        assert_eq!(VisibilityState::from_u8(1), VisibilityState::Hidden);
+        assert_eq!(VisibilityState::from_u8(2), VisibilityState::Visible);
+        assert_eq!(VisibilityState::from_u8(0), VisibilityState::Other);
+        assert_eq!(VisibilityState::from_u8(3), VisibilityState::Other);
     }
 
     #[test]
@@ -2444,11 +2414,11 @@ mod wire_tests {
         let js = js_array("FULLSCREEN_EVENTS");
         assert_eq!(js[0], "");
         for (i, name) in js.iter().enumerate().skip(1) {
-            let event = FullscreenEvent::decode_u8(i as u8);
+            let event = FullscreenEvent::from_u8(i as u8);
             assert_eq!(&format!("fullscreen{event:?}").to_lowercase(), name, "index {i}");
         }
-        assert_eq!(FullscreenEvent::decode_u8(js.len() as u8), FullscreenEvent::Other);
-        assert_eq!(FullscreenEvent::decode_u8(0), FullscreenEvent::Other);
+        assert_eq!(FullscreenEvent::from_u8(js.len() as u8), FullscreenEvent::Other);
+        assert_eq!(FullscreenEvent::from_u8(0), FullscreenEvent::Other);
     }
 
     #[test]
@@ -2576,10 +2546,11 @@ mod wire_tests {
         assert!(INIT_JS.contains(&format!("operation === {OPERATION_ERROR}")));
         assert!(INIT_JS.contains(&format!("operation === {OPERATION_RELOAD}")));
         assert_eq!(js_array("METHODS"), ["", "DELETE", "GET", "POST", "PUT"]);
-        assert_eq!(
-            [Method::Delete, Method::Get, Method::Post, Method::Put].map(Method::encode_u8),
-            [1, 2, 3, 4]
-        );
+        let mut methods = Vec::new();
+        for method in [Method::Delete, Method::Get, Method::Post, Method::Put] {
+            method.encode(&mut methods);
+        }
+        assert_eq!(methods, [1, 2, 3, 4]);
     }
 
     #[test]
@@ -2717,7 +2688,7 @@ mod wire_tests {
     }
 
     #[test]
-    fn encode_command_layouts() {
+    fn command_layouts() {
         let id = header_button_3();
         let with_id = |operation: u8, tail: &[u8]| {
             let mut frame = vec![operation];
@@ -2727,7 +2698,7 @@ mod wire_tests {
         };
         let encode = |command: Command| {
             let mut frame = Vec::new();
-            encode_command(&mut frame, &command);
+            command.encode(&mut frame);
             frame
         };
 
