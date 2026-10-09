@@ -262,9 +262,9 @@ checksum = "63b8176103e19a2643978565ca18b50549f6101881c443590420e4dc998a3c69"
 
 [[package]]
 name = "rectgrid"
-version = "0.3.0"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e7b490176aee2cdf87d520b6a82dc1cc41d91be726635b4df7cfc63134bf9f2e"
+checksum = "88c6b3218bd625a7d15d2dd09f3d278943887dc3c917a079540f77eb40620912"
 dependencies = [
  "libm",
 ]
