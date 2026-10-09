@@ -496,7 +496,7 @@ impl Handler {
         let resources = self.read::<Resource>();
         let grid = self.grid();
         let (start, end) = grid.time.clip(appointment.start(), appointment.end())?;
-        let flats = appointment.cells().into_iter().filter_map(|place| {
+        let flats = appointment.places().into_iter().filter_map(|place| {
             let resource = column_of(&resources, place.resource)?;
             Some(grid.columns.flat((diff(self.base, place.day) / DAY) as i32, resource as u32))
         });
@@ -858,7 +858,7 @@ impl Handler {
         let Some(appointment) = self.appointment(key) else {
             return vec![];
         };
-        let cells = appointment.cells();
+        let cells = appointment.places();
         let Some(place) = cells.get(cell).or_else(|| cells.first()) else {
             return vec![];
         };
@@ -927,7 +927,7 @@ impl Handler {
         draft: Appointment,
     ) -> Result<Appointment, &'static str> {
         let (resources, shifts) = (self.read::<Resource>(), self.shifts());
-        let place = *draft.cells().first().ok_or("入力を読み取れません")?;
+        let place = *draft.places().first().ok_or("入力を読み取れません")?;
         let resource = column_of(&resources, place.resource).ok_or("資源が不正です")?;
         let (start, end) = (draft.start(), draft.end());
         match editing {
@@ -953,12 +953,12 @@ impl Handler {
             }
             Editing::Existing(key) => {
                 let mut appointment = self.appointment(key).ok_or("予約がありません")?;
-                let cells = shift_cells(&resources, &appointment.cells(), place.day, resource)?;
+                let cells = shift_cells(&resources, &appointment.places(), place.day, resource)?;
                 let changed = appointment.start() != start || appointment.end() != end;
                 if changed && !fits(&shifts, start, end) {
                     return Err("営業時間外です");
                 }
-                appointment.set_cells(&cells);
+                appointment.set_places(&cells);
                 appointment.set_start(start);
                 appointment.set_end(end);
                 appointment.set_title(draft.title());
@@ -1017,7 +1017,7 @@ impl Handler {
             Some((grid.time.minutes(first)?, grid.time.minutes(last)?))
         });
         let mut appointment = self.appointment(key)?;
-        let current_cells = appointment.cells();
+        let current_cells = appointment.places();
         let new_cells = match cells {
             Some(Some(cells)) => cells,
             _ => current_cells.clone(),
@@ -1032,7 +1032,7 @@ impl Handler {
         if !changed || !fits(&self.shifts(), new_start, new_end) {
             return None;
         }
-        appointment.set_cells(&new_cells);
+        appointment.set_places(&new_cells);
         appointment.set_start(new_start);
         appointment.set_end(new_end);
         Some(appointment)
@@ -1067,7 +1067,7 @@ impl Handler {
         let first = self.first_day();
         let (target, _) = self.unit_at(drag.pointer).and_then(|unit| MONTH_AXIS.locate(unit))?;
         let mut appointment = self.appointment(drag.key)?;
-        let cells = appointment.cells();
+        let cells = appointment.places();
         let pressed = cells.get(drag.cell)?;
         let delta = i64::from(target) - diff(first, pressed.day) / DAY;
         if delta == 0 {
@@ -1077,7 +1077,7 @@ impl Handler {
             .iter()
             .map(|place| Place { day: add_days(place.day, delta), resource: place.resource })
             .collect();
-        appointment.set_cells(&moved);
+        appointment.set_places(&moved);
         Some(appointment)
     }
 
@@ -1096,7 +1096,7 @@ impl Handler {
             column_of(&resources, place.resource)
                 .map(|position| axis.flat((diff(base, place.day) / DAY) as i32, position as u32))
         };
-        let cells = appointment.cells();
+        let cells = appointment.places();
         let from = cells.get(pressed).and_then(flat)?;
         let delta = axis.flat(target.day as i32, target.resource) - from;
         let moved: Vec<Place> = cells
@@ -1112,7 +1112,7 @@ impl Handler {
         if !changed || !fits(&self.shifts(), start, start + duration) {
             return None;
         }
-        appointment.set_cells(&moved);
+        appointment.set_places(&moved);
         appointment.set_start(start);
         appointment.set_end(start + duration);
         Some(appointment)
@@ -1218,7 +1218,7 @@ impl Handler {
             let Some((start, end)) = grid.time.clip(appointment.start(), appointment.end()) else {
                 continue;
             };
-            for (cell_index, place) in appointment.cells().iter().enumerate() {
+            for (cell_index, place) in appointment.places().iter().enumerate() {
                 let Some(resource) = column_of(resources, place.resource) else {
                     continue;
                 };
@@ -1268,7 +1268,7 @@ impl Handler {
         let mut days: BTreeMap<u32, Vec<(u32, usize)>> = BTreeMap::new();
         for appointment in appointments {
             let key = appointment.key();
-            for (cell, place) in appointment.cells().iter().enumerate() {
+            for (cell, place) in appointment.places().iter().enumerate() {
                 let Ok(day) = u32::try_from(diff(first, place.day) / DAY) else {
                     continue;
                 };
@@ -1848,11 +1848,11 @@ fn option_position<T>(items: &[T], value: &str) -> Option<usize> {
 
 fn hours(shifts: &[Shift]) -> Option<Hours> {
     let (first, rest) = shifts.split_first()?;
-    let mut hours = Hours { open: first.open(), close: first.close(), rest: first.break_range() };
+    let mut hours = Hours { open: first.open(), close: first.close(), rest: first.rest() };
     for shift in rest {
         hours.open = hours.open.min(shift.open());
         hours.close = hours.close.max(shift.close());
-        hours.rest = match (hours.rest, shift.break_range()) {
+        hours.rest = match (hours.rest, shift.rest()) {
             (Some((a, b)), Some((c, d))) if a.max(c) < b.min(d) => Some((a.max(c), b.min(d))),
             _ => None,
         };
@@ -2422,7 +2422,7 @@ mod tests {
         let (_, commands) = handler.process_fetched(&sample_response(1, 200));
         let expected = appointments(&handler)
             .iter()
-            .flat_map(|a| a.cells())
+            .flat_map(|a| a.places())
             .filter(|cell| (0..7).contains(&(diff(today(), cell.day) / DAY)))
             .count();
         assert!(expected > 0);
@@ -2561,8 +2561,8 @@ mod tests {
         drag_to(&mut handler, pointer_x, pointer_y);
         let commands = end(&mut handler);
         let moved = &appointments(&handler)[0];
-        assert_eq!(moved.cells()[0].day, after(base, 2));
-        assert_eq!(moved.cells()[0].resource, 103);
+        assert_eq!(moved.places()[0].day, after(base, 2));
+        assert_eq!(moved.places()[0].resource, 103);
         assert_eq!((moved.start(), moved.end()), (540 + 150, 540 + 210));
         assert_eq!(shown_count(&commands), 2);
         assert!(matches!(
@@ -2616,7 +2616,7 @@ mod tests {
             let commands = end(&mut handler);
             let unchanged = &appointments(&handler)[0];
             assert_eq!(
-                (unchanged.cells()[0].day, unchanged.cells()[0].resource, unchanged.start()),
+                (unchanged.places()[0].day, unchanged.places()[0].resource, unchanged.start()),
                 (base, 101, 600)
             );
             assert_eq!(translate_of(&commands, 1), Some((0.0, 112.0)));
@@ -2633,7 +2633,7 @@ mod tests {
         assert!(handler.drag.is_none());
         assert_eq!(translate_of(&commands, 1), Some((0.0, 112.0)));
         let unchanged = &appointments(&handler)[0];
-        assert_eq!((unchanged.cells()[0].day, unchanged.start()), (base, 600));
+        assert_eq!((unchanged.places()[0].day, unchanged.start()), (base, 600));
     }
 
     #[test]
@@ -2661,7 +2661,7 @@ mod tests {
         drag_to(&mut handler, ox + column_px * 3.0 + 5.0, oy + 4.0 * SLOT_PX + GRAB_Y);
         end(&mut handler);
         let moved = &appointments(&handler)[0];
-        assert_eq!((moved.cells()[0].day, moved.cells()[0].resource), (base, 104));
+        assert_eq!((moved.places()[0].day, moved.places()[0].resource), (base, 104));
     }
 
     #[test]
@@ -2686,12 +2686,12 @@ mod tests {
                 let moved = &appointments(&handler)[0];
                 let cell = axis.cell(unit).unwrap();
                 assert_eq!(
-                    moved.cells()[0].day,
+                    moved.places()[0].day,
                     after(base, i64::from(cell.day)),
                     "view {days} unit {unit}"
                 );
                 assert_eq!(
-                    moved.cells()[0].resource,
+                    moved.places()[0].resource,
                     101 + u128::from(cell.resource),
                     "view {days} unit {unit}"
                 );
@@ -2717,9 +2717,9 @@ mod tests {
         let base = today();
         let mut handler = Handler::new(VIEWPORT, base, REM);
         let mut spanning = appointment(1, base, 102, 600, 660);
-        let mut cells = spanning.cells();
+        let mut cells = spanning.places();
         cells.push(crate::calendar::data::Place { day: base, resource: 103 });
-        spanning.set_cells(&cells);
+        spanning.set_places(&cells);
         load(&mut handler, vec![spanning]);
         choose(&mut handler, view);
         handler.card_commands();
@@ -2736,7 +2736,7 @@ mod tests {
                 shift.person(),
                 minutes,
                 shift.close(),
-                shift.break_range(),
+                shift.rest(),
             );
             data::put(store, &opened);
         }
@@ -2759,7 +2759,7 @@ mod tests {
     }
 
     fn places(handler: &Handler) -> Vec<(u64, u128)> {
-        appointments(&handler)[0].cells().iter().map(|place| (place.day, place.resource)).collect()
+        appointments(&handler)[0].places().iter().map(|place| (place.day, place.resource)).collect()
     }
 
     #[test]
@@ -2803,9 +2803,9 @@ mod tests {
         let base = today();
         let mut handler = Handler::new(VIEWPORT, base, REM);
         let mut crossing = appointment(1, base, 104, 600, 660);
-        let mut cells = crossing.cells();
+        let mut cells = crossing.places();
         cells.push(crate::calendar::data::Place { day: after(base, 1), resource: 101 });
-        crossing.set_cells(&cells);
+        crossing.set_places(&cells);
         load(&mut handler, vec![crossing]);
         choose(&mut handler, View::Day);
         let commands = handler.card_commands();
@@ -3055,9 +3055,9 @@ mod tests {
         let make = || {
             let mut handler = Handler::new(VIEWPORT, base, REM);
             let mut crossing = appointment(1, base, 104, 600, 660);
-            let mut cells = crossing.cells();
+            let mut cells = crossing.places();
             cells.push(crate::calendar::data::Place { day: after(base, 1), resource: 101 });
-            crossing.set_cells(&cells);
+            crossing.set_places(&cells);
             load(&mut handler, vec![crossing]);
             choose(&mut handler, View::Day);
             handler.card_commands();
@@ -3502,7 +3502,7 @@ mod tests {
         submit(&mut handler, &query);
         let all = appointments(&handler);
         let added = all.last().unwrap();
-        assert_eq!(added.cells().len(), 4);
+        assert_eq!(added.places().len(), 4);
         assert_eq!((added.start(), added.end()), (750, 870));
     }
 
@@ -3964,7 +3964,7 @@ mod tests {
         end(&mut handler);
         let appointment = &appointments(&handler)[0];
         assert_eq!(
-            appointment.cells(),
+            appointment.places(),
             [
                 Place { day: after(base, 9), resource: 101 },
                 Place { day: after(base, 10), resource: 102 },
@@ -4335,7 +4335,7 @@ mod tests {
             form_query("t1", &display(today(), Lang::Ja, Format::Date), 2, "10:00", "11:00");
         let commands = submit(&mut handler, &query);
         assert!(commands.iter().any(|c| matches!(c, Command::CloseModal { .. })));
-        let cells = appointment_of(&handler, 1).cells();
+        let cells = appointment_of(&handler, 1).places();
         assert_eq!(cells, [Place { day: today(), resource: 103 }]);
     }
 

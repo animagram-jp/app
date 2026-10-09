@@ -34,8 +34,8 @@ use crate::{
 pub const SCHEMA_SIZE: u32 = 11;
 const FIELD_KIND: u32 = 4;
 const CREATED: f64 = 0.0;
-const CELL_BYTES: usize = 24;
-const MINUTES: Layout<2> = Layout::new([Unsigned(11), Unsigned(11)]);
+const PLACE_BYTES: usize = 24;
+const SPAN: Layout<2> = Layout::new([Unsigned(11), Unsigned(11)]);
 
 pub const KIND_RESOURCE: u32 = 1;
 pub const KIND_STATUS: u32 = 2;
@@ -131,12 +131,12 @@ pub trait Record: Sized {
     }
 
     fn pair(&self, id: u32) -> Option<(u32, u32)> {
-        let raw = MINUTES.decode(self.data().get(id).ok()?)?;
-        Some((MINUTES.get(raw, 0), MINUTES.get(raw, 1)))
+        let raw = SPAN.decode(self.data().get(id).ok()?)?;
+        Some((SPAN.get(raw, 0), SPAN.get(raw, 1)))
     }
 
     fn put_pair(&mut self, id: u32, first: u32, second: u32) {
-        let (bytes, length) = MINUTES.encode(MINUTES.pack([u64::from(first), u64::from(second)]));
+        let (bytes, length) = SPAN.encode(SPAN.pack([u64::from(first), u64::from(second)]));
         self.put(id, &bytes[..length]);
     }
 
@@ -213,38 +213,38 @@ impl Resource {
     }
 }
 
-const CHOICE_CODE: u32 = 5;
-const CHOICE_LABEL: u32 = 6;
+const OPTION_CODE: u32 = 5;
+const OPTION_LABEL: u32 = 6;
 
-macro_rules! choice {
+macro_rules! option {
     ($name:ident) => {
         impl $name {
             pub fn new(key: u32, code: &str, label: &str) -> Self {
-                let mut choice = Self::blank(key);
-                choice.put(CHOICE_CODE, code.as_bytes());
-                choice.put(CHOICE_LABEL, label.as_bytes());
-                choice
+                let mut option = Self::blank(key);
+                option.put(OPTION_CODE, code.as_bytes());
+                option.put(OPTION_LABEL, label.as_bytes());
+                option
             }
 
             pub fn code(&self) -> &str {
-                self.text(CHOICE_CODE)
+                self.text(OPTION_CODE)
             }
 
             pub fn label(&self) -> &str {
-                self.text(CHOICE_LABEL)
+                self.text(OPTION_LABEL)
             }
         }
     };
 }
 
-choice!(Status);
-choice!(Category);
+option!(Status);
+option!(Category);
 
 const SHIFT_DAY: u32 = 5;
 const SHIFT_RESOURCE: u32 = 6;
 const SHIFT_PERSON: u32 = 7;
 const SHIFT_HOURS: u32 = 8;
-const SHIFT_BREAK: u32 = 9;
+const SHIFT_REST: u32 = 9;
 
 impl Shift {
     pub fn new(
@@ -254,15 +254,15 @@ impl Shift {
         person: &str,
         open: u32,
         close: u32,
-        break_range: Option<(u32, u32)>,
+        rest: Option<(u32, u32)>,
     ) -> Self {
         let mut shift = Self::blank(key);
         shift.put(SHIFT_DAY, &day.to_le_bytes());
         shift.put(SHIFT_RESOURCE, &resource.to_le_bytes());
         shift.put(SHIFT_PERSON, person.as_bytes());
         shift.put_pair(SHIFT_HOURS, open, close);
-        if let Some((start, end)) = break_range {
-            shift.put_pair(SHIFT_BREAK, start, end);
+        if let Some((start, end)) = rest {
+            shift.put_pair(SHIFT_REST, start, end);
         }
         shift
     }
@@ -291,13 +291,13 @@ impl Shift {
         self.pair(SHIFT_HOURS).map_or(0, |hours| hours.1)
     }
 
-    pub fn break_range(&self) -> Option<(u32, u32)> {
-        self.pair(SHIFT_BREAK)
+    pub fn rest(&self) -> Option<(u32, u32)> {
+        self.pair(SHIFT_REST)
     }
 }
 
 const APPOINTMENT_UID: u32 = 5;
-const APPOINTMENT_CELLS: u32 = 6;
+const APPOINTMENT_PLACES: u32 = 6;
 const APPOINTMENT_RANGE: u32 = 7;
 const APPOINTMENT_TITLE: u32 = 8;
 const APPOINTMENT_CATEGORY: u32 = 9;
@@ -308,7 +308,7 @@ impl Appointment {
     /// `category` and `status` are the codes of a `Category` and a `Status`.
     pub fn new(
         key: u32,
-        cells: &[Place],
+        places: &[Place],
         start: u32,
         end: u32,
         title: &str,
@@ -317,7 +317,7 @@ impl Appointment {
         note: &str,
     ) -> Self {
         let mut appointment = Self::blank(key);
-        appointment.set_cells(cells);
+        appointment.set_places(places);
         appointment.set_start(start);
         appointment.set_end(end);
         appointment.set_title(title);
@@ -331,15 +331,15 @@ impl Appointment {
         self.wide(APPOINTMENT_UID)
     }
 
-    pub fn cells(&self) -> Vec<Place> {
+    pub fn places(&self) -> Vec<Place> {
         self.data()
-            .get(APPOINTMENT_CELLS)
+            .get(APPOINTMENT_PLACES)
             .unwrap_or(&[])
-            .chunks_exact(CELL_BYTES)
-            .filter_map(|cell| {
+            .chunks_exact(PLACE_BYTES)
+            .filter_map(|place| {
                 Some(Place {
-                    day:      u64::from_le_bytes(cell[..8].try_into().ok()?),
-                    resource: u128::from_le_bytes(cell[8..].try_into().ok()?),
+                    day:      u64::from_le_bytes(place[..8].try_into().ok()?),
+                    resource: u128::from_le_bytes(place[8..].try_into().ok()?),
                 })
             })
             .collect()
@@ -373,12 +373,14 @@ impl Appointment {
         self.put(APPOINTMENT_UID, &uid.to_le_bytes());
     }
 
-    pub fn set_cells(&mut self, cells: &[Place]) {
-        let bytes: Vec<u8> = cells
+    pub fn set_places(&mut self, places: &[Place]) {
+        let bytes: Vec<u8> = places
             .iter()
-            .flat_map(|cell| cell.day.to_le_bytes().into_iter().chain(cell.resource.to_le_bytes()))
+            .flat_map(|place| {
+                place.day.to_le_bytes().into_iter().chain(place.resource.to_le_bytes())
+            })
             .collect();
-        self.put(APPOINTMENT_CELLS, &bytes);
+        self.put(APPOINTMENT_PLACES, &bytes);
     }
 
     pub fn set_start(&mut self, start: u32) {
@@ -506,19 +508,19 @@ pub fn import(store: &mut impl FileStore, body: &[u8]) -> Result<(), DataError> 
 
     for shift in page("shifts")? {
         let rest = |key| shift.get(key).and_then(Value::as_str);
-        let break_range = match (rest("break_start"), rest("break_end")) {
+        let rest = match (rest("rest_start"), rest("rest_end")) {
             (Some(start), Some(end)) => Some((parse_time(start)?, parse_time(end)?)),
             _ => None,
         };
         let key = store.issue_id();
         let shift = Shift::new(
             key,
-            parse_date(text(shift, "date")?)?,
+            parse_date(text(shift, "day")?)?,
             uid(shift, "resource_uid")?,
-            text(shift, "staff_name")?,
+            text(shift, "person")?,
             parse_time(text(shift, "open")?)?,
             parse_time(text(shift, "close")?)?,
-            break_range,
+            rest,
         );
         staged.push((key, shift.to_bytes()));
     }
@@ -528,26 +530,26 @@ pub fn import(store: &mut impl FileStore, body: &[u8]) -> Result<(), DataError> 
         if !uids.insert(uid) {
             return Err(format_error("uid", &format!("{uid}")));
         }
-        let cells = field(appointment, "cells")?
+        let places = field(appointment, "places")?
             .as_array()
-            .ok_or_else(|| shape("cells"))?
+            .ok_or_else(|| shape("places"))?
             .iter()
-            .map(|cell| {
+            .map(|place| {
                 Ok(Place {
-                    day:      parse_date(text(cell, "date")?)?,
-                    resource: self::uid(cell, "resource_uid")?,
+                    day:      parse_date(text(place, "day")?)?,
+                    resource: self::uid(place, "resource_uid")?,
                 })
             })
             .collect::<Result<Vec<_>, DataError>>()?;
-        if cells.is_empty() {
-            return Err(format_error("cells", &format!("appointment {uid}")));
+        if places.is_empty() {
+            return Err(format_error("places", &format!("appointment {uid}")));
         }
         let key = store.issue_id();
         let mut record = Appointment::new(
             key,
-            &cells,
-            parse_time(text(appointment, "start_time")?)?,
-            parse_time(text(appointment, "end_time")?)?,
+            &places,
+            parse_time(text(appointment, "start")?)?,
+            parse_time(text(appointment, "end")?)?,
             text(appointment, "title")?,
             text(appointment, "category")?,
             text(appointment, "status")?,
@@ -566,20 +568,20 @@ pub fn import(store: &mut impl FileStore, body: &[u8]) -> Result<(), DataError> 
 /// The inverse of `import`: the records of the store as a calendar document.
 pub fn export(store: &impl FileStore) -> Result<Vec<u8>, DataError> {
     let date = |day: u64| display(day, Lang::Ja, Format::Date);
-    let choice = |code: &str, label: &str| json!({"code": code, "label": label});
+    let option = |code: &str, label: &str| json!({"code": code, "label": label});
     let shifts: Vec<Value> = all::<Shift>(store)?
         .iter()
         .map(|s| {
             let mut shift = json!({
-                "date": date(s.day()),
+                "day": date(s.day()),
                 "resource_uid": format!("{}", s.resource()),
-                "staff_name": s.person(),
+                "person": s.person(),
                 "open": format_hhmm(s.open()),
                 "close": format_hhmm(s.close()),
             });
-            if let Some((start, end)) = s.break_range() {
-                shift["break_start"] = json!(format_hhmm(start));
-                shift["break_end"] = json!(format_hhmm(end));
+            if let Some((start, end)) = s.rest() {
+                shift["rest_start"] = json!(format_hhmm(start));
+                shift["rest_end"] = json!(format_hhmm(end));
             }
             shift
         })
@@ -587,16 +589,16 @@ pub fn export(store: &impl FileStore) -> Result<Vec<u8>, DataError> {
     let appointments: Vec<Value> = all::<Appointment>(store)?
         .iter()
         .map(|a| {
-            let cells: Vec<Value> = a
-                .cells()
+            let places: Vec<Value> = a
+                .places()
                 .iter()
-                .map(|c| json!({"date": date(c.day), "resource_uid": format!("{}", c.resource)}))
+                .map(|c| json!({"day": date(c.day), "resource_uid": format!("{}", c.resource)}))
                 .collect();
             json!({
                 "uid": format!("{}", a.uid()),
-                "cells": cells,
-                "start_time": format_hhmm(a.start()),
-                "end_time": format_hhmm(a.end()),
+                "places": places,
+                "start": format_hhmm(a.start()),
+                "end": format_hhmm(a.end()),
                 "title": a.title(),
                 "category": a.category(),
                 "status": a.status(),
@@ -606,8 +608,8 @@ pub fn export(store: &impl FileStore) -> Result<Vec<u8>, DataError> {
         .collect();
     let root = json!({
         "resources": all::<Resource>(store)?.iter().map(|r| json!({"uid": format!("{}", r.uid()), "name": r.name()})).collect::<Vec<_>>(),
-        "statuses": all::<Status>(store)?.iter().map(|s| choice(s.code(), s.label())).collect::<Vec<_>>(),
-        "categories": all::<Category>(store)?.iter().map(|c| choice(c.code(), c.label())).collect::<Vec<_>>(),
+        "statuses": all::<Status>(store)?.iter().map(|s| option(s.code(), s.label())).collect::<Vec<_>>(),
+        "categories": all::<Category>(store)?.iter().map(|c| option(c.code(), c.label())).collect::<Vec<_>>(),
         "shifts": shifts,
         "appointments": appointments,
     });
@@ -674,13 +676,13 @@ pub fn parse_date(text: &str) -> Result<u64, DataError> {
     let (Some(year), Some(month), Some(day), None) =
         (parts.next(), parts.next(), parts.next(), parts.next())
     else {
-        return Err(format_error("date", text));
+        return Err(format_error("day", text));
     };
-    let year: i64 = year.parse().map_err(|_| format_error("date", text))?;
-    let month: i64 = month.parse().map_err(|_| format_error("date", text))?;
-    let day: i64 = day.parse().map_err(|_| format_error("date", text))?;
+    let year: i64 = year.parse().map_err(|_| format_error("day", text))?;
+    let month: i64 = month.parse().map_err(|_| format_error("day", text))?;
+    let day: i64 = day.parse().map_err(|_| format_error("day", text))?;
     if !(1..=12).contains(&month) || !(1..=31).contains(&day) {
-        return Err(format_error("date", text));
+        return Err(format_error("day", text));
     }
     Ok(pack(year, month, day, 0, 0, 0, 0, 0, 0))
 }
@@ -759,12 +761,12 @@ mod tests {
         let first = &appointments[0];
         let source = value(&sample());
         assert_eq!(format!("{}", first.uid()), source["appointments"][0]["uid"].as_str().unwrap());
-        assert_eq!(first.cells().len(), 1);
+        assert_eq!(first.places().len(), 1);
         assert!(first.start() < first.end());
         assert!(first.start() >= 9 * 60 && first.end() <= 20 * 60);
         let shift = &all::<Shift>(&store).unwrap()[0];
         assert_eq!((shift.open(), shift.close()), (9 * 60 + 30, 18 * 60 + 30));
-        assert_eq!(shift.break_range(), Some((12 * 60 + 30, 13 * 60 + 30)));
+        assert_eq!(shift.rest(), Some((12 * 60 + 30, 13 * 60 + 30)));
     }
 
     #[test]
@@ -775,8 +777,8 @@ mod tests {
         assert_eq!(first.status(), source["appointments"][0]["status"]);
         assert_eq!(first.category(), source["appointments"][0]["category"]);
         assert_eq!(
-            format!("{}", first.cells()[0].resource),
-            source["appointments"][0]["cells"][0]["resource_uid"].as_str().unwrap()
+            format!("{}", first.places()[0].resource),
+            source["appointments"][0]["places"][0]["resource_uid"].as_str().unwrap()
         );
         let shift = &all::<Shift>(&store).unwrap()[0];
         assert_eq!(
@@ -800,19 +802,19 @@ mod tests {
         for appointment in all::<Appointment>(&store).unwrap() {
             assert!(statuses.iter().any(|code| code == appointment.status()));
             assert!(categories.iter().any(|code| code == appointment.category()));
-            for cell in appointment.cells() {
-                assert!(resources.contains(&cell.resource));
+            for place in appointment.places() {
+                assert!(resources.contains(&place.resource));
             }
         }
     }
 
     #[test]
-    fn import_keeps_every_cell_of_a_multi_cell_appointment() {
+    fn import_keeps_every_place_of_a_multi_place_appointment() {
         let store = imported();
         let appointments = all::<Appointment>(&store).unwrap();
-        let multi: Vec<_> = appointments.iter().filter(|a| a.cells().len() > 1).collect();
+        let multi: Vec<_> = appointments.iter().filter(|a| a.places().len() > 1).collect();
         assert_eq!(multi.len(), 6);
-        assert_eq!(appointments.iter().map(|a| a.cells().len()).sum::<usize>(), 386);
+        assert_eq!(appointments.iter().map(|a| a.places().len()).sum::<usize>(), 386);
         let source = value(&sample());
         let crossing = appointments
             .iter()
@@ -820,11 +822,11 @@ mod tests {
                 format!("{}", a.uid()) == source["appointments"][134]["uid"].as_str().unwrap()
             })
             .unwrap();
-        assert_eq!(source["appointments"][134]["cells"].as_array().unwrap().len(), 2);
-        assert_eq!(diff(crossing.cells()[0].day, crossing.cells()[1].day), 8_640_000);
+        assert_eq!(source["appointments"][134]["places"].as_array().unwrap().len(), 2);
+        assert_eq!(diff(crossing.places()[0].day, crossing.places()[1].day), 8_640_000);
         let resources = all::<Resource>(&store).unwrap();
         let names: Vec<String> = crossing
-            .cells()
+            .places()
             .iter()
             .map(|c| {
                 let resource = resources.iter().find(|r| r.uid() == c.resource).unwrap();
@@ -835,11 +837,11 @@ mod tests {
     }
 
     #[test]
-    fn import_rejects_an_appointment_without_cells() {
+    fn import_rejects_an_appointment_without_places() {
         let text = String::from_utf8(sample()).unwrap();
-        let start = text.find("\"cells\": [").unwrap();
+        let start = text.find("\"places\": [").unwrap();
         let end = start + text[start..].find("],").unwrap() + 1;
-        let bad = format!("{}\"cells\": []{}", &text[..start], &text[end..]);
+        let bad = format!("{}\"places\": []{}", &text[..start], &text[end..]);
         assert!(matches!(
             import(&mut MemoryStore::default(), bad.as_bytes()),
             Err(DataError::Format(_))
@@ -873,7 +875,7 @@ mod tests {
         assert!(matches!(import(&mut MemoryStore::default(), b"{"), Err(DataError::Parse(_))));
         assert!(matches!(import(&mut MemoryStore::default(), b"{}"), Err(DataError::Parse(_))));
         let text = String::from_utf8(sample()).unwrap();
-        assert!(rejected(&text.replacen("\"start_time\": \"", "\"start_time\": \"x", 1)));
+        assert!(rejected(&text.replacen("\"start\": \"", "\"start\": \"x", 1)));
         assert!(rejected(&text.replacen("\"uid\": \"", "\"uid\": \"0x", 1)));
     }
 
@@ -888,17 +890,17 @@ mod tests {
         let mut store = imported();
         let resources = all::<Resource>(&store).unwrap();
         let mut first = all::<Appointment>(&store).unwrap().remove(0);
-        let mut cells = first.cells();
-        cells[0].resource = resources[3].uid();
+        let mut places = first.places();
+        places[0].resource = resources[3].uid();
         first.set_start(11 * 60);
         first.set_end(12 * 60 + 15);
-        first.set_cells(&cells);
+        first.set_places(&places);
         put(&mut store, &first);
         let document = value(&export(&store).unwrap());
         let edited = &document["appointments"][0];
-        assert_eq!(edited["start_time"], "11:00");
-        assert_eq!(edited["end_time"], "12:15");
-        assert_eq!(edited["cells"][0]["resource_uid"], format!("{}", resources[3].uid()));
+        assert_eq!(edited["start"], "11:00");
+        assert_eq!(edited["end"], "12:15");
+        assert_eq!(edited["places"][0]["resource_uid"], format!("{}", resources[3].uid()));
     }
 
     #[test]
@@ -1064,9 +1066,9 @@ mod tests {
         put(&mut reopened, &Resource::new(key, 43, "new"));
 
         let resources = all::<Resource>(&reopened).unwrap();
-        let cell = all::<Appointment>(&reopened).unwrap()[0].cells()[0];
+        let place = all::<Appointment>(&reopened).unwrap()[0].places()[0];
         assert_eq!(resources.len(), 1);
-        assert!(resources.iter().all(|resource| resource.uid() != cell.resource));
+        assert!(resources.iter().all(|resource| resource.uid() != place.resource));
         assert_eq!(reopened.get(booked), Some(appointment.to_bytes().as_slice()));
     }
 }
