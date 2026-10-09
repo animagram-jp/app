@@ -21,15 +21,6 @@ use crate::{
 };
 
 // --- layout ---
-//
-// Every record of the calendar is one `DataStruct` of the same `SCHEMA_SIZE`, stored under the id
-// issued by the `FileStore`. Which model the bytes belong to is told by the `FIELD_KIND` field,
-// so a record is found by scanning the store.
-//
-// The store id is a handle of this session and is never written into another record. A record
-// refers to a resource by its `uid` and to a status or a category by its `code`, as the document
-// does. Deleting a record leaves no trace in the records that refer to it: a reference that
-// resolves to nothing says that its target is gone, and the readers treat it so.
 
 pub const SCHEMA_SIZE: u32 = 11;
 const FIELD_KIND: u32 = 4;
@@ -73,7 +64,6 @@ impl WireError for DataError {
     }
 }
 
-/// A day and the uid of the resource it is held at.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(C)]
 pub struct Place {
@@ -96,7 +86,6 @@ pub trait Record: Sized {
         record
     }
 
-    /// The id the record is stored under.
     fn key(&self) -> u32 {
         self.number(ID_IDENTITY)
     }
@@ -144,7 +133,6 @@ pub trait Record: Sized {
         self.put(ID_MODIFIED_AT, &now.to_le_bytes());
     }
 
-    /// For a record that has just been made: created and modified at the same moment.
     fn stamp(&mut self, now: u64) {
         self.put(ID_CREATED_AT, &now.to_le_bytes());
         self.touch(now);
@@ -305,7 +293,6 @@ const APPOINTMENT_STATUS: u32 = 10;
 const APPOINTMENT_NOTE: u32 = 11;
 
 impl Appointment {
-    /// `category` and `status` are the codes of a `Category` and a `Status`.
     pub fn new(
         key: u32,
         places: &[Place],
@@ -408,7 +395,6 @@ impl Appointment {
     }
 }
 
-/// A fresh random uid, for a record made on this device.
 pub fn new_uid() -> u128 {
     use rand::TryRng as _;
 
@@ -435,7 +421,6 @@ pub fn get<R: Record>(store: &impl FileStore, key: u32) -> Option<R> {
     R::from_bytes(store.get(key)?).ok()
 }
 
-/// Every record of the model, in the order of their ids. The whole store is scanned.
 pub fn all<R: Record>(store: &impl FileStore) -> Result<Vec<R>, DataError> {
     store
         .range(0, u32::MAX)
@@ -444,12 +429,10 @@ pub fn all<R: Record>(store: &impl FileStore) -> Result<Vec<R>, DataError> {
         .collect()
 }
 
-/// Whether the store holds a calendar at all.
 pub fn loaded(store: &impl FileStore) -> bool {
     store.range(0, u32::MAX).next().is_some()
 }
 
-/// Reads every record once, so that a damaged one is reported when the store is opened.
 pub fn check(store: &impl FileStore) -> Result<(), DataError> {
     for (_, bytes) in store.range(0, u32::MAX) {
         match kind_of(bytes) {
@@ -466,12 +449,6 @@ pub fn check(store: &impl FileStore) -> Result<(), DataError> {
 
 // --- json ---
 
-/// Writes the records of a calendar document into the store, under ids it issues. Nothing is
-/// written when the document is rejected.
-///
-/// The document is a flat object of five arrays: `resources`, `statuses`, `categories`, `shifts`
-/// and `appointments`. A reference (`resource_uid`, `category`, `status`) is kept as it is
-/// written, whether or not its target is in the document: a missing target is a deleted one.
 pub fn import(store: &mut impl FileStore, body: &[u8]) -> Result<(), DataError> {
     let root: Value =
         serde_json::from_slice(body).map_err(|error| DataError::Parse(format!("{error}")))?;
@@ -565,7 +542,6 @@ pub fn import(store: &mut impl FileStore, body: &[u8]) -> Result<(), DataError> 
     Ok(())
 }
 
-/// The inverse of `import`: the records of the store as a calendar document.
 pub fn export(store: &impl FileStore) -> Result<Vec<u8>, DataError> {
     let date = |day: u64| display(day, Lang::Ja, Format::Date);
     let option = |code: &str, label: &str| json!({"code": code, "label": label});

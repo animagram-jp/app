@@ -231,8 +231,6 @@ impl Handler {
         data::get(self.store.as_ref()?, key)
     }
 
-    /// The shifts of the resources that still exist. A shift whose resource is gone says nothing
-    /// about the hours of the others.
     fn shifts(&self) -> Vec<Shift> {
         let resources = self.read::<Resource>();
         let mut shifts = self.read::<Shift>();
@@ -867,7 +865,6 @@ impl Handler {
         self.form_commands(Editing::Existing(key), heading, &appointment, place, "")
     }
 
-    /// Like an edit, a deletion stays in the memory of the store until the save button.
     fn delete_commands(&mut self) -> Vec<Command> {
         let Some(Editing::Existing(key)) = self.editing.clone() else {
             return vec![];
@@ -1762,14 +1759,10 @@ impl Handler {
     }
 }
 
-/// The position of the resource among the resources, which is the order of its column.
 fn column_of(resources: &[Resource], uid: u128) -> Option<usize> {
     resources.iter().position(|resource| resource.uid() == uid)
 }
 
-/// Moves the cells so that the first one lies on `day` and the column `resource`. The cells
-/// keep their shape; when the resource of the first cell is gone there is no shape to keep, and
-/// the appointment gets that one cell.
 fn shift_cells(
     resources: &[Resource],
     cells: &[Place],
@@ -2266,8 +2259,6 @@ mod tests {
         handler.read()
     }
 
-    /// Four resources (ids 101..=104), one status, one category, a shift per resource and day,
-    /// and the given appointments, all committed to the store of the handler.
     fn load(handler: &mut Handler, appointments: Vec<Appointment>) {
         if handler.store.is_none() {
             handler.attach(Backend::new(MemoryHandles::default()).unwrap());
@@ -4213,7 +4204,6 @@ mod tests {
         })
     }
 
-    /// Opens the form of the first card of a handler that holds the sample.
     fn open_first_card(handler: &mut Handler) -> (u32, Vec<Command>) {
         handler.card_commands();
         let (key, base) = {
