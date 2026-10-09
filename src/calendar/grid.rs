@@ -1,12 +1,50 @@
 use alloc::vec::Vec;
 use core::{
     option::Option::{self, None, Some},
-    primitive::{f64, i32, u32},
+    primitive::{f64, i32, u32, usize},
 };
 
 use rectgrid::{BBox, Unit};
 
+pub const RESOURCE_COUNT: u32 = 4;
+pub const DAY_MAX: u32 = 7;
+pub const SLOT_COUNT: u32 = 44;
+pub const SLOT_MINUTES: u32 = 15;
+pub const DAY_START_MINUTES: u32 = 9 * 60;
+pub const TIME_AXIS: TimeAxis = TimeAxis::new(DAY_START_MINUTES, SLOT_MINUTES, SLOT_COUNT);
+pub const MONTH_WEEKS: u32 = 5;
+pub const DAY_ROWS: u32 = 3;
+pub const MONTH_AXIS: MonthAxis = MonthAxis::new(MONTH_WEEKS, DAY_ROWS);
 const EPSILON: f64 = 1e-9;
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum View {
+    Day,
+    ThreeDays,
+    Week,
+    Month,
+}
+
+impl View {
+    pub fn days(self) -> u32 {
+        match self {
+            Self::Day => 1,
+            Self::ThreeDays => 3,
+            Self::Week | Self::Month => MonthAxis::WEEKDAYS,
+        }
+    }
+
+    pub fn columns(self) -> u32 {
+        match self {
+            Self::Month => MonthAxis::WEEKDAYS,
+            _ => self.grid().columns.count(),
+        }
+    }
+
+    pub fn grid(self) -> Grid {
+        Grid::new(ColumnAxis::new(self.days(), RESOURCE_COUNT), TIME_AXIS)
+    }
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Cell {
@@ -99,6 +137,22 @@ impl TimeAxis {
 
     pub const fn end(&self) -> u32 {
         self.origin + self.step * self.count
+    }
+
+    pub const fn count(&self) -> u32 {
+        self.count
+    }
+
+    /// ```
+    /// # use app::calendar::grid::TimeAxis;
+    /// let axis = TimeAxis::new(540, 15, 44);
+    /// assert!(axis.contains(0.0));
+    /// assert!(axis.contains(43.9));
+    /// assert!(!axis.contains(-0.1));
+    /// assert!(!axis.contains(44.0));
+    /// ```
+    pub fn contains(&self, unit: f64) -> bool {
+        unit >= 0.0 && unit < self.count as f64
     }
 
     /// ```
@@ -220,12 +274,24 @@ impl Grid {
     /// assert_eq!((bx.offset()[0].get(), bx.offset()[1].get()), (1.0, 4.0));
     /// ```
     pub fn bbox(&self, cell: Cell, start: u32, end: u32) -> Option<BBox<2>> {
-        let column = self.columns.unit(cell)?;
+        let column = self.columns.unit(cell)? as i32;
+        self.bbox_flat(column, column, start, end)
+    }
+
+    /// ```
+    /// # use app::calendar::grid::{ColumnAxis, Grid, TimeAxis};
+    /// let grid = Grid::new(ColumnAxis::new(7, 4), TimeAxis::new(540, 15, 44));
+    /// let bx = grid.bbox_flat(-2, 1, 600, 660).unwrap();
+    /// assert_eq!((bx.base()[0].get(), bx.base()[1].get()), (-2.0, 4.0));
+    /// assert_eq!((bx.offset()[0].get(), bx.offset()[1].get()), (4.0, 4.0));
+    /// assert!(grid.bbox_flat(0, 0, 1300, 1400).is_none());
+    /// ```
+    pub fn bbox_flat(&self, first: i32, last: i32, start: u32, end: u32) -> Option<BBox<2>> {
         let (start, end) = self.time.clip(start, end)?;
         let (from, to) = (self.time.unit(start), self.time.unit(end));
         Some(BBox::new(
-            [Unit::new(column as f64), Unit::new(from)],
-            [Unit::new(1.0), Unit::new(to - from)],
+            [Unit::new(first as f64), Unit::new(from)],
+            [Unit::new((last - first + 1) as f64), Unit::new(to - from)],
         ))
     }
 
@@ -239,8 +305,8 @@ impl Grid {
     /// assert_eq!((resolved.start, resolved.end), (600, 660));
     /// ```
     pub fn resolve(&self, bx: &BBox<2>) -> Option<Resolved> {
-        let (first_column, last_column) = span(bx.base()[0].get(), bx.offset()[0].get())?;
-        let (first_slot, last_slot) = span(bx.base()[1].get(), bx.offset()[1].get())?;
+        let (first_column, last_column) = span_clipped(bx.base()[0].get(), bx.offset()[0].get())?;
+        let (first_slot, last_slot) = span_clipped(bx.base()[1].get(), bx.offset()[1].get())?;
         let cells = self.columns.cells(first_column, last_column - first_column);
         if cells.is_empty() {
             return None;
@@ -251,15 +317,78 @@ impl Grid {
     }
 }
 
-fn span(base: f64, offset: f64) -> Option<(u32, u32)> {
-    let first = libm::floor(base + EPSILON);
-    let last = libm::ceil(base + offset - EPSILON);
-    if last <= 0.0 {
+/// ```
+/// # use app::calendar::grid::span;
+/// assert_eq!(span(2.0000000001, 0.9999999999), (2, 3));
+/// assert_eq!(span(-1.5, 1.0), (-2, 0));
+/// assert_eq!(span(4.0, 0.0), (4, 5));
+/// ```
+pub fn span(base: f64, offset: f64) -> (i32, i32) {
+    let first = libm::floor(base + EPSILON) as i32;
+    let last = libm::ceil(base + offset - EPSILON) as i32;
+    (first, last.max(first + 1))
+}
+
+fn span_clipped(base: f64, offset: f64) -> Option<(u32, u32)> {
+    let (first, last) = span(base, offset);
+    if last <= 0 {
         return None;
     }
-    let first = first.max(0.0);
-    let last = last.max(first + 1.0);
-    Some((first as u32, last as u32))
+    let first = first.max(0);
+    Some((first as u32, last.max(first + 1) as u32))
+}
+
+/// ```
+/// # use app::calendar::grid::lanes;
+/// assert_eq!(lanes(&[(0, 4), (2, 6), (6, 8)]), [(0, 2), (1, 2), (0, 1)]);
+/// ```
+pub fn lanes(spans: &[(u32, u32)]) -> Vec<(u32, u32)> {
+    let mut order: Vec<usize> = (0..spans.len()).collect();
+    order.sort_by(|a, b| spans[*a].0.cmp(&spans[*b].0).then(spans[*b].1.cmp(&spans[*a].1)));
+
+    let mut result = alloc::vec![(0, 1); spans.len()];
+    let mut cluster: Vec<(usize, u32, u32)> = Vec::new();
+    let mut cluster_end = 0;
+    for index in order {
+        let (start, end) = spans[index];
+        if !cluster.is_empty() && start >= cluster_end {
+            flush(&mut cluster, &mut result);
+        }
+        let mut lane = 0;
+        while cluster
+            .iter()
+            .any(|(_, other_end, other_lane)| *other_end > start && *other_lane == lane)
+        {
+            lane += 1;
+        }
+        cluster_end = if cluster.is_empty() { end } else { cluster_end.max(end) };
+        cluster.push((index, end, lane));
+    }
+    flush(&mut cluster, &mut result);
+    result
+}
+
+fn flush(cluster: &mut Vec<(usize, u32, u32)>, result: &mut [(u32, u32)]) {
+    let count = cluster.iter().map(|(_, _, lane)| lane + 1).max().unwrap_or(1);
+    for (index, _, lane) in cluster.drain(..) {
+        result[index] = (lane, count);
+    }
+}
+
+/// ```
+/// # use app::calendar::grid::lane_box;
+/// # use rectgrid::{BBox, Unit};
+/// let logical = BBox::new([Unit::new(3.0), Unit::new(4.0)], [Unit::new(1.0), Unit::new(4.0)]);
+/// let bx = lane_box(&logical, 1, 2);
+/// assert_eq!((bx.base()[0].get(), bx.offset()[0].get()), (3.5, 0.5));
+/// assert_eq!((bx.base()[1].get(), bx.offset()[1].get()), (4.0, 4.0));
+/// ```
+pub fn lane_box(logical: &BBox<2>, lane: u32, count: u32) -> BBox<2> {
+    let width = logical.offset()[0].get() / count as f64;
+    BBox::new(
+        [Unit::new(logical.base()[0].get() + lane as f64 * width), logical.base()[1]],
+        [Unit::new(width), logical.offset()[1]],
+    )
 }
 
 #[cfg(test)]
@@ -422,5 +551,74 @@ mod tests {
         let grid = grid(7);
         let resolved = grid.resolve(&bx(2.0000000001, 4.0, 0.9999999999, 4.0)).unwrap();
         assert_eq!(resolved.cells.len(), 1);
+    }
+
+    fn overlap(a: (u32, u32), b: (u32, u32)) -> bool {
+        a.0 < b.1 && b.0 < a.1
+    }
+
+    fn deepest_overlap(spans: &[(u32, u32)], members: &[usize]) -> u32 {
+        members
+            .iter()
+            .map(|&i| {
+                let at = spans[i].0;
+                members.iter().filter(|&&j| spans[j].0 <= at && at < spans[j].1).count() as u32
+            })
+            .max()
+            .unwrap_or(1)
+    }
+
+    #[test]
+    fn random_spans_get_conflict_free_minimal_lanes_independent_of_input_order() {
+        use crate::testing::Rng;
+        for seed in 0..3000 {
+            let mut rng = Rng::new(seed);
+            let mut spans: Vec<(u32, u32)> = Vec::new();
+            for _ in 0..rng.below(12) {
+                let start = rng.below(30) as u32;
+                let span = (start, start + 1 + rng.below(12) as u32);
+                if !spans.contains(&span) {
+                    spans.push(span);
+                }
+            }
+            let assigned = lanes(&spans);
+            assert_eq!(assigned.len(), spans.len(), "seed {seed}");
+
+            let mut cluster = (0..spans.len()).collect::<Vec<usize>>();
+            for i in 0..spans.len() {
+                for j in 0..spans.len() {
+                    if overlap(spans[i], spans[j]) {
+                        let (low, high) = (cluster[i].min(cluster[j]), cluster[i].max(cluster[j]));
+                        for entry in cluster.iter_mut() {
+                            if *entry == high {
+                                *entry = low;
+                            }
+                        }
+                    }
+                }
+            }
+            for i in 0..spans.len() {
+                let (lane, count) = assigned[i];
+                assert!(lane < count, "seed {seed} span {i}");
+                for j in 0..spans.len() {
+                    if i != j && overlap(spans[i], spans[j]) {
+                        assert_ne!(lane, assigned[j].0, "seed {seed} spans {i} {j}");
+                    }
+                }
+                let members: Vec<usize> =
+                    (0..spans.len()).filter(|&j| cluster[j] == cluster[i]).collect();
+                assert_eq!(count, deepest_overlap(&spans, &members), "seed {seed} span {i}");
+            }
+
+            let mut order: Vec<usize> = (0..spans.len()).collect();
+            for index in (1..order.len()).rev() {
+                order.swap(index, rng.below(index + 1));
+            }
+            let shuffled: Vec<(u32, u32)> = order.iter().map(|&i| spans[i]).collect();
+            let reassigned = lanes(&shuffled);
+            for (position, &original) in order.iter().enumerate() {
+                assert_eq!(reassigned[position], assigned[original], "seed {seed} shuffled");
+            }
+        }
     }
 }

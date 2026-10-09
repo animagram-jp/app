@@ -50,7 +50,7 @@ Gui application system for editing and reading structured data. Handles event lo
 | data_struct.rs | データモデル固有のフィールド数(schema_size)固定Listと可変部VariableListによるデータインスタンス操作モジュール。フィールド1にid(u32), 2にcreated_at(timestamp), 3にmodified_at(timestamp)を確定し、4~を開放。 |
 | object.rs | ドメイン固有のデータモデルの全フィールドとロジックを、各自公開されたenumのネスト群で表現したモジュール。関数はitemのドメイン意味(表示)を定義する`label`, 一意なschema_idを発行する`id`, バイト列とdomからの流入(u32,str,f64)を相互変換する`read` / `write`, 値の表示を導出する`display`などを各enum itemに対して定義する。 |
 | event.rs | appが受け取るeventの型(Canvas / Gesture / Window / Fetch、ワイヤに出ない内部のGesture / Fetched / StoreLost / StoreOpened)と、ワイヤ上のフレーム種別、`decode_event`。 |
-| calendar/ | カレンダーアプリ(feature `calendar`)。data(レコード定義と、JSONの`import` / `export`。全レコードが同じschema_sizeのDataStructで、種別はフィールド4(kind)、FileStoreのidはissue_idで採番する。このidは他のレコードに書かず、参照はJSONと同じ`uid`(資源)と`code`(状態・カテゴリ)で持つ。削除は参照元を書き換えず、参照先が無いことを「削除済み」として読む側が扱う)、grid / layout / target(座標・レーン・DOM対応)、temporal(繰り返し規則)、handler(`Calendar`のような集約を持たず、Backendを走査して読み書きする。編集も削除もモーダルではメモリ操作で、save / discardの判断はhandler)。 |
+| calendar/ | カレンダーアプリ(feature `calendar`)。data(レコード定義と、JSONの`import` / `export`。全レコードが同じschema_sizeのDataStructで、種別はフィールド4(kind)、FileStoreのidはissue_idで採番する。このidは他のレコードに書かず、参照はJSONと同じ`uid`(資源)と`code`(状態・カテゴリ)で持つ。削除は参照元を書き換えず、参照先が無いことを「削除済み」として読む側が扱う)、grid / target(座標・レーン・DOM対応)、temporal(繰り返し規則)、handler(`Calendar`のような集約を持たず、Backendを走査して読み書きする。編集も削除もモーダルではメモリ操作で、save / discardの判断はhandler)。 |
 | testing.rs | テスト専用(`cfg(test)`)。`block_on`と、seed固定の疑似乱数`Rng`。 |
 | handler.rs | canvasを操作する、ドメイン固有のステートを持つHandler定義。Handlerは、DataStructと、フィールド4~schema_sizeまでの操作ロジックを定義するobjectを束ねて操作を行う。js_clientのdom::Idとobjectのフィールドを相互にバルクマッピングする関数を定義して、canvasと内部データを相互変換する。 |
 

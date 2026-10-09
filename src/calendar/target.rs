@@ -8,7 +8,7 @@ use core::{
     primitive::u32,
 };
 
-use super::handler::View;
+use super::grid::View;
 use crate::js_client::dom::{Id, Tag};
 
 const VIEWS: [View; 4] = [View::Day, View::ThreeDays, View::Week, View::Month];

@@ -19,8 +19,10 @@ use crate::{
             appointment::{self, Place, shift},
             format_hhmm, parse_date, parse_time, tag,
         },
-        grid::{Cell, ColumnAxis, Grid, MonthAxis, TimeAxis},
-        layout::lanes,
+        grid::{
+            Cell, ColumnAxis, DAY_MAX, DAY_START_MINUTES, Grid, MONTH_AXIS, RESOURCE_COUNT,
+            SLOT_COUNT, SLOT_MINUTES, TIME_AXIS, View, lane_box, lanes, span,
+        },
         target::{CardPart, EditField, Target},
     },
     data_struct::DataStruct,
@@ -37,17 +39,10 @@ use crate::{
     },
 };
 
-const RESOURCE_COUNT: u32 = 4;
-const DAY_MAX: u32 = 7;
-const SLOT_COUNT: u32 = 44;
-const SLOT_MINUTES: u32 = 15;
-const DAY_START_MINUTES: u32 = 9 * 60;
-const TIME_AXIS: TimeAxis = TimeAxis::new(DAY_START_MINUTES, SLOT_MINUTES, SLOT_COUNT);
 const CARD_POOL: usize = 380;
 const DRAG_Z_INDEX: i32 = 1000;
 const HANDLE_REM: f64 = 0.5;
 const HANDLE_MAX: f64 = 0.35;
-const EPSILON: f64 = 1e-9;
 const STORE: StoreId = StoreId { name: "calendar", version: "0.1" };
 const NEW_MINUTES: u32 = 60;
 const SLOT_REM: f64 = 1.75;
@@ -65,9 +60,6 @@ const LOAD_PATH: &str = "data/calendar.json";
 const STATUS_OK: u16 = 200;
 const STATUS_POOL: u32 = 4;
 const CATEGORY_POOL: u32 = 4;
-const MONTH_WEEKS: u32 = 5;
-const DAY_ROWS: u32 = 3;
-const MONTH_AXIS: MonthAxis = MonthAxis::new(MONTH_WEEKS, DAY_ROWS);
 const BAND_POOL: usize = MONTH_AXIS.days() as usize;
 
 struct RowRem(f64);
@@ -79,31 +71,6 @@ impl Decimal for RowRem {
 
     fn to_f64(&self) -> f64 {
         self.0
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum View {
-    Day,
-    ThreeDays,
-    Week,
-    Month,
-}
-
-impl View {
-    pub fn days(self) -> u32 {
-        match self {
-            Self::Day => 1,
-            Self::ThreeDays => 3,
-            Self::Week | Self::Month => MonthAxis::WEEKDAYS,
-        }
-    }
-
-    fn columns(self) -> u32 {
-        match self {
-            Self::Month => MonthAxis::WEEKDAYS,
-            _ => ColumnAxis::new(self.days(), RESOURCE_COUNT).count(),
-        }
     }
 }
 
@@ -245,7 +212,7 @@ impl Handler {
     }
 
     pub(crate) fn loaded(&self) -> bool {
-        self.store.as_ref().is_some_and(|store| data::loaded(store))
+        self.store.as_ref().is_some_and(data::loaded)
     }
 
     pub fn new(viewport_width_px: f64, today: u64, rem_in_px: f64) -> Self {
@@ -500,20 +467,15 @@ impl Handler {
         let resources = self.tags(appointment::RESOURCE);
         let grid = self.grid();
         let (start, end) = appointment::Range::read(&entry);
-        let (start, end) = grid.time.clip(start, end)?;
         let flats = appointment::Places::read(&entry).into_iter().filter_map(|place| {
             let resource = column_of(&resources, place.resource)?;
-            Some(grid.columns.flat((diff(self.base, place.day) / DAY) as i32, resource as u32))
+            Some(grid.columns.flat(self.day_offset(place.day), resource as u32))
         });
         let (first, last) = flats.fold(None, |range: Option<(i32, i32)>, flat| match range {
             Some((low, high)) => Some((low.min(flat), high.max(flat))),
             None => Some((flat, flat)),
         })?;
-        let (from, to) = (grid.time.unit(start), grid.time.unit(end));
-        Some(BBox::new(
-            [GridUnit::new(first as f64), GridUnit::new(from)],
-            [GridUnit::new((last - first + 1) as f64), GridUnit::new(to - from)],
-        ))
+        grid.bbox_flat(first, last, start, end)
     }
 
     fn drag(&mut self, x: f64, y: f64) -> Vec<Command> {
@@ -846,10 +808,10 @@ impl Handler {
         else {
             return vec![];
         };
-        if column.get() < 0.0 || row.get() < 0.0 || row.get() >= SLOT_COUNT as f64 {
+        let grid = self.grid();
+        if column.get() < 0.0 || !grid.time.contains(row.get()) {
             return vec![];
         }
-        let grid = self.grid();
         let Some(cell) = grid.columns.cell(libm::floor(column.get()) as u32) else {
             return vec![];
         };
@@ -1027,9 +989,8 @@ impl Handler {
         let grid = self.grid();
         let resources = self.tags(appointment::RESOURCE);
         let cells = (corner[0].is_some()).then(|| {
-            let first = libm::floor(bx.base()[0].get() + EPSILON) as i32;
-            let last = libm::ceil(bx.base()[0].get() + bx.offset()[0].get() - EPSILON) as i32;
-            (first..last.max(first + 1))
+            let (first, last) = span(bx.base()[0].get(), bx.offset()[0].get());
+            (first..last)
                 .map(|flat| {
                     let (day, resource) = grid.columns.locate(flat);
                     let resource = tag::Uid::read(resources.get(resource as usize)?);
@@ -1038,10 +999,8 @@ impl Handler {
                 .collect::<Option<Vec<Place>>>()
         });
         let time = (corner[1].is_some()).then(|| {
-            let first = libm::floor(bx.base()[1].get() + EPSILON).max(0.0) as u32;
-            let last =
-                libm::ceil(bx.base()[1].get() + bx.offset()[1].get() - EPSILON).max(0.0) as u32;
-            Some((grid.time.minutes(first)?, grid.time.minutes(last)?))
+            let (first, last) = span(bx.base()[1].get(), bx.offset()[1].get());
+            Some((grid.time.minutes(first.max(0) as u32)?, grid.time.minutes(last.max(0) as u32)?))
         });
         let mut entry = self.appointment(key)?;
         let current_cells = appointment::Places::read(&entry);
@@ -1070,7 +1029,7 @@ impl Handler {
         let [Ok(column), Ok(row)] = self.rectgrid.point_to_unit(pointer) else {
             return None;
         };
-        if column.get() < 0.0 || row.get() < 0.0 || row.get() >= SLOT_COUNT as f64 {
+        if column.get() < 0.0 || !grid.time.contains(row.get()) {
             return None;
         }
         let top = [pointer[0], pointer[1] - Px::new(drag.offset[1])];
@@ -1151,7 +1110,7 @@ impl Handler {
             return None;
         };
         let (column, slot) = (libm::floor(column.get()), libm::floor(slot.get()));
-        if column < 0.0 || slot < 0.0 || slot >= SLOT_COUNT as f64 {
+        if column < 0.0 || !grid.time.contains(slot) {
             return None;
         }
         let cell = grid.columns.cell(column as u32)?;
@@ -1251,8 +1210,8 @@ impl Handler {
                 let Some(resource) = column_of(resources, place.resource) else {
                     continue;
                 };
-                let offset = diff(self.base, place.day) / DAY;
-                let flat = grid.columns.flat(offset as i32, resource as u32);
+                let offset = self.day_offset(place.day);
+                let flat = grid.columns.flat(offset, resource as u32);
                 let range = extent.entry(key).or_insert((flat, flat));
                 *range = (range.0.min(flat), range.1.max(flat));
                 let Ok(day) = u32::try_from(offset) else {
@@ -1667,7 +1626,11 @@ impl Handler {
     }
 
     fn grid(&self) -> Grid {
-        Grid::new(ColumnAxis::new(self.view.days(), RESOURCE_COUNT), TIME_AXIS)
+        self.view.grid()
+    }
+
+    fn day_offset(&self, day: u64) -> i32 {
+        (diff(self.base, day) / DAY) as i32
     }
 
     fn columns(&self) -> u32 {
@@ -1895,14 +1858,6 @@ fn heading_axis() -> ColumnAxis {
     ColumnAxis::new(DAY_MAX, RESOURCE_COUNT)
 }
 
-fn lane_box(logical: &BBox<2>, lane: u32, count: u32) -> BBox<2> {
-    let width = logical.offset()[0].get() / count as f64;
-    BBox::new(
-        [GridUnit::new(logical.base()[0].get() + lane as f64 * width), logical.base()[1]],
-        [GridUnit::new(width), logical.offset()[1]],
-    )
-}
-
 fn rem(px: f64, rem_in_px: f64) -> StyleValue {
     StyleValue::Length((px / rem_in_px) as f32, Unit::Rem)
 }
@@ -1952,7 +1907,10 @@ mod tests {
 
     use super::*;
     use crate::{
-        calendar::data::SCHEMA_SIZE,
+        calendar::{
+            data::SCHEMA_SIZE,
+            grid::{DAY_ROWS, MONTH_WEEKS},
+        },
         data_struct::{ID_CREATED_AT, ID_MODIFIED_AT},
         file_store::{MemoryHandles, MemoryStore},
         js_client::KeyName,
