@@ -21,10 +21,8 @@
 //!   the next `save()`. Atomicity is per record, not per batch: a crash may
 //!   leave a prefix of an unacknowledged batch visible after reopen.
 
-#[cfg(test)]
-use alloc::rc::Rc;
 use alloc::{
-    collections::{BTreeMap, BTreeSet},
+    collections::BTreeMap,
     fmt,
     fmt::{Display, Formatter},
     format,
@@ -32,6 +30,8 @@ use alloc::{
     vec,
     vec::Vec,
 };
+#[cfg(test)]
+use alloc::{collections::BTreeSet, rc::Rc};
 #[cfg(test)]
 use core::{
     cell::{Cell, RefCell},
@@ -256,9 +256,45 @@ pub struct Index {
     /// batch and are cut off by the next `save()`.
     log_end: u32,
     /// Ids set since the last successful save.
-    unsaved: BTreeSet<u32>,
+    unsaved: IdSet,
     /// Ids deleted since the last successful save.
-    deleted: BTreeSet<u32>,
+    deleted: IdSet,
+}
+
+#[derive(Default)]
+struct IdSet(Vec<u32>);
+impl IdSet {
+    fn new() -> Self {
+        Self(Vec::new())
+    }
+    fn insert(&mut self, id: u32) -> bool {
+        match self.0.binary_search(&id) {
+            Ok(_) => false,
+            Err(i) => {
+                self.0.insert(i, id);
+                true
+            }
+        }
+    }
+    fn remove(&mut self, id: &u32) -> bool {
+        match self.0.binary_search(id) {
+            Ok(i) => {
+                self.0.remove(i);
+                true
+            }
+            Err(_) => false,
+        }
+    }
+    fn iter(&self) -> core::slice::Iter<'_, u32> {
+        self.0.iter()
+    }
+    fn clear(&mut self) {
+        self.0.clear()
+    }
+    #[cfg(test)]
+    fn len(&self) -> usize {
+        self.0.len()
+    }
 }
 
 impl Index {
@@ -382,8 +418,8 @@ pub trait FileStore: Sized {
             memory,
             next_id,
             log_end: log_end as u32,
-            unsaved: BTreeSet::new(),
-            deleted: BTreeSet::new(),
+            unsaved: IdSet::new(),
+            deleted: IdSet::new(),
         };
         Ok(store)
     }
