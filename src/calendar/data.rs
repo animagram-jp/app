@@ -1,9 +1,4 @@
-use alloc::{
-    collections::{BTreeMap, BTreeSet},
-    format,
-    string::String,
-    vec::Vec,
-};
+use alloc::{collections::BTreeSet, format, string::String, vec::Vec};
 use core::{
     clone::Clone,
     cmp::PartialEq,
@@ -29,12 +24,17 @@ use crate::{
 //
 // Every record of the calendar is one `DataStruct` of the same `SCHEMA_SIZE`, stored under the id
 // issued by the `FileStore`. Which model the bytes belong to is told by the `FIELD_KIND` field,
-// so a record is found by scanning the store. References between records hold the store id.
+// so a record is found by scanning the store.
+//
+// The store id is a handle of this session and is never written into another record. A record
+// refers to a resource by its `uid` and to a status or a category by its `code`, as the document
+// does. Deleting a record leaves no trace in the records that refer to it: a reference that
+// resolves to nothing says that its target is gone, and the readers treat it so.
 
 pub const SCHEMA_SIZE: u32 = 11;
 const FIELD_KIND: u32 = 4;
 const CREATED: f64 = 0.0;
-const CELL_BYTES: usize = 12;
+const CELL_BYTES: usize = 24;
 const MINUTES: Layout<2> = Layout::new([Unsigned(11), Unsigned(11)]);
 
 pub const KIND_RESOURCE: u32 = 1;
@@ -73,12 +73,12 @@ impl WireError for DataError {
     }
 }
 
-/// A day and the store id of the resource it is held at.
+/// A day and the uid of the resource it is held at.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(C)]
 pub struct Place {
     pub day:      u64,
-    pub resource: u32,
+    pub resource: u128,
 }
 
 pub trait Record: Sized {
@@ -250,7 +250,7 @@ impl Shift {
     pub fn new(
         key: u32,
         day: u64,
-        resource: u32,
+        resource: u128,
         person: &str,
         open: u32,
         close: u32,
@@ -275,8 +275,8 @@ impl Shift {
             .map_or(0, u64::from_le_bytes)
     }
 
-    pub fn resource(&self) -> u32 {
-        self.number(SHIFT_RESOURCE)
+    pub fn resource(&self) -> u128 {
+        self.wide(SHIFT_RESOURCE)
     }
 
     pub fn person(&self) -> &str {
@@ -305,15 +305,15 @@ const APPOINTMENT_STATUS: u32 = 10;
 const APPOINTMENT_NOTE: u32 = 11;
 
 impl Appointment {
-    /// `category` and `status` are the store ids of a `Category` and a `Status`.
+    /// `category` and `status` are the codes of a `Category` and a `Status`.
     pub fn new(
         key: u32,
         cells: &[Place],
         start: u32,
         end: u32,
         title: &str,
-        category: u32,
-        status: u32,
+        category: &str,
+        status: &str,
         note: &str,
     ) -> Self {
         let mut appointment = Self::blank(key);
@@ -339,7 +339,7 @@ impl Appointment {
             .filter_map(|cell| {
                 Some(Place {
                     day:      u64::from_le_bytes(cell[..8].try_into().ok()?),
-                    resource: u32::from_le_bytes(cell[8..].try_into().ok()?),
+                    resource: u128::from_le_bytes(cell[8..].try_into().ok()?),
                 })
             })
             .collect()
@@ -357,12 +357,12 @@ impl Appointment {
         self.text(APPOINTMENT_TITLE)
     }
 
-    pub fn category(&self) -> u32 {
-        self.number(APPOINTMENT_CATEGORY)
+    pub fn category(&self) -> &str {
+        self.text(APPOINTMENT_CATEGORY)
     }
 
-    pub fn status(&self) -> u32 {
-        self.number(APPOINTMENT_STATUS)
+    pub fn status(&self) -> &str {
+        self.text(APPOINTMENT_STATUS)
     }
 
     pub fn note(&self) -> &str {
@@ -393,12 +393,12 @@ impl Appointment {
         self.put(APPOINTMENT_TITLE, title.as_bytes());
     }
 
-    pub fn set_category(&mut self, category: u32) {
-        self.put(APPOINTMENT_CATEGORY, &category.to_le_bytes());
+    pub fn set_category(&mut self, category: &str) {
+        self.put(APPOINTMENT_CATEGORY, category.as_bytes());
     }
 
-    pub fn set_status(&mut self, status: u32) {
-        self.put(APPOINTMENT_STATUS, &status.to_le_bytes());
+    pub fn set_status(&mut self, status: &str) {
+        self.put(APPOINTMENT_STATUS, status.as_bytes());
     }
 
     pub fn set_note(&mut self, note: &str) {
@@ -464,49 +464,45 @@ pub fn check(store: &impl FileStore) -> Result<(), DataError> {
 
 // --- json ---
 
-/// Writes the records of a calendar document into the store, under ids it issues. A reference
-/// in the document is a `uid` (resource) or a `code` (status, category); the records hold the
-/// store ids instead. Nothing is written when the document is rejected.
+/// Writes the records of a calendar document into the store, under ids it issues. Nothing is
+/// written when the document is rejected.
 ///
 /// The document is a flat object of five arrays: `resources`, `statuses`, `categories`, `shifts`
-/// and `appointments`.
+/// and `appointments`. A reference (`resource_uid`, `category`, `status`) is kept as it is
+/// written, whether or not its target is in the document: a missing target is a deleted one.
 pub fn import(store: &mut impl FileStore, body: &[u8]) -> Result<(), DataError> {
     let root: Value =
         serde_json::from_slice(body).map_err(|error| DataError::Parse(format!("{error}")))?;
     let page = |name: &str| field(&root, name)?.as_array().ok_or_else(|| shape(name));
     let mut staged: Vec<(u32, Vec<u8>)> = Vec::new();
 
-    let mut resources: BTreeMap<u128, u32> = BTreeMap::new();
+    let mut uids: BTreeSet<u128> = BTreeSet::new();
     for resource in page("resources")? {
         let (uid, name) = (uid(resource, "uid")?, text(resource, "name")?);
-        let key = store.issue_id();
-        if resources.insert(uid, key).is_some() {
+        if !uids.insert(uid) {
             return Err(format_error("uid", &format!("{uid}")));
         }
+        let key = store.issue_id();
         staged.push((key, Resource::new(key, uid, name).to_bytes()));
     }
-    let mut statuses: BTreeMap<&str, u32> = BTreeMap::new();
+    let mut codes: BTreeSet<&str> = BTreeSet::new();
     for status in page("statuses")? {
         let (code, label) = (text(status, "code")?, text(status, "label")?);
-        let key = store.issue_id();
-        if statuses.insert(code, key).is_some() {
+        if !codes.insert(code) {
             return Err(format_error("status", code));
         }
+        let key = store.issue_id();
         staged.push((key, Status::new(key, code, label).to_bytes()));
     }
-    let mut categories: BTreeMap<&str, u32> = BTreeMap::new();
+    let mut codes: BTreeSet<&str> = BTreeSet::new();
     for category in page("categories")? {
         let (code, label) = (text(category, "code")?, text(category, "label")?);
-        let key = store.issue_id();
-        if categories.insert(code, key).is_some() {
+        if !codes.insert(code) {
             return Err(format_error("category", code));
         }
+        let key = store.issue_id();
         staged.push((key, Category::new(key, code, label).to_bytes()));
     }
-    let resource_of = |value: &Value| {
-        let uid = uid(value, "resource_uid")?;
-        resources.get(&uid).copied().ok_or_else(|| format_error("resource_uid", &format!("{uid}")))
-    };
 
     for shift in page("shifts")? {
         let rest = |key| shift.get(key).and_then(Value::as_str);
@@ -518,7 +514,7 @@ pub fn import(store: &mut impl FileStore, body: &[u8]) -> Result<(), DataError> 
         let shift = Shift::new(
             key,
             parse_date(text(shift, "date")?)?,
-            resource_of(shift)?,
+            uid(shift, "resource_uid")?,
             text(shift, "staff_name")?,
             parse_time(text(shift, "open")?)?,
             parse_time(text(shift, "close")?)?,
@@ -539,17 +535,13 @@ pub fn import(store: &mut impl FileStore, body: &[u8]) -> Result<(), DataError> 
             .map(|cell| {
                 Ok(Place {
                     day:      parse_date(text(cell, "date")?)?,
-                    resource: resource_of(cell)?,
+                    resource: self::uid(cell, "resource_uid")?,
                 })
             })
             .collect::<Result<Vec<_>, DataError>>()?;
         if cells.is_empty() {
             return Err(format_error("cells", &format!("appointment {uid}")));
         }
-        let choice = |codes: &BTreeMap<&str, u32>, name: &str| {
-            let code = text(appointment, name)?;
-            codes.get(code).copied().ok_or_else(|| format_error(name, code))
-        };
         let key = store.issue_id();
         let mut record = Appointment::new(
             key,
@@ -557,8 +549,8 @@ pub fn import(store: &mut impl FileStore, body: &[u8]) -> Result<(), DataError> 
             parse_time(text(appointment, "start_time")?)?,
             parse_time(text(appointment, "end_time")?)?,
             text(appointment, "title")?,
-            choice(&categories, "category")?,
-            choice(&statuses, "status")?,
+            text(appointment, "category")?,
+            text(appointment, "status")?,
             text(appointment, "note")?,
         );
         record.set_uid(uid);
@@ -573,37 +565,14 @@ pub fn import(store: &mut impl FileStore, body: &[u8]) -> Result<(), DataError> 
 
 /// The inverse of `import`: the records of the store as a calendar document.
 pub fn export(store: &impl FileStore) -> Result<Vec<u8>, DataError> {
-    let (resources, statuses, categories) =
-        (all::<Resource>(store)?, all::<Status>(store)?, all::<Category>(store)?);
     let date = |day: u64| display(day, Lang::Ja, Format::Date);
-    let uid_of = |key: u32| {
-        resources
-            .iter()
-            .find(|resource| resource.key() == key)
-            .map(|resource| format!("{}", resource.uid()))
-            .ok_or_else(|| format_error("resource", &format!("{key}")))
-    };
-    let status_code = |key: u32| {
-        statuses
-            .iter()
-            .find(|status| status.key() == key)
-            .map(|status| status.code())
-            .ok_or_else(|| format_error("status", &format!("{key}")))
-    };
-    let category_code = |key: u32| {
-        categories
-            .iter()
-            .find(|category| category.key() == key)
-            .map(|category| category.code())
-            .ok_or_else(|| format_error("category", &format!("{key}")))
-    };
     let choice = |code: &str, label: &str| json!({"code": code, "label": label});
-    let shifts = all::<Shift>(store)?
+    let shifts: Vec<Value> = all::<Shift>(store)?
         .iter()
         .map(|s| {
             let mut shift = json!({
                 "date": date(s.day()),
-                "resource_uid": uid_of(s.resource())?,
+                "resource_uid": format!("{}", s.resource()),
                 "staff_name": s.person(),
                 "open": format_hhmm(s.open()),
                 "close": format_hhmm(s.close()),
@@ -612,33 +581,33 @@ pub fn export(store: &impl FileStore) -> Result<Vec<u8>, DataError> {
                 shift["break_start"] = json!(format_hhmm(start));
                 shift["break_end"] = json!(format_hhmm(end));
             }
-            Ok(shift)
+            shift
         })
-        .collect::<Result<Vec<_>, DataError>>()?;
-    let appointments = all::<Appointment>(store)?
+        .collect();
+    let appointments: Vec<Value> = all::<Appointment>(store)?
         .iter()
         .map(|a| {
-            let cells = a
+            let cells: Vec<Value> = a
                 .cells()
                 .iter()
-                .map(|c| Ok(json!({"date": date(c.day), "resource_uid": uid_of(c.resource)?})))
-                .collect::<Result<Vec<_>, DataError>>()?;
-            Ok(json!({
+                .map(|c| json!({"date": date(c.day), "resource_uid": format!("{}", c.resource)}))
+                .collect();
+            json!({
                 "uid": format!("{}", a.uid()),
                 "cells": cells,
                 "start_time": format_hhmm(a.start()),
                 "end_time": format_hhmm(a.end()),
                 "title": a.title(),
-                "category": category_code(a.category())?,
-                "status": status_code(a.status())?,
+                "category": a.category(),
+                "status": a.status(),
                 "note": a.note(),
-            }))
+            })
         })
-        .collect::<Result<Vec<_>, DataError>>()?;
+        .collect();
     let root = json!({
-        "resources": resources.iter().map(|r| json!({"uid": format!("{}", r.uid()), "name": r.name()})).collect::<Vec<_>>(),
-        "statuses": statuses.iter().map(|s| choice(s.code(), s.label())).collect::<Vec<_>>(),
-        "categories": categories.iter().map(|c| choice(c.code(), c.label())).collect::<Vec<_>>(),
+        "resources": all::<Resource>(store)?.iter().map(|r| json!({"uid": format!("{}", r.uid()), "name": r.name()})).collect::<Vec<_>>(),
+        "statuses": all::<Status>(store)?.iter().map(|s| choice(s.code(), s.label())).collect::<Vec<_>>(),
+        "categories": all::<Category>(store)?.iter().map(|c| choice(c.code(), c.label())).collect::<Vec<_>>(),
         "shifts": shifts,
         "appointments": appointments,
     });
@@ -799,21 +768,42 @@ mod tests {
     }
 
     #[test]
-    fn import_refers_to_other_records_by_store_id() {
+    fn import_keeps_references_as_the_document_writes_them() {
         let store = imported();
-        let appointments = all::<Appointment>(&store).unwrap();
+        let first = &all::<Appointment>(&store).unwrap()[0];
         let source = value(&sample());
-        let first = &appointments[0];
-        let status: Status = get(&store, first.status()).unwrap();
-        let category: Category = get(&store, first.category()).unwrap();
-        assert_eq!(status.code(), source["appointments"][0]["status"]);
-        assert_eq!(category.code(), source["appointments"][0]["category"]);
-        let resource: Resource = get(&store, first.cells()[0].resource).unwrap();
+        assert_eq!(first.status(), source["appointments"][0]["status"]);
+        assert_eq!(first.category(), source["appointments"][0]["category"]);
         assert_eq!(
-            format!("{}", resource.uid()),
+            format!("{}", first.cells()[0].resource),
             source["appointments"][0]["cells"][0]["resource_uid"].as_str().unwrap()
         );
-        assert!(get::<Resource>(&store, first.status()).is_none());
+        let shift = &all::<Shift>(&store).unwrap()[0];
+        assert_eq!(
+            format!("{}", shift.resource()),
+            source["shifts"][0]["resource_uid"].as_str().unwrap()
+        );
+    }
+
+    #[test]
+    fn every_reference_of_the_sample_resolves() {
+        let store = imported();
+        let resources: Vec<u128> =
+            all::<Resource>(&store).unwrap().iter().map(|r| r.uid()).collect();
+        let statuses: Vec<String> =
+            all::<Status>(&store).unwrap().iter().map(|s| String::from(s.code())).collect();
+        let categories: Vec<String> =
+            all::<Category>(&store).unwrap().iter().map(|c| String::from(c.code())).collect();
+        for shift in all::<Shift>(&store).unwrap() {
+            assert!(resources.contains(&shift.resource()));
+        }
+        for appointment in all::<Appointment>(&store).unwrap() {
+            assert!(statuses.iter().any(|code| code == appointment.status()));
+            assert!(categories.iter().any(|code| code == appointment.category()));
+            for cell in appointment.cells() {
+                assert!(resources.contains(&cell.resource));
+            }
+        }
     }
 
     #[test]
@@ -832,10 +822,14 @@ mod tests {
             .unwrap();
         assert_eq!(source["appointments"][134]["cells"].as_array().unwrap().len(), 2);
         assert_eq!(diff(crossing.cells()[0].day, crossing.cells()[1].day), 8_640_000);
+        let resources = all::<Resource>(&store).unwrap();
         let names: Vec<String> = crossing
             .cells()
             .iter()
-            .map(|c| String::from(get::<Resource>(&store, c.resource).unwrap().name()))
+            .map(|c| {
+                let resource = resources.iter().find(|r| r.uid() == c.resource).unwrap();
+                String::from(resource.name())
+            })
             .collect();
         assert_eq!(names, ["Studio 4", "Studio 1"]);
     }
@@ -853,17 +847,16 @@ mod tests {
     }
 
     #[test]
-    fn import_rejects_an_unknown_reference() {
+    fn import_accepts_a_reference_to_nothing() {
         let text = String::from_utf8(sample()).unwrap();
-        let uid = text.split("\"uid\": \"").nth(1).unwrap().split('"').next().unwrap();
-        let from_uid = format!("\"resource_uid\": \"{uid}\"");
-        for (from, to) in [
-            ("\"status\": \"scheduled\"", "\"status\": \"x\""),
-            ("\"category\": \"intake\"", "\"category\": \"x\""),
-            (from_uid.as_str(), "\"resource_uid\": \"1\""),
-        ] {
-            assert!(rejected(&text.replacen(from, to, 1)), "{to}");
-        }
+        let bad = text.replacen("\"status\": \"scheduled\"", "\"status\": \"gone\"", 1).replacen(
+            "\"resource_uid\": \"",
+            "\"resource_uid\": \"1",
+            1,
+        );
+        let mut store = MemoryStore::default();
+        import(&mut store, bad.as_bytes()).unwrap();
+        assert_eq!(value(&export(&store).unwrap()), value(bad.as_bytes()));
     }
 
     #[test]
@@ -896,7 +889,7 @@ mod tests {
         let resources = all::<Resource>(&store).unwrap();
         let mut first = all::<Appointment>(&store).unwrap().remove(0);
         let mut cells = first.cells();
-        cells[0].resource = resources[3].key();
+        cells[0].resource = resources[3].uid();
         first.set_start(11 * 60);
         first.set_end(12 * 60 + 15);
         first.set_cells(&cells);
@@ -922,7 +915,7 @@ mod tests {
     #[test]
     fn touch_stamps_only_the_modified_time() {
         let mut appointment =
-            Appointment::new(1, &[Place { day: 1, resource: 2 }], 600, 660, "t", 3, 4, "");
+            Appointment::new(1, &[Place { day: 1, resource: 2 }], 600, 660, "t", "c", "s", "");
         let created = appointment.data().get(ID_CREATED_AT).unwrap().to_vec();
         appointment.touch(77);
         assert_eq!(appointment.data().get(ID_MODIFIED_AT).unwrap(), 77u64.to_le_bytes());
@@ -1007,8 +1000,8 @@ mod tests {
                             600,
                             660,
                             "n",
-                            0,
-                            0,
+                            "c",
+                            "s",
                             "",
                         );
                         added.set_uid(new_uid());
@@ -1041,5 +1034,39 @@ mod tests {
             let reopened = MemoryStore::new(disk).unwrap();
             assert!(appointments(&reopened).iter().eq(committed.iter()), "round {round}");
         }
+    }
+
+    #[test]
+    fn a_reissued_store_id_does_not_revive_a_reference() {
+        let disk = MemoryHandles::default();
+        let mut store = MemoryStore::new(disk.clone()).unwrap();
+        let (booked, gone) = (store.issue_id(), store.issue_id());
+        let mut appointment = Appointment::new(
+            booked,
+            &[Place { day: 1, resource: 42 }],
+            600,
+            660,
+            "t",
+            "c",
+            "s",
+            "",
+        );
+        appointment.set_uid(new_uid());
+        put(&mut store, &appointment);
+        put(&mut store, &Resource::new(gone, 42, "gone"));
+        store.save().unwrap();
+
+        store.delete(gone);
+        store.save().unwrap();
+        let mut reopened = MemoryStore::new(disk).unwrap();
+        let key = reopened.issue_id();
+        assert_eq!(key, gone, "the id of the deleted record is issued again");
+        put(&mut reopened, &Resource::new(key, 43, "new"));
+
+        let resources = all::<Resource>(&reopened).unwrap();
+        let cell = all::<Appointment>(&reopened).unwrap()[0].cells()[0];
+        assert_eq!(resources.len(), 1);
+        assert!(resources.iter().all(|resource| resource.uid() != cell.resource));
+        assert_eq!(reopened.get(booked), Some(appointment.to_bytes().as_slice()));
     }
 }

@@ -24,6 +24,7 @@ const FIELDS: [EditField; 8] = [
 ];
 const RELOAD_BUTTON: u32 = 1;
 const SAVE_BUTTON: u32 = 2;
+const DELETE_BUTTON: u32 = 2;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum EditField {
@@ -88,6 +89,7 @@ pub enum Target {
     StatusOption(u32),
     ResourceOption(u32),
     EditMessage,
+    Delete,
 }
 
 impl Target {
@@ -167,6 +169,7 @@ impl Target {
             Self::StatusOption(n) => join(option(EditField::Status), &[(Tag::Option, Some(n))]),
             Self::ResourceOption(n) => join(option(EditField::Resource), &[(Tag::Option, Some(n))]),
             Self::EditMessage => join(modal_form(), &[(Tag::Output, None)]),
+            Self::Delete => join(modal_form(), &[(Tag::Button, Some(DELETE_BUTTON))]),
         };
         Id::new(&path)
     }
@@ -231,6 +234,7 @@ impl Target {
                 [(Tag::Form, None)] => Self::EditForm,
                 [(Tag::Form, None), (Tag::Header, None), (Tag::H3, None)] => Self::EditHeading,
                 [(Tag::Form, None), (Tag::Output, None)] => Self::EditMessage,
+                [(Tag::Form, None), (Tag::Button, Some(DELETE_BUTTON))] => Self::Delete,
                 [
                     (Tag::Form, None),
                     (Tag::Dl, None),
@@ -276,6 +280,7 @@ mod tests {
             Target::EditForm,
             Target::EditHeading,
             Target::EditMessage,
+            Target::Delete,
         ]);
         targets.extend(VIEWS.map(Target::ViewRadio));
         targets.extend(FIELDS.map(Target::EditField));
