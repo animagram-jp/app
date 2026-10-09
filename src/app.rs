@@ -331,7 +331,7 @@ mod tests {
             assert!(!app.handler.loaded());
             app.process(&fetch_frame(1, 200, index == last, chunk));
         }
-        assert_eq!(app.handler.read::<crate::calendar::data::Appointment>().len(), 380);
+        assert_eq!(app.handler.read(crate::calendar::data::appointment::KIND).len(), 380);
         assert!(app.responses.is_empty());
     }
 
