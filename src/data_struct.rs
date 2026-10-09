@@ -50,7 +50,25 @@ impl DataStruct {
         instance: &'a [u8],
         schema_id: u32,
     ) -> Result<&'a [u8], ListError> {
-        let sections = Sections::parse(instance, self.schema_size)?;
+        Self::read_from_bytes(instance, self.schema_size, schema_id)
+    }
+
+    /// `get_from_bytes` without an instance: for bytes whose owner is not yet known (e.g. a scan
+    /// over a store that mixes data models of the same `schema_size`).
+    ///
+    /// ```
+    /// # use app::data_struct::DataStruct;
+    /// let mut instance = DataStruct::new(7, 0.0, 6);
+    /// instance.set(4, b"x", None).unwrap();
+    /// let bytes = instance.to_bytes();
+    /// assert_eq!(DataStruct::read_from_bytes(&bytes, 6, 4).unwrap(), b"x");
+    /// ```
+    pub fn read_from_bytes(
+        instance: &[u8],
+        schema_size: u32,
+        schema_id: u32,
+    ) -> Result<&[u8], ListError> {
+        let sections = Sections::parse(instance, schema_size)?;
         let variable_id =
             read_u32(sections.index, schema_id as usize * 4).ok_or(ListError::OutOfBounds)?;
         if variable_id == 0 {

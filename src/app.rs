@@ -323,14 +323,15 @@ mod tests {
         ))
         .unwrap();
         let mut app = new_app();
+        app.handler.attach(crate::file_store::Backend::new(Default::default()).unwrap());
 
         let chunks: Vec<&[u8]> = body.chunks(4000).collect();
         let last = chunks.len() - 1;
         for (index, chunk) in chunks.iter().enumerate() {
-            assert!(app.handler.calendar().is_none());
+            assert!(!app.handler.loaded());
             app.process(&fetch_frame(1, 200, index == last, chunk));
         }
-        assert_eq!(app.handler.calendar().unwrap().appointments.len(), 380);
+        assert_eq!(app.handler.read::<crate::calendar::data::Appointment>().len(), 380);
         assert!(app.responses.is_empty());
     }
 
