@@ -1,5 +1,6 @@
-//! OpfsStore — an OPFS-backed store that keeps the whole dataset in RAM and
+//! FileStore keeps the whole dataset in RAM and
 //! expresses persistence as explicit operations (`save` / `discard` / `compact`).
+//! The instance is the single writer; transaction boundaries belong to the caller.
 //!
 //! On-disk layout is a snapshot/log pair per store name and version:
 //! - `<name>.<version>.snap` — clean snapshot, rewritten only by `compact`
@@ -12,14 +13,7 @@
 //!   zero-filled regions would otherwise decode as valid records.
 //! - `checksum`: `fletcher32(header).wrapping_add(fletcher32(data))`
 //!
-//! Design rules (full in FileStore.md):
-//! - The instance is the single writer; transaction boundaries belong to the caller.
-//! - `set` / `delete` never touch the disk; `save` pushes the pending diff out.
-//! - Rollback (`discard`) never writes: uncommitted state has no on-disk form.
-//! - Only the flush-confirmed log prefix `[0, log_end)` is committed truth;
-//!   whatever lies past it (torn bytes, an unconfirmed batch) is cut off by
-//!   the next `save()`. Atomicity is per record, not per batch: a crash may
-//!   leave a prefix of an unacknowledged batch visible after reopen.
+//! See FileStore.md for details.
 
 use alloc::{
     collections::BTreeMap,

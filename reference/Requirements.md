@@ -12,16 +12,6 @@ Softwear for playing Call of Cthulhu 7th Edition
 
 - [Chaosium: official wiki](https://cthulhuwiki.chaosium.com)
 
-## Notice
-
-```
-"Call of Cthulhu" is a trademark of Chaosium Inc.
-This project is an independent, unofficial work and is not affiliated with, endorsed by, or sponsored by Chaosium Inc.
-『クトゥルフ神話TRPG』は Chaosium Inc. の著作物です。
-『新クトゥルフ神話TRPG』は、株式会社アークライトによる翻案のもと株式会社KADOKAWAが発行しています。
-本機能は同作のプレイを支援する非公式のオンラインツールであり、上記各社及びChaosium Inc.による公認・提携・後援を受けたものではありません。
-```
-
 ## Requirement
 
 1. CoC TRPG 7th Editionをオンラインで遊ぶ時、1: 背景やキャラクター画像の共有 2: 通話 3 チャットやキャラクターなど、数値とテキストデータの編集・共有閲覧 が必要。このうち1,2は運用コストがかかるので、既存サービスに任せ、先ずは3を網羅する。
