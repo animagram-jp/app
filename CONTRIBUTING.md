@@ -12,27 +12,78 @@ If "ORG_CONTRIBUTING.md" does not exist in the repository root of your working e
 curl -fsSL -H "Accept: application/vnd.github.raw+json" "https://api.github.com/repos/animagram-jp/.github/contents/.github/CONTRIBUTING.md?ref=main" -o "ORG_CONTRIBUTING.md"
 ```
 
-- moduleなどitemは、概念名を表すnounとして語彙選定する。
-- 関数名はnamespaceで上位に既に並ぶ語彙・引数に現れている目的語は重複して含まず、その上で{verb}_{adje
-  ctive}_{object}のような構成であるべき。
+- moduleなどitemは、概念を表す名詞として語彙選定する。
+- 関数名は、namespaceで上位に既に並ぶ語彙・引数に現れている目的語は含まず、その上で{verb}_{adje
+  ctive}_{object}のように命名する。
 - コメントによる仕切り線は `//(/) === text ===`、または`// --- text ---`とする。`/* */`はなるべく使わない。
-- hrefの値は、相対パスは"./"、絶対パスは"/"で始める。原則相対パスに統一する。
+- hrefの値は、相対パスは"./"、絶対パスは"/"で必ず始める。原則、相対パスに統一する。
 - HTMLのID, フォーマット規則は[ORG_CONTRIBUTING.md](./ORG_CONTRIBUTING.md)に従う。
-- HTMLはindex.html 1ファイル完結。
-- FOUC防止のためbodyにhidden atrributeを書く。初期表示しないタグは.hiddenクラスを書く。
-- テキストは言語に左右されず、一切変化しないのみ書く。aria-labelは必要なものだけ英語で書いておく。
-- 連番のタグ要素は、必ず有限に定めた最大数に基づき、全て書き込み.hiddenを追加する。
-- divは使用せず、セマンティックタグを選択する。
-- 同列要素の中に段落要素を格納する時、タグを子に分離し、レイアウトをhtmlに任せない。
+- HTMLは各アプリごとにindex.html 1ファイル完結とする。
+- FOUC防止のためHTMLのbodyにhidden属性を付与しておくのが望ましい。
+- HTML中のテキストは言語に左右されず、一切変化しない要素のみ静的に書く。aria-labelは必要なものだけ英語で書いておく。
+- 連番のタグ要素は、必ず有限に定めた最大数に基づき、全て書き込みhiddenを付与する。
+- divは使用せず、セマンティックタグを選定して使用する。
+- 同列要素の中に段落要素を格納する時、タグを子に分離し、レイアウトをCSSに任せない。
+
+---
 
 ## Requirements
-
-Gui application system for editing and reading structured data. Handles event loop by Wasm App.
 
 - 人間に普遍的に必要とされるアプリケーションを、提供コストをユビキタスに成り得る閾値まで抑えたwebシステムアーキテクチャで実現する。普遍的機能とは、以下を指す:
     1. データを編集し、保存・複数端末で同期する機能。データは、その最適な閲覧・編集UIを決定するスキーマに多対一に紐づく。人間及びシステムにとって、時系が原始のデータの識別手段である。既存のアプリで「カレンダー」「メモ」に対応する機能は、人間の意識に昇る時系であるかの違いと理解できる。
     2. 任意のスキーマデータを編集する機能。
     3. スキーマ自体を編集する機能。
+- 開発は、カレンダーやCoCプレイツールなど、具体的なアプリケーションを普遍的なアーキテクチャで実装することで進行する。各アプリケーション固有の処理は、分離境界を明確にしてコンパイル・ビルド時に選択可能にする。各実装時は、普遍的な要件にエスカレーションする妥当性を毎回検討する。
+
+---
+
+## Links
+
+- [Debug link with eruda (dev tools)](https://app.animagram.jp/?eruda)
+
+## Commands for development
+
+- Setup: `rustup toolchain install` (Recquire nightly)
+- Format: `cargo fmt`
+- Copy from animagram-jp/css: `cp -f ../css/css/*.css ./distribution/css/library/`
+
+### Test
+
+```bash
+cargo test --doc # docTest
+cargo test --lib # unit test
+cargo test --features calendar --lib # calendar feature
+cargo test --no-default-features --lib # unit test (no worker feature)
+cargo test --no-default-features --features calendar --lib
+```
+
+### Headless browser test
+
+- [Mozzilla: fire fox](https://support.mozilla.org/en/kb/install-firefox-linux)
+- [Mozzilla: gecko driver](https://github.com/mozilla/geckodriver/releases)
+
+```bash
+cargo install wasm-bindgen-cli --version "$(grep -A1 '^name = "wasm-bindgen"$' Cargo.lock | sed -n 's/^version = "\(.*\)"$/\1/p')" --locked
+
+geckodriver --port 8000 & GECKODRIVER_REMOTE=http://127.0.0.1:8000 WASM_BINDGEN_TEST_TIMEOUT=60 cargo test --target wasm32-unknown-unknown --lib --tests
+
+pkill -f "geckodriver --port 8000"
+```
+
+### Build wasm
+
+```bash
+# thread="worker"
+RUSTFLAGS="-Ctarget-feature=+atomics,+bulk-memory -Clink-arg=--import-memory -Clink-arg=--shared-memory -Clink-arg=--max-memory=134217728 -Clink-arg=--export=__wasm_init_tls -Clink-arg=--export=__tls_size -Clink-arg=--export=__tls_align -Clink-arg=--export=__tls_base" cargo build --release --target wasm32-unknown-unknown -Zbuild-std=std,panic_abort
+wasm-bindgen --target web --out-dir distribution/app --out-name app target/wasm32-unknown-unknown/release/app.wasm
+
+# thread="main"
+cargo build --release --target wasm32-unknown-unknown --no-default-features
+wasm-bindgen --target web --out-dir distribution/app --out-name app target/wasm32-unknown-unknown/release/app.wasm
+
+# app + calendar + deploy output (output dir: target/cloudflare)
+sh reference/build.sh
+```
 
 ---
 
@@ -53,56 +104,6 @@ Gui application system for editing and reading structured data. Handles event lo
 | calendar/ | カレンダーアプリ(feature `calendar`)。data(レコード定義と、JSONの`import` / `export`。全レコードが同じschema_sizeのDataStructで、種別はフィールド4(kind)、FileStoreのidはissue_idで採番する。このidは他のレコードに書かず、参照はJSONと同じ`uid`(資源)と`code`(状態・カテゴリ)で持つ。削除は参照元を書き換えず、参照先が無いことを「削除済み」として読む側が扱う)、grid / target(座標・レーン・DOM対応)、temporal(繰り返し規則)、handler(`Calendar`のような集約を持たず、Backendを走査して読み書きする。編集も削除もモーダルではメモリ操作で、save / discardの判断はhandler)。 |
 | testing.rs | テスト専用(`cfg(test)`)。`block_on`と、seed固定の疑似乱数`Rng`。 |
 | handler.rs | canvasを操作する、ドメイン固有のステートを持つHandler定義。Handlerは、DataStructと、フィールド4~schema_sizeまでの操作ロジックを定義するobjectを束ねて操作を行う。js_clientのdom::Idとobjectのフィールドを相互にバルクマッピングする関数を定義して、canvasと内部データを相互変換する。 |
-
----
-
-## Links
-
-- [Debug link with eruda (for iPhone)](https://app.animagram.jp/?eruda)
-
-## Commands for development
-
-- Setup: `rustup toolchain install`
-- Format: `cargo fmt`
-- Copy from animagram-jp/css: `cp -f ../css/css/*.css ./distribution/css/library/`
-
-### Test
-
-```bash
-cargo test --doc # docTest
-cargo test --lib # unit test
-cargo test --features calendar --lib
-# `worker` featureなし(main thread構成)のビルド確認。テストの内容は上の2つと同じ
-cargo test --no-default-features --lib
-cargo test --no-default-features --features calendar --lib
-```
-
-### Headless browser test
-
-- [Mozzilla: fire fox](https://support.mozilla.org/en/kb/install-firefox-linux)
-- [Mozzilla: gecko driver](https://github.com/mozilla/geckodriver/releases)
-
-```bash
-cargo install wasm-bindgen-cli --version "$(grep -A1 '^name = "wasm-bindgen"$' Cargo.lock | sed -n 's/^version = "\(.*\)"$/\1/p')" --locked
-
-geckodriver --port 8000 & GECKODRIVER_REMOTE=http://127.0.0.1:8000 WASM_BINDGEN_TEST_TIMEOUT=60 cargo test --target wasm32-unknown-unknown --lib --tests
-pkill -f "geckodriver --port 8000"
-```
-
-### Build wasm
-
-```bash
-# thread="worker"
-RUSTFLAGS="-Ctarget-feature=+atomics,+bulk-memory -Clink-arg=--import-memory -Clink-arg=--shared-memory -Clink-arg=--max-memory=134217728 -Clink-arg=--export=__wasm_init_tls -Clink-arg=--export=__tls_size -Clink-arg=--export=__tls_align -Clink-arg=--export=__tls_base" cargo build --release --target wasm32-unknown-unknown -Zbuild-std=std,panic_abort
-wasm-bindgen --target web --out-dir distribution/app --out-name app target/wasm32-unknown-unknown/release/app.wasm
-
-# thread="main"
-cargo build --release --target wasm32-unknown-unknown --no-default-features
-wasm-bindgen --target web --out-dir distribution/app --out-name app target/wasm32-unknown-unknown/release/app.wasm
-
-# app + calendar + deploy output (target/cloudflare)
-sh reference/build.sh
-```
 
 ---
 

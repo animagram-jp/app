@@ -92,12 +92,6 @@ function start() {
         try_recover_to_worker_thread().then(async (reloading) => {
             if (reloading) return;
 
-            // `App.init` awaits `FileStore::new`, which requires a
-            // dedicated worker (`FileSystemSyncAccessHandle` is only
-            // obtainable in a worker). So this path only works for a
-            // configuration without persistence. THREAD === "main" is
-            // for when you only want to verify the arena layout and the
-            // command / event round trip.
             const { default: init, App, arena_offset, initialize, process_event } =
                 await import("./app/app.js?v={version}");
             await init({ module_or_path: "./app/app_bg.wasm?v={version}", memory: S.memory });
