@@ -1672,7 +1672,7 @@ mod pointer_tests {
     use alloc::vec::Vec;
 
     use super::*;
-    use crate::testing::Rng;
+    use crate::Rng;
 
     fn run(events: &[(EventType, u32, f64, f64, f64)], th: &Thresholds) -> Vec<Option<Gesture>> {
         let mut pointer = Pointer::default();
@@ -2141,7 +2141,7 @@ mod decimal_tests {
     use alloc::{format, string::String};
 
     use super::*;
-    use crate::testing::Rng;
+    use crate::Rng;
 
     struct Sample(f64);
 
@@ -2242,9 +2242,9 @@ mod wire_tests {
 
     use super::*;
     use crate::{
+        Rng,
         arena::{ArenaError, PanicError},
         event::EventError,
-        testing::Rng,
     };
 
     const INIT_JS: &str = include_str!("../distribution/init.js");

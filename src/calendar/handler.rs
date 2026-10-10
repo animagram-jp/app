@@ -922,7 +922,7 @@ impl Handler {
                     &appointment::Status::read(&draft),
                     &appointment::Note::read(&draft),
                 );
-                let _ = appointment::Uid::write(&mut entry, &data::new_uid(), None);
+                let _ = appointment::Uid::write(&mut entry, &data::new_uid(self.now), None);
                 data::stamp(&mut entry, self.now);
                 Ok(entry)
             }
@@ -1907,6 +1907,7 @@ mod tests {
 
     use super::*;
     use crate::{
+        Rng, block_on,
         calendar::{
             data::SCHEMA_SIZE,
             grid::{DAY_ROWS, MONTH_WEEKS},
@@ -1914,7 +1915,6 @@ mod tests {
         data_struct::{ID_CREATED_AT, ID_MODIFIED_AT},
         file_store::{MemoryHandles, MemoryStore},
         js_client::KeyName,
-        testing::{Rng, block_on},
     };
 
     const VIEWPORT: f64 = 1500.0;

@@ -244,7 +244,7 @@ mod toggle_tests {
     use alloc::{string::String, vec::Vec};
 
     use super::*;
-    use crate::{js_client::KeyName, testing::block_on};
+    use crate::{block_on, js_client::KeyName};
 
     fn click(handler: &mut Handler, id: dom::Id) -> Vec<Command> {
         let event = CanvasEvent {

@@ -186,10 +186,10 @@ mod tests {
 
     use super::*;
     use crate::{
+        Rng, block_on,
         event::EVENT_CANVAS,
         file_store::{Backend, FileStore, StoreId},
         js_client::{Gesture, Output, dom},
-        testing::{Rng, block_on},
     };
 
     const POINTER_DOWN: u8 = 16;

@@ -129,7 +129,7 @@ impl<const N: usize> Layout<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::testing::Rng;
+    use crate::Rng;
 
     #[test]
     fn widest_and_topmost_fields() {

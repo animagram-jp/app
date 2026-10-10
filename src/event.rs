@@ -138,7 +138,7 @@ mod tests {
     use core::matches;
 
     use super::*;
-    use crate::{js_client::Output, testing::Rng};
+    use crate::{Rng, js_client::Output};
 
     fn decode_event(frame: &[u8]) -> Option<Event> {
         Event::decode(&mut { frame })

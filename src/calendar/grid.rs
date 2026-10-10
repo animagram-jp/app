@@ -570,7 +570,7 @@ mod tests {
 
     #[test]
     fn random_spans_get_conflict_free_minimal_lanes_independent_of_input_order() {
-        use crate::testing::Rng;
+        use crate::Rng;
         for seed in 0..3000 {
             let mut rng = Rng::new(seed);
             let mut spans: Vec<(u32, u32)> = Vec::new();

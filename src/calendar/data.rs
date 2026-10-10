@@ -14,7 +14,7 @@ use crate::{
     file_store::FileStore,
     js_client::WireError,
     object::StaticModel,
-    timestamp::{Format, display, pack},
+    timestamp::{Format, diff, display, pack},
 };
 
 // --- layout ---
@@ -79,13 +79,13 @@ pub fn stamp(entry: &mut DataStruct, now: u64) {
     touch(entry, now);
 }
 
-pub fn new_uid() -> u128 {
-    use rand::TryRng as _;
-
-    let mut bytes = [0u8; 16];
-    let mut sys = rand::rngs::SysRng::default();
-    sys.try_fill_bytes(&mut bytes).unwrap();
-    u128::from_le_bytes(bytes)
+pub fn new_uid(now: u64) -> u128 {
+    let unix_ms = diff(pack(1970, 1, 1, 0, 0, 0, 0, 0, 0), now).max(0) as u128 * 10;
+    let mut bytes = [0u8; 10];
+    getrandom::fill(&mut bytes).unwrap();
+    let rand_a = u128::from(u16::from_le_bytes([bytes[0], bytes[1]]) & 0x0FFF);
+    let rand_b = u128::from(u64::from_le_bytes(bytes[2..].try_into().unwrap()) >> 2);
+    (unix_ms & 0xFFFF_FFFF_FFFF) << 80 | 7 << 76 | rand_a << 64 | 2 << 62 | rand_b
 }
 
 fn number(bytes: Option<&[u8]>) -> u32 {
@@ -882,7 +882,7 @@ mod tests {
             "s",
             "",
         );
-        Uid::write(&mut booking, &new_uid(), None).unwrap();
+        Uid::write(&mut booking, &new_uid(0), None).unwrap();
         put(&mut store, &booking);
         put(&mut store, &tag::new(gone, RESOURCE, 42, "", "gone"));
         store.save().unwrap();

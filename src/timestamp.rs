@@ -568,7 +568,7 @@ mod tests {
     use alloc::format;
 
     use super::*;
-    use crate::testing::Rng;
+    use crate::Rng;
 
     #[test]
     fn layout_positions() {

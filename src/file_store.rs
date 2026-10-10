@@ -1032,7 +1032,7 @@ pub mod cases {
     use alloc::boxed::Box;
 
     use super::*;
-    use crate::testing::Rng;
+    use crate::Rng;
 
     pub const ID_LIMIT: u32 = u32::MAX;
 
@@ -1807,7 +1807,7 @@ pub mod cases {
 #[cfg(all(test, not(target_arch = "wasm32")))]
 mod memory_tests {
     use super::{cases::*, *};
-    use crate::testing::{Rng, block_on};
+    use crate::{Rng, block_on};
 
     fn handcraft_record(op: u8, id: u32, data: &[u8]) -> Vec<u8> {
         let mut record = Vec::new();

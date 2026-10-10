@@ -338,7 +338,7 @@ mod tests {
     use alloc::{collections::BTreeMap, format, vec::Vec};
 
     use super::*;
-    use crate::testing::Rng;
+    use crate::Rng;
 
     #[test]
     fn list_set_update_existing() {

@@ -31,18 +31,9 @@ pub mod dice {
         string::{String, ToString},
     };
 
-    use rand::RngExt as _;
+    use rand::{RngExt as _, rand_core::UnwrapErr, rngs::SysRng};
 
     use super::Dice;
-
-    fn rng() -> rand::rngs::SmallRng {
-        use rand::{SeedableRng as _, TryRng as _};
-
-        let mut seed = [0u8; 32];
-        let mut sys = rand::rngs::SysRng::default();
-        sys.try_fill_bytes(&mut seed).unwrap();
-        rand::rngs::SmallRng::from_seed(seed)
-    }
 
     pub fn display(dice: &[Dice]) -> String {
         let s = dice
@@ -67,7 +58,7 @@ pub mod dice {
         dice.iter()
             .map(|&(count, sides, modifier)| {
                 let rolled = if count != 0 && sides > 0 {
-                    let mut rng = rng();
+                    let mut rng = UnwrapErr(SysRng);
                     let sum: i32 =
                         (0..count.unsigned_abs()).map(|_| rng.random_range(1..=sides as i32)).sum();
                     if count < 0 { -sum } else { sum }
@@ -79,7 +70,7 @@ pub mod dice {
             .sum()
     }
     pub fn percent_roll(level: i8) -> u8 {
-        let mut rng = rng();
+        let mut rng = UnwrapErr(SysRng);
         let ones: u8 = rng.random_range(0..=9u8);
         let offset: u8 = if ones == 0 { 1 } else { 0 };
         let rolls_count = 1 + level.unsigned_abs() as usize;
@@ -3620,7 +3611,7 @@ mod skill_storage_tests {
     use arbitrary_int::{i10, u9};
 
     use super::*;
-    use crate::testing::Rng;
+    use crate::Rng;
 
     fn character() -> DataStruct {
         DataStruct::new(1, 0.0, 256)

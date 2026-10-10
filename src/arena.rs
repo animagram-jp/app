@@ -367,7 +367,7 @@ mod ring_tests {
     };
 
     use super::*;
-    use crate::testing::Rng;
+    use crate::Rng;
 
     const TEST_RING: Ring = Ring { start: 0, data_size: 256, frame_max: 100 };
 

@@ -37,7 +37,72 @@ pub mod roll;
 pub mod timestamp;
 
 #[cfg(test)]
-mod testing;
+fn block_on<F: core::future::Future>(future: F) -> F::Output {
+    use core::{
+        pin::pin,
+        task::{Context, Poll, Waker},
+    };
+
+    let mut future = pin!(future);
+    let mut context = Context::from_waker(Waker::noop());
+    loop {
+        if let Poll::Ready(output) = future.as_mut().poll(&mut context) {
+            return output;
+        }
+    }
+}
+
+#[cfg(test)]
+struct Rng(u64);
+
+#[cfg(test)]
+impl Rng {
+    fn new(seed: u64) -> Self {
+        Self(seed.wrapping_mul(0x9E37_79B9_7F4A_7C15) ^ 0xD1B5_4A32_D192_ED03)
+    }
+
+    fn next_u64(&mut self) -> u64 {
+        let mut x = self.0;
+        x ^= x >> 12;
+        x ^= x << 25;
+        x ^= x >> 27;
+        self.0 = x;
+        x.wrapping_mul(0x2545_F491_4F6C_DD1D)
+    }
+
+    fn below(&mut self, bound: usize) -> usize {
+        (self.next_u64() >> 11) as usize % bound
+    }
+
+    fn chance(&mut self, percent: u64) -> bool {
+        self.next_u64() % 100 < percent
+    }
+
+    fn bytes(&mut self, length: usize) -> alloc::vec::Vec<u8> {
+        (0..length).map(|_| self.next_u64() as u8).collect()
+    }
+
+    fn string(&mut self) -> alloc::string::String {
+        let letters = ['a', 'Z', 'é', '日', '😀', ' ', '\0'];
+        let length = self.below(10);
+        (0..length).map(|_| letters[self.below(letters.len())]).collect()
+    }
+
+    fn id(&mut self) -> js_client::dom::Id {
+        use js_client::dom;
+
+        let depth = self.below(5);
+        let segments: alloc::vec::Vec<(dom::Tag, Option<u32>)> = (0..depth)
+            .map(|_| {
+                let tag = dom::Tag::from_u8(self.below(24) as u8);
+                let number =
+                    self.chance(50).then(|| (self.next_u64() % u64::from(u32::MAX)) as u32);
+                (tag, number)
+            })
+            .collect();
+        dom::Id::new(&segments)
+    }
+}
 
 // === Error ===
 

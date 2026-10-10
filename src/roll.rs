@@ -17,13 +17,9 @@ const unsafe fn all_variants<T: Copy, const N: usize>(first: T) -> [T; N] {
 }
 
 fn pick<T: Copy>(list: &[T]) -> T {
-    use rand::{RngExt as _, SeedableRng as _, TryRng as _};
+    use rand::{RngExt as _, rand_core::UnwrapErr, rngs::SysRng};
 
-    let mut seed = [0u8; 32];
-    let mut sys = rand::rngs::SysRng::default();
-    sys.try_fill_bytes(&mut seed).unwrap();
-    let mut rng = rand::rngs::SmallRng::from_seed(seed);
-
+    let mut rng = UnwrapErr(SysRng);
     list[rng.random_range(0..list.len())]
 }
 

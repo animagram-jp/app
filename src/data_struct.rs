@@ -261,7 +261,7 @@ mod tests {
     use alloc::{format, vec};
 
     use super::*;
-    use crate::testing::Rng;
+    use crate::Rng;
 
     const Y2000: f64 = 946684800000.0;
 
