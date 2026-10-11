@@ -2,17 +2,13 @@
 
 # CoC7th
 
-Softwear for playing Call of Cthulhu 7th Edition
+Call of Cthulhu 7th edition playing tool.
 
-1. CoC TRPG 7th Editionをプレイするために必要な機能を集約した、webブラウザソフトウェアです。
-2. 現在本repoに統合済みのwebカレンダー開発中に、時間軸を基盤にしたデータモデル編集ソフトウェアって、1つで良くない? と感じ、データモデル設計を汎用化するにあたって、TRPGは良い実践例になるという判断で行っています。
-3. この他、インディーズRPGクリエイター向けに、キャラクターデータモデルの設計機能へ展開することも検討しています。
-
-## Reference
+## References
 
 - [Chaosium: official wiki](https://cthulhuwiki.chaosium.com)
 
-## Requirement
+## Requirements
 
 1. CoC TRPG 7th Editionをオンラインで遊ぶ時、1: 背景やキャラクター画像の共有 2: 通話 3 チャットやキャラクターなど、数値とテキストデータの編集・共有閲覧 が必要。このうち1,2は運用コストがかかるので、既存サービスに任せ、先ずは3を網羅する。
 2. 1の理由で、プレイヤー目線ではソフトウェアを1つ追加することになるので、利便性を損なわないことに注力する。1 ブラウザタブの増加を抑えるため、ブラウザの拡張機能として動作出来るようにする 2 既存サービスがHTMLを変更したら動かなくなるのは困るので、ユーザーがクリック・タッチでチャットボックスを指定できるようにする 3 既存サービス群からのインポート機能を順次追加する(イクスポートは(既存オンラインサービスが指定している点も踏まえて)jsonだけに留め、一々個別対応しない)。
@@ -139,7 +135,7 @@ Development Check - 上達チェック
 
 | フィールド | たたき台 | 備考 |
 |---|---|---|
-| キャラクターシート総保存数 | 20 | 1ユーザーが複数キャラを管理する想定 |
+| キャラクターシート総保存数 | 100 | 1ユーザーが複数キャラを管理する想定 |
 | 1セッションあたりのキャラクター数 | 10 | PL人数 + NPC想定。KP運用含む |
 | Roll::Stack の保持数 | 100 | 1セッション内のロール履歴。古いものから破棄 |
 | SkillのDevelopment Check済みフラグ保持数 | 60 | Skill表示最大数と同値 |
@@ -181,13 +177,7 @@ This is a note by Andyou written through confirming rulebook.
 
 ## 未使用スクリプト
 
-character.rs::character
-
 ```rust
-// ============================================================
-// --- Derived ---
-// ============================================================
-
 // --- 生活水準 (Standard of Living) ---
 pub enum StandardOfLiving {
     Pauper,
@@ -306,17 +296,11 @@ impl AgeCategory {
     }
 }
 
-// ============================================================
 // --- Roll ---
-// ============================================================
-
             (Self::AutoFireRoll,    Lang::Ja) => "自動火器の連射判定",
             (Self::AutoFireRoll, Lang::En(_)) => "Automatic Fire Roll",
 
-// ============================================================
 // 自動火器射撃判定 (Full Auto Roll)
-// ============================================================
-
 #[derive(Debug)]
 pub enum FullAutoWarning {
     BulletsClamped { original: u32 },
@@ -502,191 +486,3 @@ def example_judge(trials: int = 100000, display: bool = False):
     return matrix
 
 ```
-
----
-
-# Calendar
-
-- webカレンダーとは、ユーザーが時系列上にメモを書く機能である
-    - ユーザーが指定する時系列の単位は、数日・日・時・分(10分刻みまで)
-- 携帯型でもノート型・据え置き型でも共通して、月次に時系列上データを見渡せる画面を提供する
-    - メイン画面は5行x7列の35日分に固定し、上下スクロールで1週ずつの表示範囲更新を提供する
-- オフラインでも同期以外の動作を提供し、ネットワークは端末間同期・ユーザー間共有を担う
-- 画面は リリースノート, ログイン, メイン, モーダルを用意する。
-    - ユーザーのメールアドレスはfileに直で追加し、公開アカウント登録機能は持たない
-- 入力データの最小単位には所有者ユーザーを紐づけ、所有者は更新しない。ユーザー間共有機能におけるview/permissionの判断はfixture及びterminalの両app層で行う
-- iCalデータ(RFC5545)のインポート/エクスポート互換。
-    - システム設計成立後に、RFC5545とシステム内の各フィールドに、1対1のマッピングを定義する。
-
-## Concept
-
-- user: クライアントを通じてログインし得る主体。
-    - preference: userに紐づく設定値
-- event: 現実で起きた出来事。システム内では扱わない
-- entry: システムがUI表示時に扱う、UIと1対1に対応したランタイムデータ
-- resource: 電子計算機がentryを内部で解釈処理するためのストアデータ群
-    - schedule: 複数のentryを作成するためのリソース
-    - record: 1つのentryを作成するためのリソース。scheduleとの抵触時は、patchとして機能する
-- state: プロセスがpattern群から特定のentryを構成するためのコンテクストデータ
-
-
-// | sort     | youbi        |   3 | // 001 Monday 111 Sunday // start of week
-// | format   | datetime     |   3 | // 001 YYYY-M-D h:m 010 YYYY年M月D日 h時m分
-// | html     | main_scope   |   3 | // 001 year 010 month 011 day 100 hour
-// |          | drawer       |   2 | // 00 hidden 01 right 10 left
-// |          | modal        |   2 | // 00 hidden 01 show
-// |          | focused      |  32 | // html elements id
-// | calendar | selected     |  22 | // <- entry (2^22 > 24*(60/15)*365*80)
-
-- RRULEについて: u64: timestampは、各上位要素を0..0とすることで、範囲絞り込み可能になる。これを利用し、time_range: [start: Timestamp, end: Timestamp]の形のまま繰り返し情報を保持可能ではないか。
-
-
-- appointmentドメインについて: 以下の用に、calendarドメインの像の1つとして実現する。
-    - status: str, person: uid, slot: uid, resource: uid -> 親子タグ
-
-```yaml
-# Value 0...0 means null in each field.
-# 1 byte = 1 octet = 8 bits.
-
-handler:
-    now:
-    display:
-        locale:
-        color-scheme: [u8;1]
-        grid:
-            timeunit: # 10 minutesを最小とする離散値
-            axis:
-                # map()にて、rectgridのx軸と1対1変換関数を要する
-                sort:
-            time_range:
-    filestores: Vec<FileStore>
-    entry: DataStruct
-    
-    
-    sync:
-        status: # synced(client only, server only, both all)
-        user:
-
-entry:
-    owner: 
-    input:
-        start: Timestamp
-        end: Timestamp
-        title: utf-8(~200bytes)
-        text: utf-8(~8000bytes)
-        url: # todo
-        location: #todo
-        tag: [u8;5]
-        todo: u8(none, undone, done)
-        layer: u4(none, 1~15)
-    alerm:
-        baseline:
-        offset:
-            sign:
-            time_volume:
-
-tag:
-    owner: 
-    type: # color, title, free
-    parent_tag:
-    value: [u8] # ~100bytes
-    color: [u8; 3]
-```
-
-## 機能
-
-- header: 送りボタン・スクロール、preference設定ボタン
-- modal fieldset: entry編集時に使うfieldと同時に、設定編集に使うfieldを追加。
-    - email/password: hidden→表示切り替えに変更
-    - preference: locale, color(theme), youbi, datetime, main_scope
-    - tag一覧 × 最大512件: name/type/parent/color/削除ボタン、追加ボタン
-
-settings field仕様:
-- locale: select — 0001 EN / 0010 JA
-- color(theme): select — 001 light_01 / 101 dark_01
-- youbi: select — 001 月〜111 日
-- datetime: select — 001 YYYY-M-D h:m / 010 YYYY年M月D日 h時m分
-- main_scope: radio — 001 year / 010 month / 011 day / 100 hour
-- tag.name: input[text] — 32byte pool参照
-- tag.type: radio — 001 color / 010 title / 011 free
-- tag.parent: select — tag index（0=root）
-- tag.color: input[color] — RGB 24bit
-
-```html
-<header>
-    <button type="button">キャンセル</button>
-    <button type="submit">保存</button></header>
-
-    <label hidden>
-        <span>メール</span>
-        <input type="email" name="" autocomplete="email"></label>
-    <label hidden>
-        <span>パスワード</span>
-        <input type="password" name="" autocomplete="current-password"></label>
-    <label>
-        <span>タイトル</span>
-        <input type="text" name=""></label>
-    <label>
-        <span>開始</span>
-        <input type="date" name="">
-        <input type="time" name=""></label>
-    <label>
-        <span>終了</span>
-        <input type="date" name="">
-        <input type="time" name=""></label>
-    <label>
-        <span>カラータグ</span>
-        <input type="text" name=""></label>
-    <label>
-        <span>タイトルタグ</span>
-        <input type="text" name=""></label>
-    <label>
-        <span>フリータグ</span>
-        <input type="text" name=""></label>
-    <label>
-        <span>Todo</span>
-        <input type="radio" name="" value="01">
-        <input type="radio" name="" value="10"></label>
-    <button type="button">テキスト+</button>
-    <button type="button">URL+</button>
-    <button type="button">場所+</button>
-    <label hidden>
-        <span>テキスト</span>
-        <textarea name="" rows="3"></textarea></label>
-    <label hidden>
-        <span>URL</span>
-        <input type="url" name=""></label>
-    <label hidden>
-        <span>場所</span>
-        <input type="text" name="" autocomplete="off"></label>
-    <button type="button">繰り返し+</button>
-    <fieldset hidden>
-        <label>
-            <span>間隔</span>
-            <input type="number" name="" value="1" min="1" max="9">
-            <select name="">
-                <option value="001">月</option>
-                <option value="010">週</option>
-                <option value="011">日</option>
-                <option value="100">時間</option></select></label>
-        <label>
-            <span>曜日指定</span>
-            <select multiple name="">
-                <option value="001">月</option>
-                <option value="010">火</option>
-                <option value="011">水</option>
-                <option value="100">木</option>
-                <option value="101">金</option>
-                <option value="110">土</option>
-                <option value="111">日</option></select></label>
-        <label>
-            <span>有効期限</span>
-            <input type="date" name=""></label></fieldset>
-```
-
----
-
-# Memorandum
-
-メモアプリ。共同編集モデル(WhiteBoard)と通常のMemorandumモデルは、切り替え可能な排反モデルとする。
-組版システムやtextarea、inline editorスタイリングなどが関係。
