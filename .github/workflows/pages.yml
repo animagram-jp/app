@@ -6,7 +6,7 @@ on:
     workflow_dispatch:
         inputs:
             cloudflare:
-                description: "deploy to Cloudflare Workers (static assets)"
+                description: "deploy to Cloudflare Workers"
                 type: boolean
                 default: true
             github:
