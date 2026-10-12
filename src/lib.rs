@@ -144,7 +144,6 @@ impl Lang {
     fn display(self) -> &'static str {
         match self {
             Self::En(En::Us) => "en-US",
-            Self::En(_) => "En",
             Self::Ja => "ja",
         }
     }

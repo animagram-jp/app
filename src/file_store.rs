@@ -1040,7 +1040,7 @@ pub mod cases {
 
     pub const ID_LIMIT: u32 = u32::MAX;
 
-    pub fn fuzz_records(rng: &mut Rng) -> Vec<LogRecord> {
+    pub(super) fn fuzz_records(rng: &mut Rng) -> Vec<LogRecord> {
         (0..rng.below(12))
             .map(|_| {
                 let id = rng.below(6) as u32;
@@ -1054,7 +1054,7 @@ pub mod cases {
             .collect()
     }
 
-    pub fn oracle(records: &[LogRecord]) -> BTreeMap<u32, Vec<u8>> {
+    pub(super) fn oracle(records: &[LogRecord]) -> BTreeMap<u32, Vec<u8>> {
         let mut memory = BTreeMap::new();
         for record in records {
             match record.operation {
@@ -1069,7 +1069,7 @@ pub mod cases {
         memory
     }
 
-    pub fn apply(store: &mut impl FileStore, records: &[LogRecord]) {
+    pub(super) fn apply(store: &mut impl FileStore, records: &[LogRecord]) {
         for record in records {
             match record.operation {
                 Operation::Set => store.set(record.id, record.data.clone()),
@@ -1078,7 +1078,7 @@ pub mod cases {
         }
     }
 
-    pub fn concat(first: &[LogRecord], second: &[LogRecord]) -> Vec<LogRecord> {
+    pub(super) fn concat(first: &[LogRecord], second: &[LogRecord]) -> Vec<LogRecord> {
         first
             .iter()
             .chain(second)
