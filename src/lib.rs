@@ -195,6 +195,7 @@ mod error_tests {
             (Error::FileStore(FileStoreError::InvalidName(message())), vec![4, 4], "m"),
             (Error::FileStore(FileStoreError::Unknown(message())), vec![4, 5], "m"),
             (Error::FileStore(FileStoreError::NotFound(message())), vec![4, 6], "m"),
+            (Error::FileStore(FileStoreError::Locked(message())), vec![4, 7], "m"),
         ];
         #[cfg(feature = "calendar")]
         cases.extend([

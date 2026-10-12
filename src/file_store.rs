@@ -201,6 +201,7 @@ pub enum FileStoreError {
     Unknown(String),
     /// `NotFoundError` on `getFileHandle` without `create`: no entry with that name.
     NotFound(String),
+    Locked(String),
 }
 
 impl Display for FileStoreError {
@@ -218,6 +219,7 @@ impl WireError for FileStoreError {
             FileStoreError::InvalidName(_) => 4,
             FileStoreError::Unknown(_) => 5,
             FileStoreError::NotFound(_) => 6,
+            FileStoreError::Locked(_) => 7,
         });
     }
 
@@ -228,7 +230,8 @@ impl WireError for FileStoreError {
             | FileStoreError::UnsupportedOp(message)
             | FileStoreError::InvalidName(message)
             | FileStoreError::Unknown(message)
-            | FileStoreError::NotFound(message) => message.clone(),
+            | FileStoreError::NotFound(message)
+            | FileStoreError::Locked(message) => message.clone(),
         }
     }
 }
@@ -695,6 +698,7 @@ fn classify(context: &str, error: JsValue) -> FileStoreError {
         return match exception.name().as_str() {
             "InvalidStateError" => FileStoreError::InvalidState(message),
             "QuotaExceededError" => FileStoreError::QuotaExceeded(message),
+            "NoModificationAllowedError" => FileStoreError::Locked(message),
             _ => FileStoreError::Unknown(message),
         };
     }

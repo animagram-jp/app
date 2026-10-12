@@ -203,12 +203,13 @@ whatwg/fs spec によれば、`FileSystemSyncAccessHandle` 系メソッドが投
 | `UnsupportedOp` | `TypeError`（`read`/`write`/`truncate` の文脈。`DomException` にキャストできないもの） | オフセット指定 read/write や `set_len` 非対応 |
 | `InvalidName` | `TypeError`（`getFileHandle` の文脈のみ） | 不正なファイル名（POSIX的には invalid path component） |
 | `NotFound` | `NotFoundError`（`create: false` の `getFileHandle` の文脈のみ） | その名前のエントリがない。`createSyncAccessHandle` の `NotFoundError`（取得後にファイルが消えた競合）は「ない」とは違うので `Unknown` のまま |
+| `Locked` | `NoModificationAllowedError`（`createSyncAccessHandle` が他の handle の排他ロックに阻まれた） | `flock(LOCK_EX\|LOCK_NB)` の `EWOULDBLOCK` |
 | `Unknown` | 上記以外の `DOMException` 名、または分類不能 | 未分類（`JsValue` の Debug 文字列を保持） |
 
 **`open` 系での `TypeError` の意味**: `getFileHandle()` と `createSyncAccessHandle()` は例外の性質が異なる。
 
 - `getFileHandle()` は **`TypeError` を投げうる**（"If name is not a valid file name"。`read` / `write` / `truncate` の「オフセット非対応」とは別の意味）。実測では `"a/b"`・`""`・`".."`・`"."` がすべて `TypeError` だった。`DomException` 側は `NotAllowedError` / `NotFoundError` / `TypeMismatchError`（子が directory entry の場合）。このため `open()` 内で専用の `classify_get_file_handle()` を用意し、`DomException` にキャストできないものは `UnsupportedOp` ではなく `InvalidName` に分類する。存在しない名前を `create: false` で開くと `NotFoundError`（実測 ○）で、`NotFound` に分類する。
-- `createSyncAccessHandle()` は **`TypeError` を投げない**（`DomException`: `NotAllowedError` / `InvalidStateError`（bucket file system 外） / `NotFoundError` / `NoModificationAllowedError`（排他ロック失敗））。同じファイルを開いたまま2つ目を取ると `NoModificationAllowedError`（実測 ○）。こちらは `classify()` の一般分類のままで足りる。
+- `createSyncAccessHandle()` は **`TypeError` を投げない**（`DomException`: `NotAllowedError` / `InvalidStateError`（bucket file system 外） / `NotFoundError` / `NoModificationAllowedError`（排他ロック失敗））。同じファイルを開いたまま2つ目を取ると `NoModificationAllowedError`（実測 ○）で、`classify()` が `Locked` に分類する。他タブが開いている場合も同じ例外になるため、caller は `Locked` を見て再試行や「別タブで使用中」の通知に振り分けられる。
 
 | 関数 | 失敗しうる操作 | 失敗時の状態 | 対処方針 |
 |-|-|-|-|
