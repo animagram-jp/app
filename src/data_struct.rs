@@ -44,37 +44,19 @@ impl DataStruct {
         data_struct
     }
 
-    /// Zero-alloc get over a serialized instance byte slice (layout is the same as to_bytes).
-    pub fn get_from_bytes<'a>(
-        &self,
-        instance: &'a [u8],
-        schema_id: u32,
-    ) -> Result<&'a [u8], ListError> {
-        Self::read_from_bytes(instance, self.schema_size, schema_id)
-    }
-
-    /// `get_from_bytes` without an instance: for bytes whose owner is not yet known (e.g. a scan
-    /// over a store that mixes data models of the same `schema_size`).
-    ///
     /// ```
     /// # use app::data_struct::DataStruct;
     /// let mut instance = DataStruct::new(7, 0.0, 6);
     /// instance.set(4, b"x", None).unwrap();
     /// let bytes = instance.to_bytes();
-    /// assert_eq!(DataStruct::read_from_bytes(&bytes, 6, 4).unwrap(), b"x");
+    /// assert_eq!(DataStruct::get_from_bytes(&bytes, 6, 4).unwrap(), b"x");
     /// ```
-    pub fn read_from_bytes(
+    pub fn get_from_bytes(
         instance: &[u8],
         schema_size: u32,
         schema_id: u32,
     ) -> Result<&[u8], ListError> {
-        let sections = Sections::parse(instance, schema_size)?;
-        let variable_id =
-            read_u32(sections.index, schema_id as usize * 4).ok_or(ListError::OutOfBounds)?;
-        if variable_id == 0 {
-            return Err(ListError::NotExist);
-        }
-        VariableList::get_from_bytes(sections.values_index, sections.values_data, &variable_id)
+        Instance::from_bytes(instance, schema_size)?.get(schema_id)
     }
 
     pub fn get(&self, schema_id: u32) -> Result<&[u8], ListError> {
@@ -214,41 +196,55 @@ impl DataStruct {
     }
 
     pub fn from_bytes(line: &[u8], schema_size: u32) -> Result<Self, ListError> {
-        let sections = Sections::parse(line, schema_size)?;
-        Ok(Self {
-            schema_size,
-            index: List {
-                data: sections
-                    .index
-                    .chunks_exact(4)
-                    .map(|b| u32::from_le_bytes(b.try_into().unwrap()))
-                    .collect(),
-            },
-            values: VariableList::new_from_bytes(sections.values_index, sections.values_data),
-        })
+        Ok(Instance::from_bytes(line, schema_size)?.to_data_struct())
     }
 }
 
-struct Sections<'a> {
+pub struct Instance<'a> {
+    schema_size:  u32,
     index:        &'a [u8],
     values_index: &'a [u8],
     values_data:  &'a [u8],
 }
 
-impl<'a> Sections<'a> {
-    fn parse(bytes: &'a [u8], schema_size: u32) -> Result<Self, ListError> {
+impl<'a> Instance<'a> {
+    pub fn from_bytes(bytes: &'a [u8], schema_size: u32) -> Result<Self, ListError> {
         let index_len = (schema_size as usize + 1) * 4;
         let slice_at = read_u32(bytes, index_len).ok_or(ListError::OutOfBounds)? as usize;
         let values_index_start = index_len + 4;
         let values_data_start =
             values_index_start.checked_add(slice_at).ok_or(ListError::OutOfBounds)?;
         Ok(Self {
-            index:        &bytes[..index_len],
+            schema_size,
+            index: &bytes[..index_len],
             values_index: bytes
                 .get(values_index_start..values_data_start)
                 .ok_or(ListError::OutOfBounds)?,
-            values_data:  &bytes[values_data_start..],
+            values_data: &bytes[values_data_start..],
         })
+    }
+
+    pub fn get(&self, schema_id: u32) -> Result<&'a [u8], ListError> {
+        let variable_id =
+            read_u32(self.index, schema_id as usize * 4).ok_or(ListError::OutOfBounds)?;
+        if variable_id == 0 {
+            return Err(ListError::NotExist);
+        }
+        VariableList::get_from_bytes(self.values_index, self.values_data, &variable_id)
+    }
+
+    pub fn to_data_struct(&self) -> DataStruct {
+        DataStruct {
+            schema_size: self.schema_size,
+            index:       List {
+                data: self
+                    .index
+                    .chunks_exact(4)
+                    .map(|b| u32::from_le_bytes(b.try_into().unwrap()))
+                    .collect(),
+            },
+            values:      VariableList::new_from_bytes(self.values_index, self.values_data),
+        }
     }
 }
 
@@ -296,9 +292,18 @@ mod tests {
     fn get_from_bytes_error_kinds() {
         let ds = sample();
         let bytes = ds.to_bytes();
-        assert!(matches!(ds.get_from_bytes(&bytes, 7), Err(ListError::NotExist)));
-        assert!(matches!(ds.get_from_bytes(&bytes, 9), Err(ListError::OutOfBounds)));
-        assert!(matches!(ds.get_from_bytes(&bytes[..10], 4), Err(ListError::OutOfBounds)));
+        assert!(matches!(
+            DataStruct::get_from_bytes(&bytes, ds.schema_size, 7),
+            Err(ListError::NotExist)
+        ));
+        assert!(matches!(
+            DataStruct::get_from_bytes(&bytes, ds.schema_size, 9),
+            Err(ListError::OutOfBounds)
+        ));
+        assert!(matches!(
+            DataStruct::get_from_bytes(&bytes[..10], ds.schema_size, 4),
+            Err(ListError::OutOfBounds)
+        ));
     }
 
     #[test]
@@ -391,7 +396,7 @@ mod tests {
                         "{context} restored {schema_id}"
                     );
                     assert_eq!(
-                        ds.get_from_bytes(&bytes, schema_id).ok(),
+                        DataStruct::get_from_bytes(&bytes, ds.schema_size, schema_id).ok(),
                         expected,
                         "{context} from bytes {schema_id}"
                     );
@@ -414,7 +419,7 @@ mod tests {
                     damaged[at] ^= 1 + rng.below(255) as u8;
                 }
                 for schema_id in 0..=SIZE + 2 {
-                    let _ = ds.get_from_bytes(&damaged, schema_id);
+                    let _ = DataStruct::get_from_bytes(&damaged, ds.schema_size, schema_id);
                 }
                 if let Ok(loaded) = DataStruct::from_bytes(&damaged, SIZE) {
                     for schema_id in 0..=SIZE + 2 {

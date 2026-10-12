@@ -88,6 +88,7 @@ pub mod dice {
 // === SubjectTrait ===
 
 pub trait SubjectTrait {
+    const SCHEMA_SIZE: u32;
     fn ids(&self) -> &'static [u32];
     fn label(&self, lang: Lang) -> &'static str;
     fn list() -> &'static [Self]
@@ -95,9 +96,9 @@ pub trait SubjectTrait {
         Self: Sized;
 }
 
-// === StaticModel ===
+// === Predicate ===
 
-pub trait StaticModel<const N: usize> {
+pub trait Predicate<const N: usize> {
     type Parsed;
     type Subject: SubjectTrait;
     const VARIANT: Self::Subject;
@@ -114,6 +115,11 @@ pub trait StaticModel<const N: usize> {
         Self::parse(character.get_many(Self::ids()))
     }
 
+    fn get_from_bytes(instance: &[u8]) -> Self::Parsed {
+        let size = Self::Subject::SCHEMA_SIZE;
+        Self::parse(Self::ids().map(|id| DataStruct::get_from_bytes(instance, size, id).ok()))
+    }
+
     fn write(
         character: &mut DataStruct,
         value: &Self::Parsed,
@@ -125,6 +131,8 @@ pub trait StaticModel<const N: usize> {
         character.set_many(entries, time)
     }
 }
+
+pub const SCHEMA_SIZE: u32 = 256;
 
 // === Character::{Profile, Characteristic, Secondary Attribute, Skill, Posession, Backstory, Memo} ===
 
@@ -196,6 +204,8 @@ pub enum Profile {
 }
 
 impl SubjectTrait for Profile {
+    const SCHEMA_SIZE: u32 = SCHEMA_SIZE;
+
     fn ids(&self) -> &'static [u32] {
         const BASE: u32 = Character::Profile.base_id();
         match self {
@@ -241,7 +251,7 @@ impl Name {
     }
 }
 
-impl StaticModel<2> for Name {
+impl Predicate<2> for Name {
     type Parsed = (String, Option<String>); // name, complement
     type Subject = Profile;
     const VARIANT: Profile = Profile::Name;
@@ -469,7 +479,7 @@ impl Occupation {
     }
 }
 
-impl StaticModel<3> for Occupation {
+impl Predicate<3> for Occupation {
     type Parsed = (OccupationKind, Option<String>, Option<String>); // kind, custom_name, title
     type Subject = Profile;
     const VARIANT: Profile = Profile::Occupation;
@@ -493,7 +503,7 @@ impl StaticModel<3> for Occupation {
 
 pub struct Birthplace; // Birthplace: str
 
-impl StaticModel<1> for Birthplace {
+impl Predicate<1> for Birthplace {
     type Parsed = String;
     type Subject = Profile;
     const VARIANT: Profile = Profile::Birthpalce;
@@ -509,7 +519,7 @@ impl StaticModel<1> for Birthplace {
 
 pub struct Pronoun; // Pronoun: str
 
-impl StaticModel<1> for Pronoun {
+impl Predicate<1> for Pronoun {
     type Parsed = String;
     type Subject = Profile;
     const VARIANT: Profile = Profile::Pronoun;
@@ -525,7 +535,7 @@ impl StaticModel<1> for Pronoun {
 
 pub struct Residence; // Residence: str
 
-impl StaticModel<1> for Residence {
+impl Predicate<1> for Residence {
     type Parsed = String;
     type Subject = Profile;
     const VARIANT: Profile = Profile::Residence;
@@ -541,7 +551,7 @@ impl StaticModel<1> for Residence {
 
 pub struct Age; // Age: u16
 
-impl StaticModel<1> for Age {
+impl Predicate<1> for Age {
     type Parsed = u16;
     type Subject = Profile;
     const VARIANT: Profile = Profile::Age;
@@ -3614,7 +3624,7 @@ mod skill_storage_tests {
     use crate::Rng;
 
     fn character() -> DataStruct {
-        DataStruct::new(1, 0.0, 256)
+        DataStruct::new(1, 0.0, SCHEMA_SIZE)
     }
 
     #[test]

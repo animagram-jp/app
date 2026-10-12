@@ -75,7 +75,6 @@ pub enum Target {
     DayTitle(u32),
     Resource(u32),
     ResourceName(u32),
-    ResourcePerson(u32),
     Band(u32),
     BandLabel(u32),
     Card(u32),
@@ -138,7 +137,6 @@ impl Target {
             Self::DayTitle(n) => join(list(1, Some(n)), &[(Tag::H3, None)]),
             Self::Resource(n) => list(2, Some(n)),
             Self::ResourceName(n) => join(list(2, Some(n)), &[(Tag::Strong, None)]),
-            Self::ResourcePerson(n) => join(list(2, Some(n)), &[(Tag::Span, None)]),
             Self::Band(n) => list(3, Some(n)),
             Self::BandLabel(n) => join(list(3, Some(n)), &[(Tag::Span, None)]),
             Self::Card(n) => list(4, Some(n)),
@@ -210,9 +208,6 @@ impl Target {
                 [(Tag::Ol, Some(2)), (Tag::Li, Some(n))] => Self::Resource(*n),
                 [(Tag::Ol, Some(2)), (Tag::Li, Some(n)), (Tag::Strong, None)] => {
                     Self::ResourceName(*n)
-                }
-                [(Tag::Ol, Some(2)), (Tag::Li, Some(n)), (Tag::Span, None)] => {
-                    Self::ResourcePerson(*n)
                 }
                 [(Tag::Ol, Some(3)), (Tag::Li, Some(n))] => Self::Band(*n),
                 [(Tag::Ol, Some(3)), (Tag::Li, Some(n)), (Tag::Span, None)] => Self::BandLabel(*n),
@@ -295,7 +290,7 @@ mod tests {
         }
         for n in 1..=7 {
             targets.extend([Target::Day(n), Target::DayTitle(n), Target::Resource(n)]);
-            targets.extend([Target::ResourceName(n), Target::ResourcePerson(n)]);
+            targets.push(Target::ResourceName(n));
         }
         for n in 1..=3 {
             targets.push(Target::Card(n));

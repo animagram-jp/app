@@ -185,8 +185,8 @@ impl Output for Error {
     }
 }
 
-pub trait Input: Sized {
-    fn decode(input: &mut &[u8]) -> Option<Self>;
+pub trait Input<'a>: Sized {
+    fn decode(input: &mut &'a [u8]) -> Option<Self>;
 }
 
 pub trait Output {
@@ -201,7 +201,7 @@ fn take<'a>(input: &mut &'a [u8], count: usize) -> Option<&'a [u8]> {
 
 macro_rules! scalar {
     ($($type:ty),*) => {$(
-        impl Input for $type {
+        impl Input<'_> for $type {
             fn decode(input: &mut &[u8]) -> Option<Self> {
                 Some(<$type>::from_le_bytes(take(input, size_of::<$type>())?.try_into().ok()?))
             }
@@ -215,7 +215,7 @@ macro_rules! scalar {
     )*};
 }
 
-scalar!(u8, u16, u32, i32, f32, f64);
+scalar!(u8, u16, u32, u64, u128, i32, f32, f64);
 
 macro_rules! wire_enum {
     ($($repr:ty: $($type:ty),+);+ $(;)?) => {$($(
@@ -229,23 +229,25 @@ macro_rules! wire_enum {
 
 wire_enum!(u16: Attribute, ClassName, FnName, Keyword, StyleProperty; u8: Method, Unit);
 
-impl Input for Vec<u8> {
-    fn decode(input: &mut &[u8]) -> Option<Self> {
-        let length = u32::decode(input)? as usize;
-        Some(take(input, length)?.to_vec())
+impl<'a, T: Input<'a>> Input<'a> for Vec<T> {
+    fn decode(input: &mut &'a [u8]) -> Option<Self> {
+        let count = u32::decode(input)? as usize;
+        (0..count).map(|_| T::decode(input)).collect()
     }
 }
 
-impl Input for String {
+impl Input<'_> for String {
     fn decode(input: &mut &[u8]) -> Option<Self> {
         String::from_utf8(Vec::<u8>::decode(input)?).ok()
     }
 }
 
-impl Output for [u8] {
+impl<T: Output> Output for [T] {
     fn encode(&self, output: &mut Vec<u8>) {
         (self.len() as u32).encode(output);
-        output.extend_from_slice(self);
+        for item in self {
+            item.encode(output);
+        }
     }
 }
 
@@ -263,7 +265,7 @@ pub trait Decimal: Sized {
 const FRACTION_UNIT: u64 = 1000;
 const FRACTION_WIDTH: usize = 3;
 
-impl<T: Decimal> Input for T {
+impl<T: Decimal> Input<'_> for T {
     fn decode(input: &mut &[u8]) -> Option<Self> {
         let (whole, rest) = input.split_at_checked(count_leading_digits(input))?;
         let (fraction, rest) = match rest.split_first() {
@@ -324,7 +326,7 @@ fn push_decimal(output: &mut Vec<u8>, mut value: u64, width: usize) {
     output.extend_from_slice(&digits[start..]);
 }
 
-pub fn parse<T: Input>(source: &[u8]) -> Option<T> {
+pub fn parse<'a, T: Input<'a>>(source: &'a [u8]) -> Option<T> {
     let mut rest = source;
     let value = T::decode(&mut rest)?;
     rest.is_empty().then_some(value)
@@ -2121,7 +2123,7 @@ pub mod dom {
         }
     }
 
-    impl Input for Id {
+    impl Input<'_> for Id {
         fn decode(input: &mut &[u8]) -> Option<Self> {
             let count = u8::decode(input)? as usize;
             let mut segments = Vec::with_capacity(count);
@@ -2225,6 +2227,30 @@ mod decimal_tests {
         let mut rest: &[u8] = b"rem";
         assert!(Sample::decode(&mut rest).is_none());
         assert_eq!(rest, b"rem");
+    }
+
+    struct Head<'a>(&'a [u8]);
+
+    impl<'a> Input<'a> for Head<'a> {
+        fn decode(input: &mut &'a [u8]) -> Option<Self> {
+            let count = u8::decode(input)? as usize;
+            Some(Self(take(input, count)?))
+        }
+    }
+
+    #[test]
+    fn a_borrowing_type_outlives_the_cursor() {
+        let frame: &[u8] = b"\x03abcrest";
+        let head = {
+            let mut rest = frame;
+            let head = Head::decode(&mut rest).unwrap();
+            assert_eq!(rest, b"rest");
+            head
+        };
+        assert_eq!(head.0, b"abc");
+        assert_eq!(parse::<Head>(b"\x02ab").map(|head| head.0), Some(&b"ab"[..]));
+        assert_eq!(parse::<Head>(b"\x02abc").map(|head| head.0), None);
+        assert!(Head::decode(&mut &b"\x05ab"[..]).is_none());
     }
 
     #[test]

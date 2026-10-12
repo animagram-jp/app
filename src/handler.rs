@@ -20,6 +20,7 @@ use crate::{
         Attribute, CanvasEvent, Command, EventType, FullscreenEvent, Gesture, Pointer,
         VisibilityState, dom,
     },
+    object::SCHEMA_SIZE,
 };
 
 pub enum CharacterSheet {
@@ -65,7 +66,7 @@ impl Handler {
             dialog: Dialog::None,
             lang: Lang::Ja,
             last_toast: u2::new(1),
-            character: DataStruct::new(0, 0.0, 256),
+            character: DataStruct::new(0, 0.0, SCHEMA_SIZE),
             #[cfg(feature = "worker")]
             characters: Backend::open(CHARACTER_STORE, true)
                 .await

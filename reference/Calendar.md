@@ -50,7 +50,7 @@
 
 
 - appointmentドメインについて: 以下の用に、calendarドメインの像の1つとして実現する。
-    - status: str, person: uid, slot: uid, resource: uid -> 親子タグ
+    - status: str, slot: uid, resource: uid -> 親子タグ
 
 ```yaml
 # Value 0...0 means null in each field.

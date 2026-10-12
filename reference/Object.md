@@ -164,7 +164,7 @@ impl Handler {
 ```rust
 impl Model {
     /// DataStructの現行レイアウトからModelを構築する(read側)。
-    /// 各Subjectの最上位被定義オブジェクトのStaticModel::readを走査して集約する。
+    /// 各Subjectの最上位被定義オブジェクトのPredicate::readを走査して集約する。
     pub fn from_data_struct(character: &DataStruct) -> Self;
 
     /// Modelの内容をDataStructへ書き戻す(write側)。

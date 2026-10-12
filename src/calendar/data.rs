@@ -8,27 +8,31 @@ use core::{
 };
 
 use crate::{
-    Lang,
     data_struct::{DataStruct, ID_CREATED_AT, ID_IDENTITY, ID_MODIFIED_AT},
-    field::{Layout, Spec::Unsigned},
     file_store::FileStore,
-    js_client::WireError,
-    object::StaticModel,
-    timestamp::{Format, diff, display, pack},
+    js_client::{WireError, parse},
+    list::ListError,
+    object::Predicate,
+    timestamp::{diff, pack},
 };
 
 // --- layout ---
 
-pub const SCHEMA_SIZE: u32 = 11;
+pub const SCHEMA_SIZE: u32 = 12;
 const FIELD_KIND: u32 = 4;
 const CREATED: f64 = 0.0;
-const SPAN: Layout<2> = Layout::new([Unsigned(11), Unsigned(11)]);
 
 #[derive(Debug)]
 pub enum DataError {
     Status(u16),
     Parse(String),
     Format(String),
+}
+
+impl From<ListError> for DataError {
+    fn from(error: ListError) -> Self {
+        DataError::Format(format!("record layout: {error:?}"))
+    }
 }
 
 impl Display for DataError {
@@ -63,11 +67,14 @@ pub fn blank(key: u32, kind: u32) -> DataStruct {
 }
 
 pub fn key(entry: &DataStruct) -> u32 {
-    number(entry.get(ID_IDENTITY).ok())
+    entry.get(ID_IDENTITY).ok().and_then(parse::<u32>).unwrap_or(0)
 }
 
 pub fn kind(bytes: &[u8]) -> u32 {
-    number(DataStruct::read_from_bytes(bytes, SCHEMA_SIZE, FIELD_KIND).ok())
+    DataStruct::get_from_bytes(bytes, SCHEMA_SIZE, FIELD_KIND)
+        .ok()
+        .and_then(parse::<u32>)
+        .unwrap_or(0)
 }
 
 pub fn touch(entry: &mut DataStruct, now: u64) {
@@ -88,71 +95,23 @@ pub fn new_uid(now: u64) -> u128 {
     (unix_ms & 0xFFFF_FFFF_FFFF) << 80 | 7 << 76 | rand_a << 64 | 2 << 62 | rand_b
 }
 
-fn number(bytes: Option<&[u8]>) -> u32 {
-    bytes.and_then(|b| b.try_into().ok()).map_or(0, u32::from_le_bytes)
-}
-
-fn day(bytes: Option<&[u8]>) -> u64 {
-    bytes.and_then(|b| b.try_into().ok()).map_or(0, u64::from_le_bytes)
-}
-
-fn wide(bytes: Option<&[u8]>) -> u128 {
-    bytes.and_then(|b| b.try_into().ok()).map_or(0, u128::from_le_bytes)
-}
-
-fn string(bytes: Option<&[u8]>) -> String {
-    bytes.and_then(|b| core::str::from_utf8(b).ok()).map_or_else(String::new, String::from)
-}
-
-fn pair(bytes: Option<&[u8]>) -> Option<(u32, u32)> {
-    let raw = SPAN.decode(bytes?)?;
-    Some((SPAN.get(raw, 0), SPAN.get(raw, 1)))
-}
-
-fn span(bytes: Option<&[u8]>) -> (u32, u32) {
-    pair(bytes).unwrap_or((0, 0))
-}
-
-fn number_bytes(value: &u32) -> Option<Vec<u8>> {
-    Some(value.to_le_bytes().to_vec())
-}
-
-fn day_bytes(value: &u64) -> Option<Vec<u8>> {
-    Some(value.to_le_bytes().to_vec())
-}
-
-fn wide_bytes(value: &u128) -> Option<Vec<u8>> {
-    Some(value.to_le_bytes().to_vec())
-}
-
-fn string_bytes(value: &String) -> Option<Vec<u8>> {
-    Some(value.as_bytes().to_vec())
-}
-
-fn pair_bytes(value: &(u32, u32)) -> Option<Vec<u8>> {
-    let (bytes, length) = SPAN.encode(SPAN.pack([u64::from(value.0), u64::from(value.1)]));
-    Some(bytes[..length].to_vec())
-}
-
-fn rest_bytes(value: &Option<(u32, u32)>) -> Option<Vec<u8>> {
-    value.as_ref().and_then(pair_bytes)
-}
-
-macro_rules! object {
-    ($name:ident, $variant:expr, $parsed:ty, $parse:expr, $encode:expr) => {
+macro_rules! predicate {
+    ($name:ident, $variant:expr, $parsed:ty) => {
         pub struct $name;
 
-        impl StaticModel<1> for $name {
+        impl Predicate<1> for $name {
             type Parsed = $parsed;
             type Subject = Field;
             const VARIANT: Field = $variant;
 
             fn parse(bytes: [Option<&[u8]>; 1]) -> Self::Parsed {
-                $parse(bytes[0])
+                bytes[0].and_then(parse::<$parsed>).unwrap_or_default()
             }
 
             fn encode(value: &Self::Parsed) -> [Option<Vec<u8>>; 1] {
-                [$encode(value)]
+                let mut output = Vec::new();
+                value.encode(&mut output);
+                [Some(output)]
             }
         }
     };
@@ -165,11 +124,12 @@ pub mod tag {
         primitive::{str, u8, u32, u128},
     };
 
-    use super::{blank, number, number_bytes, string, string_bytes, wide, wide_bytes};
+    use super::blank;
     use crate::{
         Lang,
         data_struct::DataStruct,
-        object::{StaticModel, SubjectTrait},
+        js_client::{Output, parse},
+        object::{Predicate, SubjectTrait},
     };
 
     pub const KIND: u32 = 1;
@@ -183,6 +143,8 @@ pub mod tag {
     }
 
     impl SubjectTrait for Field {
+        const SCHEMA_SIZE: u32 = super::SCHEMA_SIZE;
+
         fn ids(&self) -> &'static [u32] {
             match self {
                 Self::Parent => &[5],
@@ -209,10 +171,10 @@ pub mod tag {
         }
     }
 
-    object!(Parent, Field::Parent, u32, number, number_bytes);
-    object!(Uid, Field::Uid, u128, wide, wide_bytes);
-    object!(Code, Field::Code, String, string, string_bytes);
-    object!(Label, Field::Label, String, string, string_bytes);
+    predicate!(Parent, Field::Parent, u32);
+    predicate!(Uid, Field::Uid, u128);
+    predicate!(Code, Field::Code, String);
+    predicate!(Label, Field::Label, String);
 
     pub fn new(key: u32, parent: u32, uid: u128, code: &str, label: &str) -> DataStruct {
         let mut entry = blank(key, KIND);
@@ -232,30 +194,29 @@ pub mod appointment {
         fmt::Debug,
         iter::Iterator,
         option::Option::{self, None, Some},
-        primitive::{str, u8, u32, u64, u128, usize},
+        primitive::{str, u8, u32, u64, u128},
         result::Result::{self, Err, Ok},
     };
 
     use serde_json::{Value, json};
 
     use super::{
-        DataError, blank, entries, format_error, format_hhmm, pair_bytes, parse_date, parse_time,
-        parse_uid, span, string, string_bytes, tag, tags, wide, wide_bytes,
+        DataError, blank, entries, format_error, parse_date, parse_time, parse_uid, tag, tags,
     };
     use crate::{
         Lang,
         data_struct::DataStruct,
         file_store::FileStore,
-        object::{StaticModel, SubjectTrait},
+        js_client::{Input, Output, parse},
+        object::{Predicate, SubjectTrait},
         timestamp::{Format, display},
     };
 
     pub const KIND: u32 = 3;
-    pub const KINDS: [u32; 3] = [tag::KIND, shift::KIND, KIND];
+    pub const KINDS: [u32; 2] = [tag::KIND, KIND];
     pub const RESOURCE: u32 = 1;
     pub const STATUS: u32 = 2;
     pub const CATEGORY: u32 = 3;
-    const PLACE_BYTES: usize = 24;
 
     #[derive(Clone, Copy, Debug, PartialEq, Eq)]
     #[repr(C)]
@@ -264,28 +225,17 @@ pub mod appointment {
         pub resource: u128,
     }
 
-    fn places(bytes: Option<&[u8]>) -> Vec<Place> {
-        bytes
-            .unwrap_or(&[])
-            .chunks_exact(PLACE_BYTES)
-            .filter_map(|place| {
-                Some(Place {
-                    day:      u64::from_le_bytes(place[..8].try_into().ok()?),
-                    resource: u128::from_le_bytes(place[8..].try_into().ok()?),
-                })
-            })
-            .collect()
+    impl Input<'_> for Place {
+        fn decode(input: &mut &[u8]) -> Option<Self> {
+            Some(Self { day: u64::decode(input)?, resource: u128::decode(input)? })
+        }
     }
 
-    fn places_bytes(value: &Vec<Place>) -> Option<Vec<u8>> {
-        Some(
-            value
-                .iter()
-                .flat_map(|place| {
-                    place.day.to_le_bytes().into_iter().chain(place.resource.to_le_bytes())
-                })
-                .collect(),
-        )
+    impl Output for Place {
+        fn encode(&self, output: &mut Vec<u8>) {
+            self.day.encode(output);
+            self.resource.encode(output);
+        }
     }
 
     #[derive(Clone, Copy)]
@@ -300,11 +250,13 @@ pub mod appointment {
     }
 
     impl SubjectTrait for Field {
+        const SCHEMA_SIZE: u32 = super::SCHEMA_SIZE;
+
         fn ids(&self) -> &'static [u32] {
             match self {
                 Self::Uid => &[5],
                 Self::Places => &[6],
-                Self::Range => &[7],
+                Self::Range => &[7, 12],
                 Self::Title => &[8],
                 Self::Category => &[9],
                 Self::Status => &[10],
@@ -343,19 +295,40 @@ pub mod appointment {
         }
     }
 
-    object!(Uid, Field::Uid, u128, wide, wide_bytes);
-    object!(Places, Field::Places, Vec<Place>, places, places_bytes);
-    object!(Range, Field::Range, (u32, u32), span, pair_bytes);
-    object!(Title, Field::Title, String, string, string_bytes);
-    object!(Category, Field::Category, String, string, string_bytes);
-    object!(Status, Field::Status, String, string, string_bytes);
-    object!(Note, Field::Note, String, string, string_bytes);
+    predicate!(Uid, Field::Uid, u128);
+    predicate!(Places, Field::Places, Vec<Place>);
+    predicate!(Title, Field::Title, String);
+    predicate!(Category, Field::Category, String);
+    predicate!(Status, Field::Status, String);
+    predicate!(Note, Field::Note, String);
+
+    pub struct Range;
+
+    impl Predicate<2> for Range {
+        type Parsed = (u64, u64);
+        type Subject = Field;
+        const VARIANT: Field = Field::Range;
+
+        fn parse(bytes: [Option<&[u8]>; 2]) -> Self::Parsed {
+            let time = |bytes: Option<&[u8]>| bytes.and_then(parse::<u64>).unwrap_or_default();
+            (time(bytes[0]), time(bytes[1]))
+        }
+
+        fn encode(value: &Self::Parsed) -> [Option<Vec<u8>>; 2] {
+            let bytes = |time: u64| {
+                let mut output = Vec::new();
+                time.encode(&mut output);
+                Some(output)
+            };
+            [bytes(value.0), bytes(value.1)]
+        }
+    }
 
     pub fn new(
         key: u32,
         places: &[Place],
-        start: u32,
-        end: u32,
+        start: u64,
+        end: u64,
         title: &str,
         category: &str,
         status: &str,
@@ -369,92 +342,6 @@ pub mod appointment {
         let _ = Status::write(&mut entry, &String::from(status), None);
         let _ = Note::write(&mut entry, &String::from(note), None);
         entry
-    }
-
-    pub mod shift {
-        use alloc::{string::String, vec::Vec};
-        use core::{
-            option::Option::{self, None},
-            primitive::{str, u8, u32, u64, u128},
-        };
-
-        use super::super::{
-            blank, day, day_bytes, pair, pair_bytes, rest_bytes, span, string, string_bytes, wide,
-            wide_bytes,
-        };
-        use crate::{
-            Lang,
-            data_struct::DataStruct,
-            object::{StaticModel, SubjectTrait},
-        };
-
-        pub const KIND: u32 = 2;
-
-        #[derive(Clone, Copy)]
-        pub enum Field {
-            Day,
-            Resource,
-            Person,
-            Hours,
-            Rest,
-        }
-
-        impl SubjectTrait for Field {
-            fn ids(&self) -> &'static [u32] {
-                match self {
-                    Self::Day => &[5],
-                    Self::Resource => &[6],
-                    Self::Person => &[7],
-                    Self::Hours => &[8],
-                    Self::Rest => &[9],
-                }
-            }
-
-            fn label(&self, lang: Lang) -> &'static str {
-                match (self, lang) {
-                    (Self::Day, Lang::En(_)) => "Day",
-                    (Self::Day, Lang::Ja) => "日付",
-                    (Self::Resource, Lang::En(_)) => "Resource",
-                    (Self::Resource, Lang::Ja) => "資源",
-                    (Self::Person, Lang::En(_)) => "Person",
-                    (Self::Person, Lang::Ja) => "担当",
-                    (Self::Hours, Lang::En(_)) => "Hours",
-                    (Self::Hours, Lang::Ja) => "勤務",
-                    (Self::Rest, Lang::En(_)) => "Rest",
-                    (Self::Rest, Lang::Ja) => "休憩",
-                }
-            }
-
-            fn list() -> &'static [Self] {
-                &[Self::Day, Self::Resource, Self::Person, Self::Hours, Self::Rest]
-            }
-        }
-
-        object!(Day, Field::Day, u64, day, day_bytes);
-        object!(Resource, Field::Resource, u128, wide, wide_bytes);
-        object!(Person, Field::Person, String, string, string_bytes);
-        object!(Hours, Field::Hours, (u32, u32), span, pair_bytes);
-        object!(Rest, Field::Rest, Option<(u32, u32)>, pair, rest_bytes);
-
-        pub fn new(
-            key: u32,
-            day: u64,
-            resource: u128,
-            person: &str,
-            open: u32,
-            close: u32,
-            rest: Option<(u32, u32)>,
-        ) -> DataStruct {
-            let mut entry = blank(key, KIND);
-            let _ = Day::write(&mut entry, &day, None);
-            let _ = Resource::write(&mut entry, &resource, None);
-            let _ = Person::write(&mut entry, &String::from(person), None);
-            let _ = Hours::write(&mut entry, &(open, close), None);
-            if rest.is_some() {
-                let _ = Rest::write(&mut entry, &rest, None);
-            }
-            entry
-        }
     }
 
     // --- json ---
@@ -486,24 +373,6 @@ pub mod appointment {
             }
         }
 
-        for item in page("shifts")? {
-            let rest = |key| item.get(key).and_then(Value::as_str);
-            let rest = match (rest("rest_start"), rest("rest_end")) {
-                (Some(start), Some(end)) => Some((parse_time(start)?, parse_time(end)?)),
-                _ => None,
-            };
-            let key = store.issue_id();
-            let entry = shift::new(
-                key,
-                parse_date(text(item, "day")?)?,
-                uid(item, "resource_uid")?,
-                text(item, "person")?,
-                parse_time(text(item, "open")?)?,
-                parse_time(text(item, "close")?)?,
-                rest,
-            );
-            staged.push((key, entry.to_bytes()));
-        }
         let mut uids: BTreeSet<u128> = BTreeSet::new();
         for item in page("appointments")? {
             let uid = uid(item, "uid")?;
@@ -549,24 +418,6 @@ pub mod appointment {
         let date = |day: u64| display(day, Lang::Ja, Format::Date);
         let option =
             |t: &DataStruct| json!({"code": tag::Code::read(t), "label": tag::Label::read(t)});
-        let shifts: Vec<Value> = entries(store, shift::KIND)?
-            .iter()
-            .map(|s| {
-                let (open, close) = shift::Hours::read(s);
-                let mut item = json!({
-                    "day": date(shift::Day::read(s)),
-                    "resource_uid": format!("{}", shift::Resource::read(s)),
-                    "person": shift::Person::read(s),
-                    "open": format_hhmm(open),
-                    "close": format_hhmm(close),
-                });
-                if let Some((start, end)) = shift::Rest::read(s) {
-                    item["rest_start"] = json!(format_hhmm(start));
-                    item["rest_end"] = json!(format_hhmm(end));
-                }
-                item
-            })
-            .collect();
         let appointments: Vec<Value> = entries(store, KIND)?
             .iter()
             .map(|a| {
@@ -578,8 +429,8 @@ pub mod appointment {
                 json!({
                     "uid": format!("{}", Uid::read(a)),
                     "places": places,
-                    "start": format_hhmm(start),
-                    "end": format_hhmm(end),
+                    "start": display(start, Lang::Ja, Format::Time),
+                    "end": display(end, Lang::Ja, Format::Time),
                     "title": Title::read(a),
                     "category": Category::read(a),
                     "status": Status::read(a),
@@ -594,7 +445,6 @@ pub mod appointment {
                 .collect::<Vec<_>>(),
             "statuses": tags(store, STATUS).iter().map(option).collect::<Vec<_>>(),
             "categories": tags(store, CATEGORY).iter().map(option).collect::<Vec<_>>(),
-            "shifts": shifts,
             "appointments": appointments,
         });
         Ok(serde_json::to_vec_pretty(&root).unwrap_or_default())
@@ -619,25 +469,20 @@ pub mod appointment {
 
 // --- store ---
 
-fn parse(bytes: &[u8]) -> Result<DataStruct, DataError> {
-    DataStruct::from_bytes(bytes, SCHEMA_SIZE)
-        .map_err(|error| DataError::Format(format!("record layout: {error:?}")))
-}
-
 pub fn put(store: &mut impl FileStore, entry: &DataStruct) {
     store.set(key(entry), entry.to_bytes());
 }
 
 pub fn entry(store: &impl FileStore, key: u32, kind: u32) -> Option<DataStruct> {
     let bytes = store.get(key)?;
-    (self::kind(bytes) == kind).then(|| parse(bytes).ok()).flatten()
+    (self::kind(bytes) == kind).then(|| DataStruct::from_bytes(bytes, SCHEMA_SIZE).ok()).flatten()
 }
 
 pub fn entries(store: &impl FileStore, kind: u32) -> Result<Vec<DataStruct>, DataError> {
     store
         .range(0, u32::MAX)
         .filter(|(_, bytes)| self::kind(bytes) == kind)
-        .map(|(_, bytes)| parse(bytes))
+        .map(|(_, bytes)| DataStruct::from_bytes(bytes, SCHEMA_SIZE).map_err(DataError::from))
         .collect()
 }
 
@@ -657,7 +502,7 @@ pub fn check(store: &impl FileStore, kinds: &[u32]) -> Result<(), DataError> {
         if !kinds.contains(&kind) {
             return Err(DataError::Format(format!("record kind: {kind}")));
         }
-        parse(bytes)?;
+        DataStruct::from_bytes(bytes, SCHEMA_SIZE)?;
     }
     Ok(())
 }
@@ -675,26 +520,18 @@ pub fn parse_uid(text: &str) -> Result<u128, DataError> {
 
 /// ```
 /// # use app::calendar::data::parse_time;
-/// assert_eq!(parse_time("09:30").unwrap(), 570);
+/// # use app::timestamp::pack;
+/// assert_eq!(parse_time("09:30").unwrap(), pack(0, 0, 0, 9, 30, 0, 0, 0, 0));
 /// assert!(parse_time("9").is_err());
 /// ```
-pub fn parse_time(text: &str) -> Result<u32, DataError> {
+pub fn parse_time(text: &str) -> Result<u64, DataError> {
     let (hour, minute) = text.split_once(':').ok_or_else(|| format_error("time", text))?;
-    let hour: u32 = hour.parse().map_err(|_| format_error("time", text))?;
-    let minute: u32 = minute.parse().map_err(|_| format_error("time", text))?;
-    if hour > 24 || minute > 59 {
+    let hour: i64 = hour.parse().map_err(|_| format_error("time", text))?;
+    let minute: i64 = minute.parse().map_err(|_| format_error("time", text))?;
+    if !(0..=24).contains(&hour) || !(0..=59).contains(&minute) {
         return Err(format_error("time", text));
     }
-    Ok(hour * 60 + minute)
-}
-
-/// ```
-/// # use app::calendar::data::format_hhmm;
-/// assert_eq!(format_hhmm(570), "09:30");
-/// ```
-pub fn format_hhmm(minutes: u32) -> String {
-    let (hour, minute) = (i64::from(minutes / 60), i64::from(minutes % 60));
-    display(pack(0, 0, 0, hour, minute, 0, 0, 0, 0), Lang::Ja, Format::Time)
+    Ok(pack(0, 0, 0, hour, minute, 0, 0, 0, 0))
 }
 
 /// ```
@@ -734,6 +571,10 @@ mod tests {
     use crate::file_store::{MemoryHandles, MemoryStore};
 
     const OTHER: u32 = 9;
+
+    fn at(hour: i64, minute: i64) -> u64 {
+        pack(0, 0, 0, hour, minute, 0, 0, 0, 0)
+    }
 
     fn sample() -> Vec<u8> {
         fs::read(concat!(env!("CARGO_MANIFEST_DIR"), "/distribution/calendar/data/calendar.json"))
@@ -794,7 +635,6 @@ mod tests {
         assert_eq!(tags(&store, STATUS).len(), 4);
         assert_eq!(tags(&store, appointment::CATEGORY).len(), 4);
         assert_eq!(entries(&store, tag::KIND).unwrap().len(), 12);
-        assert_eq!(entries(&store, appointment::shift::KIND).unwrap().len(), 201);
         let appointments = entries(&store, appointment::KIND).unwrap();
         assert_eq!(appointments.len(), 380);
         let keys: Vec<u32> = appointments.iter().map(key).collect();
@@ -822,7 +662,7 @@ mod tests {
         let mut first = entries(&store, appointment::KIND).unwrap().remove(0);
         let mut places = Places::read(&first);
         places[0].resource = tag::Uid::read(&resources[3]);
-        Range::write(&mut first, &(11 * 60, 12 * 60 + 15), None).unwrap();
+        Range::write(&mut first, &(at(11, 0), at(12, 15)), None).unwrap();
         Places::write(&mut first, &places, None).unwrap();
         put(&mut store, &first);
         let document = value(&export(&store).unwrap());
@@ -833,6 +673,37 @@ mod tests {
             edited["places"][0]["resource_uid"],
             format!("{}", tag::Uid::read(&resources[3]))
         );
+    }
+
+    #[test]
+    fn get_from_bytes_agrees_with_read_on_store_records() {
+        let store = imported();
+        let mut seen = [false; 2];
+        for (_, bytes) in store.range(0, u32::MAX) {
+            let entry = DataStruct::from_bytes(bytes, SCHEMA_SIZE).unwrap();
+            match kind(bytes) {
+                tag::KIND => {
+                    seen[0] = true;
+                    assert_eq!(tag::Parent::get_from_bytes(bytes), tag::Parent::read(&entry));
+                    assert_eq!(tag::Uid::get_from_bytes(bytes), tag::Uid::read(&entry));
+                    assert_eq!(tag::Code::get_from_bytes(bytes), tag::Code::read(&entry));
+                    assert_eq!(tag::Label::get_from_bytes(bytes), tag::Label::read(&entry));
+                }
+                appointment::KIND => {
+                    seen[1] = true;
+                    assert_eq!(Uid::get_from_bytes(bytes), Uid::read(&entry));
+                    assert_eq!(Places::get_from_bytes(bytes), Places::read(&entry));
+                    assert_eq!(Range::get_from_bytes(bytes), Range::read(&entry));
+                    assert_eq!(
+                        appointment::Note::get_from_bytes(bytes),
+                        appointment::Note::read(&entry)
+                    );
+                }
+                _ => unreachable!(),
+            }
+        }
+        assert!(seen.iter().all(|&s| s));
+        assert_eq!(Range::get_from_bytes(&[]), (0, 0));
     }
 
     #[test]
@@ -875,8 +746,8 @@ mod tests {
         let mut booking = appointment::new(
             booked,
             &[Place { day: 1, resource: 42 }],
-            600,
-            660,
+            at(10, 0),
+            at(11, 0),
             "t",
             "c",
             "s",

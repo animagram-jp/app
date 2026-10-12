@@ -505,7 +505,10 @@ pub fn add_hours(timestamp: u64, hours: i64) -> u64 {
     let total = hour + hours;
     let moved =
         pack(year, month, day, total.rem_euclid(24), minute, second, centisecond, is_utc, timezone);
-    add_days(moved, total.div_euclid(24))
+    match total.div_euclid(24) {
+        0 => moved,
+        days => add_days(moved, days),
+    }
 }
 
 /// Rolls back to Feb 28 22:00 when subtracting 2 hours from Mar 1 00:00 (common year).
@@ -569,6 +572,17 @@ mod tests {
 
     use super::*;
     use crate::Rng;
+
+    #[test]
+    fn minute_arithmetic_keeps_a_zero_date_within_the_day() {
+        let at = |hour, minute| pack(0, 0, 0, hour, minute, 0, 0, 0, 0);
+        assert_eq!(add_minutes(at(9, 30), 60), at(10, 30));
+        assert_eq!(add_minutes(at(9, 30), 45), at(10, 15));
+        assert_eq!(add_minutes(at(10, 15), -45), at(9, 30));
+        assert_eq!(diff(at(9, 30), at(10, 30)), 60 * 60 * 100);
+        assert_eq!(diff(at(10, 30), at(9, 30)), -60 * 60 * 100);
+        assert!(at(9, 30) < at(10, 0) && at(10, 0) < at(10, 1));
+    }
 
     #[test]
     fn layout_positions() {

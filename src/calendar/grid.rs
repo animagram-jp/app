@@ -1,10 +1,14 @@
 use alloc::vec::Vec;
 use core::{
+    cmp::Ord,
+    marker::Copy,
     option::Option::{self, None, Some},
-    primitive::{f64, i32, u32, usize},
+    primitive::{f64, i32, i64, u32, u64, usize},
 };
 
 use rectgrid::{BBox, Unit};
+
+use crate::timestamp::{pack, unpack};
 
 pub const RESOURCE_COUNT: u32 = 4;
 pub const DAY_MAX: u32 = 7;
@@ -135,8 +139,8 @@ impl TimeAxis {
         Self { origin, step, count }
     }
 
-    pub const fn end(&self) -> u32 {
-        self.origin + self.step * self.count
+    pub fn end(&self) -> u64 {
+        time_of(i64::from(self.origin + self.step * self.count))
     }
 
     pub const fn count(&self) -> u32 {
@@ -157,33 +161,45 @@ impl TimeAxis {
 
     /// ```
     /// # use app::calendar::grid::TimeAxis;
+    /// # use app::timestamp::pack;
     /// let axis = TimeAxis::new(540, 15, 44);
-    /// assert_eq!(axis.unit(600), 4.0);
-    /// assert_eq!(axis.unit(545), 1.0 / 3.0);
+    /// assert_eq!(axis.unit(pack(0, 0, 0, 10, 0, 0, 0, 0, 0)), 4.0);
+    /// assert_eq!(axis.unit(pack(0, 0, 0, 9, 5, 0, 0, 0, 0)), 1.0 / 3.0);
     /// ```
-    pub fn unit(&self, minutes: u32) -> f64 {
-        (minutes as f64 - self.origin as f64) / self.step as f64
+    pub fn unit(&self, time: u64) -> f64 {
+        (minutes_of(time) as f64 - self.origin as f64) / self.step as f64
     }
 
     /// ```
     /// # use app::calendar::grid::TimeAxis;
+    /// # use app::timestamp::pack;
     /// let axis = TimeAxis::new(540, 15, 44);
-    /// assert_eq!(axis.minutes(4), Some(600));
-    /// assert_eq!(axis.minutes(44), Some(1200));
-    /// assert_eq!(axis.minutes(45), None);
+    /// assert_eq!(axis.time(4), Some(pack(0, 0, 0, 10, 0, 0, 0, 0, 0)));
+    /// assert_eq!(axis.time(44), Some(pack(0, 0, 0, 20, 0, 0, 0, 0, 0)));
+    /// assert_eq!(axis.time(45), None);
     /// ```
-    pub fn minutes(&self, unit: u32) -> Option<u32> {
-        (unit <= self.count).then(|| self.origin + unit * self.step)
+    pub fn time(&self, unit: u32) -> Option<u64> {
+        (unit <= self.count).then(|| time_of(i64::from(self.origin + unit * self.step)))
     }
 
-    pub fn clip(&self, start: u32, end: u32) -> Option<(u32, u32)> {
-        let (start, end) = (start.max(self.origin), end.min(self.end()));
+    pub fn clip(&self, start: u64, end: u64) -> Option<(u64, u64)> {
+        let (start, end) = (start.max(time_of(i64::from(self.origin))), end.min(self.end()));
         (end > start).then_some((start, end))
     }
 
-    pub fn clamp_start(&self, start: u32, duration: u32) -> u32 {
-        start.min(self.end().saturating_sub(duration)).max(self.origin)
+    pub fn clamp_start(&self, start: u64, duration: u32) -> u64 {
+        let last = (self.origin + self.step * self.count).saturating_sub(duration);
+        time_of(minutes_of(start).min(i64::from(last)).max(i64::from(self.origin)))
     }
+}
+
+fn minutes_of(time: u64) -> i64 {
+    let (_, _, _, hour, minute, ..) = unpack(time);
+    hour * 60 + minute
+}
+
+fn time_of(minutes: i64) -> u64 {
+    pack(0, 0, 0, minutes.div_euclid(60), minutes.rem_euclid(60), 0, 0, 0, 0)
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -251,8 +267,8 @@ impl MonthAxis {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Resolved {
     pub cells: Vec<Cell>,
-    pub start: u32,
-    pub end:   u32,
+    pub start: u64,
+    pub end:   u64,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -273,20 +289,22 @@ impl Grid {
     /// assert_eq!((bx.base()[0].get(), bx.base()[1].get()), (6.0, 4.0));
     /// assert_eq!((bx.offset()[0].get(), bx.offset()[1].get()), (1.0, 4.0));
     /// ```
-    pub fn bbox(&self, cell: Cell, start: u32, end: u32) -> Option<BBox<2>> {
+    pub fn bbox(&self, cell: Cell, start: u64, end: u64) -> Option<BBox<2>> {
         let column = self.columns.unit(cell)? as i32;
         self.bbox_flat(column, column, start, end)
     }
 
     /// ```
     /// # use app::calendar::grid::{ColumnAxis, Grid, TimeAxis};
+    /// # use app::timestamp::pack;
+    /// let at = |hour, minute| pack(0, 0, 0, hour, minute, 0, 0, 0, 0);
     /// let grid = Grid::new(ColumnAxis::new(7, 4), TimeAxis::new(540, 15, 44));
-    /// let bx = grid.bbox_flat(-2, 1, 600, 660).unwrap();
+    /// let bx = grid.bbox_flat(-2, 1, at(10, 0), at(11, 0)).unwrap();
     /// assert_eq!((bx.base()[0].get(), bx.base()[1].get()), (-2.0, 4.0));
     /// assert_eq!((bx.offset()[0].get(), bx.offset()[1].get()), (4.0, 4.0));
-    /// assert!(grid.bbox_flat(0, 0, 1300, 1400).is_none());
+    /// assert!(grid.bbox_flat(0, 0, at(21, 40), at(23, 20)).is_none());
     /// ```
-    pub fn bbox_flat(&self, first: i32, last: i32, start: u32, end: u32) -> Option<BBox<2>> {
+    pub fn bbox_flat(&self, first: i32, last: i32, start: u64, end: u64) -> Option<BBox<2>> {
         let (start, end) = self.time.clip(start, end)?;
         let (from, to) = (self.time.unit(start), self.time.unit(end));
         Some(BBox::new(
@@ -298,11 +316,13 @@ impl Grid {
     /// ```
     /// # use app::calendar::grid::{Cell, ColumnAxis, Grid, TimeAxis};
     /// # use rectgrid::{BBox, Unit};
+    /// # use app::timestamp::pack;
+    /// let at = |hour, minute| pack(0, 0, 0, hour, minute, 0, 0, 0, 0);
     /// let grid = Grid::new(ColumnAxis::new(7, 4), TimeAxis::new(540, 15, 44));
     /// let bx = BBox::new([Unit::new(3.0), Unit::new(4.0)], [Unit::new(2.0), Unit::new(4.0)]);
     /// let resolved = grid.resolve(&bx).unwrap();
     /// assert_eq!(resolved.cells, [Cell { day: 0, resource: 3 }, Cell { day: 1, resource: 0 }]);
-    /// assert_eq!((resolved.start, resolved.end), (600, 660));
+    /// assert_eq!((resolved.start, resolved.end), (at(10, 0), at(11, 0)));
     /// ```
     pub fn resolve(&self, bx: &BBox<2>) -> Option<Resolved> {
         let (first_column, last_column) = span_clipped(bx.base()[0].get(), bx.offset()[0].get())?;
@@ -311,8 +331,8 @@ impl Grid {
         if cells.is_empty() {
             return None;
         }
-        let start = self.time.minutes(first_slot)?;
-        let end = self.time.minutes(last_slot.min(self.time.count))?;
+        let start = self.time.time(first_slot)?;
+        let end = self.time.time(last_slot.min(self.time.count))?;
         (end > start).then_some(Resolved { cells, start, end })
     }
 }
@@ -342,16 +362,16 @@ fn span_clipped(base: f64, offset: f64) -> Option<(u32, u32)> {
 /// # use app::calendar::grid::lanes;
 /// assert_eq!(lanes(&[(0, 4), (2, 6), (6, 8)]), [(0, 2), (1, 2), (0, 1)]);
 /// ```
-pub fn lanes(spans: &[(u32, u32)]) -> Vec<(u32, u32)> {
+pub fn lanes<T: Copy + Ord>(spans: &[(T, T)]) -> Vec<(u32, u32)> {
     let mut order: Vec<usize> = (0..spans.len()).collect();
     order.sort_by(|a, b| spans[*a].0.cmp(&spans[*b].0).then(spans[*b].1.cmp(&spans[*a].1)));
 
     let mut result = alloc::vec![(0, 1); spans.len()];
-    let mut cluster: Vec<(usize, u32, u32)> = Vec::new();
-    let mut cluster_end = 0;
+    let mut cluster: Vec<(usize, T, u32)> = Vec::new();
+    let mut cluster_end: Option<T> = None;
     for index in order {
         let (start, end) = spans[index];
-        if !cluster.is_empty() && start >= cluster_end {
+        if !cluster.is_empty() && cluster_end.is_some_and(|cluster_end| start >= cluster_end) {
             flush(&mut cluster, &mut result);
         }
         let mut lane = 0;
@@ -361,14 +381,17 @@ pub fn lanes(spans: &[(u32, u32)]) -> Vec<(u32, u32)> {
         {
             lane += 1;
         }
-        cluster_end = if cluster.is_empty() { end } else { cluster_end.max(end) };
+        cluster_end = Some(match cluster_end {
+            Some(cluster_end) if !cluster.is_empty() => cluster_end.max(end),
+            _ => end,
+        });
         cluster.push((index, end, lane));
     }
     flush(&mut cluster, &mut result);
     result
 }
 
-fn flush(cluster: &mut Vec<(usize, u32, u32)>, result: &mut [(u32, u32)]) {
+fn flush<T>(cluster: &mut Vec<(usize, T, u32)>, result: &mut [(u32, u32)]) {
     let count = cluster.iter().map(|(_, _, lane)| lane + 1).max().unwrap_or(1);
     for (index, _, lane) in cluster.drain(..) {
         result[index] = (lane, count);
@@ -399,6 +422,10 @@ mod tests {
 
     fn grid(days: u32) -> Grid {
         Grid::new(ColumnAxis::new(days, 4), TimeAxis::new(540, 15, 44))
+    }
+
+    fn at(minutes: u32) -> u64 {
+        time_of(i64::from(minutes))
     }
 
     fn bx(x: f64, y: f64, width: f64, height: f64) -> BBox<2> {
@@ -456,25 +483,26 @@ mod tests {
     }
 
     #[test]
-    fn time_axis_round_trips_slots_and_minutes() {
+    fn time_axis_round_trips_slots_and_times() {
         let axis = TimeAxis::new(540, 15, 44);
         for slot in 0..=44 {
-            let minutes = axis.minutes(slot).unwrap();
-            assert_eq!(axis.unit(minutes), slot as f64);
+            let time = axis.time(slot).unwrap();
+            assert_eq!(axis.unit(time), slot as f64);
         }
-        assert_eq!(axis.end(), 1200);
-        assert_eq!(axis.minutes(45), None);
+        assert_eq!(axis.end(), at(1200));
+        assert_eq!(axis.time(45), None);
+        assert_eq!(axis.unit(at(540 + 44 * 15 + 7)), 44.0 + 7.0 / 15.0);
     }
 
     #[test]
     fn time_axis_clips_and_clamps() {
         let axis = TimeAxis::new(540, 15, 44);
-        assert_eq!(axis.clip(480, 570), Some((540, 570)));
-        assert_eq!(axis.clip(1190, 1260), Some((1190, 1200)));
-        assert_eq!(axis.clip(1200, 1260), None);
-        assert_eq!(axis.clip(400, 540), None);
-        assert_eq!(axis.clamp_start(1180, 60), 1140);
-        assert_eq!(axis.clamp_start(100, 60), 540);
+        assert_eq!(axis.clip(at(480), at(570)), Some((at(540), at(570))));
+        assert_eq!(axis.clip(at(1190), at(1260)), Some((at(1190), at(1200))));
+        assert_eq!(axis.clip(at(1200), at(1260)), None);
+        assert_eq!(axis.clip(at(400), at(540)), None);
+        assert_eq!(axis.clamp_start(at(1180), 60), at(1140));
+        assert_eq!(axis.clamp_start(at(100), 60), at(540));
     }
 
     #[test]
@@ -483,9 +511,9 @@ mod tests {
             let grid = grid(days);
             for unit in 0..grid.columns.count() {
                 let cell = grid.columns.cell(unit).unwrap();
-                let resolved = grid.resolve(&grid.bbox(cell, 600, 690).unwrap()).unwrap();
+                let resolved = grid.resolve(&grid.bbox(cell, at(600), at(690)).unwrap()).unwrap();
                 assert_eq!(resolved.cells, [cell]);
-                assert_eq!((resolved.start, resolved.end), (600, 690));
+                assert_eq!((resolved.start, resolved.end), (at(600), at(690)));
             }
         }
     }
@@ -495,7 +523,7 @@ mod tests {
         let grid = grid(7);
         let resolved = grid.resolve(&bx(5.5, 4.0, 0.5, 4.0)).unwrap();
         assert_eq!(resolved.cells, [Cell { day: 1, resource: 1 }]);
-        assert_eq!((resolved.start, resolved.end), (600, 660));
+        assert_eq!((resolved.start, resolved.end), (at(600), at(660)));
     }
 
     #[test]
@@ -521,7 +549,7 @@ mod tests {
         let grid = grid(1);
         let resolved = grid.resolve(&bx(3.0, 42.0, 3.0, 5.0)).unwrap();
         assert_eq!(resolved.cells, [Cell { day: 0, resource: 3 }]);
-        assert_eq!((resolved.start, resolved.end), (540 + 42 * 15, 1200));
+        assert_eq!((resolved.start, resolved.end), (at(540 + 42 * 15), at(1200)));
     }
 
     #[test]

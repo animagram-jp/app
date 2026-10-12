@@ -86,7 +86,7 @@ pub enum WindowEvent {
 /// assert!(Event::decode(&mut &[200][..]).is_none());
 /// assert!(Event::decode(&mut &[][..]).is_none());
 /// ```
-impl Input for Event {
+impl Input<'_> for Event {
     fn decode(source: &mut &[u8]) -> Option<Self> {
         let mut input = *source;
         let kind = u8::decode(&mut input)?;
