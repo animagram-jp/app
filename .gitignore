@@ -7,12 +7,12 @@
 
 Cargo.lock
 !/Cargo.lock
-**/target
-**/distribution/app/
-
-reference/character.json
+target/
+distribution/app/
 
 /distribution/calendar/app/
 /distribution/calendar/init.js
 /distribution/calendar/worker.js
 /distribution/calendar/css/library/
+
+/reference/character/
