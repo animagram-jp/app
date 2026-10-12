@@ -159,12 +159,10 @@ impl Handler {
 
 ### 中間表現の公開API
 
-中間表現の型(以下 Model)は、serdeへの依存を実装詳細に閉じ込める。公開APIはserde固有の型(`serde_json::Value`等)を一切シグネチャに出さず、境界を`String`(JSON文字列)またはドメイン固有の型で切る。これにより、将来serdeを剥がす際の影響を公開API利用側に波及させない。
+JSONイクスポート/インポート機能や、ディスクデータのスキーマ変更時の読み出しと変換後の書き込み機能に対して、それぞれ共通の中間表現を定めて置く。例えば、データスキーマ更新時は旧バージョンのfrom_data_struct → Model → 新バージョンのto_data_structで変換できる。
 
 ```rust
 impl Model {
-    /// DataStructの現行レイアウトからModelを構築する(read側)。
-    /// 各Subjectの最上位被定義オブジェクトのPredicate::readを走査して集約する。
     pub fn from_data_struct(character: &DataStruct) -> Self;
 
     /// Modelの内容をDataStructへ書き戻す(write側)。

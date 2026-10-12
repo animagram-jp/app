@@ -8,10 +8,9 @@ use core::{
     primitive::u32,
 };
 
-use super::grid::View;
+use super::grid::{AXES, Axis};
 use crate::js_client::dom::{Id, Tag};
 
-const VIEWS: [View; 4] = [View::Day, View::ThreeDays, View::Week, View::Month];
 const FIELDS: [EditField; 8] = [
     EditField::Title,
     EditField::Category,
@@ -62,7 +61,7 @@ pub enum CardPart {
 pub enum Target {
     Body,
     Title,
-    ViewRadio(View),
+    Axis(Axis),
     Step(u32),
     Zoom,
     Reload,
@@ -113,8 +112,8 @@ impl Target {
         let path = match self {
             Self::Body => Vec::from([(Tag::Body, None)]),
             Self::Title => Vec::from([(Tag::Header, None), (Tag::H2, None)]),
-            Self::ViewRadio(view) => {
-                let n = VIEWS.iter().position(|v| *v == view).map_or(0, |i| i as u32 + 1);
+            Self::Axis(axis) => {
+                let n = AXES.iter().position(|a| *a == axis).map_or(0, |i| i as u32 + 1);
                 join(
                     nav(1).into(),
                     &[(Tag::Fieldset, None), (Tag::Label, Some(n)), (Tag::Input, None)],
@@ -183,7 +182,7 @@ impl Target {
                 (Tag::Fieldset, None),
                 (Tag::Label, Some(n)),
                 (Tag::Input, None),
-            ] => Self::ViewRadio(*VIEWS.get(n.checked_sub(1)? as usize)?),
+            ] => Self::Axis(*AXES.get(n.checked_sub(1)? as usize)?),
             [
                 (Tag::Header, None),
                 (Tag::Nav, Some(1)),
@@ -277,7 +276,7 @@ mod tests {
             Target::EditMessage,
             Target::Delete,
         ]);
-        targets.extend(VIEWS.map(Target::ViewRadio));
+        targets.extend(AXES.map(Target::Axis));
         targets.extend(FIELDS.map(Target::EditField));
         targets.extend((1..=4).flat_map(|n| {
             [Target::CategoryOption(n), Target::StatusOption(n), Target::ResourceOption(n)]

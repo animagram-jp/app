@@ -19,10 +19,7 @@ use crate::{
             appointment::{self, Place},
             parse_date, parse_time, tag,
         },
-        grid::{
-            Cell, ColumnAxis, DAY_MAX, Grid, MONTH_AXIS, RESOURCE_COUNT, SLOT_COUNT, SLOT_MINUTES,
-            TIME_AXIS, View, lane_box, lanes, span,
-        },
+        grid::{AXES, Axis, CLOCK, Cell, Clock, Day, Grid, Month, lane_box, lanes, span},
         target::{CardPart, EditField, Target},
     },
     data_struct::DataStruct,
@@ -35,17 +32,17 @@ use crate::{
     },
     object::Predicate,
     timestamp::{
-        Format, Timezone, add_days, add_minutes, diff, display, from_ut, pack, sub_days, unpack,
-        youbi,
+        Format, Timezone, add_days, diff_days, display, from_ut, pack, sub_days, unpack, youbi,
     },
 };
 
+const AXIS_ELEMENT_MAX_COUNTS: [u32; 2] = [7, 4];
 const CARD_POOL: usize = 380;
 const DRAG_Z_INDEX: i32 = 1000;
 const HANDLE_REM: f64 = 0.5;
 const HANDLE_MAX: f64 = 0.35;
-const STORE: StoreId = StoreId { name: "calendar", version: "0.1" };
-const NEW_MINUTES: u32 = 60;
+const STORE: StoreId = StoreId { name: "calendar", version: "0.2" };
+const NEW_UNITS: f64 = 4.0;
 const SLOT_REM: f64 = 1.75;
 const ZOOM_MIN: f64 = 1.0;
 const ZOOM_MAX: f64 = 3.0;
@@ -54,13 +51,10 @@ const AXIS_REM: f64 = 4.0;
 const HEAD_REM: f64 = 5.0;
 const STEP_COUNT: u32 = 5;
 const LANG: Lang = Lang::Ja;
-const DAY: i64 = 8_640_000;
 const STEP_TODAY: u32 = 3;
 const LOAD_REQUEST: u32 = 1;
 const LOAD_PATH: &str = "data/calendar.json";
 const STATUS_OK: u16 = 200;
-const STATUS_POOL: u32 = 4;
-const CATEGORY_POOL: u32 = 4;
 
 struct RowRem(f64);
 
@@ -135,7 +129,9 @@ struct Card {
 }
 
 pub struct Handler {
-    view:              View,
+    axis:              Axis,
+    clock:             Clock,
+    resources:         u32,
     now:               u64,
     today:             u64,
     base:              u64,
@@ -182,6 +178,8 @@ impl Handler {
             self.startup.push(Error::Data(error));
         }
         self.store = Some(store);
+        self.resources = self.count_resources();
+        self.fit_rectgrid();
     }
 
     pub(crate) fn read(&self, kind: u32) -> Vec<DataStruct> {
@@ -201,10 +199,12 @@ impl Handler {
     }
 
     pub fn new(viewport_width_px: f64, today: u64, rem_in_px: f64) -> Self {
-        let view = View::Week;
-        let column_px = column_px(viewport_width_px, view, rem_in_px);
+        let axis = Axis::Day(Day::Week);
+        let column_px = column_px(viewport_width_px, 0, rem_in_px);
         Self {
-            view,
+            axis,
+            clock: CLOCK,
+            resources: 0,
             now: 0,
             today,
             base: today,
@@ -240,8 +240,8 @@ impl Handler {
         vec![]
     }
 
-    pub fn view(&self) -> View {
-        self.view
+    pub fn axis(&self) -> Axis {
+        self.axis
     }
 
     pub fn initial_draw(&mut self) -> (Vec<Event>, Vec<Command>) {
@@ -275,7 +275,10 @@ impl Handler {
             Ok(result) => result,
             Err(error) => return (vec![], vec![data_error(error)]),
         };
-        commands.extend(self.loaded_commands());
+        self.resources = self.count_resources();
+        self.fit_rectgrid();
+        commands.extend(self.view_commands());
+        commands.extend(self.option_commands());
         (events, commands)
     }
 
@@ -291,7 +294,7 @@ impl Handler {
             }
             EventType::Input if target == Some(Target::Zoom) => (vec![], self.zoom(&event.value)),
             EventType::Change => match target {
-                Some(Target::ViewRadio(view)) => (vec![], self.change_view(view)),
+                Some(Target::Axis(axis)) => (vec![], self.change_axis(axis)),
                 _ => (vec![], vec![]),
             },
             EventType::PointerDown => (vec![], self.press(event, target)),
@@ -367,7 +370,7 @@ impl Handler {
                     .filter(|_| !self.month())
                     .filter(|[column, row]| {
                         (0..self.columns() as i32).contains(column)
-                            && (0..SLOT_COUNT as i32).contains(row)
+                            && (0..self.clock.count() as i32).contains(row)
                     })
                     .map(|anchor| CreateDrag { anchor, current: anchor, moved: false });
             }
@@ -454,7 +457,7 @@ impl Handler {
         let (start, end) = appointment::Range::read(&entry);
         let flats = appointment::Places::read(&entry).into_iter().filter_map(|place| {
             let resource = column_of(&resources, place.resource)?;
-            Some(grid.columns.flat(self.day_offset(place.day), resource as u32))
+            Some(grid.flat(self.day_offset(place.day), resource as u32))
         });
         let (first, last) = flats.fold(None, |range: Option<(i32, i32)>, flat| match range {
             Some((low, high)) => Some((low.min(flat), high.max(flat))),
@@ -532,10 +535,10 @@ impl Handler {
             return None;
         };
         let unit_px = [
-            column_px(self.viewport_width_px, self.view, self.rem_in_px),
+            column_px(self.viewport_width_px, self.columns(), self.rem_in_px),
             self.slot_rem * self.rem_in_px,
         ];
-        let extent = [self.columns() as f64 * unit_px[0], SLOT_COUNT as f64 * unit_px[1]];
+        let extent = [self.columns() as f64 * unit_px[0], self.clock.count() as f64 * unit_px[1]];
         let mut pointer = [Px::new(0.0); 2];
         for d in 0..2 {
             let origin = self.rectgrid.origin[d].get();
@@ -670,8 +673,10 @@ impl Handler {
         let Some([column, row]) = self.unit_at([x, y]) else {
             return vec![];
         };
-        let current =
-            [column.clamp(0, self.columns() as i32 - 1), row.clamp(0, SLOT_COUNT as i32 - 1)];
+        let current = [
+            column.clamp(0, self.columns().saturating_sub(1) as i32),
+            row.clamp(0, self.clock.count() as i32 - 1),
+        ];
         let Some(create) = self.create.as_mut() else {
             return vec![];
         };
@@ -759,21 +764,22 @@ impl Handler {
                 self.band_hit([Px::new(pointer[0]), Px::new(pointer[1])])
             {
                 self.base = day;
-                return self.change_view(View::Day);
+                return self.change_axis(Axis::Day(Day::Day));
             }
-            let Some((day, _)) = self.unit_at(pointer).and_then(|unit| MONTH_AXIS.locate(unit))
-            else {
+            let Some((day, _)) = self.unit_at(pointer).and_then(|unit| Month::locate(unit)) else {
                 return vec![];
             };
             let Some(resource) = resources.first() else {
                 return vec![];
             };
-            let start = TIME_AXIS.clamp_start(0, NEW_MINUTES);
+            let start = self.clock.clamp_start(0, NEW_UNITS);
+            let end =
+                self.clock.time(self.clock.unit(start) + NEW_UNITS).unwrap_or(self.clock.end());
             let place = Place {
                 day:      add_days(self.first_day(), i64::from(day)),
                 resource: tag::Uid::read(resource),
             };
-            return self.new_form(vec![place], start, add_minutes(start, i64::from(NEW_MINUTES)));
+            return self.new_form(vec![place], start, end);
         }
         let [Ok(column), Ok(row)] =
             self.rectgrid.point_to_unit([Px::new(pointer[0]), Px::new(pointer[1])])
@@ -781,24 +787,25 @@ impl Handler {
             return vec![];
         };
         let grid = self.grid();
-        if column.get() < 0.0 || !grid.time.contains(row.get()) {
+        if column.get() < 0.0 || !grid.clock.contains(row.get()) {
             return vec![];
         }
-        let Some(cell) = grid.columns.cell(libm::floor(column.get()) as u32) else {
+        let Some(cell) = grid.cell(libm::floor(column.get()) as u32) else {
             return vec![];
         };
-        let Some(time) = grid.time.time(libm::floor(row.get()) as u32) else {
+        let Some(time) = grid.clock.time(libm::floor(row.get())) else {
             return vec![];
         };
         let Some(resource) = resources.get(cell.resource as usize) else {
             return vec![];
         };
-        let start = grid.time.clamp_start(time, NEW_MINUTES);
+        let start = grid.clock.clamp_start(time, NEW_UNITS);
+        let end = grid.clock.time(grid.clock.unit(start) + NEW_UNITS).unwrap_or(grid.clock.end());
         let place = Place {
             day:      add_days(self.base, i64::from(cell.day)),
             resource: tag::Uid::read(resource),
         };
-        self.new_form(vec![place], start, add_minutes(start, i64::from(NEW_MINUTES)))
+        self.new_form(vec![place], start, end)
     }
 
     fn edit_commands(&mut self, key: u32, cell: usize) -> Vec<Command> {
@@ -846,6 +853,7 @@ impl Handler {
         }
         let draft = match decode_form(
             value,
+            &self.clock,
             &self.tags(appointment::RESOURCE),
             &self.tags(appointment::STATUS),
             &self.tags(appointment::CATEGORY),
@@ -957,7 +965,7 @@ impl Handler {
             let (first, last) = span(bx.base()[0].get(), bx.offset()[0].get());
             (first..last)
                 .map(|flat| {
-                    let (day, resource) = grid.columns.locate(flat);
+                    let (day, resource) = grid.locate(flat);
                     let resource = tag::Uid::read(resources.get(resource as usize)?);
                     Some(Place { day: add_days(base, i64::from(day)), resource })
                 })
@@ -965,7 +973,10 @@ impl Handler {
         });
         let time = (corner[1].is_some()).then(|| {
             let (first, last) = span(bx.base()[1].get(), bx.offset()[1].get());
-            Some((grid.time.time(first.max(0) as u32)?, grid.time.time(last.max(0) as u32)?))
+            Some((
+                grid.clock.time(f64::from(first.max(0)))?,
+                grid.clock.time(f64::from(last.max(0)))?,
+            ))
         });
         let mut entry = self.appointment(key)?;
         let current_cells = appointment::Places::read(&entry);
@@ -994,32 +1005,32 @@ impl Handler {
         let [Ok(column), Ok(row)] = self.rectgrid.point_to_unit(pointer) else {
             return None;
         };
-        if column.get() < 0.0 || !grid.time.contains(row.get()) {
+        if column.get() < 0.0 || !grid.clock.contains(row.get()) {
             return None;
         }
         let top = [pointer[0], pointer[1] - Px::new(drag.offset[1])];
         let [_, Ok(top)] = self.rectgrid.point_to_unit(top) else {
             return None;
         };
-        let slot = (libm::floor(top.get() + 0.5).max(0.0) as u32).min(SLOT_COUNT - 1);
+        let slot = (libm::floor(top.get() + 0.5).max(0.0) as u32).min(grid.clock.count() - 1);
         let (start, end) = appointment::Range::read(&entry);
-        let duration = (diff(start, end) / 6000).max(0) as u32;
+        let units = grid.clock.unit(end) - grid.clock.unit(start);
         let logical = BBox::new(
             [GridUnit::new(libm::floor(column.get())), GridUnit::new(slot as f64)],
-            [GridUnit::new(1.0), GridUnit::new(duration as f64 / SLOT_MINUTES as f64)],
+            [GridUnit::new(1.0), GridUnit::new(units)],
         );
         let resolved = grid.resolve(&logical)?;
         let cell = *resolved.cells.first()?;
-        Some((cell, grid.time.clamp_start(resolved.start, duration)))
+        Some((cell, grid.clock.clamp_start(resolved.start, units)))
     }
 
     fn move_in_month(&self, drag: &Drag) -> Option<DataStruct> {
         let first = self.first_day();
-        let (target, _) = self.unit_at(drag.pointer).and_then(|unit| MONTH_AXIS.locate(unit))?;
+        let (target, _) = self.unit_at(drag.pointer).and_then(|unit| Month::locate(unit))?;
         let mut entry = self.appointment(drag.key)?;
         let cells = appointment::Places::read(&entry);
         let pressed = cells.get(drag.cell)?;
-        let delta = i64::from(target) - diff(first, pressed.day) / DAY;
+        let delta = i64::from(target) - diff_days(first, pressed.day);
         if delta == 0 {
             return None;
         }
@@ -1039,12 +1050,12 @@ impl Handler {
         start: u64,
     ) -> Option<DataStruct> {
         let base = self.base;
-        let axis = self.grid().columns;
+        let axis = self.grid();
         let resources = self.tags(appointment::RESOURCE);
         let mut entry = self.appointment(key)?;
         let flat = |place: &Place| {
             column_of(&resources, place.resource)
-                .map(|position| axis.flat((diff(base, place.day) / DAY) as i32, position as u32))
+                .map(|position| axis.flat(diff_days(base, place.day) as i32, position as u32))
         };
         let cells = appointment::Places::read(&entry);
         let from = cells.get(pressed).and_then(flat)?;
@@ -1058,7 +1069,8 @@ impl Handler {
             })
             .collect::<Option<_>>()?;
         let current = appointment::Range::read(&entry);
-        let range = (start, add_minutes(start, diff(current.0, current.1) / 6000));
+        let units = axis.clock.unit(current.1) - axis.clock.unit(current.0);
+        let range = (start, axis.clock.time(axis.clock.unit(start) + units)?);
         let changed = cells != moved || current.0 != start;
         if !changed {
             return None;
@@ -1075,10 +1087,10 @@ impl Handler {
             return None;
         };
         let (column, slot) = (libm::floor(column.get()), libm::floor(slot.get()));
-        if column < 0.0 || !grid.time.contains(slot) {
+        if column < 0.0 || !grid.clock.contains(slot) {
             return None;
         }
-        let cell = grid.columns.cell(column as u32)?;
+        let cell = grid.cell(column as u32)?;
         Some((cell.day, cell.resource, slot as u32))
     }
 
@@ -1109,26 +1121,25 @@ impl Handler {
 
     fn step_days(&self, n: u32) -> i64 {
         let (unit, page) = if self.month() {
-            (7, i64::from(MONTH_AXIS.days()))
+            (i64::from(Day::Week.len()), i64::from(Month::days()))
         } else {
-            (1, i64::from(self.view.days()))
+            (1, i64::from(self.axis.days()))
         };
         [-page, -unit, 0, unit, page][n as usize - 1]
     }
 
-    fn resource_text(&self, n: u32) -> Command {
-        let index = heading_axis().cell(n - 1).map_or(0, |cell| cell.resource as usize);
-        let value = match self.tags(appointment::RESOURCE).get(index) {
-            Some(resource) => tag::Label::read(resource),
-            None => format!("R{}", index + 1),
-        };
+    fn resource_text(&self, resources: &[DataStruct], n: u32) -> Command {
+        let value = self
+            .heading()
+            .cell(n - 1)
+            .and_then(|cell| resources.get(cell.resource as usize))
+            .map(tag::Label::read)
+            .unwrap_or_default();
         Command::SetText { id: Target::ResourceName(n).to_dom(), value }
     }
 
     fn loaded_commands(&self) -> Vec<Command> {
-        let mut commands: Vec<Command> =
-            (1..=heading_axis().count()).map(|n| self.resource_text(n)).collect();
-        commands.extend(self.option_commands());
+        let mut commands = self.option_commands();
         commands.extend(self.band_commands());
         commands.extend(self.card_commands());
         commands
@@ -1144,19 +1155,28 @@ impl Handler {
             self.tags(appointment::RESOURCE),
         );
         let mut commands = Vec::new();
-        let options = (1..=STATUS_POOL)
-            .map(|n| (Target::StatusOption(n), statuses.get(n as usize - 1).map(tag::Label::read)))
-            .chain((1..=CATEGORY_POOL).map(|n| {
-                (Target::CategoryOption(n), categories.get(n as usize - 1).map(tag::Label::read))
-            }))
-            .chain((1..=RESOURCE_COUNT).map(|n| {
-                (Target::ResourceOption(n), resources.get(n as usize - 1).map(tag::Label::read))
-            }));
-        for (target, text) in options {
-            let shown = text.is_some();
+        let number = |index: usize| index as u32 + 1;
+        let options = statuses
+            .iter()
+            .enumerate()
+            .map(|(index, tag)| (Target::StatusOption(number(index)), tag))
+            .chain(
+                categories
+                    .iter()
+                    .enumerate()
+                    .map(|(index, tag)| (Target::CategoryOption(number(index)), tag)),
+            )
+            .chain(
+                resources
+                    .iter()
+                    .take(AXIS_ELEMENT_MAX_COUNTS[1] as usize)
+                    .enumerate()
+                    .map(|(index, tag)| (Target::ResourceOption(number(index)), tag)),
+            );
+        for (target, tag) in options {
             commands
-                .push(Command::SetText { id: target.to_dom(), value: text.unwrap_or_default() });
-            commands.push(hidden(target.to_dom(), !shown));
+                .push(Command::SetText { id: target.to_dom(), value: tag::Label::read(tag) });
+            commands.push(hidden(target.to_dom(), false));
         }
         commands
     }
@@ -1168,7 +1188,7 @@ impl Handler {
         for entry in appointments {
             let key = data::key(entry);
             let (start, end) = appointment::Range::read(entry);
-            let Some((start, end)) = grid.time.clip(start, end) else {
+            let Some((start, end)) = grid.clock.clip(start, end) else {
                 continue;
             };
             for (cell_index, place) in appointment::Places::read(entry).iter().enumerate() {
@@ -1176,13 +1196,13 @@ impl Handler {
                     continue;
                 };
                 let offset = self.day_offset(place.day);
-                let flat = grid.columns.flat(offset, resource as u32);
+                let flat = grid.flat(offset, resource as u32);
                 let range = extent.entry(key).or_insert((flat, flat));
                 *range = (range.0.min(flat), range.1.max(flat));
                 let Ok(day) = u32::try_from(offset) else {
                     continue;
                 };
-                let Some(unit) = grid.columns.unit(Cell { day, resource: resource as u32 }) else {
+                let Some(unit) = grid.unit(Cell { day, resource: resource as u32 }) else {
                     continue;
                 };
                 columns.entry(unit).or_default().push((key, cell_index, start, end));
@@ -1190,7 +1210,7 @@ impl Handler {
         }
         let mut cards = Vec::new();
         for (unit, items) in columns {
-            let Some(cell) = grid.columns.cell(unit) else {
+            let Some(cell) = grid.cell(unit) else {
                 continue;
             };
             let spans: Vec<(u64, u64)> =
@@ -1222,10 +1242,10 @@ impl Handler {
         for entry in appointments {
             let key = data::key(entry);
             for (cell, place) in appointment::Places::read(entry).iter().enumerate() {
-                let Ok(day) = u32::try_from(diff(first, place.day) / DAY) else {
+                let Ok(day) = u32::try_from(diff_days(first, place.day)) else {
                     continue;
                 };
-                if day >= MONTH_AXIS.days() {
+                if day >= Month::days() {
                     continue;
                 }
                 let items = days.entry(day).or_default();
@@ -1237,8 +1257,8 @@ impl Handler {
         let mut cards = Vec::new();
         for (day, mut items) in days {
             items.sort_unstable_by_key(|(key, _)| *key);
-            for (row, (key, cell)) in (0..MONTH_AXIS.rows()).zip(items) {
-                let Some(bx) = MONTH_AXIS.bbox(day, Some(row)) else {
+            for (row, (key, cell)) in (0..Month::ROWS).zip(items) {
+                let Some(bx) = Month::bbox(day, Some(row)) else {
                     continue;
                 };
                 cards.push(Card { key, cell, bx, lane: 0, lanes: 1, outer: [false; 2] });
@@ -1253,9 +1273,9 @@ impl Handler {
             return Vec::new();
         }
         let first = self.first_day();
-        (0..MONTH_AXIS.days())
+        (0..Month::days())
             .filter_map(|day| {
-                let bx = MONTH_AXIS.bbox(day, None)?;
+                let bx = Month::bbox(day, None)?;
                 Some(Band { kind: BandKind::Date(add_days(first, i64::from(day))), bx })
             })
             .collect()
@@ -1467,7 +1487,14 @@ impl Handler {
         if let Err(error) = store.discard() {
             return file_store_error(error);
         }
-        let mut commands = self.card_commands();
+        let resources = self.count_resources();
+        let mut commands = Vec::new();
+        if resources != self.resources {
+            self.resources = resources;
+            self.fit_rectgrid();
+            commands.extend(self.view_commands());
+        }
+        commands.extend(self.card_commands());
         if self.dirty {
             self.dirty = false;
             commands.push(Command::SetAttribute {
@@ -1506,7 +1533,7 @@ impl Handler {
 
     fn date_commands(&self) -> Vec<Command> {
         let first = self.first_day();
-        let days = self.view.days();
+        let days = self.axis.days();
         let mut commands: Vec<Command> = (1..=days)
             .map(|n| {
                 let day = add_days(first, i64::from(n) - 1);
@@ -1520,7 +1547,7 @@ impl Handler {
                 }
             })
             .collect();
-        let span = if self.month() { MONTH_AXIS.days() } else { days };
+        let span = if self.month() { Month::days() } else { days };
         let start = display(first, LANG, Format::Long);
         let value = if span == 1 {
             start
@@ -1540,19 +1567,27 @@ impl Handler {
     }
 
     fn grid(&self) -> Grid {
-        self.view.grid()
+        Grid::new(self.axis.days(), self.resources, self.clock)
+    }
+
+    fn heading(&self) -> Grid {
+        Grid::new(Day::Week.len(), self.resources, self.clock)
+    }
+
+    fn count_resources(&self) -> u32 {
+        (self.tags(appointment::RESOURCE).len() as u32).min(AXIS_ELEMENT_MAX_COUNTS[1])
     }
 
     fn day_offset(&self, day: u64) -> i32 {
-        (diff(self.base, day) / DAY) as i32
+        diff_days(self.base, day) as i32
     }
 
     fn columns(&self) -> u32 {
-        self.view.columns()
+        if self.month() { Day::Week.len() } else { self.grid().columns() }
     }
 
     fn month(&self) -> bool {
-        self.view == View::Month
+        self.axis == Axis::Month
     }
 
     fn first_day(&self) -> u64 {
@@ -1561,7 +1596,11 @@ impl Handler {
 
     fn fit_rectgrid(&mut self) {
         let _ = self.rectgrid.set_definition(
-            IncrementFunction::Scale(column_px(self.viewport_width_px, self.view, self.rem_in_px)),
+            IncrementFunction::Scale(column_px(
+                self.viewport_width_px,
+                self.columns(),
+                self.rem_in_px,
+            )),
             0,
         );
         let _ = self
@@ -1569,18 +1608,18 @@ impl Handler {
             .set_definition(IncrementFunction::Scale(self.slot_rem * self.rem_in_px), 1);
     }
 
-    fn change_view(&mut self, view: View) -> Vec<Command> {
-        if view == self.view {
+    fn change_axis(&mut self, axis: Axis) -> Vec<Command> {
+        if axis == self.axis {
             return vec![];
         }
-        self.view = view;
+        self.axis = axis;
         self.fit_rectgrid();
         self.view_commands()
     }
 
     fn row_commands(&self) -> Vec<Command> {
         let rem = stringify(&RowRem(self.slot_rem));
-        let count = if self.month() { MONTH_AXIS.count() } else { SLOT_COUNT };
+        let count = if self.month() { Month::count() } else { self.clock.count() };
         let axis = format!("var(--head-height) repeat({count}, {rem}rem)");
         vec![
             style(
@@ -1601,9 +1640,9 @@ impl Handler {
     fn axis_commands(&self) -> Vec<Command> {
         let first = self.first_day();
         let mut commands = Vec::new();
-        for row in 0..SLOT_COUNT {
+        for row in 0..self.clock.count() {
             let value = if self.month() {
-                match MONTH_AXIS.locate([0, row as i32]) {
+                match Month::locate([0, row as i32]) {
                     Some((day, None)) => {
                         let (_, month, date, ..) = unpack(add_days(first, i64::from(day)));
                         format!("{month}/{date}")
@@ -1611,8 +1650,8 @@ impl Handler {
                     _ => String::new(),
                 }
             } else {
-                TIME_AXIS
-                    .time(row)
+                self.clock
+                    .time(f64::from(row))
                     .map_or_else(String::new, |time| display(time, Lang::Ja, Format::Time))
             };
             for side in 1..=2 {
@@ -1626,7 +1665,7 @@ impl Handler {
     }
 
     fn view_commands(&self) -> Vec<Command> {
-        let days = self.view.days();
+        let days = self.axis.days();
         let columns = self.columns();
         let mut commands = vec![
             style(
@@ -1640,19 +1679,20 @@ impl Handler {
                 StyleValue::Text(format!("repeat({days}, 1fr)")),
             ),
         ];
-        for n in 1..=DAY_MAX {
+        for n in 1..=AXIS_ELEMENT_MAX_COUNTS[0] {
             commands.push(hidden(Target::Day(n).to_dom(), n > days));
         }
         commands.extend(self.date_commands());
-        for n in 1..=heading_axis().count() {
+        let resources = self.tags(appointment::RESOURCE);
+        for n in 1..=AXIS_ELEMENT_MAX_COUNTS[0] * AXIS_ELEMENT_MAX_COUNTS[1] {
             commands.push(hidden(Target::Resource(n).to_dom(), self.month() || n > columns));
-            commands.push(self.resource_text(n));
+            commands.push(self.resource_text(&resources, n));
         }
-        for view in [View::Day, View::ThreeDays, View::Week, View::Month] {
+        for axis in AXES {
             commands.push(toggle(
-                Target::ViewRadio(view).to_dom(),
+                Target::Axis(axis).to_dom(),
                 Attribute::Checked,
-                view == self.view,
+                axis == self.axis,
             ));
         }
         if !self.month() {
@@ -1678,7 +1718,7 @@ fn shift_cells(
     let Some(origin) = column_of(resources, first.resource) else {
         return Ok(vec![Place { day, resource: target }]);
     };
-    let day_delta = diff(first.day, day) / DAY;
+    let day_delta = diff_days(first.day, day);
     let resource_delta = resource as i32 - origin as i32;
     cells
         .iter()
@@ -1694,6 +1734,7 @@ fn shift_cells(
 
 fn decode_form(
     value: &str,
+    clock: &Clock,
     resources: &[DataStruct],
     statuses: &[DataStruct],
     categories: &[DataStruct],
@@ -1723,7 +1764,7 @@ fn decode_form(
     let day = parse_date(date).map_err(|_| "日付が不正です")?;
     let start = parse_time(start).map_err(|_| "開始時刻が不正です")?;
     let end = parse_time(end).map_err(|_| "終了時刻が不正です")?;
-    if start >= end || start < TIME_AXIS.time(0).unwrap_or(0) || end > TIME_AXIS.end() {
+    if start >= end || start < clock.start() || end > clock.end() {
         return Err("時間帯が不正です");
     }
     let resource = option_position(resources, resource).ok_or("資源が不正です")?;
@@ -1744,14 +1785,9 @@ fn option_position<T>(items: &[T], value: &str) -> Option<usize> {
     (index < items.len()).then_some(index)
 }
 
-fn column_px(viewport_width_px: f64, view: View, rem_in_px: f64) -> f64 {
-    let columns = view.columns() as f64;
+fn column_px(viewport_width_px: f64, columns: u32, rem_in_px: f64) -> f64 {
     let visible = viewport_width_px - 2.0 * AXIS_REM * rem_in_px;
-    (visible / columns).max(COLUMN_MIN_REM * rem_in_px)
-}
-
-fn heading_axis() -> ColumnAxis {
-    ColumnAxis::new(DAY_MAX, RESOURCE_COUNT)
+    (visible / f64::from(columns.max(1))).max(COLUMN_MIN_REM * rem_in_px)
 }
 
 fn rem(px: f64, rem_in_px: f64) -> StyleValue {
@@ -1804,13 +1840,11 @@ mod tests {
     use super::*;
     use crate::{
         Rng, block_on,
-        calendar::{
-            data::SCHEMA_SIZE,
-            grid::{DAY_ROWS, MONTH_WEEKS},
-        },
+        calendar::data::SCHEMA_SIZE,
         data_struct::{ID_CREATED_AT, ID_MODIFIED_AT},
         file_store::{MemoryHandles, MemoryStore},
         js_client::KeyName,
+        timestamp::add_minutes,
     };
 
     const VIEWPORT: f64 = 1500.0;
@@ -1921,6 +1955,7 @@ mod tests {
     #[test]
     fn initial_draw_sets_week_geometry() {
         let mut handler = Handler::new(VIEWPORT, today(), REM);
+        load(&mut handler, vec![]);
         let (_, commands) = handler.initial_draw();
         assert_eq!(grid_columns(&commands), week_grid(28, 7));
         assert_eq!(hidden_count(&commands), 0);
@@ -1932,8 +1967,9 @@ mod tests {
     #[test]
     fn view_radio_switches_days_columns_and_hides_the_rest() {
         let mut handler = Handler::new(VIEWPORT, today(), REM);
-        let commands = choose(&mut handler, View::ThreeDays);
-        assert_eq!(handler.view(), View::ThreeDays);
+        load(&mut handler, vec![]);
+        let commands = choose(&mut handler, Axis::Day(Day::ThreeDays));
+        assert_eq!(handler.axis(), Axis::Day(Day::ThreeDays));
         assert_eq!(grid_columns(&commands), week_grid(12, 3));
         assert_eq!(hidden_count(&commands), 4 + 16);
         let checked: Vec<Id> = commands
@@ -1943,10 +1979,10 @@ mod tests {
                 _ => None,
             })
             .collect();
-        assert_eq!(checked, [Target::ViewRadio(View::ThreeDays).to_dom()]);
+        assert_eq!(checked, [Target::Axis(Axis::Day(Day::ThreeDays)).to_dom()]);
 
-        let commands = choose(&mut handler, View::Day);
-        assert_eq!(handler.view(), View::Day);
+        let commands = choose(&mut handler, Axis::Day(Day::Day));
+        assert_eq!(handler.axis(), Axis::Day(Day::Day));
         assert_eq!(grid_columns(&commands), week_grid(4, 1));
         assert_eq!(hidden_count(&commands), 6 + 24);
     }
@@ -1954,19 +1990,20 @@ mod tests {
     #[test]
     fn view_radio_for_the_current_view_or_a_click_emits_nothing() {
         let mut handler = Handler::new(VIEWPORT, today(), REM);
-        assert!(choose(&mut handler, View::Week).is_empty());
-        assert!(press(&mut handler, Target::ViewRadio(View::Day).to_dom()).is_empty());
-        assert_eq!(handler.view(), View::Week);
+        assert!(choose(&mut handler, Axis::Day(Day::Week)).is_empty());
+        assert!(press(&mut handler, Target::Axis(Axis::Day(Day::Day)).to_dom()).is_empty());
+        assert_eq!(handler.axis(), Axis::Day(Day::Week));
     }
 
     #[test]
     fn cell_follows_column_width_of_the_view() {
         let mut handler = Handler::new(VIEWPORT, today(), REM);
+        load(&mut handler, vec![]);
         let x = AXIS_PX + COLUMN_MIN_PX * 5.0 + 1.0;
         let y = ROOT.1 + HEAD_PX + SLOT_PX * 3.0 + 1.0;
         assert_eq!(handler.cell_at(ROOT, x, y), Some((1, 1, 3)));
 
-        handler.change_view(View::Day);
+        handler.change_axis(Axis::Day(Day::Day));
         let column_px = (VIEWPORT - 2.0 * AXIS_PX) / 4.0;
         let x = AXIS_PX + column_px * 3.0 + 1.0;
         assert_eq!(handler.cell_at(ROOT, x, y), Some((0, 3, 3)));
@@ -1977,13 +2014,14 @@ mod tests {
         let mut handler = Handler::new(VIEWPORT, today(), REM);
         assert_eq!(handler.cell_at(ROOT, AXIS_PX - 1.0, ROOT.1 + HEAD_PX + 1.0), None);
         assert_eq!(handler.cell_at(ROOT, AXIS_PX + 1.0, ROOT.1 + HEAD_PX - 1.0), None);
-        let below = ROOT.1 + HEAD_PX + SLOT_PX * SLOT_COUNT as f64 + 1.0;
+        let below = ROOT.1 + HEAD_PX + SLOT_PX * CLOCK.count() as f64 + 1.0;
         assert_eq!(handler.cell_at(ROOT, AXIS_PX + 1.0, below), None);
     }
 
     #[test]
     fn cell_accounts_for_horizontal_scroll() {
         let mut handler = Handler::new(VIEWPORT, today(), REM);
+        load(&mut handler, vec![]);
         handler.scroll_x = COLUMN_MIN_PX * 4.0;
         let x = AXIS_PX + 1.0;
         let y = ROOT.1 + HEAD_PX + 1.0;
@@ -2004,10 +2042,10 @@ mod tests {
         texts(commands).into_iter().find(|(target, _)| target == id).map(|(_, value)| value)
     }
 
-    fn choose(handler: &mut Handler, view: View) -> Vec<Command> {
+    fn choose(handler: &mut Handler, view: Axis) -> Vec<Command> {
         let event = CanvasEvent {
             event_type: EventType::Change,
-            ..click(Target::ViewRadio(view).to_dom(), 10.0, 10.0)
+            ..click(Target::Axis(view).to_dom(), 10.0, 10.0)
         };
         handler.process_canvas(&event, &pointer()).1
     }
@@ -2033,7 +2071,7 @@ mod tests {
         let mut handler = Handler::new(VIEWPORT, today(), REM);
         for (button, expected) in [(5, 7), (1, 0), (2, -1), (4, 0), (4, 1)] {
             press(&mut handler, Target::Step(button).to_dom());
-            assert_eq!(diff(today(), handler.base()) / DAY, expected);
+            assert_eq!(diff_days(today(), handler.base()), expected);
         }
         let commands = press(&mut handler, Target::Step(3).to_dom());
         assert_eq!(handler.base(), today());
@@ -2043,7 +2081,7 @@ mod tests {
     #[test]
     fn single_day_view_titles_one_date() {
         let mut handler = Handler::new(VIEWPORT, today(), REM);
-        choose(&mut handler, View::Day);
+        choose(&mut handler, Axis::Day(Day::Day));
         let commands = press(&mut handler, Target::Step(4).to_dom());
         assert_eq!(text_of(&commands, &Target::Title.to_dom()).unwrap(), "2026年10月3日(土)");
         assert_eq!(texts(&commands).len(), 2);
@@ -2089,7 +2127,7 @@ mod tests {
     fn view_change_keeps_loaded_resource_names() {
         let (mut handler, _) = with_store();
         handler.process_fetched(&sample_response(1, 200));
-        let commands = choose(&mut handler, View::Day);
+        let commands = choose(&mut handler, Axis::Day(Day::Day));
         assert_eq!(text_of(&commands, &Target::ResourceName(2).to_dom()).unwrap(), "Studio 2");
     }
 
@@ -2141,10 +2179,9 @@ mod tests {
     }
 
     fn load(handler: &mut Handler, appointments: Vec<DataStruct>) {
-        if handler.store.is_none() {
-            handler.attach(Backend::new(MemoryHandles::default()).unwrap());
-        }
-        let store = handler.store.as_mut().unwrap();
+        let mut backend =
+            handler.store.take().unwrap_or_else(|| Backend::new(MemoryHandles::default()).unwrap());
+        let store = &mut backend;
         for id in 101..105u32 {
             let uid = u128::from(id);
             data::put(
@@ -2158,6 +2195,7 @@ mod tests {
             data::put(store, entry);
         }
         store.save().unwrap();
+        handler.attach(backend);
     }
 
     fn card_box(commands: &[Command], n: u32) -> Option<(f32, f32, f32, f32)> {
@@ -2243,7 +2281,7 @@ mod tests {
             ],
         );
         assert_eq!(shown_count(&handler.card_commands()), 3);
-        let commands = choose(&mut handler, View::Day);
+        let commands = choose(&mut handler, Axis::Day(Day::Day));
         assert_eq!(shown_count(&commands), 1);
         let hidden_cards: Vec<u32> = commands
             .iter()
@@ -2270,7 +2308,7 @@ mod tests {
         let base = today();
         let mut handler = Handler::new(VIEWPORT, base, REM);
         load(&mut handler, vec![entry(1, base, 103, 540, 600)]);
-        let commands = choose(&mut handler, View::Day);
+        let commands = choose(&mut handler, Axis::Day(Day::Day));
         let column_px = (VIEWPORT - 2.0 * AXIS_PX) / 4.0;
         let (x, y, width, height) = card_box(&commands, 1).unwrap();
         assert_eq!(x, (column_px * 2.0) as f32);
@@ -2285,7 +2323,7 @@ mod tests {
         let expected = appointments(&handler)
             .iter()
             .flat_map(|a| appointment::Places::read(&a))
-            .filter(|cell| (0..7).contains(&(diff(today(), cell.day) / DAY)))
+            .filter(|cell| (0..7).contains(&diff_days(today(), cell.day)))
             .count();
         assert!(expected > 0);
         assert_eq!(shown_count(&commands), expected);
@@ -2297,19 +2335,57 @@ mod tests {
         let mut handler = Handler::new(VIEWPORT, base, REM);
         load(&mut handler, vec![entry(1, base, 101, 600, 660)]);
         handler.card_commands();
-        choose(&mut handler, View::Day);
+        choose(&mut handler, Axis::Day(Day::Day));
         let (_, commands) = handler.process_resize(1000.0, 800.0);
         let column_px = (1000.0 - 2.0 * AXIS_PX) / 4.0;
         assert_eq!(card_box(&commands, 1).unwrap().2, column_px as f32);
     }
 
     #[test]
+    fn the_column_axis_follows_the_resources_in_the_store() {
+        let mut handler = Handler::new(VIEWPORT, today(), REM);
+        assert_eq!(handler.columns(), 0);
+        let mut store = Backend::new(MemoryHandles::default()).unwrap();
+        for id in 1..=2u32 {
+            data::put(&mut store, &tag::new(id, appointment::RESOURCE, u128::from(id), "", "r"));
+        }
+        store.save().unwrap();
+        handler.attach(store);
+        assert_eq!(handler.columns(), 14);
+        let commands = handler.view_commands();
+        assert!(commands.iter().any(|command| matches!(command,
+            Command::SetStyle { value: StyleValue::Text(text), .. }
+                if text == "repeat(14, minmax(var(--column-width), 1fr))")));
+        let shown = |n| {
+            commands.iter().any(|command| {
+                matches!(command,
+                Command::RemoveAttribute { id, attribute: Attribute::Hidden }
+                    if *id == Target::Resource(n).to_dom())
+            })
+        };
+        assert!(shown(14) && !shown(15));
+        choose(&mut handler, Axis::Day(Day::Day));
+        assert_eq!(handler.columns(), 2);
+
+        let store = handler.store.as_mut().unwrap();
+        for id in 3..=9u32 {
+            data::put(store, &tag::new(id, appointment::RESOURCE, u128::from(id), "", "r"));
+        }
+        let store = handler.store.take().unwrap();
+        handler.attach(store);
+        assert_eq!(handler.columns(), AXIS_ELEMENT_MAX_COUNTS[1]);
+    }
+
+    #[test]
     fn rem_constants_match_the_markup() {
         let html = include_str!("../../distribution/calendar/index.html");
         let css = include_str!("../../distribution/calendar/css/style.css");
-        assert!(html.contains(&format!("var(--head-height) repeat({SLOT_COUNT}, {SLOT_REM}rem)")));
+        assert!(
+            html.contains(&format!("var(--head-height) repeat({}, {SLOT_REM}rem)", CLOCK.count()))
+        );
         assert!(html.contains(&format!(
-            "var(--head-title) var(--head-resource) calc({SLOT_REM}rem * {SLOT_COUNT})"
+            "var(--head-title) var(--head-resource) calc({SLOT_REM}rem * {})",
+            CLOCK.count()
         )));
         assert!(css.contains(&format!("--column-width:  {COLUMN_MIN_REM}rem")));
         assert!(css.contains(&format!("--axis-width:    {AXIS_REM}rem")));
@@ -2386,7 +2462,7 @@ mod tests {
         grab(&mut handler, 1);
         assert!(handler.drag.as_ref().is_some_and(|drag| drag.n == 1 && !drag.moved));
         handler.process_canvas(
-            &pointer_down(Target::ViewRadio(View::Day).to_dom(), 10.0, 10.0),
+            &pointer_down(Target::Axis(Axis::Day(Day::Day)).to_dom(), 10.0, 10.0),
             &pointer(),
         );
         assert!(handler.drag.is_none());
@@ -2514,7 +2590,7 @@ mod tests {
     #[test]
     fn drag_in_the_day_view_uses_the_wider_columns() {
         let (mut handler, base) = drag_fixture();
-        choose(&mut handler, View::Day);
+        choose(&mut handler, Axis::Day(Day::Day));
         handler.card_commands();
         let column_px = (VIEWPORT - 2.0 * AXIS_PX) / 4.0;
         let (ox, oy) = grid_origin();
@@ -2540,15 +2616,17 @@ mod tests {
 
     #[test]
     fn dropping_on_every_unit_of_every_view_resolves_like_the_column_axis() {
-        for (view, days) in [(View::Day, 1u32), (View::ThreeDays, 3), (View::Week, 7)] {
+        for (view, days) in
+            [(Axis::Day(Day::Day), 1u32), (Axis::Day(Day::ThreeDays), 3), (Axis::Day(Day::Week), 7)]
+        {
             let base = today();
             let mut handler = Handler::new(VIEWPORT, base, REM);
             load(&mut handler, vec![entry(1, base, 101, 600, 660)]);
             choose(&mut handler, view);
-            let axis = ColumnAxis::new(days, RESOURCE_COUNT);
-            let column_px = column_px(VIEWPORT, handler.view(), REM);
+            let axis = Grid::new(days, handler.resources, handler.clock);
+            let column_px = column_px(VIEWPORT, handler.columns(), REM);
             let (ox, oy) = grid_origin();
-            for unit in 0..axis.count() {
+            for unit in 0..axis.columns() {
                 handler.card_commands();
                 let (grab_x, grab_y) = (ox + GRAB_X, oy + 4.0 * SLOT_PX + GRAB_Y);
                 handler.process_canvas(
@@ -2578,16 +2656,17 @@ mod tests {
     fn the_same_card_box_resolves_to_different_data_after_a_view_switch() {
         let base = today();
         let mut handler = Handler::new(VIEWPORT, base, REM);
+        load(&mut handler, vec![]);
         let week = handler.grid();
         let bx = week.bbox(Cell { day: 1, resource: 1 }, at(600), at(660)).unwrap();
         assert_eq!(week.resolve(&bx).unwrap().cells, [Cell { day: 1, resource: 1 }]);
-        choose(&mut handler, View::Day);
+        choose(&mut handler, Axis::Day(Day::Day));
         assert!(handler.grid().resolve(&bx).is_none());
-        choose(&mut handler, View::Week);
+        choose(&mut handler, Axis::Day(Day::Week));
         assert_eq!(handler.grid().resolve(&bx).unwrap().cells, [Cell { day: 1, resource: 1 }]);
     }
 
-    fn multi_fixture(view: View) -> (Handler, u64) {
+    fn multi_fixture(view: Axis) -> (Handler, u64) {
         let base = today();
         let mut handler = Handler::new(VIEWPORT, base, REM);
         let mut spanning = entry(1, base, 102, 600, 660);
@@ -2601,7 +2680,7 @@ mod tests {
     }
 
     fn drag_piece(handler: &mut Handler, n: u32, from_unit: u32, to_unit: u32) {
-        let column_px = column_px(VIEWPORT, handler.view(), REM);
+        let column_px = column_px(VIEWPORT, handler.columns(), REM);
         let (ox, oy) = grid_origin();
         let y = oy + 4.0 * SLOT_PX + GRAB_Y;
         handler.process_canvas(
@@ -2625,7 +2704,7 @@ mod tests {
 
     #[test]
     fn a_multi_cell_appointment_renders_one_card_per_visible_cell() {
-        let (handler, _) = multi_fixture(View::Week);
+        let (handler, _) = multi_fixture(Axis::Day(Day::Week));
         let commands = handler.card_commands();
         assert_eq!(shown_count(&commands), 2);
         let (x1, y1, w1, h1) = card_box(&commands, 1).unwrap();
@@ -2640,11 +2719,11 @@ mod tests {
     #[test]
     fn dragging_any_cell_moves_every_cell_by_the_same_unit_difference() {
         let base = today();
-        let (mut handler, _) = multi_fixture(View::Week);
+        let (mut handler, _) = multi_fixture(Axis::Day(Day::Week));
         drag_piece(&mut handler, 2, 2, 3);
         assert_eq!(places(&handler), [(base, 103), (base, 104)]);
 
-        let (mut handler, _) = multi_fixture(View::Week);
+        let (mut handler, _) = multi_fixture(Axis::Day(Day::Week));
         drag_piece(&mut handler, 1, 1, 0);
         assert_eq!(places(&handler), [(base, 101), (base, 102)]);
     }
@@ -2652,7 +2731,7 @@ mod tests {
     #[test]
     fn a_shift_past_the_last_resource_continues_into_the_next_day() {
         let base = today();
-        let (mut handler, _) = multi_fixture(View::Week);
+        let (mut handler, _) = multi_fixture(Axis::Day(Day::Week));
         drag_piece(&mut handler, 1, 1, 3);
         assert_eq!(places(&handler), [(base, 104), (after(base, 1), 101)]);
         let commands = handler.card_commands();
@@ -2668,7 +2747,7 @@ mod tests {
         cells.push(Place { day: after(base, 1), resource: 101 });
         appointment::Places::write(&mut crossing, &cells, None).unwrap();
         load(&mut handler, vec![crossing]);
-        choose(&mut handler, View::Day);
+        choose(&mut handler, Axis::Day(Day::Day));
         let commands = handler.card_commands();
         assert_eq!(shown_count(&commands), 1);
         drag_piece(&mut handler, 1, 3, 0);
@@ -2677,7 +2756,7 @@ mod tests {
 
     #[test]
     fn dragging_a_multi_cell_card_back_to_its_own_cell_changes_nothing() {
-        let (mut handler, _) = multi_fixture(View::Week);
+        let (mut handler, _) = multi_fixture(Axis::Day(Day::Week));
         let before = places(&handler);
         drag_piece(&mut handler, 2, 2, 2);
         assert_eq!(places(&handler), before);
@@ -2864,7 +2943,7 @@ mod tests {
     #[test]
     fn dragging_the_right_edge_back_removes_cells() {
         let base = today();
-        let (mut handler, _) = multi_fixture(View::Week);
+        let (mut handler, _) = multi_fixture(Axis::Day(Day::Week));
         press_local(&mut handler, 2, 3.0 * COLUMN_MIN_PX - 3.0, 168.0);
         assert_eq!(resize_corner(&handler), Some([Some(false), None]));
         drag_by(&mut handler, -COLUMN_MIN_PX, 0.0);
@@ -2885,7 +2964,7 @@ mod tests {
 
     #[test]
     fn horizontal_handles_exist_only_on_the_outer_cells() {
-        let (mut handler, _) = multi_fixture(View::Week);
+        let (mut handler, _) = multi_fixture(Axis::Day(Day::Week));
         press_local(&mut handler, 1, 2.0 * COLUMN_MIN_PX - 3.0, 168.0);
         assert_eq!(resize_corner(&handler), None);
         press_local(&mut handler, 2, 2.0 * COLUMN_MIN_PX + 3.0, 168.0);
@@ -2922,7 +3001,7 @@ mod tests {
             cells.push(Place { day: after(base, 1), resource: 101 });
             appointment::Places::write(&mut crossing, &cells, None).unwrap();
             load(&mut handler, vec![crossing]);
-            choose(&mut handler, View::Day);
+            choose(&mut handler, Axis::Day(Day::Day));
             handler.card_commands();
             handler
         };
@@ -3226,7 +3305,7 @@ mod tests {
     fn tap_empty(handler: &mut Handler, column: f64, slot: f64) -> Vec<Command> {
         let (ox, oy) = grid_origin();
         let (x, y) = (
-            ox + (column + 0.5) * column_px(VIEWPORT, handler.view(), REM),
+            ox + (column + 0.5) * column_px(VIEWPORT, handler.columns(), REM),
             oy + (slot + 0.5) * SLOT_PX,
         );
         handler.process_canvas(&pointer_down(Target::Surface.to_dom(), x, y), &pointer());
@@ -3275,7 +3354,7 @@ mod tests {
 
     fn drag_create(handler: &mut Handler, from: (f64, f64), to: (f64, f64)) -> Vec<Command> {
         let (ox, oy) = grid_origin();
-        let column = column_px(VIEWPORT, handler.view(), REM);
+        let column = column_px(VIEWPORT, handler.columns(), REM);
         let at = |(c, s): (f64, f64)| (ox + (c + 0.5) * column, oy + (s + 0.5) * SLOT_PX);
         let (x, y) = at(from);
         handler.process_canvas(&pointer_down(Target::Surface.to_dom(), x, y), &pointer());
@@ -3568,7 +3647,7 @@ mod tests {
     fn only_an_invalid_handle_asks_for_a_new_one() {
         let (events, commands) = file_store_error(FileStoreError::InvalidState(String::new()));
         assert!(
-            matches!(events.as_slice(), [Event::StoreLost(id)] if id.name == "calendar" && id.version == "0.1")
+            matches!(events.as_slice(), [Event::StoreLost(id)] if id.name == "calendar" && id.version == "0.2")
         );
         assert!(matches!(
             commands.as_slice(),
@@ -3648,7 +3727,7 @@ mod tests {
     fn month_fixture(appointments: Vec<DataStruct>) -> Handler {
         let mut handler = Handler::new(VIEWPORT, today(), REM);
         load(&mut handler, appointments);
-        choose(&mut handler, View::Month);
+        choose(&mut handler, Axis::Month);
         handler
     }
 
@@ -3657,10 +3736,10 @@ mod tests {
     }
 
     fn month_point(day: u32, row: Option<u32>) -> (f64, f64) {
-        let bx = MONTH_AXIS.bbox(day, row).unwrap();
+        let bx = Month::bbox(day, row).unwrap();
         let (ox, oy) = grid_origin();
         (
-            ox + (bx.base()[0].get() + 0.5) * column_px(VIEWPORT, View::Month, REM),
+            ox + (bx.base()[0].get() + 0.5) * column_px(VIEWPORT, Day::Week.len(), REM),
             oy + (bx.base()[1].get() + 0.5) * SLOT_REM * REM,
         )
     }
@@ -3687,10 +3766,10 @@ mod tests {
     fn month_button_lays_out_weeks_inside_the_shared_frame() {
         let mut handler = Handler::new(VIEWPORT, today(), REM);
         load(&mut handler, vec![]);
-        let commands = choose(&mut handler, View::Month);
-        assert_eq!(handler.view(), View::Month);
+        let commands = choose(&mut handler, Axis::Month);
+        assert_eq!(handler.axis(), Axis::Month);
         assert_eq!(grid_columns(&commands), week_grid(7, 7));
-        let count = MONTH_WEEKS * (DAY_ROWS + 1);
+        let count = Month::count();
         let axis = format!("var(--head-height) repeat({count}, {SLOT_REM}rem)");
         assert_eq!(
             grid_rows(&commands),
@@ -3711,7 +3790,7 @@ mod tests {
         assert_eq!(text(Target::BandLabel(4)), "10/1");
         assert_eq!(text(Target::BandLabel(35)), "11/1");
         assert_eq!(text(Target::AxisLabel(1, 2)), "9/28");
-        assert_eq!(text(Target::AxisLabel(2, 2 + DAY_ROWS + 1)), "10/5");
+        assert_eq!(text(Target::AxisLabel(2, 2 + Month::ROWS + 1)), "10/5");
         assert_eq!(text(Target::AxisLabel(1, 3)), "");
         assert!(commands.iter().any(|command| matches!(command,
             Command::SetAttribute { id, attribute: Attribute::AriaCurrent, .. }
@@ -3788,7 +3867,7 @@ mod tests {
         let (x, y) = month_point(9, None);
         handler.process_canvas(&pointer_down(Target::Surface.to_dom(), x, y), &pointer());
         let commands = handler.process_gesture(&Gesture::Tap, &pointer(), None).1;
-        assert_eq!(handler.view(), View::Day);
+        assert_eq!(handler.axis(), Axis::Day(Day::Day));
         assert_eq!(handler.base(), after(month_first(), 9));
         assert_eq!(text_of(&commands, &Target::AxisLabel(1, 2).to_dom()).unwrap(), "09:00");
         assert_eq!(text_of(&commands, &Target::AxisLabel(2, 45).to_dom()).unwrap(), "19:45");
@@ -3803,7 +3882,7 @@ mod tests {
         let mut handler = month_fixture(vec![entry(1, today(), 101, 600, 660)]);
         let before = card_box(&handler.card_commands(), 1).unwrap();
         let (_, commands) = handler.process_canvas(&input(Target::Zoom.to_dom(), "3"), &pointer());
-        let count = MONTH_WEEKS * (DAY_ROWS + 1);
+        let count = Month::count();
         assert_eq!(
             grid_rows(&commands),
             [
@@ -3817,9 +3896,9 @@ mod tests {
         let after = card_box(&commands, 1).unwrap();
         assert_eq!((after.0, after.2), (before.0, before.2));
         assert_eq!((after.1, after.3), (before.1 / SLOT_REM as f32 * 3.0, 3.0 * REM as f32));
-        let bx = MONTH_AXIS.bbox(10, Some(2)).unwrap();
+        let bx = Month::bbox(10, Some(2)).unwrap();
         let (ox, oy) = grid_origin();
-        let x = ox + (bx.base()[0].get() + 0.5) * column_px(VIEWPORT, View::Month, REM);
+        let x = ox + (bx.base()[0].get() + 0.5) * column_px(VIEWPORT, Day::Week.len(), REM);
         let y = oy + (bx.base()[1].get() + 0.5) * 3.0 * REM;
         handler.process_canvas(&pointer_down(Target::Surface.to_dom(), x, y), &pointer());
         let commands = handler.process_gesture(&Gesture::Tap, &pointer(), None).1;
@@ -3832,10 +3911,12 @@ mod tests {
     #[test]
     fn page_steps_skip_the_span_of_each_view() {
         let mut handler = Handler::new(VIEWPORT, today(), REM);
-        for (view, page) in [(View::Day, 1), (View::ThreeDays, 3), (View::Week, 7)] {
+        for (view, page) in
+            [(Axis::Day(Day::Day), 1), (Axis::Day(Day::ThreeDays), 3), (Axis::Day(Day::Week), 7)]
+        {
             choose(&mut handler, view);
             press(&mut handler, Target::Step(5).to_dom());
-            assert_eq!(diff(today(), handler.base()) / DAY, page, "{view:?}");
+            assert_eq!(diff_days(today(), handler.base()), page, "{view:?}");
             press(&mut handler, Target::Step(1).to_dom());
             assert_eq!(handler.base(), today(), "{view:?}");
         }
@@ -3850,7 +3931,7 @@ mod tests {
         assert_eq!(text_of(&commands, &Target::BandLabel(1).to_dom()).unwrap(), "9");
         let commands = press(&mut handler, Target::Step(1).to_dom());
         assert_eq!(text_of(&commands, &Target::BandLabel(1).to_dom()).unwrap(), "5");
-        choose(&mut handler, View::Week);
+        choose(&mut handler, Axis::Day(Day::Week));
         let commands = press(&mut handler, Target::Step(5).to_dom());
         assert_eq!(text_of(&commands, &Target::DayTitle(1).to_dom()).unwrap(), "10/16(金)");
     }
@@ -3864,16 +3945,22 @@ mod tests {
         assert_eq!(text_of(&commands, &Target::CategoryOption(2).to_dom()).unwrap(), "Follow-up");
 
         let (handler, _) = drag_fixture();
-        let hidden: Vec<Id> = handler
-            .option_commands()
+        let commands = handler.option_commands();
+        assert!(!commands.iter().any(|command| matches!(
+            command,
+            Command::SetAttribute { attribute: Attribute::Hidden, .. }
+        )));
+        let shown: Vec<Id> = commands
             .into_iter()
             .filter_map(|command| match command {
-                Command::SetAttribute { id, attribute: Attribute::Hidden, .. } => Some(id),
+                Command::RemoveAttribute { id, attribute: Attribute::Hidden } => Some(id),
                 _ => None,
             })
             .collect();
-        let surplus = (2..=4).map(Target::StatusOption).chain((2..=4).map(Target::CategoryOption));
-        assert_eq!(hidden, surplus.map(Target::to_dom).collect::<Vec<_>>());
+        let present = [Target::StatusOption(1), Target::CategoryOption(1)]
+            .into_iter()
+            .chain((1..=4).map(Target::ResourceOption));
+        assert_eq!(shown, present.map(Target::to_dom).collect::<Vec<_>>());
     }
 
     #[test]
@@ -3894,7 +3981,8 @@ mod tests {
 
     #[test]
     fn random_interaction_keeps_the_store_the_dirty_flag_and_the_data_consistent() {
-        let views = [View::Day, View::ThreeDays, View::Week, View::Month];
+        let views =
+            [Axis::Day(Day::Day), Axis::Day(Day::ThreeDays), Axis::Day(Day::Week), Axis::Month];
         for seed in 0..30 {
             let mut rng = Rng::new(seed);
             let (mut handler, disk) = with_store();
@@ -3929,7 +4017,7 @@ mod tests {
                     }
                     6 => {
                         let (ox, oy) = grid_origin();
-                        let column = column_px(VIEWPORT, handler.view(), REM);
+                        let column = column_px(VIEWPORT, handler.columns(), REM);
                         let at = |rng: &mut Rng| {
                             (
                                 ox + (rng.below(7) as f64 + 0.5) * column,
@@ -4135,7 +4223,7 @@ mod tests {
         assert_eq!(appointments(&handler).len(), 2);
         assert_eq!(shown_count(&handler.card_commands()), 1);
 
-        choose(&mut handler, View::Month);
+        choose(&mut handler, Axis::Month);
         assert_eq!(shown_count(&handler.card_commands()), 2, "the month view shows the days only");
 
         handler.edit_commands(1, 0);

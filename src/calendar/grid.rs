@@ -10,43 +10,95 @@ use rectgrid::{BBox, Unit};
 
 use crate::timestamp::{pack, unpack};
 
-pub const RESOURCE_COUNT: u32 = 4;
-pub const DAY_MAX: u32 = 7;
-pub const SLOT_COUNT: u32 = 44;
-pub const SLOT_MINUTES: u32 = 15;
-pub const DAY_START_MINUTES: u32 = 9 * 60;
-pub const TIME_AXIS: TimeAxis = TimeAxis::new(DAY_START_MINUTES, SLOT_MINUTES, SLOT_COUNT);
-pub const MONTH_WEEKS: u32 = 5;
-pub const DAY_ROWS: u32 = 3;
-pub const MONTH_AXIS: MonthAxis = MonthAxis::new(MONTH_WEEKS, DAY_ROWS);
+pub const CLOCK: Clock = Clock::new(
+    pack(0, 0, 0, 9, 0, 0, 0, 0, 0),
+    pack(0, 0, 0, 20, 0, 0, 0, 0, 0),
+    pack(0, 0, 0, 0, 15, 0, 0, 0, 0),
+);
+pub const AXES: [Axis; 4] =
+    [Axis::Day(Day::Day), Axis::Day(Day::ThreeDays), Axis::Day(Day::Week), Axis::Month];
 const EPSILON: f64 = 1e-9;
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum View {
-    Day,
-    ThreeDays,
-    Week,
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Axis {
+    Day(Day),
     Month,
 }
 
-impl View {
-    pub fn days(self) -> u32 {
+impl Axis {
+    pub const fn days(self) -> u32 {
+        match self {
+            Self::Day(day) => day.len(),
+            Self::Month => Day::Week.len(),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Day {
+    Day,
+    ThreeDays,
+    Week,
+}
+
+impl Day {
+    pub const fn len(self) -> u32 {
         match self {
             Self::Day => 1,
             Self::ThreeDays => 3,
-            Self::Week | Self::Month => MonthAxis::WEEKDAYS,
+            Self::Week => 7,
         }
     }
+}
 
-    pub fn columns(self) -> u32 {
-        match self {
-            Self::Month => MonthAxis::WEEKDAYS,
-            _ => self.grid().columns.count(),
-        }
+pub struct Month;
+
+impl Month {
+    pub const WEEKS: u32 = 5;
+    pub const ROWS: u32 = 3;
+
+    pub const fn days() -> u32 {
+        Self::WEEKS * Day::Week.len()
     }
 
-    pub fn grid(self) -> Grid {
-        Grid::new(ColumnAxis::new(self.days(), RESOURCE_COUNT), TIME_AXIS)
+    pub const fn count() -> u32 {
+        Self::WEEKS * (Self::ROWS + 1)
+    }
+
+    /// ```
+    /// # use app::calendar::grid::Month;
+    /// let bx = Month::bbox(8, Some(2)).unwrap();
+    /// assert_eq!((bx.base()[0].get(), bx.base()[1].get()), (1.0, 7.0));
+    /// assert_eq!((bx.offset()[0].get(), bx.offset()[1].get()), (1.0, 1.0));
+    /// assert_eq!(Month::bbox(8, None).unwrap().base()[1].get(), 4.0);
+    /// assert!(Month::bbox(35, None).is_none());
+    /// assert!(Month::bbox(0, Some(3)).is_none());
+    /// ```
+    pub fn bbox(day: u32, row: Option<u32>) -> Option<BBox<2>> {
+        if day >= Self::days() || row.is_some_and(|row| row >= Self::ROWS) {
+            return None;
+        }
+        let week = Day::Week.len();
+        let top = day / week * (Self::ROWS + 1) + row.map_or(0, |row| row + 1);
+        Some(BBox::new(
+            [Unit::new((day % week) as f64), Unit::new(top as f64)],
+            [Unit::new(1.0), Unit::new(1.0)],
+        ))
+    }
+
+    /// ```
+    /// # use app::calendar::grid::Month;
+    /// assert_eq!(Month::locate([1, 7]), Some((8, Some(2))));
+    /// assert_eq!(Month::locate([1, 4]), Some((8, None)));
+    /// assert_eq!(Month::locate([7, 0]), None);
+    /// assert_eq!(Month::locate([0, 20]), None);
+    /// ```
+    pub fn locate(unit: [i32; 2]) -> Option<(u32, Option<u32>)> {
+        let week = Day::Week.len();
+        let column = u32::try_from(unit[0]).ok().filter(|column| *column < week)?;
+        let row = u32::try_from(unit[1]).ok().filter(|row| *row < Self::count())?;
+        let (week_index, rest) = (row / (Self::ROWS + 1), row % (Self::ROWS + 1));
+        Some((week_index * week + column, rest.checked_sub(1)))
     }
 }
 
@@ -57,139 +109,78 @@ pub struct Cell {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct ColumnAxis {
-    days:      u32,
-    resources: u32,
+pub struct Clock {
+    start: u64,
+    end:   u64,
+    unit:  u64,
 }
 
-impl ColumnAxis {
-    pub const fn new(days: u32, resources: u32) -> Self {
-        Self { days, resources }
+impl Clock {
+    pub const fn new(start: u64, end: u64, unit: u64) -> Self {
+        Self { start, end, unit }
     }
 
-    pub const fn count(&self) -> u32 {
-        self.days * self.resources
+    pub const fn start(&self) -> u64 {
+        self.start
     }
 
-    /// ```
-    /// # use app::calendar::grid::{Cell, ColumnAxis};
-    /// let axis = ColumnAxis::new(7, 4);
-    /// assert_eq!(axis.unit(Cell { day: 1, resource: 2 }), Some(6));
-    /// assert_eq!(axis.unit(Cell { day: 7, resource: 0 }), None);
-    /// ```
-    pub fn unit(&self, cell: Cell) -> Option<u32> {
-        (cell.day < self.days && cell.resource < self.resources)
-            .then(|| cell.day * self.resources + cell.resource)
+    pub const fn end(&self) -> u64 {
+        self.end
     }
 
     /// ```
-    /// # use app::calendar::grid::{Cell, ColumnAxis};
-    /// let axis = ColumnAxis::new(3, 4);
-    /// assert_eq!(axis.cell(6), Some(Cell { day: 1, resource: 2 }));
-    /// assert_eq!(axis.cell(12), None);
+    /// # use app::calendar::grid::CLOCK;
+    /// assert_eq!(CLOCK.count(), 44);
     /// ```
-    pub fn cell(&self, unit: u32) -> Option<Cell> {
-        (unit < self.count())
-            .then(|| Cell { day: unit / self.resources, resource: unit % self.resources })
+    pub fn count(&self) -> u32 {
+        ((minutes_of(self.end) - minutes_of(self.start)) / minutes_of(self.unit)) as u32
     }
 
     /// ```
-    /// # use app::calendar::grid::ColumnAxis;
-    /// let axis = ColumnAxis::new(7, 4);
-    /// assert_eq!(axis.flat(1, 2), 6);
-    /// assert_eq!(axis.flat(-1, 3), -1);
-    /// ```
-    pub fn flat(&self, day: i32, resource: u32) -> i32 {
-        day * self.resources as i32 + resource as i32
-    }
-
-    /// ```
-    /// # use app::calendar::grid::ColumnAxis;
-    /// let axis = ColumnAxis::new(7, 4);
-    /// assert_eq!(axis.locate(6), (1, 2));
-    /// assert_eq!(axis.locate(-1), (-1, 3));
-    /// ```
-    pub fn locate(&self, flat: i32) -> (i32, u32) {
-        let resources = self.resources as i32;
-        (flat.div_euclid(resources), flat.rem_euclid(resources) as u32)
-    }
-
-    /// ```
-    /// # use app::calendar::grid::{Cell, ColumnAxis};
-    /// let axis = ColumnAxis::new(7, 4);
-    /// assert_eq!(
-    ///     axis.cells(3, 2),
-    ///     [Cell { day: 0, resource: 3 }, Cell { day: 1, resource: 0 }]
-    /// );
-    /// ```
-    pub fn cells(&self, first: u32, length: u32) -> Vec<Cell> {
-        (first..first.saturating_add(length)).filter_map(|unit| self.cell(unit)).collect()
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct TimeAxis {
-    origin: u32,
-    step:   u32,
-    count:  u32,
-}
-
-impl TimeAxis {
-    pub const fn new(origin: u32, step: u32, count: u32) -> Self {
-        Self { origin, step, count }
-    }
-
-    pub fn end(&self) -> u64 {
-        time_of(i64::from(self.origin + self.step * self.count))
-    }
-
-    pub const fn count(&self) -> u32 {
-        self.count
-    }
-
-    /// ```
-    /// # use app::calendar::grid::TimeAxis;
-    /// let axis = TimeAxis::new(540, 15, 44);
-    /// assert!(axis.contains(0.0));
-    /// assert!(axis.contains(43.9));
-    /// assert!(!axis.contains(-0.1));
-    /// assert!(!axis.contains(44.0));
+    /// # use app::calendar::grid::CLOCK;
+    /// assert!(CLOCK.contains(0.0));
+    /// assert!(CLOCK.contains(43.9));
+    /// assert!(!CLOCK.contains(-0.1));
+    /// assert!(!CLOCK.contains(44.0));
     /// ```
     pub fn contains(&self, unit: f64) -> bool {
-        unit >= 0.0 && unit < self.count as f64
+        unit >= 0.0 && unit < self.count() as f64
     }
 
     /// ```
-    /// # use app::calendar::grid::TimeAxis;
+    /// # use app::calendar::grid::CLOCK;
     /// # use app::timestamp::pack;
-    /// let axis = TimeAxis::new(540, 15, 44);
-    /// assert_eq!(axis.unit(pack(0, 0, 0, 10, 0, 0, 0, 0, 0)), 4.0);
-    /// assert_eq!(axis.unit(pack(0, 0, 0, 9, 5, 0, 0, 0, 0)), 1.0 / 3.0);
+    /// assert_eq!(CLOCK.unit(pack(0, 0, 0, 10, 0, 0, 0, 0, 0)), 4.0);
+    /// assert_eq!(CLOCK.unit(pack(0, 0, 0, 9, 5, 0, 0, 0, 0)), 1.0 / 3.0);
     /// ```
     pub fn unit(&self, time: u64) -> f64 {
-        (minutes_of(time) as f64 - self.origin as f64) / self.step as f64
+        (minutes_of(time) - minutes_of(self.start)) as f64 / minutes_of(self.unit) as f64
     }
 
     /// ```
-    /// # use app::calendar::grid::TimeAxis;
+    /// # use app::calendar::grid::CLOCK;
     /// # use app::timestamp::pack;
-    /// let axis = TimeAxis::new(540, 15, 44);
-    /// assert_eq!(axis.time(4), Some(pack(0, 0, 0, 10, 0, 0, 0, 0, 0)));
-    /// assert_eq!(axis.time(44), Some(pack(0, 0, 0, 20, 0, 0, 0, 0, 0)));
-    /// assert_eq!(axis.time(45), None);
+    /// assert_eq!(CLOCK.time(4.0), Some(pack(0, 0, 0, 10, 0, 0, 0, 0, 0)));
+    /// assert_eq!(CLOCK.time(4.5), Some(pack(0, 0, 0, 10, 7, 0, 0, 0, 0)));
+    /// assert_eq!(CLOCK.time(44.0), Some(pack(0, 0, 0, 20, 0, 0, 0, 0, 0)));
+    /// assert_eq!(CLOCK.time(44.1), None);
+    /// assert_eq!(CLOCK.time(-0.1), None);
     /// ```
-    pub fn time(&self, unit: u32) -> Option<u64> {
-        (unit <= self.count).then(|| time_of(i64::from(self.origin + unit * self.step)))
+    pub fn time(&self, unit: f64) -> Option<u64> {
+        (unit >= 0.0 && unit <= self.count() as f64).then(|| {
+            let minutes = libm::floor(unit * minutes_of(self.unit) as f64) as i64;
+            time_of(minutes_of(self.start) + minutes)
+        })
     }
 
     pub fn clip(&self, start: u64, end: u64) -> Option<(u64, u64)> {
-        let (start, end) = (start.max(time_of(i64::from(self.origin))), end.min(self.end()));
+        let (start, end) = (start.max(self.start), end.min(self.end));
         (end > start).then_some((start, end))
     }
 
-    pub fn clamp_start(&self, start: u64, duration: u32) -> u64 {
-        let last = (self.origin + self.step * self.count).saturating_sub(duration);
-        time_of(minutes_of(start).min(i64::from(last)).max(i64::from(self.origin)))
+    pub fn clamp_start(&self, start: u64, units: f64) -> u64 {
+        let last = minutes_of(self.end) - libm::floor(units * minutes_of(self.unit) as f64) as i64;
+        time_of(minutes_of(start).min(last).max(minutes_of(self.start)))
     }
 }
 
@@ -202,68 +193,6 @@ fn time_of(minutes: i64) -> u64 {
     pack(0, 0, 0, minutes.div_euclid(60), minutes.rem_euclid(60), 0, 0, 0, 0)
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct MonthAxis {
-    weeks: u32,
-    rows:  u32,
-}
-
-impl MonthAxis {
-    pub const WEEKDAYS: u32 = 7;
-
-    pub const fn new(weeks: u32, rows: u32) -> Self {
-        Self { weeks, rows }
-    }
-
-    pub const fn days(&self) -> u32 {
-        self.weeks * Self::WEEKDAYS
-    }
-
-    pub const fn rows(&self) -> u32 {
-        self.rows
-    }
-
-    pub const fn count(&self) -> u32 {
-        self.weeks * (self.rows + 1)
-    }
-
-    /// ```
-    /// # use app::calendar::grid::MonthAxis;
-    /// let axis = MonthAxis::new(5, 3);
-    /// let bx = axis.bbox(8, Some(2)).unwrap();
-    /// assert_eq!((bx.base()[0].get(), bx.base()[1].get()), (1.0, 7.0));
-    /// assert_eq!((bx.offset()[0].get(), bx.offset()[1].get()), (1.0, 1.0));
-    /// assert_eq!(axis.bbox(8, None).unwrap().base()[1].get(), 4.0);
-    /// assert!(axis.bbox(35, None).is_none());
-    /// assert!(axis.bbox(0, Some(3)).is_none());
-    /// ```
-    pub fn bbox(&self, day: u32, row: Option<u32>) -> Option<BBox<2>> {
-        if day >= self.days() || row.is_some_and(|row| row >= self.rows) {
-            return None;
-        }
-        let top = day / Self::WEEKDAYS * (self.rows + 1) + row.map_or(0, |row| row + 1);
-        Some(BBox::new(
-            [Unit::new((day % Self::WEEKDAYS) as f64), Unit::new(top as f64)],
-            [Unit::new(1.0), Unit::new(1.0)],
-        ))
-    }
-
-    /// ```
-    /// # use app::calendar::grid::MonthAxis;
-    /// let axis = MonthAxis::new(5, 3);
-    /// assert_eq!(axis.locate([1, 7]), Some((8, Some(2))));
-    /// assert_eq!(axis.locate([1, 4]), Some((8, None)));
-    /// assert_eq!(axis.locate([7, 0]), None);
-    /// assert_eq!(axis.locate([0, 20]), None);
-    /// ```
-    pub fn locate(&self, unit: [i32; 2]) -> Option<(u32, Option<u32>)> {
-        let column = u32::try_from(unit[0]).ok().filter(|column| *column < Self::WEEKDAYS)?;
-        let row = u32::try_from(unit[1]).ok().filter(|row| *row < self.count())?;
-        let (week, rest) = (row / (self.rows + 1), row % (self.rows + 1));
-        Some((week * Self::WEEKDAYS + column, rest.checked_sub(1)))
-    }
-}
-
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Resolved {
     pub cells: Vec<Cell>,
@@ -273,40 +202,102 @@ pub struct Resolved {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Grid {
-    pub columns: ColumnAxis,
-    pub time:    TimeAxis,
+    days:      u32,
+    resources: u32,
+    pub clock: Clock,
 }
 
 impl Grid {
-    pub const fn new(columns: ColumnAxis, time: TimeAxis) -> Self {
-        Self { columns, time }
+    pub const fn new(days: u32, resources: u32, clock: Clock) -> Self {
+        Self { days, resources, clock }
+    }
+
+    pub const fn columns(&self) -> u32 {
+        self.days * self.resources
     }
 
     /// ```
-    /// # use app::calendar::grid::{Cell, ColumnAxis, Grid, TimeAxis};
-    /// let grid = Grid::new(ColumnAxis::new(7, 4), TimeAxis::new(540, 15, 44));
-    /// let bx = grid.bbox(Cell { day: 1, resource: 2 }, 600, 660).unwrap();
+    /// # use app::calendar::grid::{CLOCK, Cell, Grid};
+    /// let grid = Grid::new(7, 4, CLOCK);
+    /// assert_eq!(grid.unit(Cell { day: 1, resource: 2 }), Some(6));
+    /// assert_eq!(grid.unit(Cell { day: 7, resource: 0 }), None);
+    /// ```
+    pub fn unit(&self, cell: Cell) -> Option<u32> {
+        (cell.day < self.days && cell.resource < self.resources)
+            .then(|| cell.day * self.resources + cell.resource)
+    }
+
+    /// ```
+    /// # use app::calendar::grid::{CLOCK, Cell, Grid};
+    /// let grid = Grid::new(3, 4, CLOCK);
+    /// assert_eq!(grid.cell(6), Some(Cell { day: 1, resource: 2 }));
+    /// assert_eq!(grid.cell(12), None);
+    /// ```
+    pub fn cell(&self, unit: u32) -> Option<Cell> {
+        (unit < self.columns())
+            .then(|| Cell { day: unit / self.resources, resource: unit % self.resources })
+    }
+
+    /// ```
+    /// # use app::calendar::grid::{CLOCK, Grid};
+    /// let grid = Grid::new(7, 4, CLOCK);
+    /// assert_eq!(grid.flat(1, 2), 6);
+    /// assert_eq!(grid.flat(-1, 3), -1);
+    /// ```
+    pub fn flat(&self, day: i32, resource: u32) -> i32 {
+        day * self.resources as i32 + resource as i32
+    }
+
+    /// ```
+    /// # use app::calendar::grid::{CLOCK, Grid};
+    /// let grid = Grid::new(7, 4, CLOCK);
+    /// assert_eq!(grid.locate(6), (1, 2));
+    /// assert_eq!(grid.locate(-1), (-1, 3));
+    /// ```
+    pub fn locate(&self, flat: i32) -> (i32, u32) {
+        let resources = self.resources as i32;
+        (flat.div_euclid(resources), flat.rem_euclid(resources) as u32)
+    }
+
+    /// ```
+    /// # use app::calendar::grid::{CLOCK, Cell, Grid};
+    /// let grid = Grid::new(7, 4, CLOCK);
+    /// assert_eq!(
+    ///     grid.cells(3, 2),
+    ///     [Cell { day: 0, resource: 3 }, Cell { day: 1, resource: 0 }]
+    /// );
+    /// ```
+    pub fn cells(&self, first: u32, length: u32) -> Vec<Cell> {
+        (first..first.saturating_add(length)).filter_map(|unit| self.cell(unit)).collect()
+    }
+
+    /// ```
+    /// # use app::calendar::grid::{CLOCK, Cell, Grid};
+    /// # use app::timestamp::pack;
+    /// let at = |hour, minute| pack(0, 0, 0, hour, minute, 0, 0, 0, 0);
+    /// let grid = Grid::new(7, 4, CLOCK);
+    /// let bx = grid.bbox(Cell { day: 1, resource: 2 }, at(10, 0), at(11, 0)).unwrap();
     /// assert_eq!((bx.base()[0].get(), bx.base()[1].get()), (6.0, 4.0));
     /// assert_eq!((bx.offset()[0].get(), bx.offset()[1].get()), (1.0, 4.0));
     /// ```
     pub fn bbox(&self, cell: Cell, start: u64, end: u64) -> Option<BBox<2>> {
-        let column = self.columns.unit(cell)? as i32;
+        let column = self.unit(cell)? as i32;
         self.bbox_flat(column, column, start, end)
     }
 
     /// ```
-    /// # use app::calendar::grid::{ColumnAxis, Grid, TimeAxis};
+    /// # use app::calendar::grid::{CLOCK, Grid};
     /// # use app::timestamp::pack;
     /// let at = |hour, minute| pack(0, 0, 0, hour, minute, 0, 0, 0, 0);
-    /// let grid = Grid::new(ColumnAxis::new(7, 4), TimeAxis::new(540, 15, 44));
+    /// let grid = Grid::new(7, 4, CLOCK);
     /// let bx = grid.bbox_flat(-2, 1, at(10, 0), at(11, 0)).unwrap();
     /// assert_eq!((bx.base()[0].get(), bx.base()[1].get()), (-2.0, 4.0));
     /// assert_eq!((bx.offset()[0].get(), bx.offset()[1].get()), (4.0, 4.0));
     /// assert!(grid.bbox_flat(0, 0, at(21, 40), at(23, 20)).is_none());
     /// ```
     pub fn bbox_flat(&self, first: i32, last: i32, start: u64, end: u64) -> Option<BBox<2>> {
-        let (start, end) = self.time.clip(start, end)?;
-        let (from, to) = (self.time.unit(start), self.time.unit(end));
+        let (start, end) = self.clock.clip(start, end)?;
+        let (from, to) = (self.clock.unit(start), self.clock.unit(end));
         Some(BBox::new(
             [Unit::new(first as f64), Unit::new(from)],
             [Unit::new((last - first + 1) as f64), Unit::new(to - from)],
@@ -314,11 +305,11 @@ impl Grid {
     }
 
     /// ```
-    /// # use app::calendar::grid::{Cell, ColumnAxis, Grid, TimeAxis};
+    /// # use app::calendar::grid::{CLOCK, Cell, Grid};
     /// # use rectgrid::{BBox, Unit};
     /// # use app::timestamp::pack;
     /// let at = |hour, minute| pack(0, 0, 0, hour, minute, 0, 0, 0, 0);
-    /// let grid = Grid::new(ColumnAxis::new(7, 4), TimeAxis::new(540, 15, 44));
+    /// let grid = Grid::new(7, 4, CLOCK);
     /// let bx = BBox::new([Unit::new(3.0), Unit::new(4.0)], [Unit::new(2.0), Unit::new(4.0)]);
     /// let resolved = grid.resolve(&bx).unwrap();
     /// assert_eq!(resolved.cells, [Cell { day: 0, resource: 3 }, Cell { day: 1, resource: 0 }]);
@@ -327,12 +318,12 @@ impl Grid {
     pub fn resolve(&self, bx: &BBox<2>) -> Option<Resolved> {
         let (first_column, last_column) = span_clipped(bx.base()[0].get(), bx.offset()[0].get())?;
         let (first_slot, last_slot) = span_clipped(bx.base()[1].get(), bx.offset()[1].get())?;
-        let cells = self.columns.cells(first_column, last_column - first_column);
+        let cells = self.cells(first_column, last_column - first_column);
         if cells.is_empty() {
             return None;
         }
-        let start = self.time.time(first_slot)?;
-        let end = self.time.time(last_slot.min(self.time.count))?;
+        let start = self.clock.time(f64::from(first_slot))?;
+        let end = self.clock.time(f64::from(last_slot.min(self.clock.count())))?;
         (end > start).then_some(Resolved { cells, start, end })
     }
 }
@@ -421,7 +412,7 @@ mod tests {
     use super::*;
 
     fn grid(days: u32) -> Grid {
-        Grid::new(ColumnAxis::new(days, 4), TimeAxis::new(540, 15, 44))
+        Grid::new(days, 4, CLOCK)
     }
 
     fn at(minutes: u32) -> u64 {
@@ -435,24 +426,24 @@ mod tests {
     #[test]
     fn column_axis_is_a_bijection_for_every_view() {
         for days in [1, 3, 7] {
-            let axis = ColumnAxis::new(days, 4);
-            assert_eq!(axis.count(), days * 4);
-            for unit in 0..axis.count() {
+            let axis = grid(days);
+            assert_eq!(axis.columns(), days * 4);
+            for unit in 0..axis.columns() {
                 assert_eq!(axis.unit(axis.cell(unit).unwrap()), Some(unit));
             }
-            assert_eq!(axis.cell(axis.count()), None);
+            assert_eq!(axis.cell(axis.columns()), None);
         }
     }
 
     #[test]
     fn flat_and_locate_extend_the_axis_beyond_the_view() {
-        let axis = ColumnAxis::new(3, 4);
+        let axis = grid(3);
         for day in -3..10 {
             for resource in 0..4 {
                 assert_eq!(axis.locate(axis.flat(day, resource)), (day, resource));
             }
         }
-        for unit in 0..axis.count() {
+        for unit in 0..axis.columns() {
             let cell = axis.cell(unit).unwrap();
             assert_eq!(axis.flat(cell.day as i32, cell.resource), unit as i32);
         }
@@ -462,8 +453,8 @@ mod tests {
 
     #[test]
     fn the_same_unit_resolves_differently_per_view() {
-        let week = ColumnAxis::new(7, 4);
-        let day = ColumnAxis::new(1, 4);
+        let week = grid(7);
+        let day = grid(1);
         assert_eq!(week.cell(5), Some(Cell { day: 1, resource: 1 }));
         assert_eq!(day.cell(5), None);
         assert_eq!(week.unit(Cell { day: 1, resource: 1 }), Some(5));
@@ -472,7 +463,7 @@ mod tests {
 
     #[test]
     fn spans_resolve_across_resource_and_day_boundaries() {
-        let week = ColumnAxis::new(7, 4);
+        let week = grid(7);
         let cells = |first, length| -> Vec<(u32, u32)> {
             week.cells(first, length).into_iter().map(|c| (c.day, c.resource)).collect()
         };
@@ -484,33 +475,33 @@ mod tests {
 
     #[test]
     fn time_axis_round_trips_slots_and_times() {
-        let axis = TimeAxis::new(540, 15, 44);
+        let axis = CLOCK;
         for slot in 0..=44 {
-            let time = axis.time(slot).unwrap();
+            let time = axis.time(f64::from(slot)).unwrap();
             assert_eq!(axis.unit(time), slot as f64);
         }
         assert_eq!(axis.end(), at(1200));
-        assert_eq!(axis.time(45), None);
+        assert_eq!(axis.time(45.0), None);
         assert_eq!(axis.unit(at(540 + 44 * 15 + 7)), 44.0 + 7.0 / 15.0);
     }
 
     #[test]
     fn time_axis_clips_and_clamps() {
-        let axis = TimeAxis::new(540, 15, 44);
+        let axis = CLOCK;
         assert_eq!(axis.clip(at(480), at(570)), Some((at(540), at(570))));
         assert_eq!(axis.clip(at(1190), at(1260)), Some((at(1190), at(1200))));
         assert_eq!(axis.clip(at(1200), at(1260)), None);
         assert_eq!(axis.clip(at(400), at(540)), None);
-        assert_eq!(axis.clamp_start(at(1180), 60), at(1140));
-        assert_eq!(axis.clamp_start(at(100), 60), at(540));
+        assert_eq!(axis.clamp_start(at(1180), 4.0), at(1140));
+        assert_eq!(axis.clamp_start(at(100), 4.0), at(540));
     }
 
     #[test]
     fn bbox_and_resolve_are_inverse_for_every_cell() {
         for days in [1, 3, 7] {
             let grid = grid(days);
-            for unit in 0..grid.columns.count() {
-                let cell = grid.columns.cell(unit).unwrap();
+            for unit in 0..grid.columns() {
+                let cell = grid.cell(unit).unwrap();
                 let resolved = grid.resolve(&grid.bbox(cell, at(600), at(690)).unwrap()).unwrap();
                 assert_eq!(resolved.cells, [cell]);
                 assert_eq!((resolved.start, resolved.end), (at(600), at(690)));
@@ -561,17 +552,15 @@ mod tests {
 
     #[test]
     fn month_bbox_and_locate_are_inverse_for_every_day_and_row() {
-        for rows in [1, 3, 5] {
-            let axis = MonthAxis::new(5, rows);
-            for day in 0..axis.days() {
-                for row in core::iter::once(None).chain((0..rows).map(Some)) {
-                    let bx = axis.bbox(day, row).unwrap();
-                    let unit = [bx.base()[0].get() as i32, bx.base()[1].get() as i32];
-                    assert_eq!(axis.locate(unit), Some((day, row)));
-                }
+        for day in 0..Month::days() {
+            for row in core::iter::once(None).chain((0..Month::ROWS).map(Some)) {
+                let bx = Month::bbox(day, row).unwrap();
+                let unit = [bx.base()[0].get() as i32, bx.base()[1].get() as i32];
+                assert_eq!(Month::locate(unit), Some((day, row)));
             }
-            assert_eq!(axis.locate([0, axis.count() as i32]), None);
         }
+        assert_eq!(Month::locate([0, Month::count() as i32]), None);
+        assert!(Month::bbox(Month::days(), None).is_none());
     }
 
     #[test]

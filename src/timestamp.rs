@@ -291,17 +291,29 @@ pub fn youbi(timestamp: u64) -> Youbi {
 /// let day = 24 * 3600 * 100;
 /// assert_eq!(diff(pack(2000, 2, 29, 0, 0, 0, 0, 0, 0), pack(2001, 3, 1, 0, 0, 0, 0, 0, 0)), 366 * day);
 /// ```
+pub fn diff_days(from: u64, to: u64) -> i64 {
+    let day_of = |timestamp: u64| {
+        let (year, month, day, ..) = unpack(timestamp);
+        day_number(year, month, day)
+    };
+    day_of(to) - day_of(from)
+}
+
+fn day_number(year: i64, month: i64, day: i64) -> i64 {
+    let adjusted_year = if month <= 2 { year - 1 } else { year };
+    let year_of_era = adjusted_year.rem_euclid(400);
+    let shifted_month = if month > 2 { month - 3 } else { month + 9 };
+    let day_of_year = (153 * shifted_month + 2) / 5 + day - 1;
+    adjusted_year.div_euclid(400) * 146097 + year_of_era * 365 + year_of_era / 4 - year_of_era / 100
+        + day_of_year
+}
+
 pub fn diff(from: u64, to: u64) -> i64 {
     let centiseconds = |timestamp: u64| {
         let (year, month, day, hour, minute, second, centisecond, ..) = unpack(timestamp);
-        let adjusted_year = if month <= 2 { year - 1 } else { year };
-        let year_of_era = adjusted_year.rem_euclid(400);
-        let shifted_month = if month > 2 { month - 3 } else { month + 9 };
-        let day_of_year = (153 * shifted_month + 2) / 5 + day - 1;
-        let days = adjusted_year.div_euclid(400) * 146097 + year_of_era * 365 + year_of_era / 4
-            - year_of_era / 100
-            + day_of_year;
-        days * 8_640_000 + ((hour * 60 + minute) * 60 + second) * 100 + centisecond
+        day_number(year, month, day) * 8_640_000
+            + ((hour * 60 + minute) * 60 + second) * 100
+            + centisecond
     };
     centiseconds(to) - centiseconds(from)
 }
@@ -336,7 +348,7 @@ pub fn unpack(timestamp: u64) -> (i64, i64, i64, i64, i64, i64, i64, u64, u64) {
     )
 }
 
-pub fn pack(
+pub const fn pack(
     year: i64,
     month: i64,
     day: i64,
@@ -450,14 +462,7 @@ pub fn sub_months(timestamp: u64, months: i64) -> u64 {
 /// ```
 pub fn add_days(timestamp: u64, days: i64) -> u64 {
     let (year, month, day, hour, minute, second, centisecond, is_utc, timezone) = unpack(timestamp);
-    let adjusted_year = if month <= 2 { year - 1 } else { year };
-    let year_of_era = adjusted_year.rem_euclid(400);
-    let shifted_month = if month > 2 { month - 3 } else { month + 9 };
-    let day_of_year = (153 * shifted_month + 2) / 5 + day - 1;
-    let shifted = adjusted_year.div_euclid(400) * 146097 + year_of_era * 365 + year_of_era / 4
-        - year_of_era / 100
-        + day_of_year
-        + days;
+    let shifted = day_number(year, month, day) + days;
     let era = shifted.div_euclid(146097);
     let day_of_era = shifted.rem_euclid(146097);
     let year_of_era =

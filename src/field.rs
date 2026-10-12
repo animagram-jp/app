@@ -102,10 +102,14 @@ impl<const N: usize> Layout<N> {
         self.fields[index].set(target, value)
     }
 
-    pub fn pack(&self, values: [u64; N]) -> u64 {
+    pub const fn pack(&self, values: [u64; N]) -> u64 {
         let mut target = 0u64;
-        for (field, value) in self.fields.iter().zip(values) {
-            target = field.set(target, value);
+        let mut i = 0;
+        while i < N {
+            let field = &self.fields[i];
+            target = (target & !(field.mask << field.position))
+                | ((values[i] & field.mask) << field.position);
+            i += 1;
         }
         target
     }
