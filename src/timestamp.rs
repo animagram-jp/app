@@ -195,20 +195,6 @@ pub fn from_ut(ut: f64, is_utc: bool, timezone: &Timezone) -> u64 {
     pack(year, month, day, hour, minute, second, centisecond, is_utc_bit, timezone_id)
 }
 
-pub fn new(
-    year: i64,
-    month: i64,
-    day: i64,
-    hour: i64,
-    minute: i64,
-    second: i64,
-    centisecond: i64,
-    is_utc: bool,
-    timezone: &Timezone,
-) -> u64 {
-    pack(year, month, day, hour, minute, second, centisecond, is_utc as u64, timezone.id() as u64)
-}
-
 /// ```
 /// use app::{En, Lang, timestamp::*};
 ///
