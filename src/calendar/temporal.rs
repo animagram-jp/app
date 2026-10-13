@@ -14,13 +14,12 @@ use crate::timestamp::{Month, Timevolume, TimevolumeUnit, Youbi, add, pack, unpa
 // - time
 // - timeline
 // - Timestamp: u64 e.g., 2000-01-01T00:00:00.00
-// - Volume: Timestamp - Timestamp
 // - Period: [includes: Vec<Range>, excludes: Vec<Range>]
 
 #[derive(Default, Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Timerange {
-    pub start: u64, // timestamp
-    pub end:   u64, // timestamp
+    pub start:  u64, // timestamp
+    pub volume: Timevolume,
 }
 
 pub struct Period {
@@ -40,25 +39,28 @@ impl Recurrence {
     /// ```
     /// use app::{
     ///     calendar::temporal::*,
-    ///     timestamp::{Month, Youbi, pack, unpack},
+    ///     timestamp::{Month, Timevolume, TimevolumeUnit, Youbi, add, pack, unpack},
     /// };
     ///
     /// let year_start = pack(2026, 1,  1,  0,  0, 0, 0, 1, 0);
     /// let year_end   = pack(2026, 12, 31, 23, 59, 0, 0, 1, 0);
+    /// let year = Timevolume::new(TimevolumeUnit::Day, 364)
+    ///     .with(TimevolumeUnit::Hour, 23)
+    ///     .with(TimevolumeUnit::Minute, 59);
+    /// assert_eq!(add(year_start, year), year_end);
     ///
-    /// let morning_start = pack(2000, 1, 1,  9, 0, 0, 0, 1, 0);
-    /// let morning_end   = pack(2000, 1, 1, 12, 0, 0, 0, 1, 0);
-    /// let afternoon_start = pack(2000, 1, 1, 14, 0, 0, 0, 1, 0);
-    /// let afternoon_end   = pack(2000, 1, 1, 18, 0, 0, 0, 1, 0);
+    /// let morning   = pack(2000, 1, 1,  9, 0, 0, 0, 1, 0);
+    /// let afternoon = pack(2000, 1, 1, 14, 0, 0, 0, 1, 0);
+    /// let hours = |n| Timevolume::new(TimevolumeUnit::Hour, n);
     ///
     /// let recurrence = Recurrence {
-    ///     range: Timerange { start: year_start, end: year_end },
+    ///     range: Timerange { start: year_start, volume: year },
     ///     months: Some(vec![Month::January, Month::March]),
     ///     weeks:  Some(vec![1, 3]),
     ///     youbi:  Some(vec![Youbi::Monday, Youbi::Wednesday]),
     ///     periods_in_a_day: Some(vec![
-    ///         Timerange { start: morning_start,   end: morning_end   },
-    ///         Timerange { start: afternoon_start, end: afternoon_end },
+    ///         Timerange { start: morning,   volume: hours(3) },
+    ///         Timerange { start: afternoon, volume: hours(4) },
     ///     ]),
     /// };
     ///
@@ -68,15 +70,20 @@ impl Recurrence {
     ///
     /// let (year, month, day, hour, minute, ..) = unpack(result[0].start);
     /// assert_eq!((year, month, day, hour, minute), (2026, 1, 5, 9, 0));
-    /// let (_, _, _, end_hour, end_minute, ..) = unpack(result[0].end);
+    /// let (_, _, _, end_hour, end_minute, ..) = unpack(add(result[0].start, result[0].volume));
     /// assert_eq!((end_hour, end_minute), (12, 0));
     /// ```
     pub fn generate(&self, start: u64, end: u64) -> Vec<Timerange> {
         let start = self.range.start.max(start);
-        let end = match (self.range.end, end) {
+        let until = if self.range.start == 0 || self.range.volume == Timevolume::default() {
+            0
+        } else {
+            add(self.range.start, self.range.volume)
+        };
+        let end = match (until, end) {
             (0, end) => end,
-            (range_end, 0) => range_end,
-            (range_end, end) => range_end.min(end),
+            (until, 0) => until,
+            (until, end) => until.min(end),
         };
         if start == 0 || end == 0 || start > end {
             return vec![];
@@ -105,13 +112,11 @@ impl Recurrence {
                     Some(periods) => {
                         for period in periods {
                             let (year, month, day, ..) = unpack(current);
-                            let merge = |overlay: u64| {
-                                if overlay == 0 {
-                                    return 0;
-                                }
-                                let (_, _, _, hour, minute, second, centisecond, is_utc, timezone) =
-                                    unpack(overlay);
-                                pack(
+                            let (_, _, _, hour, minute, second, centisecond, is_utc, timezone) =
+                                unpack(period.start);
+                            let start = match period.start {
+                                0 => 0,
+                                _ => pack(
                                     year,
                                     month,
                                     day,
@@ -121,17 +126,14 @@ impl Recurrence {
                                     centisecond,
                                     is_utc,
                                     timezone,
-                                )
+                                ),
                             };
-                            result.push(Timerange {
-                                start: merge(period.start),
-                                end:   merge(period.end),
-                            });
+                            result.push(Timerange { start, volume: period.volume });
                         }
                     }
                     None => {
-                        let next_day = add(current, Timevolume::new(TimevolumeUnit::Day, 1));
-                        result.push(Timerange { start: current, end: next_day });
+                        let volume = Timevolume::new(TimevolumeUnit::Day, 1);
+                        result.push(Timerange { start: current, volume });
                     }
                 }
             }
