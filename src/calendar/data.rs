@@ -13,7 +13,7 @@ use crate::{
     js_client::{WireError, parse},
     list::ListError,
     object::Predicate,
-    timestamp::{diff, pack},
+    timestamp::{Timeunit, diff, pack},
 };
 
 // --- layout ---
@@ -87,7 +87,8 @@ pub fn stamp(entry: &mut DataStruct, now: u64) {
 }
 
 pub fn new_uid(now: u64) -> u128 {
-    let unix_ms = diff(pack(1970, 1, 1, 0, 0, 0, 0, 0, 0), now).max(0) as u128 * 10;
+    let unix_ms =
+        diff(pack(1970, 1, 1, 0, 0, 0, 0, 0, 0), now, Timeunit::Centisecond).max(0) as u128 * 10;
     let mut bytes = [0u8; 10];
     getrandom::fill(&mut bytes).unwrap();
     let rand_a = u128::from(u16::from_le_bytes([bytes[0], bytes[1]]) & 0x0FFF);
