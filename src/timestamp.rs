@@ -158,8 +158,8 @@ pub fn from_ut(ut: f64, is_utc: bool, timezone: &Timezone) -> u64 {
     let milliseconds = ut as i64;
     let centisecond = milliseconds.rem_euclid(1000) / 10;
     let seconds = milliseconds.div_euclid(1000);
-    let (seconds, is_utc_bit, timezone_id) = if is_utc {
-        (seconds, 1u64, 0u64)
+    let (seconds, is_utc_bit) = if is_utc {
+        (seconds, 1u64)
     } else {
         let offset_seconds = match timezone {
             Timezone::None => 0,
@@ -173,7 +173,7 @@ pub fn from_ut(ut: f64, is_utc: bool, timezone: &Timezone) -> u64 {
             Timezone::AmericaNewYork => -5 * 3600,
             Timezone::AmericaLosAngeles => -8 * 3600,
         };
-        (seconds + offset_seconds, 0u64, timezone.id() as u64)
+        (seconds + offset_seconds, 0u64)
     };
 
     let seconds_of_day = seconds.rem_euclid(86400);
@@ -192,7 +192,7 @@ pub fn from_ut(ut: f64, is_utc: bool, timezone: &Timezone) -> u64 {
     let month = if month_index < 10 { month_index + 3 } else { month_index - 9 };
     let year = year_of_era + era * 400 + if month <= 2 { 1 } else { 0 };
 
-    pack(year, month, day, hour, minute, second, centisecond, is_utc_bit, timezone_id)
+    pack(year, month, day, hour, minute, second, centisecond, is_utc_bit, timezone.id() as u64)
 }
 
 /// ```
@@ -818,7 +818,7 @@ mod tests {
                 time % 60_000 / 1000,
                 time % 1000 / 10,
                 is_utc as u64,
-                if is_utc { 0 } else { zone.id() as u64 },
+                zone.id() as u64,
             );
             assert_eq!(
                 unpack(from_ut(milliseconds as f64, is_utc, zone)),
