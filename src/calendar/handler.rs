@@ -14,6 +14,7 @@ use rectgrid::{
 use crate::{
     Error, Lang,
     calendar::{
+        HOUR_MINUTE, MONTH_DAY, YEAR_DAY,
         data::{
             self, DataError,
             appointment::{self, Place},
@@ -606,15 +607,15 @@ impl Handler {
                 EditField::Status,
                 option_value(&self.tags(appointment::STATUS), |s| tag::Code::read(s) == status),
             ),
-            (EditField::Date, display(place.day, LANG, Format::Date)),
+            (EditField::Date, display(place.day, LANG, YEAR_DAY, Format::Iso)),
             (
                 EditField::Resource,
                 option_value(&self.tags(appointment::RESOURCE), |r| {
                     tag::Uid::read(r) == place.resource
                 }),
             ),
-            (EditField::Start, display(start, Lang::Ja, Format::Time)),
-            (EditField::End, display(end, Lang::Ja, Format::Time)),
+            (EditField::Start, display(start, Lang::Ja, HOUR_MINUTE, Format::Iso)),
+            (EditField::End, display(end, Lang::Ja, HOUR_MINUTE, Format::Iso)),
             (EditField::Note, appointment::Note::read(draft)),
         ];
         let mut commands = vec![
@@ -1427,8 +1428,8 @@ impl Handler {
                     Target::CardPart(n, CardPart::Time).to_dom(),
                     format!(
                         "{}–{}",
-                        display(start, Lang::Ja, Format::Time),
-                        display(end, Lang::Ja, Format::Time)
+                        display(start, Lang::Ja, HOUR_MINUTE, Format::Iso),
+                        display(end, Lang::Ja, HOUR_MINUTE, Format::Iso)
                     ),
                 ),
                 (Target::CardPart(n, CardPart::Title).to_dom(), appointment::Title::read(entry)),
@@ -1555,13 +1556,13 @@ impl Handler {
                     value: if self.month() {
                         String::from(youbi(day).label(LANG))
                     } else {
-                        display(day, LANG, Format::Short)
+                        display(day, LANG, MONTH_DAY, Format::WithYoubi)
                     },
                 }
             })
             .collect();
         let span = if self.month() { Month::days() } else { days };
-        let start = display(first, LANG, Format::Long);
+        let start = display(first, LANG, YEAR_DAY, Format::WithYoubi);
         let value = if span == 1 {
             start
         } else {
@@ -1570,7 +1571,8 @@ impl Handler {
                 display(
                     add(first, Timevolume::new(TimevolumeUnit::Day, u64::from(span - 1))),
                     LANG,
-                    Format::Long,
+                    YEAR_DAY,
+                    Format::WithYoubi
                 )
             )
         };
@@ -1674,9 +1676,9 @@ impl Handler {
                     _ => String::new(),
                 }
             } else {
-                self.clock
-                    .time(f64::from(row))
-                    .map_or_else(String::new, |time| display(time, Lang::Ja, Format::Time))
+                self.clock.time(f64::from(row)).map_or_else(String::new, |time| {
+                    display(time, Lang::Ja, HOUR_MINUTE, Format::Iso)
+                })
             };
             for side in 1..=2 {
                 commands.push(Command::SetText {
@@ -3319,7 +3321,7 @@ mod tests {
         );
         assert_eq!(
             value_of(&commands, &Target::EditField(EditField::Date).to_dom()).unwrap(),
-            display(base, Lang::Ja, Format::Date)
+            display(base, Lang::Ja, YEAR_DAY, Format::Iso)
         );
         assert_eq!(
             value_of(&commands, &Target::EditField(EditField::Resource).to_dom()).unwrap(),
@@ -3365,7 +3367,7 @@ mod tests {
         assert_eq!(value_of(&commands, &Target::EditField(EditField::Title).to_dom()).unwrap(), "");
         assert_eq!(
             value_of(&commands, &Target::EditField(EditField::Date).to_dom()).unwrap(),
-            display(base, Lang::Ja, Format::Date)
+            display(base, Lang::Ja, YEAR_DAY, Format::Iso)
         );
         assert_eq!(
             value_of(&commands, &Target::EditField(EditField::Resource).to_dom()).unwrap(),
@@ -3419,7 +3421,7 @@ mod tests {
         );
         assert_eq!(
             value_of(&commands, &Target::EditField(EditField::Date).to_dom()).unwrap(),
-            display(base, Lang::Ja, Format::Date)
+            display(base, Lang::Ja, YEAR_DAY, Format::Iso)
         );
         assert!(commands.iter().any(|c| matches!(c,
             Command::SetAttribute { id, attribute: Attribute::Hidden, .. } if *id == Target::Preview.to_dom())));
@@ -3436,7 +3438,13 @@ mod tests {
         assert_eq!(cells.len(), 4);
         assert_eq!(cells[0], Place { day: base, resource: 103 });
         assert_eq!(cells[3], Place { day: after(base, 1), resource: 102 });
-        let query = form_query("Span", &display(base, Lang::Ja, Format::Date), 3, "12:30", "14:30");
+        let query = form_query(
+            "Span",
+            &display(base, Lang::Ja, YEAR_DAY, Format::Iso),
+            3,
+            "12:30",
+            "14:30",
+        );
         submit(&mut handler, &query);
         let all = appointments(&handler);
         let added = all.last().unwrap();
@@ -3542,11 +3550,16 @@ mod tests {
         handler.process_fetched(&sample_response(1, 200));
         let before = appointments(&handler).len();
         tap_empty(&mut handler, 0.0, 0.0);
-        let date = display(today(), Lang::Ja, Format::Date);
+        let date = display(today(), Lang::Ja, YEAR_DAY, Format::Iso);
         let open = at(600);
         let (start, end) = (
-            display(open, Lang::Ja, Format::Time),
-            display(add(open, Timevolume::new(TimevolumeUnit::Minute, 60)), Lang::Ja, Format::Time),
+            display(open, Lang::Ja, HOUR_MINUTE, Format::Iso),
+            display(
+                add(open, Timevolume::new(TimevolumeUnit::Minute, 60)),
+                Lang::Ja,
+                HOUR_MINUTE,
+                Format::Iso,
+            ),
         );
         let query = form_query("Neo", &date, 1, &start, &end);
         let commands = submit(&mut handler, &query);
@@ -3589,7 +3602,8 @@ mod tests {
     fn a_form_missing_a_field_is_rejected() {
         let (mut handler, base) = drag_fixture();
         tap_empty(&mut handler, 0.0, 0.0);
-        let query = form_query("x", &display(base, Lang::Ja, Format::Date), 1, "09:30", "10:30");
+        let query =
+            form_query("x", &display(base, Lang::Ja, YEAR_DAY, Format::Iso), 1, "09:30", "10:30");
         let missing = query.replace("&8=n", "");
         let commands = submit(&mut handler, &missing);
         assert_eq!(
@@ -3999,7 +4013,7 @@ mod tests {
     #[test]
     fn a_form_with_an_option_outside_the_data_is_rejected() {
         let (mut handler, base) = drag_fixture();
-        let date = display(base, Lang::Ja, Format::Date);
+        let date = display(base, Lang::Ja, YEAR_DAY, Format::Iso);
         for (query, message) in [
             (form_query("x", &date, 1, "10:00", "11:00").replace("&3=1", "&3=2"), "状態が不正です"),
             (form_query("x", &date, 5, "10:00", "11:00"), "資源が不正です"),
@@ -4071,7 +4085,7 @@ mod tests {
                         let titles = ["", "Neo", "x"];
                         let query = form_query(
                             titles[rng.below(titles.len())],
-                            &display(day, Lang::Ja, Format::Date),
+                            &display(day, Lang::Ja, YEAR_DAY, Format::Iso),
                             1 + rng.below(5) as u32,
                             &format!("{:02}:{:02}", rng.below(24), rng.below(60)),
                             &format!("{:02}:{:02}", rng.below(24), rng.below(60)),
@@ -4265,8 +4279,13 @@ mod tests {
             value_of(&commands, &Target::EditField(EditField::Resource).to_dom()),
             Some(String::new())
         );
-        let query =
-            form_query("t1", &display(today(), Lang::Ja, Format::Date), 2, "10:00", "11:00");
+        let query = form_query(
+            "t1",
+            &display(today(), Lang::Ja, YEAR_DAY, Format::Iso),
+            2,
+            "10:00",
+            "11:00",
+        );
         let commands = submit(&mut handler, &query);
         assert!(commands.iter().any(|c| matches!(c, Command::CloseModal { .. })));
         let cells = appointment::Places::read(&appointment_of(&handler, 1));

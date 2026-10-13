@@ -210,6 +210,7 @@ pub mod appointment {
     };
     use crate::{
         Lang,
+        calendar::{HOUR_MINUTE, YEAR_DAY},
         data_struct::DataStruct,
         file_store::FileStore,
         js_client::{Input, Output, parse},
@@ -420,7 +421,7 @@ pub mod appointment {
     }
 
     pub fn export(store: &impl FileStore) -> Result<Vec<u8>, DataError> {
-        let date = |day: u64| display(day, Lang::Ja, Format::Date);
+        let date = |day: u64| display(day, Lang::Ja, YEAR_DAY, Format::Iso);
         let option =
             |t: &DataStruct| json!({"code": tag::Code::read(t), "label": tag::Label::read(t)});
         let appointments: Vec<Value> = entries(store, KIND)?
@@ -434,8 +435,8 @@ pub mod appointment {
                 json!({
                     "uid": format!("{}", Uid::read(a)),
                     "places": places,
-                    "start": display(start, Lang::Ja, Format::Time),
-                    "end": display(end, Lang::Ja, Format::Time),
+                    "start": display(start, Lang::Ja, HOUR_MINUTE, Format::Iso),
+                    "end": display(end, Lang::Ja, HOUR_MINUTE, Format::Iso),
                     "title": Title::read(a),
                     "category": Category::read(a),
                     "status": Status::read(a),

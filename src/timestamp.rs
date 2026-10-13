@@ -126,11 +126,8 @@ pub enum Month {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Format {
-    Date,
-    DateTime,
-    Time,
-    Short,
-    Long,
+    Iso,
+    WithYoubi,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -238,46 +235,126 @@ pub fn from_ut(ut: f64, is_utc: bool, timezone: &Timezone) -> u64 {
 }
 
 /// ```
-/// use app::{En, Lang, timestamp::*};
+/// use app::{En, Lang, timestamp::{*, TimevolumeUnit::*}};
 ///
-/// let timestamp = pack(2026, 10, 2, 9, 30, 0, 0, 0, 0);
-/// assert_eq!(display(timestamp, Lang::Ja, Format::Date), "2026-10-02");
-/// assert_eq!(display(timestamp, Lang::Ja, Format::DateTime), "2026-10-02 09:30");
-/// assert_eq!(display(timestamp, Lang::Ja, Format::Time), "09:30");
-/// assert_eq!(display(timestamp, Lang::Ja, Format::Short), "10/2(金)");
-/// assert_eq!(display(timestamp, Lang::Ja, Format::Long), "2026年10月2日(金)");
-/// assert_eq!(display(timestamp, Lang::En(En::Us), Format::Short), "Fri 10/2");
-/// assert_eq!(display(timestamp, Lang::En(En::Us), Format::Long), "Fri, Oct 2, 2026");
+/// let timestamp = pack(2026, 10, 2, 9, 30, 5, 7, 0, 0);
+/// assert_eq!(display(timestamp, Lang::Ja, (Year, Day), Format::Iso), "2026-10-02");
+/// assert_eq!(display(timestamp, Lang::Ja, (Year, Minute), Format::Iso), "2026-10-02 09:30");
+/// assert_eq!(display(timestamp, Lang::Ja, (Hour, Minute), Format::Iso), "09:30");
+/// assert_eq!(display(timestamp, Lang::Ja, (Hour, Centisecond), Format::Iso), "09:30:05.07");
+/// assert_eq!(display(timestamp, Lang::Ja, (Month, Day), Format::WithYoubi), "10/2(金)");
+/// assert_eq!(display(timestamp, Lang::Ja, (Year, Day), Format::WithYoubi), "2026年10月2日(金)");
+/// assert_eq!(display(timestamp, Lang::Ja, (Year, Minute), Format::WithYoubi), "2026年10月2日(金) 9時30分");
+/// assert_eq!(display(timestamp, Lang::Ja, (Month, Minute), Format::WithYoubi), "10/2(金) 9:30");
+/// assert_eq!(display(timestamp, Lang::Ja, (Hour, Minute), Format::WithYoubi), "9:30");
+/// assert_eq!(display(timestamp, Lang::En(En::Us), (Month, Day), Format::WithYoubi), "Fri 10/2");
+/// assert_eq!(display(timestamp, Lang::En(En::Us), (Year, Day), Format::WithYoubi), "Fri, Oct 2, 2026");
+/// assert_eq!(display(timestamp, Lang::En(En::Us), (Year, Minute), Format::WithYoubi), "Fri, Oct 2, 2026 9:30");
+/// assert_eq!(display(timestamp, Lang::En(En::Us), (Year, Month), Format::WithYoubi), "Oct 2026");
 /// ```
-pub fn display(timestamp: u64, lang: Lang, format: Format) -> String {
-    let year: u64 = LAYOUT.get(timestamp, YEAR);
-    let month: u64 = LAYOUT.get(timestamp, MONTH);
-    let day: u64 = LAYOUT.get(timestamp, DAY);
-    let hour: u64 = LAYOUT.get(timestamp, HOUR);
-    let minute: u64 = LAYOUT.get(timestamp, MINUTE);
-    match format {
-        Format::Date => format!("{year:04}-{month:02}-{day:02}"),
-        Format::DateTime => format!("{year:04}-{month:02}-{day:02} {hour:02}:{minute:02}"),
-        Format::Time => format!("{hour:02}:{minute:02}"),
-        Format::Short => {
-            let name = youbi(timestamp).label(lang);
-            match lang {
-                Lang::En(_) => format!("{name} {month}/{day}"),
-                Lang::Ja => format!("{month}/{day}({name})"),
-            }
+pub fn display(
+    timestamp: u64,
+    lang: Lang,
+    scope: (TimevolumeUnit, TimevolumeUnit),
+    format: Format,
+) -> String {
+    use TimevolumeUnit::*;
+
+    let (year, month, day, hour, minute, second, centisecond, ..) = unpack(timestamp);
+    let within = |unit: TimevolumeUnit| scope.0 <= unit && unit <= scope.1;
+    let dates = [(Year, year), (Month, month), (Day, day)];
+    let clocks = [(Hour, hour), (Minute, minute), (Second, second), (Centisecond, centisecond)];
+    let clock = |padded: bool| {
+        clocks.iter().filter(|(unit, _)| within(*unit)).fold(
+            String::new(),
+            |text, (unit, value)| match (text.is_empty(), unit) {
+                (true, _) if padded => format!("{value:02}"),
+                (true, _) => format!("{value}"),
+                (false, Centisecond) => format!("{text}.{value:02}"),
+                (false, _) => format!("{text}:{value:02}"),
+            },
+        )
+    };
+    let join = |date: String, clock: String| match (date.is_empty(), clock.is_empty()) {
+        (false, false) => format!("{date} {clock}"),
+        _ => format!("{date}{clock}"),
+    };
+    let verbal = within(Year);
+    let name = if within(Day) { youbi(timestamp).label(lang) } else { "" };
+    match (format, lang) {
+        (Format::Iso, _) => {
+            let date = dates
+                .iter()
+                .filter(|(unit, _)| within(*unit))
+                .map(|(unit, value)| match unit {
+                    Year => format!("{value:04}"),
+                    _ => format!("{value:02}"),
+                })
+                .collect::<alloc::vec::Vec<_>>()
+                .join("-");
+            join(date, clock(true))
         }
-        Format::Long => {
-            let name = youbi(timestamp).label(lang);
-            match lang {
-                Lang::En(_) => {
-                    let month_name = [
-                        "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct",
-                        "Nov", "Dec",
-                    ][month as usize - 1];
-                    format!("{name}, {month_name} {day}, {year}")
-                }
-                Lang::Ja => format!("{year}年{month}月{day}日({name})"),
+        (Format::WithYoubi, Lang::Ja) if verbal => {
+            let date = dates
+                .iter()
+                .filter(|(unit, _)| within(*unit))
+                .map(|(unit, value)| format!("{value}{}", ["年", "月", "日"][*unit as usize]))
+                .collect::<String>();
+            let suffix = if within(Day) { format!("({name})") } else { String::new() };
+            let clock = clocks
+                .iter()
+                .filter(|(unit, _)| within(*unit) && *unit != Centisecond)
+                .map(|(unit, value)| match unit {
+                    Hour => format!("{value}時"),
+                    Minute => format!("{value}分"),
+                    _ if within(Centisecond) => format!("{value}.{centisecond:02}秒"),
+                    _ => format!("{value}秒"),
+                })
+                .collect::<String>();
+            join(format!("{date}{suffix}"), clock)
+        }
+        (Format::WithYoubi, Lang::Ja) => {
+            let date = dates
+                .iter()
+                .filter(|(unit, _)| within(*unit))
+                .map(|(_, value)| format!("{value}"))
+                .collect::<alloc::vec::Vec<_>>()
+                .join("/");
+            let suffix = if within(Day) { format!("({name})") } else { String::new() };
+            join(format!("{date}{suffix}"), clock(false))
+        }
+        (Format::WithYoubi, Lang::En(_)) if verbal => {
+            let month_name = [
+                "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+            ][month as usize - 1];
+            let mut date = String::from(name);
+            if within(Month) {
+                date = if date.is_empty() {
+                    String::from(month_name)
+                } else {
+                    format!("{date}, {month_name}")
+                };
             }
+            if within(Day) {
+                date =
+                    if within(Month) { format!("{date} {day}") } else { format!("{date}, {day}") };
+            }
+            date = match (date.is_empty(), within(Day)) {
+                (true, _) => format!("{year}"),
+                (false, true) => format!("{date}, {year}"),
+                (false, false) => format!("{date} {year}"),
+            };
+            join(date, clock(false))
+        }
+        (Format::WithYoubi, Lang::En(_)) => {
+            let date = dates
+                .iter()
+                .filter(|(unit, _)| within(*unit))
+                .map(|(_, value)| format!("{value}"))
+                .collect::<alloc::vec::Vec<_>>()
+                .join("/");
+            let date = if within(Day) { format!("{name} {date}") } else { date };
+            join(date, clock(false))
         }
     }
 }
@@ -524,7 +601,7 @@ mod tests {
     use alloc::format;
 
     use super::*;
-    use crate::Rng;
+    use crate::{En, Rng};
 
     #[test]
     fn minute_arithmetic_keeps_a_zero_date_within_the_day() {
@@ -595,12 +672,26 @@ mod tests {
 
     #[test]
     fn display_format() {
+        use TimevolumeUnit::*;
+
         let timestamp = pack(2026, 5, 6, 7, 8, 9, 10, 1, 0);
-        assert_eq!(display(timestamp, Lang::Ja, Format::DateTime), "2026-05-06 07:08");
-        assert_eq!(display(timestamp, Lang::Ja, Format::Date), "2026-05-06");
-        assert_eq!(display(timestamp, Lang::Ja, Format::Time), "07:08");
-        assert_eq!(display(timestamp, Lang::Ja, Format::Short), "5/6(水)");
-        assert_eq!(display(timestamp, Lang::Ja, Format::Long), "2026年5月6日(水)");
+        assert_eq!(display(timestamp, Lang::Ja, (Year, Minute), Format::Iso), "2026-05-06 07:08");
+        assert_eq!(display(timestamp, Lang::Ja, (Year, Day), Format::Iso), "2026-05-06");
+        assert_eq!(display(timestamp, Lang::Ja, (Hour, Minute), Format::Iso), "07:08");
+        assert_eq!(display(timestamp, Lang::Ja, (Month, Day), Format::WithYoubi), "5/6(水)");
+        assert_eq!(
+            display(timestamp, Lang::Ja, (Year, Day), Format::WithYoubi),
+            "2026年5月6日(水)"
+        );
+        assert_eq!(
+            display(timestamp, Lang::Ja, (Year, Centisecond), Format::WithYoubi),
+            "2026年5月6日(水) 7時8分9.10秒"
+        );
+        assert_eq!(display(timestamp, Lang::Ja, (Year, Year), Format::WithYoubi), "2026年");
+        assert_eq!(display(timestamp, Lang::Ja, (Day, Day), Format::WithYoubi), "6(水)");
+        assert_eq!(display(timestamp, Lang::Ja, (Minute, Second), Format::Iso), "08:09");
+        assert_eq!(display(timestamp, Lang::En(En::Us), (Year, Year), Format::WithYoubi), "2026");
+        assert_eq!(display(timestamp, Lang::En(En::Us), (Day, Day), Format::WithYoubi), "Wed 6");
     }
 
     fn leap(year: i64) -> bool {
