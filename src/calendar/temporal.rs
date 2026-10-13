@@ -9,7 +9,7 @@ use core::{
     primitive::u64,
 };
 
-use crate::timestamp::{Month, Timevolume, Youbi, add, pack, unpack, youbi};
+use crate::timestamp::{Month, Timevolume, TimevolumeUnit, Youbi, add, pack, unpack, youbi};
 
 // - time
 // - timeline
@@ -130,13 +130,13 @@ impl Recurrence {
                         }
                     }
                     None => {
-                        let next_day = add(current, Timevolume::Day(1));
+                        let next_day = add(current, Timevolume::new(TimevolumeUnit::Day, 1));
                         result.push(Timerange { start: current, end: next_day });
                     }
                 }
             }
 
-            current = add(current, Timevolume::Day(1));
+            current = add(current, Timevolume::new(TimevolumeUnit::Day, 1));
         }
 
         result

@@ -2,7 +2,7 @@ use alloc::{format, string::String};
 
 use crate::{
     Lang,
-    field::{Layout, Spec::Unsigned},
+    field::{Field, Layout, Spec::Unsigned},
 };
 
 // timestamp (64 bits)
@@ -133,18 +133,55 @@ pub enum Format {
     Long,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Timeunit {
-    Centisecond,
-    Day,
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum TimevolumeUnit {
+    Year,
     Month,
+    Day,
+    Hour,
+    Minute,
+    Second,
+    Centisecond,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Timevolume {
-    Centisecond(i64),
-    Day(i64),
-    Month(i64),
+const SLOTS: [(usize, Field); 7] = [
+    (0, Field::new(45, 13)),
+    (1, Field::new(38, 17)),
+    (2, Field::new(33, 22)),
+    (3, Field::new(0, 27)),
+    (2, Field::new(0, 33)),
+    (1, Field::new(0, 38)),
+    (0, Field::new(0, 45)),
+];
+
+/// ```
+/// use app::timestamp::*;
+///
+/// let volume = Timevolume::new(TimevolumeUnit::Day, 2).with(TimevolumeUnit::Hour, 3);
+/// assert_eq!(volume.get(TimevolumeUnit::Day), 2);
+/// assert_eq!(volume.get(TimevolumeUnit::Hour), 3);
+/// assert_eq!(volume.get(TimevolumeUnit::Minute), 0);
+/// assert_eq!(Timevolume::default(), Timevolume::new(TimevolumeUnit::Day, 0));
+/// ```
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct Timevolume([u64; 4]);
+
+impl Timevolume {
+    pub fn new(unit: TimevolumeUnit, value: u64) -> Self {
+        Self::default().with(unit, value)
+    }
+
+    pub fn with(self, unit: TimevolumeUnit, value: u64) -> Self {
+        let (word, field) = SLOTS[unit as usize];
+        let mut words = self.0;
+        words[word] = field.set(words[word], value);
+        Self(words)
+    }
+
+    pub fn get(&self, unit: TimevolumeUnit) -> u64 {
+        let (word, field) = SLOTS[unit as usize];
+        field.get(self.0[word])
+    }
 }
 
 ///
@@ -272,37 +309,54 @@ pub fn youbi(timestamp: u64) -> Youbi {
     ][youbi_index as usize]
 }
 
+const CIVIL: u32 = LAYOUT.field(IS_UTC).position + 1;
+
+/// ```
+/// use app::timestamp::*;
+///
+/// let morning = pack(2026, 10, 2, 9, 0, 0, 0, 1, 0);
+/// let noon = pack(2026, 10, 2, 12, 0, 0, 0, 0, 3);
+/// assert!(is_before(morning, noon));
+/// assert!(!is_before(noon, morning));
+/// assert!(!is_before(noon, pack(2026, 10, 2, 12, 0, 0, 0, 1, 9)));
+/// ```
+pub fn is_before(timestamp: u64, other: u64) -> bool {
+    timestamp >> CIVIL < other >> CIVIL
+}
+
 /// ```
 /// use app::timestamp::*;
 ///
 /// let from = pack(2026, 10, 2, 23, 0, 0, 0, 0, 0);
 /// let to = pack(2026, 10, 4, 1, 0, 0, 50, 0, 0);
-/// assert_eq!(diff(from, to, Timeunit::Centisecond), (24 + 2) * 3600 * 100 + 50);
-/// assert_eq!(diff(to, from, Timeunit::Centisecond), -((24 + 2) * 3600 * 100 + 50));
-/// assert_eq!(diff(from, to, Timeunit::Day), 2);
-/// assert_eq!(diff(from, to, Timeunit::Month), 0);
+/// let centiseconds = (24 + 2) * 3600 * 100 + 50;
+/// assert_eq!(diff(from, to, TimevolumeUnit::Centisecond), Timevolume::new(TimevolumeUnit::Centisecond, centiseconds));
+/// assert_eq!(diff(to, from, TimevolumeUnit::Centisecond), Timevolume::new(TimevolumeUnit::Centisecond, centiseconds));
+/// assert_eq!(diff(from, to, TimevolumeUnit::Hour).get(TimevolumeUnit::Hour), 26);
+/// assert_eq!(diff(from, to, TimevolumeUnit::Day).get(TimevolumeUnit::Day), 2);
+/// assert_eq!(diff(from, to, TimevolumeUnit::Month).get(TimevolumeUnit::Month), 0);
 ///
 /// let day = 24 * 3600 * 100;
 /// let leap = pack(2000, 2, 29, 0, 0, 0, 0, 0, 0);
 /// let next = pack(2001, 3, 1, 0, 0, 0, 0, 0, 0);
-/// assert_eq!(diff(leap, next, Timeunit::Centisecond), 366 * day);
-/// assert_eq!(diff(leap, next, Timeunit::Day), 366);
-/// assert_eq!(diff(leap, next, Timeunit::Month), 13);
+/// assert_eq!(diff(leap, next, TimevolumeUnit::Centisecond).get(TimevolumeUnit::Centisecond), 366 * day);
+/// assert_eq!(diff(leap, next, TimevolumeUnit::Day).get(TimevolumeUnit::Day), 366);
+/// assert_eq!(diff(leap, next, TimevolumeUnit::Month).get(TimevolumeUnit::Month), 13);
+/// assert_eq!(diff(leap, next, TimevolumeUnit::Year).get(TimevolumeUnit::Year), 1);
 /// ```
-pub fn diff(from: u64, to: u64, unit: Timeunit) -> i64 {
-    let measure = |timestamp: u64| {
+pub fn diff(timestamp: u64, other: u64, unit: TimevolumeUnit) -> Timevolume {
+    let count = |timestamp: u64| {
         let (year, month, day, hour, minute, second, centisecond, ..) = unpack(timestamp);
         match unit {
-            Timeunit::Centisecond => {
-                day_number(year, month, day) * 8_640_000
-                    + ((hour * 60 + minute) * 60 + second) * 100
-                    + centisecond
-            }
-            Timeunit::Day => day_number(year, month, day),
-            Timeunit::Month => year * 12 + month,
+            TimevolumeUnit::Year => year,
+            TimevolumeUnit::Month => year * 12 + month,
+            unit => [(24, hour), (60, minute), (60, second), (100, centisecond)]
+                .iter()
+                .take(unit as usize - TimevolumeUnit::Day as usize)
+                .fold(day_number(year, month, day), |count, (scale, part)| count * scale + part),
         }
     };
-    measure(to) - measure(from)
+    Timevolume::new(unit, count(timestamp).abs_diff(count(other)))
 }
 
 /// ```
@@ -313,49 +367,80 @@ pub fn diff(from: u64, to: u64, unit: Timeunit) -> i64 {
 ///     (year, month, day, hour, minute)
 /// };
 /// let at = |year, month, day, hour, minute| pack(year, month, day, hour, minute, 0, 0, 0, 0);
+/// let volume = |unit, value| Timevolume::new(unit, value);
 ///
-/// assert_eq!(date(add(at(2000, 2, 29, 0, 0), Timevolume::Month(12))), (2001, 2, 28, 0, 0));
-/// assert_eq!(date(add(at(2000, 2, 29, 0, 0), Timevolume::Month(-12))), (1999, 2, 28, 0, 0));
-/// assert_eq!(date(add(at(2001, 1, 31, 0, 0), Timevolume::Month(1))), (2001, 2, 28, 0, 0));
-/// assert_eq!(date(add(at(2002, 3, 1, 0, 0), Timevolume::Month(-14))), (2001, 1, 1, 0, 0));
+/// assert_eq!(date(add(at(2000, 2, 29, 0, 0), volume(TimevolumeUnit::Year, 1))), (2001, 2, 28, 0, 0));
+/// assert_eq!(date(add(at(2001, 1, 31, 0, 0), volume(TimevolumeUnit::Month, 1))), (2001, 2, 28, 0, 0));
+/// assert_eq!(date(add(at(2001, 12, 31, 0, 0), volume(TimevolumeUnit::Day, 1))), (2002, 1, 1, 0, 0));
+/// assert_eq!(date(add(at(2001, 1, 31, 23, 0), volume(TimevolumeUnit::Hour, 2))), (2001, 2, 1, 1, 0));
+/// assert_eq!(date(add(at(2001, 1, 1, 23, 59), volume(TimevolumeUnit::Minute, 2))), (2001, 1, 2, 0, 1));
 ///
-/// assert_eq!(date(add(at(2001, 12, 31, 0, 0), Timevolume::Day(1))), (2002, 1, 1, 0, 0));
-/// assert_eq!(date(add(at(2001, 3, 1, 0, 0), Timevolume::Day(-1))), (2001, 2, 28, 0, 0));
+/// let mixed = volume(TimevolumeUnit::Month, 1).with(TimevolumeUnit::Day, 1);
+/// assert_eq!(date(add(at(2001, 1, 30, 0, 0), mixed)), (2001, 3, 1, 0, 0));
 ///
-/// let hour = 3600 * 100;
-/// let minute = 60 * 100;
-/// assert_eq!(date(add(at(2001, 1, 31, 23, 0), Timevolume::Centisecond(2 * hour))), (2001, 2, 1, 1, 0));
-/// assert_eq!(date(add(at(2001, 3, 1, 0, 0), Timevolume::Centisecond(-2 * hour))), (2001, 2, 28, 22, 0));
-/// assert_eq!(date(add(at(2001, 1, 1, 23, 59), Timevolume::Centisecond(2 * minute))), (2001, 1, 2, 0, 1));
-/// assert_eq!(date(add(at(2001, 1, 2, 0, 0), Timevolume::Centisecond(-minute))), (2001, 1, 1, 23, 59));
+/// assert_eq!(date(add(at(0, 0, 0, 9, 30), volume(TimevolumeUnit::Minute, 45))), (0, 0, 0, 10, 15));
+/// assert_eq!(date(add(at(0, 0, 0, 9, 30), volume(TimevolumeUnit::Day, 0))), (0, 0, 0, 9, 30));
 /// ```
 pub fn add(timestamp: u64, volume: Timevolume) -> u64 {
+    shift(timestamp, volume, 1)
+}
+
+/// ```
+/// use app::timestamp::*;
+///
+/// let date = |timestamp: u64| {
+///     let (year, month, day, hour, minute, ..) = unpack(timestamp);
+///     (year, month, day, hour, minute)
+/// };
+/// let at = |year, month, day, hour, minute| pack(year, month, day, hour, minute, 0, 0, 0, 0);
+/// let volume = |unit, value| Timevolume::new(unit, value);
+///
+/// assert_eq!(date(sub(at(2000, 2, 29, 0, 0), volume(TimevolumeUnit::Year, 1))), (1999, 2, 28, 0, 0));
+/// assert_eq!(date(sub(at(2002, 3, 1, 0, 0), volume(TimevolumeUnit::Month, 14))), (2001, 1, 1, 0, 0));
+/// assert_eq!(date(sub(at(2001, 3, 1, 0, 0), volume(TimevolumeUnit::Day, 1))), (2001, 2, 28, 0, 0));
+/// assert_eq!(date(sub(at(2001, 3, 1, 0, 0), volume(TimevolumeUnit::Hour, 2))), (2001, 2, 28, 22, 0));
+/// assert_eq!(date(sub(at(2001, 1, 2, 0, 0), volume(TimevolumeUnit::Minute, 1))), (2001, 1, 1, 23, 59));
+/// assert_eq!(date(sub(at(0, 0, 0, 10, 15), volume(TimevolumeUnit::Minute, 45))), (0, 0, 0, 9, 30));
+/// ```
+pub fn sub(timestamp: u64, volume: Timevolume) -> u64 {
+    shift(timestamp, volume, -1)
+}
+
+fn shift(timestamp: u64, volume: Timevolume, sign: i64) -> u64 {
+    let amount = |unit: TimevolumeUnit| volume.get(unit) as i64 * sign;
     let (year, month, day, hour, minute, second, centisecond, is_utc, timezone) = unpack(timestamp);
-    let (year, month, day, hour, minute, second, centisecond) = match volume {
-        Timevolume::Centisecond(centiseconds) => {
-            let total = ((hour * 60 + minute) * 60 + second) * 100 + centisecond + centiseconds;
-            let (year, month, day) = match total.div_euclid(8_640_000) {
-                0 => (year, month, day),
-                days => date_of(day_number(year, month, day) + days),
-            };
-            let time = total.rem_euclid(8_640_000);
-            let seconds = time / 100;
-            (year, month, day, seconds / 3600, seconds % 3600 / 60, seconds % 60, time % 100)
-        }
-        Timevolume::Day(days) => {
-            let (year, month, day) = match days {
-                0 => (year, month, day),
-                days => date_of(day_number(year, month, day) + days),
-            };
-            (year, month, day, hour, minute, second, centisecond)
-        }
-        Timevolume::Month(months) => {
+    let (year, month, day) = match amount(TimevolumeUnit::Year) * 12 + amount(TimevolumeUnit::Month)
+    {
+        0 => (year, month, day),
+        months => {
             let total = year * 12 + (month - 1) + months;
             let (year, month) = (total.div_euclid(12), total.rem_euclid(12) + 1);
-            (year, month, day.min(days_in_month(year, month)), hour, minute, second, centisecond)
+            (year, month, day.min(days_in_month(year, month)))
         }
     };
-    pack(year, month, day, hour, minute, second, centisecond, is_utc, timezone)
+    let total = ((hour * 60 + minute) * 60 + second) * 100
+        + centisecond
+        + ((amount(TimevolumeUnit::Hour) * 60 + amount(TimevolumeUnit::Minute)) * 60
+            + amount(TimevolumeUnit::Second))
+            * 100
+        + amount(TimevolumeUnit::Centisecond);
+    let (year, month, day) = match amount(TimevolumeUnit::Day) + total.div_euclid(8_640_000) {
+        0 => (year, month, day),
+        days => date_of(day_number(year, month, day) + days),
+    };
+    let time = total.rem_euclid(8_640_000);
+    let seconds = time / 100;
+    pack(
+        year,
+        month,
+        day,
+        seconds / 3600,
+        seconds % 3600 / 60,
+        seconds % 60,
+        time % 100,
+        is_utc,
+        timezone,
+    )
 }
 
 fn day_number(year: i64, month: i64, day: i64) -> i64 {
@@ -444,14 +529,16 @@ mod tests {
     #[test]
     fn minute_arithmetic_keeps_a_zero_date_within_the_day() {
         let at = |hour, minute| pack(0, 0, 0, hour, minute, 0, 0, 0, 0);
-        let minutes = |n: i64| Timevolume::Centisecond(n * 6_000);
+        let minutes = |n| Timevolume::new(TimevolumeUnit::Minute, n);
         assert_eq!(add(at(9, 30), minutes(60)), at(10, 30));
         assert_eq!(add(at(9, 30), minutes(45)), at(10, 15));
-        assert_eq!(add(at(10, 15), minutes(-45)), at(9, 30));
-        assert_eq!(add(at(9, 30), Timevolume::Day(0)), at(9, 30));
-        assert_eq!(diff(at(9, 30), at(10, 30), Timeunit::Centisecond), 60 * 60 * 100);
-        assert_eq!(diff(at(10, 30), at(9, 30), Timeunit::Centisecond), -60 * 60 * 100);
-        assert!(at(9, 30) < at(10, 0) && at(10, 0) < at(10, 1));
+        assert_eq!(sub(at(10, 15), minutes(45)), at(9, 30));
+        assert_eq!(add(at(9, 30), Timevolume::default()), at(9, 30));
+        let hour = Timevolume::new(TimevolumeUnit::Centisecond, 60 * 60 * 100);
+        assert_eq!(diff(at(9, 30), at(10, 30), TimevolumeUnit::Centisecond), hour);
+        assert_eq!(diff(at(10, 30), at(9, 30), TimevolumeUnit::Centisecond), hour);
+        assert!(is_before(at(9, 30), at(10, 0)) && is_before(at(10, 0), at(10, 1)));
+        assert!(!is_before(at(10, 0), at(10, 0)));
     }
 
     #[test]
@@ -465,6 +552,38 @@ mod tests {
         assert_eq!(pack(0, 0, 0, 0, 0, 0, 1, 0, 0), 1 << 18);
         assert_eq!(pack(0, 0, 0, 0, 0, 0, 0, 1, 0), 1 << 17);
         assert_eq!(pack(0, 0, 0, 0, 0, 0, 0, 0, 1), 1 << 7);
+    }
+
+    #[test]
+    fn is_before_ignores_the_zone_bits() {
+        let civil = |is_utc, timezone| pack(2026, 10, 2, 9, 30, 0, 0, is_utc, timezone);
+        assert!(!is_before(civil(0, 0), civil(1, 9)));
+        assert!(!is_before(civil(1, 9), civil(0, 0)));
+        assert!(is_before(civil(1, 9), pack(2026, 10, 2, 9, 30, 0, 1, 0, 0)));
+    }
+
+    #[test]
+    fn timevolume_slots_hold_every_unit_independently() {
+        let maxes = [
+            (TimevolumeUnit::Year, 8_191),
+            (TimevolumeUnit::Month, 98_303),
+            (TimevolumeUnit::Day, 2_992_066),
+            (TimevolumeUnit::Hour, 71_809_607),
+            (TimevolumeUnit::Minute, 4_308_576_479),
+            (TimevolumeUnit::Second, 258_514_588_799),
+            (TimevolumeUnit::Centisecond, 25_851_458_879_999),
+        ];
+        let full = maxes.iter().fold(Timevolume::default(), |v, (unit, max)| v.with(*unit, *max));
+        for (unit, max) in maxes {
+            assert_eq!(full.get(unit), max, "{unit:?}");
+            assert_eq!(Timevolume::new(unit, max).get(unit), max, "{unit:?}");
+            assert_eq!(full.with(unit, 0).get(unit), 0, "{unit:?}");
+        }
+        let first = pack(0, 1, 1, 0, 0, 0, 0, 0, 0);
+        let last = pack(8191, 12, 31, 23, 59, 59, 99, 0, 0);
+        for (unit, max) in maxes {
+            assert_eq!(diff(first, last, unit).get(unit), max, "{unit:?}");
+        }
     }
 
     #[test]
@@ -551,6 +670,11 @@ mod tests {
         )
     }
 
+    fn step(timestamp: u64, unit: TimevolumeUnit, amount: i64) -> u64 {
+        let volume = Timevolume::new(unit, amount.unsigned_abs());
+        if amount < 0 { sub(timestamp, volume) } else { add(timestamp, volume) }
+    }
+
     fn random_timestamp(rng: &mut Rng) -> u64 {
         let year = if rng.chance(30) {
             [1900, 2000, 2100, 2400][rng.below(4)]
@@ -584,37 +708,45 @@ mod tests {
             let second = random_timestamp(&mut rng);
             let context = format!("seed {seed}");
 
-            assert_eq!(
-                diff(first, second, Timeunit::Centisecond),
-                centiseconds(second) - centiseconds(first),
-                "{context}"
-            );
             let date = |timestamp: u64| {
-                let (year, month, day, ..) = unpack(timestamp);
-                (year, month, day)
+                let (year, month, day, hour, minute, second, ..) = unpack(timestamp);
+                (year, month, day, hour, minute, second)
             };
             let (from, to) = (date(first), date(second));
-            assert_eq!(
-                diff(first, second, Timeunit::Day),
-                days_since_epoch(to.0, to.1, to.2) - days_since_epoch(from.0, from.1, from.2),
-                "{context}"
-            );
-            assert_eq!(
-                diff(first, second, Timeunit::Month),
-                (to.0 * 12 + to.1) - (from.0 * 12 + from.1),
-                "{context}"
-            );
+            let since = |d: (i64, i64, i64, i64, i64, i64)| days_since_epoch(d.0, d.1, d.2);
+            for (unit, expected) in [
+                (TimevolumeUnit::Centisecond, centiseconds(second) - centiseconds(first)),
+                (
+                    TimevolumeUnit::Second,
+                    (since(to) * 86_400 + (to.3 * 60 + to.4) * 60 + to.5)
+                        - (since(from) * 86_400 + (from.3 * 60 + from.4) * 60 + from.5),
+                ),
+                (
+                    TimevolumeUnit::Minute,
+                    (since(to) * 1_440 + to.3 * 60 + to.4)
+                        - (since(from) * 1_440 + from.3 * 60 + from.4),
+                ),
+                (TimevolumeUnit::Hour, (since(to) * 24 + to.3) - (since(from) * 24 + from.3)),
+                (TimevolumeUnit::Day, since(to) - since(from)),
+                (TimevolumeUnit::Month, (to.0 * 12 + to.1) - (from.0 * 12 + from.1)),
+                (TimevolumeUnit::Year, to.0 - from.0),
+            ] {
+                let expected = Timevolume::new(unit, expected.unsigned_abs());
+                assert_eq!(diff(first, second, unit), expected, "{context} {unit:?}");
+                assert_eq!(diff(second, first, unit), expected, "{context} {unit:?}");
+            }
             let delta = rng.below(2_000_000_001) as i64 - 1_000_000_000;
             let third = at_centiseconds(first, centiseconds(first) + delta);
             assert_eq!(first.cmp(&third), 0.cmp(&delta), "{context} order");
+            assert_eq!(is_before(first, third), delta > 0, "{context} before");
 
             let days = rng.below(80001) as i64 - 40000;
             let hours = rng.below(200001) as i64 - 100000;
             let minutes = rng.below(2_000_001) as i64 - 1_000_000;
             for (moved, unit, name) in [
-                (add(first, Timevolume::Day(days)), 8_640_000, days),
-                (add(first, Timevolume::Centisecond(hours * 360_000)), 360_000, hours),
-                (add(first, Timevolume::Centisecond(minutes * 6_000)), 6_000, minutes),
+                (step(first, TimevolumeUnit::Day, days), 8_640_000, days),
+                (step(first, TimevolumeUnit::Hour, hours), 360_000, hours),
+                (step(first, TimevolumeUnit::Minute, minutes), 6_000, minutes),
             ]
             .map(|(moved, unit, amount)| (moved, unit * amount, amount))
             {
@@ -625,7 +757,7 @@ mod tests {
                 );
             }
             assert_eq!(
-                add(add(first, Timevolume::Day(days)), Timevolume::Day(-days)),
+                step(step(first, TimevolumeUnit::Day, days), TimevolumeUnit::Day, -days),
                 first,
                 "{context}"
             );
@@ -651,25 +783,25 @@ mod tests {
             };
             let total = year * 12 + month - 1 + months;
             let (target_year, target_month) = (total.div_euclid(12), total.rem_euclid(12) + 1);
-            let moved = unpack(add(first, Timevolume::Month(months)));
+            let moved = unpack(step(first, TimevolumeUnit::Month, months));
             assert_eq!(
                 (moved.0, moved.1, moved.2),
                 (target_year, target_month, day.min(month_days(target_year, target_month))),
                 "{context} months {months}"
             );
             let years = if rng.chance(30) { century - year } else { rng.below(201) as i64 - 100 };
-            let moved = unpack(add(first, Timevolume::Month(years * 12)));
+            let moved = unpack(step(first, TimevolumeUnit::Year, years));
             assert_eq!(
                 (moved.0, moved.1, moved.2),
                 (year + years, month, day.min(month_days(year + years, month))),
                 "{context} years {years}"
             );
             for shifted in [
-                add(first, Timevolume::Month(years * 12)),
-                add(first, Timevolume::Month(months)),
-                add(first, Timevolume::Day(days)),
-                add(first, Timevolume::Centisecond(hours * 360_000)),
-                add(first, Timevolume::Centisecond(minutes * 6_000)),
+                step(first, TimevolumeUnit::Year, years),
+                step(first, TimevolumeUnit::Month, months),
+                step(first, TimevolumeUnit::Day, days),
+                step(first, TimevolumeUnit::Hour, hours),
+                step(first, TimevolumeUnit::Minute, minutes),
             ] {
                 let (.., second_of_minute, centisecond, is_utc, timezone) = unpack(shifted);
                 let (.., original_second, original_centisecond, original_utc, original_timezone) =
