@@ -33,7 +33,7 @@
 - timeline: コンピューターシステムとしてデータを対応させるために置く、過去と未来に負正方向を持つ一直線形状の概念。
 - timestamp: timelineに支持された、1点を指す値。無限の粒度を持つため有限量では表せない。
 - calendar: timestampを構成する値の解釈を定めた概念。6つの階層付き単位(year, month, day, hour, minutes, second)と、値の基準を示すtimezoneとその標準値utcからなる。
-- `Timestamp: [u8; 8]`: 4桁のyear以下、小数点0.01 secondまでを保持した値型である。year, month, dayの値が0..0である時、値はtimestampのパターンを意味する。hour以下が0..0である時、それは値または
+- `Timestamp: [u8; 8]`: 4桁のyear以下、小数点0.01 secondまでを保持した値型である。year, month, dayの値が0..0である時、値はtimestampのパターンを意味する。hour以下、最小単位から連続して0..0の値を持つ時、それはNone(ワイルドカード)として解釈できる。
 
 ```rust
 struct Timestamp

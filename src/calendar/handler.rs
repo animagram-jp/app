@@ -33,8 +33,8 @@ use crate::{
     },
     object::Predicate,
     timestamp::{
-        CENTISECOND, Format, HOUR, IS_UTC, LAYOUT, MINUTE, SECOND, Timevolume, TimevolumeUnit,
-        Timezone, add, diff, display, from_ut, is_before, sub, unpack, youbi,
+        CENTISECOND, DAY, Format, HOUR, IS_UTC, LAYOUT, MINUTE, SECOND, Timevolume, TimevolumeUnit,
+        Timezone, add, diff, display, from_ut, shift, sub, youbi,
     },
 };
 
@@ -982,7 +982,7 @@ impl Handler {
                 .map(|flat| {
                     let (day, resource) = grid.locate(flat);
                     let resource = tag::Uid::read(resources.get(resource as usize)?);
-                    Some(Place { day: shift_days(base, i64::from(day)), resource })
+                    Some(Place { day: shift(base, TimevolumeUnit::Day, i64::from(day)), resource })
                 })
                 .collect::<Option<Vec<Place>>>()
         });
@@ -1045,13 +1045,16 @@ impl Handler {
         let mut entry = self.appointment(drag.key)?;
         let cells = appointment::Places::read(&entry);
         let pressed = cells.get(drag.cell)?;
-        let delta = i64::from(target) - offset_days(first, pressed.day);
+        let delta = i64::from(target) - diff(first, pressed.day, TimevolumeUnit::Day);
         if delta == 0 {
             return None;
         }
         let moved: Vec<Place> = cells
             .iter()
-            .map(|place| Place { day: shift_days(place.day, delta), resource: place.resource })
+            .map(|place| Place {
+                day:      shift(place.day, TimevolumeUnit::Day, delta),
+                resource: place.resource,
+            })
             .collect();
         let _ = appointment::Places::write(&mut entry, &moved, None);
         Some(entry)
@@ -1069,8 +1072,9 @@ impl Handler {
         let resources = self.tags(appointment::RESOURCE);
         let mut entry = self.appointment(key)?;
         let flat = |place: &Place| {
-            column_of(&resources, place.resource)
-                .map(|position| axis.flat(offset_days(base, place.day) as i32, position as u32))
+            column_of(&resources, place.resource).map(|position| {
+                axis.flat(diff(base, place.day, TimevolumeUnit::Day) as i32, position as u32)
+            })
         };
         let cells = appointment::Places::read(&entry);
         let from = cells.get(pressed).and_then(flat)?;
@@ -1080,7 +1084,7 @@ impl Handler {
             .map(|place| {
                 let (day, resource) = axis.locate(flat(place)? + delta);
                 let resource = tag::Uid::read(resources.get(resource as usize)?);
-                Some(Place { day: shift_days(base, i64::from(day)), resource })
+                Some(Place { day: shift(base, TimevolumeUnit::Day, i64::from(day)), resource })
             })
             .collect::<Option<_>>()?;
         let current = appointment::Range::read(&entry);
@@ -1119,7 +1123,7 @@ impl Handler {
                 self.base = if n == STEP_TODAY {
                     self.today
                 } else {
-                    shift_days(self.base, self.step_days(n))
+                    shift(self.base, TimevolumeUnit::Day, self.step_days(n))
                 };
                 (vec![], self.date_commands())
             }
@@ -1257,7 +1261,7 @@ impl Handler {
         for entry in appointments {
             let key = data::key(entry);
             for (cell, place) in appointment::Places::read(entry).iter().enumerate() {
-                let Ok(day) = u32::try_from(offset_days(first, place.day)) else {
+                let Ok(day) = u32::try_from(diff(first, place.day, TimevolumeUnit::Day)) else {
                     continue;
                 };
                 if day >= Month::days() {
@@ -1333,8 +1337,12 @@ impl Handler {
                 rem(height.get(), self.rem_in_px),
             ));
             let BandKind::Date(day) = band.kind;
-            let (_, month, date, ..) = unpack(day);
-            let label = if date == 1 { format!("{month}/{date}") } else { format!("{date}") };
+            let scope = if LAYOUT.get::<u64>(day, DAY) == 1 {
+                MONTH_DAY
+            } else {
+                (TimevolumeUnit::Day, TimevolumeUnit::Day)
+            };
+            let label = display(day, LANG, scope, Format::WithoutYoubi);
             let current = day == self.today;
             commands.push(Command::SetText { id: Target::BandLabel(n).to_dom(), value: label });
             commands.push(if current {
@@ -1605,7 +1613,7 @@ impl Handler {
     }
 
     fn day_offset(&self, day: u64) -> i32 {
-        offset_days(self.base, day) as i32
+        diff(self.base, day, TimevolumeUnit::Day) as i32
     }
 
     fn columns(&self) -> u32 {
@@ -1673,13 +1681,12 @@ impl Handler {
         for row in 0..self.clock.count() {
             let value = if self.month() {
                 match Month::locate([0, row as i32]) {
-                    Some((day, None)) => {
-                        let (_, month, date, ..) = unpack(add(
-                            first,
-                            Timevolume::new(TimevolumeUnit::Day, u64::from(day)),
-                        ));
-                        format!("{month}/{date}")
-                    }
+                    Some((day, None)) => display(
+                        add(first, Timevolume::new(TimevolumeUnit::Day, u64::from(day))),
+                        LANG,
+                        MONTH_DAY,
+                        Format::WithoutYoubi,
+                    ),
                     _ => String::new(),
                 }
             } else {
@@ -1740,16 +1747,6 @@ fn column_of(resources: &[DataStruct], uid: u128) -> Option<usize> {
     resources.iter().position(|resource| tag::Uid::read(resource) == uid)
 }
 
-fn offset_days(from: u64, to: u64) -> i64 {
-    let days = diff(from, to, TimevolumeUnit::Day).get(TimevolumeUnit::Day) as i64;
-    if is_before(to, from) { -days } else { days }
-}
-
-fn shift_days(day: u64, days: i64) -> u64 {
-    let volume = Timevolume::new(TimevolumeUnit::Day, days.unsigned_abs());
-    if days < 0 { sub(day, volume) } else { add(day, volume) }
-}
-
 fn shift_cells(
     resources: &[DataStruct],
     cells: &[Place],
@@ -1761,7 +1758,7 @@ fn shift_cells(
     let Some(origin) = column_of(resources, first.resource) else {
         return Ok(vec![Place { day, resource: target }]);
     };
-    let day_delta = offset_days(first.day, day);
+    let day_delta = diff(first.day, day, TimevolumeUnit::Day);
     let resource_delta = resource as i32 - origin as i32;
     cells
         .iter()
@@ -1770,7 +1767,10 @@ fn shift_cells(
             let index =
                 usize::try_from(position as i32 + resource_delta).map_err(|_| "範囲外です")?;
             let moved = tag::Uid::read(resources.get(index).ok_or("範囲外です")?);
-            Ok(Place { day: shift_days(place.day, day_delta), resource: moved })
+            Ok(Place {
+                day:      shift(place.day, TimevolumeUnit::Day, day_delta),
+                resource: moved,
+            })
         })
         .collect()
 }
@@ -1900,7 +1900,7 @@ mod tests {
     const GRAB_Y: f64 = 40.0;
 
     fn after(day: u64, n: i64) -> u64 {
-        shift_days(day, n)
+        shift(day, TimevolumeUnit::Day, n)
     }
 
     fn today() -> u64 {
@@ -2114,7 +2114,7 @@ mod tests {
         let mut handler = Handler::new(VIEWPORT, today(), REM);
         for (button, expected) in [(5, 7), (1, 0), (2, -1), (4, 0), (4, 1)] {
             press(&mut handler, Target::Step(button).to_dom());
-            assert_eq!(offset_days(today(), handler.base()), expected);
+            assert_eq!(diff(today(), handler.base(), TimevolumeUnit::Day), expected);
         }
         let commands = press(&mut handler, Target::Step(3).to_dom());
         assert_eq!(handler.base(), today());
@@ -2366,7 +2366,7 @@ mod tests {
         let expected = appointments(&handler)
             .iter()
             .flat_map(|a| appointment::Places::read(&a))
-            .filter(|cell| (0..7).contains(&offset_days(today(), cell.day)))
+            .filter(|cell| (0..7).contains(&diff(today(), cell.day, TimevolumeUnit::Day)))
             .count();
         assert!(expected > 0);
         assert_eq!(shown_count(&commands), expected);
@@ -3965,7 +3965,7 @@ mod tests {
         {
             choose(&mut handler, view);
             press(&mut handler, Target::Step(5).to_dom());
-            assert_eq!(offset_days(today(), handler.base()), page, "{view:?}");
+            assert_eq!(diff(today(), handler.base(), TimevolumeUnit::Day), page, "{view:?}");
             press(&mut handler, Target::Step(1).to_dom());
             assert_eq!(handler.base(), today(), "{view:?}");
         }
