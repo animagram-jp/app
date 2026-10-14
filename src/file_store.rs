@@ -126,7 +126,7 @@ impl LogRecord {
         };
         let id = u32::from_le_bytes(buffer[1..5].try_into().unwrap());
         let length = u32::from_le_bytes(buffer[5..9].try_into().unwrap()) as usize;
-        let total = 9 + length + 4;
+        let total = length.checked_add(9 + 4)?;
         if buffer.len() < total {
             return None;
         }
@@ -1858,6 +1858,18 @@ mod memory_tests {
             assert!(LogRecord::from_bytes(&handcraft_record(op, 9, b"xyz")).is_none(), "op {op}");
         }
         assert!(LogRecord::from_bytes(&[0u8; 13]).is_none());
+    }
+
+    #[test]
+    fn reject_oversized_lengths() {
+        for length in [u32::MAX, u32::MAX - 12, u32::MAX - 13, 1 << 31] {
+            for op in [1u8, 2] {
+                let mut record = vec![op, 0, 0, 0, 0];
+                record.extend_from_slice(&length.to_le_bytes());
+                record.extend_from_slice(&[0; 4]);
+                assert!(LogRecord::from_bytes(&record).is_none(), "op {op} length {length}");
+            }
+        }
     }
 
     // === replay ===
