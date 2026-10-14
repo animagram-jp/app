@@ -9,7 +9,10 @@ use core::{
     primitive::u64,
 };
 
-use crate::timestamp::{Month, Timevolume, TimevolumeUnit, Youbi, add, pack, unpack, youbi};
+use crate::timestamp::{
+    CENTISECOND, DAY, HOUR, LAYOUT, MINUTE, MONTH, Month, SECOND, Timevolume, TimevolumeUnit, YEAR,
+    Youbi, add, youbi,
+};
 
 // - time
 // - timeline
@@ -89,56 +92,47 @@ impl Recurrence {
             return vec![];
         }
 
+        let date = |timestamp: u64| timestamp >> LAYOUT.field(DAY).position;
+        let day = Timevolume::new(TimevolumeUnit::Day, 1);
         let mut result = Vec::new();
-        let (year, month, day, _, _, _, _, is_utc, timezone) = unpack(start);
-        let mut current = pack(year, month, day, 0, 0, 0, 0, is_utc, timezone);
-        let (year, month, day, _, _, _, _, is_utc, timezone) = unpack(end);
-        let end_floor = pack(year, month, day, 0, 0, 0, 0, is_utc, timezone);
+        let mut current = [HOUR, MINUTE, SECOND, CENTISECOND]
+            .into_iter()
+            .fold(start, |timestamp, field| LAYOUT.set(timestamp, field, 0u64));
 
-        while current <= end_floor {
-            let (_, month, day, ..) = unpack(current);
+        while date(current) <= date(end) {
+            let month: u64 = LAYOUT.get(current, MONTH);
+            let nth = (LAYOUT.get::<u64>(current, DAY) - 1) / 7 + 1;
             let selected = self
                 .months
                 .as_ref()
-                .is_none_or(|months| months.iter().any(|candidate| *candidate as i64 == month))
-                && self
-                    .weeks
-                    .as_ref()
-                    .is_none_or(|weeks| weeks.contains(&(((day - 1) / 7 + 1) as u8)))
+                .is_none_or(|months| months.iter().any(|candidate| *candidate as u64 == month))
+                && self.weeks.as_ref().is_none_or(|weeks| weeks.contains(&(nth as u8)))
                 && self.youbi.as_ref().is_none_or(|youbis| youbis.contains(&youbi(current)));
 
             if selected {
                 match &self.periods_in_a_day {
                     Some(periods) => {
                         for period in periods {
-                            let (year, month, day, ..) = unpack(current);
-                            let (_, _, _, hour, minute, second, centisecond, is_utc, timezone) =
-                                unpack(period.start);
                             let start = match period.start {
                                 0 => 0,
-                                _ => pack(
-                                    year,
-                                    month,
-                                    day,
-                                    hour,
-                                    minute,
-                                    second,
-                                    centisecond,
-                                    is_utc,
-                                    timezone,
-                                ),
+                                time => {
+                                    [YEAR, MONTH, DAY].into_iter().fold(time, |timestamp, field| {
+                                        LAYOUT.set(
+                                            timestamp,
+                                            field,
+                                            LAYOUT.get::<u64>(current, field),
+                                        )
+                                    })
+                                }
                             };
                             result.push(Timerange { start, volume: period.volume });
                         }
                     }
-                    None => {
-                        let volume = Timevolume::new(TimevolumeUnit::Day, 1);
-                        result.push(Timerange { start: current, volume });
-                    }
+                    None => result.push(Timerange { start: current, volume: day }),
                 }
             }
 
-            current = add(current, Timevolume::new(TimevolumeUnit::Day, 1));
+            current = add(current, day);
         }
 
         result

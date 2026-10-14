@@ -163,25 +163,68 @@ const SLOTS: [(usize, Field); 7] = [
 /// assert_eq!(volume.get(TimevolumeUnit::Hour), 3);
 /// assert_eq!(volume.get(TimevolumeUnit::Minute), 0);
 /// assert_eq!(Timevolume::default(), Timevolume::new(TimevolumeUnit::Day, 0));
+///
+/// let hours = Timevolume::new(TimevolumeUnit::Hour, 9).with(TimevolumeUnit::Minute, 30);
+/// assert_eq!(hours.total(TimevolumeUnit::Minute), 570);
+/// assert_eq!(hours.total(TimevolumeUnit::Hour), 9);
+/// assert_eq!(hours, Timevolume::new(TimevolumeUnit::Minute, 570));
+/// assert!(hours < Timevolume::new(TimevolumeUnit::Minute, 571));
+/// assert!(Timevolume::new(TimevolumeUnit::Month, 1) > Timevolume::new(TimevolumeUnit::Day, 31));
 /// ```
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct Timevolume([u64; 4]);
 
 impl Timevolume {
-    pub fn new(unit: TimevolumeUnit, value: u64) -> Self {
-        Self::default().with(unit, value)
+    pub const fn new(unit: TimevolumeUnit, value: u64) -> Self {
+        Self([0; 4]).with(unit, value)
     }
 
-    pub fn with(self, unit: TimevolumeUnit, value: u64) -> Self {
+    pub const fn with(self, unit: TimevolumeUnit, value: u64) -> Self {
         let (word, field) = SLOTS[unit as usize];
         let mut words = self.0;
-        words[word] = field.set(words[word], value);
+        words[word] = field.put(words[word], value);
         Self(words)
     }
 
     pub fn get(&self, unit: TimevolumeUnit) -> u64 {
         let (word, field) = SLOTS[unit as usize];
         field.get(self.0[word])
+    }
+
+    pub fn total(&self, unit: TimevolumeUnit) -> u64 {
+        use TimevolumeUnit::*;
+        match unit {
+            Year => self.get(Year),
+            Month => self.get(Year) * 12 + self.get(Month),
+            unit => [(Day, 1), (Hour, 24), (Minute, 60), (Second, 60), (Centisecond, 100)]
+                .into_iter()
+                .take_while(|(slot, _)| *slot <= unit)
+                .fold(0, |total, (slot, scale)| total * scale + self.get(slot)),
+        }
+    }
+
+    fn key(&self) -> (u64, u64) {
+        (self.total(TimevolumeUnit::Month), self.total(TimevolumeUnit::Centisecond))
+    }
+}
+
+impl PartialEq for Timevolume {
+    fn eq(&self, other: &Self) -> bool {
+        self.key() == other.key()
+    }
+}
+
+impl Eq for Timevolume {}
+
+impl PartialOrd for Timevolume {
+    fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Timevolume {
+    fn cmp(&self, other: &Self) -> core::cmp::Ordering {
+        self.key().cmp(&other.key())
     }
 }
 

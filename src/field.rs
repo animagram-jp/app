@@ -30,7 +30,11 @@ impl Field {
     }
     #[inline(always)]
     pub fn set<T: Integer>(&self, target: u64, value: T) -> u64 {
-        (target & !(self.mask << self.position)) | ((value.as_u64() & self.mask) << self.position)
+        self.put(target, value.as_u64())
+    }
+    #[inline(always)]
+    pub const fn put(&self, target: u64, value: u64) -> u64 {
+        (target & !(self.mask << self.position)) | ((value & self.mask) << self.position)
     }
 }
 

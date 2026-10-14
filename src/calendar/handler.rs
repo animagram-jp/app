@@ -43,7 +43,7 @@ const CARD_POOL: usize = 380;
 const DRAG_Z_INDEX: i32 = 1000;
 const HANDLE_REM: f64 = 0.5;
 const HANDLE_MAX: f64 = 0.35;
-const STORE: StoreId = StoreId { name: "calendar", version: "0.2" };
+const STORE: StoreId = StoreId { name: "calendar", version: "0.3" };
 const NEW_UNITS: f64 = 4.0;
 const SLOT_REM: f64 = 1.75;
 const ZOOM_MIN: f64 = 1.0;
@@ -621,8 +621,8 @@ impl Handler {
                     tag::Uid::read(r) == place.resource
                 }),
             ),
-            (EditField::Start, display(start, Lang::Ja, HOUR_MINUTE, Format::Iso)),
-            (EditField::End, display(end, Lang::Ja, HOUR_MINUTE, Format::Iso)),
+            (EditField::Start, display(add(place.day, start), Lang::Ja, HOUR_MINUTE, Format::Iso)),
+            (EditField::End, display(add(place.day, end), Lang::Ja, HOUR_MINUTE, Format::Iso)),
             (EditField::Note, appointment::Note::read(draft)),
         ];
         let mut commands = vec![
@@ -750,7 +750,7 @@ impl Handler {
         commands
     }
 
-    fn new_form(&mut self, cells: Vec<Place>, start: u64, end: u64) -> Vec<Command> {
+    fn new_form(&mut self, cells: Vec<Place>, start: Timevolume, end: Timevolume) -> Vec<Command> {
         let Some(first) = cells.first() else {
             return vec![];
         };
@@ -784,7 +784,7 @@ impl Handler {
             let Some(resource) = resources.first() else {
                 return vec![];
             };
-            let start = self.clock.clamp_start(0, NEW_UNITS);
+            let start = self.clock.clamp_start(Timevolume::default(), NEW_UNITS);
             let end =
                 self.clock.time(self.clock.unit(start) + NEW_UNITS).unwrap_or(self.clock.end());
             let place = Place {
@@ -1013,7 +1013,7 @@ impl Handler {
         Some(entry)
     }
 
-    fn drop_target(&self, drag: &Drag) -> Option<(Cell, u64)> {
+    fn drop_target(&self, drag: &Drag) -> Option<(Cell, Timevolume)> {
         let entry = self.appointment(drag.key)?;
         let grid = self.grid();
         let pointer = [Px::new(drag.pointer[0]), Px::new(drag.pointer[1])];
@@ -1062,7 +1062,7 @@ impl Handler {
         key: u32,
         pressed: usize,
         target: Cell,
-        start: u64,
+        start: Timevolume,
     ) -> Option<DataStruct> {
         let base = self.base;
         let axis = self.grid();
@@ -1198,7 +1198,7 @@ impl Handler {
 
     fn visible_cards(&self, appointments: &[DataStruct], resources: &[DataStruct]) -> Vec<Card> {
         let grid = self.grid();
-        let mut columns: BTreeMap<u32, Vec<(u32, usize, u64, u64)>> = BTreeMap::new();
+        let mut columns: BTreeMap<u32, Vec<(u32, usize, Timevolume, Timevolume)>> = BTreeMap::new();
         let mut extent: BTreeMap<u32, (i32, i32)> = BTreeMap::new();
         for entry in appointments {
             let key = data::key(entry);
@@ -1228,7 +1228,7 @@ impl Handler {
             let Some(cell) = grid.cell(unit) else {
                 continue;
             };
-            let spans: Vec<(u64, u64)> =
+            let spans: Vec<(Timevolume, Timevolume)> =
                 items.iter().map(|(_, _, start, end)| (*start, *end)).collect();
             for ((key, cell_index, start, end), (lane, lanes)) in
                 items.into_iter().zip(lanes(&spans))
@@ -1435,8 +1435,8 @@ impl Handler {
                     Target::CardPart(n, CardPart::Time).to_dom(),
                     format!(
                         "{}–{}",
-                        display(start, Lang::Ja, HOUR_MINUTE, Format::Iso),
-                        display(end, Lang::Ja, HOUR_MINUTE, Format::Iso)
+                        display(add(self.base, start), Lang::Ja, HOUR_MINUTE, Format::Iso),
+                        display(add(self.base, end), Lang::Ja, HOUR_MINUTE, Format::Iso)
                     ),
                 ),
                 (Target::CardPart(n, CardPart::Title).to_dom(), appointment::Title::read(entry)),
@@ -1684,7 +1684,7 @@ impl Handler {
                 }
             } else {
                 self.clock.time(f64::from(row)).map_or_else(String::new, |time| {
-                    display(time, Lang::Ja, HOUR_MINUTE, Format::Iso)
+                    display(add(first, time), Lang::Ja, HOUR_MINUTE, Format::Iso)
                 })
             };
             for side in 1..=2 {
@@ -1907,8 +1907,8 @@ mod tests {
         pack(2026, 10, 2, 0, 0, 0, 0, 0, 0)
     }
 
-    fn at(minutes: u32) -> u64 {
-        pack(0, 0, 0, i64::from(minutes / 60), i64::from(minutes % 60), 0, 0, 0, 0)
+    fn at(minutes: u32) -> Timevolume {
+        Timevolume::new(TimevolumeUnit::Minute, u64::from(minutes))
     }
 
     #[test]
@@ -2846,9 +2846,8 @@ mod tests {
         })
     }
 
-    fn minutes(time: u64) -> u32 {
-        let (_, _, _, hour, minute, ..) = unpack(time);
-        (hour * 60 + minute) as u32
+    fn minutes(time: Timevolume) -> u32 {
+        time.total(TimevolumeUnit::Minute) as u32
     }
 
     fn times(handler: &Handler) -> (u32, u32) {
@@ -3198,7 +3197,7 @@ mod tests {
         handler.store.as_ref().unwrap().index().count_pending()
     }
 
-    fn drag_first_card_by(handler: &mut Handler, dy: f64) -> (u32, u64) {
+    fn drag_first_card_by(handler: &mut Handler, dy: f64) -> (u32, Timevolume) {
         handler.card_commands();
         let (index, base) = {
             let placed = handler.placed.borrow();
@@ -3272,7 +3271,7 @@ mod tests {
         handler.process_fetched(&sample_response(1, 200));
         let (index, before) = drag_first_card_by(&mut handler, 2.0 * SLOT_PX);
         let after = appointment::Range::read(&appointment_of(&handler, index)).0;
-        assert_eq!(after, add(before, Timevolume::new(TimevolumeUnit::Minute, 30)));
+        assert_eq!(minutes(after), minutes(before) + 30);
         assert!(handler.dirty());
         assert_eq!(pending(&handler), 1);
         assert_eq!(appointment::Range::read(&committed(&disk, index)).0, before);
@@ -3559,15 +3558,10 @@ mod tests {
         let before = appointments(&handler).len();
         tap_empty(&mut handler, 0.0, 0.0);
         let date = display(today(), Lang::Ja, YEAR_DAY, Format::Iso);
-        let open = at(600);
+        let (open, close) = (at(600), at(660));
         let (start, end) = (
-            display(open, Lang::Ja, HOUR_MINUTE, Format::Iso),
-            display(
-                add(open, Timevolume::new(TimevolumeUnit::Minute, 60)),
-                Lang::Ja,
-                HOUR_MINUTE,
-                Format::Iso,
-            ),
+            display(add(today(), open), Lang::Ja, HOUR_MINUTE, Format::Iso),
+            display(add(today(), close), Lang::Ja, HOUR_MINUTE, Format::Iso),
         );
         let query = form_query("Neo", &date, 1, &start, &end);
         let commands = submit(&mut handler, &query);
@@ -3580,7 +3574,7 @@ mod tests {
                 appointment::Range::read(&added).0,
                 appointment::Range::read(&added).1
             ),
-            ("Neo", open, add(open, Timevolume::new(TimevolumeUnit::Minute, 60)))
+            ("Neo", open, close)
         );
         assert_eq!(
             (appointment::Category::read(&added), appointment::Status::read(&added)),
@@ -3702,7 +3696,7 @@ mod tests {
     fn only_an_invalid_handle_asks_for_a_new_one() {
         let (events, commands) = file_store_error(FileStoreError::InvalidState(String::new()));
         assert!(
-            matches!(events.as_slice(), [Event::StoreLost(id)] if id.name == "calendar" && id.version == "0.2")
+            matches!(events.as_slice(), [Event::StoreLost(id)] if id.name == "calendar" && id.version == STORE.version)
         );
         assert!(matches!(
             commands.as_slice(),

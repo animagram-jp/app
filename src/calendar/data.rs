@@ -13,7 +13,7 @@ use crate::{
     js_client::{WireError, parse},
     list::ListError,
     object::Predicate,
-    timestamp::{days_in_month, pack},
+    timestamp::{DAY, LAYOUT, MONTH, Timevolume, TimevolumeUnit, YEAR, days_in_month},
 };
 
 // --- layout ---
@@ -210,7 +210,7 @@ pub mod appointment {
         file_store::FileStore,
         js_client::{Input, Output, parse},
         object::{Predicate, SubjectTrait},
-        timestamp::{Format, display},
+        timestamp::{Format, Timevolume, TimevolumeUnit, add, display},
     };
 
     pub const KIND: u32 = 3;
@@ -306,19 +306,24 @@ pub mod appointment {
     pub struct Range;
 
     impl Predicate<2> for Range {
-        type Parsed = (u64, u64);
+        type Parsed = (Timevolume, Timevolume);
         type Subject = Field;
         const VARIANT: Field = Field::Range;
 
         fn parse(bytes: [Option<&[u8]>; 2]) -> Self::Parsed {
-            let time = |bytes: Option<&[u8]>| bytes.and_then(parse::<u64>).unwrap_or_default();
+            let time = |bytes: Option<&[u8]>| {
+                Timevolume::new(
+                    TimevolumeUnit::Minute,
+                    bytes.and_then(parse::<u64>).unwrap_or_default(),
+                )
+            };
             (time(bytes[0]), time(bytes[1]))
         }
 
         fn encode(value: &Self::Parsed) -> [Option<Vec<u8>>; 2] {
-            let bytes = |time: u64| {
+            let bytes = |time: Timevolume| {
                 let mut output = Vec::new();
-                time.encode(&mut output);
+                time.total(TimevolumeUnit::Minute).encode(&mut output);
                 Some(output)
             };
             [bytes(value.0), bytes(value.1)]
@@ -328,8 +333,8 @@ pub mod appointment {
     pub fn new(
         key: u32,
         places: &[Place],
-        start: u64,
-        end: u64,
+        start: Timevolume,
+        end: Timevolume,
         title: &str,
         category: &str,
         status: &str,
@@ -423,15 +428,17 @@ pub mod appointment {
             .iter()
             .map(|a| {
                 let (start, end) = Range::read(a);
-                let places: Vec<Value> = Places::read(a)
+                let cells = Places::read(a);
+                let anchor = cells.first().map_or(0, |c| c.day);
+                let places: Vec<Value> = cells
                     .iter()
                     .map(|c| json!({"day": date(c.day), "resource_uid": format!("{}", c.resource)}))
                     .collect();
                 json!({
                     "uid": format!("{}", Uid::read(a)),
                     "places": places,
-                    "start": display(start, Lang::Ja, HOUR_MINUTE, Format::Iso),
-                    "end": display(end, Lang::Ja, HOUR_MINUTE, Format::Iso),
+                    "start": display(add(anchor, start), Lang::Ja, HOUR_MINUTE, Format::Iso),
+                    "end": display(add(anchor, end), Lang::Ja, HOUR_MINUTE, Format::Iso),
                     "title": Title::read(a),
                     "category": Category::read(a),
                     "status": Status::read(a),
@@ -521,18 +528,20 @@ pub fn parse_uid(text: &str) -> Result<u128, DataError> {
 
 /// ```
 /// # use app::calendar::data::parse_time;
-/// # use app::timestamp::pack;
-/// assert_eq!(parse_time("09:30").unwrap(), pack(0, 0, 0, 9, 30, 0, 0, 0, 0));
+/// # use app::timestamp::{Timevolume, TimevolumeUnit};
+/// assert_eq!(parse_time("09:30").unwrap(), Timevolume::new(TimevolumeUnit::Minute, 570));
+/// assert_eq!(parse_time("24:00").unwrap(), Timevolume::new(TimevolumeUnit::Hour, 24));
+/// assert_eq!(parse_time("00:00").unwrap(), Timevolume::default());
 /// assert!(parse_time("9").is_err());
 /// ```
-pub fn parse_time(text: &str) -> Result<u64, DataError> {
+pub fn parse_time(text: &str) -> Result<Timevolume, DataError> {
     let (hour, minute) = text.split_once(':').ok_or_else(|| format_error("time", text))?;
-    let hour: i64 = hour.parse().map_err(|_| format_error("time", text))?;
-    let minute: i64 = minute.parse().map_err(|_| format_error("time", text))?;
-    if !(0..=24).contains(&hour) || !(0..=59).contains(&minute) {
+    let hour: u64 = hour.parse().map_err(|_| format_error("time", text))?;
+    let minute: u64 = minute.parse().map_err(|_| format_error("time", text))?;
+    if hour > 24 || minute > 59 {
         return Err(format_error("time", text));
     }
-    Ok(pack(0, 0, 0, hour, minute, 0, 0, 0, 0))
+    Ok(Timevolume::new(TimevolumeUnit::Hour, hour).with(TimevolumeUnit::Minute, minute))
 }
 
 /// ```
@@ -556,7 +565,9 @@ pub fn parse_date(text: &str) -> Result<u64, DataError> {
     if !(1..=12).contains(&month) || !(1..=days_in_month(year, month)).contains(&day) {
         return Err(format_error("day", text));
     }
-    Ok(pack(year, month, day, 0, 0, 0, 0, 0, 0))
+    Ok([(YEAR, year), (MONTH, month), (DAY, day)]
+        .into_iter()
+        .fold(0, |timestamp, (field, value)| LAYOUT.set(timestamp, field, value)))
 }
 
 fn format_error(kind: &str, text: &str) -> DataError {
@@ -575,8 +586,8 @@ mod tests {
 
     const OTHER: u32 = 9;
 
-    fn at(hour: i64, minute: i64) -> u64 {
-        pack(0, 0, 0, hour, minute, 0, 0, 0, 0)
+    fn at(hour: u64, minute: u64) -> Timevolume {
+        Timevolume::new(TimevolumeUnit::Hour, hour).with(TimevolumeUnit::Minute, minute)
     }
 
     fn sample() -> Vec<u8> {
@@ -706,7 +717,7 @@ mod tests {
             }
         }
         assert!(seen.iter().all(|&s| s));
-        assert_eq!(Range::get_from_bytes(&[]), (0, 0));
+        assert_eq!(Range::get_from_bytes(&[]), (Timevolume::default(), Timevolume::default()));
     }
 
     #[test]
