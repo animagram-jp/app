@@ -248,7 +248,7 @@ impl<'a> Instance<'a> {
     }
 }
 
-fn encode_time(time: f64) -> [u8; 8] {
+pub(crate) fn encode_time(time: f64) -> [u8; 8] {
     timestamp::from_ut(time, true, &Timezone::None).to_le_bytes()
 }
 

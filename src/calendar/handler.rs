@@ -33,8 +33,8 @@ use crate::{
     },
     object::Predicate,
     timestamp::{
-        Format, Timevolume, TimevolumeUnit, Timezone, add, diff, display, from_ut, is_before, pack,
-        sub, unpack, youbi,
+        CENTISECOND, Format, HOUR, IS_UTC, LAYOUT, MINUTE, SECOND, Timevolume, TimevolumeUnit,
+        Timezone, add, diff, display, from_ut, is_before, sub, unpack, youbi,
     },
 };
 
@@ -134,7 +134,7 @@ pub struct Handler {
     axis:              Axis,
     clock:             Clock,
     resources:         u32,
-    now:               u64,
+    pub now:           f64,
     today:             u64,
     base:              u64,
     placed:            RefCell<Vec<Placed>>,
@@ -162,11 +162,18 @@ impl Handler {
         now: f64,
         timezone_offset_minutes: i32,
     ) -> Self {
-        let minutes = libm::floor(now / 60_000.0) as i64 + i64::from(timezone_offset_minutes);
-        let today = shift_days(pack(1970, 1, 1, 0, 0, 0, 0, 0, 0), minutes.div_euclid(1440));
+        let utc = from_ut(now, true, &Timezone::None);
+        let offset = Timevolume::new(
+            TimevolumeUnit::Minute,
+            u64::from(timezone_offset_minutes.unsigned_abs()),
+        );
+        let local = if timezone_offset_minutes < 0 { sub(utc, offset) } else { add(utc, offset) };
+        let today = [HOUR, MINUTE, SECOND, CENTISECOND, IS_UTC]
+            .into_iter()
+            .fold(local, |timestamp, field| LAYOUT.set(timestamp, field, 0u64));
         #[allow(unused_mut)]
         let mut handler = Self::new(viewport_width_px, today, rem_in_px);
-        handler.now = from_ut(now, true, &Timezone::None);
+        handler.now = now;
         #[cfg(target_arch = "wasm32")]
         match Backend::open(STORE, true).await.and_then(Backend::new) {
             Ok(opened) => handler.attach(opened),
@@ -207,7 +214,7 @@ impl Handler {
             axis,
             clock: CLOCK,
             resources: 0,
-            now: 0,
+            now: 0.0,
             today,
             base: today,
             placed: RefCell::new(Vec::new()),
@@ -1877,9 +1884,10 @@ mod tests {
     use crate::{
         Rng, block_on,
         calendar::data::SCHEMA_SIZE,
-        data_struct::{ID_CREATED_AT, ID_MODIFIED_AT},
+        data_struct::{ID_CREATED_AT, ID_MODIFIED_AT, encode_time},
         file_store::{MemoryHandles, MemoryStore},
         js_client::KeyName,
+        timestamp::pack,
     };
 
     const VIEWPORT: f64 = 1500.0;
@@ -3546,7 +3554,7 @@ mod tests {
     #[test]
     fn submitting_a_new_form_adds_a_persisted_appointment() {
         let (mut handler, _) = with_store();
-        handler.now = pack(2026, 10, 2, 12, 0, 0, 0, 1, 0);
+        handler.now = 1_790_942_400_000.0;
         handler.process_fetched(&sample_response(1, 200));
         let before = appointments(&handler).len();
         tap_empty(&mut handler, 0.0, 0.0);
@@ -3584,7 +3592,7 @@ mod tests {
         assert_ne!(appointment::Uid::read(&added), 0);
         assert_eq!(
             added.get(ID_CREATED_AT).unwrap(),
-            handler.now.to_le_bytes(),
+            encode_time(handler.now),
             "a new record is created now"
         );
         assert!(handler.dirty());
@@ -3595,7 +3603,7 @@ mod tests {
         let saved =
             DataStruct::from_bytes(handler.store.as_ref().unwrap().get(key).unwrap(), SCHEMA_SIZE)
                 .unwrap();
-        assert_eq!(saved.get(ID_MODIFIED_AT).unwrap(), handler.now.to_le_bytes());
+        assert_eq!(saved.get(ID_MODIFIED_AT).unwrap(), encode_time(handler.now));
     }
 
     #[test]

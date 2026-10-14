@@ -27,6 +27,19 @@ use crate::{
     },
 };
 
+pub fn now() -> f64 {
+    #[cfg(target_arch = "wasm32")]
+    {
+        js_sys::Date::now()
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0.0, |d| d.as_millis() as f64)
+    }
+}
+
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 pub struct App {
     pointer:    Pointer,
@@ -77,6 +90,7 @@ impl App {
     /// Decode a event frame and dispatch it together with every event
     /// it derives, in FIFO order, appending the resulting commands.
     pub fn process(&mut self, frame: &[u8]) {
+        self.handler.now = now();
         let Some(event) = Event::decode(&mut { frame }) else {
             self.commands.push(Command::Error { error: Error::Event(EventError::Decode) });
             return;

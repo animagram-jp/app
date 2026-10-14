@@ -8,12 +8,12 @@ use core::{
 };
 
 use crate::{
-    data_struct::{DataStruct, ID_CREATED_AT, ID_IDENTITY, ID_MODIFIED_AT},
+    data_struct::{DataStruct, ID_CREATED_AT, ID_IDENTITY, ID_MODIFIED_AT, encode_time},
     file_store::FileStore,
     js_client::{WireError, parse},
     list::ListError,
     object::Predicate,
-    timestamp::{TimevolumeUnit, diff, is_before, pack},
+    timestamp::{days_in_month, pack},
 };
 
 // --- layout ---
@@ -77,22 +77,17 @@ pub fn kind(bytes: &[u8]) -> u32 {
         .unwrap_or(0)
 }
 
-pub fn touch(entry: &mut DataStruct, now: u64) {
-    let _ = entry.set(ID_MODIFIED_AT, &now.to_le_bytes(), None);
+pub fn touch(entry: &mut DataStruct, now: f64) {
+    let _ = entry.set(ID_MODIFIED_AT, &encode_time(now), None);
 }
 
-pub fn stamp(entry: &mut DataStruct, now: u64) {
-    let _ = entry.set(ID_CREATED_AT, &now.to_le_bytes(), None);
+pub fn stamp(entry: &mut DataStruct, now: f64) {
+    let _ = entry.set(ID_CREATED_AT, &encode_time(now), None);
     touch(entry, now);
 }
 
-pub fn new_uid(now: u64) -> u128 {
-    let epoch = pack(1970, 1, 1, 0, 0, 0, 0, 0, 0);
-    let unix_ms = if is_before(now, epoch) {
-        0
-    } else {
-        diff(epoch, now, TimevolumeUnit::Centisecond).get(TimevolumeUnit::Centisecond) as u128 * 10
-    };
+pub fn new_uid(now: f64) -> u128 {
+    let unix_ms = u128::from(now as u64);
     let mut bytes = [0u8; 10];
     getrandom::fill(&mut bytes).unwrap();
     let rand_a = u128::from(u16::from_le_bytes([bytes[0], bytes[1]]) & 0x0FFF);
@@ -545,6 +540,8 @@ pub fn parse_time(text: &str) -> Result<u64, DataError> {
 /// # use app::timestamp::pack;
 /// assert_eq!(parse_date("2026-10-02").unwrap(), pack(2026, 10, 2, 0, 0, 0, 0, 0, 0));
 /// assert!(parse_date("2026/10/02").is_err());
+/// assert!(parse_date("2026-02-29").is_err());
+/// assert!(parse_date("2028-02-29").is_ok());
 /// ```
 pub fn parse_date(text: &str) -> Result<u64, DataError> {
     let mut parts = text.split('-');
@@ -556,7 +553,7 @@ pub fn parse_date(text: &str) -> Result<u64, DataError> {
     let year: i64 = year.parse().map_err(|_| format_error("day", text))?;
     let month: i64 = month.parse().map_err(|_| format_error("day", text))?;
     let day: i64 = day.parse().map_err(|_| format_error("day", text))?;
-    if !(1..=12).contains(&month) || !(1..=31).contains(&day) {
+    if !(1..=12).contains(&month) || !(1..=days_in_month(year, month)).contains(&day) {
         return Err(format_error("day", text));
     }
     Ok(pack(year, month, day, 0, 0, 0, 0, 0, 0))
@@ -608,12 +605,12 @@ mod tests {
     fn touch_stamps_only_the_modified_time() {
         let mut entry = tag::new(1, 1, 2, "c", "l");
         let created = entry.get(ID_CREATED_AT).unwrap().to_vec();
-        touch(&mut entry, 77);
-        assert_eq!(entry.get(ID_MODIFIED_AT).unwrap(), 77u64.to_le_bytes());
+        touch(&mut entry, 77.0);
+        assert_eq!(entry.get(ID_MODIFIED_AT).unwrap(), encode_time(77.0));
         assert_eq!(entry.get(ID_CREATED_AT).unwrap(), created);
-        stamp(&mut entry, 88);
-        assert_eq!(entry.get(ID_CREATED_AT).unwrap(), 88u64.to_le_bytes());
-        assert_eq!(entry.get(ID_MODIFIED_AT).unwrap(), 88u64.to_le_bytes());
+        stamp(&mut entry, 88.0);
+        assert_eq!(entry.get(ID_CREATED_AT).unwrap(), encode_time(88.0));
+        assert_eq!(entry.get(ID_MODIFIED_AT).unwrap(), encode_time(88.0));
     }
 
     #[test]
@@ -759,7 +756,7 @@ mod tests {
             "s",
             "",
         );
-        Uid::write(&mut booking, &new_uid(0), None).unwrap();
+        Uid::write(&mut booking, &new_uid(0.0), None).unwrap();
         put(&mut store, &booking);
         put(&mut store, &tag::new(gone, RESOURCE, 42, "", "gone"));
         store.save().unwrap();

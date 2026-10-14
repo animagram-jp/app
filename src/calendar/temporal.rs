@@ -64,7 +64,7 @@ impl Recurrence {
     ///     ]),
     /// };
     ///
-    /// let result = recurrence.generate(year_start, year_end);
+    /// let result = recurrence.occurrences(year_start, year_end);
     ///
     /// assert_eq!(result.len(), 16);
     ///
@@ -73,7 +73,7 @@ impl Recurrence {
     /// let (_, _, _, end_hour, end_minute, ..) = unpack(add(result[0].start, result[0].volume));
     /// assert_eq!((end_hour, end_minute), (12, 0));
     /// ```
-    pub fn generate(&self, start: u64, end: u64) -> Vec<Timerange> {
+    pub fn occurrences(&self, start: u64, end: u64) -> Vec<Timerange> {
         let start = self.range.start.max(start);
         let until = if self.range.start == 0 || self.range.volume == Timevolume::default() {
             0

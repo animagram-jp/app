@@ -46,6 +46,7 @@ pub struct Handler {
     lang:            Lang,
     last_toast:      u2,
     character:       DataStruct,
+    pub now:         f64,
     #[cfg(feature = "worker")]
     characters:      Backend,
     #[cfg(feature = "worker")]
@@ -67,6 +68,7 @@ impl Handler {
             lang: Lang::Ja,
             last_toast: u2::new(1),
             character: DataStruct::new(0, 0.0, SCHEMA_SIZE),
+            now: 0.0,
             #[cfg(feature = "worker")]
             characters: Backend::open(CHARACTER_STORE, true)
                 .await

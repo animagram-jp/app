@@ -7,24 +7,28 @@ use crate::{
 
 // timestamp (64 bits)
 // note:
-// - Value 0...0 means null in each field.
+// - Null: all bits 0.
+// - Date (year, month, day) all 0: no date, time only.
+//   Time only 00:00 collides with null, so the day boundary is written as 24:00.
+// - Zeros from the lowest field upward are unspecified;
+//   the lowest non-zero field is the precision.
 // - is_utc:
 //   = 1: The value is UTC time (timezone iana id may store original zone info).
 //   = 0: The value is local time of timezone
 
-const YEAR: usize = 0;
-const MONTH: usize = 1;
-const DAY: usize = 2;
-const HOUR: usize = 3;
-const MINUTE: usize = 4;
-const SECOND: usize = 5;
-const CENTISECOND: usize = 6;
+pub const YEAR: usize = 0;
+pub const MONTH: usize = 1;
+pub const DAY: usize = 2;
+pub const HOUR: usize = 3;
+pub const MINUTE: usize = 4;
+pub const SECOND: usize = 5;
+pub const CENTISECOND: usize = 6;
 // 1 = true (year~second is utc value) and 0 = false (iana local value)
-const IS_UTC: usize = 7;
+pub const IS_UTC: usize = 7;
 // id of IANA Time Zone Database
-const TIMEZONE: usize = 8;
+pub const TIMEZONE: usize = 8;
 
-const LAYOUT: Layout<9> = Layout::with_padding(
+pub const LAYOUT: Layout<9> = Layout::with_padding(
     [
         Unsigned(13),
         Unsigned(4),
@@ -542,7 +546,7 @@ fn date_of(day_number: i64) -> (i64, i64, i64) {
     (year, month, day)
 }
 
-fn days_in_month(year: i64, month: i64) -> i64 {
+pub fn days_in_month(year: i64, month: i64) -> i64 {
     match month {
         1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
         4 | 6 | 9 | 11 => 30,
