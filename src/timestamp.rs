@@ -444,21 +444,6 @@ pub fn youbi(timestamp: u64) -> Youbi {
     ][youbi_index as usize]
 }
 
-const CIVIL: u32 = LAYOUT.field(IS_UTC).position + 1;
-
-/// ```
-/// use app::timestamp::*;
-///
-/// let morning = pack(2026, 10, 2, 9, 0, 0, 0, 1, 0);
-/// let noon = pack(2026, 10, 2, 12, 0, 0, 0, 0, 3);
-/// assert!(is_before(morning, noon));
-/// assert!(!is_before(noon, morning));
-/// assert!(!is_before(noon, pack(2026, 10, 2, 12, 0, 0, 0, 1, 9)));
-/// ```
-pub fn is_before(timestamp: u64, other: u64) -> bool {
-    timestamp >> CIVIL < other >> CIVIL
-}
-
 /// ```
 /// use app::timestamp::*;
 ///
@@ -685,8 +670,7 @@ mod tests {
         let hour = 60 * 60 * 100;
         assert_eq!(diff(at(9, 30), at(10, 30), TimevolumeUnit::Centisecond), hour);
         assert_eq!(diff(at(10, 30), at(9, 30), TimevolumeUnit::Centisecond), -hour);
-        assert!(is_before(at(9, 30), at(10, 0)) && is_before(at(10, 0), at(10, 1)));
-        assert!(!is_before(at(10, 0), at(10, 0)));
+        assert!(at(9, 30) < at(10, 0) && at(10, 0) < at(10, 1));
     }
 
     #[test]
@@ -700,14 +684,6 @@ mod tests {
         assert_eq!(pack(0, 0, 0, 0, 0, 0, 1, 0, 0), 1 << 18);
         assert_eq!(pack(0, 0, 0, 0, 0, 0, 0, 1, 0), 1 << 17);
         assert_eq!(pack(0, 0, 0, 0, 0, 0, 0, 0, 1), 1 << 7);
-    }
-
-    #[test]
-    fn is_before_ignores_the_zone_bits() {
-        let civil = |is_utc, timezone| pack(2026, 10, 2, 9, 30, 0, 0, is_utc, timezone);
-        assert!(!is_before(civil(0, 0), civil(1, 9)));
-        assert!(!is_before(civil(1, 9), civil(0, 0)));
-        assert!(is_before(civil(1, 9), pack(2026, 10, 2, 9, 30, 0, 1, 0, 0)));
     }
 
     #[test]
@@ -899,7 +875,6 @@ mod tests {
             let delta = rng.below(2_000_000_001) as i64 - 1_000_000_000;
             let third = at_centiseconds(first, centiseconds(first) + delta);
             assert_eq!(first.cmp(&third), 0.cmp(&delta), "{context} order");
-            assert_eq!(is_before(first, third), delta > 0, "{context} before");
 
             let days = rng.below(80001) as i64 - 40000;
             let hours = rng.below(200001) as i64 - 100000;
