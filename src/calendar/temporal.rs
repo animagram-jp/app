@@ -14,14 +14,9 @@ use crate::timestamp::{
     Youbi, add, youbi,
 };
 
-// - time
-// - timeline
-// - Timestamp: u64 e.g., 2000-01-01T00:00:00.00
-// - Period: [includes: Vec<Range>, excludes: Vec<Range>]
-
 #[derive(Default, Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Timerange {
-    pub start:  u64, // timestamp
+    pub start:  u64,
     pub volume: Timevolume,
 }
 
