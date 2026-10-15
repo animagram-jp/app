@@ -43,6 +43,7 @@ pub const LAYOUT: Layout<9> = Layout::with_padding(
     7,
 );
 
+#[derive(Clone, Copy)]
 pub enum Timezone {
     None,
     // UTC+9
@@ -77,30 +78,19 @@ impl Timezone {
         }
     }
     pub const fn id(&self) -> u16 {
-        match self {
-            Self::None => 0,
-            Self::AsiaSeoul => 1,
-            Self::AsiaTokyo => 2,
-            Self::AsiaShanghai => 3,
-            Self::AsiaTaipei => 4,
-            Self::EuropeBerlin => 5,
-            Self::EuropeParis => 6,
-            Self::EuropeLondon => 7,
-            Self::AmericaNewYork => 8,
-            Self::AmericaLosAngeles => 9,
-        }
+        *self as u16
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Youbi {
     Monday = 1,
-    Tuesday = 2,
-    Wednesday = 3,
-    Thursday = 4,
-    Friday = 5,
-    Saturday = 6,
-    Sunday = 7,
+    Tuesday,
+    Wednesday,
+    Thursday,
+    Friday,
+    Saturday,
+    Sunday,
 }
 impl Youbi {
     pub const fn display(self, lang: Lang) -> &'static str {
@@ -115,17 +105,17 @@ impl Youbi {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Month {
     January = 1,
-    February = 2,
-    March = 3,
-    April = 4,
-    May = 5,
-    June = 6,
-    July = 7,
-    August = 8,
-    September = 9,
-    October = 10,
-    November = 11,
-    December = 12,
+    February,
+    March,
+    April,
+    May,
+    June,
+    July,
+    August,
+    September,
+    October,
+    November,
+    December,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

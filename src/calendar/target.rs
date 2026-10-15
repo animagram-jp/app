@@ -27,7 +27,7 @@ const DELETE_BUTTON: u32 = 2;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum EditField {
-    Title,
+    Title = 1,
     Category,
     Status,
     Date,
@@ -44,7 +44,7 @@ impl EditField {
     /// assert_eq!(EditField::Note.number(), 8);
     /// ```
     pub fn number(self) -> u32 {
-        FIELDS.iter().position(|f| *f == self).map_or(0, |i| i as u32 + 1)
+        self as u32
     }
 }
 

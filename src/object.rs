@@ -267,9 +267,10 @@ impl Predicate<2> for Name {
     }
 }
 
+#[derive(Clone, Copy)]
 pub enum OccupationKind {
     // p.38
-    Activist,
+    Activist = 1,
     Antiquarian,
     Artist,
     Athlete,
@@ -336,37 +337,7 @@ impl OccupationKind {
     }
 
     pub fn id(&self) -> u8 {
-        match self {
-            Self::Activist => 1,
-            Self::Antiquarian => 2,
-            Self::Artist => 3,
-            Self::Athlete => 4,
-            Self::Author => 5,
-            Self::Clergy => 6,
-            Self::Criminal => 7,
-            Self::Dilettante => 8,
-            Self::Doctor => 9,
-            Self::Drifter => 10,
-            Self::Engineer => 11,
-            Self::Entertainer => 12,
-            Self::Farmer => 13,
-            Self::Hacker => 14,
-            Self::Journalist => 15,
-            Self::Lawyer => 16,
-            Self::Librarian => 17,
-            Self::MilitaryOfficer => 18,
-            Self::Missionary => 19,
-            Self::Musician => 20,
-            Self::Parapsychologist => 21,
-            Self::Pilot => 22,
-            Self::Police => 23,
-            Self::PoliceDetective => 24,
-            Self::PrivateInvestigator => 25,
-            Self::Professor => 26,
-            Self::Soldier => 27,
-            Self::TribeMember => 28,
-            Self::Custom => 29,
-        }
+        *self as u8
     }
 }
 
@@ -595,17 +566,7 @@ impl Characteristic {
     }
 
     pub const fn id(&self) -> u32 {
-        Character::Characteristic.base_id()
-            + match self {
-                Self::Strength => 0,
-                Self::Constitution => 1,
-                Self::Size => 2,
-                Self::Dexterity => 3,
-                Self::Appearance => 4,
-                Self::Intelligence => 5,
-                Self::Power => 6,
-                Self::Education => 7,
-            }
+        Character::Characteristic.base_id() + *self as u32
     }
 
     pub fn from_id(id: u8) -> Option<Self> {
@@ -696,6 +657,7 @@ impl Characteristic {
 
 // === Secondary Attributes ===
 
+#[derive(Clone, Copy)]
 pub enum SecondaryAttribute {
     HitPoints,             // CON, SIZ -> u8
     MagicPoints,           // POW -> u8
@@ -710,18 +672,7 @@ pub enum SecondaryAttribute {
 
 impl SecondaryAttribute {
     pub const fn base_id(&self) -> u32 {
-        Character::SecondaryAttribute.base_id()
-            + match self {
-                Self::HitPoints => 0,
-                Self::MagicPoints => 1,
-                Self::Luck => 2,
-                Self::Sanity => 3,
-                Self::Build => 4,
-                Self::DamageBonus => 5,
-                Self::MoveRate => 6,
-                Self::OccupationSkillPoints => 7,
-                Self::InterestSkillPoints => 8,
-            }
+        Character::SecondaryAttribute.base_id() + *self as u32
     }
 
     pub fn display(&self, lang: Lang) -> &'static str {
@@ -1529,9 +1480,9 @@ impl LanguageOwn {
     }
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum ArtAndCraft {
-    Acting,
+    Acting = 1,
     Barber,
     Calligraphy,
     Carpentry,
@@ -1548,22 +1499,7 @@ pub enum ArtAndCraft {
 
 impl ArtAndCraft {
     pub const fn base_id(&self) -> u32 {
-        const BASE_ID: u32 = Skill::ArtAndCraft.base_id();
-        match self {
-            Self::Acting => BASE_ID + 1,
-            Self::Barber => BASE_ID + 2,
-            Self::Calligraphy => BASE_ID + 3,
-            Self::Carpentry => BASE_ID + 4,
-            Self::Cook => BASE_ID + 5,
-            Self::Dancing => BASE_ID + 6,
-            Self::FineArt => BASE_ID + 7,
-            Self::Forgery => BASE_ID + 8,
-            Self::Photography => BASE_ID + 9,
-            Self::Pottery => BASE_ID + 10,
-            Self::Sculpting => BASE_ID + 11,
-            Self::Writing => BASE_ID + 12,
-            Self::Custom => BASE_ID + 13,
-        }
+        Skill::ArtAndCraft.base_id() + *self as u32
     }
 
     pub fn display(&self, lang: Lang) -> &str {
@@ -1770,9 +1706,9 @@ impl ArtAndCraftCustom {
     }
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Fighting {
-    Axe,
+    Axe = 1,
     Brawl,
     Chainsaw,
     Flail,
@@ -1798,17 +1734,7 @@ impl Fighting {
     }
 
     pub const fn id(&self, base: u32) -> u32 {
-        base + match self {
-            Self::Axe => 1,
-            Self::Brawl => 2,
-            Self::Chainsaw => 3,
-            Self::Flail => 4,
-            Self::Garrote => 5,
-            Self::Spear => 6,
-            Self::Sword => 7,
-            Self::Whip => 8,
-            Self::Custom => 9,
-        }
+        base + *self as u32
     }
 
     pub const fn base_percent(&self) -> u16 {
@@ -2013,7 +1939,7 @@ impl FightingCustom {
     }
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Firearms {
     Bow,
     FlameThrower,
@@ -2039,16 +1965,7 @@ impl Firearms {
     }
 
     pub const fn id(&self, base: u32) -> u32 {
-        base + match self {
-            Self::Bow => 0,
-            Self::FlameThrower => 1,
-            Self::Handgun => 2,
-            Self::HeavyWeapons => 3,
-            Self::MachineGun => 4,
-            Self::RifleShotgun => 5,
-            Self::SubmachineGun => 6,
-            Self::Custom => 7,
-        }
+        base + *self as u32
     }
 
     pub const fn base_percent(&self) -> u16 {
@@ -2324,7 +2241,7 @@ impl LanguageOther {
     }
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Pilot {
     Boat,
     SteamShip,
@@ -2356,19 +2273,7 @@ impl Pilot {
     }
 
     pub const fn id(&self, base: u32) -> u32 {
-        base + match self {
-            Self::Boat => 0,
-            Self::SteamShip => 1,
-            Self::Sailboat => 2,
-            Self::CivilProp => 3,
-            Self::Balloon => 4,
-            Self::Dirigible => 5,
-            Self::CivilJet => 6,
-            Self::Airliner => 7,
-            Self::JetFighter => 8,
-            Self::Helicopter => 9,
-            Self::Custom => 10,
-        }
+        base + *self as u32
     }
 
     pub const fn base_percent(&self) -> u16 {
@@ -2821,7 +2726,7 @@ impl ScienceCustom {
     }
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Survival {
     Arctic,
     Desert,
@@ -2835,12 +2740,7 @@ impl Survival {
     }
 
     pub const fn id(&self, base: u32) -> u32 {
-        base + match self {
-            Self::Arctic => 0,
-            Self::Desert => 1,
-            Self::Sea => 2,
-            Self::Custom => 3,
-        }
+        base + *self as u32
     }
 
     pub const fn base_percent(&self) -> u16 {
@@ -3007,6 +2907,7 @@ impl SurvivalCustom {
 
 // === Possession p.44 ===
 
+#[derive(Clone, Copy)]
 pub enum Possession {
     Weapon,
     Armor,
@@ -3016,13 +2917,7 @@ pub enum Possession {
 
 impl Possession {
     pub fn id(&self) -> u32 {
-        Character::Possession.base_id()
-            + match self {
-                Self::Weapon => 0,
-                Self::Armor => 1,
-                Self::Equipment => 2,
-                Self::Wealth => 3,
-            }
+        Character::Possession.base_id() + *self as u32
     }
 
     pub fn display(&self, lang: Lang) -> &'static str {

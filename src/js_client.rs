@@ -562,7 +562,7 @@ pub fn detect_device(pointer_coarse: bool) -> Device {
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum EventType {
-    Cancel,
+    Cancel = 1,
     Change,
     Click,
     Close,
@@ -582,7 +582,7 @@ pub enum EventType {
     PointerUp,
     Scroll,
     Submit,
-    Other,
+    Other = 0,
 }
 
 impl EventType {
@@ -622,7 +622,7 @@ impl EventType {
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum KeyName {
-    Alt,
+    Alt = 1,
     AltGraph,
     Ampersand,
     Apostrophe,
@@ -724,7 +724,7 @@ pub enum KeyName {
     Tab,
     Tilde,
     Underscore,
-    Other,
+    Other = 0,
 }
 
 impl KeyName {
@@ -844,9 +844,9 @@ impl KeyName {
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum FullscreenEvent {
-    Change,
+    Change = 1,
     Error,
-    Other,
+    Other = 0,
 }
 
 impl FullscreenEvent {
@@ -866,9 +866,9 @@ impl FullscreenEvent {
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum VisibilityState {
-    Hidden,
+    Hidden = 1,
     Visible,
-    Other,
+    Other = 0,
 }
 
 impl VisibilityState {
@@ -1948,9 +1948,9 @@ pub mod dom {
 
     use super::{Input, Output};
 
-    #[derive(Debug, Clone, PartialEq)]
+    #[derive(Debug, Clone, Copy, PartialEq)]
     pub enum Tag {
-        Article,
+        Article = 1,
         Body,
         Button,
         Dd,
@@ -1989,7 +1989,7 @@ pub mod dom {
         Toast,
         Tr,
         Ul,
-        Other,
+        Other = 0,
     }
 
     impl Tag {
@@ -2001,48 +2001,7 @@ pub mod dom {
         /// assert_eq!(Tag::Other.as_u8(), 0);
         /// ```
         pub fn as_u8(&self) -> u8 {
-            match self {
-                Self::Article => 1,
-                Self::Body => 2,
-                Self::Button => 3,
-                Self::Dd => 4,
-                Self::Div => 5,
-                Self::Dl => 6,
-                Self::Drawer => 7,
-                Self::Dt => 8,
-                Self::Fieldset => 9,
-                Self::Footer => 10,
-                Self::Form => 11,
-                Self::H1 => 12,
-                Self::H2 => 13,
-                Self::H3 => 14,
-                Self::Header => 15,
-                Self::Hgroup => 16,
-                Self::Input => 17,
-                Self::Label => 18,
-                Self::Li => 19,
-                Self::Main => 20,
-                Self::Modal => 21,
-                Self::Nav => 22,
-                Self::Ol => 23,
-                Self::Option => 24,
-                Self::Output => 25,
-                Self::P => 26,
-                Self::Section => 27,
-                Self::Select => 28,
-                Self::Span => 29,
-                Self::Strong => 30,
-                Self::Table => 31,
-                Self::Tbody => 32,
-                Self::Td => 33,
-                Self::Textarea => 34,
-                Self::Th => 35,
-                Self::Thead => 36,
-                Self::Toast => 37,
-                Self::Tr => 38,
-                Self::Ul => 39,
-                Self::Other => 0,
-            }
+            *self as u8
         }
 
         /// ```
@@ -2108,7 +2067,7 @@ pub mod dom {
 
     impl Id {
         pub fn new(segs: &[(Tag, Option<u32>)]) -> Self {
-            Self(segs.iter().map(|(tag, n)| Segment { tag: tag.clone(), n: *n }).collect())
+            Self(segs.iter().map(|(tag, n)| Segment { tag: *tag, n: *n }).collect())
         }
     }
 

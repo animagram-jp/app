@@ -10,7 +10,7 @@ const unsafe fn all_variants<T: Copy, const N: usize>(first: T) -> [T; N] {
     let mut all = [first; N];
     let mut i = 0;
     while i < N {
-        all[i] = unsafe { transmute_copy::<u8, T>(&(i as u8)) };
+        all[i] = unsafe { transmute_copy::<u8, T>(&(i as u8 + 1)) };
         i += 1;
     }
     all
@@ -26,7 +26,7 @@ fn pick<T: Copy>(list: &[T]) -> T {
 #[derive(Clone, Copy)]
 #[repr(u8)]
 pub enum Roll {
-    DiceRoll,
+    DiceRoll = 1,
     SkillRoll,
     CharacteristicRoll,
     SanityRoll,
@@ -71,7 +71,7 @@ impl Roll {
 #[derive(Clone, Copy)]
 #[repr(u8)]
 pub enum BoutOfMadness {
-    RealTime,
+    RealTime = 1,
     Summary,
 }
 impl BoutOfMadness {
@@ -92,7 +92,7 @@ impl BoutOfMadness {
 #[derive(Clone, Copy)]
 #[repr(u8)]
 pub enum PhobiaAndMania {
-    Phobia,
+    Phobia = 1,
     Mania,
 }
 impl PhobiaAndMania {
@@ -113,7 +113,7 @@ impl PhobiaAndMania {
 #[derive(Clone, Copy)]
 #[repr(u8)]
 pub enum FailedCasting {
-    Minor,
+    Minor = 1,
     Major,
 }
 impl FailedCasting {
@@ -418,7 +418,7 @@ impl FailedCastingMajor {
 #[derive(Clone, Copy, PartialEq)]
 #[repr(u8)]
 pub enum Phobia {
-    Ablutophobia,
+    Ablutophobia = 1,
     Acrophobia,
     Aerophobia,
     Agoraphobia,
@@ -527,7 +527,7 @@ impl Phobia {
         &ALL
     }
     pub fn id(self) -> u8 {
-        self as u8 + 1
+        self as u8
     }
     pub fn roll() -> Self {
         pick(Self::list())
@@ -741,7 +741,7 @@ impl Phobia {
 #[derive(Clone, Copy, PartialEq)]
 #[repr(u8)]
 pub enum Mania {
-    Ablutomania,
+    Ablutomania = 1,
     Aboulomania,
     Achluomania,
     Acromaniaheights,
@@ -849,7 +849,7 @@ impl Mania {
         &ALL
     }
     pub fn id(self) -> u8 {
-        self as u8 + 1
+        self as u8
     }
     pub fn roll() -> Self {
         pick(Self::list())
@@ -1075,7 +1075,7 @@ mod variant_tests {
     fn assert_list<T: Copy>(list: &[T], expected: usize) {
         assert_eq!(list.len(), expected);
         assert_eq!(list.len(), variant_count::<T>());
-        let expected_discriminants: Vec<u8> = (0..expected as u8).collect();
+        let expected_discriminants: Vec<u8> = (1..=expected as u8).collect();
         assert_eq!(discriminants(list), expected_discriminants);
     }
 
