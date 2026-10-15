@@ -48,7 +48,7 @@ use web_sys::{
     FileSystemReadWriteOptions, FileSystemSyncAccessHandle, WorkerGlobalScope,
 };
 
-use crate::js_client::WireError;
+use crate::WireError;
 
 // === wire format & replay ===
 

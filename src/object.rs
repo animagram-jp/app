@@ -11,15 +11,12 @@ use core::{
     primitive::{i8, i32, u8},
 };
 
-use arbitrary_int::{i10, traits::Integer, u9};
+use arbitrary_int::{i10, u7, u9};
 
 use crate::{
     Lang,
     data_struct::DataStruct,
-    field::{
-        Layout,
-        Spec::{Signed, Unsigned},
-    },
+    field::{Fields, Layout},
     list::ListError,
 };
 
@@ -1258,15 +1255,14 @@ const CHANGE: usize = 2;
 const MODIFIER: usize = 3;
 const PERCENT: usize = 4;
 
-const SKILL_LAYOUT: Layout<4> = Layout::new([Unsigned(9), Unsigned(9), Signed(10), Signed(10)]);
-const SKILL_WITH_PERCENT_LAYOUT: Layout<5> =
-    Layout::new([Unsigned(9), Unsigned(9), Signed(10), Signed(10), Unsigned(7)]);
+const SKILL_LAYOUT: Layout<(u9, u9, i10, i10)> = Layout::new();
+const SKILL_WITH_PERCENT_LAYOUT: Layout<(u9, u9, i10, i10, u7)> = Layout::new();
 
-fn read_raw<const N: usize>(character: &DataStruct, id: u32, layout: &Layout<N>) -> u64 {
+fn read_raw<T: Fields>(character: &DataStruct, id: u32, layout: &Layout<T>) -> u64 {
     character.get(id).ok().and_then(|b| layout.decode(b)).unwrap_or(0)
 }
 
-fn write_raw<const N: usize>(character: &mut DataStruct, id: u32, layout: &Layout<N>, raw: u64) {
+fn write_raw<T: Fields>(character: &mut DataStruct, id: u32, layout: &Layout<T>, raw: u64) {
     let (word, len) = layout.encode(raw);
     let _ = character.set(id, &word[..len], None);
 }
@@ -1291,12 +1287,7 @@ pub trait SkillTrait<const S: Skill> {
     // -> occupation_points, interest_points, change, modifier
     fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
         let raw = read_raw(character, Self::BASE_ID, &SKILL_LAYOUT);
-        (
-            SKILL_LAYOUT.get(raw, OCCUPATION_POINTS),
-            SKILL_LAYOUT.get(raw, INTEREST_POINTS),
-            SKILL_LAYOUT.get(raw, CHANGE),
-            SKILL_LAYOUT.get(raw, MODIFIER),
-        )
+        SKILL_LAYOUT.unpack(raw)
     }
 
     fn write<'a>(
@@ -1307,12 +1298,7 @@ pub trait SkillTrait<const S: Skill> {
         change: i10,
         modifier: i10,
     ) -> &'a mut DataStruct {
-        let raw = SKILL_LAYOUT.pack([
-            occupation_points.as_u64(),
-            interest_points.as_u64(),
-            change.as_u64(),
-            modifier.as_u64(),
-        ]);
+        let raw = SKILL_LAYOUT.pack((occupation_points, interest_points, change, modifier));
         write_raw(character, Self::BASE_ID, &SKILL_LAYOUT, raw);
         character
     }
@@ -1444,7 +1430,7 @@ impl LanguageOwn {
         modifier: i16,
         name: &str,
     ) -> &'a mut DataStruct {
-        let raw = SKILL_LAYOUT.pack([
+        let raw = SKILL_LAYOUT.pack_raw(&[
             occupation_points as u64,
             interest_points as u64,
             change as u64,
@@ -1564,12 +1550,7 @@ pub trait ArtAndCraftTrait<const A: ArtAndCraft> {
     // -> occupation_points, interest_points, change, modifier
     fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
         let raw = read_raw(character, Self::BASE_ID, &SKILL_LAYOUT);
-        (
-            SKILL_LAYOUT.get(raw, OCCUPATION_POINTS),
-            SKILL_LAYOUT.get(raw, INTEREST_POINTS),
-            SKILL_LAYOUT.get(raw, CHANGE),
-            SKILL_LAYOUT.get(raw, MODIFIER),
-        )
+        SKILL_LAYOUT.unpack(raw)
     }
 
     fn write<'a>(
@@ -1580,12 +1561,7 @@ pub trait ArtAndCraftTrait<const A: ArtAndCraft> {
         change: i10,
         modifier: i10,
     ) -> &'a mut DataStruct {
-        let raw = SKILL_LAYOUT.pack([
-            occupation_points.as_u64(),
-            interest_points.as_u64(),
-            change.as_u64(),
-            modifier.as_u64(),
-        ]);
+        let raw = SKILL_LAYOUT.pack((occupation_points, interest_points, change, modifier));
         write_raw(character, Self::BASE_ID, &SKILL_LAYOUT, raw);
         character
     }
@@ -1669,7 +1645,7 @@ impl ArtAndCraftCustom {
         modifier: i16,
         name: &str,
     ) -> &'a mut DataStruct {
-        let raw = SKILL_LAYOUT.pack([
+        let raw = SKILL_LAYOUT.pack_raw(&[
             occupation_points as u64,
             interest_points as u64,
             change as u64,
@@ -1787,12 +1763,7 @@ pub trait FightingTrait<const F: Fighting> {
     // -> occupation_points, interest_points, change, modifier
     fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
         let raw = read_raw(character, Self::BASE_ID, &SKILL_LAYOUT);
-        (
-            SKILL_LAYOUT.get(raw, OCCUPATION_POINTS),
-            SKILL_LAYOUT.get(raw, INTEREST_POINTS),
-            SKILL_LAYOUT.get(raw, CHANGE),
-            SKILL_LAYOUT.get(raw, MODIFIER),
-        )
+        SKILL_LAYOUT.unpack(raw)
     }
 
     fn write<'a>(
@@ -1803,12 +1774,7 @@ pub trait FightingTrait<const F: Fighting> {
         change: i10,
         modifier: i10,
     ) -> &'a mut DataStruct {
-        let raw = SKILL_LAYOUT.pack([
-            occupation_points.as_u64(),
-            interest_points.as_u64(),
-            change.as_u64(),
-            modifier.as_u64(),
-        ]);
+        let raw = SKILL_LAYOUT.pack((occupation_points, interest_points, change, modifier));
         write_raw(character, Self::BASE_ID, &SKILL_LAYOUT, raw);
         character
     }
@@ -1900,7 +1866,7 @@ impl FightingCustom {
         modifier: i16,
         name: &str,
     ) -> &'a mut DataStruct {
-        let raw = SKILL_WITH_PERCENT_LAYOUT.pack([
+        let raw = SKILL_WITH_PERCENT_LAYOUT.pack_raw(&[
             occupation_points as u64,
             interest_points as u64,
             change as u64,
@@ -2014,12 +1980,7 @@ pub trait FirearmsTrait<const F: Firearms> {
 
     fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
         let raw = read_raw(character, Self::BASE_ID, &SKILL_LAYOUT);
-        (
-            SKILL_LAYOUT.get(raw, OCCUPATION_POINTS),
-            SKILL_LAYOUT.get(raw, INTEREST_POINTS),
-            SKILL_LAYOUT.get(raw, CHANGE),
-            SKILL_LAYOUT.get(raw, MODIFIER),
-        )
+        SKILL_LAYOUT.unpack(raw)
     }
 
     fn write<'a>(
@@ -2030,12 +1991,7 @@ pub trait FirearmsTrait<const F: Firearms> {
         change: i10,
         modifier: i10,
     ) -> &'a mut DataStruct {
-        let raw = SKILL_LAYOUT.pack([
-            occupation_points.as_u64(),
-            interest_points.as_u64(),
-            change.as_u64(),
-            modifier.as_u64(),
-        ]);
+        let raw = SKILL_LAYOUT.pack((occupation_points, interest_points, change, modifier));
         write_raw(character, Self::BASE_ID, &SKILL_LAYOUT, raw);
         character
     }
@@ -2125,7 +2081,7 @@ impl FirearmsCustom {
         modifier: i16,
         name: &str,
     ) -> &'a mut DataStruct {
-        let raw = SKILL_WITH_PERCENT_LAYOUT.pack([
+        let raw = SKILL_WITH_PERCENT_LAYOUT.pack_raw(&[
             occupation_points as u64,
             interest_points as u64,
             change as u64,
@@ -2204,7 +2160,7 @@ impl LanguageOther {
         modifier: i16,
         name: &str,
     ) -> &'a mut DataStruct {
-        let raw = SKILL_LAYOUT.pack([
+        let raw = SKILL_LAYOUT.pack_raw(&[
             occupation_points as u64,
             interest_points as u64,
             change as u64,
@@ -2317,12 +2273,7 @@ pub trait PilotTrait<const P: Pilot> {
 
     fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
         let raw = read_raw(character, Self::BASE_ID, &SKILL_LAYOUT);
-        (
-            SKILL_LAYOUT.get(raw, OCCUPATION_POINTS),
-            SKILL_LAYOUT.get(raw, INTEREST_POINTS),
-            SKILL_LAYOUT.get(raw, CHANGE),
-            SKILL_LAYOUT.get(raw, MODIFIER),
-        )
+        SKILL_LAYOUT.unpack(raw)
     }
 
     fn write<'a>(
@@ -2333,12 +2284,7 @@ pub trait PilotTrait<const P: Pilot> {
         change: i10,
         modifier: i10,
     ) -> &'a mut DataStruct {
-        let raw = SKILL_LAYOUT.pack([
-            occupation_points.as_u64(),
-            interest_points.as_u64(),
-            change.as_u64(),
-            modifier.as_u64(),
-        ]);
+        let raw = SKILL_LAYOUT.pack((occupation_points, interest_points, change, modifier));
         write_raw(character, Self::BASE_ID, &SKILL_LAYOUT, raw);
         character
     }
@@ -2428,7 +2374,7 @@ impl PilotCustom {
         modifier: i16,
         name: &str,
     ) -> &'a mut DataStruct {
-        let raw = SKILL_LAYOUT.pack([
+        let raw = SKILL_LAYOUT.pack_raw(&[
             occupation_points as u64,
             interest_points as u64,
             change as u64,
@@ -2560,12 +2506,7 @@ pub trait ScienceTrait<const S: Science> {
 
     fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
         let raw = read_raw(character, Self::BASE_ID, &SKILL_LAYOUT);
-        (
-            SKILL_LAYOUT.get(raw, OCCUPATION_POINTS),
-            SKILL_LAYOUT.get(raw, INTEREST_POINTS),
-            SKILL_LAYOUT.get(raw, CHANGE),
-            SKILL_LAYOUT.get(raw, MODIFIER),
-        )
+        SKILL_LAYOUT.unpack(raw)
     }
 
     fn write<'a>(
@@ -2576,12 +2517,7 @@ pub trait ScienceTrait<const S: Science> {
         change: i10,
         modifier: i10,
     ) -> &'a mut DataStruct {
-        let raw = SKILL_LAYOUT.pack([
-            occupation_points.as_u64(),
-            interest_points.as_u64(),
-            change.as_u64(),
-            modifier.as_u64(),
-        ]);
+        let raw = SKILL_LAYOUT.pack((occupation_points, interest_points, change, modifier));
         write_raw(character, Self::BASE_ID, &SKILL_LAYOUT, raw);
         character
     }
@@ -2677,7 +2613,7 @@ impl ScienceCustom {
         modifier: i16,
         name: &str,
     ) -> &'a mut DataStruct {
-        let raw = SKILL_LAYOUT.pack([
+        let raw = SKILL_LAYOUT.pack_raw(&[
             occupation_points as u64,
             interest_points as u64,
             change as u64,
@@ -2759,12 +2695,7 @@ pub trait SurvivalTrait<const S: Survival> {
 
     fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
         let raw = read_raw(character, Self::BASE_ID, &SKILL_LAYOUT);
-        (
-            SKILL_LAYOUT.get(raw, OCCUPATION_POINTS),
-            SKILL_LAYOUT.get(raw, INTEREST_POINTS),
-            SKILL_LAYOUT.get(raw, CHANGE),
-            SKILL_LAYOUT.get(raw, MODIFIER),
-        )
+        SKILL_LAYOUT.unpack(raw)
     }
 
     fn write<'a>(
@@ -2775,12 +2706,7 @@ pub trait SurvivalTrait<const S: Survival> {
         change: i10,
         modifier: i10,
     ) -> &'a mut DataStruct {
-        let raw = SKILL_LAYOUT.pack([
-            occupation_points.as_u64(),
-            interest_points.as_u64(),
-            change.as_u64(),
-            modifier.as_u64(),
-        ]);
+        let raw = SKILL_LAYOUT.pack((occupation_points, interest_points, change, modifier));
         write_raw(character, Self::BASE_ID, &SKILL_LAYOUT, raw);
         character
     }
@@ -2856,7 +2782,7 @@ impl SurvivalCustom {
         modifier: i16,
         name: &str,
     ) -> &'a mut DataStruct {
-        let raw = SKILL_LAYOUT.pack([
+        let raw = SKILL_LAYOUT.pack_raw(&[
             occupation_points as u64,
             interest_points as u64,
             change as u64,

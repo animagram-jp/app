@@ -6,10 +6,10 @@ use core::{
 };
 
 use crate::{
+    WireError,
     file_store::{Backend, FileStore, FileStoreError, StoreId},
     js_client::{
         CanvasEvent, EventType, FullscreenEvent, Gesture, Input, KeyName, VisibilityState,
-        WireError,
     },
 };
 

@@ -1,9 +1,8 @@
 use alloc::{format, string::String};
 
-use crate::{
-    Lang,
-    field::{Layout, Spec::Unsigned},
-};
+use arbitrary_int::{u1, u4, u5, u6, u7, u10, u13};
+
+use crate::{Lang, field::Layout};
 
 // timestamp (64 bits)
 // note:
@@ -28,20 +27,8 @@ pub const IS_UTC: usize = 7;
 // id of IANA Time Zone Database
 pub const TIMEZONE: usize = 8;
 
-pub const LAYOUT: Layout<9> = Layout::with_padding(
-    [
-        Unsigned(13),
-        Unsigned(4),
-        Unsigned(5),
-        Unsigned(5),
-        Unsigned(6),
-        Unsigned(6),
-        Unsigned(7),
-        Unsigned(1),
-        Unsigned(10),
-    ],
-    7,
-);
+pub type Parts = (u13, u4, u5, u5, u6, u6, u7, u1, u10);
+pub const LAYOUT: Layout<Parts> = Layout::aligned();
 
 #[derive(Clone, Copy)]
 pub enum Timezone {
@@ -594,7 +581,7 @@ pub fn days_in_month(year: i64, month: i64) -> i64 {
 }
 
 pub fn unpack(timestamp: u64) -> (i64, i64, i64, i64, i64, i64, i64, u64, u64) {
-    let fields: [u64; 9] = LAYOUT.unpack(timestamp);
+    let fields: [u64; 9] = core::array::from_fn(|index| LAYOUT.get(timestamp, index));
     (
         fields[YEAR] as i64,
         fields[MONTH] as i64,
@@ -619,7 +606,7 @@ pub const fn pack(
     is_utc: u64,
     timezone: u64,
 ) -> u64 {
-    LAYOUT.pack([
+    LAYOUT.pack_raw(&[
         year as u64,
         month as u64,
         day as u64,

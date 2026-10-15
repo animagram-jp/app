@@ -8,9 +8,10 @@ use core::{
 };
 
 use crate::{
+    WireError,
     data_struct::{DataStruct, ID_CREATED_AT, ID_IDENTITY, ID_MODIFIED_AT, encode_time},
     file_store::FileStore,
-    js_client::{WireError, parse},
+    js_client::parse,
     list::ListError,
     object::Predicate,
     timestamp::{DAY, LAYOUT, MONTH, Timevolume, TimevolumeUnit, YEAR, days_in_month},

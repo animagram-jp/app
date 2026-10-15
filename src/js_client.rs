@@ -10,7 +10,7 @@ use core::{
     primitive::{bool, char, f32, f64, i32, str, u8, u16, u32, usize},
 };
 
-use crate::{Error, field::Field};
+use crate::{Error, WireError, field::Field};
 
 // === send operation ===
 //
@@ -32,45 +32,6 @@ pub const OPERATION_JS_FN: u8 = 12;
 pub const OPERATION_ERROR: u8 = 13;
 pub const OPERATION_FETCH: u8 = 14;
 pub const OPERATION_RELOAD: u8 = 15;
-
-pub trait WireError {
-    fn identifiers(&self, path: &mut Vec<u16>);
-    fn detail(&self) -> String;
-}
-
-macro_rules! wire_error {
-    ($name:ident { $($(#[$meta:meta])* $variant:ident($inner:ty) = $identifier:expr),+ $(,)? }) => {
-        #[derive(Debug)]
-        pub enum $name {
-            $($(#[$meta])* $variant($inner)),+
-        }
-
-        impl ::core::fmt::Display for $name {
-            fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-                ::core::write!(f, "{:?}", self)
-            }
-        }
-
-        impl $crate::js_client::WireError for $name {
-            fn identifiers(&self, path: &mut ::alloc::vec::Vec<u16>) {
-                match self {
-                    $($(#[$meta])* $name::$variant(error) => {
-                        path.push($identifier);
-                        $crate::js_client::WireError::identifiers(error, path);
-                    })+
-                }
-            }
-
-            fn detail(&self) -> ::alloc::string::String {
-                match self {
-                    $($(#[$meta])* $name::$variant(error) => $crate::js_client::WireError::detail(error)),+
-                }
-            }
-        }
-    };
-}
-
-pub(crate) use wire_error;
 
 /// Command from Wasm to JavaScript thread
 pub enum Command {
