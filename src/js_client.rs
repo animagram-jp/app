@@ -13,8 +13,6 @@ use core::{
 use crate::{Error, WireError, field::Field};
 
 // === send operation ===
-//
-// see distribution/init.js execute operation
 
 pub const OPERATION_SET_TEXT: u8 = 1;
 pub const OPERATION_SET_VALUE: u8 = 2;
@@ -28,12 +26,10 @@ pub const OPERATION_SHOW_MODAL: u8 = 9;
 pub const OPERATION_CLOSE_MODAL: u8 = 10;
 pub const OPERATION_FOCUS: u8 = 11;
 pub const OPERATION_JS_FN: u8 = 12;
-
 pub const OPERATION_ERROR: u8 = 13;
 pub const OPERATION_FETCH: u8 = 14;
 pub const OPERATION_RELOAD: u8 = 15;
 
-/// Command from Wasm to JavaScript thread
 pub enum Command {
     SetText { id: dom::Id, value: String },
     SetValue { id: dom::Id, value: String },
