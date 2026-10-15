@@ -169,13 +169,7 @@ pub enum DevelopedOrUndeveloped {
 }
 impl DevelopedOrUndeveloped {
     pub fn get(target: u8, rolled: u8) -> Self {
-        if rolled > 96 {
-            Self::Developed
-        } else if target < rolled {
-            Self::Developed
-        } else {
-            Self::Undeveloped
-        }
+        if rolled > 96 || target < rolled { Self::Developed } else { Self::Undeveloped }
     }
     pub fn display(self, lang: Lang) -> &'static str {
         match (self, lang) {

@@ -1769,7 +1769,7 @@ mod pointer_tests {
             let events: Vec<_> = (0..40)
                 .map(|step| {
                     (
-                        kinds[rng.below(kinds.len())].clone(),
+                        kinds[rng.below(kinds.len())],
                         rng.below(4) as u32,
                         rng.below(300) as f64,
                         rng.below(300) as f64,
@@ -1899,7 +1899,6 @@ mod pointer_tests {
         assert_eq!(got[6], Some(Gesture::Pinch { scale: 0.2, center_x: 150.0, center_y: 100.0 }));
     }
 
-    ///
     #[test]
     fn duplicate_pointer_down_does_not_reset_primary_state() {
         let th = Thresholds::MOUSE;

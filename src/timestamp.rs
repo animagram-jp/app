@@ -2,7 +2,7 @@ use alloc::{format, string::String};
 
 use crate::{
     Lang,
-    field::{Field, Layout, Spec::Unsigned},
+    field::{Layout, Spec::Unsigned},
 };
 
 // timestamp (64 bits)
@@ -103,7 +103,7 @@ pub enum Youbi {
     Sunday = 7,
 }
 impl Youbi {
-    pub const fn label(self, lang: Lang) -> &'static str {
+    pub const fn display(self, lang: Lang) -> &'static str {
         let names = match lang {
             Lang::En(_) => ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
             Lang::Ja => ["月", "火", "水", "木", "金", "土", "日"],
@@ -146,16 +146,6 @@ pub enum TimevolumeUnit {
     Centisecond,
 }
 
-const SLOTS: [(usize, Field); 7] = [
-    (0, Field::new(45, 13)),
-    (1, Field::new(38, 17)),
-    (2, Field::new(33, 22)),
-    (3, Field::new(0, 27)),
-    (2, Field::new(0, 33)),
-    (1, Field::new(0, 38)),
-    (0, Field::new(0, 45)),
-];
-
 /// ```
 /// use app::timestamp::*;
 ///
@@ -173,23 +163,21 @@ const SLOTS: [(usize, Field); 7] = [
 /// assert!(Timevolume::new(TimevolumeUnit::Month, 1) > Timevolume::new(TimevolumeUnit::Day, 31));
 /// ```
 #[derive(Debug, Clone, Copy, Default)]
-pub struct Timevolume([u64; 4]);
+pub struct Timevolume([u64; 7]);
 
 impl Timevolume {
     pub const fn new(unit: TimevolumeUnit, value: u64) -> Self {
-        Self([0; 4]).with(unit, value)
+        Self([0; 7]).with(unit, value)
     }
 
     pub const fn with(self, unit: TimevolumeUnit, value: u64) -> Self {
-        let (word, field) = SLOTS[unit as usize];
-        let mut words = self.0;
-        words[word] = field.put(words[word], value);
-        Self(words)
+        let mut values = self.0;
+        values[unit as usize] = value;
+        Self(values)
     }
 
-    pub fn get(&self, unit: TimevolumeUnit) -> u64 {
-        let (word, field) = SLOTS[unit as usize];
-        field.get(self.0[word])
+    pub const fn get(&self, unit: TimevolumeUnit) -> u64 {
+        self.0[unit as usize]
     }
 
     pub fn total(&self, unit: TimevolumeUnit) -> u64 {
@@ -334,8 +322,11 @@ pub fn display(
         _ => format!("{date}{clock}"),
     };
     let verbal = within(Year);
-    let name =
-        if within(Day) && format == Format::WithYoubi { youbi(timestamp).label(lang) } else { "" };
+    let name = if within(Day) && format == Format::WithYoubi {
+        youbi(timestamp).display(lang)
+    } else {
+        ""
+    };
     match (format, lang) {
         (Format::Iso, _) => {
             let date = dates
@@ -687,8 +678,8 @@ mod tests {
     }
 
     #[test]
-    fn timevolume_slots_hold_every_unit_independently() {
-        let maxes = [
+    fn diff_spans_the_whole_range_in_every_unit() {
+        let maxes: [(TimevolumeUnit, i64); 7] = [
             (TimevolumeUnit::Year, 8_191),
             (TimevolumeUnit::Month, 98_303),
             (TimevolumeUnit::Day, 2_992_066),
@@ -697,16 +688,10 @@ mod tests {
             (TimevolumeUnit::Second, 258_514_588_799),
             (TimevolumeUnit::Centisecond, 25_851_458_879_999),
         ];
-        let full = maxes.iter().fold(Timevolume::default(), |v, (unit, max)| v.with(*unit, *max));
-        for (unit, max) in maxes {
-            assert_eq!(full.get(unit), max, "{unit:?}");
-            assert_eq!(Timevolume::new(unit, max).get(unit), max, "{unit:?}");
-            assert_eq!(full.with(unit, 0).get(unit), 0, "{unit:?}");
-        }
         let first = pack(0, 1, 1, 0, 0, 0, 0, 0, 0);
         let last = pack(8191, 12, 31, 23, 59, 59, 99, 0, 0);
         for (unit, max) in maxes {
-            assert_eq!(diff(first, last, unit), max as i64, "{unit:?}");
+            assert_eq!(diff(first, last, unit), max, "{unit:?}");
         }
     }
 

@@ -757,7 +757,7 @@ impl HitPoints {
         character.get(Self::id()).ok().and_then(|b| b.first().copied()).unwrap_or(0)
     }
 
-    pub fn write<'a>(character: &'a mut DataStruct, value: u8) -> &'a mut DataStruct {
+    pub fn write(character: &mut DataStruct, value: u8) -> &mut DataStruct {
         let _ = character.set(Self::id(), &[value], None);
         character
     }
@@ -780,7 +780,7 @@ impl MagicPoints {
         character.get(Self::id()).ok().and_then(|b| b.first().copied()).unwrap_or(0)
     }
 
-    pub fn write<'a>(character: &'a mut DataStruct, value: u8) -> &'a mut DataStruct {
+    pub fn write(character: &mut DataStruct, value: u8) -> &mut DataStruct {
         let _ = character.set(Self::id(), &[value], None);
         character
     }
@@ -801,7 +801,7 @@ impl Luck {
             .unwrap_or(0)
     }
 
-    pub fn write<'a>(character: &'a mut DataStruct, value: u8) -> &'a mut DataStruct {
+    pub fn write(character: &mut DataStruct, value: u8) -> &mut DataStruct {
         let _ = character.set(SecondaryAttribute::Luck.base_id(), &[value], None);
         character
     }
@@ -822,7 +822,7 @@ impl Sanity {
             .unwrap_or(0)
     }
 
-    pub fn write<'a>(character: &'a mut DataStruct, value: u8) -> &'a mut DataStruct {
+    pub fn write(character: &mut DataStruct, value: u8) -> &mut DataStruct {
         let _ = character.set(SecondaryAttribute::Sanity.base_id(), &[value], None);
         character
     }
@@ -844,7 +844,7 @@ impl Build {
             .unwrap_or(0)
     }
 
-    pub fn write<'a>(character: &'a mut DataStruct, value: i8) -> &'a mut DataStruct {
+    pub fn write(character: &mut DataStruct, value: i8) -> &mut DataStruct {
         let _ = character.set(SecondaryAttribute::Build.base_id(), &[value as u8], None);
         character
     }
@@ -905,7 +905,7 @@ impl MoveRate {
             .unwrap_or(0)
     }
 
-    pub fn write<'a>(character: &'a mut DataStruct, value: u8) -> &'a mut DataStruct {
+    pub fn write(character: &mut DataStruct, value: u8) -> &mut DataStruct {
         let _ = character.set(SecondaryAttribute::MoveRate.base_id(), &[value], None);
         character
     }
@@ -943,10 +943,10 @@ impl OccupationSkillPoints {
         Some((c1, c2))
     }
 
-    pub fn write<'a>(
-        character: &'a mut DataStruct,
+    pub fn write(
+        character: &mut DataStruct,
         value: (Characteristic, Characteristic),
-    ) -> &'a mut DataStruct {
+    ) -> &mut DataStruct {
         let _ = character.set(
             SecondaryAttribute::OccupationSkillPoints.base_id(),
             &[value.0.id() as u8, value.1.id() as u8],
@@ -3242,40 +3242,40 @@ impl Weapon {
     }
 
     pub fn is_impalable(&self) -> bool {
-        match self {
-            Self::BowAndArrows => true,
-            Self::Crossbow => true,
-            Self::Garrote => true,
-            Self::HatchetSickle => true,
-            Self::KnifeLarge => true,
-            Self::KnifeMedium => true,
-            Self::KnifeSmall => true,
-            Self::Shuriken => true,
-            Self::Spear => true,
-            Self::SpearThrown => true,
-            Self::Auto22Short => true,
-            Self::Derringer25 => true,
-            Self::Revolver32 => true,
-            Self::Automatic32 => true,
-            Self::LugerP08 => true,
-            Self::Revolver45 => true,
-            Self::Automatic45 => true,
-            Self::BoltAction22 => true,
-            Self::LeverAction30 => true,
-            Self::MartiniHenry45 => true,
-            Self::MoranAirRifle => true,
-            Self::LeeEnfield303 => true,
-            Self::BoltAction3006 => true,
-            Self::ElephantGun => true,
-            Self::BergmannMP18 => true,
-            Self::Thompson => true,
-            Self::BrowningAutoRifle => true,
-            Self::BrowningM1917 => true,
-            Self::BrenGun => true,
-            Self::LewisGun => true,
-            Self::Vickers303 => true,
-            _ => false,
-        }
+        matches!(
+            self,
+            Self::BowAndArrows
+                | Self::Crossbow
+                | Self::Garrote
+                | Self::HatchetSickle
+                | Self::KnifeLarge
+                | Self::KnifeMedium
+                | Self::KnifeSmall
+                | Self::Shuriken
+                | Self::Spear
+                | Self::SpearThrown
+                | Self::Auto22Short
+                | Self::Derringer25
+                | Self::Revolver32
+                | Self::Automatic32
+                | Self::LugerP08
+                | Self::Revolver45
+                | Self::Automatic45
+                | Self::BoltAction22
+                | Self::LeverAction30
+                | Self::MartiniHenry45
+                | Self::MoranAirRifle
+                | Self::LeeEnfield303
+                | Self::BoltAction3006
+                | Self::ElephantGun
+                | Self::BergmannMP18
+                | Self::Thompson
+                | Self::BrowningAutoRifle
+                | Self::BrowningM1917
+                | Self::BrenGun
+                | Self::LewisGun
+                | Self::Vickers303
+        )
     }
 
     pub fn attacks_per_round(&self) -> u8 {

@@ -1569,7 +1569,7 @@ impl Handler {
                 Command::SetText {
                     id:    Target::DayTitle(n).to_dom(),
                     value: if self.month() {
-                        String::from(youbi(day).label(LANG))
+                        String::from(youbi(day).display(LANG))
                     } else {
                         display(day, LANG, MONTH_DAY, Format::WithYoubi)
                     },
