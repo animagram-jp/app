@@ -127,7 +127,7 @@ pub enum Format {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum TimevolumeUnit {
-    Year,
+    Year = 1,
     Month,
     Day,
     Hour,
@@ -162,12 +162,12 @@ impl Timevolume {
 
     pub const fn with(self, unit: TimevolumeUnit, value: u64) -> Self {
         let mut values = self.0;
-        values[unit as usize] = value;
+        values[unit as usize - 1] = value;
         Self(values)
     }
 
     pub const fn get(&self, unit: TimevolumeUnit) -> u64 {
-        self.0[unit as usize]
+        self.0[unit as usize - 1]
     }
 
     pub fn total(&self, unit: TimevolumeUnit) -> u64 {
@@ -333,7 +333,7 @@ pub fn display(
             let date = dates
                 .iter()
                 .filter(|(unit, _)| within(*unit))
-                .map(|(unit, value)| format!("{value}{}", ["年", "月", "日"][*unit as usize]))
+                .map(|(unit, value)| format!("{value}{}", ["年", "月", "日"][*unit as usize - 1]))
                 .collect::<String>();
             let suffix = if name.is_empty() { String::new() } else { format!("({name})") };
             let clock = clocks

@@ -541,7 +541,7 @@ impl Predicate<1> for Age {
 #[derive(Clone, Copy)]
 pub enum Characteristic {
     // Characteristic {initial: u16, change: i16, modifier: i16} // p.28
-    Strength,
+    Strength = 1,
     Constitution,
     Size,
     Dexterity,
@@ -572,14 +572,14 @@ impl Characteristic {
     pub fn from_id(id: u8) -> Option<Self> {
         let offset = id as u32 - Character::Characteristic.base_id();
         match offset {
-            0 => Some(Self::Strength),
-            1 => Some(Self::Constitution),
-            2 => Some(Self::Size),
-            3 => Some(Self::Dexterity),
-            4 => Some(Self::Appearance),
-            5 => Some(Self::Intelligence),
-            6 => Some(Self::Power),
-            7 => Some(Self::Education),
+            1 => Some(Self::Strength),
+            2 => Some(Self::Constitution),
+            3 => Some(Self::Size),
+            4 => Some(Self::Dexterity),
+            5 => Some(Self::Appearance),
+            6 => Some(Self::Intelligence),
+            7 => Some(Self::Power),
+            8 => Some(Self::Education),
             _ => None,
         }
     }
@@ -659,7 +659,7 @@ impl Characteristic {
 
 #[derive(Clone, Copy)]
 pub enum SecondaryAttribute {
-    HitPoints,             // CON, SIZ -> u8
+    HitPoints = 1,         // CON, SIZ -> u8
     MagicPoints,           // POW -> u8
     Luck,                  // u8
     Sanity,                // u8 | POW -> u8
@@ -1053,53 +1053,53 @@ impl Skill {
     pub const fn base_id(&self) -> u32 {
         const BASE: u32 = Character::Skill.base_id();
         match self {
-            Self::Accounting => BASE + 0, // 1 slot (minimum)
-            Self::Anthropology => BASE + 1,
-            Self::Appraise => BASE + 2,
-            Self::Archaeology => BASE + 3,
-            Self::ArtAndCraft => BASE + 4, // 12 + 1 slots (defined + custom)
-            Self::Charm => BASE + 17,
-            Self::Climb => BASE + 18,
-            Self::ComputerUse => BASE + 19,
-            Self::CreditRating => BASE + 20,
-            Self::CthulhuMythos => BASE + 21,
-            Self::Disguise => BASE + 22,
-            Self::Dodge => BASE + 23,
-            Self::DriveAuto => BASE + 24,
-            Self::ElectricalRepair => BASE + 25,
-            Self::Electronics => BASE + 26,
-            Self::FastTalk => BASE + 27,
-            Self::Fighting => BASE + 28, // 8 + 1 slots (defined + custom)
-            Self::Firearms => BASE + 37, // 7 + 1 slots (defined + custom)
-            Self::FirstAid => BASE + 44,
-            Self::History => BASE + 45,
-            Self::Intimidate => BASE + 46,
-            Self::Jump => BASE + 47,
-            Self::LanguageOther => BASE + 48, // 1 + 1 slot (+ name)
-            Self::LanguageOwn => BASE + 50,   // 1 + 1 slot (+ name)
-            Self::Law => BASE + 52,
-            Self::LibraryUse => BASE + 53,
-            Self::Listen => BASE + 54,
-            Self::Locksmith => BASE + 55,
-            Self::MechanicalRepair => BASE + 56,
-            Self::Medicine => BASE + 57,
-            Self::NaturalWorld => BASE + 58,
-            Self::Navigate => BASE + 59,
-            Self::Occult => BASE + 60,
-            Self::Persuade => BASE + 61,
-            Self::Pilot => BASE + 62, // 10 + 1 slots (defined + custom)
-            Self::Psychoanalysis => BASE + 73,
-            Self::Psychology => BASE + 74,
-            Self::Ride => BASE + 75,
-            Self::Science => BASE + 76, // 13 + 1 slots (defined + custom)
-            Self::SleightOfHand => BASE + 90,
-            Self::SpotHidden => BASE + 91,
-            Self::Stealth => BASE + 92,
-            Self::Survival => BASE + 93, // 3 + 1 slots (defined + custom)
-            Self::Swim => BASE + 97,
-            Self::Throw => BASE + 98,
-            Self::Track => BASE + 99,
-            Self::Custom => BASE + 100,
+            Self::Accounting => BASE + 1, // 1 slot (minimum)
+            Self::Anthropology => BASE + 2,
+            Self::Appraise => BASE + 3,
+            Self::Archaeology => BASE + 4,
+            Self::ArtAndCraft => BASE + 5, // 12 + 1 slots (defined + custom)
+            Self::Charm => BASE + 19,
+            Self::Climb => BASE + 20,
+            Self::ComputerUse => BASE + 21,
+            Self::CreditRating => BASE + 22,
+            Self::CthulhuMythos => BASE + 23,
+            Self::Disguise => BASE + 24,
+            Self::Dodge => BASE + 25,
+            Self::DriveAuto => BASE + 26,
+            Self::ElectricalRepair => BASE + 27,
+            Self::Electronics => BASE + 28,
+            Self::FastTalk => BASE + 29,
+            Self::Fighting => BASE + 30, // 8 + 1 slots (defined + custom)
+            Self::Firearms => BASE + 40, // 7 + 1 slots (defined + custom)
+            Self::FirstAid => BASE + 49,
+            Self::History => BASE + 50,
+            Self::Intimidate => BASE + 51,
+            Self::Jump => BASE + 52,
+            Self::LanguageOther => BASE + 53, // 1 + 1 slot (+ name)
+            Self::LanguageOwn => BASE + 55,   // 1 + 1 slot (+ name)
+            Self::Law => BASE + 57,
+            Self::LibraryUse => BASE + 58,
+            Self::Listen => BASE + 59,
+            Self::Locksmith => BASE + 60,
+            Self::MechanicalRepair => BASE + 61,
+            Self::Medicine => BASE + 62,
+            Self::NaturalWorld => BASE + 63,
+            Self::Navigate => BASE + 64,
+            Self::Occult => BASE + 65,
+            Self::Persuade => BASE + 66,
+            Self::Pilot => BASE + 67, // 10 + 1 slots (defined + custom)
+            Self::Psychoanalysis => BASE + 79,
+            Self::Psychology => BASE + 80,
+            Self::Ride => BASE + 81,
+            Self::Science => BASE + 82, // 13 + 1 slots (defined + custom)
+            Self::SleightOfHand => BASE + 97,
+            Self::SpotHidden => BASE + 98,
+            Self::Stealth => BASE + 99,
+            Self::Survival => BASE + 100, // 3 + 1 slots (defined + custom)
+            Self::Swim => BASE + 105,
+            Self::Throw => BASE + 106,
+            Self::Track => BASE + 107,
+            Self::Custom => BASE + 108,
         }
     }
 
@@ -1941,7 +1941,7 @@ impl FightingCustom {
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Firearms {
-    Bow,
+    Bow = 1,
     FlameThrower,
     Handgun,
     HeavyWeapons,
@@ -2087,7 +2087,7 @@ impl FirearmsTrait<{ Firearms::SubmachineGun }> for SubmachineGun {}
 pub struct FirearmsCustom(pub u8);
 
 impl FirearmsCustom {
-    const LIST_ID: u32 = Skill::Firearms.base_id() + 7;
+    const LIST_ID: u32 = Skill::Firearms.base_id() + 8;
     pub const fn list_id() -> u32 {
         Self::LIST_ID
     }
@@ -2243,7 +2243,7 @@ impl LanguageOther {
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Pilot {
-    Boat,
+    Boat = 1,
     SteamShip,
     Sailboat,
     CivilProp,
@@ -2394,7 +2394,7 @@ impl PilotTrait<{ Pilot::Helicopter }> for PilotHelicopter {}
 pub struct PilotCustom(pub u8);
 
 impl PilotCustom {
-    const LIST_ID: u32 = Skill::Pilot.base_id() + 10;
+    const LIST_ID: u32 = Skill::Pilot.base_id() + 11;
     pub const fn list_id() -> u32 {
         Self::LIST_ID
     }
@@ -2464,7 +2464,7 @@ impl PilotCustom {
     }
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Science {
     None,
     Astronomy,
@@ -2503,22 +2503,9 @@ impl Science {
     }
 
     pub const fn id(&self, base: u32) -> u32 {
-        base + match self {
+        match self {
             Self::None => unreachable!(),
-            Self::Astronomy => 0,
-            Self::Biology => 1,
-            Self::Botany => 2,
-            Self::Chemistry => 3,
-            Self::Cryptography => 4,
-            Self::Engineering => 5,
-            Self::Forensics => 6,
-            Self::Geology => 7,
-            Self::Mathematics => 8,
-            Self::Meteorology => 9,
-            Self::Pharmacy => 10,
-            Self::Physics => 11,
-            Self::Zoology => 12,
-            Self::Custom => 13,
+            _ => base + *self as u32,
         }
     }
 
@@ -2656,7 +2643,7 @@ impl ScienceTrait<{ Science::Zoology }> for ScienceZoology {}
 pub struct ScienceCustom(pub u8);
 
 impl ScienceCustom {
-    const LIST_ID: u32 = Skill::Science.base_id() + 13;
+    const LIST_ID: u32 = Skill::Science.base_id() + 14;
     pub const fn list_id() -> u32 {
         Self::LIST_ID
     }
@@ -2728,7 +2715,7 @@ impl ScienceCustom {
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Survival {
-    Arctic,
+    Arctic = 1,
     Desert,
     Sea,
     Custom,
@@ -2835,7 +2822,7 @@ impl SurvivalTrait<{ Survival::Sea }> for SurvivalSea {}
 pub struct SurvivalCustom(pub u8);
 
 impl SurvivalCustom {
-    const LIST_ID: u32 = Skill::Survival.base_id() + 3;
+    const LIST_ID: u32 = Skill::Survival.base_id() + 4;
     pub const fn list_id() -> u32 {
         Self::LIST_ID
     }
@@ -2909,7 +2896,7 @@ impl SurvivalCustom {
 
 #[derive(Clone, Copy)]
 pub enum Possession {
-    Weapon,
+    Weapon = 1,
     Armor,
     Equipment,
     Wealth,
