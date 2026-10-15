@@ -90,7 +90,7 @@ pub mod dice {
 pub trait SubjectTrait {
     const SCHEMA_SIZE: u32;
     fn ids(&self) -> &'static [u32];
-    fn label(&self, lang: Lang) -> &'static str;
+    fn display(&self, lang: Lang) -> &'static str;
     fn list() -> &'static [Self]
     where
         Self: Sized;
@@ -159,7 +159,7 @@ impl Character {
         }
     }
 
-    pub fn label(&self, lang: Lang) -> &'static str {
+    pub fn display(&self, lang: Lang) -> &'static str {
         match (self, lang) {
             (Self::Profile, Lang::En(_)) => "Profile",
             (Self::Profile, Lang::Ja) => "プロフィール",
@@ -218,7 +218,7 @@ impl SubjectTrait for Profile {
         }
     }
 
-    fn label(&self, lang: Lang) -> &'static str {
+    fn display(&self, lang: Lang) -> &'static str {
         match (self, lang) {
             (Self::Name, Lang::En(_)) => "Name",
             (Self::Name, Lang::Ja) => "名前",
@@ -243,7 +243,7 @@ impl SubjectTrait for Profile {
 pub struct Name;
 
 impl Name {
-    pub fn label(name: &String, complement: &Option<String>) -> String {
+    pub fn display(name: &String, complement: &Option<String>) -> String {
         match complement {
             Some(c) if !c.is_empty() => format!("{name} ({c})"),
             _ => name.clone(),
@@ -373,7 +373,7 @@ impl OccupationKind {
 pub struct Occupation;
 
 impl Occupation {
-    pub fn label(
+    pub fn display(
         kind: &OccupationKind,
         custom_name: Option<&str>,
         title: Option<&str>,
@@ -581,7 +581,7 @@ pub enum Characteristic {
 }
 
 impl Characteristic {
-    pub fn label(&self, lang: Lang) -> &'static str {
+    pub fn display(&self, lang: Lang) -> &'static str {
         match (self, lang) {
             (Self::Strength, _) => "STR",
             (Self::Constitution, _) => "CON",
@@ -724,7 +724,7 @@ impl SecondaryAttribute {
             }
     }
 
-    pub fn label(&self, lang: Lang) -> &'static str {
+    pub fn display(&self, lang: Lang) -> &'static str {
         match (self, lang) {
             (Self::HitPoints, _) => "HP",
             (Self::MagicPoints, _) => "MP",
@@ -874,7 +874,7 @@ impl DamageBonus {
         Self::derive(character)
     }
 
-    pub fn label(character: &DataStruct) -> String {
+    pub fn display(character: &DataStruct) -> String {
         dice::display(&[Self::read(character)])
     }
 
@@ -955,7 +955,7 @@ impl OccupationSkillPoints {
         character
     }
 
-    pub fn label(
+    pub fn display(
         characteristic_tuple: Option<(Characteristic, Characteristic)>,
         lang: Lang,
     ) -> String {
@@ -963,9 +963,9 @@ impl OccupationSkillPoints {
             return String::new();
         };
         if c1.id() == c2.id() {
-            format!("{}×4", c1.label(lang))
+            format!("{}×4", c1.display(lang))
         } else {
-            format!("{}×2+{}×2", c1.label(lang), c2.label(lang))
+            format!("{}×2+{}×2", c1.display(lang), c2.display(lang))
         }
     }
 
@@ -1200,7 +1200,7 @@ impl Skill {
         }
     }
 
-    pub fn name(&self, lang: &Lang) -> &'static str {
+    pub fn display(&self, lang: Lang) -> &'static str {
         match (self, lang) {
             (Self::Accounting, Lang::En(_)) => "Accounting",
             (Self::Accounting, Lang::Ja) => "経理",
@@ -1368,7 +1368,7 @@ pub trait SkillTrait<const S: Skill> {
 
     // -> skill_name, specialization_name
     fn as_editable_string(&self) -> (String, String) {
-        (S.name(&Lang::Ja).to_owned(), String::new())
+        (S.display(Lang::Ja).to_owned(), String::new())
     }
 
     // -> base, occupation_points, interest_points, change, modifier, sum
@@ -1388,7 +1388,7 @@ pub trait SkillTrait<const S: Skill> {
     }
 
     fn as_immutable_string(&self) -> String {
-        S.name(&Lang::Ja).to_owned()
+        S.display(Lang::Ja).to_owned()
     }
 }
 
@@ -1521,11 +1521,11 @@ impl LanguageOwn {
 
     // -> skill_name, name
     pub fn as_editable_string<'a>(name: &'a str, lang: Lang) -> (&'static str, &'a str) {
-        (Skill::LanguageOwn.name(&lang), name)
+        (Skill::LanguageOwn.display(lang), name)
     }
 
     pub fn as_immutable_string(name: &str, lang: Lang) -> String {
-        format!("{} ({})", Skill::LanguageOwn.name(&lang), name)
+        format!("{} ({})", Skill::LanguageOwn.display(lang), name)
     }
 }
 
@@ -1566,7 +1566,7 @@ impl ArtAndCraft {
         }
     }
 
-    pub fn name(&self, lang: Lang) -> &str {
+    pub fn display(&self, lang: Lang) -> &str {
         match (self, lang) {
             (Self::Acting, Lang::En(_)) => "Acting",
             (Self::Acting, Lang::Ja) => "演劇",
@@ -1656,7 +1656,7 @@ pub trait ArtAndCraftTrait<const A: ArtAndCraft> {
 
     // -> skill_name, specialization_name
     fn as_editable_string(&self, lang: Lang) -> (String, String) {
-        (Skill::ArtAndCraft.name(&lang).to_owned(), A.name(lang).to_owned())
+        (Skill::ArtAndCraft.display(lang).to_owned(), A.display(lang).to_owned())
     }
 
     // -> base, occupation_points, interest_points, change, modifier, sum
@@ -1762,11 +1762,11 @@ impl ArtAndCraftCustom {
 
     // -> skill_name, specialization_name
     pub fn as_editable_string<'a>(name: &'a str, lang: Lang) -> (&'static str, &'a str) {
-        (Skill::ArtAndCraft.name(&lang), name)
+        (Skill::ArtAndCraft.display(lang), name)
     }
 
     pub fn as_immutable_string(name: &str, lang: Lang) -> String {
-        format!("{} ({})", Skill::ArtAndCraft.name(&lang), name)
+        format!("{} ({})", Skill::ArtAndCraft.display(lang), name)
     }
 }
 
@@ -1825,7 +1825,7 @@ impl Fighting {
         }
     }
 
-    pub fn name(&self, lang: Lang) -> &str {
+    pub fn display(&self, lang: Lang) -> &str {
         match (self, lang) {
             (Self::Axe, Lang::En(_)) => "Axe",
             (Self::Axe, Lang::Ja) => "斧",
@@ -1889,7 +1889,7 @@ pub trait FightingTrait<const F: Fighting> {
 
     // -> skill_name, specialization_name
     fn as_editable_string(&self, lang: Lang) -> (&'static str, &'static str) {
-        (Skill::Fighting.name(&lang), F.name(lang))
+        (Skill::Fighting.display(lang), F.display(lang))
     }
 
     // -> base, occupation_points, interest_points, change, modifier, sum
@@ -2005,11 +2005,11 @@ impl FightingCustom {
 
     // -> skill_name, specialization_name
     pub fn as_editable_string<'a>(name: &'a str, lang: Lang) -> (&'static str, &'a str) {
-        (Skill::Fighting.name(&lang), name)
+        (Skill::Fighting.display(lang), name)
     }
 
     pub fn as_immutable_string(name: &str, lang: Lang) -> String {
-        format!("{} ({})", Skill::Fighting.name(&lang), name)
+        format!("{} ({})", Skill::Fighting.display(lang), name)
     }
 }
 
@@ -2064,7 +2064,7 @@ impl Firearms {
         }
     }
 
-    pub fn name(&self, lang: Lang) -> &str {
+    pub fn display(&self, lang: Lang) -> &str {
         match (self, lang) {
             (Self::Bow, Lang::En(_)) => "Bow",
             (Self::Bow, Lang::Ja) => "弓",
@@ -2125,7 +2125,7 @@ pub trait FirearmsTrait<const F: Firearms> {
 
     // -> skill_name, specialization_label
     fn as_editable_string(&self, lang: Lang) -> (&'static str, &'static str) {
-        (Skill::Firearms.name(&lang), F.name(lang))
+        (Skill::Firearms.display(lang), F.display(lang))
     }
 
     // -> base, occupation_points, interest_points, change, modifier, sum
@@ -2239,11 +2239,11 @@ impl FirearmsCustom {
 
     // -> skill_name, specialization_name
     pub fn as_editable_string<'a>(name: &'a str, lang: Lang) -> (&'static str, &'a str) {
-        (Skill::Firearms.name(&lang), name)
+        (Skill::Firearms.display(lang), name)
     }
 
     pub fn as_immutable_string(name: &str, lang: Lang) -> String {
-        format!("{} ({})", Skill::Firearms.name(&lang), name)
+        format!("{} ({})", Skill::Firearms.display(lang), name)
     }
 }
 
@@ -2316,11 +2316,11 @@ impl LanguageOther {
 
     // -> skill_name, language_name
     pub fn as_editable_string<'a>(name: &'a str, lang: Lang) -> (&'static str, &'a str) {
-        (Skill::LanguageOther.name(&lang), name)
+        (Skill::LanguageOther.display(lang), name)
     }
 
     pub fn as_immutable_string(name: &str, lang: Lang) -> String {
-        format!("{} ({})", Skill::LanguageOther.name(&lang), name)
+        format!("{} ({})", Skill::LanguageOther.display(lang), name)
     }
 }
 
@@ -2375,7 +2375,7 @@ impl Pilot {
         1
     }
 
-    pub const fn name(&self, lang: Lang) -> &'static str {
+    pub const fn display(&self, lang: Lang) -> &'static str {
         match (self, lang) {
             (Self::Boat, Lang::Ja) => "ボート",
             (Self::Boat, Lang::En(_)) => "Boat",
@@ -2439,7 +2439,7 @@ pub trait PilotTrait<const P: Pilot> {
     }
 
     fn as_editable_string(&self, lang: Lang) -> (&'static str, &'static str) {
-        (Skill::Pilot.name(&lang), P.name(lang))
+        (Skill::Pilot.display(lang), P.display(lang))
     }
 
     fn as_editable_numeric(
@@ -2551,11 +2551,11 @@ impl PilotCustom {
 
     // -> skill_name, specialization_name
     pub fn as_editable_string<'a>(name: &'a str, lang: Lang) -> (&'static str, &'a str) {
-        (Skill::Pilot.name(&lang), name)
+        (Skill::Pilot.display(lang), name)
     }
 
     pub fn as_immutable_string(name: &str, lang: Lang) -> String {
-        format!("{} ({})", Skill::Pilot.name(&lang), name)
+        format!("{} ({})", Skill::Pilot.display(lang), name)
     }
 }
 
@@ -2624,7 +2624,7 @@ impl Science {
         }
     }
 
-    pub fn name(&self, lang: Lang) -> Option<&'static str> {
+    pub fn display(&self, lang: Lang) -> Option<&'static str> {
         match (self, lang) {
             (Self::None, _) => None,
             (Self::Astronomy, Lang::Ja) => Some("天文学"),
@@ -2695,7 +2695,7 @@ pub trait ScienceTrait<const S: Science> {
     }
 
     fn as_editable_string(&self, lang: Lang) -> (&'static str, Option<&'static str>) {
-        (Skill::Science.name(&lang), S.name(lang))
+        (Skill::Science.display(lang), S.display(lang))
     }
 
     fn as_editable_numeric(
@@ -2813,11 +2813,11 @@ impl ScienceCustom {
 
     // -> skill_name, specialization_name
     pub fn as_editable_string<'a>(name: &'a str, lang: Lang) -> (&'static str, &'a str) {
-        (Skill::Science.name(&lang), name)
+        (Skill::Science.display(lang), name)
     }
 
     pub fn as_immutable_string(name: &str, lang: Lang) -> String {
-        format!("{} ({})", Skill::Science.name(&lang), name)
+        format!("{} ({})", Skill::Science.display(lang), name)
     }
 }
 
@@ -2847,7 +2847,7 @@ impl Survival {
         10
     }
 
-    pub fn name(&self, lang: Lang) -> &'static str {
+    pub fn display(&self, lang: Lang) -> &'static str {
         match (self, lang) {
             (Self::Arctic, Lang::Ja) => "極地",
             (Self::Arctic, Lang::En(_)) => "Arctic",
@@ -2899,7 +2899,7 @@ pub trait SurvivalTrait<const S: Survival> {
     }
 
     fn as_editable_string(&self, lang: Lang) -> (&'static str, &'static str) {
-        (Skill::Survival.name(&lang), S.name(lang))
+        (Skill::Survival.display(lang), S.display(lang))
     }
 
     fn as_editable_numeric(
@@ -2997,11 +2997,11 @@ impl SurvivalCustom {
 
     // -> skill_name, specialization_name
     pub fn as_editable_string<'a>(name: &'a str, lang: Lang) -> (&'static str, &'a str) {
-        (Skill::Survival.name(&lang), name)
+        (Skill::Survival.display(lang), name)
     }
 
     pub fn as_immutable_string(name: &str, lang: Lang) -> String {
-        format!("{} ({})", Skill::Survival.name(&lang), name)
+        format!("{} ({})", Skill::Survival.display(lang), name)
     }
 }
 
@@ -3025,7 +3025,7 @@ impl Possession {
             }
     }
 
-    pub fn label(&self, lang: Lang) -> &'static str {
+    pub fn display(&self, lang: Lang) -> &'static str {
         match (self, lang) {
             (Self::Weapon, Lang::En(_)) => "Weapon",
             (Self::Weapon, Lang::Ja) => "武器",
@@ -3088,7 +3088,7 @@ pub enum Weapon {
 }
 
 impl Weapon {
-    pub fn label(&self, lang: Lang) -> &str {
+    pub fn display(&self, lang: Lang) -> &str {
         match (self, lang) {
             (Self::BowAndArrows, Lang::En(_)) => "Bow and Arrows",
             (Self::BowAndArrows, Lang::Ja) => "弓と矢",
@@ -3414,7 +3414,7 @@ pub enum Armor {
 }
 
 impl Armor {
-    pub fn label(&self, lang: Lang) -> &str {
+    pub fn display(&self, lang: Lang) -> &str {
         match (self, lang) {
             (Self::ThickLeatherJacket, Lang::En(_)) => "Thick Leather Jacket",
             (Self::ThickLeatherJacket, Lang::Ja) => "厚い皮のジャケット",
@@ -3468,23 +3468,21 @@ pub struct Wealth {
     pub assets:         String,
 }
 
-impl Wealth {
-    pub fn label_spending_level(lang: Lang) -> &'static str {
-        match lang {
-            Lang::En(_) => "Spending Level",
-            Lang::Ja => "支出レベル",
-        }
-    }
-    pub fn label_cash(lang: Lang) -> &'static str {
-        match lang {
-            Lang::En(_) => "Cash",
-            Lang::Ja => "現金",
-        }
-    }
-    pub fn label_assets(lang: Lang) -> &'static str {
-        match lang {
-            Lang::En(_) => "Assets",
-            Lang::Ja => "資産",
+pub enum WealthField {
+    SpendingLevel,
+    Cash,
+    Assets,
+}
+
+impl WealthField {
+    pub fn display(&self, lang: Lang) -> &'static str {
+        match (self, lang) {
+            (Self::SpendingLevel, Lang::En(_)) => "Spending Level",
+            (Self::SpendingLevel, Lang::Ja) => "支出レベル",
+            (Self::Cash, Lang::En(_)) => "Cash",
+            (Self::Cash, Lang::Ja) => "現金",
+            (Self::Assets, Lang::En(_)) => "Assets",
+            (Self::Assets, Lang::Ja) => "資産",
         }
     }
 }
@@ -3522,7 +3520,7 @@ impl Backstory {
             }
     }
 
-    pub fn label(&self, lang: Lang) -> &'static str {
+    pub fn display(&self, lang: Lang) -> &'static str {
         match (self, lang) {
             (Self::KeyConnection(_), Lang::En(_)) => "Key Connection",
             (Self::KeyConnection(_), Lang::Ja) => "キーコネクション",
@@ -3596,21 +3594,8 @@ impl Memo {
         (title, body)
     }
 
-    pub fn label(&self, bytes: &[u8], lang: Lang) -> String {
-        let (title, _) = Self::decode(bytes);
-        if title.is_empty() {
-            match lang {
-                Lang::En(_) => format!("Note {}", self.slot + 1),
-                Lang::Ja => format!("メモ {}", self.slot + 1),
-            }
-        } else {
-            title
-        }
-    }
-
-    pub fn display(bytes: &[u8]) -> String {
-        let (_, body) = Self::decode(bytes);
-        body
+    pub fn display(bytes: &[u8]) -> (String, String) {
+        Self::decode(bytes)
     }
 }
 

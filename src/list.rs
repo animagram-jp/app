@@ -292,7 +292,7 @@ impl VariableList {
     /// - vacant entries are removed from index (index shrinks)
     /// - update-leaked bytes in data are reclaimed
     /// - surviving entries are re-assigned sequential id values starting at 1
-    /// 
+    ///
     /// Returns a mapping of old id -> new id for callers that hold external references.
     ///
     /// ```

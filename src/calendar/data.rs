@@ -154,7 +154,7 @@ pub mod tag {
             }
         }
 
-        fn label(&self, lang: Lang) -> &'static str {
+        fn display(&self, lang: Lang) -> &'static str {
             match (self, lang) {
                 (Self::Parent, Lang::En(_)) => "Parent",
                 (Self::Parent, Lang::Ja) => "親",
@@ -265,7 +265,7 @@ pub mod appointment {
             }
         }
 
-        fn label(&self, lang: Lang) -> &'static str {
+        fn display(&self, lang: Lang) -> &'static str {
             match (self, lang) {
                 (Self::Uid, _) => "UID",
                 (Self::Places, Lang::En(_)) => "Places",

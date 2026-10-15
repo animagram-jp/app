@@ -62,7 +62,7 @@ pub enum Timezone {
     AmericaLosAngeles,
 }
 impl Timezone {
-    pub const fn label(&self) -> &'static str {
+    pub const fn display(&self) -> &'static str {
         match self {
             Self::None => "",
             Self::AsiaSeoul => "Asia/Seoul",

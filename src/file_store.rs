@@ -1150,7 +1150,7 @@ pub mod cases {
         pub stall:           Cell<bool>,
     }
 
-    fn label(file: File) -> &'static str {
+    fn display(file: File) -> &'static str {
         match file {
             File::Snap => "snap",
             File::Log => "log",
@@ -1169,7 +1169,7 @@ pub mod cases {
             run: impl FnOnce() -> Result<T, FileStoreError>,
         ) -> Result<T, FileStoreError> {
             let index = self.calls.borrow().len();
-            self.calls.borrow_mut().push((label(file), io));
+            self.calls.borrow_mut().push((display(file), io));
             match self.at.get() {
                 Some((at, Hit::Before)) if at == index => Err(forge_error()),
                 Some((at, Hit::After)) if at == index => run().and(Err(forge_error())),
@@ -1214,7 +1214,7 @@ pub mod cases {
 
         fn read_at(&self, file: File, buffer: &mut [u8], at: u32) -> Result<usize, FileStoreError> {
             if self.stall.get() {
-                self.calls.borrow_mut().push((label(file), Io::Read));
+                self.calls.borrow_mut().push((display(file), Io::Read));
                 return Ok(0);
             }
             let limit = self.chunk.get().map_or(buffer.len(), |chunk| chunk.min(buffer.len()));
@@ -1225,26 +1225,26 @@ pub mod cases {
             let data = &data[..self.chunk.get().map_or(data.len(), |chunk| chunk.min(data.len()))];
             let io = Io::Write(data.len() as u32);
             if self.stall.get() {
-                self.calls.borrow_mut().push((label(file), io));
+                self.calls.borrow_mut().push((display(file), io));
                 return Ok(0);
             }
             if let Some((index, Hit::Partial(n))) = self.at.get() {
                 if index == self.calls.borrow().len() {
-                    self.calls.borrow_mut().push((label(file), io));
+                    self.calls.borrow_mut().push((display(file), io));
                     self.inner.write_at(file, &data[..n as usize], at)?;
                     return Err(forge_error());
                 }
             }
-            if self.fail_writes_to.get() == Some(label(file)) {
-                self.calls.borrow_mut().push((label(file), io));
+            if self.fail_writes_to.get() == Some(display(file)) {
+                self.calls.borrow_mut().push((display(file), io));
                 return Err(forge_error());
             }
             self.trace(file, io, || self.inner.write_at(file, data, at))
         }
 
         fn flush(&self, file: File) -> Result<(), FileStoreError> {
-            if self.fail_flushes_of.get() == Some(label(file)) {
-                self.calls.borrow_mut().push((label(file), Io::Flush));
+            if self.fail_flushes_of.get() == Some(display(file)) {
+                self.calls.borrow_mut().push((display(file), Io::Flush));
                 return Err(forge_error());
             }
             self.trace(file, Io::Flush, || self.inner.flush(file))
