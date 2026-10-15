@@ -217,7 +217,6 @@ impl Ord for Timevolume {
     }
 }
 
-///
 /// ```
 /// use app::timestamp::*;
 ///
