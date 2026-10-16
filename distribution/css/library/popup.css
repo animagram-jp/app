@@ -17,27 +17,21 @@
     === menu / listbox ===
 
     <button type="button" id="popover_button-2" popovertarget="popover-2">
-    <menu|ol|ul id="popover-2" popover="auto" role="menu/listbox">
-        <li></li>
-        <li>
-            <a></a></li>
-        <li>
-            <a aria-disabled="true"></a></li>
-        <li>
-            <label>
-                <input type="checkbox" role="menuitemcheckbox/option" data-sign="check">
-                <span></span></label></li>
-        <li>
-            <label>
-                <input type="radio" role="menuitemradio/option" data-sign="check">
-                <span></span></label></li>
-        <li>
-            <button role="menuitem/option"></button></li>
-        <li>
-            <label>
-                <span></span>
-                <input type="text">
-                <button role="menuitem/option"></button></label></li></menu|ol|ul>
+    <* id="popover-2" popover="auto" role="menu/listbox">
+        <span role="presentation"></span>
+        <a role="menuitem/option"></a>
+        <a role="menuitem/option" aria-disabled="true"></a>
+        <label>
+            <input type="checkbox" role="menuitemcheckbox/option" data-sign="check">
+            <span></span></label>
+        <label>
+            <input type="radio" role="menuitemradio/option" data-sign="check">
+            <span></span></label>
+        <button role="menuitem/option"></button>
+        <label>
+            <span></span>
+            <input type="text">
+            <button role="menuitem/option"></button></label></*>
 
     #popover_button-2 {anchor-name: --popover_button-2;}
     #popover-2        {position-anchor: --popover_button-2;}
@@ -48,7 +42,7 @@
         <span></span>
         <input type="text" id="combobox">
         <button type="button" popovertarget="listbox-2"></button></label>
-    <ol|ul id="listbox-2" popover="auto" role="listbox">...</ol|ul>
+    <* id="listbox-2" popover="auto" role="listbox">...</*>
 
     #combobox  {anchor-name: --combobox;}
     #listbox-2 {position-anchor: --combobox;}
@@ -84,7 +78,6 @@
         border-width:     var(--md-border-width);
         border-radius:    var(--md-border-radius);
         color:            var(--color-ink);
-        list-style-type:  none;
         max-height:       calc(var(--md-border-width) * 0.2 + var(--md-box-height) * 6.5);
         overflow-y:       auto;
         padding-inline:   0.25rem;
@@ -98,26 +91,22 @@
         }
     }
 
-    :where([role="menu"], [role="listbox"]) > li {
-        display: contents;
-    }
-    :where([role="menu"], [role="listbox"]) > li:not(:has(*)) {
-        display: block;
-    }
-
-    li > [role]:where(a, button),
-    li > label:has(> input[role]) {
-        cursor:      pointer;
+    :where([role="menu"], [role="listbox"]) > * {
         display:     block;
         white-space: nowrap;
         width:       100%;
     }
 
-    li > label > input[role]::before {
+    :where([role="menu"], [role="listbox"]) > [role]:where(a, button),
+    :where([role="menu"], [role="listbox"]) > label:has(> input[role]) {
+        cursor: pointer;
+    }
+
+    :where([role="menu"], [role="listbox"]) > label > input[role]::before {
         border-color: currentColor;
     }
 
-    li > label > input[role] {
+    :where([role="menu"], [role="listbox"]) > label > input[role] {
         block-size:  var(--md-line-height);
         cursor:      pointer;
         inline-size: var(--md-line-height);

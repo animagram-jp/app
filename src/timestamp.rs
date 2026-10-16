@@ -263,12 +263,14 @@ pub fn from_ut(ut: f64, is_utc: bool, timezone: &Timezone) -> u64 {
 /// assert_eq!(display(timestamp, Lang::Ja, (Year, Minute), Format::WithYoubi), "2026年10月2日(金) 9時30分");
 /// assert_eq!(display(timestamp, Lang::Ja, (Month, Minute), Format::WithYoubi), "10/2(金) 9:30");
 /// assert_eq!(display(timestamp, Lang::Ja, (Hour, Minute), Format::WithYoubi), "9:30");
-/// assert_eq!(display(timestamp, Lang::En(En::Us), (Month, Day), Format::WithYoubi), "Fri 10/2");
-/// assert_eq!(display(timestamp, Lang::En(En::Us), (Month, Day), Format::WithoutYoubi), "10/2");
-/// assert_eq!(display(timestamp, Lang::En(En::Us), (Year, Day), Format::WithoutYoubi), "Oct 2, 2026");
-/// assert_eq!(display(timestamp, Lang::En(En::Us), (Year, Day), Format::WithYoubi), "Fri, Oct 2, 2026");
-/// assert_eq!(display(timestamp, Lang::En(En::Us), (Year, Minute), Format::WithYoubi), "Fri, Oct 2, 2026 9:30");
-/// assert_eq!(display(timestamp, Lang::En(En::Us), (Year, Month), Format::WithYoubi), "Oct 2026");
+/// assert_eq!(display(timestamp, Lang::En(En::Gb), (Month, Day), Format::WithYoubi), "Fri 2 Oct");
+/// assert_eq!(display(timestamp, Lang::En(En::Gb), (Month, Day), Format::WithoutYoubi), "2 Oct");
+/// assert_eq!(display(timestamp, Lang::En(En::Gb), (Year, Day), Format::WithoutYoubi), "2 Oct 2026");
+/// assert_eq!(display(timestamp, Lang::En(En::Gb), (Year, Day), Format::WithYoubi), "Fri 2 Oct 2026");
+/// assert_eq!(display(timestamp, Lang::En(En::Gb), (Year, Minute), Format::WithYoubi), "Fri 2 Oct 2026 09:30");
+/// assert_eq!(display(timestamp, Lang::En(En::Gb), (Month, Minute), Format::WithYoubi), "Fri 2 Oct 09:30");
+/// assert_eq!(display(timestamp, Lang::En(En::Gb), (Year, Month), Format::WithYoubi), "Oct 2026");
+/// assert_eq!(display(timestamp, Lang::En(En::Gb), (Hour, Centisecond), Format::WithYoubi), "09:30:05.07");
 /// ```
 pub fn display(
     timestamp: u64,
@@ -345,41 +347,25 @@ pub fn display(
             let suffix = if name.is_empty() { String::new() } else { format!("({name})") };
             join(format!("{date}{suffix}"), clock(false))
         }
-        (Format::WithYoubi | Format::WithoutYoubi, Lang::En(_)) if verbal => {
-            let month_name = [
-                "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-            ][month as usize - 1];
-            let mut date = String::from(name);
-            if within(Month) {
-                date = if date.is_empty() {
-                    String::from(month_name)
-                } else {
-                    format!("{date}, {month_name}")
-                };
-            }
-            if within(Day) {
-                date = match (date.is_empty(), within(Month)) {
-                    (true, _) => format!("{day}"),
-                    (false, true) => format!("{date} {day}"),
-                    (false, false) => format!("{date}, {day}"),
-                };
-            }
-            date = match (date.is_empty(), within(Day)) {
-                (true, _) => format!("{year}"),
-                (false, true) => format!("{date}, {year}"),
-                (false, false) => format!("{date} {year}"),
-            };
-            join(date, clock(false))
-        }
         (Format::WithYoubi | Format::WithoutYoubi, Lang::En(_)) => {
-            let date = dates
-                .iter()
-                .filter(|(unit, _)| within(*unit))
-                .map(|(_, value)| format!("{value}"))
-                .collect::<alloc::vec::Vec<_>>()
-                .join("/");
-            let date = if name.is_empty() { date } else { format!("{name} {date}") };
-            join(date, clock(false))
+            let month_name = if within(Month) {
+                ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+                    [month as usize - 1]
+            } else {
+                ""
+            };
+            let date = [
+                (Day, String::from(name)),
+                (Day, format!("{day}")),
+                (Month, String::from(month_name)),
+                (Year, format!("{year}")),
+            ]
+            .into_iter()
+            .filter(|(unit, text)| within(*unit) && !text.is_empty())
+            .map(|(_, text)| text)
+            .collect::<alloc::vec::Vec<_>>()
+            .join(" ");
+            join(date, clock(true))
         }
     }
 }
@@ -698,8 +684,8 @@ mod tests {
         assert_eq!(display(timestamp, Lang::Ja, (Year, Year), Format::WithYoubi), "2026年");
         assert_eq!(display(timestamp, Lang::Ja, (Day, Day), Format::WithYoubi), "6(水)");
         assert_eq!(display(timestamp, Lang::Ja, (Minute, Second), Format::Iso), "08:09");
-        assert_eq!(display(timestamp, Lang::En(En::Us), (Year, Year), Format::WithYoubi), "2026");
-        assert_eq!(display(timestamp, Lang::En(En::Us), (Day, Day), Format::WithYoubi), "Wed 6");
+        assert_eq!(display(timestamp, Lang::En(En::Gb), (Year, Year), Format::WithYoubi), "2026");
+        assert_eq!(display(timestamp, Lang::En(En::Gb), (Day, Day), Format::WithYoubi), "Wed 6");
     }
 
     fn leap(year: i64) -> bool {

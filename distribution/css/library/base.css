@@ -113,12 +113,12 @@
     @media (forced-colors: none) {
         :root[data-color-scheme="light"],
         :root[data-color-scheme="light-less-contrast"],
-        :root[data-color-scheme="light-high-contrast"] {
+        :root[data-color-scheme="light-more-contrast"] {
             color-scheme: light;
         }
         :root[data-color-scheme="dark"],
         :root[data-color-scheme="dark-less-contrast"],
-        :root[data-color-scheme="dark-high-contrast"] {
+        :root[data-color-scheme="dark-more-contrast"] {
             color-scheme: dark;
         }
         :root[data-color-scheme="light"] {
@@ -137,7 +137,7 @@
             --color-emphasis-ink:    color-mix(in srgb, rgb(var(--rgb-accent-purple)) 35%, rgb(255,255,255));
             --color-emphasis-paper:  color-mix(in srgb, rgb(var(--rgb-accent-purple)) 74%, rgb(255,255,255));
         }
-        :root[data-color-scheme="light-high-contrast"] {
+        :root[data-color-scheme="light-more-contrast"] {
             --color-ink:            rgb(var(--rgb-black));
             --color-paper:          rgb(var(--rgb-white));
             --color-ink-mix:        color-mix(in srgb, var(--color-ink) 66%, var(--color-paper));
@@ -145,7 +145,7 @@
             --color-emphasis-ink:   rgb(var(--rgb-accent-purple));
             --color-emphasis-paper: color-mix(in srgb, rgb(var(--rgb-accent-purple)) 54%, rgb(255,255,255));
         }
-        :root[data-color-scheme="dark-high-contrast"] {
+        :root[data-color-scheme="dark-more-contrast"] {
             --color-ink:             rgb(var(--rgb-white));
             --color-paper:           rgb(var(--rgb-black));
             --color-ink-mix:         color-mix(in srgb, var(--color-ink) 66%, var(--color-paper));

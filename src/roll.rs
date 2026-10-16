@@ -1117,7 +1117,7 @@ mod variant_tests {
 
     #[test]
     fn every_phobia_and_mania_has_names_in_both_languages() {
-        for lang in [Lang::Ja, Lang::En(En::Us)] {
+        for lang in [Lang::Ja, Lang::En(En::Gb)] {
             for v in Phobia::list() {
                 assert!(!v.display(lang).is_empty());
             }

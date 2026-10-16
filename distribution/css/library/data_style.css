@@ -150,9 +150,7 @@
 
     :where(
         [data-surround="transparent"],
-        li[role],
-        li > [role]:where(a, button),
-        li > label:has(> input[role]),
+        :where([role="menu"], [role="listbox"]) > *,
         [popovertarget]:not([data-surround])
     ) {
         background-color: transparent;
@@ -173,9 +171,8 @@
             [type="reset"],
             summary
         )[data-surround="transparent"],
-        li[role],
-        li > [role]:where(a, button),
-        li > label:has(> input[role]:not(:disabled, [aria-disabled="true"])),
+        :where([role="menu"], [role="listbox"]) > [role]:where(a, button),
+        :where([role="menu"], [role="listbox"]) > label:has(> input[role]:not(:disabled, [aria-disabled="true"])),
         [popovertarget]:not([data-surround])
     ) {
         &:active {
@@ -210,7 +207,7 @@
     /* === underline inline style === */
 
     [data-style="underline"],
-    :where(summary, a, [role="tab"]):not([data-surround]) {
+    :where(summary, a, :has(> input[role="tab"])):not([data-surround]) {
         background-color:          var(--color-paper);
         border:                    none;
         box-decoration-break:      clone;

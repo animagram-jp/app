@@ -107,12 +107,14 @@ pub enum Lang {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum En {
+    Gb,
     Us,
 }
 
 impl Lang {
     fn display(self) -> &'static str {
         match self {
+            Self::En(En::Gb) => "en-GB",
             Self::En(En::Us) => "en-US",
             Self::Ja => "ja",
         }

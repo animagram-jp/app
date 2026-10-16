@@ -23,9 +23,9 @@
             <input type="radio"></label></fieldset>
 
     <* role="tablist">
-        <* role="tab">
+        <label>
             <span></span>
-            <input type="radio"></*></*>
+            <input type="radio" role="tab"></label></*>
     <* role="tabpanel"></*>
 */
 
@@ -184,7 +184,7 @@
 
     /* === tablist === */
 
-    [role="tab"] input[type="radio"] {
+    input[type="radio"][role="tab"] {
         opacity:        0;
         pointer-events: none;
         position:       absolute;
@@ -194,7 +194,7 @@
         display: none;
     }
 
-    [role="tab"]:has(input[type="radio"]:checked) {
+    :has(> input[type="radio"][role="tab"]:checked) {
         font-weight: bold;
     }
 }
