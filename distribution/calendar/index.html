@@ -26,6 +26,8 @@
 
 <body id="body" hidden>
     <header id="header">
+        <hgroup id="header_hgroup" data-axis="inline">
+            <h1>Calendar</h1></hgroup>
         <nav id="header_nav-1" aria-label="表示操作">
             <fieldset id="header_nav-1_fieldset" aria-label="表示期間">
                 <label id="header_nav-1_fieldset_label-1">
@@ -50,6 +52,13 @@
             <input id="header_nav-2_input" type="range" min="1" max="3" step="0.25" value="1.75" aria-label="縦倍率" data-size="sm">
             <button id="header_nav-2_button-1" type="button" aria-label="再読み込み" data-surround="outline" data-size="sm" data-facet="reload"></button>
             <button id="header_nav-2_button-2" type="button" disabled data-surround="outline" data-size="sm">保存</button></nav>
+        <select id="header_select" aria-label="Appearance" data-size="sm">
+            <option id="header_select_option-1" value="1">Light (less contrast)</option>
+            <option id="header_select_option-2" value="2">Light</option>
+            <option id="header_select_option-3" value="3">Light (more contrast)</option>
+            <option id="header_select_option-4" value="4">Dark (less contrast)</option>
+            <option id="header_select_option-5" value="5">Dark</option>
+            <option id="header_select_option-6" value="6">Dark (more contrast)</option></select>
         <h2 id="header_h2"></h2></header>
     <main id="main">
         <ol id="main_ol" aria-hidden="true" style="grid-template-rows: var(--head-height) repeat(44, 1.75rem)">
