@@ -1060,4 +1060,10 @@ function get_id(frame, offset) {
 const TEXT_ENCODER = new TextEncoder();
 const TEXT_DECODER = new TextDecoder();
 
+// === color scheme ===
+
+document.querySelectorAll('input[name="color-scheme"]').forEach((radio) => {
+    radio.onchange = () => { document.documentElement.dataset.colorScheme = radio.value; };
+});
+
 start();

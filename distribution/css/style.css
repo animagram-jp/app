@@ -60,7 +60,7 @@ body>footer {
     margin-inline: auto;
 }
 
-dialog>* {
+dialog > * {
     max-width: 100%;
     padding: 0;
 }
@@ -92,7 +92,7 @@ dialog table {
     --color-emphasis-ink: rgb(var(--rgb-accent-green));
 }
 
-main>section {
+main > section {
     border: 1px solid rgb(var(--rgb-light-gray));
     margin: 0.25rem 0 0;
 }
@@ -234,18 +234,18 @@ main>section {
     anchor-scope: --main_section-2_fieldset-5_td;
 }
 
-#main_section-2_fieldset-5 td>label {
+#main_section-2_fieldset-5 td > label {
     display: flex;
     width: 100%;
 }
 
-#main_section-2_fieldset-5 td>label>input {
+#main_section-2_fieldset-5 td > label > input {
     anchor-name: --main_section-2_fieldset-5_td;
     flex: 1;
     min-width: 0;
 }
 
-#main_section-2_fieldset-5 td>[popover] {
+#main_section-2_fieldset-5 td > [popover] {
     position-anchor: --main_section-2_fieldset-5_td;
 }
 

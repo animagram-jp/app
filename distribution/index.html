@@ -49,13 +49,27 @@
         <button id="header_button-3" type="button" aria-label="switch modal" data-surround="outline">✏️</button>
         <button id="header_button-4" type="button" data-surround="outline">🎲</button>
         <button id="header_button-5" type="submit" form="form" aria-label="save" data-surround="fill" data-sign="check"></button>
-        <select id="header_select" aria-label="Appearance" data-size="sm">
-            <option id="header_select_option-1" value="1">Light (less contrast)</option>
-            <option id="header_select_option-2" value="2">Light</option>
-            <option id="header_select_option-3" value="3">Light (more contrast)</option>
-            <option id="header_select_option-4" value="4">Dark (less contrast)</option>
-            <option id="header_select_option-5" value="5">Dark</option>
-            <option id="header_select_option-6" value="6">Dark (more contrast)</option></select></header>
+        <button id="header_button-6" type="button" popovertarget="header_div-3" aria-haspopup="listbox" aria-expanded="false" aria-controls="header_div-3" aria-label="Appearance" data-surround="outline">🎨</button>
+        <div id="header_div-3" popover="auto" role="listbox" aria-labelledby="header_button-6">
+            <span role="presentation">Appearance</span>
+            <label id="header_div-3_label-1">
+                <input name="color-scheme" role="option" type="radio" value="light-less-contrast" data-sign="check" data-sign-style="inline">
+                <span>Light (less contrast)</span></label>
+            <label id="header_div-3_label-2">
+                <input name="color-scheme" role="option" type="radio" value="light" data-sign="check" data-sign-style="inline">
+                <span>Light</span></label>
+            <label id="header_div-3_label-3">
+                <input name="color-scheme" role="option" type="radio" value="light-more-contrast" data-sign="check" data-sign-style="inline">
+                <span>Light (more contrast)</span></label>
+            <label id="header_div-3_label-4">
+                <input name="color-scheme" role="option" type="radio" value="dark-less-contrast" data-sign="check" data-sign-style="inline">
+                <span>Dark (less contrast)</span></label>
+            <label id="header_div-3_label-5">
+                <input name="color-scheme" role="option" type="radio" value="dark" data-sign="check" data-sign-style="inline">
+                <span>Dark</span></label>
+            <label id="header_div-3_label-6">
+                <input name="color-scheme" role="option" type="radio" value="dark-more-contrast" data-sign="check" data-sign-style="inline">
+                <span>Dark (more contrast)</span></label></div></header>
 
         <main id="main">
             <h2 id="main_h2-1">キャラクターシート</h2>
