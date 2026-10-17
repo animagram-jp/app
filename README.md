@@ -3,7 +3,7 @@
 [English](#version) | [日本語](#ja)
 
 A general-purpose boilerplate for GUI applications that edit and read structured data.
-The application owns its own event loop and is designed to run on multiple host environments, such as WebAssembly in a browser.
+The application owns a single event loop and is designed to run on multiple host environments, such as WebAssembly in a browser.
 
 ## Version
 
