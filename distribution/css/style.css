@@ -60,16 +60,6 @@ body>footer {
     margin-inline: auto;
 }
 
-dialog > * {
-    max-width: 100%;
-    padding: 0;
-}
-
-dialog table {
-    width: 100%;
-    table-layout: fixed;
-}
-
 /* === CoC7th === */
 
 #header_button-1 {
