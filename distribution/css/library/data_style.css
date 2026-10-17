@@ -57,7 +57,10 @@
 
     /* === surround outline style  === */
 
-    [data-surround="outline"] {
+    :where(
+        [data-surround="outline"],
+        fieldset[data-group="inline"] > label:not([data-surround]):has(> input[type="radio"])
+    ) {
         background-color: var(--color-paper);
         border-color:     currentColor;
         border-style:     solid;
@@ -236,6 +239,7 @@
     }
 
     *:focus-visible,
+    fieldset[data-group="inline"] > label:has(> input[type="radio"]:focus-visible),
     :where(input[type="checkbox"], input[type="radio"]):where(
         :hover,
         :active
@@ -263,7 +267,8 @@
     }
 
     @media (hover: hover) {
-        :where(a, button, [type="button"], [type="submit"], [type="reset"], summary):hover {
+        :where(a, button, [type="button"], [type="submit"], [type="reset"], summary):hover,
+        fieldset[data-group="inline"] > label:has(> input[type="radio"]):hover {
             text-decoration-color:     currentColor;
             text-decoration-line:      underline;
             text-decoration-thickness: max(0.1875rem, 0.12em);
@@ -274,7 +279,8 @@
     /* --- invalid --- */
 
     :where(:user-invalid, [aria-invalid="true"]),
-    [data-surround="outline"]:where(:user-invalid, [aria-invalid="true"]) {
+    [data-surround="outline"]:where(:user-invalid, [aria-invalid="true"]),
+    fieldset[data-group="inline"] > label:has(> input[type="radio"]:where(:user-invalid, [aria-invalid="true"])) {
         border-color: var(--color-error);
     }
 
@@ -284,7 +290,8 @@
 
     @media (forced-colors: active) {
         :where(:user-invalid, [aria-invalid="true"]),
-        [data-surround="outline"]:where(:user-invalid, [aria-invalid="true"]) {
+        [data-surround="outline"]:where(:user-invalid, [aria-invalid="true"]),
+        fieldset[data-group="inline"] > label:has(> input[type="radio"]:where(:user-invalid, [aria-invalid="true"])) {
             border-color: Mark;
         }
 
@@ -308,7 +315,8 @@
         [type="button"],
         [type="submit"],
         [type="reset"]
-    ):not([data-surround]):where(:active, [aria-pressed="true"]) {
+    ):not([data-surround]):where(:active, [aria-pressed="true"]),
+    fieldset[data-group="inline"] > label[data-surround="fill"]:has(> input[type="radio"]:checked) {
         background-color: var(--color-emphasis-ink-mix);
         border-color:     transparent;
     }
@@ -320,7 +328,8 @@
         [type="submit"],
         [type="reset"],
         summary
-    )[data-surround="outline"]:where(:active, [aria-pressed="true"]) {
+    )[data-surround="outline"]:where(:active, [aria-pressed="true"]),
+    fieldset[data-group="inline"] > label:where(:not([data-surround]), [data-surround="outline"]):has(> input[type="radio"]:checked) {
         background-color: var(--color-paper-mix);
         border-color:     var(--color-emphasis-ink-mix);
         color:            var(--color-emphasis-ink);
@@ -344,7 +353,8 @@
             [type="submit"],
             [type="reset"],
             summary
-        ):where(:active, [aria-pressed="true"]) {
+        ):where(:active, [aria-pressed="true"]),
+        fieldset[data-group="inline"] > label:has(> input[type="radio"]:checked) {
             color: ActiveText;
         }
     }
@@ -372,7 +382,8 @@
         :disabled,
         [aria-disabled="true"],
         [readonly]
-    ) {
+    ),
+    fieldset[data-group="inline"] > label:where(:not([data-surround]), [data-surround="outline"]):has(> input[type="radio"]:where(:disabled, [aria-disabled="true"])) {
         border-color: var(--color-ink-mix);
         color:        var(--color-ink-mix);
     }
@@ -390,7 +401,8 @@
         :disabled, 
         [aria-disabled="true"], 
         [readonly]
-    ) {
+    ),
+    fieldset[data-group="inline"] > label[data-surround="fill"]:has(> input[type="radio"]:where(:disabled, [aria-disabled="true"])) {
         background-color: var(--color-ink-mix);
         border-color:     transparent;
         color:            var(--color-paper);
@@ -401,7 +413,8 @@
             :disabled,
             [aria-disabled="true"],
             [readonly]
-        ) {
+        ),
+        fieldset[data-group="inline"] > label:has(> input[type="radio"]:where(:disabled, [aria-disabled="true"])) {
             border-color: GrayText;
             color:        GrayText;
         }

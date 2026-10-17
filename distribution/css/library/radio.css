@@ -13,6 +13,8 @@
             <span></span>
             <input type="radio"></label></fieldset>
 
+    === role="radiogroup" ===
+
     <fieldset>
         <*:not(legend, label)></*:not(legend, label)>
         <label>
@@ -21,6 +23,16 @@
         <label>
             <span></span>
             <input type="radio"></label></fieldset>
+
+    <fieldset data-group="inline">
+        <legend>
+            <span></span></legend>
+        <label>
+            <span></span>
+            <input type="radio" name=""></label>
+        <label>
+            <span></span>
+            <input type="radio" name="" checked></label></fieldset>
 
     <* role="tablist">
         <label>
@@ -181,6 +193,27 @@
         }
     }
 
+    /* === data-group="inline" === */
+
+    fieldset[data-group="inline"]:has(> label > input[type="radio"]) {
+        display: inline flow-root;
+    }
+
+    fieldset[data-group="inline"]:has(> label > input[type="radio"]) > label {
+        display:     inline flow-root;
+        inline-size: auto;
+        position:    relative;
+    }
+
+    fieldset[data-group="inline"] > label > input[type="radio"] {
+        block-size:     100%;
+        inline-size:    100%;
+        inset:          0;
+        margin:         0;
+        opacity:        0;
+        pointer-events: none;
+        position:       absolute;
+    }
 
     /* === tablist === */
 

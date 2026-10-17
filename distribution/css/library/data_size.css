@@ -110,6 +110,7 @@
     :where(
         [data-surround="fill"],
         [data-surround="outline"],
+        fieldset[data-group="inline"] > label:has(> input[type="radio"]),
         :is(
             button,
             [type="button"],

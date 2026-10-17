@@ -18,7 +18,7 @@
         display: inline flow-root;
     }
 
-    label:has(> :where(
+    label:not([data-surround="fill"]):has(> :where(
         :disabled,
         [aria-disabled="true"]
     )) {
@@ -52,7 +52,8 @@
         white-space: nowrap;
         width:       fit-content;
 
-        & > span:first-child {
+        & > span:first-child,
+        & > legend > span {
             padding-inline-end: var(--md-border-radius);
         }
     }
@@ -112,7 +113,8 @@
             textarea
         ):not([data-surround]),
         [data-surround="fill"],
-        [data-surround="outline"]
+        [data-surround="outline"],
+        label:has(> input[type="radio"])
     ):not(:last-child),
     :where(
         search,
@@ -177,7 +179,8 @@
             textarea
         ):not([data-surround]),
         [data-surround="fill"],
-        [data-surround="outline"]
+        [data-surround="outline"],
+        label:has(> input[type="radio"])
     ),
     :where(
         search,
@@ -201,40 +204,14 @@
         search,
         form[role="search"]
     ) {
-        & > button:not(:where(:active, [aria-pressed="true"])) {
+        & > button:not(:where(:active, [aria-pressed="true"])),
+        & > label:where(:not([data-surround]), [data-surround="outline"]):has(> input[type="radio"]:not(:checked, :user-invalid, [aria-invalid="true"])) {
             border-color: var(--color-ink-mix);
-        }
-
-        &:has(:where(
-            :user-invalid,
-            [aria-invalid="true"]
-        )) {
-            outline-color:  var(--color-error);
-            outline-offset: 0;
-            outline-style:  solid;
-            outline-width:  var(--md-border-width);
-        }
-
-        &:has(:where(
-            :user-invalid,
-            [aria-invalid="true"]
-        )) :where(
-            :user-invalid,
-            [aria-invalid="true"]
-        ):not(:focus-visible) {
-            outline-color: transparent;
         }
 
         @media (forced-colors: active) {
             & > button:not(:where(:active, [aria-pressed="true"])) {
                 border-color: ButtonBorder;
-            }
-
-            &:has(:where(
-                :user-invalid,
-                [aria-invalid="true"]
-            )) {
-                outline-color: Mark;
             }
         }
     }

@@ -58,10 +58,6 @@
     flex-wrap:   wrap;
 }
 
-#header_nav-1_fieldset {
-    grid-auto-flow: column;
-}
-
 #header_button-1 {
     margin-inline-start: auto;
 }
