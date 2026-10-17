@@ -10,27 +10,23 @@ const unsafe fn all_variants<T: Copy, const N: usize>(first: T) -> [T; N] {
     let mut all = [first; N];
     let mut i = 0;
     while i < N {
-        all[i] = unsafe { transmute_copy::<u8, T>(&(i as u8)) };
+        all[i] = unsafe { transmute_copy::<u8, T>(&(i as u8 + 1)) };
         i += 1;
     }
     all
 }
 
 fn pick<T: Copy>(list: &[T]) -> T {
-    use rand::{RngExt as _, SeedableRng as _, TryRng as _};
+    use rand::{RngExt as _, rand_core::UnwrapErr, rngs::SysRng};
 
-    let mut seed = [0u8; 32];
-    let mut sys = rand::rngs::SysRng::default();
-    sys.try_fill_bytes(&mut seed).unwrap();
-    let mut rng = rand::rngs::SmallRng::from_seed(seed);
-
+    let mut rng = UnwrapErr(SysRng);
     list[rng.random_range(0..list.len())]
 }
 
 #[derive(Clone, Copy)]
 #[repr(u8)]
 pub enum Roll {
-    DiceRoll,
+    DiceRoll = 1,
     SkillRoll,
     CharacteristicRoll,
     SanityRoll,
@@ -75,7 +71,7 @@ impl Roll {
 #[derive(Clone, Copy)]
 #[repr(u8)]
 pub enum BoutOfMadness {
-    RealTime,
+    RealTime = 1,
     Summary,
 }
 impl BoutOfMadness {
@@ -96,7 +92,7 @@ impl BoutOfMadness {
 #[derive(Clone, Copy)]
 #[repr(u8)]
 pub enum PhobiaAndMania {
-    Phobia,
+    Phobia = 1,
     Mania,
 }
 impl PhobiaAndMania {
@@ -117,7 +113,7 @@ impl PhobiaAndMania {
 #[derive(Clone, Copy)]
 #[repr(u8)]
 pub enum FailedCasting {
-    Minor,
+    Minor = 1,
     Major,
 }
 impl FailedCasting {
@@ -173,13 +169,7 @@ pub enum DevelopedOrUndeveloped {
 }
 impl DevelopedOrUndeveloped {
     pub fn get(target: u8, rolled: u8) -> Self {
-        if rolled > 96 {
-            Self::Developed
-        } else if target < rolled {
-            Self::Developed
-        } else {
-            Self::Undeveloped
-        }
+        if rolled > 96 || target < rolled { Self::Developed } else { Self::Undeveloped }
     }
     pub fn display(self, lang: Lang) -> &'static str {
         match (self, lang) {
@@ -428,7 +418,7 @@ impl FailedCastingMajor {
 #[derive(Clone, Copy, PartialEq)]
 #[repr(u8)]
 pub enum Phobia {
-    Ablutophobia,
+    Ablutophobia = 1,
     Acrophobia,
     Aerophobia,
     Agoraphobia,
@@ -537,7 +527,7 @@ impl Phobia {
         &ALL
     }
     pub fn id(self) -> u8 {
-        self as u8 + 1
+        self as u8
     }
     pub fn roll() -> Self {
         pick(Self::list())
@@ -751,7 +741,7 @@ impl Phobia {
 #[derive(Clone, Copy, PartialEq)]
 #[repr(u8)]
 pub enum Mania {
-    Ablutomania,
+    Ablutomania = 1,
     Aboulomania,
     Achluomania,
     Acromaniaheights,
@@ -859,7 +849,7 @@ impl Mania {
         &ALL
     }
     pub fn id(self) -> u8 {
-        self as u8 + 1
+        self as u8
     }
     pub fn roll() -> Self {
         pick(Self::list())
@@ -1085,7 +1075,7 @@ mod variant_tests {
     fn assert_list<T: Copy>(list: &[T], expected: usize) {
         assert_eq!(list.len(), expected);
         assert_eq!(list.len(), variant_count::<T>());
-        let expected_discriminants: Vec<u8> = (0..expected as u8).collect();
+        let expected_discriminants: Vec<u8> = (1..=expected as u8).collect();
         assert_eq!(discriminants(list), expected_discriminants);
     }
 
@@ -1100,13 +1090,6 @@ mod variant_tests {
     }
 
     #[test]
-    fn list_first_and_last_variants() {
-        assert_eq!(Roll::list()[0].display(Lang::Ja), "ダイスロール (nDn +-n)");
-        assert_eq!(BoutOfMadness::list()[1].display(Lang::Ja), "サマリー");
-        assert_eq!(Phobia::list()[0].display(Lang::Ja), "入浴");
-    }
-
-    #[test]
     fn id_is_one_based_position() {
         for (i, v) in Phobia::list().iter().enumerate() {
             assert_eq!(v.id() as usize, i + 1);
@@ -1114,9 +1097,6 @@ mod variant_tests {
         for (i, v) in Mania::list().iter().enumerate() {
             assert_eq!(v.id() as usize, i + 1);
         }
-        assert_eq!(Phobia::list()[0].id(), 1);
-        assert_eq!(Phobia::list()[99].id(), 100);
-        assert_eq!(Mania::list()[99].id(), 100);
     }
 
     #[test]
@@ -1137,7 +1117,7 @@ mod variant_tests {
 
     #[test]
     fn every_phobia_and_mania_has_names_in_both_languages() {
-        for lang in [Lang::Ja, Lang::En(En::Us)] {
+        for lang in [Lang::Ja, Lang::En(En::Gb)] {
             for v in Phobia::list() {
                 assert!(!v.display(lang).is_empty());
             }

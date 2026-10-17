@@ -113,12 +113,12 @@
     @media (forced-colors: none) {
         :root[data-color-scheme="light"],
         :root[data-color-scheme="light-less-contrast"],
-        :root[data-color-scheme="light-high-contrast"] {
+        :root[data-color-scheme="light-more-contrast"] {
             color-scheme: light;
         }
         :root[data-color-scheme="dark"],
         :root[data-color-scheme="dark-less-contrast"],
-        :root[data-color-scheme="dark-high-contrast"] {
+        :root[data-color-scheme="dark-more-contrast"] {
             color-scheme: dark;
         }
         :root[data-color-scheme="light"] {
@@ -137,7 +137,7 @@
             --color-emphasis-ink:    color-mix(in srgb, rgb(var(--rgb-accent-purple)) 35%, rgb(255,255,255));
             --color-emphasis-paper:  color-mix(in srgb, rgb(var(--rgb-accent-purple)) 74%, rgb(255,255,255));
         }
-        :root[data-color-scheme="light-high-contrast"] {
+        :root[data-color-scheme="light-more-contrast"] {
             --color-ink:            rgb(var(--rgb-black));
             --color-paper:          rgb(var(--rgb-white));
             --color-ink-mix:        color-mix(in srgb, var(--color-ink) 66%, var(--color-paper));
@@ -145,7 +145,7 @@
             --color-emphasis-ink:   rgb(var(--rgb-accent-purple));
             --color-emphasis-paper: color-mix(in srgb, rgb(var(--rgb-accent-purple)) 54%, rgb(255,255,255));
         }
-        :root[data-color-scheme="dark-high-contrast"] {
+        :root[data-color-scheme="dark-more-contrast"] {
             --color-ink:             rgb(var(--rgb-white));
             --color-paper:           rgb(var(--rgb-black));
             --color-ink-mix:         color-mix(in srgb, var(--color-ink) 66%, var(--color-paper));
@@ -193,12 +193,22 @@
         }
     }
     @media print {
-        :root {
-            --color-ink:            rgb(var(--rgb-black));
-            --color-paper:          rgb(var(--rgb-white));
+        :root,
+        :root[data-color-scheme] {
+            color-scheme:       light;
+            print-color-adjust: exact;
+
+            --color-ink:       rgb(var(--rgb-black));
+            --color-paper:     rgb(var(--rgb-white));
+            --color-ink-mix:   color-mix(in srgb, var(--color-ink) 60%, var(--color-paper));
+            --color-paper-mix: color-mix(in srgb, var(--color-ink) 16%, var(--color-paper));
+
+            --color-highlight-ink:   color-mix(in srgb, rgb(var(--rgb-accent-yellow)) 46%, rgb(0,0,0));
+            --color-highlight-paper: rgb(var(--rgb-accent-yellow));
+            --color-visited:         color-mix(in srgb, rgb(var(--rgb-accent-purple)) 74%, rgb(0,0,0));
+
             --color-emphasis-ink:   rgb(var(--rgb-accent-purple));
             --color-emphasis-paper: color-mix(in srgb, rgb(var(--rgb-accent-purple)) 54%, rgb(255,255,255));
-            --color-visited:        color-mix(in srgb, rgb(var(--rgb-accent-purple)) 74%, rgb(0,0,0));
         }
     }
 
@@ -254,10 +264,6 @@
         font-family: var(--font-family-sans-serif);
     }
 
-    html {
-        scrollbar-gutter: stable;
-    }
-
     @media print {
         html {
             font-size: 14pt;
@@ -267,7 +273,6 @@
     body {
         color: var(--color-ink);
         background: var(--color-paper);
-        margin: 0;
     }
 
     ::selection, mark {
@@ -279,7 +284,6 @@
     input:where(
         [type="tel"],
         [type="number"],
-        [type="password"],
         [inputmode="numeric"]
     ) {
         font-family: var(--font-family-monospace);

@@ -30,27 +30,20 @@
 }
 @media (forced-colors: none) {
     :root[data-color-scheme="light"],
-    :root[data-color-scheme="light-high-contrast"],
+    :root[data-color-scheme="light-more-contrast"],
     :root[data-color-scheme="light-less-contrast"] {
         --color-emphasis-ink:   rgb(var(--rgb-theme-purple));
         --color-emphasis-paper: color-mix(in srgb, rgb(var(--rgb-theme-purple)) 73%, rgb(255,255,255));
     }
     :root[data-color-scheme="dark"],
-    :root[data-color-scheme="dark-high-contrast"],
+    :root[data-color-scheme="dark-more-contrast"],
     :root[data-color-scheme="dark-less-contrast"] {
         --color-emphasis-ink:   color-mix(in srgb, rgb(var(--rgb-theme-purple)) 38%, rgb(255,255,255));
         --color-emphasis-paper: color-mix(in srgb, rgb(var(--rgb-theme-purple)) 74%, rgb(255,255,255));
     }
 }
 
-html {
-    overflow-x: hidden;
-}
-
 body {
-    max-width: 100%;
-    min-height: 100dvh;
-    overflow-x: hidden;
     padding: 0.25rem;
 }
 
@@ -67,23 +60,13 @@ body>footer {
     margin-inline: auto;
 }
 
-dialog>* {
-    max-width: 100%;
-    padding: 0;
-}
-
-dialog table {
-    width: 100%;
-    table-layout: fixed;
-}
-
 /* === CoC7th === */
 
 #header_button-1 {
     anchor-name: --header_button-1;
 }
 
-#header_ul-1 {
+#header_div-1 {
     position-anchor: --header_button-1;
 }
 
@@ -91,7 +74,7 @@ dialog table {
     anchor-name: --header_button-2;
 }
 
-#header_ul-2 {
+#header_div-2 {
     position-anchor: --header_button-2;
 }
 
@@ -99,7 +82,7 @@ dialog table {
     --color-emphasis-ink: rgb(var(--rgb-accent-green));
 }
 
-main>section {
+main > section {
     border: 1px solid rgb(var(--rgb-light-gray));
     margin: 0.25rem 0 0;
 }
@@ -139,10 +122,6 @@ main>section {
     background-color: var(--color-layer-3);
     padding-top: 0;
     vertical-align: bottom;
-}
-
-#main_section-2 fieldset {
-    border: none;
 }
 
 #main_section-2_fieldset-2,
@@ -245,18 +224,18 @@ main>section {
     anchor-scope: --main_section-2_fieldset-5_td;
 }
 
-#main_section-2_fieldset-5 td>label {
+#main_section-2_fieldset-5 td > label {
     display: flex;
     width: 100%;
 }
 
-#main_section-2_fieldset-5 td>label>input {
+#main_section-2_fieldset-5 td > label > input {
     anchor-name: --main_section-2_fieldset-5_td;
     flex: 1;
     min-width: 0;
 }
 
-#main_section-2_fieldset-5 td>[popover] {
+#main_section-2_fieldset-5 td > [popover] {
     position-anchor: --main_section-2_fieldset-5_td;
 }
 
@@ -264,12 +243,4 @@ main>section {
     display: flex;
     align-items: flex-end;
     gap: 0.2rem;
-}
-
-#main_modal {
-    position: absolute;
-    opacity: 0;
-    pointer-events: none;
-    width: 0;
-    height: 0;
 }

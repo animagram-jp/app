@@ -1,16 +1,7 @@
-// thread = "worker" | "main":
-//
-// | Thread | Memory |
-// |-|-|
-// | dedicated worker | WebAssembly.Memory(shared=true)  |
-// | main thread      | WebAssembly.Memory(shared=false) |
-
 #![no_std]
 #![feature(adt_const_params)]
 #![feature(const_param_ty_trait)]
 #![feature(variant_count)]
-// `memory_atomic_wait32` / `memory_atomic_notify`
-// worker (`-Ctarget-feature=+atomics`) `serve_event`
 #![cfg_attr(
     all(target_arch = "wasm32", target_feature = "atomics"),
     feature(stdarch_wasm_atomic_wait)
@@ -21,15 +12,20 @@ extern crate core;
 #[cfg(any(test, not(target_arch = "wasm32")))]
 extern crate std;
 
+use alloc::{string::String, vec::Vec};
+
+#[cfg(feature = "calendar")]
+use crate::calendar::data::DataError;
 use crate::{
     arena::{ArenaError, PanicError},
     event::EventError,
     file_store::FileStoreError,
-    js_client::wire_error,
 };
 
 pub mod app;
 pub mod arena;
+#[cfg(feature = "calendar")]
+pub mod calendar;
 pub mod data_struct;
 pub mod event;
 pub mod field;
@@ -43,12 +39,51 @@ pub mod timestamp;
 
 // === Error ===
 
+pub trait WireError {
+    fn identifiers(&self, path: &mut Vec<u16>);
+    fn detail(&self) -> String;
+}
+
+macro_rules! wire_error {
+    ($name:ident { $($(#[$meta:meta])* $variant:ident($inner:ty) = $identifier:expr),+ $(,)? }) => {
+        #[derive(Debug)]
+        pub enum $name {
+            $($(#[$meta])* $variant($inner)),+
+        }
+
+        impl ::core::fmt::Display for $name {
+            fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+                ::core::write!(f, "{:?}", self)
+            }
+        }
+
+        impl $crate::WireError for $name {
+            fn identifiers(&self, path: &mut ::alloc::vec::Vec<u16>) {
+                match self {
+                    $($(#[$meta])* $name::$variant(error) => {
+                        path.push($identifier);
+                        $crate::WireError::identifiers(error, path);
+                    })+
+                }
+            }
+
+            fn detail(&self) -> ::alloc::string::String {
+                match self {
+                    $($(#[$meta])* $name::$variant(error) => $crate::WireError::detail(error)),+
+                }
+            }
+        }
+    };
+}
+
 wire_error! {
     Error {
         Arena(ArenaError) = 1,
         Event(EventError) = 2,
-        FileStore(FileStoreError) = 3,
-        Panic(PanicError) = 4,
+        Panic(PanicError) = 3,
+        FileStore(FileStoreError) = 4,
+        #[cfg(feature = "calendar")]
+        Data(DataError) = 5,
     }
 }
 
@@ -62,7 +97,7 @@ use talc::{sync::TalcLock, wasm::*};
 static ALLOCATOR: TalcLock<spinning_top::RawSpinlock, WasmGrowAndClaim, WasmBinning> =
     TalcLock::new(WasmGrowAndClaim);
 
-// === Lang, En ===
+// === Lang ===
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Lang {
@@ -72,14 +107,15 @@ pub enum Lang {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum En {
+    Gb,
     Us,
 }
 
 impl Lang {
     fn display(self) -> &'static str {
         match self {
+            Self::En(En::Gb) => "en-GB",
             Self::En(En::Us) => "en-US",
-            Self::En(_) => "En",
             Self::Ja => "ja",
         }
     }
@@ -100,44 +136,118 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
     };
 
     report_error(Error::Panic(PanicError { location, message: format!("{}", info.message()) }));
+    let _ = crate::arena::emit(&[crate::js_client::OPERATION_RELOAD]);
 
     core::arch::wasm32::unreachable()
 }
 
 #[cfg(test)]
 mod error_tests {
-    use alloc::{format, string::String, vec::Vec};
+    use alloc::{string::String, vec, vec::Vec};
 
     use super::*;
-    use crate::js_client::WireError;
-
-    fn identifiers(error: &Error) -> Vec<u16> {
-        let mut path = Vec::new();
-        error.identifiers(&mut path);
-        path
-    }
 
     #[test]
-    fn identifiers_are_the_composed_variant_then_the_module_variant() {
-        assert_eq!(identifiers(&Error::Arena(ArenaError::CommandOverflow)), [1, 1]);
-        assert_eq!(identifiers(&Error::Event(EventError::Decode)), [2, 1]);
-        assert_eq!(identifiers(&Error::FileStore(FileStoreError::Unknown(String::new()))), [3, 5]);
-        let panic = PanicError { location: String::new(), message: String::new() };
-        assert_eq!(identifiers(&Error::Panic(panic)), [4, 1]);
+    fn every_error_has_a_stable_wire_path_and_detail() {
+        let message = || String::from("m");
+        #[cfg_attr(not(feature = "calendar"), allow(unused_mut))]
+        let mut cases: Vec<(Error, Vec<u16>, &str)> = vec![
+            (Error::Arena(ArenaError::CommandOverflow), vec![1, 1], ""),
+            (Error::Event(EventError::Decode), vec![2, 1], ""),
+            (
+                Error::Panic(PanicError { location: String::from("a.rs:1"), message: message() }),
+                vec![3, 1],
+                "a.rs:1: m",
+            ),
+            (Error::FileStore(FileStoreError::InvalidState(message())), vec![4, 1], "m"),
+            (Error::FileStore(FileStoreError::QuotaExceeded(message())), vec![4, 2], "m"),
+            (Error::FileStore(FileStoreError::UnsupportedOp(message())), vec![4, 3], "m"),
+            (Error::FileStore(FileStoreError::InvalidName(message())), vec![4, 4], "m"),
+            (Error::FileStore(FileStoreError::Unknown(message())), vec![4, 5], "m"),
+            (Error::FileStore(FileStoreError::NotFound(message())), vec![4, 6], "m"),
+            (Error::FileStore(FileStoreError::Locked(message())), vec![4, 7], "m"),
+        ];
+        #[cfg(feature = "calendar")]
+        cases.extend([
+            (Error::Data(DataError::Status(404)), vec![5, 1], "404"),
+            (Error::Data(DataError::Parse(message())), vec![5, 2], "m"),
+            (Error::Data(DataError::Format(message())), vec![5, 3], "m"),
+        ]);
+        for (error, path, detail) in cases {
+            let mut actual = Vec::new();
+            error.identifiers(&mut actual);
+            assert_eq!(actual, path, "{error}");
+            assert_eq!(error.detail(), detail, "{error}");
+        }
+    }
+}
+
+// === For test ===
+
+#[cfg(test)]
+fn block_on<F: core::future::Future>(future: F) -> F::Output {
+    use core::{
+        pin::pin,
+        task::{Context, Poll, Waker},
+    };
+
+    let mut future = pin!(future);
+    let mut context = Context::from_waker(Waker::noop());
+    loop {
+        if let Poll::Ready(output) = future.as_mut().poll(&mut context) {
+            return output;
+        }
+    }
+}
+
+#[cfg(test)]
+struct Rng(u64);
+
+#[cfg(test)]
+impl Rng {
+    fn new(seed: u64) -> Self {
+        Self(seed.wrapping_mul(0x9E37_79B9_7F4A_7C15) ^ 0xD1B5_4A32_D192_ED03)
     }
 
-    #[test]
-    fn detail_and_seriousness_come_from_the_module() {
-        let quota = Error::FileStore(FileStoreError::QuotaExceeded(String::from("full")));
-        assert_eq!(quota.detail(), "full");
-        assert!(quota.is_serious());
-        assert!(!Error::Event(EventError::Decode).is_serious());
+    fn next_u64(&mut self) -> u64 {
+        let mut x = self.0;
+        x ^= x >> 12;
+        x ^= x << 25;
+        x ^= x >> 27;
+        self.0 = x;
+        x.wrapping_mul(0x2545_F491_4F6C_DD1D)
     }
 
-    #[test]
-    fn display_is_the_debug_representation() {
-        let error = Error::Event(EventError::Decode);
-        assert_eq!(format!("{error}"), format!("{error:?}"));
-        assert_eq!(format!("{error}"), "Event(Decode)");
+    fn below(&mut self, bound: usize) -> usize {
+        (self.next_u64() >> 11) as usize % bound
+    }
+
+    fn chance(&mut self, percent: u64) -> bool {
+        self.next_u64() % 100 < percent
+    }
+
+    fn bytes(&mut self, length: usize) -> alloc::vec::Vec<u8> {
+        (0..length).map(|_| self.next_u64() as u8).collect()
+    }
+
+    fn string(&mut self) -> alloc::string::String {
+        let letters = ['a', 'Z', 'é', '日', '😀', ' ', '\0'];
+        let length = self.below(10);
+        (0..length).map(|_| letters[self.below(letters.len())]).collect()
+    }
+
+    fn id(&mut self) -> js_client::dom::Id {
+        use js_client::dom;
+
+        let depth = self.below(5);
+        let segments: alloc::vec::Vec<(dom::Tag, Option<u32>)> = (0..depth)
+            .map(|_| {
+                let tag = dom::Tag::from_u8(self.below(24) as u8);
+                let number =
+                    self.chance(50).then(|| (self.next_u64() % u64::from(u32::MAX)) as u32);
+                (tag, number)
+            })
+            .collect();
+        dom::Id::new(&segments)
     }
 }

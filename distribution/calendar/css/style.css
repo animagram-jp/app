@@ -1,0 +1,170 @@
+@font-face {
+    font-family: "IBM Plex Sans";
+    src: url("../../font/IBMPlexSans-Regular.woff2") format("woff2");
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "IBM Plex Sans";
+    src: url("../../font/IBMPlexSans-SemiBold.woff2") format("woff2");
+    font-weight: 600 700;
+    font-style: normal;
+    font-display: swap;
+}
+
+:root {
+    --font-family-sans-serif: "IBM Plex Sans", "Noto Sans JP", "BIZ UDPGothic", "Hiragino Sans", sans-serif;
+    --font-family-monospace: "Fira Code", "BIZ UDGothic", monospace;
+    
+    --rgb-theme-purple: 91 47 145;
+    --color-emphasis-ink:   rgb(var(--rgb-theme-purple));
+    --color-emphasis-paper: color-mix(in srgb, rgb(var(--rgb-theme-purple)) 73%, rgb(255,255,255));
+}
+@media (prefers-color-scheme: dark) {
+    :root {
+        --color-emphasis-ink:   color-mix(in srgb, rgb(var(--rgb-theme-purple)) 38%, rgb(255,255,255));
+        --color-emphasis-paper: color-mix(in srgb, rgb(var(--rgb-theme-purple)) 74%, rgb(255,255,255));
+    }
+}
+@media (forced-colors: none) {
+    :root[data-color-scheme="light"],
+    :root[data-color-scheme="light-more-contrast"],
+    :root[data-color-scheme="light-less-contrast"] {
+        --color-emphasis-ink:   rgb(var(--rgb-theme-purple));
+        --color-emphasis-paper: color-mix(in srgb, rgb(var(--rgb-theme-purple)) 73%, rgb(255,255,255));
+    }
+    :root[data-color-scheme="dark"],
+    :root[data-color-scheme="dark-more-contrast"],
+    :root[data-color-scheme="dark-less-contrast"] {
+        --color-emphasis-ink:   color-mix(in srgb, rgb(var(--rgb-theme-purple)) 38%, rgb(255,255,255));
+        --color-emphasis-paper: color-mix(in srgb, rgb(var(--rgb-theme-purple)) 74%, rgb(255,255,255));
+    }
+}
+
+#header {
+    column-gap:      1rem;
+    display:         flex;
+    flex-wrap:       wrap;
+    justify-content: space-between;
+}
+
+#header > nav {
+    display:     flex;
+    flex-wrap:   wrap;
+}
+
+#header_nav-1_fieldset {
+    grid-auto-flow: column;
+}
+
+#header_button-1 {
+    margin-inline-start: auto;
+}
+
+#header_h2 {
+    flex-basis:     100%;
+    min-block-size: 1lh;
+    text-align: center;
+}
+
+#main {
+    --head-title:    2rem;
+    --head-resource: 3rem;
+    --head-height:   calc(var(--head-title) + var(--head-resource));
+    --column-width:  5rem;
+    --axis-width:    4rem;
+    display:         grid;
+    grid-template-columns: var(--axis-width) minmax(0, 1fr) var(--axis-width);
+}
+
+#main_ol {
+    display:               grid;
+    grid-area:             1 / 1 / 2 / -1;
+    grid-template-columns: subgrid;
+}
+
+#main_ol > li {
+    display:               grid;
+    grid-column:           1 / -1;
+    grid-template-columns: subgrid;
+}
+
+#main_ol > li > span:last-child {
+    grid-column: 3;
+}
+
+#main_section {
+    display:            grid;
+    grid-area:          1 / 2;
+    overflow-x:         auto;
+}
+
+#main_section_ol-1,
+#main_section_ol-2 {
+    display:     grid;
+    grid-column: 1 / -1;
+}
+
+#main_section_ol-2 {
+    grid-template-columns: subgrid;
+}
+
+#main_section_ol-3,
+#main_section_ol-4,
+#main_section_ol-5 {
+    grid-area: 3 / 1 / 4 / -1;
+    position:  relative;
+}
+
+:is(#main_section_ol-3, #main_section_ol-4, #main_section_ol-5) > li {
+    inset:    0 auto auto 0;
+    position: absolute;
+}
+
+#main_section_ol-5 {
+    pointer-events: none;
+}
+
+#main_section_ol-4 > li {
+    container-type: size;
+    overflow:       hidden;
+    touch-action:   none;
+    user-select:    none;
+}
+
+@container (block-size < 2rem) {
+    #main_section_ol-4 > li > * {
+        display: inline;
+    }
+
+    #main_section_ol-4 > li > p:nth-of-type(n + 2) {
+        display: none;
+    }
+}
+
+#main_section_ol-3 > li {
+    background:     var(--color-paper-mix);
+    overflow:       hidden;
+    padding-inline: 0.25rem;
+}
+
+#main_section_ol-3 > li[aria-current="date"] {
+    font-weight: 600;
+}
+
+#header_nav-2_input {
+    inline-size: 8rem;
+}
+
+#modal form {
+    display:        flex;
+    flex-direction: column;
+    padding:        1rem;
+}
+
+#modal dl {
+    display:               grid;
+    grid-template-columns: auto 1fr;
+}

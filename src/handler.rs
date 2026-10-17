@@ -8,18 +8,20 @@ use core::{
 use arbitrary_int::u2;
 
 #[cfg(feature = "worker")]
-use crate::{Error, file_store::FileStore};
+use crate::{
+    Error,
+    file_store::{Backend, FileStore, StoreId},
+};
 use crate::{
     Lang,
     data_struct::DataStruct,
-    event::{Event, Response},
+    event::{Event, Opened, Response},
     js_client::{
-        Attribute, CanvasEvent, Command, EventType, Gesture, PointerState, VisibilityState, dom,
+        Attribute, CanvasEvent, Command, EventType, FullscreenEvent, Gesture, Pointer,
+        VisibilityState, dom,
     },
+    object::SCHEMA_SIZE,
 };
-
-#[cfg(feature = "worker")]
-const RETRY_LIMIT: u8 = 3;
 
 pub enum CharacterSheet {
     Immutable,
@@ -36,7 +38,7 @@ pub enum Dialog {
 pub struct Log;
 
 #[cfg(feature = "worker")]
-const CHARACTER_SCHEMA_NAME: &str = "characters";
+const CHARACTER_STORE: StoreId = StoreId { name: "characters", version: "0.0" };
 
 pub struct Handler {
     character_sheet: CharacterSheet,
@@ -44,11 +46,12 @@ pub struct Handler {
     lang:            Lang,
     last_toast:      u2,
     character:       DataStruct,
+    pub now:         f64,
     #[cfg(feature = "worker")]
-    characters:      FileStore,
+    characters:      Backend,
+    #[cfg(feature = "worker")]
+    lost:            Vec<(u32, Option<Vec<u8>>)>,
     logs:            Vec<Log>,
-    #[cfg(feature = "worker")]
-    store_failures:  u8,
 }
 
 impl Handler {
@@ -64,14 +67,16 @@ impl Handler {
             dialog: Dialog::None,
             lang: Lang::Ja,
             last_toast: u2::new(1),
-            character: DataStruct::new(0, 0.0, 256),
+            character: DataStruct::new(0, 0.0, SCHEMA_SIZE),
+            now: 0.0,
             #[cfg(feature = "worker")]
-            characters: FileStore::new(CHARACTER_SCHEMA_NAME)
+            characters: Backend::open(CHARACTER_STORE, true)
                 .await
-                .unwrap_or_else(|e| panic!("FileStore::new failed: {e}")),
-            logs: Vec::new(),
+                .and_then(Backend::new)
+                .unwrap_or_else(|e| panic!("FileStore open failed: {e}")),
             #[cfg(feature = "worker")]
-            store_failures: 0,
+            lost: Vec::new(),
+            logs: Vec::new(),
         }
     }
 
@@ -82,21 +87,46 @@ impl Handler {
     }
 
     #[cfg(feature = "worker")]
-    pub fn save(&mut self) -> Vec<Command> {
+    pub fn save(&mut self) -> (Vec<Event>, Vec<Command>) {
         match self.characters.save() {
-            Ok(()) => {
-                self.store_failures = 0;
-                vec![]
+            Ok(()) => (vec![], vec![]),
+            Err(e @ crate::file_store::FileStoreError::InvalidState(_)) => (
+                vec![Event::StoreLost(CHARACTER_STORE)],
+                vec![Command::Error { error: Error::FileStore(e) }],
+            ),
+            Err(e) => (vec![], vec![Command::Error { error: Error::FileStore(e) }]),
+        }
+    }
+
+    #[cfg(feature = "worker")]
+    pub fn process_lost(&mut self) -> (Vec<Event>, Vec<Command>) {
+        self.lost = self.characters.pending();
+        self.characters.close();
+        (vec![], vec![])
+    }
+
+    #[cfg(feature = "worker")]
+    pub fn process_opened(&mut self, opened: Opened) -> (Vec<Event>, Vec<Command>) {
+        match opened.and_then(Backend::new) {
+            Ok(mut store) => {
+                store.replay(core::mem::take(&mut self.lost));
+                self.characters = store;
+                (vec![], vec![])
             }
-            Err(_) if self.store_failures + 1 < RETRY_LIMIT => {
-                self.store_failures += 1;
-                vec![]
-            }
-            Err(e) => {
-                self.store_failures = 0;
-                vec![Command::Error { error: Error::FileStore(e) }]
+            Err(error) => {
+                (vec![], vec![Command::Error { error: Error::FileStore(error) }, Command::Reload])
             }
         }
+    }
+
+    #[cfg(not(feature = "worker"))]
+    pub fn process_lost(&mut self) -> (Vec<Event>, Vec<Command>) {
+        (vec![], vec![])
+    }
+
+    #[cfg(not(feature = "worker"))]
+    pub fn process_opened(&mut self, _opened: Opened) -> (Vec<Event>, Vec<Command>) {
+        (vec![], vec![])
     }
 
     pub fn process_resize(&mut self, _width: f64, _height: f64) -> (Vec<Event>, Vec<Command>) {
@@ -111,18 +141,22 @@ impl Handler {
         (vec![], vec![])
     }
 
+    pub fn process_fullscreen(&mut self, _event: FullscreenEvent) -> (Vec<Event>, Vec<Command>) {
+        (vec![], vec![])
+    }
+
     pub fn process_fetched(&mut self, _response: &Response) -> (Vec<Event>, Vec<Command>) {
         (vec![], vec![])
     }
 
-    pub fn initial_draw(&self) -> (Vec<Event>, Vec<Command>) {
+    pub fn initial_draw(&mut self) -> (Vec<Event>, Vec<Command>) {
         (vec![], vec![])
     }
 
     pub fn process_canvas(
         &mut self,
         event: &CanvasEvent,
-        _state: &PointerState,
+        _pointer: &Pointer,
     ) -> (Vec<Event>, Vec<Command>) {
         let toggle = dom::Id::new(&[(dom::Tag::Header, None), (dom::Tag::Button, Some(3))]);
         if !matches!(event.event_type, EventType::Click) || event.id != toggle {
@@ -154,7 +188,7 @@ impl Handler {
     pub fn process_gesture(
         &mut self,
         _gesture: &Gesture,
-        _state: &PointerState,
+        _pointer: &Pointer,
         _origin: Option<&CanvasEvent>,
     ) -> (Vec<Event>, Vec<Command>) {
         (vec![], vec![])
@@ -171,16 +205,14 @@ mod tests {
         app::App,
         arena::{ARENA, COMMAND_RING, EVENT_RING, initialize, process_event},
         event::EVENT_CANVAS,
-        js_client::{
-            EventType, OPERATION_REMOVE_ATTRIBUTE, OPERATION_SET_ATTRIBUTE, dom, put_f32, put_str,
-        },
+        js_client::{EventType, OPERATION_REMOVE_ATTRIBUTE, OPERATION_SET_ATTRIBUTE, Output, dom},
     };
 
-    const CLICK: u8 = 2;
+    const CLICK: u8 = 3;
 
     #[wasm_bindgen_test]
     async fn process_event_emits_one_frame_per_command() {
-        assert_eq!(EventType::decode_u8(CLICK), EventType::Click);
+        assert_eq!(EventType::from_u8(CLICK), EventType::Click);
         initialize();
         App::init(false, 0.0, 0.0, 16.0, 0.0, 0).await;
 
@@ -190,47 +222,32 @@ mod tests {
         dom::Id::new(&[(dom::Tag::Header, None), (dom::Tag::Button, Some(3))]).encode(&mut frame);
         frame.push(0);
         frame.push(0);
-        put_str(&mut frame, "");
-        put_f32(&mut frame, 0.0);
-        put_f32(&mut frame, 0.0);
-        put_f32(&mut frame, 0.0);
-        put_f32(&mut frame, 0.0);
+        str::encode("", &mut frame);
+        0.0f32.encode(&mut frame);
+        0.0f32.encode(&mut frame);
+        0.0f32.encode(&mut frame);
+        0.0f32.encode(&mut frame);
         frame.extend_from_slice(&0f64.to_le_bytes());
         frame.extend_from_slice(&0u32.to_le_bytes());
-        assert!(ARENA.ring_push(EVENT_RING, &frame));
+        assert!(ARENA.write_ring(EVENT_RING, &frame));
 
         process_event();
 
         let mut operations = Vec::new();
-        while let Some(command) = ARENA.ring_peek(COMMAND_RING) {
+        while let Some(command) = ARENA.read_ring(COMMAND_RING) {
             operations.push(command[0]);
-            ARENA.ring_commit_pop(COMMAND_RING);
+            ARENA.advance_ring(COMMAND_RING);
         }
         assert_eq!(operations, [OPERATION_REMOVE_ATTRIBUTE, OPERATION_SET_ATTRIBUTE]);
     }
 }
 
-#[cfg(all(test, not(feature = "worker")))]
+#[cfg(test)]
 mod toggle_tests {
     use alloc::{string::String, vec::Vec};
-    use core::{
-        future::Future,
-        pin::pin,
-        task::{Context, Poll, Waker},
-    };
 
     use super::*;
-    use crate::js_client::KeyName;
-
-    fn block_on<F: Future>(future: F) -> F::Output {
-        let mut future = pin!(future);
-        let mut context = Context::from_waker(Waker::noop());
-        loop {
-            if let Poll::Ready(output) = future.as_mut().poll(&mut context) {
-                return output;
-            }
-        }
-    }
+    use crate::{block_on, js_client::KeyName};
 
     fn click(handler: &mut Handler, id: dom::Id) -> Vec<Command> {
         let event = CanvasEvent {
@@ -246,7 +263,7 @@ mod toggle_tests {
             time: 0.0,
             pointer_id: 0,
         };
-        handler.process_canvas(&event, &PointerState::default()).1
+        handler.process_canvas(&event, &Pointer::default()).1
     }
 
     fn toggle_button() -> dom::Id {
@@ -285,5 +302,38 @@ mod toggle_tests {
         let first: Vec<_> =
             click(&mut handler, toggle_button()).iter().map(hidden_change).collect();
         assert_eq!(first, [(false, section(2)), (true, section(1))]);
+    }
+
+    #[cfg(feature = "worker")]
+    #[test]
+    fn closing_the_handler_releases_the_store() {
+        let mut handler = block_on(Handler::ready(0.0, 0.0, 16.0, 0.0, 0));
+        assert!(handler.save().1.is_empty());
+        assert!(handler.close().is_empty());
+        let (events, commands) = handler.save();
+        assert!(matches!(events.as_slice(), [Event::StoreLost(_)]));
+        assert!(matches!(
+            commands.as_slice(),
+            [Command::Error {
+                error: Error::FileStore(crate::file_store::FileStoreError::InvalidState(_)),
+            }]
+        ));
+    }
+
+    #[cfg(feature = "worker")]
+    #[test]
+    fn a_lost_store_is_replaced_and_the_pending_change_survives() {
+        let mut handler = block_on(Handler::ready(0.0, 0.0, 16.0, 0.0, 0));
+        handler.characters.set(1, b"kept".to_vec());
+        let disk = block_on(Backend::open(CHARACTER_STORE, true)).unwrap();
+
+        handler.close();
+        let (events, _) = handler.save();
+        assert!(matches!(events.as_slice(), [Event::StoreLost(_)]));
+        handler.process_lost();
+        handler.process_opened(Ok(disk.clone()));
+        assert_eq!(handler.characters.get(1), Some(&b"kept"[..]));
+        assert!(handler.save().1.is_empty());
+        assert_eq!(Backend::new(disk).unwrap().get(1), Some(&b"kept"[..]));
     }
 }

@@ -11,15 +11,12 @@ use core::{
     primitive::{i8, i32, u8},
 };
 
-use arbitrary_int::{i10, traits::Integer, u9};
+use arbitrary_int::{i10, u7, u9};
 
 use crate::{
     Lang,
     data_struct::DataStruct,
-    field::{
-        Layout,
-        Spec::{Signed, Unsigned},
-    },
+    field::{Fields, Layout},
     list::ListError,
 };
 
@@ -31,18 +28,9 @@ pub mod dice {
         string::{String, ToString},
     };
 
-    use rand::RngExt as _;
+    use rand::{RngExt as _, rand_core::UnwrapErr, rngs::SysRng};
 
     use super::Dice;
-
-    fn rng() -> rand::rngs::SmallRng {
-        use rand::{SeedableRng as _, TryRng as _};
-
-        let mut seed = [0u8; 32];
-        let mut sys = rand::rngs::SysRng::default();
-        sys.try_fill_bytes(&mut seed).unwrap();
-        rand::rngs::SmallRng::from_seed(seed)
-    }
 
     pub fn display(dice: &[Dice]) -> String {
         let s = dice
@@ -67,7 +55,7 @@ pub mod dice {
         dice.iter()
             .map(|&(count, sides, modifier)| {
                 let rolled = if count != 0 && sides > 0 {
-                    let mut rng = rng();
+                    let mut rng = UnwrapErr(SysRng);
                     let sum: i32 =
                         (0..count.unsigned_abs()).map(|_| rng.random_range(1..=sides as i32)).sum();
                     if count < 0 { -sum } else { sum }
@@ -79,7 +67,7 @@ pub mod dice {
             .sum()
     }
     pub fn percent_roll(level: i8) -> u8 {
-        let mut rng = rng();
+        let mut rng = UnwrapErr(SysRng);
         let ones: u8 = rng.random_range(0..=9u8);
         let offset: u8 = if ones == 0 { 1 } else { 0 };
         let rolls_count = 1 + level.unsigned_abs() as usize;
@@ -97,16 +85,17 @@ pub mod dice {
 // === SubjectTrait ===
 
 pub trait SubjectTrait {
+    const SCHEMA_SIZE: u32;
     fn ids(&self) -> &'static [u32];
-    fn label(&self, lang: Lang) -> &'static str;
+    fn display(&self, lang: Lang) -> &'static str;
     fn list() -> &'static [Self]
     where
         Self: Sized;
 }
 
-// === StaticModel ===
+// === Predicate ===
 
-pub trait StaticModel<const N: usize> {
+pub trait Predicate<const N: usize> {
     type Parsed;
     type Subject: SubjectTrait;
     const VARIANT: Self::Subject;
@@ -123,6 +112,11 @@ pub trait StaticModel<const N: usize> {
         Self::parse(character.get_many(Self::ids()))
     }
 
+    fn get_from_bytes(instance: &[u8]) -> Self::Parsed {
+        let size = Self::Subject::SCHEMA_SIZE;
+        Self::parse(Self::ids().map(|id| DataStruct::get_from_bytes(instance, size, id).ok()))
+    }
+
     fn write(
         character: &mut DataStruct,
         value: &Self::Parsed,
@@ -134,6 +128,8 @@ pub trait StaticModel<const N: usize> {
         character.set_many(entries, time)
     }
 }
+
+pub const SCHEMA_SIZE: u32 = 256;
 
 // === Character::{Profile, Characteristic, Secondary Attribute, Skill, Posession, Backstory, Memo} ===
 
@@ -160,7 +156,7 @@ impl Character {
         }
     }
 
-    pub fn label(&self, lang: Lang) -> &'static str {
+    pub fn display(&self, lang: Lang) -> &'static str {
         match (self, lang) {
             (Self::Profile, Lang::En(_)) => "Profile",
             (Self::Profile, Lang::Ja) => "プロフィール",
@@ -205,6 +201,8 @@ pub enum Profile {
 }
 
 impl SubjectTrait for Profile {
+    const SCHEMA_SIZE: u32 = SCHEMA_SIZE;
+
     fn ids(&self) -> &'static [u32] {
         const BASE: u32 = Character::Profile.base_id();
         match self {
@@ -217,7 +215,7 @@ impl SubjectTrait for Profile {
         }
     }
 
-    fn label(&self, lang: Lang) -> &'static str {
+    fn display(&self, lang: Lang) -> &'static str {
         match (self, lang) {
             (Self::Name, Lang::En(_)) => "Name",
             (Self::Name, Lang::Ja) => "名前",
@@ -242,7 +240,7 @@ impl SubjectTrait for Profile {
 pub struct Name;
 
 impl Name {
-    pub fn label(name: &String, complement: &Option<String>) -> String {
+    pub fn display(name: &String, complement: &Option<String>) -> String {
         match complement {
             Some(c) if !c.is_empty() => format!("{name} ({c})"),
             _ => name.clone(),
@@ -250,7 +248,7 @@ impl Name {
     }
 }
 
-impl StaticModel<2> for Name {
+impl Predicate<2> for Name {
     type Parsed = (String, Option<String>); // name, complement
     type Subject = Profile;
     const VARIANT: Profile = Profile::Name;
@@ -266,9 +264,10 @@ impl StaticModel<2> for Name {
     }
 }
 
+#[derive(Clone, Copy)]
 pub enum OccupationKind {
     // p.38
-    Activist,
+    Activist = 1,
     Antiquarian,
     Artist,
     Athlete,
@@ -335,44 +334,14 @@ impl OccupationKind {
     }
 
     pub fn id(&self) -> u8 {
-        match self {
-            Self::Activist => 1,
-            Self::Antiquarian => 2,
-            Self::Artist => 3,
-            Self::Athlete => 4,
-            Self::Author => 5,
-            Self::Clergy => 6,
-            Self::Criminal => 7,
-            Self::Dilettante => 8,
-            Self::Doctor => 9,
-            Self::Drifter => 10,
-            Self::Engineer => 11,
-            Self::Entertainer => 12,
-            Self::Farmer => 13,
-            Self::Hacker => 14,
-            Self::Journalist => 15,
-            Self::Lawyer => 16,
-            Self::Librarian => 17,
-            Self::MilitaryOfficer => 18,
-            Self::Missionary => 19,
-            Self::Musician => 20,
-            Self::Parapsychologist => 21,
-            Self::Pilot => 22,
-            Self::Police => 23,
-            Self::PoliceDetective => 24,
-            Self::PrivateInvestigator => 25,
-            Self::Professor => 26,
-            Self::Soldier => 27,
-            Self::TribeMember => 28,
-            Self::Custom => 29,
-        }
+        *self as u8
     }
 }
 
 pub struct Occupation;
 
 impl Occupation {
-    pub fn label(
+    pub fn display(
         kind: &OccupationKind,
         custom_name: Option<&str>,
         title: Option<&str>,
@@ -478,7 +447,7 @@ impl Occupation {
     }
 }
 
-impl StaticModel<3> for Occupation {
+impl Predicate<3> for Occupation {
     type Parsed = (OccupationKind, Option<String>, Option<String>); // kind, custom_name, title
     type Subject = Profile;
     const VARIANT: Profile = Profile::Occupation;
@@ -502,7 +471,7 @@ impl StaticModel<3> for Occupation {
 
 pub struct Birthplace; // Birthplace: str
 
-impl StaticModel<1> for Birthplace {
+impl Predicate<1> for Birthplace {
     type Parsed = String;
     type Subject = Profile;
     const VARIANT: Profile = Profile::Birthpalce;
@@ -518,7 +487,7 @@ impl StaticModel<1> for Birthplace {
 
 pub struct Pronoun; // Pronoun: str
 
-impl StaticModel<1> for Pronoun {
+impl Predicate<1> for Pronoun {
     type Parsed = String;
     type Subject = Profile;
     const VARIANT: Profile = Profile::Pronoun;
@@ -534,7 +503,7 @@ impl StaticModel<1> for Pronoun {
 
 pub struct Residence; // Residence: str
 
-impl StaticModel<1> for Residence {
+impl Predicate<1> for Residence {
     type Parsed = String;
     type Subject = Profile;
     const VARIANT: Profile = Profile::Residence;
@@ -550,7 +519,7 @@ impl StaticModel<1> for Residence {
 
 pub struct Age; // Age: u16
 
-impl StaticModel<1> for Age {
+impl Predicate<1> for Age {
     type Parsed = u16;
     type Subject = Profile;
     const VARIANT: Profile = Profile::Age;
@@ -569,7 +538,7 @@ impl StaticModel<1> for Age {
 #[derive(Clone, Copy)]
 pub enum Characteristic {
     // Characteristic {initial: u16, change: i16, modifier: i16} // p.28
-    Strength,
+    Strength = 1,
     Constitution,
     Size,
     Dexterity,
@@ -580,7 +549,7 @@ pub enum Characteristic {
 }
 
 impl Characteristic {
-    pub fn label(&self, lang: Lang) -> &'static str {
+    pub fn display(&self, lang: Lang) -> &'static str {
         match (self, lang) {
             (Self::Strength, _) => "STR",
             (Self::Constitution, _) => "CON",
@@ -594,30 +563,20 @@ impl Characteristic {
     }
 
     pub const fn id(&self) -> u32 {
-        Character::Characteristic.base_id()
-            + match self {
-                Self::Strength => 0,
-                Self::Constitution => 1,
-                Self::Size => 2,
-                Self::Dexterity => 3,
-                Self::Appearance => 4,
-                Self::Intelligence => 5,
-                Self::Power => 6,
-                Self::Education => 7,
-            }
+        Character::Characteristic.base_id() + *self as u32
     }
 
     pub fn from_id(id: u8) -> Option<Self> {
         let offset = id as u32 - Character::Characteristic.base_id();
         match offset {
-            0 => Some(Self::Strength),
-            1 => Some(Self::Constitution),
-            2 => Some(Self::Size),
-            3 => Some(Self::Dexterity),
-            4 => Some(Self::Appearance),
-            5 => Some(Self::Intelligence),
-            6 => Some(Self::Power),
-            7 => Some(Self::Education),
+            1 => Some(Self::Strength),
+            2 => Some(Self::Constitution),
+            3 => Some(Self::Size),
+            4 => Some(Self::Dexterity),
+            5 => Some(Self::Appearance),
+            6 => Some(Self::Intelligence),
+            7 => Some(Self::Power),
+            8 => Some(Self::Education),
             _ => None,
         }
     }
@@ -695,8 +654,9 @@ impl Characteristic {
 
 // === Secondary Attributes ===
 
+#[derive(Clone, Copy)]
 pub enum SecondaryAttribute {
-    HitPoints,             // CON, SIZ -> u8
+    HitPoints = 1,         // CON, SIZ -> u8
     MagicPoints,           // POW -> u8
     Luck,                  // u8
     Sanity,                // u8 | POW -> u8
@@ -709,21 +669,10 @@ pub enum SecondaryAttribute {
 
 impl SecondaryAttribute {
     pub const fn base_id(&self) -> u32 {
-        Character::SecondaryAttribute.base_id()
-            + match self {
-                Self::HitPoints => 0,
-                Self::MagicPoints => 1,
-                Self::Luck => 2,
-                Self::Sanity => 3,
-                Self::Build => 4,
-                Self::DamageBonus => 5,
-                Self::MoveRate => 6,
-                Self::OccupationSkillPoints => 7,
-                Self::InterestSkillPoints => 8,
-            }
+        Character::SecondaryAttribute.base_id() + *self as u32
     }
 
-    pub fn label(&self, lang: Lang) -> &'static str {
+    pub fn display(&self, lang: Lang) -> &'static str {
         match (self, lang) {
             (Self::HitPoints, _) => "HP",
             (Self::MagicPoints, _) => "MP",
@@ -756,7 +705,7 @@ impl HitPoints {
         character.get(Self::id()).ok().and_then(|b| b.first().copied()).unwrap_or(0)
     }
 
-    pub fn write<'a>(character: &'a mut DataStruct, value: u8) -> &'a mut DataStruct {
+    pub fn write(character: &mut DataStruct, value: u8) -> &mut DataStruct {
         let _ = character.set(Self::id(), &[value], None);
         character
     }
@@ -779,7 +728,7 @@ impl MagicPoints {
         character.get(Self::id()).ok().and_then(|b| b.first().copied()).unwrap_or(0)
     }
 
-    pub fn write<'a>(character: &'a mut DataStruct, value: u8) -> &'a mut DataStruct {
+    pub fn write(character: &mut DataStruct, value: u8) -> &mut DataStruct {
         let _ = character.set(Self::id(), &[value], None);
         character
     }
@@ -800,7 +749,7 @@ impl Luck {
             .unwrap_or(0)
     }
 
-    pub fn write<'a>(character: &'a mut DataStruct, value: u8) -> &'a mut DataStruct {
+    pub fn write(character: &mut DataStruct, value: u8) -> &mut DataStruct {
         let _ = character.set(SecondaryAttribute::Luck.base_id(), &[value], None);
         character
     }
@@ -821,7 +770,7 @@ impl Sanity {
             .unwrap_or(0)
     }
 
-    pub fn write<'a>(character: &'a mut DataStruct, value: u8) -> &'a mut DataStruct {
+    pub fn write(character: &mut DataStruct, value: u8) -> &mut DataStruct {
         let _ = character.set(SecondaryAttribute::Sanity.base_id(), &[value], None);
         character
     }
@@ -843,7 +792,7 @@ impl Build {
             .unwrap_or(0)
     }
 
-    pub fn write<'a>(character: &'a mut DataStruct, value: i8) -> &'a mut DataStruct {
+    pub fn write(character: &mut DataStruct, value: i8) -> &mut DataStruct {
         let _ = character.set(SecondaryAttribute::Build.base_id(), &[value as u8], None);
         character
     }
@@ -873,7 +822,7 @@ impl DamageBonus {
         Self::derive(character)
     }
 
-    pub fn label(character: &DataStruct) -> String {
+    pub fn display(character: &DataStruct) -> String {
         dice::display(&[Self::read(character)])
     }
 
@@ -904,7 +853,7 @@ impl MoveRate {
             .unwrap_or(0)
     }
 
-    pub fn write<'a>(character: &'a mut DataStruct, value: u8) -> &'a mut DataStruct {
+    pub fn write(character: &mut DataStruct, value: u8) -> &mut DataStruct {
         let _ = character.set(SecondaryAttribute::MoveRate.base_id(), &[value], None);
         character
     }
@@ -942,10 +891,10 @@ impl OccupationSkillPoints {
         Some((c1, c2))
     }
 
-    pub fn write<'a>(
-        character: &'a mut DataStruct,
+    pub fn write(
+        character: &mut DataStruct,
         value: (Characteristic, Characteristic),
-    ) -> &'a mut DataStruct {
+    ) -> &mut DataStruct {
         let _ = character.set(
             SecondaryAttribute::OccupationSkillPoints.base_id(),
             &[value.0.id() as u8, value.1.id() as u8],
@@ -954,7 +903,7 @@ impl OccupationSkillPoints {
         character
     }
 
-    pub fn label(
+    pub fn display(
         characteristic_tuple: Option<(Characteristic, Characteristic)>,
         lang: Lang,
     ) -> String {
@@ -962,9 +911,9 @@ impl OccupationSkillPoints {
             return String::new();
         };
         if c1.id() == c2.id() {
-            format!("{}×4", c1.label(lang))
+            format!("{}×4", c1.display(lang))
         } else {
-            format!("{}×2+{}×2", c1.label(lang), c2.label(lang))
+            format!("{}×2+{}×2", c1.display(lang), c2.display(lang))
         }
     }
 
@@ -1101,53 +1050,53 @@ impl Skill {
     pub const fn base_id(&self) -> u32 {
         const BASE: u32 = Character::Skill.base_id();
         match self {
-            Self::Accounting => BASE + 0, // 1 slot (minimum)
-            Self::Anthropology => BASE + 1,
-            Self::Appraise => BASE + 2,
-            Self::Archaeology => BASE + 3,
-            Self::ArtAndCraft => BASE + 4, // 12 + 1 slots (defined + custom)
-            Self::Charm => BASE + 17,
-            Self::Climb => BASE + 18,
-            Self::ComputerUse => BASE + 19,
-            Self::CreditRating => BASE + 20,
-            Self::CthulhuMythos => BASE + 21,
-            Self::Disguise => BASE + 22,
-            Self::Dodge => BASE + 23,
-            Self::DriveAuto => BASE + 24,
-            Self::ElectricalRepair => BASE + 25,
-            Self::Electronics => BASE + 26,
-            Self::FastTalk => BASE + 27,
-            Self::Fighting => BASE + 28, // 8 + 1 slots (defined + custom)
-            Self::Firearms => BASE + 37, // 7 + 1 slots (defined + custom)
-            Self::FirstAid => BASE + 44,
-            Self::History => BASE + 45,
-            Self::Intimidate => BASE + 46,
-            Self::Jump => BASE + 47,
-            Self::LanguageOther => BASE + 48, // 1 + 1 slot (+ name)
-            Self::LanguageOwn => BASE + 50,   // 1 + 1 slot (+ name)
-            Self::Law => BASE + 52,
-            Self::LibraryUse => BASE + 53,
-            Self::Listen => BASE + 54,
-            Self::Locksmith => BASE + 55,
-            Self::MechanicalRepair => BASE + 56,
-            Self::Medicine => BASE + 57,
-            Self::NaturalWorld => BASE + 58,
-            Self::Navigate => BASE + 59,
-            Self::Occult => BASE + 60,
-            Self::Persuade => BASE + 61,
-            Self::Pilot => BASE + 62, // 10 + 1 slots (defined + custom)
-            Self::Psychoanalysis => BASE + 73,
-            Self::Psychology => BASE + 74,
-            Self::Ride => BASE + 75,
-            Self::Science => BASE + 76, // 13 + 1 slots (defined + custom)
-            Self::SleightOfHand => BASE + 90,
-            Self::SpotHidden => BASE + 91,
-            Self::Stealth => BASE + 92,
-            Self::Survival => BASE + 93, // 3 + 1 slots (defined + custom)
-            Self::Swim => BASE + 97,
-            Self::Throw => BASE + 98,
-            Self::Track => BASE + 99,
-            Self::Custom => BASE + 100,
+            Self::Accounting => BASE + 1, // 1 slot (minimum)
+            Self::Anthropology => BASE + 2,
+            Self::Appraise => BASE + 3,
+            Self::Archaeology => BASE + 4,
+            Self::ArtAndCraft => BASE + 5, // 12 + 1 slots (defined + custom)
+            Self::Charm => BASE + 19,
+            Self::Climb => BASE + 20,
+            Self::ComputerUse => BASE + 21,
+            Self::CreditRating => BASE + 22,
+            Self::CthulhuMythos => BASE + 23,
+            Self::Disguise => BASE + 24,
+            Self::Dodge => BASE + 25,
+            Self::DriveAuto => BASE + 26,
+            Self::ElectricalRepair => BASE + 27,
+            Self::Electronics => BASE + 28,
+            Self::FastTalk => BASE + 29,
+            Self::Fighting => BASE + 30, // 8 + 1 slots (defined + custom)
+            Self::Firearms => BASE + 40, // 7 + 1 slots (defined + custom)
+            Self::FirstAid => BASE + 49,
+            Self::History => BASE + 50,
+            Self::Intimidate => BASE + 51,
+            Self::Jump => BASE + 52,
+            Self::LanguageOther => BASE + 53, // 1 + 1 slot (+ name)
+            Self::LanguageOwn => BASE + 55,   // 1 + 1 slot (+ name)
+            Self::Law => BASE + 57,
+            Self::LibraryUse => BASE + 58,
+            Self::Listen => BASE + 59,
+            Self::Locksmith => BASE + 60,
+            Self::MechanicalRepair => BASE + 61,
+            Self::Medicine => BASE + 62,
+            Self::NaturalWorld => BASE + 63,
+            Self::Navigate => BASE + 64,
+            Self::Occult => BASE + 65,
+            Self::Persuade => BASE + 66,
+            Self::Pilot => BASE + 67, // 10 + 1 slots (defined + custom)
+            Self::Psychoanalysis => BASE + 79,
+            Self::Psychology => BASE + 80,
+            Self::Ride => BASE + 81,
+            Self::Science => BASE + 82, // 13 + 1 slots (defined + custom)
+            Self::SleightOfHand => BASE + 97,
+            Self::SpotHidden => BASE + 98,
+            Self::Stealth => BASE + 99,
+            Self::Survival => BASE + 100, // 3 + 1 slots (defined + custom)
+            Self::Swim => BASE + 105,
+            Self::Throw => BASE + 106,
+            Self::Track => BASE + 107,
+            Self::Custom => BASE + 108,
         }
     }
 
@@ -1199,7 +1148,7 @@ impl Skill {
         }
     }
 
-    pub fn name(&self, lang: &Lang) -> &'static str {
+    pub fn display(&self, lang: Lang) -> &'static str {
         match (self, lang) {
             (Self::Accounting, Lang::En(_)) => "Accounting",
             (Self::Accounting, Lang::Ja) => "経理",
@@ -1306,15 +1255,14 @@ const CHANGE: usize = 2;
 const MODIFIER: usize = 3;
 const PERCENT: usize = 4;
 
-const SKILL_LAYOUT: Layout<4> = Layout::new([Unsigned(9), Unsigned(9), Signed(10), Signed(10)]);
-const SKILL_WITH_PERCENT_LAYOUT: Layout<5> =
-    Layout::new([Unsigned(9), Unsigned(9), Signed(10), Signed(10), Unsigned(7)]);
+const SKILL_LAYOUT: Layout<(u9, u9, i10, i10)> = Layout::new();
+const SKILL_WITH_PERCENT_LAYOUT: Layout<(u9, u9, i10, i10, u7)> = Layout::new();
 
-fn read_raw<const N: usize>(character: &DataStruct, id: u32, layout: &Layout<N>) -> u64 {
+fn read_raw<T: Fields>(character: &DataStruct, id: u32, layout: &Layout<T>) -> u64 {
     character.get(id).ok().and_then(|b| layout.decode(b)).unwrap_or(0)
 }
 
-fn write_raw<const N: usize>(character: &mut DataStruct, id: u32, layout: &Layout<N>, raw: u64) {
+fn write_raw<T: Fields>(character: &mut DataStruct, id: u32, layout: &Layout<T>, raw: u64) {
     let (word, len) = layout.encode(raw);
     let _ = character.set(id, &word[..len], None);
 }
@@ -1339,12 +1287,7 @@ pub trait SkillTrait<const S: Skill> {
     // -> occupation_points, interest_points, change, modifier
     fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
         let raw = read_raw(character, Self::BASE_ID, &SKILL_LAYOUT);
-        (
-            SKILL_LAYOUT.get(raw, OCCUPATION_POINTS),
-            SKILL_LAYOUT.get(raw, INTEREST_POINTS),
-            SKILL_LAYOUT.get(raw, CHANGE),
-            SKILL_LAYOUT.get(raw, MODIFIER),
-        )
+        SKILL_LAYOUT.unpack(raw)
     }
 
     fn write<'a>(
@@ -1355,19 +1298,14 @@ pub trait SkillTrait<const S: Skill> {
         change: i10,
         modifier: i10,
     ) -> &'a mut DataStruct {
-        let raw = SKILL_LAYOUT.pack([
-            occupation_points.as_u64(),
-            interest_points.as_u64(),
-            change.as_u64(),
-            modifier.as_u64(),
-        ]);
+        let raw = SKILL_LAYOUT.pack((occupation_points, interest_points, change, modifier));
         write_raw(character, Self::BASE_ID, &SKILL_LAYOUT, raw);
         character
     }
 
     // -> skill_name, specialization_name
     fn as_editable_string(&self) -> (String, String) {
-        (S.name(&Lang::Ja).to_owned(), String::new())
+        (S.display(Lang::Ja).to_owned(), String::new())
     }
 
     // -> base, occupation_points, interest_points, change, modifier, sum
@@ -1387,7 +1325,7 @@ pub trait SkillTrait<const S: Skill> {
     }
 
     fn as_immutable_string(&self) -> String {
-        S.name(&Lang::Ja).to_owned()
+        S.display(Lang::Ja).to_owned()
     }
 }
 
@@ -1492,7 +1430,7 @@ impl LanguageOwn {
         modifier: i16,
         name: &str,
     ) -> &'a mut DataStruct {
-        let raw = SKILL_LAYOUT.pack([
+        let raw = SKILL_LAYOUT.pack_raw(&[
             occupation_points as u64,
             interest_points as u64,
             change as u64,
@@ -1520,17 +1458,17 @@ impl LanguageOwn {
 
     // -> skill_name, name
     pub fn as_editable_string<'a>(name: &'a str, lang: Lang) -> (&'static str, &'a str) {
-        (Skill::LanguageOwn.name(&lang), name)
+        (Skill::LanguageOwn.display(lang), name)
     }
 
     pub fn as_immutable_string(name: &str, lang: Lang) -> String {
-        format!("{} ({})", Skill::LanguageOwn.name(&lang), name)
+        format!("{} ({})", Skill::LanguageOwn.display(lang), name)
     }
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum ArtAndCraft {
-    Acting,
+    Acting = 1,
     Barber,
     Calligraphy,
     Carpentry,
@@ -1547,25 +1485,10 @@ pub enum ArtAndCraft {
 
 impl ArtAndCraft {
     pub const fn base_id(&self) -> u32 {
-        const BASE_ID: u32 = Skill::ArtAndCraft.base_id();
-        match self {
-            Self::Acting => BASE_ID + 1,
-            Self::Barber => BASE_ID + 2,
-            Self::Calligraphy => BASE_ID + 3,
-            Self::Carpentry => BASE_ID + 4,
-            Self::Cook => BASE_ID + 5,
-            Self::Dancing => BASE_ID + 6,
-            Self::FineArt => BASE_ID + 7,
-            Self::Forgery => BASE_ID + 8,
-            Self::Photography => BASE_ID + 9,
-            Self::Pottery => BASE_ID + 10,
-            Self::Sculpting => BASE_ID + 11,
-            Self::Writing => BASE_ID + 12,
-            Self::Custom => BASE_ID + 13,
-        }
+        Skill::ArtAndCraft.base_id() + *self as u32
     }
 
-    pub fn name(&self, lang: Lang) -> &str {
+    pub fn display(&self, lang: Lang) -> &str {
         match (self, lang) {
             (Self::Acting, Lang::En(_)) => "Acting",
             (Self::Acting, Lang::Ja) => "演劇",
@@ -1627,12 +1550,7 @@ pub trait ArtAndCraftTrait<const A: ArtAndCraft> {
     // -> occupation_points, interest_points, change, modifier
     fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
         let raw = read_raw(character, Self::BASE_ID, &SKILL_LAYOUT);
-        (
-            SKILL_LAYOUT.get(raw, OCCUPATION_POINTS),
-            SKILL_LAYOUT.get(raw, INTEREST_POINTS),
-            SKILL_LAYOUT.get(raw, CHANGE),
-            SKILL_LAYOUT.get(raw, MODIFIER),
-        )
+        SKILL_LAYOUT.unpack(raw)
     }
 
     fn write<'a>(
@@ -1643,19 +1561,14 @@ pub trait ArtAndCraftTrait<const A: ArtAndCraft> {
         change: i10,
         modifier: i10,
     ) -> &'a mut DataStruct {
-        let raw = SKILL_LAYOUT.pack([
-            occupation_points.as_u64(),
-            interest_points.as_u64(),
-            change.as_u64(),
-            modifier.as_u64(),
-        ]);
+        let raw = SKILL_LAYOUT.pack((occupation_points, interest_points, change, modifier));
         write_raw(character, Self::BASE_ID, &SKILL_LAYOUT, raw);
         character
     }
 
     // -> skill_name, specialization_name
     fn as_editable_string(&self, lang: Lang) -> (String, String) {
-        (Skill::ArtAndCraft.name(&lang).to_owned(), A.name(lang).to_owned())
+        (Skill::ArtAndCraft.display(lang).to_owned(), A.display(lang).to_owned())
     }
 
     // -> base, occupation_points, interest_points, change, modifier, sum
@@ -1732,7 +1645,7 @@ impl ArtAndCraftCustom {
         modifier: i16,
         name: &str,
     ) -> &'a mut DataStruct {
-        let raw = SKILL_LAYOUT.pack([
+        let raw = SKILL_LAYOUT.pack_raw(&[
             occupation_points as u64,
             interest_points as u64,
             change as u64,
@@ -1761,17 +1674,17 @@ impl ArtAndCraftCustom {
 
     // -> skill_name, specialization_name
     pub fn as_editable_string<'a>(name: &'a str, lang: Lang) -> (&'static str, &'a str) {
-        (Skill::ArtAndCraft.name(&lang), name)
+        (Skill::ArtAndCraft.display(lang), name)
     }
 
     pub fn as_immutable_string(name: &str, lang: Lang) -> String {
-        format!("{} ({})", Skill::ArtAndCraft.name(&lang), name)
+        format!("{} ({})", Skill::ArtAndCraft.display(lang), name)
     }
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Fighting {
-    Axe,
+    Axe = 1,
     Brawl,
     Chainsaw,
     Flail,
@@ -1797,17 +1710,7 @@ impl Fighting {
     }
 
     pub const fn id(&self, base: u32) -> u32 {
-        base + match self {
-            Self::Axe => 1,
-            Self::Brawl => 2,
-            Self::Chainsaw => 3,
-            Self::Flail => 4,
-            Self::Garrote => 5,
-            Self::Spear => 6,
-            Self::Sword => 7,
-            Self::Whip => 8,
-            Self::Custom => 9,
-        }
+        base + *self as u32
     }
 
     pub const fn base_percent(&self) -> u16 {
@@ -1824,7 +1727,7 @@ impl Fighting {
         }
     }
 
-    pub fn name(&self, lang: Lang) -> &str {
+    pub fn display(&self, lang: Lang) -> &str {
         match (self, lang) {
             (Self::Axe, Lang::En(_)) => "Axe",
             (Self::Axe, Lang::Ja) => "斧",
@@ -1860,12 +1763,7 @@ pub trait FightingTrait<const F: Fighting> {
     // -> occupation_points, interest_points, change, modifier
     fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
         let raw = read_raw(character, Self::BASE_ID, &SKILL_LAYOUT);
-        (
-            SKILL_LAYOUT.get(raw, OCCUPATION_POINTS),
-            SKILL_LAYOUT.get(raw, INTEREST_POINTS),
-            SKILL_LAYOUT.get(raw, CHANGE),
-            SKILL_LAYOUT.get(raw, MODIFIER),
-        )
+        SKILL_LAYOUT.unpack(raw)
     }
 
     fn write<'a>(
@@ -1876,19 +1774,14 @@ pub trait FightingTrait<const F: Fighting> {
         change: i10,
         modifier: i10,
     ) -> &'a mut DataStruct {
-        let raw = SKILL_LAYOUT.pack([
-            occupation_points.as_u64(),
-            interest_points.as_u64(),
-            change.as_u64(),
-            modifier.as_u64(),
-        ]);
+        let raw = SKILL_LAYOUT.pack((occupation_points, interest_points, change, modifier));
         write_raw(character, Self::BASE_ID, &SKILL_LAYOUT, raw);
         character
     }
 
     // -> skill_name, specialization_name
     fn as_editable_string(&self, lang: Lang) -> (&'static str, &'static str) {
-        (Skill::Fighting.name(&lang), F.name(lang))
+        (Skill::Fighting.display(lang), F.display(lang))
     }
 
     // -> base, occupation_points, interest_points, change, modifier, sum
@@ -1973,7 +1866,7 @@ impl FightingCustom {
         modifier: i16,
         name: &str,
     ) -> &'a mut DataStruct {
-        let raw = SKILL_WITH_PERCENT_LAYOUT.pack([
+        let raw = SKILL_WITH_PERCENT_LAYOUT.pack_raw(&[
             occupation_points as u64,
             interest_points as u64,
             change as u64,
@@ -2004,17 +1897,17 @@ impl FightingCustom {
 
     // -> skill_name, specialization_name
     pub fn as_editable_string<'a>(name: &'a str, lang: Lang) -> (&'static str, &'a str) {
-        (Skill::Fighting.name(&lang), name)
+        (Skill::Fighting.display(lang), name)
     }
 
     pub fn as_immutable_string(name: &str, lang: Lang) -> String {
-        format!("{} ({})", Skill::Fighting.name(&lang), name)
+        format!("{} ({})", Skill::Fighting.display(lang), name)
     }
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Firearms {
-    Bow,
+    Bow = 1,
     FlameThrower,
     Handgun,
     HeavyWeapons,
@@ -2038,16 +1931,7 @@ impl Firearms {
     }
 
     pub const fn id(&self, base: u32) -> u32 {
-        base + match self {
-            Self::Bow => 0,
-            Self::FlameThrower => 1,
-            Self::Handgun => 2,
-            Self::HeavyWeapons => 3,
-            Self::MachineGun => 4,
-            Self::RifleShotgun => 5,
-            Self::SubmachineGun => 6,
-            Self::Custom => 7,
-        }
+        base + *self as u32
     }
 
     pub const fn base_percent(&self) -> u16 {
@@ -2063,7 +1947,7 @@ impl Firearms {
         }
     }
 
-    pub fn name(&self, lang: Lang) -> &str {
+    pub fn display(&self, lang: Lang) -> &str {
         match (self, lang) {
             (Self::Bow, Lang::En(_)) => "Bow",
             (Self::Bow, Lang::Ja) => "弓",
@@ -2096,12 +1980,7 @@ pub trait FirearmsTrait<const F: Firearms> {
 
     fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
         let raw = read_raw(character, Self::BASE_ID, &SKILL_LAYOUT);
-        (
-            SKILL_LAYOUT.get(raw, OCCUPATION_POINTS),
-            SKILL_LAYOUT.get(raw, INTEREST_POINTS),
-            SKILL_LAYOUT.get(raw, CHANGE),
-            SKILL_LAYOUT.get(raw, MODIFIER),
-        )
+        SKILL_LAYOUT.unpack(raw)
     }
 
     fn write<'a>(
@@ -2112,19 +1991,14 @@ pub trait FirearmsTrait<const F: Firearms> {
         change: i10,
         modifier: i10,
     ) -> &'a mut DataStruct {
-        let raw = SKILL_LAYOUT.pack([
-            occupation_points.as_u64(),
-            interest_points.as_u64(),
-            change.as_u64(),
-            modifier.as_u64(),
-        ]);
+        let raw = SKILL_LAYOUT.pack((occupation_points, interest_points, change, modifier));
         write_raw(character, Self::BASE_ID, &SKILL_LAYOUT, raw);
         character
     }
 
     // -> skill_name, specialization_label
     fn as_editable_string(&self, lang: Lang) -> (&'static str, &'static str) {
-        (Skill::Firearms.name(&lang), F.name(lang))
+        (Skill::Firearms.display(lang), F.display(lang))
     }
 
     // -> base, occupation_points, interest_points, change, modifier, sum
@@ -2169,7 +2043,7 @@ impl FirearmsTrait<{ Firearms::SubmachineGun }> for SubmachineGun {}
 pub struct FirearmsCustom(pub u8);
 
 impl FirearmsCustom {
-    const LIST_ID: u32 = Skill::Firearms.base_id() + 7;
+    const LIST_ID: u32 = Skill::Firearms.base_id() + 8;
     pub const fn list_id() -> u32 {
         Self::LIST_ID
     }
@@ -2207,7 +2081,7 @@ impl FirearmsCustom {
         modifier: i16,
         name: &str,
     ) -> &'a mut DataStruct {
-        let raw = SKILL_WITH_PERCENT_LAYOUT.pack([
+        let raw = SKILL_WITH_PERCENT_LAYOUT.pack_raw(&[
             occupation_points as u64,
             interest_points as u64,
             change as u64,
@@ -2238,11 +2112,11 @@ impl FirearmsCustom {
 
     // -> skill_name, specialization_name
     pub fn as_editable_string<'a>(name: &'a str, lang: Lang) -> (&'static str, &'a str) {
-        (Skill::Firearms.name(&lang), name)
+        (Skill::Firearms.display(lang), name)
     }
 
     pub fn as_immutable_string(name: &str, lang: Lang) -> String {
-        format!("{} ({})", Skill::Firearms.name(&lang), name)
+        format!("{} ({})", Skill::Firearms.display(lang), name)
     }
 }
 
@@ -2286,7 +2160,7 @@ impl LanguageOther {
         modifier: i16,
         name: &str,
     ) -> &'a mut DataStruct {
-        let raw = SKILL_LAYOUT.pack([
+        let raw = SKILL_LAYOUT.pack_raw(&[
             occupation_points as u64,
             interest_points as u64,
             change as u64,
@@ -2315,17 +2189,17 @@ impl LanguageOther {
 
     // -> skill_name, language_name
     pub fn as_editable_string<'a>(name: &'a str, lang: Lang) -> (&'static str, &'a str) {
-        (Skill::LanguageOther.name(&lang), name)
+        (Skill::LanguageOther.display(lang), name)
     }
 
     pub fn as_immutable_string(name: &str, lang: Lang) -> String {
-        format!("{} ({})", Skill::LanguageOther.name(&lang), name)
+        format!("{} ({})", Skill::LanguageOther.display(lang), name)
     }
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Pilot {
-    Boat,
+    Boat = 1,
     SteamShip,
     Sailboat,
     CivilProp,
@@ -2355,26 +2229,14 @@ impl Pilot {
     }
 
     pub const fn id(&self, base: u32) -> u32 {
-        base + match self {
-            Self::Boat => 0,
-            Self::SteamShip => 1,
-            Self::Sailboat => 2,
-            Self::CivilProp => 3,
-            Self::Balloon => 4,
-            Self::Dirigible => 5,
-            Self::CivilJet => 6,
-            Self::Airliner => 7,
-            Self::JetFighter => 8,
-            Self::Helicopter => 9,
-            Self::Custom => 10,
-        }
+        base + *self as u32
     }
 
     pub const fn base_percent(&self) -> u16 {
         1
     }
 
-    pub const fn name(&self, lang: Lang) -> &'static str {
+    pub const fn display(&self, lang: Lang) -> &'static str {
         match (self, lang) {
             (Self::Boat, Lang::Ja) => "ボート",
             (Self::Boat, Lang::En(_)) => "Boat",
@@ -2411,12 +2273,7 @@ pub trait PilotTrait<const P: Pilot> {
 
     fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
         let raw = read_raw(character, Self::BASE_ID, &SKILL_LAYOUT);
-        (
-            SKILL_LAYOUT.get(raw, OCCUPATION_POINTS),
-            SKILL_LAYOUT.get(raw, INTEREST_POINTS),
-            SKILL_LAYOUT.get(raw, CHANGE),
-            SKILL_LAYOUT.get(raw, MODIFIER),
-        )
+        SKILL_LAYOUT.unpack(raw)
     }
 
     fn write<'a>(
@@ -2427,18 +2284,13 @@ pub trait PilotTrait<const P: Pilot> {
         change: i10,
         modifier: i10,
     ) -> &'a mut DataStruct {
-        let raw = SKILL_LAYOUT.pack([
-            occupation_points.as_u64(),
-            interest_points.as_u64(),
-            change.as_u64(),
-            modifier.as_u64(),
-        ]);
+        let raw = SKILL_LAYOUT.pack((occupation_points, interest_points, change, modifier));
         write_raw(character, Self::BASE_ID, &SKILL_LAYOUT, raw);
         character
     }
 
     fn as_editable_string(&self, lang: Lang) -> (&'static str, &'static str) {
-        (Skill::Pilot.name(&lang), P.name(lang))
+        (Skill::Pilot.display(lang), P.display(lang))
     }
 
     fn as_editable_numeric(
@@ -2488,7 +2340,7 @@ impl PilotTrait<{ Pilot::Helicopter }> for PilotHelicopter {}
 pub struct PilotCustom(pub u8);
 
 impl PilotCustom {
-    const LIST_ID: u32 = Skill::Pilot.base_id() + 10;
+    const LIST_ID: u32 = Skill::Pilot.base_id() + 11;
     pub const fn list_id() -> u32 {
         Self::LIST_ID
     }
@@ -2522,7 +2374,7 @@ impl PilotCustom {
         modifier: i16,
         name: &str,
     ) -> &'a mut DataStruct {
-        let raw = SKILL_LAYOUT.pack([
+        let raw = SKILL_LAYOUT.pack_raw(&[
             occupation_points as u64,
             interest_points as u64,
             change as u64,
@@ -2550,15 +2402,15 @@ impl PilotCustom {
 
     // -> skill_name, specialization_name
     pub fn as_editable_string<'a>(name: &'a str, lang: Lang) -> (&'static str, &'a str) {
-        (Skill::Pilot.name(&lang), name)
+        (Skill::Pilot.display(lang), name)
     }
 
     pub fn as_immutable_string(name: &str, lang: Lang) -> String {
-        format!("{} ({})", Skill::Pilot.name(&lang), name)
+        format!("{} ({})", Skill::Pilot.display(lang), name)
     }
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Science {
     None,
     Astronomy,
@@ -2597,22 +2449,9 @@ impl Science {
     }
 
     pub const fn id(&self, base: u32) -> u32 {
-        base + match self {
+        match self {
             Self::None => unreachable!(),
-            Self::Astronomy => 0,
-            Self::Biology => 1,
-            Self::Botany => 2,
-            Self::Chemistry => 3,
-            Self::Cryptography => 4,
-            Self::Engineering => 5,
-            Self::Forensics => 6,
-            Self::Geology => 7,
-            Self::Mathematics => 8,
-            Self::Meteorology => 9,
-            Self::Pharmacy => 10,
-            Self::Physics => 11,
-            Self::Zoology => 12,
-            Self::Custom => 13,
+            _ => base + *self as u32,
         }
     }
 
@@ -2623,7 +2462,7 @@ impl Science {
         }
     }
 
-    pub fn name(&self, lang: Lang) -> Option<&'static str> {
+    pub fn display(&self, lang: Lang) -> Option<&'static str> {
         match (self, lang) {
             (Self::None, _) => None,
             (Self::Astronomy, Lang::Ja) => Some("天文学"),
@@ -2667,12 +2506,7 @@ pub trait ScienceTrait<const S: Science> {
 
     fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
         let raw = read_raw(character, Self::BASE_ID, &SKILL_LAYOUT);
-        (
-            SKILL_LAYOUT.get(raw, OCCUPATION_POINTS),
-            SKILL_LAYOUT.get(raw, INTEREST_POINTS),
-            SKILL_LAYOUT.get(raw, CHANGE),
-            SKILL_LAYOUT.get(raw, MODIFIER),
-        )
+        SKILL_LAYOUT.unpack(raw)
     }
 
     fn write<'a>(
@@ -2683,18 +2517,13 @@ pub trait ScienceTrait<const S: Science> {
         change: i10,
         modifier: i10,
     ) -> &'a mut DataStruct {
-        let raw = SKILL_LAYOUT.pack([
-            occupation_points.as_u64(),
-            interest_points.as_u64(),
-            change.as_u64(),
-            modifier.as_u64(),
-        ]);
+        let raw = SKILL_LAYOUT.pack((occupation_points, interest_points, change, modifier));
         write_raw(character, Self::BASE_ID, &SKILL_LAYOUT, raw);
         character
     }
 
     fn as_editable_string(&self, lang: Lang) -> (&'static str, Option<&'static str>) {
-        (Skill::Science.name(&lang), S.name(lang))
+        (Skill::Science.display(lang), S.display(lang))
     }
 
     fn as_editable_numeric(
@@ -2750,7 +2579,7 @@ impl ScienceTrait<{ Science::Zoology }> for ScienceZoology {}
 pub struct ScienceCustom(pub u8);
 
 impl ScienceCustom {
-    const LIST_ID: u32 = Skill::Science.base_id() + 13;
+    const LIST_ID: u32 = Skill::Science.base_id() + 14;
     pub const fn list_id() -> u32 {
         Self::LIST_ID
     }
@@ -2784,7 +2613,7 @@ impl ScienceCustom {
         modifier: i16,
         name: &str,
     ) -> &'a mut DataStruct {
-        let raw = SKILL_LAYOUT.pack([
+        let raw = SKILL_LAYOUT.pack_raw(&[
             occupation_points as u64,
             interest_points as u64,
             change as u64,
@@ -2812,17 +2641,17 @@ impl ScienceCustom {
 
     // -> skill_name, specialization_name
     pub fn as_editable_string<'a>(name: &'a str, lang: Lang) -> (&'static str, &'a str) {
-        (Skill::Science.name(&lang), name)
+        (Skill::Science.display(lang), name)
     }
 
     pub fn as_immutable_string(name: &str, lang: Lang) -> String {
-        format!("{} ({})", Skill::Science.name(&lang), name)
+        format!("{} ({})", Skill::Science.display(lang), name)
     }
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Survival {
-    Arctic,
+    Arctic = 1,
     Desert,
     Sea,
     Custom,
@@ -2834,19 +2663,14 @@ impl Survival {
     }
 
     pub const fn id(&self, base: u32) -> u32 {
-        base + match self {
-            Self::Arctic => 0,
-            Self::Desert => 1,
-            Self::Sea => 2,
-            Self::Custom => 3,
-        }
+        base + *self as u32
     }
 
     pub const fn base_percent(&self) -> u16 {
         10
     }
 
-    pub fn name(&self, lang: Lang) -> &'static str {
+    pub fn display(&self, lang: Lang) -> &'static str {
         match (self, lang) {
             (Self::Arctic, Lang::Ja) => "極地",
             (Self::Arctic, Lang::En(_)) => "Arctic",
@@ -2871,12 +2695,7 @@ pub trait SurvivalTrait<const S: Survival> {
 
     fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
         let raw = read_raw(character, Self::BASE_ID, &SKILL_LAYOUT);
-        (
-            SKILL_LAYOUT.get(raw, OCCUPATION_POINTS),
-            SKILL_LAYOUT.get(raw, INTEREST_POINTS),
-            SKILL_LAYOUT.get(raw, CHANGE),
-            SKILL_LAYOUT.get(raw, MODIFIER),
-        )
+        SKILL_LAYOUT.unpack(raw)
     }
 
     fn write<'a>(
@@ -2887,18 +2706,13 @@ pub trait SurvivalTrait<const S: Survival> {
         change: i10,
         modifier: i10,
     ) -> &'a mut DataStruct {
-        let raw = SKILL_LAYOUT.pack([
-            occupation_points.as_u64(),
-            interest_points.as_u64(),
-            change.as_u64(),
-            modifier.as_u64(),
-        ]);
+        let raw = SKILL_LAYOUT.pack((occupation_points, interest_points, change, modifier));
         write_raw(character, Self::BASE_ID, &SKILL_LAYOUT, raw);
         character
     }
 
     fn as_editable_string(&self, lang: Lang) -> (&'static str, &'static str) {
-        (Skill::Survival.name(&lang), S.name(lang))
+        (Skill::Survival.display(lang), S.display(lang))
     }
 
     fn as_editable_numeric(
@@ -2934,7 +2748,7 @@ impl SurvivalTrait<{ Survival::Sea }> for SurvivalSea {}
 pub struct SurvivalCustom(pub u8);
 
 impl SurvivalCustom {
-    const LIST_ID: u32 = Skill::Survival.base_id() + 3;
+    const LIST_ID: u32 = Skill::Survival.base_id() + 4;
     pub const fn list_id() -> u32 {
         Self::LIST_ID
     }
@@ -2968,7 +2782,7 @@ impl SurvivalCustom {
         modifier: i16,
         name: &str,
     ) -> &'a mut DataStruct {
-        let raw = SKILL_LAYOUT.pack([
+        let raw = SKILL_LAYOUT.pack_raw(&[
             occupation_points as u64,
             interest_points as u64,
             change as u64,
@@ -2996,18 +2810,19 @@ impl SurvivalCustom {
 
     // -> skill_name, specialization_name
     pub fn as_editable_string<'a>(name: &'a str, lang: Lang) -> (&'static str, &'a str) {
-        (Skill::Survival.name(&lang), name)
+        (Skill::Survival.display(lang), name)
     }
 
     pub fn as_immutable_string(name: &str, lang: Lang) -> String {
-        format!("{} ({})", Skill::Survival.name(&lang), name)
+        format!("{} ({})", Skill::Survival.display(lang), name)
     }
 }
 
 // === Possession p.44 ===
 
+#[derive(Clone, Copy)]
 pub enum Possession {
-    Weapon,
+    Weapon = 1,
     Armor,
     Equipment,
     Wealth,
@@ -3015,16 +2830,10 @@ pub enum Possession {
 
 impl Possession {
     pub fn id(&self) -> u32 {
-        Character::Possession.base_id()
-            + match self {
-                Self::Weapon => 0,
-                Self::Armor => 1,
-                Self::Equipment => 2,
-                Self::Wealth => 3,
-            }
+        Character::Possession.base_id() + *self as u32
     }
 
-    pub fn label(&self, lang: Lang) -> &'static str {
+    pub fn display(&self, lang: Lang) -> &'static str {
         match (self, lang) {
             (Self::Weapon, Lang::En(_)) => "Weapon",
             (Self::Weapon, Lang::Ja) => "武器",
@@ -3087,7 +2896,7 @@ pub enum Weapon {
 }
 
 impl Weapon {
-    pub fn label(&self, lang: Lang) -> &str {
+    pub fn display(&self, lang: Lang) -> &str {
         match (self, lang) {
             (Self::BowAndArrows, Lang::En(_)) => "Bow and Arrows",
             (Self::BowAndArrows, Lang::Ja) => "弓と矢",
@@ -3241,40 +3050,40 @@ impl Weapon {
     }
 
     pub fn is_impalable(&self) -> bool {
-        match self {
-            Self::BowAndArrows => true,
-            Self::Crossbow => true,
-            Self::Garrote => true,
-            Self::HatchetSickle => true,
-            Self::KnifeLarge => true,
-            Self::KnifeMedium => true,
-            Self::KnifeSmall => true,
-            Self::Shuriken => true,
-            Self::Spear => true,
-            Self::SpearThrown => true,
-            Self::Auto22Short => true,
-            Self::Derringer25 => true,
-            Self::Revolver32 => true,
-            Self::Automatic32 => true,
-            Self::LugerP08 => true,
-            Self::Revolver45 => true,
-            Self::Automatic45 => true,
-            Self::BoltAction22 => true,
-            Self::LeverAction30 => true,
-            Self::MartiniHenry45 => true,
-            Self::MoranAirRifle => true,
-            Self::LeeEnfield303 => true,
-            Self::BoltAction3006 => true,
-            Self::ElephantGun => true,
-            Self::BergmannMP18 => true,
-            Self::Thompson => true,
-            Self::BrowningAutoRifle => true,
-            Self::BrowningM1917 => true,
-            Self::BrenGun => true,
-            Self::LewisGun => true,
-            Self::Vickers303 => true,
-            _ => false,
-        }
+        matches!(
+            self,
+            Self::BowAndArrows
+                | Self::Crossbow
+                | Self::Garrote
+                | Self::HatchetSickle
+                | Self::KnifeLarge
+                | Self::KnifeMedium
+                | Self::KnifeSmall
+                | Self::Shuriken
+                | Self::Spear
+                | Self::SpearThrown
+                | Self::Auto22Short
+                | Self::Derringer25
+                | Self::Revolver32
+                | Self::Automatic32
+                | Self::LugerP08
+                | Self::Revolver45
+                | Self::Automatic45
+                | Self::BoltAction22
+                | Self::LeverAction30
+                | Self::MartiniHenry45
+                | Self::MoranAirRifle
+                | Self::LeeEnfield303
+                | Self::BoltAction3006
+                | Self::ElephantGun
+                | Self::BergmannMP18
+                | Self::Thompson
+                | Self::BrowningAutoRifle
+                | Self::BrowningM1917
+                | Self::BrenGun
+                | Self::LewisGun
+                | Self::Vickers303
+        )
     }
 
     pub fn attacks_per_round(&self) -> u8 {
@@ -3413,7 +3222,7 @@ pub enum Armor {
 }
 
 impl Armor {
-    pub fn label(&self, lang: Lang) -> &str {
+    pub fn display(&self, lang: Lang) -> &str {
         match (self, lang) {
             (Self::ThickLeatherJacket, Lang::En(_)) => "Thick Leather Jacket",
             (Self::ThickLeatherJacket, Lang::Ja) => "厚い皮のジャケット",
@@ -3467,23 +3276,21 @@ pub struct Wealth {
     pub assets:         String,
 }
 
-impl Wealth {
-    pub fn label_spending_level(lang: Lang) -> &'static str {
-        match lang {
-            Lang::En(_) => "Spending Level",
-            Lang::Ja => "支出レベル",
-        }
-    }
-    pub fn label_cash(lang: Lang) -> &'static str {
-        match lang {
-            Lang::En(_) => "Cash",
-            Lang::Ja => "現金",
-        }
-    }
-    pub fn label_assets(lang: Lang) -> &'static str {
-        match lang {
-            Lang::En(_) => "Assets",
-            Lang::Ja => "資産",
+pub enum WealthField {
+    SpendingLevel,
+    Cash,
+    Assets,
+}
+
+impl WealthField {
+    pub fn display(&self, lang: Lang) -> &'static str {
+        match (self, lang) {
+            (Self::SpendingLevel, Lang::En(_)) => "Spending Level",
+            (Self::SpendingLevel, Lang::Ja) => "支出レベル",
+            (Self::Cash, Lang::En(_)) => "Cash",
+            (Self::Cash, Lang::Ja) => "現金",
+            (Self::Assets, Lang::En(_)) => "Assets",
+            (Self::Assets, Lang::Ja) => "資産",
         }
     }
 }
@@ -3521,7 +3328,7 @@ impl Backstory {
             }
     }
 
-    pub fn label(&self, lang: Lang) -> &'static str {
+    pub fn display(&self, lang: Lang) -> &'static str {
         match (self, lang) {
             (Self::KeyConnection(_), Lang::En(_)) => "Key Connection",
             (Self::KeyConnection(_), Lang::Ja) => "キーコネクション",
@@ -3595,82 +3402,22 @@ impl Memo {
         (title, body)
     }
 
-    pub fn label(&self, bytes: &[u8], lang: Lang) -> String {
-        let (title, _) = Self::decode(bytes);
-        if title.is_empty() {
-            match lang {
-                Lang::En(_) => format!("Note {}", self.slot + 1),
-                Lang::Ja => format!("メモ {}", self.slot + 1),
-            }
-        } else {
-            title
-        }
-    }
-
-    pub fn display(bytes: &[u8]) -> String {
-        let (_, body) = Self::decode(bytes);
-        body
+    pub fn display(bytes: &[u8]) -> (String, String) {
+        Self::decode(bytes)
     }
 }
 
 #[cfg(test)]
 mod skill_storage_tests {
-    use alloc::string::ToString;
+    use alloc::{string::ToString, vec::Vec};
 
     use arbitrary_int::{i10, u9};
 
     use super::*;
+    use crate::Rng;
 
     fn character() -> DataStruct {
-        DataStruct::new(1, 0.0, 256)
-    }
-
-    #[test]
-    fn skill_trait_round_trips_extreme_values() {
-        let mut c = character();
-        Accounting.write(&mut c, u9::new(511), u9::new(400), i10::new(-512), i10::new(511));
-        let (occupation, interest, change, modifier) = Accounting.read(&c);
-        assert_eq!(occupation.value(), 511);
-        assert_eq!(interest.value(), 400);
-        assert_eq!(change.value(), -512);
-        assert_eq!(modifier.value(), 511);
-    }
-
-    #[test]
-    fn skill_trait_keeps_occupation_top_bit() {
-        let mut c = character();
-        Accounting.write(&mut c, u9::new(256), u9::new(0), i10::new(0), i10::new(0));
-        assert_eq!(Accounting.read(&c).0.value(), 256);
-    }
-
-    #[test]
-    fn skill_trait_fields_are_independent() {
-        let mut c = character();
-        Accounting.write(&mut c, u9::new(1), u9::new(2), i10::new(-3), i10::new(4));
-        let (occupation, interest, change, modifier) = Accounting.read(&c);
-        assert_eq!(
-            (occupation.value(), interest.value(), change.value(), modifier.value()),
-            (1, 2, -3, 4)
-        );
-    }
-
-    #[test]
-    fn skills_use_separate_slots() {
-        let mut c = character();
-        Accounting.write(&mut c, u9::new(10), u9::new(0), i10::new(0), i10::new(0));
-        Anthropology.write(&mut c, u9::new(20), u9::new(0), i10::new(0), i10::new(0));
-        assert_eq!(Accounting.read(&c).0.value(), 10);
-        assert_eq!(Anthropology.read(&c).0.value(), 20);
-    }
-
-    #[test]
-    fn unwritten_skill_reads_zero() {
-        let c = character();
-        let (occupation, interest, change, modifier) = Accounting.read(&c);
-        assert_eq!(
-            (occupation.value(), interest.value(), change.value(), modifier.value()),
-            (0, 0, 0, 0)
-        );
+        DataStruct::new(1, 0.0, SCHEMA_SIZE)
     }
 
     #[test]
@@ -3708,6 +3455,8 @@ mod skill_storage_tests {
         let mut c = character();
         FirearmsCustom(0).write(&mut c, [1000, 1001], 99, 400, 0, 0, 0, "Crossbow");
         assert_eq!(FirearmsCustom(0).read(&c), (99, 400, 0, 0, 0, "Crossbow".to_string()));
+        FirearmsCustom(1).write(&mut c, [1002, 1003], 100, 0, 0, -400, -1, "x");
+        assert_eq!(FirearmsCustom(1).read(&c), (100, 0, 0, -400, -1, "x".to_string()));
     }
 
     #[test]
@@ -3717,45 +3466,94 @@ mod skill_storage_tests {
         assert_eq!(PilotCustom(1).read(&c), (400, 7, -7, 400, "Rocket".to_string()));
     }
 
-    #[test]
-    fn stored_sizes_follow_layouts() {
-        assert_eq!(SKILL_LAYOUT.bytes(), 5);
-        assert_eq!(SKILL_WITH_PERCENT_LAYOUT.bytes(), 6);
-        let mut c = character();
-        Accounting.write(&mut c, u9::new(511), u9::new(511), i10::new(-1), i10::new(-1));
-        assert_eq!(c.get(Skill::Accounting.base_id()).unwrap().len(), 5);
-        FightingCustom(0).write(&mut c, [1000, 1001], 127, 511, 511, -1, -1, "x");
-        assert_eq!(c.get(1000).unwrap().len(), 6);
-        ArtAndCraftCustom(0).write(&mut c, [1002, 1003], 511, 511, -1, -1, "x");
-        assert_eq!(c.get(1002).unwrap().len(), 5);
+    fn random_skill_values(rng: &mut Rng) -> (u9, u9, i10, i10) {
+        let extreme = |rng: &mut Rng, low: i32, high: i32| match rng.below(4) {
+            0 => low,
+            1 => high,
+            _ => low + rng.below((high - low + 1) as usize) as i32,
+        };
+        (
+            u9::new(extreme(rng, 0, 511) as u16),
+            u9::new(extreme(rng, 0, 511) as u16),
+            i10::new(extreme(rng, -512, 511) as i16),
+            i10::new(extreme(rng, -512, 511) as i16),
+        )
+    }
+
+    fn written(c: &DataStruct, skill: &Skill) -> [i32; 4] {
+        let (occupation, interest, change, modifier) = match skill {
+            Skill::Accounting => Accounting.read(c),
+            Skill::Anthropology => Anthropology.read(c),
+            Skill::Appraise => Appraise.read(c),
+            _ => Archaeology.read(c),
+        };
+        [
+            occupation.value() as i32,
+            interest.value() as i32,
+            change.value() as i32,
+            modifier.value() as i32,
+        ]
     }
 
     #[test]
-    fn stored_value_fits_declared_bits() {
-        let mut c = character();
-        Accounting.write(&mut c, u9::new(511), u9::new(511), i10::new(-1), i10::new(-1));
-        let bytes = c.get(Skill::Accounting.base_id()).unwrap();
-        let mut word = [0u8; 8];
-        word[..bytes.len()].copy_from_slice(bytes);
-        assert_eq!(u64::from_le_bytes(word) >> SKILL_LAYOUT.bits(), 0);
-        assert_eq!(u64::from_le_bytes(word), (1u64 << SKILL_LAYOUT.bits()) - 1);
+    fn random_skill_writes_stay_in_their_own_slot_and_fit_the_layout() {
+        let skills = [Skill::Accounting, Skill::Anthropology, Skill::Appraise, Skill::Archaeology];
+        for seed in 0..2000 {
+            let mut rng = Rng::new(seed);
+            let mut c = character();
+            let mut model = [[0i32; 4]; 4];
+            for step in 0..12 {
+                let index = rng.below(skills.len());
+                let (occupation, interest, change, modifier) = random_skill_values(&mut rng);
+                match skills[index] {
+                    Skill::Accounting => {
+                        Accounting.write(&mut c, occupation, interest, change, modifier)
+                    }
+                    Skill::Anthropology => {
+                        Anthropology.write(&mut c, occupation, interest, change, modifier)
+                    }
+                    Skill::Appraise => {
+                        Appraise.write(&mut c, occupation, interest, change, modifier)
+                    }
+                    _ => Archaeology.write(&mut c, occupation, interest, change, modifier),
+                };
+                model[index] = [
+                    occupation.value() as i32,
+                    interest.value() as i32,
+                    change.value() as i32,
+                    modifier.value() as i32,
+                ];
+                for (position, skill) in skills.iter().enumerate() {
+                    assert_eq!(
+                        written(&c, skill),
+                        model[position],
+                        "seed {seed} step {step} position {position}"
+                    );
+                    if let Ok(bytes) = c.get(skill.base_id()) {
+                        assert_eq!(bytes.len(), SKILL_LAYOUT.bytes(), "seed {seed}");
+                    }
+                }
+            }
+        }
     }
 
     #[test]
-    fn negative_values_round_trip_through_percent_layout() {
-        let mut c = character();
-        FirearmsCustom(0).write(&mut c, [1000, 1001], 100, 0, 0, -400, -1, "x");
-        assert_eq!(FirearmsCustom(0).read(&c), (100, 0, 0, -400, -1, "x".to_string()));
+    fn every_skill_owns_a_distinct_ascending_storage_id() {
+        let ids: Vec<u32> = Skill::list().iter().map(Skill::base_id).collect();
+        assert!(ids.windows(2).all(|pair| pair[0] < pair[1]));
     }
 
     #[test]
-    fn short_stored_value_reads_as_zero() {
+    fn a_skill_value_shorter_than_its_layout_reads_as_zero() {
         let mut c = character();
-        let _ = c.set(Skill::Accounting.base_id(), &[0xff; 4], None);
-        let (occupation, interest, change, modifier) = Accounting.read(&c);
-        assert_eq!(
-            (occupation.value(), interest.value(), change.value(), modifier.value()),
-            (0, 0, 0, 0)
-        );
+        for length in 0..SKILL_LAYOUT.bytes() {
+            let _ = c.set(Skill::Accounting.base_id(), &[0xff; 8][..length], None);
+            let (occupation, interest, change, modifier) = Accounting.read(&c);
+            assert_eq!(
+                (occupation.value(), interest.value(), change.value(), modifier.value()),
+                (0, 0, 0, 0),
+                "length {length}"
+            );
+        }
     }
 }

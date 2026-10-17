@@ -11,9 +11,9 @@ use crate::{
     timestamp::{self, Timezone},
 };
 
-const ID_IDENTITY: u32 = 1;
-const ID_CREATED_AT: u32 = 2;
-const ID_MODIFIED_AT: u32 = 3;
+pub const ID_IDENTITY: u32 = 1;
+pub const ID_CREATED_AT: u32 = 2;
+pub const ID_MODIFIED_AT: u32 = 3;
 
 #[derive(Debug)]
 pub enum DataStructError {
@@ -44,19 +44,19 @@ impl DataStruct {
         data_struct
     }
 
-    /// Zero-alloc get over a serialized instance byte slice (layout is the same as to_bytes).
-    pub fn get_from_bytes<'a>(
-        &self,
-        instance: &'a [u8],
+    /// ```
+    /// # use app::data_struct::DataStruct;
+    /// let mut instance = DataStruct::new(7, 0.0, 6);
+    /// instance.set(4, b"x", None).unwrap();
+    /// let bytes = instance.to_bytes();
+    /// assert_eq!(DataStruct::get_from_bytes(&bytes, 6, 4).unwrap(), b"x");
+    /// ```
+    pub fn get_from_bytes(
+        instance: &[u8],
+        schema_size: u32,
         schema_id: u32,
-    ) -> Result<&'a [u8], ListError> {
-        let sections = Sections::parse(instance, self.schema_size)?;
-        let variable_id =
-            read_u32(sections.index, schema_id as usize * 4).ok_or(ListError::OutOfBounds)?;
-        if variable_id == 0 {
-            return Err(ListError::NotExist);
-        }
-        VariableList::get_from_bytes(sections.values_index, sections.values_data, &variable_id)
+    ) -> Result<&[u8], ListError> {
+        Instance::from_bytes(instance, schema_size)?.get(schema_id)
     }
 
     pub fn get(&self, schema_id: u32) -> Result<&[u8], ListError> {
@@ -196,53 +196,68 @@ impl DataStruct {
     }
 
     pub fn from_bytes(line: &[u8], schema_size: u32) -> Result<Self, ListError> {
-        let sections = Sections::parse(line, schema_size)?;
-        Ok(Self {
-            schema_size,
-            index: List {
-                data: sections
-                    .index
-                    .chunks_exact(4)
-                    .map(|b| u32::from_le_bytes(b.try_into().unwrap()))
-                    .collect(),
-            },
-            values: VariableList::new_from_bytes(sections.values_index, sections.values_data),
-        })
+        Ok(Instance::from_bytes(line, schema_size)?.to_data_struct())
     }
 }
 
-struct Sections<'a> {
+pub struct Instance<'a> {
+    schema_size:  u32,
     index:        &'a [u8],
     values_index: &'a [u8],
     values_data:  &'a [u8],
 }
 
-impl<'a> Sections<'a> {
-    fn parse(bytes: &'a [u8], schema_size: u32) -> Result<Self, ListError> {
+impl<'a> Instance<'a> {
+    pub fn from_bytes(bytes: &'a [u8], schema_size: u32) -> Result<Self, ListError> {
         let index_len = (schema_size as usize + 1) * 4;
         let slice_at = read_u32(bytes, index_len).ok_or(ListError::OutOfBounds)? as usize;
         let values_index_start = index_len + 4;
         let values_data_start =
             values_index_start.checked_add(slice_at).ok_or(ListError::OutOfBounds)?;
         Ok(Self {
-            index:        &bytes[..index_len],
+            schema_size,
+            index: &bytes[..index_len],
             values_index: bytes
                 .get(values_index_start..values_data_start)
                 .ok_or(ListError::OutOfBounds)?,
-            values_data:  &bytes[values_data_start..],
+            values_data: &bytes[values_data_start..],
         })
+    }
+
+    pub fn get(&self, schema_id: u32) -> Result<&'a [u8], ListError> {
+        let variable_id =
+            read_u32(self.index, schema_id as usize * 4).ok_or(ListError::OutOfBounds)?;
+        if variable_id == 0 {
+            return Err(ListError::NotExist);
+        }
+        VariableList::get_from_bytes(self.values_index, self.values_data, &variable_id)
+    }
+
+    pub fn to_data_struct(&self) -> DataStruct {
+        DataStruct {
+            schema_size: self.schema_size,
+            index:       List {
+                data: self
+                    .index
+                    .chunks_exact(4)
+                    .map(|b| u32::from_le_bytes(b.try_into().unwrap()))
+                    .collect(),
+            },
+            values:      VariableList::new_from_bytes(self.values_index, self.values_data),
+        }
     }
 }
 
-fn encode_time(time: f64) -> [u8; 8] {
-    timestamp::from_ut(time, true, &Timezone::AsiaTokyo).to_le_bytes()
+pub(crate) fn encode_time(time: f64) -> [u8; 8] {
+    timestamp::from_ut(time, true, &Timezone::None).to_le_bytes()
 }
 
 #[cfg(test)]
 mod tests {
-    use alloc::vec;
+    use alloc::{format, vec};
 
     use super::*;
+    use crate::Rng;
 
     const Y2000: f64 = 946684800000.0;
 
@@ -256,11 +271,6 @@ mod tests {
         ds.set(5, b"", None).unwrap();
         ds.set(6, &[1, 2, 3, 4, 5, 6, 7, 8], None).unwrap();
         ds
-    }
-
-    fn modified_year(ds: &DataStruct) -> i64 {
-        let raw = u64::from_le_bytes(ds.get(ID_MODIFIED_AT).unwrap().try_into().unwrap());
-        timestamp::unpack(raw).0
     }
 
     #[test]
@@ -279,40 +289,21 @@ mod tests {
     }
 
     #[test]
-    fn bytes_round_trip_preserves_every_value() {
-        let ds = sample();
-        let restored = DataStruct::from_bytes(&ds.to_bytes(), 8).unwrap();
-        for id in 0..=8 {
-            assert_eq!(ds.get(id).ok(), restored.get(id).ok(), "id={id}");
-        }
-        assert_eq!(restored.to_bytes(), ds.to_bytes());
-    }
-
-    #[test]
-    fn get_from_bytes_matches_get() {
-        let ds = sample();
-        let bytes = ds.to_bytes();
-        for id in 0..=8 {
-            assert_eq!(ds.get_from_bytes(&bytes, id).ok(), ds.get(id).ok(), "id={id}");
-        }
-    }
-
-    #[test]
     fn get_from_bytes_error_kinds() {
         let ds = sample();
         let bytes = ds.to_bytes();
-        assert!(matches!(ds.get_from_bytes(&bytes, 7), Err(ListError::NotExist)));
-        assert!(matches!(ds.get_from_bytes(&bytes, 9), Err(ListError::OutOfBounds)));
-        assert!(matches!(ds.get_from_bytes(&bytes[..10], 4), Err(ListError::OutOfBounds)));
-    }
-
-    #[test]
-    fn get_from_bytes_after_delete_is_not_exist() {
-        let mut ds = sample();
-        ds.delete(4).unwrap();
-        let bytes = ds.to_bytes();
-        assert!(matches!(ds.get_from_bytes(&bytes, 4), Err(ListError::NotExist)));
-        assert_eq!(ds.get_from_bytes(&bytes, 6).unwrap(), &[1, 2, 3, 4, 5, 6, 7, 8]);
+        assert!(matches!(
+            DataStruct::get_from_bytes(&bytes, ds.schema_size, 7),
+            Err(ListError::NotExist)
+        ));
+        assert!(matches!(
+            DataStruct::get_from_bytes(&bytes, ds.schema_size, 9),
+            Err(ListError::OutOfBounds)
+        ));
+        assert!(matches!(
+            DataStruct::get_from_bytes(&bytes[..10], ds.schema_size, 4),
+            Err(ListError::OutOfBounds)
+        ));
     }
 
     #[test]
@@ -327,57 +318,115 @@ mod tests {
     }
 
     #[test]
-    fn compact_keeps_values_and_survives_serialization() {
-        let mut ds = sample();
-        ds.delete(4).unwrap();
-        ds.set(6, &[9], None).unwrap();
-        ds.compact().unwrap();
-        let restored = DataStruct::from_bytes(&ds.to_bytes(), 8).unwrap();
-        assert!(restored.get(4).is_err());
-        assert_eq!(restored.get(6).unwrap(), &[9]);
-        assert_eq!(restored.get(1).unwrap(), &7u32.to_le_bytes());
-    }
+    fn data_struct_follows_a_map_model_through_random_edits_and_byte_round_trips() {
+        const SIZE: u32 = 10;
+        const LIST: u32 = 9;
+        for seed in 0..800 {
+            let mut rng = Rng::new(seed);
+            let start = Y2000 + rng.below(1000) as f64 * 86400000.0;
+            let mut ds = DataStruct::new(7, start, SIZE);
+            let mut model: BTreeMap<u32, Vec<u8>> = BTreeMap::new();
+            model.insert(ID_IDENTITY, 7u32.to_le_bytes().to_vec());
+            model.insert(ID_CREATED_AT, encode_time(start).to_vec());
+            model.insert(ID_MODIFIED_AT, encode_time(start).to_vec());
+            let mut list: Vec<u32> = Vec::new();
+            for step in 0..40 {
+                let context = format!("seed {seed} step {step}");
+                let id = 4 + rng.below(5) as u32;
+                let length = rng.below(8);
+                let value = rng.bytes(length);
+                let time = rng.chance(50).then(|| Y2000 + rng.below(100000) as f64 * 60000.0);
+                match rng.below(10) {
+                    0..4 => {
+                        ds.set(id, &value, time).unwrap();
+                        model.insert(id, value);
+                        if let Some(time) = time {
+                            model.insert(ID_MODIFIED_AT, encode_time(time).to_vec());
+                        }
+                    }
+                    4..6 => {
+                        let result = ds.delete(id);
+                        assert_eq!(result.is_ok(), model.remove(&id).is_some(), "{context}");
+                    }
+                    6..8 => {
+                        let before = ds.to_bytes();
+                        let other = 4 + rng.below(5) as u32;
+                        let beyond = rng.chance(20).then_some(SIZE + 90);
+                        let entries = [
+                            (id, Some(&value[..])),
+                            (other, None),
+                            (beyond.unwrap_or(other), rng.chance(50).then_some(&b"z"[..])),
+                        ];
+                        match ds.set_many(entries, time) {
+                            Ok(()) => {
+                                for (schema_id, bytes) in entries {
+                                    match bytes {
+                                        Some(bytes) => model.insert(schema_id, bytes.to_vec()),
+                                        None => model.remove(&schema_id),
+                                    };
+                                }
+                                if let Some(time) = time {
+                                    model.insert(ID_MODIFIED_AT, encode_time(time).to_vec());
+                                }
+                            }
+                            Err(_) => assert_eq!(ds.to_bytes(), before, "{context}: not atomic"),
+                        }
+                    }
+                    8 => {
+                        let index = rng.below(4);
+                        let ids = [rng.next_u64() as u32, rng.next_u64() as u32];
+                        ds.set_indirect::<1, 2>(LIST, [(index, ids)]).unwrap();
+                        list.resize(list.len().max((index + 1) * 2), 0);
+                        list[index * 2..index * 2 + 2].copy_from_slice(&ids);
+                        model.insert(LIST, list.iter().flat_map(|id| id.to_le_bytes()).collect());
+                    }
+                    _ => {
+                        ds.compact().unwrap();
+                    }
+                }
 
-    #[test]
-    fn new_stamps_created_and_modified_equally() {
-        let ds = DataStruct::new(1, Y2000, 4);
-        assert_eq!(ds.get(ID_CREATED_AT).unwrap(), ds.get(ID_MODIFIED_AT).unwrap());
-        assert_eq!(modified_year(&ds), 2000);
-    }
+                let restored = DataStruct::from_bytes(&ds.to_bytes(), SIZE).unwrap();
+                let bytes = ds.to_bytes();
+                for schema_id in 1..=SIZE {
+                    let expected = model.get(&schema_id).map(Vec::as_slice);
+                    assert_eq!(ds.get(schema_id).ok(), expected, "{context} get {schema_id}");
+                    assert_eq!(
+                        restored.get(schema_id).ok(),
+                        expected,
+                        "{context} restored {schema_id}"
+                    );
+                    assert_eq!(
+                        DataStruct::get_from_bytes(&bytes, ds.schema_size, schema_id).ok(),
+                        expected,
+                        "{context} from bytes {schema_id}"
+                    );
+                }
+                for index in 0..6 {
+                    let want = list.get(index * 2..index * 2 + 2).map(|ids| [ids[0], ids[1]]);
+                    assert_eq!(
+                        ds.get_indirect::<1, 2>(LIST, [index])[0],
+                        want,
+                        "{context} indirect {index}"
+                    );
+                }
+            }
 
-    #[test]
-    fn set_with_time_updates_modified_only() {
-        let mut ds = DataStruct::new(1, Y2000, 8);
-        let later = Y2000 + 366.0 * 86400.0 * 1000.0;
-        ds.set(4, b"x", Some(later)).unwrap();
-        assert_eq!(modified_year(&ds), 2001);
-        let created = u64::from_le_bytes(ds.get(ID_CREATED_AT).unwrap().try_into().unwrap());
-        assert_eq!(timestamp::unpack(created).0, 2000);
-    }
-
-    #[test]
-    fn set_without_time_leaves_modified() {
-        let mut ds = DataStruct::new(1, Y2000, 8);
-        ds.set(4, b"x", None).unwrap();
-        assert_eq!(modified_year(&ds), 2000);
-    }
-
-    #[test]
-    fn set_many_is_atomic_and_stamps_time() {
-        let mut ds = sample();
-        let later = Y2000 + 366.0 * 86400.0 * 1000.0;
-        ds.set_many([(4, Some(&b"new"[..])), (5, None)], Some(later)).unwrap();
-        assert_eq!(ds.get(4).unwrap(), b"new");
-        assert!(ds.get(5).is_err());
-        assert_eq!(modified_year(&ds), 2001);
-    }
-
-    #[test]
-    fn indirect_round_trip_through_bytes() {
-        let mut ds = sample();
-        ds.set_indirect::<2, 2>(3, [(0, [10, 11]), (2, [20, 21])]).unwrap();
-        let restored = DataStruct::from_bytes(&ds.to_bytes(), 8).unwrap();
-        let got = restored.get_indirect::<3, 2>(3, [0, 1, 2]);
-        assert_eq!(got, [Some([10, 11]), Some([0, 0]), Some([20, 21])]);
+            let bytes = ds.to_bytes();
+            for _ in 0..20 {
+                let mut damaged = bytes[..rng.below(bytes.len() + 1)].to_vec();
+                if !damaged.is_empty() && rng.chance(60) {
+                    let at = rng.below(damaged.len());
+                    damaged[at] ^= 1 + rng.below(255) as u8;
+                }
+                for schema_id in 0..=SIZE + 2 {
+                    let _ = DataStruct::get_from_bytes(&damaged, ds.schema_size, schema_id);
+                }
+                if let Ok(loaded) = DataStruct::from_bytes(&damaged, SIZE) {
+                    for schema_id in 0..=SIZE + 2 {
+                        let _ = loaded.get(schema_id);
+                    }
+                }
+            }
+        }
     }
 }

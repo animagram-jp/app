@@ -1,50 +1,42 @@
 // === constants ===
 
-const CONTROL_WRITE_OFFSET = 0;
-const CONTROL_READ_OFFSET = 64;
-const CONTROL_SIZE = 2 * CONTROL_READ_OFFSET;
+const COUNTER_WRITE_OFFSET = 0;
+const COUNTER_READ_OFFSET = 64;
+const DATA_OFFSET = 128;
 const LENGTH_PREFIX = 4;
 const ALIGNMENT = 4;
 const PADDING_MARK = 0xFFFFFFFF;
 const FETCH_HEADER = 1 + 4 + 2 + 1 + LENGTH_PREFIX;
-
-const EVENT_CONTROL = 0;
-const EVENT_PAYLOAD = EVENT_CONTROL + CONTROL_SIZE; // range start
-const EVENT_CAPACITY = 262144; // bytes of the ring payload
-const EVENT_FRAME_MAX = 4096;
-
-const COMMAND_CONTROL = EVENT_PAYLOAD + EVENT_CAPACITY;
-const COMMAND_PAYLOAD = COMMAND_CONTROL + CONTROL_SIZE; // range start
-const COMMAND_CAPACITY = 1048576; // bytes of the ring payload
-const COMMAND_FRAME_MAX = 65536;
-
-const ARENA_SIZE = COMMAND_PAYLOAD + COMMAND_CAPACITY;
+const API_BASE = document.querySelector("meta[name='api-base']")?.content ?? "./api/{version}";
+const SW_URL = document.querySelector("meta[name='sw-url']")?.content ?? "./sw.js";
 
 const EVENT_RING = {
-    control: EVENT_CONTROL,
-    payload: EVENT_PAYLOAD,
-    capacity: EVENT_CAPACITY,
-    frame_max: EVENT_FRAME_MAX,
+    start: 0,
+    data_size: 262144,
+    frame_max: 4096,
 };
 
 const COMMAND_RING = {
-    control: COMMAND_CONTROL,
-    payload: COMMAND_PAYLOAD,
-    capacity: COMMAND_CAPACITY,
-    frame_max: COMMAND_FRAME_MAX,
+    start: EVENT_RING.start + DATA_OFFSET + EVENT_RING.data_size,
+    data_size: 1048576,
+    frame_max: 65536,
 };
+
+const ARENA_SIZE = COMMAND_RING.start + DATA_OFFSET + COMMAND_RING.data_size;
 
 const EVENT_CANVAS = 1;
 const EVENT_RESIZE = 2;
 const EVENT_SCROLL = 3;
 const EVENT_VISIBILITY = 4;
 const EVENT_FETCH = 5;
+const EVENT_FULLSCREEN = 6;
 const EVENT_SHUTDOWN = 8;
 
 const THREAD = crossOriginIsolated ? "worker" : "main";
 
-// flag of retry of loading when fallback to THREAD === "main"
-const MAIN_RELOAD_KEY = "app:main-thread-reload-attempted";
+const RELOAD_LOG_KEY = "app:reload-log";
+const RELOAD_WINDOW_MS = 60000;
+const RELOAD_LIMIT = 3;
 
 /**
  *  MUST Sync with talc allocator -Clink-arg=--max-memory=134217728, 128MiB = 2048 pages
@@ -62,30 +54,24 @@ const S = {
         maximum: MEMORY_MAXIMUM_PAGES,
         shared: THREAD === "worker",
     }),
-    exports: null,
-    base: 0,
+    arena_offset: 0,
     buffer: null,
     int32: null,
     uint8: null,
     data_view: null,
-    event_frame: new Uint8Array(EVENT_FRAME_MAX),
-    command_frame: new Uint8Array(COMMAND_FRAME_MAX),
+    event_frame: new Uint8Array(EVENT_RING.frame_max),
+    command_frame: new Uint8Array(COMMAND_RING.frame_max),
     call_app: () => {},
 };
 
-let worker = null;
-let bound = false;
-let restarting = false;
 let composing_element = null;
 
 const sw_registration = "serviceWorker" in navigator
-    ? navigator.serviceWorker.register("./sw.js").catch((err) => {
+    ? navigator.serviceWorker.register(SW_URL).catch((err) => {
         console.warn("SW registration failed:", err);
         return null;
     })
     : Promise.resolve(null);
-
-start();
 
 // === start ===
 
@@ -106,20 +92,13 @@ function start() {
         try_recover_to_worker_thread().then(async (reloading) => {
             if (reloading) return;
 
-            // `App.init` awaits `FileStore::new`, which requires a
-            // dedicated worker (`FileSystemSyncAccessHandle` is only
-            // obtainable in a worker). So this path only works for a
-            // configuration without persistence. THREAD === "main" is
-            // for when you only want to verify the arena layout and the
-            // command / event round trip.
-            const { default: init, App, arena_pointer, initialize, process_event } =
+            const { default: init, App, arena_offset, initialize, process_event } =
                 await import("./app/app.js?v={version}");
             await init({ module_or_path: "./app/app_bg.wasm?v={version}", memory: S.memory });
 
-            S.exports = { arena_pointer, initialize, process_event };
             S.buffer = null;
             initialize();
-            S.base = arena_pointer();
+            S.arena_offset = arena_offset();
 
             S.call_app = () => { process_event(); drain(); };
 
@@ -138,18 +117,15 @@ function start() {
     }
 
     const w = new Worker("./worker.js?v={version}", { type: "module" });
-    worker = w;
 
     w.addEventListener("message", async (e) => {
-        if (e.data.type === "error") { restart(); }
         if (e.data.type === "ready") {
-            S.base = e.data.base;
-            sessionStorage.removeItem(MAIN_RELOAD_KEY);
+            S.arena_offset = e.data.arena_offset;
 
             for (;;) {
                 drain();
                 view();
-                const index = (S.base + COMMAND_RING.control) >> 2;
+                const index = (S.arena_offset + COMMAND_RING.start) >> 2;
                 const write = Atomics.load(S.int32, index);
                 const result = Atomics.waitAsync(S.int32, index, write);
                 if (result.async) await result.value;
@@ -158,8 +134,8 @@ function start() {
     });
 
     w.addEventListener("error", (e) => {
-        console.error("[worker] restart:", e.message);
-        restart();
+        console.error("[worker] reload:", e.message);
+        execute(Uint8Array.of(15));
     });
 
     w.postMessage({
@@ -178,34 +154,11 @@ function start() {
     bind();
 }
 
-function restart() {
-    if (restarting) return;
-    restarting = true;
-
-    worker?.terminate();
-    worker = null;
-    S.buffer = null;
-
-    if (THREAD === "main") {
-        S.exports?.initialize();
-        S.base = S.exports?.arena_pointer() ?? S.base;
-        bind();
-        S.call_app();
-    } else {
-        start();
-    }
-
-    restarting = false;
-}
-
 async function try_recover_to_worker_thread() {
-    if (sessionStorage.getItem(MAIN_RELOAD_KEY)) return false;
     if (!(await sw_registration)) return false;
 
-    sessionStorage.setItem(MAIN_RELOAD_KEY, "1");
     await navigator.serviceWorker.ready.catch(() => {});
-    location.reload();
-    return true;
+    return execute(Uint8Array.of(15)) === true;
 }
 
 // === execute command ===
@@ -213,7 +166,7 @@ async function try_recover_to_worker_thread() {
 function drain() {
     view();
     for (;;) {
-        const length = ring_pop(COMMAND_RING, S.command_frame);
+        const length = copy_and_advance_ring(COMMAND_RING, S.command_frame);
         if (length === 0) return;
         execute(S.command_frame.subarray(0, length));
     }
@@ -225,8 +178,7 @@ function drain() {
 function execute(frame) {
     const operation = frame[0];
     if (operation === 13) {
-        const [serious, after_serious] = get_u8(frame, 1);
-        const [depth, first] = get_u8(frame, after_serious);
+        const [depth, first] = get_u8(frame, 1);
         const identifiers = [];
         let next = first;
         for (let i = 0; i < (depth ?? 0); i++) {
@@ -236,7 +188,6 @@ function execute(frame) {
         }
         const [detail] = get_str(frame, next);
         console.error(`[wasm] error ${identifiers.join(".")}:`, detail ?? "");
-        if (serious !== 0) restart();
         return;
     }
     if (operation === 14) {
@@ -249,6 +200,25 @@ function execute(frame) {
         return;
     }
 
+    if (operation === 15) {
+        try {
+            const now = Date.now();
+            const log = JSON.parse(sessionStorage.getItem(RELOAD_LOG_KEY) ?? "[]")
+                .filter((time) => now - time < RELOAD_WINDOW_MS);
+            if (log.length >= RELOAD_LIMIT) {
+                console.error("[reload] suppressed:", log.length);
+                return false;
+            }
+            log.push(now);
+            sessionStorage.setItem(RELOAD_LOG_KEY, JSON.stringify(log));
+        } catch (err) {
+            console.error("[reload] suppressed:", err);
+            return false;
+        }
+        location.reload();
+        return true;
+    }
+
     const [id, offset] = get_id(frame, 1);
     const el = document.getElementById(id);
     if (!el) return;
@@ -259,10 +229,17 @@ function execute(frame) {
             break;
         case  3: {
             const [attribute, after] = get_u16(frame, offset);
-            el.setAttribute(ATTRIBUTES[attribute], get_str(frame, after)[0] ?? "");
+            // checked: the attribute is only the default. Once the user has toggled, only the property counts.
+            if (ATTRIBUTES[attribute] === "checked") el.checked = true;
+            else el.setAttribute(ATTRIBUTES[attribute], get_str(frame, after)[0] ?? "");
             break;
         }
-        case  4: el.removeAttribute(ATTRIBUTES[get_u16(frame, offset)[0]]); break;
+        case  4: {
+            const name = ATTRIBUTES[get_u16(frame, offset)[0]];
+            if (name === "checked") el.checked = false;
+            else el.removeAttribute(name);
+            break;
+        }
         case  5: el.classList.add(CLASS_NAMES[get_u16(frame, offset)[0]]); break;
         case  6: el.classList.remove(CLASS_NAMES[get_u16(frame, offset)[0]]); break;
         case  7: {
@@ -289,7 +266,7 @@ async function fetch_request(request, method, path, body) {
     let status;
     let bytes;
     try {
-        const response = await fetch(`./api/{version}${path}`, {
+        const response = await fetch(`${API_BASE}${path}`, {
             method,
             credentials: "same-origin",
             ...(body.length > 0
@@ -302,23 +279,34 @@ async function fetch_request(request, method, path, body) {
         status = 0;
         bytes = TEXT_ENCODER.encode(String(err?.message ?? err));
     }
-    await push_fetched(request, status, bytes);
+    await write_fetched(request, status, bytes);
 }
 
-async function push_fetched(request, status, bytes) {
+async function write_fetched(request, status, bytes) {
     const chunk_size = S.event_frame.length - FETCH_HEADER;
     let offset = 0;
     do {
         const chunk = bytes.subarray(offset, offset + chunk_size);
         offset += chunk.length;
         const last = offset >= bytes.length;
-        while (!push(encode_fetch_event(S.event_frame, request, status, last, chunk))) {
+        while (!write_event(encode_fetch_event(S.event_frame, request, status, last, chunk))) {
             await new Promise((resolve) => setTimeout(resolve, 0));
         }
     } while (offset < bytes.length);
 }
 
 const js_fn = {
+    copy_text: (el) => {
+        navigator.clipboard.writeText(el.value ?? el.textContent).catch((err) => {
+            console.warn("clipboard write failed:", err);
+        });
+    },
+    enter_fullscreen: () => {
+        document.documentElement.requestFullscreen?.()?.catch(() => {});
+    },
+    exit_fullscreen: () => {
+        if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    },
     show_toast: (el) => {
         cancel_toast_cycle(el);
         el.classList.remove("hide");
@@ -363,28 +351,35 @@ const toast_cycles = new WeakMap();
  */
 function send(e) {
     const root = root_of(e.target);
-    if (!root) return;
+    if (!root && !(e.type.startsWith("key") && [document.body, document.documentElement].includes(e.target))) return;
     if (e.type === "submit") e.preventDefault();
 
     const x = e.clientX ?? 0;
     const y = e.clientY ?? 0;
     const rect = e.clientX === undefined ? null : root.getBoundingClientRect();
-    push(encode_canvas_event(S.event_frame, e, x, y, rect ? x - rect.left : 0, rect ? y - rect.top : 0));
+    write_event(encode_canvas_event(S.event_frame, e, x, y, rect ? x - rect.left : 0, rect ? y - rect.top : 0));
 }
 
 function send_key(e) {
-    if (e.isComposing || e.keyCode === 229 || e.target === composing_element) return;
+    const target = e.target;
+    if (e.isComposing || e.keyCode === 229 || target === composing_element) return;
+    if (e.type === "keydown" && e.key === "Enter" && !e.repeat && (e.ctrlKey || e.metaKey)
+        && target instanceof HTMLTextAreaElement && target.form && !target.disabled && !target.readOnly) {
+        e.preventDefault();
+        target.form.requestSubmit();
+        return;
+    }
     send(e);
 }
 
 function send_scroll(e) {
     if (e.target === document) {
-        push(encode_scroll_event(S.event_frame, window.scrollX, window.scrollY));
+        write_event(encode_scroll_event(S.event_frame, window.scrollX, window.scrollY));
         return;
     }
     if (!root_of(e.target)) return;
 
-    push(encode_canvas_event(S.event_frame, e, e.target.scrollLeft, e.target.scrollTop, 0, 0));
+    write_event(encode_canvas_event(S.event_frame, e, e.target.scrollLeft, e.target.scrollTop, 0, 0));
 }
 
 function key_index(e) {
@@ -405,6 +400,7 @@ function root_of(target) {
 }
 
 function event_value(e) {
+    if (e.type === "paste") return e.clipboardData?.getData("text/plain") ?? "";
     if (e.target instanceof HTMLFormElement) {
         return new URLSearchParams(new FormData(e.target)).toString();
     }
@@ -447,6 +443,12 @@ function encode_visibility_event(frame, state) {
     return frame.subarray(0, offset);
 }
 
+function encode_fullscreen_event(frame, type) {
+    let offset = put_u8(frame, 0, EVENT_FULLSCREEN);
+    offset = put_u8(frame, offset, Math.max(FULLSCREEN_EVENTS.indexOf(type), 0));
+    return frame.subarray(0, offset);
+}
+
 function encode_fetch_event(frame, request, status, last, bytes) {
     let offset = put_u8(frame, 0, EVENT_FETCH);
     offset = put_u32(frame, offset, request);
@@ -467,25 +469,25 @@ function encode_shutdown_event(frame) {
  * @param {Uint8Array} - frame
  * @returns {boolean} - result
  */
-function push(frame) {
+function write_event(frame) {
     view();
-    if (!ring_push(EVENT_RING, frame)) return false;
+    if (!write_ring(EVENT_RING, frame)) return false;
 
-    Atomics.notify(S.int32, (S.base + EVENT_RING.control) >> 2);
+    Atomics.notify(S.int32, (S.arena_offset + EVENT_RING.start) >> 2);
     S.call_app();
     return true;
 }
 
 function bind() {
-    if (bound) return;
-    bound = true;
-
     const EVENTS = [
-        "change", "click", "contextmenu", "focusin", "focusout", "input",
-        "pointercancel", "pointerdown", "pointerup", "submit"
+        "change", "click", "contextmenu", "copy", "cut", "focusin", "focusout", "input",
+        "paste", "pointercancel", "pointerdown", "pointerup", "submit"
     ];
     for (const type of EVENTS) {
         document.addEventListener(type, send);
+    }
+    for (const type of ["cancel", "close"]) {
+        document.addEventListener(type, send, true);
     }
     document.addEventListener("pointermove", send, { passive: true });
 
@@ -500,7 +502,7 @@ function bind() {
     window.addEventListener("resize", () => {
         clearTimeout(resize_timer);
         resize_timer = setTimeout(() => {
-            push(encode_resize_event(S.event_frame, document.documentElement.clientWidth, window.innerHeight));
+            write_event(encode_resize_event(S.event_frame, document.documentElement.clientWidth, window.innerHeight));
         }, 100);
     });
 
@@ -508,11 +510,17 @@ function bind() {
 
     window.addEventListener("pagehide", (e) => {
         if (e.persisted) return;
-        push(encode_shutdown_event(S.event_frame));
+        write_event(encode_shutdown_event(S.event_frame));
     });
 
+    for (const type of FULLSCREEN_EVENTS.slice(1)) {
+        document.addEventListener(type, (e) => {
+            write_event(encode_fullscreen_event(S.event_frame, e.type));
+        });
+    }
+
     document.addEventListener("visibilitychange", () => {
-        push(encode_visibility_event(S.event_frame, document.visibilityState));
+        write_event(encode_visibility_event(S.event_frame, document.visibilityState));
     });
 }
 
@@ -520,6 +528,12 @@ const VISIBILITY_STATES = [
     null,
     "hidden",
     "visible",
+];
+
+const FULLSCREEN_EVENTS = [
+    null,
+    "fullscreenchange",
+    "fullscreenerror",
 ];
 
 const ROOTS = ["header", "main", "modal", "form", "toast"]
@@ -530,14 +544,20 @@ const ROOTS = ["header", "main", "modal", "form", "toast"]
  */
 const EVENT_TYPES = [
     null,
+    "cancel",
     "change",
     "click",
+    "close",
     "contextmenu",
+    "copy",
+    "cut",
     "drop",
     "focusin",
     "focusout",
     "input",
     "keydown",
+    "keyup",
+    "paste",
     "pointercancel",
     "pointerdown",
     "pointermove",
@@ -683,6 +703,7 @@ const TAGS = [
     "modal",
     "nav",
     "ol",
+    "option",
     "output",
     "p",
     "section",
@@ -706,6 +727,7 @@ const TAGS = [
 const ATTRIBUTES = [
     null,
     "aria-current",
+    "checked",
     "data-surround",
     "disabled",
     "hidden",
@@ -768,6 +790,9 @@ const STYLE_UNITS = [
  */
 const FN_NAMES = [
     null,
+    "copy_text",
+    "enter_fullscreen",
+    "exit_fullscreen",
     "hide_toast",
     "show_toast",
 ];
@@ -794,91 +819,78 @@ function view() {
 }
 
 /**
- * Appends 1 frame to a single-writer, single-reader ring. False if full.
  *
- * A frame is a record of a length prefix and the payload padded to
- * ALIGNMENT, stored contiguously. When the record does not fit before
- * the end of the payload region, the rest of the region is marked with
- * PADDING_MARK and the record is stored from the start.
- *
- * Writing the payload need not be atomic; the `Atomics.store` of the
- * write position guarantees visibility of the prior writes to the reader.
- *
- * @param {{control: number, payload: number, capacity: number, frame_max: number}} ring
+ * @param {{start: number, data_size: number, frame_max: number}} ring
  * @param {Uint8Array} source - frame to write
  * @returns {boolean} whether it was appended
  */
-function ring_push(ring, source) {
-    const { capacity, frame_max } = ring;
+function write_ring(ring, source) {
+    const { data_size, frame_max } = ring;
     if (source.length > frame_max) throw new RangeError("frame too large");
 
-    const control = S.base + ring.control;
-    const payload = S.base + ring.payload;
-    const write_index = control >> 2;
-    const read_index = (control + CONTROL_READ_OFFSET) >> 2;
+    const start = S.arena_offset + ring.start;
+    const data = S.arena_offset + ring.start + DATA_OFFSET;
+    const write_index = start >> 2;
+    const read_index = (start + COUNTER_READ_OFFSET) >> 2;
 
     const size = LENGTH_PREFIX + Math.ceil(source.length / ALIGNMENT) * ALIGNMENT;
     let write = Atomics.load(S.int32, write_index) >>> 0;
     const read = Atomics.load(S.int32, read_index) >>> 0;
     let used = (write - read) >>> 0;
-    let position = write & (capacity - 1);
+    let position = write & (data_size - 1);
 
-    const tail = capacity - position;
+    const tail = data_size - position;
     if (size > tail) {
-        if (used + tail > capacity) return false;
-        S.data_view.setUint32(payload + position, PADDING_MARK, true);
+        if (used + tail > data_size) return false;
+        S.data_view.setUint32(data + position, PADDING_MARK, true);
         write = (write + tail) >>> 0;
         Atomics.store(S.int32, write_index, write | 0);
         used += tail;
         position = 0;
     }
-    if (used + size > capacity) return false;
+    if (used + size > data_size) return false;
 
-    const offset = payload + position;
+    const offset = data + position;
     S.data_view.setUint32(offset, source.length, true);
     S.uint8.set(source, offset + LENGTH_PREFIX);
 
-    // Commit. Only now does the record become visible to the reader.
     Atomics.store(S.int32, write_index, ((write + size) >>> 0) | 0);
     return true;
 }
 
 /**
- * Copies the front frame of the ring into destination and returns its
- * length. 0 if empty.
  *
- * @param {{control: number, payload: number, capacity: number, frame_max: number}} ring
+ * @param {{start: number, data_size: number, frame_max: number}} ring
  * @param {Uint8Array} destination - copy destination
  * @returns {number} bytes copied
  */
-function ring_pop(ring, destination) {
-    const { capacity, frame_max } = ring;
-    const control = S.base + ring.control;
-    const payload = S.base + ring.payload;
-    const write_index = control >> 2;
-    const read_index = (control + CONTROL_READ_OFFSET) >> 2;
+function copy_and_advance_ring(ring, destination) {
+    const { data_size, frame_max } = ring;
+    const start = S.arena_offset + ring.start;
+    const data = S.arena_offset + ring.start + DATA_OFFSET;
+    const write_index = start >> 2;
+    const read_index = (start + COUNTER_READ_OFFSET) >> 2;
 
     let read = Atomics.load(S.int32, read_index) >>> 0;
     for (;;) {
         const write = Atomics.load(S.int32, write_index) >>> 0;
         if (read === write) return 0;
 
-        const position = read & (capacity - 1);
-        const offset = payload + position;
+        const position = read & (data_size - 1);
+        const offset = data + position;
         const header = S.data_view.getUint32(offset, true);
         if (header === PADDING_MARK) {
-            read = (read + capacity - position) >>> 0;
+            read = (read + data_size - position) >>> 0;
             Atomics.store(S.int32, read_index, read | 0);
             continue;
         }
 
         // Even if the length prefix is corrupt, this stays inside the region.
-        const length = Math.min(header, frame_max, capacity - position - LENGTH_PREFIX);
+        const length = Math.min(header, frame_max, data_size - position - LENGTH_PREFIX);
         destination.set(S.uint8.subarray(offset + LENGTH_PREFIX, offset + LENGTH_PREFIX + length));
 
         const size = LENGTH_PREFIX + Math.ceil(length / ALIGNMENT) * ALIGNMENT;
         Atomics.store(S.int32, read_index, ((read + size) >>> 0) | 0);
-        // Wakes a writer that is waiting on a full ring.
         Atomics.notify(S.int32, read_index);
         return length;
     }
@@ -1048,3 +1060,10 @@ function get_id(frame, offset) {
 const TEXT_ENCODER = new TextEncoder();
 const TEXT_DECODER = new TextDecoder();
 
+// === color scheme ===
+
+document.querySelectorAll('input[name="color-scheme"]').forEach((radio) => {
+    radio.onchange = () => { document.documentElement.dataset.colorScheme = radio.value; };
+});
+
+start();

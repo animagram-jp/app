@@ -422,15 +422,4 @@
             border-color: GrayText;
         }
     }
-
-    /* === print === */
-
-    @media print {
-        input[type="range"]::-webkit-slider-runnable-track {
-            background-color: var(--color-ink);
-        }
-        input[type="range"]::-moz-range-track {
-            background-color: var(--color-ink);
-        }
-    }
 }

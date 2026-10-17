@@ -1,7 +1,4 @@
-use alloc::{
-    string::{String, ToString},
-    vec::Vec,
-};
+use alloc::{string::String, vec::Vec};
 use core::{
     clone::Clone,
     cmp::{Eq, PartialEq},
@@ -13,11 +10,9 @@ use core::{
     primitive::{bool, char, f32, f64, i32, str, u8, u16, u32, usize},
 };
 
-use crate::{Error, field::Field};
+use crate::{Error, WireError, field::Field};
 
 // === send operation ===
-//
-// see distribution/init.js execute operation
 
 pub const OPERATION_SET_TEXT: u8 = 1;
 pub const OPERATION_SET_VALUE: u8 = 2;
@@ -31,57 +26,10 @@ pub const OPERATION_SHOW_MODAL: u8 = 9;
 pub const OPERATION_CLOSE_MODAL: u8 = 10;
 pub const OPERATION_FOCUS: u8 = 11;
 pub const OPERATION_JS_FN: u8 = 12;
-
 pub const OPERATION_ERROR: u8 = 13;
 pub const OPERATION_FETCH: u8 = 14;
+pub const OPERATION_RELOAD: u8 = 15;
 
-pub trait WireError {
-    fn identifiers(&self, path: &mut Vec<u16>);
-    fn detail(&self) -> String;
-    fn is_serious(&self) -> bool;
-}
-
-macro_rules! wire_error {
-    ($name:ident { $($variant:ident($inner:ty) = $identifier:expr),+ $(,)? }) => {
-        #[derive(Debug)]
-        pub enum $name {
-            $($variant($inner)),+
-        }
-
-        impl ::core::fmt::Display for $name {
-            fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-                ::core::write!(f, "{:?}", self)
-            }
-        }
-
-        impl $crate::js_client::WireError for $name {
-            fn identifiers(&self, path: &mut ::alloc::vec::Vec<u16>) {
-                match self {
-                    $($name::$variant(error) => {
-                        path.push($identifier);
-                        $crate::js_client::WireError::identifiers(error, path);
-                    })+
-                }
-            }
-
-            fn detail(&self) -> ::alloc::string::String {
-                match self {
-                    $($name::$variant(error) => $crate::js_client::WireError::detail(error)),+
-                }
-            }
-
-            fn is_serious(&self) -> bool {
-                match self {
-                    $($name::$variant(error) => $crate::js_client::WireError::is_serious(error)),+
-                }
-            }
-        }
-    };
-}
-
-pub(crate) use wire_error;
-
-/// Command from Wasm to JavaScript thread
 pub enum Command {
     SetText { id: dom::Id, value: String },
     SetValue { id: dom::Id, value: String },
@@ -96,124 +44,110 @@ pub enum Command {
     Focus { id: dom::Id },
     JsFn { id: dom::Id, name: FnName },
     Fetch { request: u32, method: Method, path: String, body: Vec<u8> },
+    Reload,
     Error { error: Error },
 }
 
 /// ```
-/// # use app::js_client::{encode_command, Command, dom, OPERATION_FOCUS};
+/// # use app::js_client::{Command, Output, dom, OPERATION_FOCUS};
 /// let mut frame = Vec::new();
-/// encode_command(&mut frame, &Command::Focus {
-///     id: dom::Id::new(&[(dom::Tag::Body, None)]),
-/// });
+/// Command::Focus { id: dom::Id::new(&[(dom::Tag::Body, None)]) }.encode(&mut frame);
 /// assert_eq!(frame[0], OPERATION_FOCUS);
 /// ```
-pub fn encode_command(frame: &mut Vec<u8>, command: &Command) {
-    match *command {
-        Command::SetText { ref id, ref value } => {
-            frame.push(OPERATION_SET_TEXT);
-            id.encode(frame);
-            put_str(frame, value);
+impl Output for Command {
+    fn encode(&self, frame: &mut Vec<u8>) {
+        match *self {
+            Command::SetText { ref id, ref value } => {
+                frame.push(OPERATION_SET_TEXT);
+                id.encode(frame);
+                str::encode(value, frame);
+            }
+            Command::SetValue { ref id, ref value } => {
+                frame.push(OPERATION_SET_VALUE);
+                id.encode(frame);
+                str::encode(value, frame);
+            }
+            Command::SetAttribute { ref id, attribute, ref value } => {
+                frame.push(OPERATION_SET_ATTRIBUTE);
+                id.encode(frame);
+                attribute.encode(frame);
+                str::encode(value, frame);
+            }
+            Command::RemoveAttribute { ref id, attribute } => {
+                frame.push(OPERATION_REMOVE_ATTRIBUTE);
+                id.encode(frame);
+                attribute.encode(frame);
+            }
+            Command::AddClass { ref id, value } => {
+                frame.push(OPERATION_ADD_CLASS);
+                id.encode(frame);
+                value.encode(frame);
+            }
+            Command::RemoveClass { ref id, value } => {
+                frame.push(OPERATION_REMOVE_CLASS);
+                id.encode(frame);
+                value.encode(frame);
+            }
+            Command::SetStyle { ref id, property, ref value } => {
+                frame.push(OPERATION_SET_STYLE);
+                id.encode(frame);
+                property.encode(frame);
+                value.encode(frame);
+            }
+            Command::RemoveStyle { ref id, property } => {
+                frame.push(OPERATION_REMOVE_STYLE);
+                id.encode(frame);
+                property.encode(frame);
+            }
+            Command::ShowModal { ref id } => {
+                frame.push(OPERATION_SHOW_MODAL);
+                id.encode(frame);
+            }
+            Command::CloseModal { ref id } => {
+                frame.push(OPERATION_CLOSE_MODAL);
+                id.encode(frame);
+            }
+            Command::Focus { ref id } => {
+                frame.push(OPERATION_FOCUS);
+                id.encode(frame);
+            }
+            Command::JsFn { ref id, name } => {
+                frame.push(OPERATION_JS_FN);
+                id.encode(frame);
+                name.encode(frame);
+            }
+            Command::Fetch { request, method, ref path, ref body } => {
+                frame.push(OPERATION_FETCH);
+                request.encode(frame);
+                method.encode(frame);
+                str::encode(path, frame);
+                <[u8]>::encode(body, frame);
+            }
+            Command::Reload => frame.push(OPERATION_RELOAD),
+            Command::Error { ref error } => error.encode(frame),
         }
-        Command::SetValue { ref id, ref value } => {
-            frame.push(OPERATION_SET_VALUE);
-            id.encode(frame);
-            put_str(frame, value);
-        }
-        Command::SetAttribute { ref id, attribute, ref value } => {
-            frame.push(OPERATION_SET_ATTRIBUTE);
-            id.encode(frame);
-            put_u16(frame, attribute.encode_u16());
-            put_str(frame, value);
-        }
-        Command::RemoveAttribute { ref id, attribute } => {
-            frame.push(OPERATION_REMOVE_ATTRIBUTE);
-            id.encode(frame);
-            put_u16(frame, attribute.encode_u16());
-        }
-        Command::AddClass { ref id, value } => {
-            frame.push(OPERATION_ADD_CLASS);
-            id.encode(frame);
-            put_u16(frame, value.encode_u16());
-        }
-        Command::RemoveClass { ref id, value } => {
-            frame.push(OPERATION_REMOVE_CLASS);
-            id.encode(frame);
-            put_u16(frame, value.encode_u16());
-        }
-        Command::SetStyle { ref id, property, ref value } => {
-            frame.push(OPERATION_SET_STYLE);
-            id.encode(frame);
-            put_u16(frame, property.encode_u16());
-            value.encode(frame);
-        }
-        Command::RemoveStyle { ref id, property } => {
-            frame.push(OPERATION_REMOVE_STYLE);
-            id.encode(frame);
-            put_u16(frame, property.encode_u16());
-        }
-        Command::ShowModal { ref id } => {
-            frame.push(OPERATION_SHOW_MODAL);
-            id.encode(frame);
-        }
-        Command::CloseModal { ref id } => {
-            frame.push(OPERATION_CLOSE_MODAL);
-            id.encode(frame);
-        }
-        Command::Focus { ref id } => {
-            frame.push(OPERATION_FOCUS);
-            id.encode(frame);
-        }
-        Command::JsFn { ref id, name } => {
-            frame.push(OPERATION_JS_FN);
-            id.encode(frame);
-            put_u16(frame, name.encode_u16());
-        }
-        Command::Fetch { request, method, ref path, ref body } => {
-            frame.push(OPERATION_FETCH);
-            put_u32(frame, request);
-            frame.push(method.encode_u8());
-            put_str(frame, path);
-            put_bytes(frame, body);
-        }
-        Command::Error { ref error } => encode_error(frame, error, &error.detail()),
     }
 }
 
-pub(crate) fn encode_error(frame: &mut Vec<u8>, error: &Error, detail: &str) {
-    frame.push(OPERATION_ERROR);
-    frame.push(error.is_serious() as u8);
-    let mut path = Vec::new();
-    error.identifiers(&mut path);
-    frame.push(path.len() as u8);
-    for identifier in path {
-        put_u16(frame, identifier);
+impl Output for Error {
+    fn encode(&self, frame: &mut Vec<u8>) {
+        frame.push(OPERATION_ERROR);
+        let mut path = Vec::new();
+        self.identifiers(&mut path);
+        frame.push(path.len() as u8);
+        for identifier in path {
+            identifier.encode(frame);
+        }
+        str::encode(&self.detail(), frame);
     }
-    put_str(frame, detail);
 }
 
-pub(crate) fn put_u16(frame: &mut Vec<u8>, value: u16) {
-    frame.extend_from_slice(&value.to_le_bytes());
+pub trait Input<'a>: Sized {
+    fn decode(input: &mut &'a [u8]) -> Option<Self>;
 }
 
-pub(crate) fn put_u32(frame: &mut Vec<u8>, value: u32) {
-    frame.extend_from_slice(&value.to_le_bytes());
-}
-
-pub(crate) fn put_i32(frame: &mut Vec<u8>, value: i32) {
-    frame.extend_from_slice(&value.to_le_bytes());
-}
-
-pub(crate) fn put_f32(frame: &mut Vec<u8>, value: f32) {
-    frame.extend_from_slice(&value.to_le_bytes());
-}
-
-pub(crate) fn put_bytes(frame: &mut Vec<u8>, value: &[u8]) {
-    put_u32(frame, value.len() as u32);
-    frame.extend_from_slice(value);
-}
-
-pub(crate) fn put_str(frame: &mut Vec<u8>, value: &str) {
-    put_bytes(frame, value.as_bytes());
+pub trait Output {
+    fn encode(&self, output: &mut Vec<u8>);
 }
 
 fn take<'a>(input: &mut &'a [u8], count: usize) -> Option<&'a [u8]> {
@@ -222,38 +156,148 @@ fn take<'a>(input: &mut &'a [u8], count: usize) -> Option<&'a [u8]> {
     Some(head)
 }
 
-pub(crate) fn get_u8(input: &mut &[u8]) -> Option<u8> {
-    Some(take(input, 1)?[0])
+macro_rules! scalar {
+    ($($type:ty),*) => {$(
+        impl Input<'_> for $type {
+            fn decode(input: &mut &[u8]) -> Option<Self> {
+                Some(<$type>::from_le_bytes(take(input, size_of::<$type>())?.try_into().ok()?))
+            }
+        }
+
+        impl Output for $type {
+            fn encode(&self, output: &mut Vec<u8>) {
+                output.extend_from_slice(&self.to_le_bytes());
+            }
+        }
+    )*};
 }
 
-pub(crate) fn get_u32(input: &mut &[u8]) -> Option<u32> {
-    Some(u32::from_le_bytes(take(input, 4)?.try_into().ok()?))
+scalar!(u8, u16, u32, u64, u128, i32, f32, f64);
+
+macro_rules! wire_enum {
+    ($($repr:ty: $($type:ty),+);+ $(;)?) => {$($(
+        impl Output for $type {
+            fn encode(&self, output: &mut Vec<u8>) {
+                (*self as $repr).encode(output);
+            }
+        }
+    )+)+};
 }
 
-pub(crate) fn get_f32(input: &mut &[u8]) -> Option<f32> {
-    Some(f32::from_le_bytes(take(input, 4)?.try_into().ok()?))
+wire_enum!(u16: Attribute, ClassName, FnName, Keyword, StyleProperty; u8: Method, Unit);
+
+impl<'a, T: Input<'a>> Input<'a> for Vec<T> {
+    fn decode(input: &mut &'a [u8]) -> Option<Self> {
+        let count = u32::decode(input)? as usize;
+        (0..count).map(|_| T::decode(input)).collect()
+    }
 }
 
-pub(crate) fn get_f64(input: &mut &[u8]) -> Option<f64> {
-    Some(f64::from_le_bytes(take(input, 8)?.try_into().ok()?))
+impl Input<'_> for String {
+    fn decode(input: &mut &[u8]) -> Option<Self> {
+        String::from_utf8(Vec::<u8>::decode(input)?).ok()
+    }
 }
 
-pub(crate) fn get_u16(input: &mut &[u8]) -> Option<u16> {
-    Some(u16::from_le_bytes(take(input, 2)?.try_into().ok()?))
+impl<T: Output> Output for [T] {
+    fn encode(&self, output: &mut Vec<u8>) {
+        (self.len() as u32).encode(output);
+        for item in self {
+            item.encode(output);
+        }
+    }
 }
 
-pub(crate) fn get_bytes<'a>(input: &mut &'a [u8]) -> Option<&'a [u8]> {
-    let length = get_u32(input)? as usize;
-    take(input, length)
+impl Output for str {
+    fn encode(&self, output: &mut Vec<u8>) {
+        self.as_bytes().encode(output);
+    }
 }
 
-pub(crate) fn get_string(input: &mut &[u8]) -> Option<String> {
-    Some(str::from_utf8(get_bytes(input)?).ok()?.to_string())
+pub trait Decimal: Sized {
+    fn from_f64(value: f64) -> Self;
+    fn to_f64(&self) -> f64;
+}
+
+const FRACTION_UNIT: u64 = 1000;
+const FRACTION_WIDTH: usize = 3;
+
+impl<T: Decimal> Input<'_> for T {
+    fn decode(input: &mut &[u8]) -> Option<Self> {
+        let (whole, rest) = input.split_at_checked(count_leading_digits(input))?;
+        let (fraction, rest) = match rest.split_first() {
+            Some((b'.', tail)) => tail.split_at_checked(count_leading_digits(tail))?,
+            _ => (&[][..], rest),
+        };
+        if whole.is_empty() && fraction.is_empty() {
+            return None;
+        }
+        *input = rest;
+        let mantissa = whole
+            .iter()
+            .chain(fraction)
+            .fold(0.0, |sum, &byte| sum * 10.0 + f64::from(byte - b'0'));
+        let scale = fraction.iter().fold(1.0, |scale, _| scale * 10.0);
+        Some(T::from_f64(mantissa / scale))
+    }
+}
+
+impl<T: Decimal> Output for T {
+    fn encode(&self, output: &mut Vec<u8>) {
+        let value = self.to_f64();
+        let scaled = if value.is_finite() {
+            libm::round(libm::fabs(value) * FRACTION_UNIT as f64) as u64
+        } else {
+            0
+        };
+        if scaled != 0 && value.is_sign_negative() {
+            output.push(b'-');
+        }
+        push_decimal(output, scaled / FRACTION_UNIT, 1);
+        let mut fraction = scaled % FRACTION_UNIT;
+        if fraction == 0 {
+            return;
+        }
+        let mut width = FRACTION_WIDTH;
+        while fraction % 10 == 0 {
+            fraction /= 10;
+            width -= 1;
+        }
+        output.push(b'.');
+        push_decimal(output, fraction, width);
+    }
+}
+
+fn count_leading_digits(bytes: &[u8]) -> usize {
+    bytes.iter().take_while(|byte| byte.is_ascii_digit()).count()
+}
+
+fn push_decimal(output: &mut Vec<u8>, mut value: u64, width: usize) {
+    let mut digits = [b'0'; 20];
+    let mut start = digits.len();
+    while value > 0 || digits.len() - start < width {
+        start -= 1;
+        digits[start] = b'0' + (value % 10) as u8;
+        value /= 10;
+    }
+    output.extend_from_slice(&digits[start..]);
+}
+
+pub fn parse<'a, T: Input<'a>>(source: &'a [u8]) -> Option<T> {
+    let mut rest = source;
+    let value = T::decode(&mut rest)?;
+    rest.is_empty().then_some(value)
+}
+
+pub fn stringify<T: Output + ?Sized>(value: &T) -> String {
+    let mut output = Vec::new();
+    value.encode(&mut output);
+    String::from_utf8(output).unwrap_or_default()
 }
 
 /// ```
-/// # use app::js_client::from_url_search_params;
-/// let pairs = from_url_search_params("a=1&b=%E4%BA%88+%E5%AE%9A&a=2");
+/// # use app::js_client::parse_url_search_params;
+/// let pairs = parse_url_search_params("a=1&b=%E4%BA%88+%E5%AE%9A&a=2");
 /// assert_eq!(
 ///     pairs,
 ///     [
@@ -263,7 +307,7 @@ pub(crate) fn get_string(input: &mut &[u8]) -> Option<String> {
 ///     ]
 /// );
 /// ```
-pub fn from_url_search_params(input: &str) -> Vec<(String, String)> {
+pub fn parse_url_search_params(input: &str) -> Vec<(String, String)> {
     input
         .split('&')
         .filter(|pair| !pair.is_empty())
@@ -283,7 +327,7 @@ fn decode_component(input: &str) -> String {
         index += 1;
         match byte {
             b'+' => decoded.push(b' '),
-            b'%' => match bytes.get(index..index + 2).and_then(hex_byte) {
+            b'%' => match bytes.get(index..index + 2).and_then(parse_hex) {
                 Some(value) => {
                     decoded.push(value);
                     index += 2;
@@ -296,7 +340,7 @@ fn decode_component(input: &str) -> String {
     String::from_utf8_lossy(&decoded).into_owned()
 }
 
-fn hex_byte(digits: &[u8]) -> Option<u8> {
+fn parse_hex(digits: &[u8]) -> Option<u8> {
     let high = (digits[0] as char).to_digit(16)?;
     let low = (digits[1] as char).to_digit(16)?;
     Some((high << 4 | low) as u8)
@@ -304,8 +348,6 @@ fn hex_byte(digits: &[u8]) -> Option<u8> {
 
 // === receive (canvas event) ===
 
-///
-/// crate::event::decode_event
 #[derive(Clone)]
 pub struct CanvasEvent {
     pub event_type: EventType,
@@ -356,27 +398,16 @@ impl CanvasEvent {
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Attribute {
     AriaCurrent = 1,
+    Checked,
     DataSurround,
     Disabled,
     Hidden,
-}
-
-impl Attribute {
-    fn encode_u16(self) -> u16 {
-        self as u16
-    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum ClassName {
     Hide = 1,
     Show,
-}
-
-impl ClassName {
-    fn encode_u16(self) -> u16 {
-        self as u16
-    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -387,12 +418,6 @@ pub enum Keyword {
     NeswResize,
     NsResize,
     NwseResize,
-}
-
-impl Keyword {
-    fn encode_u16(self) -> u16 {
-        self as u16
-    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -408,12 +433,6 @@ pub enum StyleProperty {
     ZIndex,
 }
 
-impl StyleProperty {
-    fn encode_u16(self) -> u16 {
-        self as u16
-    }
-}
-
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Unit {
     Em = 1,
@@ -426,12 +445,6 @@ pub enum Unit {
     Vw,
 }
 
-impl Unit {
-    fn encode_u8(self) -> u8 {
-        self as u8
-    }
-}
-
 #[derive(Clone, PartialEq, Debug)]
 pub enum StyleValue {
     Integer(i32),
@@ -442,21 +455,21 @@ pub enum StyleValue {
     Text(String),
 }
 
-impl StyleValue {
+impl Output for StyleValue {
     fn encode(&self, frame: &mut Vec<u8>) {
         match self {
             Self::Integer(value) => {
                 frame.push(1);
-                put_i32(frame, *value);
+                value.encode(frame);
             }
             Self::Keyword(keyword) => {
                 frame.push(2);
-                put_u16(frame, keyword.encode_u16());
+                keyword.encode(frame);
             }
             Self::Length(value, unit) => {
                 frame.push(3);
-                put_f32(frame, *value);
-                frame.push(unit.encode_u8());
+                value.encode(frame);
+                unit.encode(frame);
             }
             Self::List(items) => {
                 frame.push(4);
@@ -467,11 +480,11 @@ impl StyleValue {
             }
             Self::Number(value) => {
                 frame.push(5);
-                put_f32(frame, *value);
+                value.encode(frame);
             }
             Self::Text(text) => {
                 frame.push(6);
-                put_str(frame, text);
+                str::encode(text, frame);
             }
         }
     }
@@ -479,14 +492,11 @@ impl StyleValue {
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum FnName {
-    HideToast = 1,
+    CopyText = 1,
+    EnterFullscreen,
+    ExitFullscreen,
+    HideToast,
     ShowToast,
-}
-
-impl FnName {
-    fn encode_u16(self) -> u16 {
-        self as u16
-    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -495,12 +505,6 @@ pub enum Method {
     Get,
     Post,
     Put,
-}
-
-impl Method {
-    fn encode_u8(self) -> u8 {
-        self as u8
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -515,21 +519,27 @@ pub fn detect_device(pointer_coarse: bool) -> Device {
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum EventType {
+    Cancel = 1,
     Change,
     Click,
+    Close,
     ContextMenu,
+    Copy,
+    Cut,
     Drop,
     FocusIn,
     FocusOut,
     Input,
     KeyDown,
+    KeyUp,
+    Paste,
     PointerCancel,
     PointerDown,
     PointerMove,
     PointerUp,
     Scroll,
     Submit,
-    Other,
+    Other = 0,
 }
 
 impl EventType {
@@ -537,25 +547,31 @@ impl EventType {
     ///
     /// ```
     /// # use app::js_client::EventType;
-    /// assert_eq!(EventType::decode_u8(10), EventType::PointerDown);
-    /// assert_eq!(EventType::decode_u8(200), EventType::Other);
+    /// assert_eq!(EventType::from_u8(16), EventType::PointerDown);
+    /// assert_eq!(EventType::from_u8(200), EventType::Other);
     /// ```
-    pub fn decode_u8(value: u8) -> Self {
+    pub fn from_u8(value: u8) -> Self {
         match value {
-            1 => Self::Change,
-            2 => Self::Click,
-            3 => Self::ContextMenu,
-            4 => Self::Drop,
-            5 => Self::FocusIn,
-            6 => Self::FocusOut,
-            7 => Self::Input,
-            8 => Self::KeyDown,
-            9 => Self::PointerCancel,
-            10 => Self::PointerDown,
-            11 => Self::PointerMove,
-            12 => Self::PointerUp,
-            13 => Self::Scroll,
-            14 => Self::Submit,
+            1 => Self::Cancel,
+            2 => Self::Change,
+            3 => Self::Click,
+            4 => Self::Close,
+            5 => Self::ContextMenu,
+            6 => Self::Copy,
+            7 => Self::Cut,
+            8 => Self::Drop,
+            9 => Self::FocusIn,
+            10 => Self::FocusOut,
+            11 => Self::Input,
+            12 => Self::KeyDown,
+            13 => Self::KeyUp,
+            14 => Self::Paste,
+            15 => Self::PointerCancel,
+            16 => Self::PointerDown,
+            17 => Self::PointerMove,
+            18 => Self::PointerUp,
+            19 => Self::Scroll,
+            20 => Self::Submit,
             _ => Self::Other,
         }
     }
@@ -563,7 +579,7 @@ impl EventType {
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum KeyName {
-    Alt,
+    Alt = 1,
     AltGraph,
     Ampersand,
     Apostrophe,
@@ -665,16 +681,16 @@ pub enum KeyName {
     Tab,
     Tilde,
     Underscore,
-    Other,
+    Other = 0,
 }
 
 impl KeyName {
     /// ```
     /// # use app::js_client::KeyName;
-    /// assert_eq!(KeyName::decode_u8(37), KeyName::Enter);
-    /// assert_eq!(KeyName::decode_u8(200), KeyName::Other);
+    /// assert_eq!(KeyName::from_u8(37), KeyName::Enter);
+    /// assert_eq!(KeyName::from_u8(200), KeyName::Other);
     /// ```
-    pub fn decode_u8(value: u8) -> Self {
+    pub fn from_u8(value: u8) -> Self {
         match value {
             1 => Self::Alt,
             2 => Self::AltGraph,
@@ -784,10 +800,32 @@ impl KeyName {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum FullscreenEvent {
+    Change = 1,
+    Error,
+    Other = 0,
+}
+
+impl FullscreenEvent {
+    /// ```
+    /// # use app::js_client::FullscreenEvent;
+    /// assert_eq!(FullscreenEvent::from_u8(1), FullscreenEvent::Change);
+    /// assert_eq!(FullscreenEvent::from_u8(0), FullscreenEvent::Other);
+    /// ```
+    pub fn from_u8(value: u8) -> Self {
+        match value {
+            1 => Self::Change,
+            2 => Self::Error,
+            _ => Self::Other,
+        }
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum VisibilityState {
-    Hidden,
+    Hidden = 1,
     Visible,
-    Other,
+    Other = 0,
 }
 
 impl VisibilityState {
@@ -795,10 +833,10 @@ impl VisibilityState {
     ///
     /// ```
     /// # use app::js_client::VisibilityState;
-    /// assert_eq!(VisibilityState::decode_u8(2), VisibilityState::Visible);
-    /// assert_eq!(VisibilityState::decode_u8(0), VisibilityState::Other);
+    /// assert_eq!(VisibilityState::from_u8(2), VisibilityState::Visible);
+    /// assert_eq!(VisibilityState::from_u8(0), VisibilityState::Other);
     /// ```
-    pub fn decode_u8(value: u8) -> Self {
+    pub fn from_u8(value: u8) -> Self {
         match value {
             1 => Self::Hidden,
             2 => Self::Visible,
@@ -859,75 +897,6 @@ impl Default for Thresholds {
     }
 }
 
-#[derive(Debug, Default, Clone, Copy)]
-pub struct PointerState {
-    is_down:          bool,
-    start_x:          f64,
-    start_y:          f64,
-    current_x:        f64,
-    current_y:        f64,
-    start_time:       f64,
-    last_move_x:      f64,
-    last_move_y:      f64,
-    last_move_time:   f64,
-    is_dragging:      bool,
-    long_press_fired: bool,
-    cancelled:        bool,
-}
-
-impl PointerState {
-    #[must_use]
-    pub const fn is_down(&self) -> bool {
-        self.is_down
-    }
-
-    #[must_use]
-    pub fn update(self, event_type: &EventType, x: f64, y: f64, time: f64) -> Self {
-        match event_type {
-            EventType::PointerDown => Self {
-                is_down:          true,
-                start_x:          x,
-                start_y:          y,
-                current_x:        x,
-                current_y:        y,
-                start_time:       time,
-                last_move_x:      x,
-                last_move_y:      y,
-                last_move_time:   time,
-                is_dragging:      false,
-                long_press_fired: false,
-                cancelled:        false,
-            },
-            EventType::PointerMove => Self {
-                current_x: x,
-                current_y: y,
-                last_move_x: x,
-                last_move_y: y,
-                last_move_time: time,
-                ..self
-            },
-            EventType::PointerUp => {
-                Self { is_down: false, current_x: x, current_y: y, cancelled: false, ..self }
-            }
-            EventType::PointerCancel => {
-                Self { is_down: false, current_x: x, current_y: y, cancelled: true, ..self }
-            }
-            _ => self,
-        }
-    }
-
-    fn distance(&self) -> f64 {
-        let dx = self.current_x - self.start_x;
-        let dy = self.current_y - self.start_y;
-        libm::sqrt(dx * dx + dy * dy)
-    }
-
-    #[must_use]
-    pub const fn current(&self) -> (f64, f64) {
-        (self.current_x, self.current_y)
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Gesture {
     Tap,
@@ -943,123 +912,6 @@ pub enum Gesture {
     PinchEnd,
 }
 
-#[must_use]
-pub fn detect_gesture(
-    state: &mut PointerState,
-    prev_state: &PointerState,
-    event_type: &EventType,
-    current_time: f64,
-    thresholds: &Thresholds,
-) -> Option<Gesture> {
-    match event_type {
-        EventType::PointerUp | EventType::PointerCancel => {
-            detect_on_release(state, prev_state, current_time, thresholds)
-        }
-        EventType::PointerMove => detect_on_move(state, current_time, thresholds),
-        _ => None,
-    }
-}
-
-fn detect_on_release(
-    state: &mut PointerState,
-    prev_state: &PointerState,
-    current_time: f64,
-    thresholds: &Thresholds,
-) -> Option<Gesture> {
-    if prev_state.is_dragging {
-        state.is_dragging = false;
-        return Some(if state.cancelled { Gesture::DragCancel } else { Gesture::DragEnd });
-    }
-
-    if state.cancelled {
-        return None;
-    }
-
-    let dt = current_time - state.start_time;
-    if dt <= 0.0 {
-        return None;
-    }
-    let distance = state.distance();
-
-    //
-    let move_dt = current_time - state.last_move_time;
-    let velocity = if move_dt > 0.0 {
-        let mdx = state.current_x - state.last_move_x;
-        let mdy = state.current_y - state.last_move_y;
-        libm::sqrt(mdx * mdx + mdy * mdy) / move_dt
-    } else {
-        0.0
-    };
-    if velocity > thresholds.swipe_min_velocity
-        && distance > thresholds.swipe_min_px
-        && dt < thresholds.swipe_max_ms
-    {
-        let dx = state.current_x - state.start_x;
-        let dy = state.current_y - state.start_y;
-        return Some(if libm::fabs(dx) > libm::fabs(dy) {
-            if dx > 0.0 { Gesture::SwipeRight } else { Gesture::SwipeLeft }
-        } else if dy > 0.0 {
-            Gesture::SwipeDown
-        } else {
-            Gesture::SwipeUp
-        });
-    }
-
-    if state.long_press_fired {
-        return None;
-    }
-
-    if dt > thresholds.long_press_ms && distance < thresholds.long_press_slop_px {
-        return Some(Gesture::LongPress);
-    }
-
-    if dt < thresholds.tap_max_ms && distance < thresholds.tap_slop_px {
-        return Some(Gesture::Tap);
-    }
-
-    None
-}
-
-fn detect_on_move(
-    state: &mut PointerState,
-    current_time: f64,
-    thresholds: &Thresholds,
-) -> Option<Gesture> {
-    if !state.is_down {
-        return None;
-    }
-
-    let distance = state.distance();
-
-    if !state.long_press_fired
-        && !state.is_dragging
-        && distance < thresholds.long_press_slop_px
-        && current_time - state.start_time > thresholds.long_press_ms
-    {
-        state.long_press_fired = true;
-        return Some(Gesture::LongPress);
-    }
-
-    if distance <= thresholds.drag_start_px {
-        return None;
-    }
-
-    if state.is_dragging {
-        return Some(Gesture::Drag { x: state.current_x, y: state.current_y });
-    }
-
-    let dt = current_time - state.start_time;
-    if dt > 0.0 && dt < thresholds.swipe_max_ms {
-        let velocity = distance / dt;
-        if velocity > thresholds.swipe_min_velocity && distance > thresholds.swipe_min_px {
-            return None;
-        }
-    }
-
-    state.is_dragging = true;
-    Some(Gesture::Drag { x: state.current_x, y: state.current_y })
-}
-
 #[cfg(test)]
 mod gesture_tests {
     use alloc::vec::Vec;
@@ -1067,12 +919,11 @@ mod gesture_tests {
     use super::*;
 
     fn run(events: &[(EventType, f64, f64, f64)], th: &Thresholds) -> Vec<Gesture> {
-        let mut state = PointerState::default();
+        let mut pointer = Pointer::default();
         let mut out = Vec::new();
         for (event_type, x, y, time) in events {
-            let prev = state;
-            state = state.update(event_type, *x, *y, *time);
-            if let Some(g) = detect_gesture(&mut state, &prev, event_type, *time, th) {
+            pointer.update(event_type, *x, *y, *time);
+            if let Some(g) = pointer.detect(event_type, *time, th) {
                 out.push(g);
             }
         }
@@ -1311,7 +1162,7 @@ struct TwoFingerState {
 
 impl TwoFingerState {
     #[must_use]
-    fn touch_down(self, id: u32, x: f64, y: f64) -> Self {
+    fn add_touch(self, id: u32, x: f64, y: f64) -> Self {
         match (self.primary, self.secondary) {
             (None, _) => Self { primary: Some(TouchPoint::new(id, x, y)), ..self },
             (Some(_), None) => Self {
@@ -1324,7 +1175,7 @@ impl TwoFingerState {
     }
 
     #[must_use]
-    fn touch_move(self, id: u32, x: f64, y: f64) -> Self {
+    fn move_touch(self, id: u32, x: f64, y: f64) -> Self {
         if self.primary.is_some_and(|p| p.id == id) {
             Self {
                 primary: self.primary.map(|p| TouchPoint { current_x: x, current_y: y, ..p }),
@@ -1341,7 +1192,7 @@ impl TwoFingerState {
     }
 
     #[must_use]
-    fn touch_up(self, id: u32) -> (Self, TwoFingerMode) {
+    fn remove_touch(self, id: u32) -> (Self, TwoFingerMode) {
         let ended_mode = self.mode;
         if self.primary.is_some_and(|p| p.id == id) {
             (
@@ -1370,7 +1221,7 @@ impl TwoFingerState {
     }
 
     #[must_use]
-    fn primary_current(&self) -> Option<(f64, f64)> {
+    fn primary_position(&self) -> Option<(f64, f64)> {
         self.primary.map(|p| (p.current_x, p.current_y))
     }
 
@@ -1400,12 +1251,12 @@ impl TwoFingerState {
                 y: (p.current_y + s.current_y) / 2.0,
             },
             TwoFingerMode::Pinch => {
-                let start_distance = two_point_distance(p.start_x, p.start_y, s.start_x, s.start_y);
+                let start_distance = measure_distance(p.start_x, p.start_y, s.start_x, s.start_y);
                 if start_distance <= 0.0 {
                     return FoldedInput::None;
                 }
                 let current_distance =
-                    two_point_distance(p.current_x, p.current_y, s.current_x, s.current_y);
+                    measure_distance(p.current_x, p.current_y, s.current_x, s.current_y);
                 FoldedInput::Pinch {
                     scale:    current_distance / start_distance,
                     center_x: (p.current_x + s.current_x) / 2.0,
@@ -1416,22 +1267,33 @@ impl TwoFingerState {
     }
 }
 
-fn two_point_distance(x0: f64, y0: f64, x1: f64, y1: f64) -> f64 {
+fn measure_distance(x0: f64, y0: f64, x1: f64, y1: f64) -> f64 {
     let dx = x1 - x0;
     let dy = y1 - y0;
     libm::sqrt(dx * dx + dy * dy)
 }
 
 #[derive(Debug, Default)]
-pub struct TouchTracker {
-    primary_state: PointerState,
-    two_fingers:   TwoFingerState,
-    pan_state:     Option<PointerState>,
+pub struct Pointer {
+    is_down:          bool,
+    start_x:          f64,
+    start_y:          f64,
+    current_x:        f64,
+    current_y:        f64,
+    start_time:       f64,
+    last_move_x:      f64,
+    last_move_y:      f64,
+    last_move_time:   f64,
+    is_dragging:      bool,
+    long_press_fired: bool,
+    cancelled:        bool,
+    two_fingers:      TwoFingerState,
+    panning:          bool,
 }
 
-impl TouchTracker {
+impl Pointer {
     #[must_use]
-    pub fn handle(
+    pub fn track(
         &mut self,
         event_type: &EventType,
         pointer_id: u32,
@@ -1442,38 +1304,190 @@ impl TouchTracker {
     ) -> Option<Gesture> {
         match event_type {
             EventType::PointerDown => {
-                self.on_down(pointer_id, x, y, time);
+                self.track_down(pointer_id, x, y, time);
                 None
             }
-            EventType::PointerMove => self.on_move(pointer_id, x, y, time, thresholds),
+            EventType::PointerMove => self.track_move(pointer_id, x, y, time, thresholds),
             EventType::PointerUp | EventType::PointerCancel => {
-                self.on_up(event_type, pointer_id, x, y, time, thresholds)
+                self.track_up(event_type, pointer_id, x, y, time, thresholds)
             }
             _ => None,
         }
     }
 
     #[must_use]
-    pub const fn active_state(&self) -> &PointerState {
-        match &self.pan_state {
-            Some(state) => state,
-            None => &self.primary_state,
+    pub const fn is_down(&self) -> bool {
+        self.is_down
+    }
+
+    #[must_use]
+    pub const fn current(&self) -> (f64, f64) {
+        (self.current_x, self.current_y)
+    }
+
+    fn distance(&self) -> f64 {
+        measure_distance(self.start_x, self.start_y, self.current_x, self.current_y)
+    }
+
+    fn update(&mut self, event_type: &EventType, x: f64, y: f64, time: f64) {
+        match event_type {
+            EventType::PointerDown => {
+                *self = Self {
+                    is_down:          true,
+                    start_x:          x,
+                    start_y:          y,
+                    current_x:        x,
+                    current_y:        y,
+                    start_time:       time,
+                    last_move_x:      x,
+                    last_move_y:      y,
+                    last_move_time:   time,
+                    is_dragging:      false,
+                    long_press_fired: false,
+                    cancelled:        false,
+                    two_fingers:      self.two_fingers,
+                    panning:          self.panning,
+                };
+            }
+            EventType::PointerMove => {
+                self.current_x = x;
+                self.current_y = y;
+                self.last_move_x = x;
+                self.last_move_y = y;
+                self.last_move_time = time;
+            }
+            EventType::PointerUp | EventType::PointerCancel => {
+                self.is_down = false;
+                self.current_x = x;
+                self.current_y = y;
+                self.cancelled = matches!(event_type, EventType::PointerCancel);
+            }
+            _ => {}
         }
     }
 
-    fn on_down(&mut self, id: u32, x: f64, y: f64, time: f64) {
+    fn clear(&mut self) {
+        *self = Self { two_fingers: self.two_fingers, panning: self.panning, ..Self::default() };
+    }
+
+    fn detect(
+        &mut self,
+        event_type: &EventType,
+        current_time: f64,
+        thresholds: &Thresholds,
+    ) -> Option<Gesture> {
+        match event_type {
+            EventType::PointerUp | EventType::PointerCancel => {
+                self.detect_release(current_time, thresholds)
+            }
+            EventType::PointerMove => self.detect_move(current_time, thresholds),
+            _ => None,
+        }
+    }
+
+    fn detect_release(&mut self, current_time: f64, thresholds: &Thresholds) -> Option<Gesture> {
+        if self.is_dragging {
+            self.is_dragging = false;
+            return Some(if self.cancelled { Gesture::DragCancel } else { Gesture::DragEnd });
+        }
+
+        if self.cancelled {
+            return None;
+        }
+
+        let dt = current_time - self.start_time;
+        if dt <= 0.0 {
+            return None;
+        }
+        let distance = self.distance();
+
+        let move_dt = current_time - self.last_move_time;
+        let velocity = if move_dt > 0.0 {
+            let mdx = self.current_x - self.last_move_x;
+            let mdy = self.current_y - self.last_move_y;
+            libm::sqrt(mdx * mdx + mdy * mdy) / move_dt
+        } else {
+            0.0
+        };
+        if velocity > thresholds.swipe_min_velocity
+            && distance > thresholds.swipe_min_px
+            && dt < thresholds.swipe_max_ms
+        {
+            let dx = self.current_x - self.start_x;
+            let dy = self.current_y - self.start_y;
+            return Some(if libm::fabs(dx) > libm::fabs(dy) {
+                if dx > 0.0 { Gesture::SwipeRight } else { Gesture::SwipeLeft }
+            } else if dy > 0.0 {
+                Gesture::SwipeDown
+            } else {
+                Gesture::SwipeUp
+            });
+        }
+
+        if self.long_press_fired {
+            return None;
+        }
+
+        if dt > thresholds.long_press_ms && distance < thresholds.long_press_slop_px {
+            return Some(Gesture::LongPress);
+        }
+
+        if dt < thresholds.tap_max_ms && distance < thresholds.tap_slop_px {
+            return Some(Gesture::Tap);
+        }
+
+        None
+    }
+
+    fn detect_move(&mut self, current_time: f64, thresholds: &Thresholds) -> Option<Gesture> {
+        if !self.is_down {
+            return None;
+        }
+
+        let distance = self.distance();
+
+        if !self.long_press_fired
+            && !self.is_dragging
+            && distance < thresholds.long_press_slop_px
+            && current_time - self.start_time > thresholds.long_press_ms
+        {
+            self.long_press_fired = true;
+            return Some(Gesture::LongPress);
+        }
+
+        if distance <= thresholds.drag_start_px {
+            return None;
+        }
+
+        if self.is_dragging {
+            return Some(Gesture::Drag { x: self.current_x, y: self.current_y });
+        }
+
+        let dt = current_time - self.start_time;
+        if dt > 0.0 && dt < thresholds.swipe_max_ms {
+            let velocity = distance / dt;
+            if velocity > thresholds.swipe_min_velocity && distance > thresholds.swipe_min_px {
+                return None;
+            }
+        }
+
+        self.is_dragging = true;
+        Some(Gesture::Drag { x: self.current_x, y: self.current_y })
+    }
+
+    fn track_down(&mut self, id: u32, x: f64, y: f64, time: f64) {
         if self.two_fingers.primary_id() == Some(id) || self.two_fingers.secondary_id() == Some(id)
         {
-            self.two_fingers = self.two_fingers.touch_move(id, x, y);
+            self.two_fingers = self.two_fingers.move_touch(id, x, y);
             return;
         }
         if self.two_fingers.primary_id().is_none() {
-            self.primary_state = self.primary_state.update(&EventType::PointerDown, x, y, time);
+            self.update(&EventType::PointerDown, x, y, time);
         }
-        self.two_fingers = self.two_fingers.touch_down(id, x, y);
+        self.two_fingers = self.two_fingers.add_touch(id, x, y);
     }
 
-    fn on_move(
+    fn track_move(
         &mut self,
         id: u32,
         x: f64,
@@ -1486,18 +1500,17 @@ impl TouchTracker {
         if !is_primary && !is_secondary {
             return None;
         }
-        self.two_fingers = self.two_fingers.touch_move(id, x, y);
+        self.two_fingers = self.two_fingers.move_touch(id, x, y);
 
         if self.two_fingers.secondary_id().is_some() {
-            return self.fold_and_emit(time, thresholds);
+            return self.track_fold(time, thresholds);
         }
 
-        let prev = self.primary_state;
-        self.primary_state = self.primary_state.update(&EventType::PointerMove, x, y, time);
-        detect_gesture(&mut self.primary_state, &prev, &EventType::PointerMove, time, thresholds)
+        self.update(&EventType::PointerMove, x, y, time);
+        self.detect(&EventType::PointerMove, time, thresholds)
     }
 
-    fn on_up(
+    fn track_up(
         &mut self,
         event_type: &EventType,
         id: u32,
@@ -1511,24 +1524,22 @@ impl TouchTracker {
         let had_secondary = self.two_fingers.secondary_id().is_some();
 
         if is_secondary || (is_primary && had_secondary) {
-            let (next, ended_mode) = self.two_fingers.touch_up(id);
+            let (next, ended_mode) = self.two_fingers.remove_touch(id);
             self.two_fingers = next;
-            let gesture = self.end_two_finger_session(event_type, ended_mode, time, thresholds);
+            let gesture = self.end_session(event_type, ended_mode, time, thresholds);
             self.resync_primary(time);
             gesture
         } else if is_primary {
-            let prev = self.primary_state;
-            self.primary_state = self.primary_state.update(event_type, x, y, time);
-            let gesture =
-                detect_gesture(&mut self.primary_state, &prev, event_type, time, thresholds);
-            self.two_fingers = self.two_fingers.touch_up(id).0;
+            self.update(event_type, x, y, time);
+            let gesture = self.detect(event_type, time, thresholds);
+            self.two_fingers = self.two_fingers.remove_touch(id).0;
             gesture
         } else {
             None
         }
     }
 
-    fn end_two_finger_session(
+    fn end_session(
         &mut self,
         event_type: &EventType,
         ended_mode: TwoFingerMode,
@@ -1539,43 +1550,38 @@ impl TouchTracker {
             TwoFingerMode::Undetermined => None,
             TwoFingerMode::Pinch => Some(Gesture::PinchEnd),
             TwoFingerMode::Pan => {
-                let state = self.pan_state.take()?;
-                let (cx, cy) = state.current();
-                let prev = state;
-                let mut next = state.update(event_type, cx, cy, time);
-                detect_gesture(&mut next, &prev, event_type, time, thresholds)
+                if !core::mem::take(&mut self.panning) {
+                    return None;
+                }
+                let (cx, cy) = self.current();
+                self.update(event_type, cx, cy, time);
+                self.detect(event_type, time, thresholds)
             }
         }
     }
 
     fn resync_primary(&mut self, time: f64) {
-        self.primary_state = match self.two_fingers.primary_current() {
-            Some((x, y)) => PointerState::default().update(&EventType::PointerDown, x, y, time),
-            None => PointerState::default(),
-        };
+        match self.two_fingers.primary_position() {
+            Some((x, y)) => self.update(&EventType::PointerDown, x, y, time),
+            None => self.clear(),
+        }
     }
 
-    fn fold_and_emit(&mut self, time: f64, thresholds: &Thresholds) -> Option<Gesture> {
+    fn track_fold(&mut self, time: f64, thresholds: &Thresholds) -> Option<Gesture> {
         match self.two_fingers.fold() {
             FoldedInput::None => None,
             FoldedInput::Pinch { scale, center_x, center_y } => {
                 Some(Gesture::Pinch { scale, center_x, center_y })
             }
-            FoldedInput::AsSinglePoint { x, y } => match self.pan_state {
-                None => {
-                    self.pan_state =
-                        Some(PointerState::default().update(&EventType::PointerDown, x, y, time));
-                    None
+            FoldedInput::AsSinglePoint { x, y } => {
+                if !self.panning {
+                    self.panning = true;
+                    self.update(&EventType::PointerDown, x, y, time);
+                    return None;
                 }
-                Some(state) => {
-                    let prev = state;
-                    let mut next = state.update(&EventType::PointerMove, x, y, time);
-                    let gesture =
-                        detect_gesture(&mut next, &prev, &EventType::PointerMove, time, thresholds);
-                    self.pan_state = Some(next);
-                    gesture
-                }
-            },
+                self.update(&EventType::PointerMove, x, y, time);
+                self.detect(&EventType::PointerMove, time, thresholds)
+            }
         }
     }
 }
@@ -1585,38 +1591,10 @@ mod two_finger_tests {
     use super::*;
 
     #[test]
-    fn waits_for_both_fingers_before_classifying() {
-        let mut state =
-            TwoFingerState::default().touch_down(1, 100.0, 100.0).touch_down(2, 200.0, 100.0);
-
-        state = state.touch_move(1, 110.0, 100.0);
-        assert_eq!(state.fold(), FoldedInput::None);
-        state = state.touch_move(1, 130.0, 100.0);
-        assert_eq!(state.fold(), FoldedInput::None);
-
-        state = state.touch_move(1, 150.0, 100.0).touch_move(2, 150.0, 100.0);
-        assert_eq!(
-            state.fold(),
-            FoldedInput::Pinch { scale: 0.0, center_x: 150.0, center_y: 100.0 }
-        );
-    }
-
-    #[test]
-    fn symmetric_pinch_in_reduces_scale() {
-        let mut state =
-            TwoFingerState::default().touch_down(1, 100.0, 100.0).touch_down(2, 200.0, 100.0);
-        state = state.touch_move(1, 140.0, 100.0).touch_move(2, 160.0, 100.0);
-        match state.fold() {
-            FoldedInput::Pinch { scale, .. } => assert!(scale < 1.0, "scale = {scale}"),
-            other => panic!("expected Pinch, got {other:?}"),
-        }
-    }
-
-    #[test]
     fn symmetric_pinch_out_increases_scale() {
         let mut state =
-            TwoFingerState::default().touch_down(1, 140.0, 100.0).touch_down(2, 160.0, 100.0);
-        state = state.touch_move(1, 100.0, 100.0).touch_move(2, 200.0, 100.0);
+            TwoFingerState::default().add_touch(1, 140.0, 100.0).add_touch(2, 160.0, 100.0);
+        state = state.move_touch(1, 100.0, 100.0).move_touch(2, 200.0, 100.0);
         match state.fold() {
             FoldedInput::Pinch { scale, .. } => assert!(scale > 1.0, "scale = {scale}"),
             other => panic!("expected Pinch, got {other:?}"),
@@ -1624,89 +1602,140 @@ mod two_finger_tests {
     }
 
     #[test]
-    fn parallel_motion_is_pan_not_pinch() {
-        let mut state =
-            TwoFingerState::default().touch_down(1, 100.0, 100.0).touch_down(2, 200.0, 100.0);
-        state = state.touch_move(1, 120.0, 100.0).touch_move(2, 220.0, 100.0);
-        assert_eq!(state.fold(), FoldedInput::AsSinglePoint { x: 170.0, y: 100.0 });
-    }
-
-    #[test]
     fn mode_latches_after_commit() {
         let mut state =
-            TwoFingerState::default().touch_down(1, 100.0, 100.0).touch_down(2, 200.0, 100.0);
-        state = state.touch_move(1, 140.0, 100.0).touch_move(2, 160.0, 100.0);
+            TwoFingerState::default().add_touch(1, 100.0, 100.0).add_touch(2, 200.0, 100.0);
+        state = state.move_touch(1, 140.0, 100.0).move_touch(2, 160.0, 100.0);
         assert!(matches!(state.fold(), FoldedInput::Pinch { .. }));
 
-        state = state.touch_move(1, 140.0, 100.0).touch_move(2, 140.0, 100.0);
+        state = state.move_touch(1, 140.0, 100.0).move_touch(2, 140.0, 100.0);
         assert!(matches!(state.fold(), FoldedInput::Pinch { .. }));
-    }
-
-    #[test]
-    fn third_finger_is_ignored() {
-        let state = TwoFingerState::default()
-            .touch_down(1, 100.0, 100.0)
-            .touch_down(2, 200.0, 100.0)
-            .touch_down(3, 300.0, 100.0);
-        assert_eq!(state.primary_id(), Some(1));
-        assert_eq!(state.secondary_id(), Some(2));
-    }
-
-    #[test]
-    fn primary_release_promotes_secondary() {
-        let mut state =
-            TwoFingerState::default().touch_down(1, 100.0, 100.0).touch_down(2, 200.0, 100.0);
-        state = state.touch_move(1, 140.0, 100.0).touch_move(2, 160.0, 100.0);
-        assert!(matches!(state.fold(), FoldedInput::Pinch { .. }));
-
-        let (next, ended_mode) = state.touch_up(1);
-        state = next;
-        assert_eq!(ended_mode, TwoFingerMode::Pinch);
-        assert_eq!(state.primary_id(), Some(2));
-        assert!(state.secondary_id().is_none());
-        assert_eq!(state.fold(), FoldedInput::None);
     }
 
     #[test]
     fn new_session_reclassifies_independently() {
         let mut state =
-            TwoFingerState::default().touch_down(1, 100.0, 100.0).touch_down(2, 200.0, 100.0);
-        state = state.touch_move(1, 140.0, 100.0).touch_move(2, 160.0, 100.0);
+            TwoFingerState::default().add_touch(1, 100.0, 100.0).add_touch(2, 200.0, 100.0);
+        state = state.move_touch(1, 140.0, 100.0).move_touch(2, 160.0, 100.0);
         assert!(matches!(state.fold(), FoldedInput::Pinch { .. }));
 
-        state = state.touch_up(2).0.touch_up(1).0;
-        state = state.touch_down(3, 0.0, 0.0).touch_down(4, 50.0, 0.0);
-        state = state.touch_move(3, 0.0, 50.0).touch_move(4, 50.0, 50.0);
+        state = state.remove_touch(2).0.remove_touch(1).0;
+        state = state.add_touch(3, 0.0, 0.0).add_touch(4, 50.0, 0.0);
+        state = state.move_touch(3, 0.0, 50.0).move_touch(4, 50.0, 50.0);
         assert_eq!(state.fold(), FoldedInput::AsSinglePoint { x: 25.0, y: 50.0 });
     }
 }
 
 #[cfg(test)]
-mod touch_tracker_tests {
+mod pointer_tests {
     use alloc::vec::Vec;
 
     use super::*;
+    use crate::Rng;
 
     fn run(events: &[(EventType, u32, f64, f64, f64)], th: &Thresholds) -> Vec<Option<Gesture>> {
-        let mut tracker = TouchTracker::default();
+        let mut pointer = Pointer::default();
         events
             .iter()
-            .map(|(event_type, id, x, y, time)| tracker.handle(event_type, *id, *x, *y, *time, th))
+            .map(|(event_type, id, x, y, time)| pointer.track(event_type, *id, *x, *y, *time, th))
             .collect()
     }
 
+    fn random_press_events(
+        rng: &mut Rng,
+        pointers: u32,
+        steps: usize,
+    ) -> (Vec<(EventType, u32, f64, f64, f64)>, Vec<u32>) {
+        let mut events = Vec::new();
+        let mut down: Vec<u32> = Vec::new();
+        let mut time = 0.0;
+        for _ in 0..steps {
+            time += rng.below(400) as f64;
+            let free: Vec<u32> = (1..=pointers).filter(|id| !down.contains(id)).collect();
+            let choice = rng.below(10);
+            let (event_type, id) = if down.is_empty() || (choice < 3 && !free.is_empty()) {
+                (EventType::PointerDown, free[rng.below(free.len())])
+            } else if choice < 7 {
+                (EventType::PointerMove, down[rng.below(down.len())])
+            } else if choice < 9 {
+                (EventType::PointerUp, down[rng.below(down.len())])
+            } else {
+                (EventType::PointerCancel, down[rng.below(down.len())])
+            };
+            match event_type {
+                EventType::PointerDown => down.push(id),
+                EventType::PointerUp | EventType::PointerCancel => down.retain(|held| *held != id),
+                _ => {}
+            }
+            events.push((event_type, id, rng.below(300) as f64, rng.below(300) as f64, time));
+        }
+        (events, down)
+    }
+
     #[test]
-    fn single_finger_behaves_like_before() {
-        let th = Thresholds::MOUSE;
-        let got = run(
-            &[
-                (EventType::PointerDown, 1, 100.0, 100.0, 0.0),
-                (EventType::PointerMove, 1, 200.0, 100.0, 50.0),
-                (EventType::PointerUp, 1, 260.0, 100.0, 100.0),
-            ],
-            &th,
-        );
-        assert_eq!(got, [None, None, Some(Gesture::SwipeRight)]);
+    fn a_single_pointer_never_breaks_the_drag_grammar() {
+        for seed in 0..3000 {
+            let mut rng = Rng::new(seed);
+            let th = if rng.chance(50) { Thresholds::MOUSE } else { Thresholds::TOUCH };
+            let (events, _) = random_press_events(&mut rng, 1, 40);
+            let mut dragging = false;
+            for (index, got) in run(&events, &th).into_iter().enumerate() {
+                let Some(gesture) = got else { continue };
+                match gesture {
+                    Gesture::Drag { .. } => dragging = true,
+                    Gesture::DragEnd | Gesture::DragCancel => {
+                        assert!(dragging, "seed {seed} event {index}: {gesture:?} without a drag");
+                        dragging = false;
+                    }
+                    other => {
+                        assert!(!dragging, "seed {seed} event {index}: {other:?} inside a drag");
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn any_pointer_traffic_ends_idle_once_every_pointer_is_released() {
+        for seed in 0..5000 {
+            let mut rng = Rng::new(seed);
+            let th = if rng.chance(50) { Thresholds::MOUSE } else { Thresholds::TOUCH };
+            let (mut events, down) = random_press_events(&mut rng, 3, 30);
+            let mut time = events.last().map_or(0.0, |event| event.4);
+            for id in down {
+                time += 10.0;
+                events.push((EventType::PointerUp, id, 5.0, 5.0, time));
+            }
+            time += 5000.0;
+            events.push((EventType::PointerDown, 1, 100.0, 100.0, time));
+            events.push((EventType::PointerUp, 1, 100.0, 100.0, time + 50.0));
+            assert_eq!(run(&events, &th).last(), Some(&Some(Gesture::Tap)), "seed {seed}");
+        }
+    }
+
+    #[test]
+    fn unpaired_pointer_events_never_panic() {
+        let kinds = [
+            EventType::PointerDown,
+            EventType::PointerMove,
+            EventType::PointerUp,
+            EventType::PointerCancel,
+        ];
+        for seed in 0..3000 {
+            let mut rng = Rng::new(seed);
+            let events: Vec<_> = (0..40)
+                .map(|step| {
+                    (
+                        kinds[rng.below(kinds.len())],
+                        rng.below(4) as u32,
+                        rng.below(300) as f64,
+                        rng.below(300) as f64,
+                        step as f64 * rng.below(200) as f64,
+                    )
+                })
+                .collect();
+            let _ = run(&events, &Thresholds::TOUCH);
+        }
     }
 
     #[test]
@@ -1746,6 +1775,26 @@ mod touch_tracker_tests {
             &th,
         );
         assert_eq!(got[4], Some(Gesture::PinchEnd));
+    }
+
+    #[test]
+    fn a_second_two_finger_pan_behaves_like_the_first() {
+        let th = Thresholds::MOUSE;
+        let pan = |offset: f64| {
+            [
+                (EventType::PointerDown, 1, 0.0, 0.0, offset),
+                (EventType::PointerDown, 2, 100.0, 0.0, offset),
+                (EventType::PointerMove, 1, 30.0, 0.0, offset + 50.0),
+                (EventType::PointerMove, 2, 130.0, 0.0, offset + 60.0),
+                (EventType::PointerMove, 1, 60.0, 0.0, offset + 120.0),
+                (EventType::PointerUp, 2, 130.0, 0.0, offset + 200.0),
+                (EventType::PointerUp, 1, 60.0, 0.0, offset + 210.0),
+            ]
+        };
+        let events = [pan(0.0), pan(1000.0)].concat();
+        let got = run(&events, &th);
+        assert_eq!(got[0..7], got[7..14]);
+        assert_eq!(got[4], Some(Gesture::Drag { x: 95.0, y: 0.0 }));
     }
 
     #[test]
@@ -1807,7 +1856,6 @@ mod touch_tracker_tests {
         assert_eq!(got[6], Some(Gesture::Pinch { scale: 0.2, center_x: 150.0, center_y: 100.0 }));
     }
 
-    ///
     #[test]
     fn duplicate_pointer_down_does_not_reset_primary_state() {
         let th = Thresholds::MOUSE;
@@ -1855,11 +1903,11 @@ pub mod dom {
         primitive::{u8, u32, usize},
     };
 
-    use super::{get_u8, get_u32, put_u32};
+    use super::{Input, Output};
 
-    #[derive(Debug, Clone, PartialEq)]
+    #[derive(Debug, Clone, Copy, PartialEq)]
     pub enum Tag {
-        Article,
+        Article = 1,
         Body,
         Button,
         Dd,
@@ -1882,6 +1930,7 @@ pub mod dom {
         Modal, // <dialog id="*modal*">
         Nav,
         Ol,
+        Option,
         Output,
         P,
         Section,
@@ -1897,7 +1946,7 @@ pub mod dom {
         Toast,
         Tr,
         Ul,
-        Other,
+        Other = 0,
     }
 
     impl Tag {
@@ -1905,59 +1954,19 @@ pub mod dom {
         ///
         /// ```
         /// # use app::js_client::dom::Tag;
-        /// assert_eq!(Tag::Article.encode_u8(), 1);
-        /// assert_eq!(Tag::Other.encode_u8(), 0);
+        /// assert_eq!(Tag::Article.as_u8(), 1);
+        /// assert_eq!(Tag::Other.as_u8(), 0);
         /// ```
-        pub fn encode_u8(&self) -> u8 {
-            match self {
-                Self::Article => 1,
-                Self::Body => 2,
-                Self::Button => 3,
-                Self::Dd => 4,
-                Self::Div => 5,
-                Self::Dl => 6,
-                Self::Drawer => 7,
-                Self::Dt => 8,
-                Self::Fieldset => 9,
-                Self::Footer => 10,
-                Self::Form => 11,
-                Self::H1 => 12,
-                Self::H2 => 13,
-                Self::H3 => 14,
-                Self::Header => 15,
-                Self::Hgroup => 16,
-                Self::Input => 17,
-                Self::Label => 18,
-                Self::Li => 19,
-                Self::Main => 20,
-                Self::Modal => 21,
-                Self::Nav => 22,
-                Self::Ol => 23,
-                Self::Output => 24,
-                Self::P => 25,
-                Self::Section => 26,
-                Self::Select => 27,
-                Self::Span => 28,
-                Self::Strong => 29,
-                Self::Table => 30,
-                Self::Tbody => 31,
-                Self::Td => 32,
-                Self::Textarea => 33,
-                Self::Th => 34,
-                Self::Thead => 35,
-                Self::Toast => 36,
-                Self::Tr => 37,
-                Self::Ul => 38,
-                Self::Other => 0,
-            }
+        pub fn as_u8(&self) -> u8 {
+            *self as u8
         }
 
         /// ```
         /// # use app::js_client::dom::Tag;
-        /// assert_eq!(Tag::decode_u8(1), Tag::Article);
-        /// assert_eq!(Tag::decode_u8(200), Tag::Other);
+        /// assert_eq!(Tag::from_u8(1), Tag::Article);
+        /// assert_eq!(Tag::from_u8(200), Tag::Other);
         /// ```
-        pub fn decode_u8(value: u8) -> Self {
+        pub fn from_u8(value: u8) -> Self {
             match value {
                 1 => Self::Article,
                 2 => Self::Body,
@@ -1982,21 +1991,22 @@ pub mod dom {
                 21 => Self::Modal,
                 22 => Self::Nav,
                 23 => Self::Ol,
-                24 => Self::Output,
-                25 => Self::P,
-                26 => Self::Section,
-                27 => Self::Select,
-                28 => Self::Span,
-                29 => Self::Strong,
-                30 => Self::Table,
-                31 => Self::Tbody,
-                32 => Self::Td,
-                33 => Self::Textarea,
-                34 => Self::Th,
-                35 => Self::Thead,
-                36 => Self::Toast,
-                37 => Self::Tr,
-                38 => Self::Ul,
+                24 => Self::Option,
+                25 => Self::Output,
+                26 => Self::P,
+                27 => Self::Section,
+                28 => Self::Select,
+                29 => Self::Span,
+                30 => Self::Strong,
+                31 => Self::Table,
+                32 => Self::Tbody,
+                33 => Self::Td,
+                34 => Self::Textarea,
+                35 => Self::Th,
+                36 => Self::Thead,
+                37 => Self::Toast,
+                38 => Self::Tr,
+                39 => Self::Ul,
                 _ => Self::Other,
             }
         }
@@ -2014,23 +2024,27 @@ pub mod dom {
 
     impl Id {
         pub fn new(segs: &[(Tag, Option<u32>)]) -> Self {
-            Self(segs.iter().map(|(tag, n)| Segment { tag: tag.clone(), n: *n }).collect())
+            Self(segs.iter().map(|(tag, n)| Segment { tag: *tag, n: *n }).collect())
         }
+    }
 
-        pub fn encode(&self, frame: &mut Vec<u8>) {
-            frame.push(self.0.len() as u8);
+    impl Output for Id {
+        fn encode(&self, output: &mut Vec<u8>) {
+            output.push(self.0.len() as u8);
             for segment in &self.0 {
-                frame.push(segment.tag.encode_u8());
-                put_u32(frame, segment.n.unwrap_or(u32::MAX));
+                output.push(segment.tag.as_u8());
+                segment.n.unwrap_or(u32::MAX).encode(output);
             }
         }
+    }
 
-        pub fn decode(input: &mut &[u8]) -> Option<Self> {
-            let count = get_u8(input)? as usize;
+    impl Input<'_> for Id {
+        fn decode(input: &mut &[u8]) -> Option<Self> {
+            let count = u8::decode(input)? as usize;
             let mut segments = Vec::with_capacity(count);
             for _ in 0..count {
-                let tag = Tag::decode_u8(get_u8(input)?);
-                let number = get_u32(input)?;
+                let tag = Tag::from_u8(Input::decode(input)?);
+                let number = u32::decode(input)?;
                 segments
                     .push(Segment { tag, n: if number == u32::MAX { None } else { Some(number) } });
             }
@@ -2040,11 +2054,136 @@ pub mod dom {
 }
 
 #[cfg(test)]
+mod decimal_tests {
+    use alloc::{format, string::String};
+
+    use super::*;
+    use crate::Rng;
+
+    struct Sample(f64);
+
+    impl Decimal for Sample {
+        fn from_f64(value: f64) -> Self {
+            Self(value)
+        }
+
+        fn to_f64(&self) -> f64 {
+            self.0
+        }
+    }
+
+    fn number(source: &str) -> Option<f64> {
+        parse::<Sample>(source.as_bytes()).map(|Sample(value)| value)
+    }
+
+    #[test]
+    fn random_decimal_text_agrees_with_std_and_survives_a_round_trip() {
+        for seed in 0..2000 {
+            let mut rng = Rng::new(seed);
+            let digits = |rng: &mut Rng, count: usize| -> String {
+                (0..count).map(|_| char::from(b'0' + rng.below(10) as u8)).collect()
+            };
+            let whole_digits = rng.below(5);
+            let whole = digits(&mut rng, whole_digits);
+            let dot = rng.chance(70);
+            let fraction_digits = rng.below(7);
+            let fraction = if dot { digits(&mut rng, fraction_digits) } else { String::new() };
+            let source = format!("{whole}{}{fraction}", if dot { "." } else { "" });
+            if whole.is_empty() && fraction.is_empty() {
+                assert_eq!(number(&source), None, "{source:?}");
+                continue;
+            }
+            let expected = format!(
+                "{}.{}",
+                if whole.is_empty() { "0" } else { &whole },
+                if fraction.is_empty() { "0" } else { &fraction }
+            )
+            .parse::<f64>()
+            .unwrap();
+            assert_eq!(number(&source), Some(expected), "{source:?}");
+
+            let signed =
+                if rng.chance(50) { -expected } else { expected } + rng.below(1000) as f64 / 7000.0;
+            let written = stringify(&Sample(signed));
+            let parsed = written.trim_start_matches('-').parse::<f64>().unwrap();
+            assert!((parsed - signed.abs()).abs() <= 0.0005 + 1e-9, "{signed} -> {written}");
+            assert_eq!(
+                written.starts_with('-'),
+                signed < 0.0 && parsed != 0.0,
+                "{signed} -> {written}"
+            );
+            assert_eq!(number(written.trim_start_matches('-')), Some(parsed), "{written}");
+            assert_eq!(stringify(&Sample(if signed < 0.0 { -parsed } else { parsed })), written);
+        }
+    }
+
+    #[test]
+    fn decode_rejects_non_decimal_text() {
+        for source in ["", ".", "-1", "+1", "1e3", "1.2.3", "abc", " 1", "1 ", "NaN", "inf"] {
+            assert_eq!(number(source), None, "{source:?}");
+        }
+    }
+
+    #[test]
+    fn decode_approximates_beyond_f64_precision() {
+        assert_eq!(number("9007199254740993"), Some(9007199254740992.0));
+        let tiny = number("0.000000000000000000000001").unwrap();
+        assert!((tiny - 1e-24).abs() < 1e-36);
+    }
+
+    #[test]
+    fn decode_advances_the_cursor_only_on_success() {
+        let mut rest: &[u8] = b"1.75rem";
+        assert_eq!(Sample::decode(&mut rest).map(|Sample(value)| value), Some(1.75));
+        assert_eq!(rest, b"rem");
+        let mut rest: &[u8] = b"1.2.3";
+        assert_eq!(Sample::decode(&mut rest).map(|Sample(value)| value), Some(1.2));
+        assert_eq!(rest, b".3");
+        let mut rest: &[u8] = b"rem";
+        assert!(Sample::decode(&mut rest).is_none());
+        assert_eq!(rest, b"rem");
+    }
+
+    struct Head<'a>(&'a [u8]);
+
+    impl<'a> Input<'a> for Head<'a> {
+        fn decode(input: &mut &'a [u8]) -> Option<Self> {
+            let count = u8::decode(input)? as usize;
+            Some(Self(take(input, count)?))
+        }
+    }
+
+    #[test]
+    fn a_borrowing_type_outlives_the_cursor() {
+        let frame: &[u8] = b"\x03abcrest";
+        let head = {
+            let mut rest = frame;
+            let head = Head::decode(&mut rest).unwrap();
+            assert_eq!(rest, b"rest");
+            head
+        };
+        assert_eq!(head.0, b"abc");
+        assert_eq!(parse::<Head>(b"\x02ab").map(|head| head.0), Some(&b"ab"[..]));
+        assert_eq!(parse::<Head>(b"\x02abc").map(|head| head.0), None);
+        assert!(Head::decode(&mut &b"\x05ab"[..]).is_none());
+    }
+
+    #[test]
+    fn encode_rounds_to_three_fraction_digits() {
+        assert_eq!(stringify(&Sample(1.23456)), "1.235");
+        assert_eq!(stringify(&Sample(0.0004)), "0");
+        assert_eq!(stringify(&Sample(f64::NAN)), "0");
+        assert_eq!(stringify(&Sample(f64::INFINITY)), "0");
+    }
+}
+
+#[cfg(test)]
 mod wire_tests {
     use alloc::{format, string::String, vec, vec::Vec};
 
     use super::*;
     use crate::{
+        Rng,
         arena::{ArenaError, PanicError},
         event::EventError,
     };
@@ -2158,10 +2297,10 @@ mod wire_tests {
         let js = js_array("KEY_NAMES");
         assert_eq!(js[0], "");
         for (i, name) in js.iter().enumerate().skip(1) {
-            assert_eq!(&key_string(KeyName::decode_u8(i as u8)), name, "index {i}");
+            assert_eq!(&key_string(KeyName::from_u8(i as u8)), name, "index {i}");
         }
-        assert_eq!(KeyName::decode_u8(js.len() as u8), KeyName::Other);
-        assert_eq!(KeyName::decode_u8(0), KeyName::Other);
+        assert_eq!(KeyName::from_u8(js.len() as u8), KeyName::Other);
+        assert_eq!(KeyName::from_u8(0), KeyName::Other);
     }
 
     #[test]
@@ -2169,11 +2308,11 @@ mod wire_tests {
         let js = js_array("EVENT_TYPES");
         assert_eq!(js[0], "");
         for (i, name) in js.iter().enumerate().skip(1) {
-            let event_type = EventType::decode_u8(i as u8);
+            let event_type = EventType::from_u8(i as u8);
             assert_eq!(&format!("{event_type:?}").to_lowercase(), name, "index {i}");
         }
-        assert_eq!(EventType::decode_u8(js.len() as u8), EventType::Other);
-        assert_eq!(EventType::decode_u8(0), EventType::Other);
+        assert_eq!(EventType::from_u8(js.len() as u8), EventType::Other);
+        assert_eq!(EventType::from_u8(0), EventType::Other);
     }
 
     #[test]
@@ -2181,22 +2320,34 @@ mod wire_tests {
         let js = js_array("TAGS");
         assert_eq!(js[0], "");
         for (i, name) in js.iter().enumerate().skip(1) {
-            let tag = dom::Tag::decode_u8(i as u8);
+            let tag = dom::Tag::from_u8(i as u8);
             assert_eq!(&format!("{tag:?}").to_lowercase(), name, "index {i}");
-            assert_eq!(tag.encode_u8() as usize, i);
+            assert_eq!(tag.as_u8() as usize, i);
         }
-        assert_eq!(dom::Tag::decode_u8(js.len() as u8), dom::Tag::Other);
-        assert_eq!(dom::Tag::Other.encode_u8(), 0);
+        assert_eq!(dom::Tag::from_u8(js.len() as u8), dom::Tag::Other);
+        assert_eq!(dom::Tag::Other.as_u8(), 0);
     }
 
     #[test]
     fn visibility_states_match_init_js() {
         let js = js_array("VISIBILITY_STATES");
         assert_eq!(js, ["", "hidden", "visible"]);
-        assert_eq!(VisibilityState::decode_u8(1), VisibilityState::Hidden);
-        assert_eq!(VisibilityState::decode_u8(2), VisibilityState::Visible);
-        assert_eq!(VisibilityState::decode_u8(0), VisibilityState::Other);
-        assert_eq!(VisibilityState::decode_u8(3), VisibilityState::Other);
+        assert_eq!(VisibilityState::from_u8(1), VisibilityState::Hidden);
+        assert_eq!(VisibilityState::from_u8(2), VisibilityState::Visible);
+        assert_eq!(VisibilityState::from_u8(0), VisibilityState::Other);
+        assert_eq!(VisibilityState::from_u8(3), VisibilityState::Other);
+    }
+
+    #[test]
+    fn fullscreen_events_match_init_js() {
+        let js = js_array("FULLSCREEN_EVENTS");
+        assert_eq!(js[0], "");
+        for (i, name) in js.iter().enumerate().skip(1) {
+            let event = FullscreenEvent::from_u8(i as u8);
+            assert_eq!(&format!("fullscreen{event:?}").to_lowercase(), name, "index {i}");
+        }
+        assert_eq!(FullscreenEvent::from_u8(js.len() as u8), FullscreenEvent::Other);
+        assert_eq!(FullscreenEvent::from_u8(0), FullscreenEvent::Other);
     }
 
     #[test]
@@ -2212,6 +2363,9 @@ mod wire_tests {
             (
                 "FN_NAMES",
                 vec![
+                    (FnName::CopyText as u16, format!("{:?}", FnName::CopyText)),
+                    (FnName::EnterFullscreen as u16, format!("{:?}", FnName::EnterFullscreen)),
+                    (FnName::ExitFullscreen as u16, format!("{:?}", FnName::ExitFullscreen)),
                     (FnName::HideToast as u16, format!("{:?}", FnName::HideToast)),
                     (FnName::ShowToast as u16, format!("{:?}", FnName::ShowToast)),
                 ],
@@ -2235,6 +2389,7 @@ mod wire_tests {
                 "ATTRIBUTES",
                 vec![
                     (Attribute::AriaCurrent as u16, "aria-current"),
+                    (Attribute::Checked as u16, "checked"),
                     (Attribute::DataSurround as u16, "data-surround"),
                     (Attribute::Disabled as u16, "disabled"),
                     (Attribute::Hidden as u16, "hidden"),
@@ -2315,14 +2470,16 @@ mod wire_tests {
             assert_eq!(operation as usize, number);
             assert!(INIT_JS.contains(&format!("case {number:>2}:")), "case {number} missing");
         }
-        assert_eq!((OPERATION_ERROR, OPERATION_FETCH), (13, 14));
+        assert_eq!((OPERATION_ERROR, OPERATION_FETCH, OPERATION_RELOAD), (13, 14, 15));
         assert!(INIT_JS.contains(&format!("operation === {OPERATION_FETCH}")));
         assert!(INIT_JS.contains(&format!("operation === {OPERATION_ERROR}")));
+        assert!(INIT_JS.contains(&format!("operation === {OPERATION_RELOAD}")));
         assert_eq!(js_array("METHODS"), ["", "DELETE", "GET", "POST", "PUT"]);
-        assert_eq!(
-            [Method::Delete, Method::Get, Method::Post, Method::Put].map(Method::encode_u8),
-            [1, 2, 3, 4]
-        );
+        let mut methods = Vec::new();
+        for method in [Method::Delete, Method::Get, Method::Post, Method::Put] {
+            method.encode(&mut methods);
+        }
+        assert_eq!(methods, [1, 2, 3, 4]);
     }
 
     #[test]
@@ -2372,46 +2529,8 @@ mod wire_tests {
     }
 
     #[test]
-    fn primitives_round_trip() {
-        let mut frame = Vec::new();
-        frame.push(7);
-        put_u16(&mut frame, 0x0102);
-        put_u32(&mut frame, 0xDEAD_BEEF);
-        put_i32(&mut frame, -2);
-        put_f32(&mut frame, 1.5);
-        frame.extend_from_slice(&2.5f64.to_le_bytes());
-        put_str(&mut frame, "日本語");
-        assert_eq!(&frame[1..3], [0x02, 0x01]);
-        assert_eq!(&frame[7..11], (-2i32).to_le_bytes());
-
-        let mut input = &frame[..];
-        assert_eq!(get_u8(&mut input), Some(7));
-        input = &input[2..];
-        assert_eq!(get_u32(&mut input), Some(0xDEAD_BEEF));
-        input = &input[4..];
-        assert_eq!(get_f32(&mut input), Some(1.5));
-        assert_eq!(get_f64(&mut input), Some(2.5));
-        assert_eq!(get_string(&mut input).as_deref(), Some("日本語"));
-        assert!(input.is_empty());
-        assert_eq!(get_u8(&mut input), None);
-    }
-
-    #[test]
-    fn bytes_round_trip_and_reject_short_input() {
-        let mut frame = Vec::new();
-        put_bytes(&mut frame, &[1, 2, 3]);
-        put_u16(&mut frame, 0x0102);
-        let mut input = &frame[..];
-        assert_eq!(get_bytes(&mut input), Some(&[1, 2, 3][..]));
-        assert_eq!(get_u16(&mut input), Some(0x0102));
-        assert!(input.is_empty());
-        assert_eq!(get_bytes(&mut &[4, 0, 0, 0, 1][..]), None);
-        assert_eq!(get_u16(&mut &[1][..]), None);
-    }
-
-    #[test]
     fn url_search_params_split_decode_and_keep_order() {
-        let pairs = from_url_search_params;
+        let pairs = parse_url_search_params;
         let owned = |list: &[(&str, &str)]| {
             list.iter()
                 .map(|(key, value)| (String::from(*key), String::from(*value)))
@@ -2431,49 +2550,74 @@ mod wire_tests {
     }
 
     #[test]
-    fn get_functions_reject_short_or_invalid_input() {
-        assert_eq!(get_u32(&mut &[1, 2, 3][..]), None);
-        assert_eq!(get_f32(&mut &[0; 3][..]), None);
-        assert_eq!(get_f64(&mut &[0; 7][..]), None);
+    fn random_frames_round_trip_and_every_proper_prefix_is_rejected() {
+        type Fields = (u8, u16, u32, i32, u32, u64, String, Vec<u8>, dom::Id);
+        fn decode_all(input: &mut &[u8]) -> Option<Fields> {
+            Some((
+                u8::decode(input)?,
+                u16::decode(input)?,
+                u32::decode(input)?,
+                i32::decode(input)?,
+                f32::decode(input)?.to_bits(),
+                f64::decode(input)?.to_bits(),
+                String::decode(input)?,
+                <Vec<u8>>::decode(input)?,
+                dom::Id::decode(input)?,
+            ))
+        }
+        for seed in 0..500 {
+            let mut rng = Rng::new(seed);
+            let text = rng.string();
+            let length = rng.below(30);
+            let bytes = rng.bytes(length);
+            let id = rng.id();
+            let fields: Fields = (
+                rng.next_u64() as u8,
+                rng.next_u64() as u16,
+                rng.next_u64() as u32,
+                rng.next_u64() as i32,
+                rng.next_u64() as u32,
+                rng.next_u64(),
+                text,
+                bytes,
+                id,
+            );
 
-        let mut too_long = Vec::new();
-        put_u32(&mut too_long, 5);
-        too_long.extend_from_slice(b"abcd");
-        assert_eq!(get_string(&mut &too_long[..]), None);
-
-        let mut invalid = Vec::new();
-        put_u32(&mut invalid, 2);
-        invalid.extend_from_slice(&[0xFF, 0xFE]);
-        assert_eq!(get_string(&mut &invalid[..]), None);
-    }
-
-    #[test]
-    fn dom_id_round_trip() {
-        let ids = [
-            dom::Id::new(&[]),
-            dom::Id::new(&[(dom::Tag::Body, None)]),
-            header_button_3(),
-            dom::Id::new(&[
-                (dom::Tag::Main, None),
-                (dom::Tag::Section, Some(2)),
-                (dom::Tag::Fieldset, Some(u32::MAX - 1)),
-            ]),
-            dom::Id::new(&[(dom::Tag::Other, Some(0))]),
-        ];
-        for id in ids {
             let mut frame = Vec::new();
-            id.encode(&mut frame);
+            fields.0.encode(&mut frame);
+            fields.1.encode(&mut frame);
+            fields.2.encode(&mut frame);
+            fields.3.encode(&mut frame);
+            f32::from_bits(fields.4).encode(&mut frame);
+            f64::from_bits(fields.5).encode(&mut frame);
+            str::encode(&fields.6, &mut frame);
+            <[u8]>::encode(&fields.7, &mut frame);
+            fields.8.encode(&mut frame);
+
             let mut input = &frame[..];
-            assert_eq!(dom::Id::decode(&mut input), Some(id.clone()));
-            assert!(input.is_empty());
+            assert_eq!(decode_all(&mut input), Some(fields), "seed {seed}");
+            assert!(input.is_empty(), "seed {seed}");
             for cut in 0..frame.len() {
-                assert_eq!(dom::Id::decode(&mut &frame[..cut]), None, "cut {cut}");
+                assert_eq!(decode_all(&mut &frame[..cut]), None, "seed {seed} cut {cut}");
             }
         }
     }
 
     #[test]
-    fn encode_command_layouts() {
+    fn strings_reject_invalid_utf8_and_overlong_lengths() {
+        let mut invalid = Vec::new();
+        2u32.encode(&mut invalid);
+        invalid.extend_from_slice(&[0xFF, 0xFE]);
+        assert_eq!(String::decode(&mut &invalid[..]), None);
+
+        let mut too_long = Vec::new();
+        5u32.encode(&mut too_long);
+        too_long.extend_from_slice(b"abcd");
+        assert_eq!(String::decode(&mut &too_long[..]), None);
+    }
+
+    #[test]
+    fn command_layouts() {
         let id = header_button_3();
         let with_id = |operation: u8, tail: &[u8]| {
             let mut frame = vec![operation];
@@ -2483,7 +2627,7 @@ mod wire_tests {
         };
         let encode = |command: Command| {
             let mut frame = Vec::new();
-            encode_command(&mut frame, &command);
+            command.encode(&mut frame);
             frame
         };
 
@@ -2497,7 +2641,7 @@ mod wire_tests {
                 attribute: Attribute::Hidden,
                 value:     String::from("x"),
             }),
-            with_id(3, &[4, 0, 1, 0, 0, 0, b'x'])
+            with_id(3, &[5, 0, 1, 0, 0, 0, b'x'])
         );
         assert_eq!(
             encode(Command::AddClass { id: id.clone(), value: ClassName::Show }),
@@ -2561,15 +2705,15 @@ mod wire_tests {
         assert_eq!(encode(Command::Focus { id: id.clone() }), with_id(11, &[]));
         assert_eq!(
             encode(Command::JsFn { id: id.clone(), name: FnName::ShowToast }),
-            with_id(12, &[2, 0])
+            with_id(12, &[5, 0])
         );
         assert_eq!(
             encode(Command::Error { error: Error::Event(EventError::Decode) }),
-            [13, 0, 2, 2, 0, 1, 0, 0, 0, 0, 0]
+            [13, 2, 2, 0, 1, 0, 0, 0, 0, 0]
         );
         assert_eq!(
             encode(Command::Error { error: Error::Arena(ArenaError::CommandOverflow) }),
-            [13, 0, 2, 1, 0, 1, 0, 0, 0, 0, 0]
+            [13, 2, 1, 0, 1, 0, 0, 0, 0, 0]
         );
         let panic = encode(Command::Error {
             error: Error::Panic(PanicError {
@@ -2577,7 +2721,8 @@ mod wire_tests {
                 message:  String::from("boom"),
             }),
         });
-        assert_eq!(&panic[..7], [13, 1, 2, 4, 0, 1, 0]);
+        assert_eq!(&panic[..6], [13, 2, 3, 0, 1, 0]);
+        assert_eq!(encode(Command::Reload), [15]);
         assert_eq!(
             encode(Command::Fetch {
                 request: 258,
@@ -2588,7 +2733,7 @@ mod wire_tests {
             [14, 2, 1, 0, 0, 3, 2, 0, 0, 0, b'/', b'a', 2, 0, 0, 0, 9, 8]
         );
         assert_eq!(
-            &panic[7..],
+            &panic[6..],
             [12, 0, 0, 0, b'a', b'.', b'r', b's', b':', b'1', b':', b' ', b'b', b'o', b'o', b'm']
         );
     }

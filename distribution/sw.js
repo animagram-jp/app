@@ -1,31 +1,63 @@
 const VERSION = "{version}";
-const PRECACHE = [
-    "./",
-    "./init.js?v={version}",
-    "./manifest.json",
-    "./worker.js?v={version}",
-    "./app/app_bg.wasm?v={version}",
-    "./app/app.js?v={version}",
-    "./css/library/reset.css?v={version}",
-    "./css/library/base.css?v={version}",
-    "./css/library/data_style.css?v={version}",
-    "./css/library/data_size.css?v={version}",
-    "./css/library/data_sign.css?v={version}",
-    "./css/library/data_group.css?v={version}",
-    "./css/library/input.css?v={version}",
-    "./css/library/button.css?v={version}",
-    "./css/library/radio.css?v={version}",
-    "./css/library/heading.css?v={version}",
-    "./css/library/popup.css?v={version}",
-    "./css/library/table.css?v={version}",
-    "./css/library/list.css?v={version}",
-    "./css/library/step.css?v={version}",
-    "./css/library/toast.css?v={version}",
-    "./css/style.css?v={version}",
-    "./font/IBMPlexSans-Regular.woff2?v={version}",
-    "./font/IBMPlexSans-SemiBold.woff2?v={version}",
-    "./image/animagram.png?v={version}",
-];
+const SITES = {
+    "./calendar/": [
+        "./calendar/",
+        "./calendar/init.js?v={version}",
+        "./calendar/worker.js?v={version}",
+        "./calendar/app/app_bg.wasm?v={version}",
+        "./calendar/app/app.js?v={version}",
+        "./calendar/css/library/reset.css?v={version}",
+        "./calendar/css/library/base.css?v={version}",
+        "./calendar/css/library/data_style.css?v={version}",
+        "./calendar/css/library/data_size.css?v={version}",
+        "./calendar/css/library/data_sign.css?v={version}",
+        "./calendar/css/library/data_group.css?v={version}",
+        "./calendar/css/library/button.css?v={version}",
+        "./calendar/css/library/heading.css?v={version}",
+        "./calendar/css/library/table.css?v={version}",
+        "./calendar/css/library/popup.css?v={version}",
+        "./calendar/css/library/slider.css?v={version}",
+        "./calendar/css/style.css?v={version}",
+        "./calendar/data/calendar.json",
+    ],
+    "./": [
+        "./",
+        "./init.js?v={version}",
+        "./manifest.json",
+        "./worker.js?v={version}",
+        "./app/app_bg.wasm?v={version}",
+        "./app/app.js?v={version}",
+        "./css/library/reset.css?v={version}",
+        "./css/library/base.css?v={version}",
+        "./css/library/data_style.css?v={version}",
+        "./css/library/data_size.css?v={version}",
+        "./css/library/data_sign.css?v={version}",
+        "./css/library/data_group.css?v={version}",
+        "./css/library/input.css?v={version}",
+        "./css/library/button.css?v={version}",
+        "./css/library/radio.css?v={version}",
+        "./css/library/heading.css?v={version}",
+        "./css/library/popup.css?v={version}",
+        "./css/library/table.css?v={version}",
+        "./css/library/list.css?v={version}",
+        "./css/library/step.css?v={version}",
+        "./css/library/toast.css?v={version}",
+        "./css/style.css?v={version}",
+        "./font/IBMPlexSans-Regular.woff2?v={version}",
+        "./font/IBMPlexSans-SemiBold.woff2?v={version}",
+        "./image/animagram.png?v={version}",
+    ],
+};
+
+const PRECACHE = Object.values(SITES).flat();
+const PRECACHE_PATHS = new Set(PRECACHE.map((u) => new URL(u, self.location.href).pathname));
+const BASES = Object.keys(SITES)
+    .map((base) => new URL(base, self.location.href).pathname)
+    .sort((a, b) => b.length - a.length);
+
+function base_of(pathname) {
+    return BASES.find((base) => pathname.startsWith(base)) ?? "/";
+}
 
 self.addEventListener("install", (e) => {
     e.waitUntil(
@@ -60,8 +92,6 @@ function response_cross_origin_isolation(res) {
     });
 }
 
-const PRECACHE_PATHS = new Set(PRECACHE.map((u) => new URL(u, self.location.href).pathname));
-
 self.addEventListener("fetch", (e) => {
     const req = e.request;
     if (req.method !== "GET") return;
@@ -69,18 +99,18 @@ self.addEventListener("fetch", (e) => {
     const url = new URL(req.url);
     if (url.origin !== self.location.origin) return;
 
-    const is_precached = PRECACHE_PATHS.has(url.pathname) ||
-        (req.mode === "navigate" && PRECACHE_PATHS.has(new URL("./", self.location.href).pathname));
-    if (!is_precached) return;
+    const is_navigate = req.mode === "navigate";
+    const is_worker = req.destination === "worker" || req.destination === "sharedworker";
+    if (!is_navigate && !is_worker && !PRECACHE_PATHS.has(url.pathname)) return;
 
-    if (req.mode === "navigate") {
+    if (is_navigate) {
         e.respondWith(
             fetch(req).then((raw_res) => {
                 const res = response_cross_origin_isolation(raw_res);
                 const copy = res.clone();
                 e.waitUntil(caches.open(VERSION).then((c) => c.put(req, copy)));
                 return res;
-            }).catch(() => caches.match(req).then((r) => r ?? caches.match("./")).then((r) => r && response_cross_origin_isolation(r)))
+            }).catch(() => caches.match(req).then((r) => r ?? caches.match(`.${base_of(url.pathname)}`)).then((r) => r && response_cross_origin_isolation(r)))
         );
         return;
     }

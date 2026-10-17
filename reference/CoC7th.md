@@ -2,27 +2,13 @@
 
 # CoC7th
 
-Softwear for playing Call of Cthulhu 7th Edition
+Call of Cthulhu 7th edition playing tool.
 
-1. CoC TRPG 7th Editionをプレイするために必要な機能を集約した、webブラウザソフトウェアです。
-2. 現在本repoに統合済みのwebカレンダー開発中に、時間軸を基盤にしたデータモデル編集ソフトウェアって、1つで良くない? と感じ、データモデル設計を汎用化するにあたって、TRPGは良い実践例になるという判断で行っています。
-3. この他、インディーズRPGクリエイター向けに、キャラクターデータモデルの設計機能へ展開することも検討しています。
-
-## Reference
+## References
 
 - [Chaosium: official wiki](https://cthulhuwiki.chaosium.com)
 
-## Notice
-
-```
-"Call of Cthulhu" is a trademark of Chaosium Inc.
-This project is an independent, unofficial work and is not affiliated with, endorsed by, or sponsored by Chaosium Inc.
-『クトゥルフ神話TRPG』は Chaosium Inc. の著作物です。
-『新クトゥルフ神話TRPG』は、株式会社アークライトによる翻案のもと株式会社KADOKAWAが発行しています。
-本機能は同作のプレイを支援する非公式のオンラインツールであり、上記各社及びChaosium Inc.による公認・提携・後援を受けたものではありません。
-```
-
-## Requirement
+## Requirements
 
 1. CoC TRPG 7th Editionをオンラインで遊ぶ時、1: 背景やキャラクター画像の共有 2: 通話 3 チャットやキャラクターなど、数値とテキストデータの編集・共有閲覧 が必要。このうち1,2は運用コストがかかるので、既存サービスに任せ、先ずは3を網羅する。
 2. 1の理由で、プレイヤー目線ではソフトウェアを1つ追加することになるので、利便性を損なわないことに注力する。1 ブラウザタブの増加を抑えるため、ブラウザの拡張機能として動作出来るようにする 2 既存サービスがHTMLを変更したら動かなくなるのは困るので、ユーザーがクリック・タッチでチャットボックスを指定できるようにする 3 既存サービス群からのインポート機能を順次追加する(イクスポートは(既存オンラインサービスが指定している点も踏まえて)jsonだけに留め、一々個別対応しない)。
@@ -149,7 +135,7 @@ Development Check - 上達チェック
 
 | フィールド | たたき台 | 備考 |
 |---|---|---|
-| キャラクターシート総保存数 | 20 | 1ユーザーが複数キャラを管理する想定 |
+| キャラクターシート総保存数 | 100 | 1ユーザーが複数キャラを管理する想定 |
 | 1セッションあたりのキャラクター数 | 10 | PL人数 + NPC想定。KP運用含む |
 | Roll::Stack の保持数 | 100 | 1セッション内のロール履歴。古いものから破棄 |
 | SkillのDevelopment Check済みフラグ保持数 | 60 | Skill表示最大数と同値 |
@@ -191,13 +177,7 @@ This is a note by Andyou written through confirming rulebook.
 
 ## 未使用スクリプト
 
-character.rs::character
-
 ```rust
-// ============================================================
-// --- Derived ---
-// ============================================================
-
 // --- 生活水準 (Standard of Living) ---
 pub enum StandardOfLiving {
     Pauper,
@@ -316,17 +296,11 @@ impl AgeCategory {
     }
 }
 
-// ============================================================
 // --- Roll ---
-// ============================================================
-
             (Self::AutoFireRoll,    Lang::Ja) => "自動火器の連射判定",
             (Self::AutoFireRoll, Lang::En(_)) => "Automatic Fire Roll",
 
-// ============================================================
 // 自動火器射撃判定 (Full Auto Roll)
-// ============================================================
-
 #[derive(Debug)]
 pub enum FullAutoWarning {
     BulletsClamped { original: u32 },

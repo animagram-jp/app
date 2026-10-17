@@ -63,9 +63,7 @@
 
     :where(
         [data-surround="transparent"],
-        li[role],
-        li > [role]:where(a, button),
-        li > label:has(> input[role])
+        :where([role="menu"], [role="listbox"]) > *
     ) {
         &[data-size="xs"] {
             min-height:     var(--xs-box-height);
@@ -233,9 +231,8 @@
     :where(
         [data-surround="transparent"],
         tr:not([data-style], [data-surround]),
-        li[role],
-        li > [role]:where(a, button),
-        li > label:has(> input[role])
+        :where([role="menu"], [role="listbox"]) > [role]:where(a, button),
+        :where([role="menu"], [role="listbox"]) > label:has(> input[role])
     ) {
         &[data-size="xs"]:is(:focus-visible, :has(:checked)) {
             outline-offset: calc(var(--xs-border-width) * -1);
@@ -276,9 +273,8 @@
             [type="reset"],
             summary
         )[data-surround="transparent"],
-        li[role],
-        li > [role]:where(a, button),
-        li > label:has(> input[role]:not(:disabled, [aria-disabled="true"])),
+        :where([role="menu"], [role="listbox"]) > [role]:where(a, button),
+        :where([role="menu"], [role="listbox"]) > label:has(> input[role]:not(:disabled, [aria-disabled="true"])),
         [popovertarget]:not([data-surround])
     ) {
         &[data-size="xs"]:not(:focus-visible) {

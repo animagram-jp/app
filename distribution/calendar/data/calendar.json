@@ -1,0 +1,5782 @@
+{
+ "resources": [
+  {
+   "uid": "2161826296292531075989349983556059638",
+   "name": "Studio 1"
+  },
+  {
+   "uid": "2161826296293697961695016840502892366",
+   "name": "Studio 2"
+  },
+  {
+   "uid": "2161826296294922790665996347584397206",
+   "name": "Studio 3"
+  },
+  {
+   "uid": "2161826296296153260079985733269768921",
+   "name": "Studio 4"
+  }
+ ],
+ "statuses": [
+  {
+   "code": "scheduled",
+   "label": "S"
+  },
+  {
+   "code": "checked_in",
+   "label": "C"
+  },
+  {
+   "code": "completed",
+   "label": "D"
+  },
+  {
+   "code": "canceled",
+   "label": "X"
+  }
+ ],
+ "categories": [
+  {
+   "code": "consultation",
+   "label": "Consultation"
+  },
+  {
+   "code": "follow_up",
+   "label": "Follow-up"
+  },
+  {
+   "code": "intake",
+   "label": "Intake"
+  },
+  {
+   "code": "review",
+   "label": "Review"
+  }
+ ],
+ "appointments": [
+  {
+   "uid": "2164372294068595986992221258748387762",
+   "places": [
+    {
+     "day": "2026-09-25",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "10:15",
+   "end": "11:30",
+   "title": "Daniel Evans",
+   "category": "follow_up",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164372294069815834044412972115965770",
+   "places": [
+    {
+     "day": "2026-09-25",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "12:15",
+   "end": "13:00",
+   "title": "Emma Foster",
+   "category": "follow_up",
+   "status": "completed",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2164372294071037193156243220401667409",
+   "places": [
+    {
+     "day": "2026-09-25",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "15:30",
+   "end": "16:00",
+   "title": "Daniel Evans",
+   "category": "consultation",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164372294072222432088855584770013978",
+   "places": [
+    {
+     "day": "2026-09-25",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "11:30",
+   "end": "12:30",
+   "title": "Ben Carter",
+   "category": "intake",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164372294073407415174923876484635067",
+   "places": [
+    {
+     "day": "2026-09-25",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "13:30",
+   "end": "14:30",
+   "title": "Ben Carter",
+   "category": "review",
+   "status": "completed",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2164372294074646961227527365774364305",
+   "places": [
+    {
+     "day": "2026-09-25",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "15:00",
+   "end": "16:15",
+   "title": "Alice Morgan",
+   "category": "consultation",
+   "status": "completed",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2164372294075886289634914368511195880",
+   "places": [
+    {
+     "day": "2026-09-25",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "16:15",
+   "end": "17:30",
+   "title": "Grace Hill",
+   "category": "review",
+   "status": "completed",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2164372294077101780423980643823988600",
+   "places": [
+    {
+     "day": "2026-09-25",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "10:00",
+   "end": "11:00",
+   "title": "Grace Hill",
+   "category": "consultation",
+   "status": "completed",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2164372294078302625515390831622024470",
+   "places": [
+    {
+     "day": "2026-09-25",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "11:00",
+   "end": "11:30",
+   "title": "Henry Irwin",
+   "category": "follow_up",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164372294079459663161536024292145047",
+   "places": [
+    {
+     "day": "2026-09-25",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "11:45",
+   "end": "13:00",
+   "title": "Chloe Davis",
+   "category": "review",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164372294080719833247436762036012188",
+   "places": [
+    {
+     "day": "2026-09-25",
+     "resource_uid": "2161826296294922790665996347584397206"
+    },
+    {
+     "day": "2026-09-25",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "13:30",
+   "end": "14:45",
+   "title": "Daniel Evans",
+   "category": "consultation",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164372294081902012024697661038139347",
+   "places": [
+    {
+     "day": "2026-09-25",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "15:15",
+   "end": "15:45",
+   "title": "Grace Hill",
+   "category": "consultation",
+   "status": "completed",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2164372294083095644996610104340970937",
+   "places": [
+    {
+     "day": "2026-09-25",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "16:00",
+   "end": "16:45",
+   "title": "Alice Morgan",
+   "category": "intake",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164372294084347865207174900600735467",
+   "places": [
+    {
+     "day": "2026-09-25",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "17:30",
+   "end": "18:00",
+   "title": "Daniel Evans",
+   "category": "follow_up",
+   "status": "completed",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2164372294085564186070730015843274684",
+   "places": [
+    {
+     "day": "2026-09-25",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "13:30",
+   "end": "14:45",
+   "title": "Chloe Davis",
+   "category": "intake",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164372294086726424059114607250718720",
+   "places": [
+    {
+     "day": "2026-09-25",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "15:00",
+   "end": "15:45",
+   "title": "Daniel Evans",
+   "category": "review",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164372294087948965647056471529669653",
+   "places": [
+    {
+     "day": "2026-09-25",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "15:45",
+   "end": "17:00",
+   "title": "Ben Carter",
+   "category": "consultation",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164476745279957377059166317195151349",
+   "places": [
+    {
+     "day": "2026-09-26",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "10:15",
+   "end": "11:15",
+   "title": "Henry Irwin",
+   "category": "intake",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164476745281155844862525248450998798",
+   "places": [
+    {
+     "day": "2026-09-26",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "11:15",
+   "end": "12:00",
+   "title": "Ben Carter",
+   "category": "intake",
+   "status": "completed",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2164476745282360802478140539326476983",
+   "places": [
+    {
+     "day": "2026-09-26",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "12:15",
+   "end": "12:45",
+   "title": "Grace Hill",
+   "category": "review",
+   "status": "completed",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2164476745283624645187710065435995346",
+   "places": [
+    {
+     "day": "2026-09-26",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "13:30",
+   "end": "14:15",
+   "title": "Chloe Davis",
+   "category": "consultation",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164476745284804923969780003455417760",
+   "places": [
+    {
+     "day": "2026-09-26",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "10:00",
+   "end": "11:15",
+   "title": "Emma Foster",
+   "category": "intake",
+   "status": "completed",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2164476745286002983352223035765882014",
+   "places": [
+    {
+     "day": "2026-09-26",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "11:15",
+   "end": "11:45",
+   "title": "Frank Green",
+   "category": "consultation",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164476745287225762045557496668467676",
+   "places": [
+    {
+     "day": "2026-09-26",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "12:00",
+   "end": "13:00",
+   "title": "Henry Irwin",
+   "category": "consultation",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164476745288425742193424841209451181",
+   "places": [
+    {
+     "day": "2026-09-26",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "14:15",
+   "end": "15:30",
+   "title": "Alice Morgan",
+   "category": "consultation",
+   "status": "completed",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2164476745289620553830674626852288806",
+   "places": [
+    {
+     "day": "2026-09-26",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "10:15",
+   "end": "11:30",
+   "title": "Ben Carter",
+   "category": "consultation",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164476745290829722178496279881057393",
+   "places": [
+    {
+     "day": "2026-09-26",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "11:30",
+   "end": "12:45",
+   "title": "Ben Carter",
+   "category": "review",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164476745292067276431187591347727962",
+   "places": [
+    {
+     "day": "2026-09-26",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "15:00",
+   "end": "16:00",
+   "title": "Daniel Evans",
+   "category": "follow_up",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164476745293235436333016197920403995",
+   "places": [
+    {
+     "day": "2026-09-26",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "16:30",
+   "end": "17:45",
+   "title": "Daniel Evans",
+   "category": "intake",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164476745294445909686222030512033124",
+   "places": [
+    {
+     "day": "2026-09-26",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "09:45",
+   "end": "10:30",
+   "title": "Frank Green",
+   "category": "follow_up",
+   "status": "completed",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2164476745295656845930927940379778851",
+   "places": [
+    {
+     "day": "2026-09-26",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "13:30",
+   "end": "14:15",
+   "title": "Henry Irwin",
+   "category": "intake",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164685647678556791265134246739350055",
+   "places": [
+    {
+     "day": "2026-09-28",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "10:15",
+   "end": "11:15",
+   "title": "Alice Morgan",
+   "category": "intake",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164685647679709639260332327897099387",
+   "places": [
+    {
+     "day": "2026-09-28",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "14:45",
+   "end": "16:00",
+   "title": "Emma Foster",
+   "category": "follow_up",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164685647680966563812103462053225913",
+   "places": [
+    {
+     "day": "2026-09-28",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "16:00",
+   "end": "16:30",
+   "title": "Frank Green",
+   "category": "consultation",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164685647682140922393822878731431450",
+   "places": [
+    {
+     "day": "2026-09-28",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "16:45",
+   "end": "18:00",
+   "title": "Alice Morgan",
+   "category": "review",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164685647683335809669725995941991971",
+   "places": [
+    {
+     "day": "2026-09-28",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "09:30",
+   "end": "10:15",
+   "title": "Frank Green",
+   "category": "follow_up",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164685647684600519984874563943797166",
+   "places": [
+    {
+     "day": "2026-09-28",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "10:30",
+   "end": "11:00",
+   "title": "Grace Hill",
+   "category": "follow_up",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164685647685790482574915591353328412",
+   "places": [
+    {
+     "day": "2026-09-28",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "11:15",
+   "end": "11:45",
+   "title": "Frank Green",
+   "category": "review",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164685647686951998302793443488165270",
+   "places": [
+    {
+     "day": "2026-09-28",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "13:30",
+   "end": "14:15",
+   "title": "Grace Hill",
+   "category": "consultation",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164685647688157991955687702584117274",
+   "places": [
+    {
+     "day": "2026-09-28",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "15:45",
+   "end": "16:45",
+   "title": "Alice Morgan",
+   "category": "review",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164685647689417000128924183456249538",
+   "places": [
+    {
+     "day": "2026-09-28",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "17:30",
+   "end": "18:30",
+   "title": "Alice Morgan",
+   "category": "follow_up",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164685647690650700879199635330790436",
+   "places": [
+    {
+     "day": "2026-09-28",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "12:15",
+   "end": "13:30",
+   "title": "Henry Irwin",
+   "category": "review",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164685647691811903941751766885410559",
+   "places": [
+    {
+     "day": "2026-09-28",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "13:30",
+   "end": "14:15",
+   "title": "Emma Foster",
+   "category": "follow_up",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164685647693055731510226414489789865",
+   "places": [
+    {
+     "day": "2026-09-28",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "10:00",
+   "end": "10:30",
+   "title": "Grace Hill",
+   "category": "consultation",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164685647694229277530909838746169236",
+   "places": [
+    {
+     "day": "2026-09-28",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "14:00",
+   "end": "15:00",
+   "title": "Henry Irwin",
+   "category": "follow_up",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164685647695469559656739456065296981",
+   "places": [
+    {
+     "day": "2026-09-28",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "15:45",
+   "end": "16:45",
+   "title": "Grace Hill",
+   "category": "consultation",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164685647696640650737426291554375088",
+   "places": [
+    {
+     "day": "2026-09-28",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "17:00",
+   "end": "17:30",
+   "title": "Chloe Davis",
+   "category": "follow_up",
+   "status": "completed",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2164790098888690736663022001109032815",
+   "places": [
+    {
+     "day": "2026-09-29",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "09:45",
+   "end": "11:00",
+   "title": "Ben Carter",
+   "category": "intake",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164790098889859279833876077374734720",
+   "places": [
+    {
+     "day": "2026-09-29",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "11:45",
+   "end": "12:15",
+   "title": "Grace Hill",
+   "category": "follow_up",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164790098891129782392672243963076924",
+   "places": [
+    {
+     "day": "2026-09-29",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "15:45",
+   "end": "16:30",
+   "title": "Frank Green",
+   "category": "follow_up",
+   "status": "completed",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2164790098892308381168366934019810806",
+   "places": [
+    {
+     "day": "2026-09-29",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "16:45",
+   "end": "17:15",
+   "title": "Daniel Evans",
+   "category": "follow_up",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164790098893533228388027663092881199",
+   "places": [
+    {
+     "day": "2026-09-29",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "10:15",
+   "end": "11:00",
+   "title": "Alice Morgan",
+   "category": "consultation",
+   "status": "completed",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2164790098894693341533725420917393799",
+   "places": [
+    {
+     "day": "2026-09-29",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "11:30",
+   "end": "12:30",
+   "title": "Frank Green",
+   "category": "follow_up",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164790098895917189802047375172628350",
+   "places": [
+    {
+     "day": "2026-09-29",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "13:30",
+   "end": "14:00",
+   "title": "Henry Irwin",
+   "category": "follow_up",
+   "status": "completed",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2164790098897136855282523239214564853",
+   "places": [
+    {
+     "day": "2026-09-29",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "14:00",
+   "end": "14:45",
+   "title": "Chloe Davis",
+   "category": "intake",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164790098898390381961875238105496013",
+   "places": [
+    {
+     "day": "2026-09-29",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "14:45",
+   "end": "15:15",
+   "title": "Henry Irwin",
+   "category": "consultation",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164790098899586859430054951682466313",
+   "places": [
+    {
+     "day": "2026-09-29",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "15:45",
+   "end": "17:00",
+   "title": "Frank Green",
+   "category": "review",
+   "status": "completed",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2164790098900748578571575576925932779",
+   "places": [
+    {
+     "day": "2026-09-29",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "09:30",
+   "end": "10:15",
+   "title": "Henry Irwin",
+   "category": "intake",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164790098902000114521560454622615906",
+   "places": [
+    {
+     "day": "2026-09-29",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "11:45",
+   "end": "12:15",
+   "title": "Ben Carter",
+   "category": "review",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164790098903191941222580878881966284",
+   "places": [
+    {
+     "day": "2026-09-29",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "16:15",
+   "end": "17:30",
+   "title": "Frank Green",
+   "category": "intake",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164790098904399613304563446970216453",
+   "places": [
+    {
+     "day": "2026-09-29",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "10:45",
+   "end": "12:00",
+   "title": "Frank Green",
+   "category": "consultation",
+   "status": "completed",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2164790098905595682056266503170796858",
+   "places": [
+    {
+     "day": "2026-09-29",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "13:30",
+   "end": "14:30",
+   "title": "Grace Hill",
+   "category": "follow_up",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164894550097596619553497984125519324",
+   "places": [
+    {
+     "day": "2026-09-30",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "09:45",
+   "end": "10:45",
+   "title": "Alice Morgan",
+   "category": "follow_up",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164894550098802633386187281034058599",
+   "places": [
+    {
+     "day": "2026-09-30",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "10:45",
+   "end": "11:15",
+   "title": "Emma Foster",
+   "category": "intake",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164894550100051902382042317676012610",
+   "places": [
+    {
+     "day": "2026-09-30",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "13:30",
+   "end": "14:00",
+   "title": "Chloe Davis",
+   "category": "review",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164894550101255587746068256986547787",
+   "places": [
+    {
+     "day": "2026-09-30",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "14:15",
+   "end": "15:30",
+   "title": "Alice Morgan",
+   "category": "review",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164894550102464368436204474581224950",
+   "places": [
+    {
+     "day": "2026-09-30",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "16:15",
+   "end": "17:15",
+   "title": "Emma Foster",
+   "category": "intake",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164894550103712234752877543887216664",
+   "places": [
+    {
+     "day": "2026-09-30",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "10:00",
+   "end": "11:00",
+   "title": "Daniel Evans",
+   "category": "consultation",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164894550104849791027733302568586847",
+   "places": [
+    {
+     "day": "2026-09-30",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "11:45",
+   "end": "13:00",
+   "title": "Frank Green",
+   "category": "review",
+   "status": "completed",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2164894550106078654414519799062915394",
+   "places": [
+    {
+     "day": "2026-09-30",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "16:00",
+   "end": "16:45",
+   "title": "Ben Carter",
+   "category": "review",
+   "status": "completed",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2164894550107290016072444351171692664",
+   "places": [
+    {
+     "day": "2026-09-30",
+     "resource_uid": "2161826296293697961695016840502892366"
+    },
+    {
+     "day": "2026-09-30",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "17:00",
+   "end": "17:30",
+   "title": "Grace Hill",
+   "category": "review",
+   "status": "completed",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2164894550108534638713194156676575968",
+   "places": [
+    {
+     "day": "2026-09-30",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "17:30",
+   "end": "18:30",
+   "title": "Ben Carter",
+   "category": "intake",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164894550109716115532677876645071561",
+   "places": [
+    {
+     "day": "2026-09-30",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "14:45",
+   "end": "16:00",
+   "title": "Emma Foster",
+   "category": "intake",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164894550110960255604794185191829381",
+   "places": [
+    {
+     "day": "2026-09-30",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "17:30",
+   "end": "18:15",
+   "title": "Daniel Evans",
+   "category": "consultation",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164894550112157909212205303879382491",
+   "places": [
+    {
+     "day": "2026-09-30",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "09:30",
+   "end": "10:30",
+   "title": "Alice Morgan",
+   "category": "consultation",
+   "status": "completed",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2164894550113344922334835478640145049",
+   "places": [
+    {
+     "day": "2026-09-30",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "13:30",
+   "end": "14:45",
+   "title": "Daniel Evans",
+   "category": "intake",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164894550114524628976185789956253841",
+   "places": [
+    {
+     "day": "2026-09-30",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "16:15",
+   "end": "17:00",
+   "title": "Emma Foster",
+   "category": "review",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164999001306602750608755337588266382",
+   "places": [
+    {
+     "day": "2026-10-01",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "10:00",
+   "end": "11:00",
+   "title": "Chloe Davis",
+   "category": "review",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164999001307810809267941978391130491",
+   "places": [
+    {
+     "day": "2026-10-01",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "12:15",
+   "end": "12:45",
+   "title": "Henry Irwin",
+   "category": "review",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164999001308987431392549783660032091",
+   "places": [
+    {
+     "day": "2026-10-01",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "13:30",
+   "end": "14:00",
+   "title": "Ben Carter",
+   "category": "intake",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164999001310205821401746999794837379",
+   "places": [
+    {
+     "day": "2026-10-01",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "11:45",
+   "end": "13:00",
+   "title": "Emma Foster",
+   "category": "review",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164999001311433451937964793208025132",
+   "places": [
+    {
+     "day": "2026-10-01",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "13:45",
+   "end": "14:30",
+   "title": "Frank Green",
+   "category": "consultation",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164999001312649554737958190264859611",
+   "places": [
+    {
+     "day": "2026-10-01",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "17:00",
+   "end": "18:15",
+   "title": "Chloe Davis",
+   "category": "follow_up",
+   "status": "completed",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2164999001313857430052900808242810630",
+   "places": [
+    {
+     "day": "2026-10-01",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "11:30",
+   "end": "12:00",
+   "title": "Emma Foster",
+   "category": "consultation",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164999001315068994142994213253241453",
+   "places": [
+    {
+     "day": "2026-10-01",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "14:30",
+   "end": "15:00",
+   "title": "Emma Foster",
+   "category": "consultation",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164999001316279281413326342961153044",
+   "places": [
+    {
+     "day": "2026-10-01",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "10:15",
+   "end": "11:15",
+   "title": "Frank Green",
+   "category": "follow_up",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164999001317428645295927247367074229",
+   "places": [
+    {
+     "day": "2026-10-01",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "11:15",
+   "end": "11:45",
+   "title": "Frank Green",
+   "category": "consultation",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2164999001318649044095801008776616038",
+   "places": [
+    {
+     "day": "2026-10-01",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "17:30",
+   "end": "18:15",
+   "title": "Grace Hill",
+   "category": "review",
+   "status": "completed",
+   "note": ""
+  },
+  {
+   "uid": "2165103452510686491165252777893726105",
+   "places": [
+    {
+     "day": "2026-10-02",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "10:00",
+   "end": "10:30",
+   "title": "Ben Carter",
+   "category": "intake",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2165103452511912330767750263340157827",
+   "places": [
+    {
+     "day": "2026-10-02",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "13:30",
+   "end": "14:30",
+   "title": "Chloe Davis",
+   "category": "intake",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2165103452513082371264138599357984563",
+   "places": [
+    {
+     "day": "2026-10-02",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "15:15",
+   "end": "16:00",
+   "title": "Emma Foster",
+   "category": "review",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2165103452514318802704270345600921586",
+   "places": [
+    {
+     "day": "2026-10-02",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "10:00",
+   "end": "10:30",
+   "title": "Daniel Evans",
+   "category": "review",
+   "status": "scheduled",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2165103452515538610434144311720142054",
+   "places": [
+    {
+     "day": "2026-10-02",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "17:15",
+   "end": "18:00",
+   "title": "Frank Green",
+   "category": "follow_up",
+   "status": "checked_in",
+   "note": ""
+  },
+  {
+   "uid": "2165103452516731856552954436358284519",
+   "places": [
+    {
+     "day": "2026-10-02",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "09:45",
+   "end": "10:45",
+   "title": "Alice Morgan",
+   "category": "follow_up",
+   "status": "scheduled",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2165103452517928532728428278463652170",
+   "places": [
+    {
+     "day": "2026-10-02",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "11:00",
+   "end": "11:45",
+   "title": "Emma Foster",
+   "category": "consultation",
+   "status": "canceled",
+   "note": ""
+  },
+  {
+   "uid": "2165103452519120360877140117856794690",
+   "places": [
+    {
+     "day": "2026-10-02",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "11:45",
+   "end": "12:45",
+   "title": "Daniel Evans",
+   "category": "review",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2165103452520347528034769701025057619",
+   "places": [
+    {
+     "day": "2026-10-02",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "13:30",
+   "end": "14:45",
+   "title": "Grace Hill",
+   "category": "review",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2165103452521565090581341343744982087",
+   "places": [
+    {
+     "day": "2026-10-02",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "15:15",
+   "end": "16:15",
+   "title": "Ben Carter",
+   "category": "intake",
+   "status": "canceled",
+   "note": ""
+  },
+  {
+   "uid": "2165103452522805596398718799894477197",
+   "places": [
+    {
+     "day": "2026-10-02",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "16:15",
+   "end": "17:15",
+   "title": "Chloe Davis",
+   "category": "consultation",
+   "status": "canceled",
+   "note": ""
+  },
+  {
+   "uid": "2165103452523976338592713899260030066",
+   "places": [
+    {
+     "day": "2026-10-02",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "17:15",
+   "end": "18:30",
+   "title": "Grace Hill",
+   "category": "review",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2165103452525201088938110879922822530",
+   "places": [
+    {
+     "day": "2026-10-02",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "11:00",
+   "end": "11:45",
+   "title": "Grace Hill",
+   "category": "intake",
+   "status": "checked_in",
+   "note": ""
+  },
+  {
+   "uid": "2165103452526419774057758091584501606",
+   "places": [
+    {
+     "day": "2026-10-02",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "11:45",
+   "end": "12:45",
+   "title": "Grace Hill",
+   "category": "consultation",
+   "status": "checked_in",
+   "note": ""
+  },
+  {
+   "uid": "2165103452527589424420921845630184295",
+   "places": [
+    {
+     "day": "2026-10-02",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "16:30",
+   "end": "17:00",
+   "title": "Ben Carter",
+   "category": "follow_up",
+   "status": "scheduled",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2165207903719610788429566071539245247",
+   "places": [
+    {
+     "day": "2026-10-03",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "09:30",
+   "end": "10:00",
+   "title": "Chloe Davis",
+   "category": "consultation",
+   "status": "canceled",
+   "note": ""
+  },
+  {
+   "uid": "2165207903720855594417160288806560755",
+   "places": [
+    {
+     "day": "2026-10-03",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "13:30",
+   "end": "14:45",
+   "title": "Grace Hill",
+   "category": "consultation",
+   "status": "canceled",
+   "note": ""
+  },
+  {
+   "uid": "2165207903722040132169797280831844103",
+   "places": [
+    {
+     "day": "2026-10-03",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "16:00",
+   "end": "17:00",
+   "title": "Frank Green",
+   "category": "intake",
+   "status": "canceled",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2165207903723230721092853328879991401",
+   "places": [
+    {
+     "day": "2026-10-03",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "17:45",
+   "end": "18:30",
+   "title": "Emma Foster",
+   "category": "consultation",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2165207903724506257114095752722447530",
+   "places": [
+    {
+     "day": "2026-10-03",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "10:00",
+   "end": "10:45",
+   "title": "Chloe Davis",
+   "category": "follow_up",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2165207903725649013267289231173367450",
+   "places": [
+    {
+     "day": "2026-10-03",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "11:45",
+   "end": "12:30",
+   "title": "Grace Hill",
+   "category": "intake",
+   "status": "checked_in",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2165207903726892069296663018364461468",
+   "places": [
+    {
+     "day": "2026-10-03",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "13:30",
+   "end": "14:30",
+   "title": "Ben Carter",
+   "category": "review",
+   "status": "scheduled",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2165207903728114440157540175353263440",
+   "places": [
+    {
+     "day": "2026-10-03",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "14:30",
+   "end": "15:30",
+   "title": "Frank Green",
+   "category": "follow_up",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2165207903729287397919012386025996734",
+   "places": [
+    {
+     "day": "2026-10-03",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "09:30",
+   "end": "10:45",
+   "title": "Chloe Davis",
+   "category": "follow_up",
+   "status": "checked_in",
+   "note": ""
+  },
+  {
+   "uid": "2165207903730526462550141161098207710",
+   "places": [
+    {
+     "day": "2026-10-03",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "11:30",
+   "end": "12:00",
+   "title": "Grace Hill",
+   "category": "review",
+   "status": "scheduled",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2165207903731712956363296984839960916",
+   "places": [
+    {
+     "day": "2026-10-03",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "14:15",
+   "end": "15:15",
+   "title": "Emma Foster",
+   "category": "follow_up",
+   "status": "checked_in",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2165207903732934927916264432148456860",
+   "places": [
+    {
+     "day": "2026-10-03",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "15:15",
+   "end": "16:00",
+   "title": "Henry Irwin",
+   "category": "consultation",
+   "status": "canceled",
+   "note": ""
+  },
+  {
+   "uid": "2165207903734160730017893585424155148",
+   "places": [
+    {
+     "day": "2026-10-03",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "16:45",
+   "end": "17:45",
+   "title": "Henry Irwin",
+   "category": "review",
+   "status": "canceled",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2165207903735320826415211483691069234",
+   "places": [
+    {
+     "day": "2026-10-03",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "12:00",
+   "end": "12:30",
+   "title": "Grace Hill",
+   "category": "review",
+   "status": "checked_in",
+   "note": ""
+  },
+  {
+   "uid": "2165207903736541116834801791031751362",
+   "places": [
+    {
+     "day": "2026-10-03",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "13:30",
+   "end": "14:00",
+   "title": "Henry Irwin",
+   "category": "follow_up",
+   "status": "canceled",
+   "note": ""
+  },
+  {
+   "uid": "2165207903737768619240303412869059284",
+   "places": [
+    {
+     "day": "2026-10-03",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "14:45",
+   "end": "15:15",
+   "title": "Daniel Evans",
+   "category": "intake",
+   "status": "canceled",
+   "note": ""
+  },
+  {
+   "uid": "2165207903738996804891939687404360754",
+   "places": [
+    {
+     "day": "2026-10-03",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "17:00",
+   "end": "17:45",
+   "title": "Grace Hill",
+   "category": "consultation",
+   "status": "scheduled",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2165416806121816986116073276138369000",
+   "places": [
+    {
+     "day": "2026-10-05",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "10:15",
+   "end": "10:45",
+   "title": "Emma Foster",
+   "category": "consultation",
+   "status": "checked_in",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2165416806123055313633328042152303730",
+   "places": [
+    {
+     "day": "2026-10-05",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "13:30",
+   "end": "14:15",
+   "title": "Daniel Evans",
+   "category": "consultation",
+   "status": "checked_in",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2165416806124208735258794400343600483",
+   "places": [
+    {
+     "day": "2026-10-05",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "14:45",
+   "end": "15:45",
+   "title": "Chloe Davis",
+   "category": "review",
+   "status": "scheduled",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2165416806125464442283077742013377163",
+   "places": [
+    {
+     "day": "2026-10-05",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "15:45",
+   "end": "16:30",
+   "title": "Frank Green",
+   "category": "review",
+   "status": "scheduled",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2165416806126627158041681964127036764",
+   "places": [
+    {
+     "day": "2026-10-05",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "16:45",
+   "end": "17:30",
+   "title": "Alice Morgan",
+   "category": "consultation",
+   "status": "checked_in",
+   "note": ""
+  },
+  {
+   "uid": "2165416806127892105861187891778336774",
+   "places": [
+    {
+     "day": "2026-10-05",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "11:30",
+   "end": "12:45",
+   "title": "Daniel Evans",
+   "category": "intake",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2165416806129091293378333713327956621",
+   "places": [
+    {
+     "day": "2026-10-05",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "13:30",
+   "end": "14:30",
+   "title": "Daniel Evans",
+   "category": "intake",
+   "status": "checked_in",
+   "note": ""
+  },
+  {
+   "uid": "2165416806130285090368911869749131418",
+   "places": [
+    {
+     "day": "2026-10-05",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "15:30",
+   "end": "16:15",
+   "title": "Ben Carter",
+   "category": "review",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2165416806131529638728491050048588612",
+   "places": [
+    {
+     "day": "2026-10-05",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "16:15",
+   "end": "16:45",
+   "title": "Emma Foster",
+   "category": "intake",
+   "status": "canceled",
+   "note": ""
+  },
+  {
+   "uid": "2165416806132739209491990940112239042",
+   "places": [
+    {
+     "day": "2026-10-05",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "16:45",
+   "end": "17:30",
+   "title": "Daniel Evans",
+   "category": "follow_up",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2165416806133881304768766332561113677",
+   "places": [
+    {
+     "day": "2026-10-05",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "12:15",
+   "end": "12:45",
+   "title": "Frank Green",
+   "category": "intake",
+   "status": "canceled",
+   "note": ""
+  },
+  {
+   "uid": "2165416806135145219343385841171643596",
+   "places": [
+    {
+     "day": "2026-10-05",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "15:15",
+   "end": "16:30",
+   "title": "Emma Foster",
+   "category": "follow_up",
+   "status": "checked_in",
+   "note": ""
+  },
+  {
+   "uid": "2165416806136334405229916251477986068",
+   "places": [
+    {
+     "day": "2026-10-05",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "16:45",
+   "end": "18:00",
+   "title": "Daniel Evans",
+   "category": "consultation",
+   "status": "canceled",
+   "note": ""
+  },
+  {
+   "uid": "2165416806137522304332386996115018169",
+   "places": [
+    {
+     "day": "2026-10-05",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "09:45",
+   "end": "10:45",
+   "title": "Alice Morgan",
+   "category": "review",
+   "status": "canceled",
+   "note": ""
+  },
+  {
+   "uid": "2165416806138738256726443286296113262",
+   "places": [
+    {
+     "day": "2026-10-05",
+     "resource_uid": "2161826296296153260079985733269768921"
+    },
+    {
+     "day": "2026-10-06",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "11:15",
+   "end": "11:45",
+   "title": "Chloe Davis",
+   "category": "follow_up",
+   "status": "scheduled",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2165416806139947494315416757147943159",
+   "places": [
+    {
+     "day": "2026-10-05",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "14:30",
+   "end": "15:45",
+   "title": "Chloe Davis",
+   "category": "review",
+   "status": "checked_in",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2165416806141157232815736082312057739",
+   "places": [
+    {
+     "day": "2026-10-05",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "16:30",
+   "end": "17:45",
+   "title": "Grace Hill",
+   "category": "review",
+   "status": "checked_in",
+   "note": ""
+  },
+  {
+   "uid": "2165416806142362100212238882716378797",
+   "places": [
+    {
+     "day": "2026-10-05",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "17:45",
+   "end": "18:30",
+   "title": "Chloe Davis",
+   "category": "follow_up",
+   "status": "canceled",
+   "note": ""
+  },
+  {
+   "uid": "2165521257334389511487333974782864800",
+   "places": [
+    {
+     "day": "2026-10-06",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "09:30",
+   "end": "10:00",
+   "title": "Chloe Davis",
+   "category": "consultation",
+   "status": "canceled",
+   "note": ""
+  },
+  {
+   "uid": "2165521257335632526866780305527315789",
+   "places": [
+    {
+     "day": "2026-10-06",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "12:00",
+   "end": "12:45",
+   "title": "Ben Carter",
+   "category": "follow_up",
+   "status": "canceled",
+   "note": ""
+  },
+  {
+   "uid": "2165521257336790505794856412640888221",
+   "places": [
+    {
+     "day": "2026-10-06",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "13:30",
+   "end": "14:30",
+   "title": "Daniel Evans",
+   "category": "consultation",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2165521257338031102256309087728636117",
+   "places": [
+    {
+     "day": "2026-10-06",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "17:15",
+   "end": "18:30",
+   "title": "Alice Morgan",
+   "category": "follow_up",
+   "status": "canceled",
+   "note": ""
+  },
+  {
+   "uid": "2165521257339204648001000308829316719",
+   "places": [
+    {
+     "day": "2026-10-06",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "09:45",
+   "end": "10:30",
+   "title": "Grace Hill",
+   "category": "follow_up",
+   "status": "canceled",
+   "note": ""
+  },
+  {
+   "uid": "2165521257340406139344193079462224526",
+   "places": [
+    {
+     "day": "2026-10-06",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "11:15",
+   "end": "12:30",
+   "title": "Chloe Davis",
+   "category": "review",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2165521257341647219923486541519073841",
+   "places": [
+    {
+     "day": "2026-10-06",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "13:30",
+   "end": "14:00",
+   "title": "Emma Foster",
+   "category": "intake",
+   "status": "checked_in",
+   "note": ""
+  },
+  {
+   "uid": "2165521257342849391324477426772685437",
+   "places": [
+    {
+     "day": "2026-10-06",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "14:15",
+   "end": "15:15",
+   "title": "Daniel Evans",
+   "category": "intake",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2165521257344052730506385232603401017",
+   "places": [
+    {
+     "day": "2026-10-06",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "15:30",
+   "end": "16:30",
+   "title": "Daniel Evans",
+   "category": "consultation",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2165521257345300153377393400302585582",
+   "places": [
+    {
+     "day": "2026-10-06",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "17:15",
+   "end": "18:30",
+   "title": "Grace Hill",
+   "category": "intake",
+   "status": "checked_in",
+   "note": ""
+  },
+  {
+   "uid": "2165521257346479877466583311514299436",
+   "places": [
+    {
+     "day": "2026-10-06",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "09:30",
+   "end": "10:30",
+   "title": "Daniel Evans",
+   "category": "review",
+   "status": "scheduled",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2165521257347713078550812464933478681",
+   "places": [
+    {
+     "day": "2026-10-06",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "10:45",
+   "end": "11:15",
+   "title": "Grace Hill",
+   "category": "review",
+   "status": "canceled",
+   "note": ""
+  },
+  {
+   "uid": "2165521257348883063461461431452264941",
+   "places": [
+    {
+     "day": "2026-10-06",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "11:30",
+   "end": "12:30",
+   "title": "Henry Irwin",
+   "category": "review",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2165521257350145280728009360427272448",
+   "places": [
+    {
+     "day": "2026-10-06",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "13:30",
+   "end": "14:45",
+   "title": "Grace Hill",
+   "category": "intake",
+   "status": "scheduled",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2165521257351345813067221483484422107",
+   "places": [
+    {
+     "day": "2026-10-06",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "14:00",
+   "end": "15:15",
+   "title": "Henry Irwin",
+   "category": "review",
+   "status": "checked_in",
+   "note": ""
+  },
+  {
+   "uid": "2165521257352552324350793347646691956",
+   "places": [
+    {
+     "day": "2026-10-06",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "15:45",
+   "end": "16:30",
+   "title": "Grace Hill",
+   "category": "follow_up",
+   "status": "canceled",
+   "note": ""
+  },
+  {
+   "uid": "2165521257353772428369290567765112879",
+   "places": [
+    {
+     "day": "2026-10-06",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "17:00",
+   "end": "17:45",
+   "title": "Frank Green",
+   "category": "review",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2165625708545757892585022617704213788",
+   "places": [
+    {
+     "day": "2026-10-07",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "09:30",
+   "end": "10:45",
+   "title": "Ben Carter",
+   "category": "review",
+   "status": "checked_in",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2165625708546987756056578916529438843",
+   "places": [
+    {
+     "day": "2026-10-07",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "11:30",
+   "end": "12:30",
+   "title": "Frank Green",
+   "category": "intake",
+   "status": "scheduled",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2165625708548217727598425503485964843",
+   "places": [
+    {
+     "day": "2026-10-07",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "16:15",
+   "end": "17:30",
+   "title": "Frank Green",
+   "category": "intake",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2165625708549353714243454748473591671",
+   "places": [
+    {
+     "day": "2026-10-07",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "10:15",
+   "end": "11:30",
+   "title": "Ben Carter",
+   "category": "review",
+   "status": "canceled",
+   "note": ""
+  },
+  {
+   "uid": "2165625708550592838724737341614806612",
+   "places": [
+    {
+     "day": "2026-10-07",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "13:30",
+   "end": "14:30",
+   "title": "Henry Irwin",
+   "category": "consultation",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2165625708551820158407931395477829056",
+   "places": [
+    {
+     "day": "2026-10-07",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "15:00",
+   "end": "15:45",
+   "title": "Daniel Evans",
+   "category": "follow_up",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2165625708552995602504666137720003105",
+   "places": [
+    {
+     "day": "2026-10-07",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "16:30",
+   "end": "17:00",
+   "title": "Henry Irwin",
+   "category": "consultation",
+   "status": "checked_in",
+   "note": ""
+  },
+  {
+   "uid": "2165625708554203588335926540960458947",
+   "places": [
+    {
+     "day": "2026-10-07",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "17:00",
+   "end": "17:30",
+   "title": "Daniel Evans",
+   "category": "review",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2165625708555397533272214678397410501",
+   "places": [
+    {
+     "day": "2026-10-07",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "17:45",
+   "end": "18:30",
+   "title": "Henry Irwin",
+   "category": "intake",
+   "status": "checked_in",
+   "note": ""
+  },
+  {
+   "uid": "2165625708556670689295879810081257776",
+   "places": [
+    {
+     "day": "2026-10-07",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "10:00",
+   "end": "11:15",
+   "title": "Daniel Evans",
+   "category": "intake",
+   "status": "checked_in",
+   "note": ""
+  },
+  {
+   "uid": "2165625708557823983066243699835342669",
+   "places": [
+    {
+     "day": "2026-10-07",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "12:00",
+   "end": "13:00",
+   "title": "Henry Irwin",
+   "category": "review",
+   "status": "scheduled",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2165625708559052940539314376780585300",
+   "places": [
+    {
+     "day": "2026-10-07",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "13:45",
+   "end": "15:00",
+   "title": "Emma Foster",
+   "category": "review",
+   "status": "canceled",
+   "note": ""
+  },
+  {
+   "uid": "2165625708560233402303812179764413570",
+   "places": [
+    {
+     "day": "2026-10-07",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "17:00",
+   "end": "17:45",
+   "title": "Daniel Evans",
+   "category": "follow_up",
+   "status": "canceled",
+   "note": ""
+  },
+  {
+   "uid": "2165625708561459594359070872135853737",
+   "places": [
+    {
+     "day": "2026-10-07",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "09:45",
+   "end": "10:30",
+   "title": "Emma Foster",
+   "category": "follow_up",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2165625708562716207053619164077320776",
+   "places": [
+    {
+     "day": "2026-10-07",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "11:15",
+   "end": "12:00",
+   "title": "Emma Foster",
+   "category": "review",
+   "status": "checked_in",
+   "note": ""
+  },
+  {
+   "uid": "2165625708563879699423314671743716811",
+   "places": [
+    {
+     "day": "2026-10-07",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "15:00",
+   "end": "15:30",
+   "title": "Ben Carter",
+   "category": "consultation",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2165625708565101739073759844480854555",
+   "places": [
+    {
+     "day": "2026-10-07",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "15:30",
+   "end": "16:45",
+   "title": "Alice Morgan",
+   "category": "review",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2165730159757126879707337167807523287",
+   "places": [
+    {
+     "day": "2026-10-08",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "10:00",
+   "end": "10:45",
+   "title": "Grace Hill",
+   "category": "follow_up",
+   "status": "canceled",
+   "note": ""
+  },
+  {
+   "uid": "2165730159758363552309765679510636754",
+   "places": [
+    {
+     "day": "2026-10-08",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "12:15",
+   "end": "13:30",
+   "title": "Ben Carter",
+   "category": "intake",
+   "status": "canceled",
+   "note": ""
+  },
+  {
+   "uid": "2165730159759579340527574462707708997",
+   "places": [
+    {
+     "day": "2026-10-08",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "15:15",
+   "end": "16:00",
+   "title": "Grace Hill",
+   "category": "intake",
+   "status": "checked_in",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2165730159760738438855905780793447378",
+   "places": [
+    {
+     "day": "2026-10-08",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "16:45",
+   "end": "17:30",
+   "title": "Emma Foster",
+   "category": "consultation",
+   "status": "scheduled",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2165730159761976031008168854392073497",
+   "places": [
+    {
+     "day": "2026-10-08",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "18:00",
+   "end": "18:30",
+   "title": "Frank Green",
+   "category": "review",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2165730159763176933964601391098807928",
+   "places": [
+    {
+     "day": "2026-10-08",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "09:45",
+   "end": "11:00",
+   "title": "Grace Hill",
+   "category": "intake",
+   "status": "canceled",
+   "note": ""
+  },
+  {
+   "uid": "2165730159764371247720852626358903521",
+   "places": [
+    {
+     "day": "2026-10-08",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "11:15",
+   "end": "12:15",
+   "title": "Emma Foster",
+   "category": "follow_up",
+   "status": "canceled",
+   "note": ""
+  },
+  {
+   "uid": "2165730159765583053402368272122768530",
+   "places": [
+    {
+     "day": "2026-10-08",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "14:30",
+   "end": "15:30",
+   "title": "Emma Foster",
+   "category": "consultation",
+   "status": "canceled",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2165730159766764476410678680084236676",
+   "places": [
+    {
+     "day": "2026-10-08",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "09:30",
+   "end": "10:45",
+   "title": "Grace Hill",
+   "category": "intake",
+   "status": "scheduled",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2165730159768019349734450293421681487",
+   "places": [
+    {
+     "day": "2026-10-08",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "11:00",
+   "end": "11:45",
+   "title": "Frank Green",
+   "category": "intake",
+   "status": "checked_in",
+   "note": ""
+  },
+  {
+   "uid": "2165730159769202763957188576431710188",
+   "places": [
+    {
+     "day": "2026-10-08",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "13:30",
+   "end": "14:30",
+   "title": "Ben Carter",
+   "category": "intake",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2165730159770437923128053300047932656",
+   "places": [
+    {
+     "day": "2026-10-08",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "14:45",
+   "end": "15:30",
+   "title": "Chloe Davis",
+   "category": "intake",
+   "status": "scheduled",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2165730159771637125612503097479121690",
+   "places": [
+    {
+     "day": "2026-10-08",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "15:30",
+   "end": "16:15",
+   "title": "Frank Green",
+   "category": "follow_up",
+   "status": "canceled",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2165730159772819971158300927536056548",
+   "places": [
+    {
+     "day": "2026-10-08",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "17:00",
+   "end": "17:30",
+   "title": "Frank Green",
+   "category": "follow_up",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2165730159774040849455078524100523584",
+   "places": [
+    {
+     "day": "2026-10-08",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "09:30",
+   "end": "10:30",
+   "title": "Daniel Evans",
+   "category": "review",
+   "status": "canceled",
+   "note": ""
+  },
+  {
+   "uid": "2165730159775259200545635448872718961",
+   "places": [
+    {
+     "day": "2026-10-08",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "10:45",
+   "end": "11:45",
+   "title": "Grace Hill",
+   "category": "intake",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2165730159776477405589373560175934474",
+   "places": [
+    {
+     "day": "2026-10-08",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "13:30",
+   "end": "14:00",
+   "title": "Frank Green",
+   "category": "review",
+   "status": "canceled",
+   "note": ""
+  },
+  {
+   "uid": "2165730159777654880686150075654221157",
+   "places": [
+    {
+     "day": "2026-10-08",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "17:15",
+   "end": "18:30",
+   "title": "Grace Hill",
+   "category": "consultation",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2165834610969733183975222643590964760",
+   "places": [
+    {
+     "day": "2026-10-09",
+     "resource_uid": "2161826296292531075989349983556059638"
+    },
+    {
+     "day": "2026-10-09",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "10:15",
+   "end": "11:30",
+   "title": "Alice Morgan",
+   "category": "consultation",
+   "status": "checked_in",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2165834610970929844162921003031646049",
+   "places": [
+    {
+     "day": "2026-10-09",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "16:00",
+   "end": "17:15",
+   "title": "Chloe Davis",
+   "category": "follow_up",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2165834610972148804526344428793765931",
+   "places": [
+    {
+     "day": "2026-10-09",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "09:30",
+   "end": "10:30",
+   "title": "Frank Green",
+   "category": "review",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2165834610973310467971578463288116971",
+   "places": [
+    {
+     "day": "2026-10-09",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "11:15",
+   "end": "12:00",
+   "title": "Daniel Evans",
+   "category": "consultation",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2165834610974504508598670522725758733",
+   "places": [
+    {
+     "day": "2026-10-09",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "13:30",
+   "end": "14:15",
+   "title": "Henry Irwin",
+   "category": "consultation",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2165834610975739740074072725111795487",
+   "places": [
+    {
+     "day": "2026-10-09",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "14:30",
+   "end": "15:30",
+   "title": "Frank Green",
+   "category": "consultation",
+   "status": "checked_in",
+   "note": ""
+  },
+  {
+   "uid": "2165834610976926048603204930121009696",
+   "places": [
+    {
+     "day": "2026-10-09",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "15:45",
+   "end": "16:45",
+   "title": "Chloe Davis",
+   "category": "review",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2165834610978173862823049443993512257",
+   "places": [
+    {
+     "day": "2026-10-09",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "11:00",
+   "end": "12:15",
+   "title": "Frank Green",
+   "category": "intake",
+   "status": "checked_in",
+   "note": ""
+  },
+  {
+   "uid": "2165834610979375723384767475547635308",
+   "places": [
+    {
+     "day": "2026-10-09",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "13:30",
+   "end": "14:15",
+   "title": "Chloe Davis",
+   "category": "follow_up",
+   "status": "canceled",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2165834610980620252205679153125681509",
+   "places": [
+    {
+     "day": "2026-10-09",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "14:45",
+   "end": "15:15",
+   "title": "Frank Green",
+   "category": "intake",
+   "status": "checked_in",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2165834610981810653540963496317996888",
+   "places": [
+    {
+     "day": "2026-10-09",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "17:45",
+   "end": "18:30",
+   "title": "Emma Foster",
+   "category": "review",
+   "status": "checked_in",
+   "note": ""
+  },
+  {
+   "uid": "2165834610983035741808643562585478162",
+   "places": [
+    {
+     "day": "2026-10-09",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "10:15",
+   "end": "11:15",
+   "title": "Ben Carter",
+   "category": "consultation",
+   "status": "checked_in",
+   "note": ""
+  },
+  {
+   "uid": "2165834610984231457123230923861991002",
+   "places": [
+    {
+     "day": "2026-10-09",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "12:00",
+   "end": "12:45",
+   "title": "Ben Carter",
+   "category": "intake",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2165939062176269885112872441916187527",
+   "places": [
+    {
+     "day": "2026-10-10",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "10:00",
+   "end": "11:15",
+   "title": "Henry Irwin",
+   "category": "intake",
+   "status": "checked_in",
+   "note": ""
+  },
+  {
+   "uid": "2165939062177476521581455159793481681",
+   "places": [
+    {
+     "day": "2026-10-10",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "11:15",
+   "end": "12:00",
+   "title": "Frank Green",
+   "category": "follow_up",
+   "status": "checked_in",
+   "note": ""
+  },
+  {
+   "uid": "2165939062178625567160752079946913086",
+   "places": [
+    {
+     "day": "2026-10-10",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "13:30",
+   "end": "14:30",
+   "title": "Ben Carter",
+   "category": "consultation",
+   "status": "canceled",
+   "note": ""
+  },
+  {
+   "uid": "2165939062179864747988253497678398825",
+   "places": [
+    {
+     "day": "2026-10-10",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "14:30",
+   "end": "15:30",
+   "title": "Alice Morgan",
+   "category": "intake",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2165939062181044012607987927296592285",
+   "places": [
+    {
+     "day": "2026-10-10",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "15:45",
+   "end": "17:00",
+   "title": "Chloe Davis",
+   "category": "review",
+   "status": "checked_in",
+   "note": ""
+  },
+  {
+   "uid": "2165939062182310820486112519334018092",
+   "places": [
+    {
+     "day": "2026-10-10",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "09:30",
+   "end": "10:00",
+   "title": "Henry Irwin",
+   "category": "review",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2165939062183483168824962350512210214",
+   "places": [
+    {
+     "day": "2026-10-10",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "10:15",
+   "end": "11:30",
+   "title": "Chloe Davis",
+   "category": "review",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2165939062184692001109162337299866314",
+   "places": [
+    {
+     "day": "2026-10-10",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "11:30",
+   "end": "12:00",
+   "title": "Emma Foster",
+   "category": "review",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2165939062185906316320687962427060370",
+   "places": [
+    {
+     "day": "2026-10-10",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "12:15",
+   "end": "12:45",
+   "title": "Frank Green",
+   "category": "consultation",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2165939062187142025582739454741026408",
+   "places": [
+    {
+     "day": "2026-10-10",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "13:30",
+   "end": "14:00",
+   "title": "Ben Carter",
+   "category": "consultation",
+   "status": "scheduled",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2165939062188346208833969461189355598",
+   "places": [
+    {
+     "day": "2026-10-10",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "14:00",
+   "end": "15:00",
+   "title": "Daniel Evans",
+   "category": "follow_up",
+   "status": "canceled",
+   "note": ""
+  },
+  {
+   "uid": "2165939062189516396007015463460872493",
+   "places": [
+    {
+     "day": "2026-10-10",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "15:15",
+   "end": "16:30",
+   "title": "Ben Carter",
+   "category": "review",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2165939062190737477644296871190140080",
+   "places": [
+    {
+     "day": "2026-10-10",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "16:30",
+   "end": "17:15",
+   "title": "Chloe Davis",
+   "category": "review",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2165939062191972285656984226715090970",
+   "places": [
+    {
+     "day": "2026-10-10",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "17:15",
+   "end": "18:00",
+   "title": "Ben Carter",
+   "category": "review",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2165939062193132551608433361230762068",
+   "places": [
+    {
+     "day": "2026-10-10",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "09:30",
+   "end": "10:45",
+   "title": "Emma Foster",
+   "category": "consultation",
+   "status": "canceled",
+   "note": ""
+  },
+  {
+   "uid": "2165939062194346567779561704542366427",
+   "places": [
+    {
+     "day": "2026-10-10",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "10:45",
+   "end": "11:30",
+   "title": "Ben Carter",
+   "category": "review",
+   "status": "checked_in",
+   "note": ""
+  },
+  {
+   "uid": "2165939062195603049178035695126420930",
+   "places": [
+    {
+     "day": "2026-10-10",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "15:15",
+   "end": "16:15",
+   "title": "Ben Carter",
+   "category": "review",
+   "status": "canceled",
+   "note": ""
+  },
+  {
+   "uid": "2165939062196763587067447156838608300",
+   "places": [
+    {
+     "day": "2026-10-10",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "17:00",
+   "end": "18:00",
+   "title": "Alice Morgan",
+   "category": "intake",
+   "status": "scheduled",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2165939062198007026035153088100534677",
+   "places": [
+    {
+     "day": "2026-10-10",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "10:15",
+   "end": "11:15",
+   "title": "Daniel Evans",
+   "category": "consultation",
+   "status": "checked_in",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2165939062199234159131562488081534637",
+   "places": [
+    {
+     "day": "2026-10-10",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "13:45",
+   "end": "14:15",
+   "title": "Ben Carter",
+   "category": "consultation",
+   "status": "checked_in",
+   "note": ""
+  },
+  {
+   "uid": "2165939062200415140837155334605301704",
+   "places": [
+    {
+     "day": "2026-10-10",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "16:00",
+   "end": "16:30",
+   "title": "Henry Irwin",
+   "category": "consultation",
+   "status": "checked_in",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2165939062201607519637148237028589766",
+   "places": [
+    {
+     "day": "2026-10-10",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "16:30",
+   "end": "17:15",
+   "title": "Emma Foster",
+   "category": "review",
+   "status": "checked_in",
+   "note": ""
+  },
+  {
+   "uid": "2165939062202814746064104448807253736",
+   "places": [
+    {
+     "day": "2026-10-10",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "17:45",
+   "end": "18:15",
+   "title": "Daniel Evans",
+   "category": "intake",
+   "status": "checked_in",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2166147964585639670167406223791682317",
+   "places": [
+    {
+     "day": "2026-10-12",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "12:15",
+   "end": "12:45",
+   "title": "Ben Carter",
+   "category": "follow_up",
+   "status": "checked_in",
+   "note": ""
+  },
+  {
+   "uid": "2166147964586860735682852589873160557",
+   "places": [
+    {
+     "day": "2026-10-12",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "14:15",
+   "end": "15:30",
+   "title": "Ben Carter",
+   "category": "follow_up",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2166147964588103544811894413962056280",
+   "places": [
+    {
+     "day": "2026-10-12",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "17:45",
+   "end": "18:15",
+   "title": "Ben Carter",
+   "category": "consultation",
+   "status": "checked_in",
+   "note": ""
+  },
+  {
+   "uid": "2166147964589308027643217846047920731",
+   "places": [
+    {
+     "day": "2026-10-12",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "09:30",
+   "end": "10:00",
+   "title": "Ben Carter",
+   "category": "follow_up",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2166147964590476888713699202090210715",
+   "places": [
+    {
+     "day": "2026-10-12",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "10:15",
+   "end": "10:45",
+   "title": "Emma Foster",
+   "category": "review",
+   "status": "canceled",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2166147964591706749814276328364864501",
+   "places": [
+    {
+     "day": "2026-10-12",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "11:30",
+   "end": "12:45",
+   "title": "Henry Irwin",
+   "category": "review",
+   "status": "canceled",
+   "note": ""
+  },
+  {
+   "uid": "2166147964592897060472412644614619172",
+   "places": [
+    {
+     "day": "2026-10-12",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "13:30",
+   "end": "14:45",
+   "title": "Chloe Davis",
+   "category": "intake",
+   "status": "scheduled",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2166147964594166292427156858418866957",
+   "places": [
+    {
+     "day": "2026-10-12",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "15:00",
+   "end": "16:00",
+   "title": "Grace Hill",
+   "category": "review",
+   "status": "canceled",
+   "note": ""
+  },
+  {
+   "uid": "2166147964595378630772166954866054566",
+   "places": [
+    {
+     "day": "2026-10-12",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "14:30",
+   "end": "15:45",
+   "title": "Daniel Evans",
+   "category": "review",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2166147964596543484940247558137452160",
+   "places": [
+    {
+     "day": "2026-10-12",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "16:30",
+   "end": "17:45",
+   "title": "Ben Carter",
+   "category": "follow_up",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2166147964597763720852502853186201115",
+   "places": [
+    {
+     "day": "2026-10-12",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "12:00",
+   "end": "13:15",
+   "title": "Frank Green",
+   "category": "intake",
+   "status": "scheduled",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2166147964598953146829608972508956956",
+   "places": [
+    {
+     "day": "2026-10-12",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "14:45",
+   "end": "15:15",
+   "title": "Daniel Evans",
+   "category": "follow_up",
+   "status": "checked_in",
+   "note": ""
+  },
+  {
+   "uid": "2166147964600212784348755595606180514",
+   "places": [
+    {
+     "day": "2026-10-12",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "16:45",
+   "end": "17:45",
+   "title": "Frank Green",
+   "category": "consultation",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2166252415792211471184499130529281194",
+   "places": [
+    {
+     "day": "2026-10-13",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "09:45",
+   "end": "10:45",
+   "title": "Emma Foster",
+   "category": "consultation",
+   "status": "checked_in",
+   "note": ""
+  },
+  {
+   "uid": "2166252415793397891530848830831544942",
+   "places": [
+    {
+     "day": "2026-10-13",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "11:00",
+   "end": "12:15",
+   "title": "Chloe Davis",
+   "category": "consultation",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2166252415794626814621259922943545316",
+   "places": [
+    {
+     "day": "2026-10-13",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "13:30",
+   "end": "14:30",
+   "title": "Frank Green",
+   "category": "follow_up",
+   "status": "canceled",
+   "note": ""
+  },
+  {
+   "uid": "2166252415795836222406448691902092745",
+   "places": [
+    {
+     "day": "2026-10-13",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "10:30",
+   "end": "11:00",
+   "title": "Frank Green",
+   "category": "intake",
+   "status": "checked_in",
+   "note": ""
+  },
+  {
+   "uid": "2166252415797044021537476157166823325",
+   "places": [
+    {
+     "day": "2026-10-13",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "11:00",
+   "end": "11:30",
+   "title": "Grace Hill",
+   "category": "follow_up",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2166252415798275857281924375435712323",
+   "places": [
+    {
+     "day": "2026-10-13",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "11:45",
+   "end": "12:15",
+   "title": "Frank Green",
+   "category": "review",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2166252415799422764617844788879125531",
+   "places": [
+    {
+     "day": "2026-10-13",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "12:15",
+   "end": "13:30",
+   "title": "Daniel Evans",
+   "category": "consultation",
+   "status": "canceled",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2166252415800628169415414941567875057",
+   "places": [
+    {
+     "day": "2026-10-13",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "14:45",
+   "end": "15:45",
+   "title": "Emma Foster",
+   "category": "follow_up",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2166252415801899073842799196397388877",
+   "places": [
+    {
+     "day": "2026-10-13",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "17:30",
+   "end": "18:15",
+   "title": "Chloe Davis",
+   "category": "consultation",
+   "status": "scheduled",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2166252415803083151365260179074715051",
+   "places": [
+    {
+     "day": "2026-10-13",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "10:00",
+   "end": "10:30",
+   "title": "Chloe Davis",
+   "category": "follow_up",
+   "status": "scheduled",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2166252415804315154594395542062379446",
+   "places": [
+    {
+     "day": "2026-10-13",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "11:30",
+   "end": "12:45",
+   "title": "Daniel Evans",
+   "category": "intake",
+   "status": "canceled",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2166252415805469037855386053148344393",
+   "places": [
+    {
+     "day": "2026-10-13",
+     "resource_uid": "2161826296294922790665996347584397206"
+    },
+    {
+     "day": "2026-10-13",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "13:30",
+   "end": "14:30",
+   "title": "Frank Green",
+   "category": "intake",
+   "status": "checked_in",
+   "note": ""
+  },
+  {
+   "uid": "2166252415806730721118146285322751417",
+   "places": [
+    {
+     "day": "2026-10-13",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "14:45",
+   "end": "16:00",
+   "title": "Chloe Davis",
+   "category": "follow_up",
+   "status": "checked_in",
+   "note": ""
+  },
+  {
+   "uid": "2166252415807882167055756624305176635",
+   "places": [
+    {
+     "day": "2026-10-13",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "16:15",
+   "end": "17:15",
+   "title": "Emma Foster",
+   "category": "intake",
+   "status": "scheduled",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2166252415809093895661689627018671054",
+   "places": [
+    {
+     "day": "2026-10-13",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "17:30",
+   "end": "18:00",
+   "title": "Frank Green",
+   "category": "follow_up",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2166252415810368826534883729498070374",
+   "places": [
+    {
+     "day": "2026-10-13",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "10:15",
+   "end": "11:30",
+   "title": "Grace Hill",
+   "category": "follow_up",
+   "status": "checked_in",
+   "note": ""
+  },
+  {
+   "uid": "2166252415811533646275600158648525098",
+   "places": [
+    {
+     "day": "2026-10-13",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "13:30",
+   "end": "14:15",
+   "title": "Daniel Evans",
+   "category": "intake",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2166252415812762250581790743159492815",
+   "places": [
+    {
+     "day": "2026-10-13",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "14:45",
+   "end": "15:15",
+   "title": "Alice Morgan",
+   "category": "consultation",
+   "status": "canceled",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2166252415813934596654554459483818137",
+   "places": [
+    {
+     "day": "2026-10-13",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "16:45",
+   "end": "17:15",
+   "title": "Henry Irwin",
+   "category": "follow_up",
+   "status": "checked_in",
+   "note": ""
+  },
+  {
+   "uid": "2166356867005993626294177555912429451",
+   "places": [
+    {
+     "day": "2026-10-14",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "10:00",
+   "end": "10:30",
+   "title": "Chloe Davis",
+   "category": "follow_up",
+   "status": "canceled",
+   "note": ""
+  },
+  {
+   "uid": "2166356867007176599476432974481676017",
+   "places": [
+    {
+     "day": "2026-10-14",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "10:30",
+   "end": "11:30",
+   "title": "Ben Carter",
+   "category": "follow_up",
+   "status": "checked_in",
+   "note": ""
+  },
+  {
+   "uid": "2166356867008366153331051266016535231",
+   "places": [
+    {
+     "day": "2026-10-14",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "11:30",
+   "end": "12:30",
+   "title": "Ben Carter",
+   "category": "intake",
+   "status": "canceled",
+   "note": ""
+  },
+  {
+   "uid": "2166356867009624426945809943817373995",
+   "places": [
+    {
+     "day": "2026-10-14",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "13:30",
+   "end": "14:00",
+   "title": "Daniel Evans",
+   "category": "consultation",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2166356867010847945710388885201820189",
+   "places": [
+    {
+     "day": "2026-10-14",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "15:00",
+   "end": "16:00",
+   "title": "Henry Irwin",
+   "category": "intake",
+   "status": "canceled",
+   "note": ""
+  },
+  {
+   "uid": "2166356867012022981620372165110183733",
+   "places": [
+    {
+     "day": "2026-10-14",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "10:15",
+   "end": "10:45",
+   "title": "Alice Morgan",
+   "category": "follow_up",
+   "status": "canceled",
+   "note": ""
+  },
+  {
+   "uid": "2166356867013211764194724771893822659",
+   "places": [
+    {
+     "day": "2026-10-14",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "11:00",
+   "end": "11:30",
+   "title": "Grace Hill",
+   "category": "review",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2166356867014452917785284028613377947",
+   "places": [
+    {
+     "day": "2026-10-14",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "11:45",
+   "end": "12:45",
+   "title": "Emma Foster",
+   "category": "consultation",
+   "status": "checked_in",
+   "note": ""
+  },
+  {
+   "uid": "2166356867015678719712005458493309976",
+   "places": [
+    {
+     "day": "2026-10-14",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "13:30",
+   "end": "14:45",
+   "title": "Frank Green",
+   "category": "follow_up",
+   "status": "checked_in",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2166356867016853463959777403316968427",
+   "places": [
+    {
+     "day": "2026-10-14",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "15:30",
+   "end": "16:45",
+   "title": "Henry Irwin",
+   "category": "intake",
+   "status": "checked_in",
+   "note": ""
+  },
+  {
+   "uid": "2166356867018102090883265167898489519",
+   "places": [
+    {
+     "day": "2026-10-14",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "09:45",
+   "end": "11:00",
+   "title": "Emma Foster",
+   "category": "follow_up",
+   "status": "checked_in",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2166356867019318872282214300071631918",
+   "places": [
+    {
+     "day": "2026-10-14",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "14:30",
+   "end": "15:30",
+   "title": "Ben Carter",
+   "category": "review",
+   "status": "canceled",
+   "note": ""
+  },
+  {
+   "uid": "2166356867020506233813788398312850608",
+   "places": [
+    {
+     "day": "2026-10-14",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "16:15",
+   "end": "17:30",
+   "title": "Henry Irwin",
+   "category": "consultation",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2166356867021672585042179677900431990",
+   "places": [
+    {
+     "day": "2026-10-14",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "09:30",
+   "end": "10:30",
+   "title": "Alice Morgan",
+   "category": "consultation",
+   "status": "checked_in",
+   "note": ""
+  },
+  {
+   "uid": "2166356867022943398700172062160402352",
+   "places": [
+    {
+     "day": "2026-10-14",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "14:15",
+   "end": "15:30",
+   "title": "Alice Morgan",
+   "category": "consultation",
+   "status": "canceled",
+   "note": ""
+  },
+  {
+   "uid": "2166356867024107129353708973898324305",
+   "places": [
+    {
+     "day": "2026-10-14",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "15:45",
+   "end": "16:45",
+   "title": "Frank Green",
+   "category": "follow_up",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2166461318216129468387004108736239111",
+   "places": [
+    {
+     "day": "2026-10-15",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "13:30",
+   "end": "14:15",
+   "title": "Alice Morgan",
+   "category": "intake",
+   "status": "canceled",
+   "note": ""
+  },
+  {
+   "uid": "2166461318217338301705949206126775182",
+   "places": [
+    {
+     "day": "2026-10-15",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "15:45",
+   "end": "16:15",
+   "title": "Emma Foster",
+   "category": "review",
+   "status": "checked_in",
+   "note": ""
+  },
+  {
+   "uid": "2166461318218544626186078122585079218",
+   "places": [
+    {
+     "day": "2026-10-15",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "11:30",
+   "end": "12:45",
+   "title": "Frank Green",
+   "category": "consultation",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2166461318219771224336234299154819304",
+   "places": [
+    {
+     "day": "2026-10-15",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "13:30",
+   "end": "14:15",
+   "title": "Ben Carter",
+   "category": "follow_up",
+   "status": "canceled",
+   "note": ""
+  },
+  {
+   "uid": "2166461318220942577437240258425088820",
+   "places": [
+    {
+     "day": "2026-10-15",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "14:45",
+   "end": "15:30",
+   "title": "Emma Foster",
+   "category": "consultation",
+   "status": "checked_in",
+   "note": ""
+  },
+  {
+   "uid": "2166461318222170481322443240525995589",
+   "places": [
+    {
+     "day": "2026-10-15",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "15:30",
+   "end": "16:00",
+   "title": "Emma Foster",
+   "category": "review",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2166461318223365520754950558209945560",
+   "places": [
+    {
+     "day": "2026-10-15",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "16:30",
+   "end": "17:15",
+   "title": "Henry Irwin",
+   "category": "consultation",
+   "status": "scheduled",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2166461318224578039517023600628614932",
+   "places": [
+    {
+     "day": "2026-10-15",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "09:45",
+   "end": "10:45",
+   "title": "Frank Green",
+   "category": "follow_up",
+   "status": "canceled",
+   "note": ""
+  },
+  {
+   "uid": "2166461318225810357922910072298950916",
+   "places": [
+    {
+     "day": "2026-10-15",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "10:45",
+   "end": "11:45",
+   "title": "Frank Green",
+   "category": "intake",
+   "status": "canceled",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2166461318227027751769614604185035716",
+   "places": [
+    {
+     "day": "2026-10-15",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "13:30",
+   "end": "14:00",
+   "title": "Henry Irwin",
+   "category": "review",
+   "status": "checked_in",
+   "note": ""
+  },
+  {
+   "uid": "2166461318228228596385317989278104895",
+   "places": [
+    {
+     "day": "2026-10-15",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "14:45",
+   "end": "15:15",
+   "title": "Daniel Evans",
+   "category": "follow_up",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2166461318229437778700461481263968552",
+   "places": [
+    {
+     "day": "2026-10-15",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "09:30",
+   "end": "10:00",
+   "title": "Grace Hill",
+   "category": "consultation",
+   "status": "canceled",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2166461318230638148659574613419066181",
+   "places": [
+    {
+     "day": "2026-10-15",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "11:00",
+   "end": "12:00",
+   "title": "Henry Irwin",
+   "category": "follow_up",
+   "status": "canceled",
+   "note": ""
+  },
+  {
+   "uid": "2166461318231834124802341894446882385",
+   "places": [
+    {
+     "day": "2026-10-15",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "13:45",
+   "end": "15:00",
+   "title": "Chloe Davis",
+   "category": "follow_up",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2166461318233088244023135915135925851",
+   "places": [
+    {
+     "day": "2026-10-15",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "15:45",
+   "end": "16:15",
+   "title": "Grace Hill",
+   "category": "review",
+   "status": "scheduled",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2166565769425111025027427698262037361",
+   "places": [
+    {
+     "day": "2026-10-16",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "13:30",
+   "end": "14:30",
+   "title": "Ben Carter",
+   "category": "intake",
+   "status": "canceled",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2166565769426335333513301814453208837",
+   "places": [
+    {
+     "day": "2026-10-16",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "15:15",
+   "end": "16:00",
+   "title": "Frank Green",
+   "category": "follow_up",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2166565769427485414394499806636250192",
+   "places": [
+    {
+     "day": "2026-10-16",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "16:30",
+   "end": "17:00",
+   "title": "Henry Irwin",
+   "category": "review",
+   "status": "canceled",
+   "note": ""
+  },
+  {
+   "uid": "2166565769428710686104196101977665323",
+   "places": [
+    {
+     "day": "2026-10-16",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "11:30",
+   "end": "12:45",
+   "title": "Emma Foster",
+   "category": "follow_up",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2166565769429955820805220833002598929",
+   "places": [
+    {
+     "day": "2026-10-16",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "13:30",
+   "end": "14:45",
+   "title": "Grace Hill",
+   "category": "intake",
+   "status": "canceled",
+   "note": ""
+  },
+  {
+   "uid": "2166565769431143831882968968485749731",
+   "places": [
+    {
+     "day": "2026-10-16",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "10:00",
+   "end": "11:15",
+   "title": "Henry Irwin",
+   "category": "review",
+   "status": "checked_in",
+   "note": ""
+  },
+  {
+   "uid": "2166565769432359786233160671520303570",
+   "places": [
+    {
+     "day": "2026-10-16",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "12:00",
+   "end": "12:45",
+   "title": "Alice Morgan",
+   "category": "review",
+   "status": "canceled",
+   "note": ""
+  },
+  {
+   "uid": "2166565769433523771726744127878578462",
+   "places": [
+    {
+     "day": "2026-10-16",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "15:45",
+   "end": "16:15",
+   "title": "Chloe Davis",
+   "category": "intake",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2166565769434744708694699244804063179",
+   "places": [
+    {
+     "day": "2026-10-16",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "16:45",
+   "end": "17:30",
+   "title": "Alice Morgan",
+   "category": "intake",
+   "status": "canceled",
+   "note": ""
+  },
+  {
+   "uid": "2166670220626786285817590300789644858",
+   "places": [
+    {
+     "day": "2026-10-17",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "09:45",
+   "end": "10:30",
+   "title": "Ben Carter",
+   "category": "consultation",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2166670220628026534231956512463616577",
+   "places": [
+    {
+     "day": "2026-10-17",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "11:00",
+   "end": "11:30",
+   "title": "Alice Morgan",
+   "category": "intake",
+   "status": "checked_in",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2166670220629191171918569052279472984",
+   "places": [
+    {
+     "day": "2026-10-17",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "12:00",
+   "end": "13:00",
+   "title": "Daniel Evans",
+   "category": "review",
+   "status": "checked_in",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2166670220630407604326913399763998634",
+   "places": [
+    {
+     "day": "2026-10-17",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "13:30",
+   "end": "14:30",
+   "title": "Daniel Evans",
+   "category": "intake",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2166670220631620438655262350517119912",
+   "places": [
+    {
+     "day": "2026-10-17",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "11:15",
+   "end": "12:00",
+   "title": "Alice Morgan",
+   "category": "follow_up",
+   "status": "canceled",
+   "note": ""
+  },
+  {
+   "uid": "2166670220632846225771178450605662351",
+   "places": [
+    {
+     "day": "2026-10-17",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "13:30",
+   "end": "14:00",
+   "title": "Frank Green",
+   "category": "review",
+   "status": "canceled",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2166670220634067787237493018031811266",
+   "places": [
+    {
+     "day": "2026-10-17",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "14:00",
+   "end": "15:15",
+   "title": "Chloe Davis",
+   "category": "intake",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2166670220635246610051337928436971782",
+   "places": [
+    {
+     "day": "2026-10-17",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "15:45",
+   "end": "16:15",
+   "title": "Emma Foster",
+   "category": "follow_up",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2166670220636447877545779453232454206",
+   "places": [
+    {
+     "day": "2026-10-17",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "16:45",
+   "end": "17:15",
+   "title": "Emma Foster",
+   "category": "intake",
+   "status": "checked_in",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2166670220637679496617323678385911836",
+   "places": [
+    {
+     "day": "2026-10-17",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "09:45",
+   "end": "10:45",
+   "title": "Chloe Davis",
+   "category": "consultation",
+   "status": "canceled",
+   "note": ""
+  },
+  {
+   "uid": "2166670220638886925938598389826587939",
+   "places": [
+    {
+     "day": "2026-10-17",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "11:00",
+   "end": "12:00",
+   "title": "Henry Irwin",
+   "category": "follow_up",
+   "status": "canceled",
+   "note": ""
+  },
+  {
+   "uid": "2166670220640078991118500118866724117",
+   "places": [
+    {
+     "day": "2026-10-17",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "13:30",
+   "end": "14:30",
+   "title": "Daniel Evans",
+   "category": "intake",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2166670220641298525134336439249252309",
+   "places": [
+    {
+     "day": "2026-10-17",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "15:45",
+   "end": "17:00",
+   "title": "Daniel Evans",
+   "category": "intake",
+   "status": "canceled",
+   "note": ""
+  },
+  {
+   "uid": "2166670220642478138026693616915731680",
+   "places": [
+    {
+     "day": "2026-10-17",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "17:45",
+   "end": "18:15",
+   "title": "Daniel Evans",
+   "category": "follow_up",
+   "status": "scheduled",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2166670220643687175252990734562366610",
+   "places": [
+    {
+     "day": "2026-10-17",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "10:00",
+   "end": "11:15",
+   "title": "Emma Foster",
+   "category": "consultation",
+   "status": "checked_in",
+   "note": ""
+  },
+  {
+   "uid": "2166670220644928844170462287715073082",
+   "places": [
+    {
+     "day": "2026-10-17",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "11:15",
+   "end": "11:45",
+   "title": "Chloe Davis",
+   "category": "review",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2166670220646128620413804214695968249",
+   "places": [
+    {
+     "day": "2026-10-17",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "14:15",
+   "end": "14:45",
+   "title": "Daniel Evans",
+   "category": "review",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2166670220647308177373547888743740618",
+   "places": [
+    {
+     "day": "2026-10-17",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "15:15",
+   "end": "15:45",
+   "title": "Daniel Evans",
+   "category": "consultation",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2166670220648553959041797063869420513",
+   "places": [
+    {
+     "day": "2026-10-17",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "17:00",
+   "end": "17:45",
+   "title": "Daniel Evans",
+   "category": "follow_up",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2166879123031390540357742600136584921",
+   "places": [
+    {
+     "day": "2026-10-19",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "09:45",
+   "end": "11:00",
+   "title": "Alice Morgan",
+   "category": "follow_up",
+   "status": "checked_in",
+   "note": ""
+  },
+  {
+   "uid": "2166879123032625015794378061518881905",
+   "places": [
+    {
+     "day": "2026-10-19",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "11:15",
+   "end": "11:45",
+   "title": "Chloe Davis",
+   "category": "follow_up",
+   "status": "canceled",
+   "note": ""
+  },
+  {
+   "uid": "2166879123033820493670779728326987513",
+   "places": [
+    {
+     "day": "2026-10-19",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "13:30",
+   "end": "14:45",
+   "title": "Grace Hill",
+   "category": "review",
+   "status": "canceled",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2166879123035019498730703427120827402",
+   "places": [
+    {
+     "day": "2026-10-19",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "15:15",
+   "end": "15:45",
+   "title": "Frank Green",
+   "category": "intake",
+   "status": "checked_in",
+   "note": ""
+  },
+  {
+   "uid": "2166879123036197285589679571500242725",
+   "places": [
+    {
+     "day": "2026-10-19",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "16:00",
+   "end": "16:45",
+   "title": "Henry Irwin",
+   "category": "follow_up",
+   "status": "canceled",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2166879123037455203818896314645850526",
+   "places": [
+    {
+     "day": "2026-10-19",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "16:45",
+   "end": "17:15",
+   "title": "Alice Morgan",
+   "category": "follow_up",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2166879123038656620584823283069666703",
+   "places": [
+    {
+     "day": "2026-10-19",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "12:00",
+   "end": "13:00",
+   "title": "Alice Morgan",
+   "category": "consultation",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2166879123039834667712490763746751525",
+   "places": [
+    {
+     "day": "2026-10-19",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "13:45",
+   "end": "14:30",
+   "title": "Alice Morgan",
+   "category": "follow_up",
+   "status": "checked_in",
+   "note": ""
+  },
+  {
+   "uid": "2166879123041068479210091481469382327",
+   "places": [
+    {
+     "day": "2026-10-19",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "14:30",
+   "end": "15:00",
+   "title": "Chloe Davis",
+   "category": "follow_up",
+   "status": "canceled",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2166879123042228538478987429934531017",
+   "places": [
+    {
+     "day": "2026-10-19",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "16:00",
+   "end": "16:30",
+   "title": "Grace Hill",
+   "category": "review",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2166879123043466775791652778438193986",
+   "places": [
+    {
+     "day": "2026-10-19",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "16:30",
+   "end": "17:45",
+   "title": "Emma Foster",
+   "category": "consultation",
+   "status": "scheduled",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2166879123044664247689830533517800507",
+   "places": [
+    {
+     "day": "2026-10-19",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "10:15",
+   "end": "11:15",
+   "title": "Chloe Davis",
+   "category": "follow_up",
+   "status": "canceled",
+   "note": ""
+  },
+  {
+   "uid": "2166879123045867729385088365108259135",
+   "places": [
+    {
+     "day": "2026-10-19",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "12:15",
+   "end": "13:15",
+   "title": "Emma Foster",
+   "category": "follow_up",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2166879123047093868781599595471516181",
+   "places": [
+    {
+     "day": "2026-10-19",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "15:15",
+   "end": "16:15",
+   "title": "Ben Carter",
+   "category": "review",
+   "status": "checked_in",
+   "note": ""
+  },
+  {
+   "uid": "2166983574239095031424142813482460316",
+   "places": [
+    {
+     "day": "2026-10-20",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "10:15",
+   "end": "10:45",
+   "title": "Alice Morgan",
+   "category": "review",
+   "status": "checked_in",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2166983574240298809366659065621959416",
+   "places": [
+    {
+     "day": "2026-10-20",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "11:30",
+   "end": "12:15",
+   "title": "Alice Morgan",
+   "category": "intake",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2166983574241539000535787214837732328",
+   "places": [
+    {
+     "day": "2026-10-20",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "13:30",
+   "end": "14:30",
+   "title": "Frank Green",
+   "category": "consultation",
+   "status": "scheduled",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2166983574242759772553498515186898011",
+   "places": [
+    {
+     "day": "2026-10-20",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "16:15",
+   "end": "16:45",
+   "title": "Daniel Evans",
+   "category": "review",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2166983574243990094746611324571243909",
+   "places": [
+    {
+     "day": "2026-10-20",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "10:15",
+   "end": "11:00",
+   "title": "Henry Irwin",
+   "category": "follow_up",
+   "status": "scheduled",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2166983574245177178539755898151708114",
+   "places": [
+    {
+     "day": "2026-10-20",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "11:15",
+   "end": "11:45",
+   "title": "Chloe Davis",
+   "category": "follow_up",
+   "status": "checked_in",
+   "note": ""
+  },
+  {
+   "uid": "2166983574246386032348786564592217360",
+   "places": [
+    {
+     "day": "2026-10-20",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "11:45",
+   "end": "12:45",
+   "title": "Alice Morgan",
+   "category": "follow_up",
+   "status": "canceled",
+   "note": ""
+  },
+  {
+   "uid": "2166983574247564039060705848547731935",
+   "places": [
+    {
+     "day": "2026-10-20",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "13:30",
+   "end": "14:30",
+   "title": "Frank Green",
+   "category": "consultation",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2166983574248830906718353877939644697",
+   "places": [
+    {
+     "day": "2026-10-20",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "14:30",
+   "end": "15:45",
+   "title": "Alice Morgan",
+   "category": "follow_up",
+   "status": "scheduled",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2166983574250025815009252792832858999",
+   "places": [
+    {
+     "day": "2026-10-20",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "16:15",
+   "end": "17:00",
+   "title": "Frank Green",
+   "category": "consultation",
+   "status": "checked_in",
+   "note": ""
+  },
+  {
+   "uid": "2166983574251181429215637983954303139",
+   "places": [
+    {
+     "day": "2026-10-20",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "10:45",
+   "end": "11:45",
+   "title": "Emma Foster",
+   "category": "review",
+   "status": "canceled",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2166983574252412104422676363681965013",
+   "places": [
+    {
+     "day": "2026-10-20",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "15:30",
+   "end": "16:15",
+   "title": "Alice Morgan",
+   "category": "follow_up",
+   "status": "checked_in",
+   "note": ""
+  },
+  {
+   "uid": "2166983574253596494196621463955788704",
+   "places": [
+    {
+     "day": "2026-10-20",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "16:15",
+   "end": "17:15",
+   "title": "Grace Hill",
+   "category": "intake",
+   "status": "canceled",
+   "note": ""
+  },
+  {
+   "uid": "2166983574254839841094862994822361884",
+   "places": [
+    {
+     "day": "2026-10-20",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "10:30",
+   "end": "11:45",
+   "title": "Chloe Davis",
+   "category": "review",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2166983574256050870926849892686894417",
+   "places": [
+    {
+     "day": "2026-10-20",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "13:30",
+   "end": "14:30",
+   "title": "Grace Hill",
+   "category": "follow_up",
+   "status": "scheduled",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2166983574257274794961780869785158832",
+   "places": [
+    {
+     "day": "2026-10-20",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "14:45",
+   "end": "16:00",
+   "title": "Chloe Davis",
+   "category": "follow_up",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2166983574258489991296065623982237962",
+   "places": [
+    {
+     "day": "2026-10-20",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "16:00",
+   "end": "16:45",
+   "title": "Henry Irwin",
+   "category": "follow_up",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2167088025450503068090785452970473954",
+   "places": [
+    {
+     "day": "2026-10-21",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "09:30",
+   "end": "10:30",
+   "title": "Daniel Evans",
+   "category": "consultation",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2167088025451691098186707344348477180",
+   "places": [
+    {
+     "day": "2026-10-21",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "12:15",
+   "end": "12:45",
+   "title": "Chloe Davis",
+   "category": "review",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2167088025452936138980145173364840932",
+   "places": [
+    {
+     "day": "2026-10-21",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "15:30",
+   "end": "16:15",
+   "title": "Frank Green",
+   "category": "follow_up",
+   "status": "checked_in",
+   "note": ""
+  },
+  {
+   "uid": "2167088025454102989743533241860795211",
+   "places": [
+    {
+     "day": "2026-10-21",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "09:45",
+   "end": "11:00",
+   "title": "Ben Carter",
+   "category": "follow_up",
+   "status": "scheduled",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2167088025455295406020064980319082302",
+   "places": [
+    {
+     "day": "2026-10-21",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "13:45",
+   "end": "14:45",
+   "title": "Ben Carter",
+   "category": "follow_up",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2167088025456523496118017949873623645",
+   "places": [
+    {
+     "day": "2026-10-21",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "15:00",
+   "end": "15:45",
+   "title": "Grace Hill",
+   "category": "review",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2167088025457739100924142427876051423",
+   "places": [
+    {
+     "day": "2026-10-21",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "17:30",
+   "end": "18:30",
+   "title": "Frank Green",
+   "category": "intake",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2167088025458956255414614085572812857",
+   "places": [
+    {
+     "day": "2026-10-21",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "10:15",
+   "end": "10:45",
+   "title": "Frank Green",
+   "category": "consultation",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2167088025460189400957857231158836581",
+   "places": [
+    {
+     "day": "2026-10-21",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "13:30",
+   "end": "14:00",
+   "title": "Henry Irwin",
+   "category": "follow_up",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2167088025461342913036906121129802575",
+   "places": [
+    {
+     "day": "2026-10-21",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "10:00",
+   "end": "11:15",
+   "title": "Ben Carter",
+   "category": "review",
+   "status": "scheduled",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2167088025462561303308180059077381076",
+   "places": [
+    {
+     "day": "2026-10-21",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "11:15",
+   "end": "12:00",
+   "title": "Henry Irwin",
+   "category": "intake",
+   "status": "checked_in",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2167088025463818075912545075104338666",
+   "places": [
+    {
+     "day": "2026-10-21",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "13:30",
+   "end": "14:45",
+   "title": "Chloe Davis",
+   "category": "intake",
+   "status": "scheduled",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2167088025465020788969459035685198532",
+   "places": [
+    {
+     "day": "2026-10-21",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "15:30",
+   "end": "16:00",
+   "title": "Chloe Davis",
+   "category": "intake",
+   "status": "checked_in",
+   "note": ""
+  },
+  {
+   "uid": "2167088025466225250240199860191095021",
+   "places": [
+    {
+     "day": "2026-10-21",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "17:00",
+   "end": "18:15",
+   "title": "Frank Green",
+   "category": "consultation",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2167192476658205658630176818423016883",
+   "places": [
+    {
+     "day": "2026-10-22",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "10:15",
+   "end": "11:30",
+   "title": "Chloe Davis",
+   "category": "consultation",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2167192476659424136784655425610117375",
+   "places": [
+    {
+     "day": "2026-10-22",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "12:00",
+   "end": "12:30",
+   "title": "Henry Irwin",
+   "category": "follow_up",
+   "status": "checked_in",
+   "note": ""
+  },
+  {
+   "uid": "2167192476660641437851893743081490700",
+   "places": [
+    {
+     "day": "2026-10-22",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "14:45",
+   "end": "15:15",
+   "title": "Grace Hill",
+   "category": "consultation",
+   "status": "scheduled",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2167192476661858720896173933863597453",
+   "places": [
+    {
+     "day": "2026-10-22",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "15:45",
+   "end": "16:30",
+   "title": "Daniel Evans",
+   "category": "review",
+   "status": "canceled",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2167192476663075396757666524862867890",
+   "places": [
+    {
+     "day": "2026-10-22",
+     "resource_uid": "2161826296292531075989349983556059638"
+    }
+   ],
+   "start": "16:30",
+   "end": "17:45",
+   "title": "Chloe Davis",
+   "category": "follow_up",
+   "status": "canceled",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2167192476664278805335382521176931654",
+   "places": [
+    {
+     "day": "2026-10-22",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "10:15",
+   "end": "11:30",
+   "title": "Henry Irwin",
+   "category": "follow_up",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2167192476665519332487010190782279776",
+   "places": [
+    {
+     "day": "2026-10-22",
+     "resource_uid": "2161826296293697961695016840502892366"
+    }
+   ],
+   "start": "13:30",
+   "end": "14:00",
+   "title": "Chloe Davis",
+   "category": "intake",
+   "status": "scheduled",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2167192476666669483390178066744940977",
+   "places": [
+    {
+     "day": "2026-10-22",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "09:45",
+   "end": "10:30",
+   "title": "Grace Hill",
+   "category": "intake",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2167192476667866198508734819701150921",
+   "places": [
+    {
+     "day": "2026-10-22",
+     "resource_uid": "2161826296294922790665996347584397206"
+    },
+    {
+     "day": "2026-10-22",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "12:00",
+   "end": "12:30",
+   "title": "Frank Green",
+   "category": "consultation",
+   "status": "checked_in",
+   "note": ""
+  },
+  {
+   "uid": "2167192476669088222110804026451308512",
+   "places": [
+    {
+     "day": "2026-10-22",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "13:30",
+   "end": "14:45",
+   "title": "Chloe Davis",
+   "category": "consultation",
+   "status": "checked_in",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2167192476670304140297245831393221982",
+   "places": [
+    {
+     "day": "2026-10-22",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "15:45",
+   "end": "16:30",
+   "title": "Frank Green",
+   "category": "review",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2167192476671500632994125543922756917",
+   "places": [
+    {
+     "day": "2026-10-22",
+     "resource_uid": "2161826296294922790665996347584397206"
+    }
+   ],
+   "start": "17:00",
+   "end": "17:30",
+   "title": "Frank Green",
+   "category": "consultation",
+   "status": "canceled",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2167192476672760727098036169727924137",
+   "places": [
+    {
+     "day": "2026-10-22",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "10:00",
+   "end": "10:30",
+   "title": "Frank Green",
+   "category": "follow_up",
+   "status": "scheduled",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2167192476673915201769191036919748224",
+   "places": [
+    {
+     "day": "2026-10-22",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "11:00",
+   "end": "12:15",
+   "title": "Frank Green",
+   "category": "follow_up",
+   "status": "scheduled",
+   "note": ""
+  },
+  {
+   "uid": "2167192476675186752534338470114557785",
+   "places": [
+    {
+     "day": "2026-10-22",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "12:15",
+   "end": "12:45",
+   "title": "Emma Foster",
+   "category": "review",
+   "status": "canceled",
+   "note": ""
+  },
+  {
+   "uid": "2167192476676358213223505786644184422",
+   "places": [
+    {
+     "day": "2026-10-22",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "13:30",
+   "end": "14:00",
+   "title": "Grace Hill",
+   "category": "intake",
+   "status": "canceled",
+   "note": "Bring documents"
+  },
+  {
+   "uid": "2167192476677578409159942063338605672",
+   "places": [
+    {
+     "day": "2026-10-22",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "14:00",
+   "end": "14:30",
+   "title": "Emma Foster",
+   "category": "intake",
+   "status": "canceled",
+   "note": ""
+  },
+  {
+   "uid": "2167192476678750332549308429794702196",
+   "places": [
+    {
+     "day": "2026-10-22",
+     "resource_uid": "2161826296296153260079985733269768921"
+    }
+   ],
+   "start": "15:00",
+   "end": "16:00",
+   "title": "Alice Morgan",
+   "category": "intake",
+   "status": "canceled",
+   "note": ""
+  }
+ ]
+}
