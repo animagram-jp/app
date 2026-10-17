@@ -43,11 +43,14 @@
     }
 }
 
+/* === calendar === */
+
 #header {
     column-gap:      1rem;
     display:         flex;
     flex-wrap:       wrap;
     justify-content: space-between;
+    margin-block-start: 1rem;
 }
 
 #header > nav {
@@ -167,4 +170,61 @@
 #modal dl {
     display:               grid;
     grid-template-columns: auto 1fr;
+}
+
+[data-sign="ring-arrow"] {
+    color: var(--color-emphasis-ink);
+    display:       inline-grid;
+    isolation:     isolate;
+    place-items:   center;
+
+    &::before {
+        background-color: currentColor;
+        content:          "";
+        inset:            0;
+        margin:           auto;
+        position:         absolute;
+        translate:        0 1.849%;
+        z-index:          -1;
+        clip-path: shape(
+            from 0% 94.203%,
+            line to 0% 87.784%,
+            line to 24.505% 87.784%,
+            arc to 75.495% 87.784% of 47.125% cw large,
+            line to 89% 87.784%,
+            line to 89% 82%,
+            line to 100% 91%,
+            line to 89% 100%,
+            line to 89% 94.203%,
+            line to 60% 94.203%,
+            line to 60% 87.784%,
+            arc to 40% 87.784% of 40.875% ccw large,
+            line to 40% 94.203%,
+            close
+        );
+
+    &[data-size="xs"]::before {
+        block-size:  calc(var(--xs-line-height) * 1.75);
+        inline-size: calc(var(--xs-line-height) * 1.75);
+    }
+    &[data-size="sm"]::before {
+        block-size:  calc(var(--sm-line-height) * 1.75);
+        inline-size: calc(var(--sm-line-height) * 1.75);
+    }
+    &:where([data-size="md"], :not([data-size]))::before {
+        block-size:  calc(var(--md-line-height) * 1.75);
+        inline-size: calc(var(--md-line-height) * 1.75);
+    }
+    &[data-size="lg"]::before {
+        block-size:  calc(var(--lg-line-height) * 1.75);
+        inline-size: calc(var(--lg-line-height) * 1.75);
+    }
+    &[data-size="xl"]::before {
+        block-size:  calc(var(--xl-line-height) * 1.75);
+        inline-size: calc(var(--xl-line-height) * 1.75);
+    }
+    &[data-size="2xl"]::before {
+        block-size:  calc(var(--2xl-line-height) * 1.75);
+        inline-size: calc(var(--2xl-line-height) * 1.75);
+    }
 }
