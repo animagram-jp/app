@@ -23,7 +23,7 @@ Applications built on this boilerplate. They share the same core.
 | App | Description |
 |-|-|
 | [Calendar](#calendar---web-calendar) | Web calendar with reservation management. |
-| [CoC7th](#coc7th---call-of-cthulhu-7th-edition-playing-tool) | Online tool for playing Call of Cthulhu TRPG 7th Edition. |
+| [CoC7th](#coc7th---call-of-cthulhu-7th-edition-playing-tool) | Call of Cthulhu 7th edition playing tool. |
 
 ### Calendar - Web calendar
 
