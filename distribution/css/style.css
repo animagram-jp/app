@@ -43,10 +43,6 @@
     }
 }
 
-body {
-    padding: 0.25rem;
-}
-
 body>header, section, h2, h3 {
     margin-block-start: 1rem;
 }
