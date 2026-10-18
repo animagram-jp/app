@@ -1576,21 +1576,8 @@ impl Handler {
                 }
             })
             .collect();
-        let span = if self.month() { Month::days() } else { days };
-        let start = display(first, LANG, YEAR_DAY, Format::WithYoubi);
-        let value = if span == 1 {
-            start
-        } else {
-            format!(
-                "{start} – {}",
-                display(
-                    add(first, Timevolume::new(TimevolumeUnit::Day, u64::from(span - 1))),
-                    LANG,
-                    YEAR_DAY,
-                    Format::WithYoubi
-                )
-            )
-        };
+        let value =
+            display(first, LANG, (TimevolumeUnit::Day, TimevolumeUnit::Day), Format::WithoutYoubi);
         commands.push(Command::SetText { id: Target::Title.to_dom(), value });
         if self.month() {
             commands.extend(self.axis_commands());
@@ -2103,10 +2090,7 @@ mod tests {
         let (_, commands) = handler.initial_draw();
         assert_eq!(text_of(&commands, &Target::DayTitle(1).to_dom()).unwrap(), "10/2(金)");
         assert_eq!(text_of(&commands, &Target::DayTitle(7).to_dom()).unwrap(), "10/8(木)");
-        assert_eq!(
-            text_of(&commands, &Target::Title.to_dom()).unwrap(),
-            "2026年10月2日(金) – 2026年10月8日(木)"
-        );
+        assert_eq!(text_of(&commands, &Target::Title.to_dom()).unwrap(), "2");
     }
 
     #[test]
@@ -2126,7 +2110,7 @@ mod tests {
         let mut handler = Handler::new(VIEWPORT, today(), REM);
         choose(&mut handler, Axis::Day(Day::Day));
         let commands = press(&mut handler, Target::Step(4).to_dom());
-        assert_eq!(text_of(&commands, &Target::Title.to_dom()).unwrap(), "2026年10月3日(土)");
+        assert_eq!(text_of(&commands, &Target::Title.to_dom()).unwrap(), "3");
         assert_eq!(texts(&commands).len(), 2);
     }
 
@@ -3834,7 +3818,7 @@ mod tests {
         let text = |target: Target| text_of(&commands, &target.to_dom()).unwrap();
         assert_eq!(text(Target::DayTitle(1)), "月");
         assert_eq!(text(Target::DayTitle(7)), "日");
-        assert_eq!(text(Target::Title), "2026年9月28日(月) – 2026年11月1日(日)");
+        assert_eq!(text(Target::Title), "28");
         assert_eq!(text(Target::BandLabel(1)), "28");
         assert_eq!(text(Target::BandLabel(4)), "10/1");
         assert_eq!(text(Target::BandLabel(35)), "11/1");

@@ -92,8 +92,8 @@ pub enum Target {
 
 impl Target {
     pub fn to_dom(self) -> Id {
+        let header = || Vec::from([(Tag::Header, None)]);
         let surface = || Vec::from([(Tag::Main, None), (Tag::Section, None)]);
-        let nav = |n| [(Tag::Header, None), (Tag::Nav, Some(n))];
         let modal_form = || Vec::from([(Tag::Modal, None), (Tag::Form, None)]);
         let list = |n, item| {
             let mut path = surface();
@@ -111,18 +111,20 @@ impl Target {
         };
         let path = match self {
             Self::Body => Vec::from([(Tag::Body, None)]),
-            Self::Title => Vec::from([(Tag::Header, None), (Tag::H2, None)]),
+            Self::Title => Vec::from([(Tag::Header, None), (Tag::Span, None), (Tag::Strong, None)]),
             Self::Axis(axis) => {
                 let n = AXES.iter().position(|a| *a == axis).map_or(0, |i| i as u32 + 1);
                 join(
-                    nav(1).into(),
+                    Vec::from([(Tag::Header, None)]),
                     &[(Tag::Fieldset, None), (Tag::Label, Some(n)), (Tag::Input, None)],
                 )
             }
-            Self::Step(n) => join(nav(1).into(), &[(Tag::Div, None), (Tag::Button, Some(n))]),
-            Self::Zoom => join(nav(2).into(), &[(Tag::Input, None)]),
-            Self::Reload => join(nav(2).into(), &[(Tag::Button, Some(RELOAD_BUTTON))]),
-            Self::Save => join(nav(2).into(), &[(Tag::Button, Some(SAVE_BUTTON))]),
+            Self::Step(n) => {
+                join(header(), &[(Tag::Div, Some(1)), (Tag::Button, Some(n))])
+            }
+            Self::Zoom => join(header(), &[(Tag::Input, None)]),
+            Self::Reload => join(header(), &[(Tag::Button, Some(RELOAD_BUTTON))]),
+            Self::Save => join(header(), &[(Tag::Button, Some(SAVE_BUTTON))]),
             Self::TimeAxis => Vec::from([(Tag::Main, None), (Tag::Ol, None)]),
             Self::AxisLabel(side, row) => Vec::from([
                 (Tag::Main, None),
@@ -175,22 +177,16 @@ impl Target {
         let path: Vec<(&Tag, Option<u32>)> = id.0.iter().map(|s| (&s.tag, s.n)).collect();
         Some(match path.as_slice() {
             [(Tag::Body, None)] => Self::Body,
-            [(Tag::Header, None), (Tag::H2, None)] => Self::Title,
+            [(Tag::Header, None), (Tag::Span, None), (Tag::Strong, None)] => Self::Title,
             [
                 (Tag::Header, None),
-                (Tag::Nav, Some(1)),
                 (Tag::Fieldset, None),
                 (Tag::Label, Some(n)),
                 (Tag::Input, None),
             ] => Self::Axis(*AXES.get(n.checked_sub(1)? as usize)?),
-            [
-                (Tag::Header, None),
-                (Tag::Nav, Some(1)),
-                (Tag::Div, None),
-                (Tag::Button, Some(n)),
-            ] => Self::Step(*n),
-            [(Tag::Header, None), (Tag::Nav, Some(2)), (Tag::Input, None)] => Self::Zoom,
-            [(Tag::Header, None), (Tag::Nav, Some(2)), (Tag::Button, Some(n))] => match *n {
+            [(Tag::Header, None), (Tag::Div, Some(1)), (Tag::Button, Some(n))] => Self::Step(*n),
+            [(Tag::Header, None), (Tag::Input, None)] => Self::Zoom,
+            [(Tag::Header, None), (Tag::Button, Some(n))] => match *n {
                 RELOAD_BUTTON => Self::Reload,
                 SAVE_BUTTON => Self::Save,
                 _ => return None,
@@ -369,13 +365,8 @@ mod tests {
     fn unknown_ids_resolve_to_nothing() {
         let unknown = [
             Id::new(&[(Tag::Footer, None)]),
-            Id::new(&[
-                (Tag::Header, None),
-                (Tag::Nav, Some(1)),
-                (Tag::Div, Some(1)),
-                (Tag::Button, Some(5)),
-            ]),
-            Id::new(&[(Tag::Header, None), (Tag::Nav, Some(2)), (Tag::Button, Some(9))]),
+            Id::new(&[(Tag::Header, None), (Tag::Div, Some(2)), (Tag::Button, Some(5))]),
+            Id::new(&[(Tag::Header, None), (Tag::Button, Some(9))]),
             Id::new(&[(Tag::Modal, None), (Tag::Form, Some(3))]),
         ];
         for id in unknown {

@@ -1,3 +1,5 @@
+/* === brand common === */
+
 @font-face {
     font-family: "IBM Plex Sans";
     src: url("../font/IBMPlexSans-Regular.woff2") format("woff2");
@@ -43,25 +45,24 @@
     }
 }
 
+body > header {
+    margin-block-start: 1rem;
+
+    & > * {
+        vertical-align: middle;
+    }
+}
+
+/* === coc7th === */
+
 body > * {
     max-width: 60rem;
     margin-inline: auto;
 }
 
-/* === coc7th === */
-
-#header {
-    margin-block-start: 1rem;
-}
-
-#header > * {
-    vertical-align: middle;
-}
-
 #header_button-1 {
     anchor-name: --header_button-1;
 }
-
 #header_div-1 {
     position-anchor: --header_button-1;
 }
@@ -69,18 +70,12 @@ body > * {
 #header_button-2 {
     anchor-name: --header_button-2;
 }
-
 #header_div-2 {
     position-anchor: --header_button-2;
 }
 
 #header_button-5 {
     --color-emphasis-ink: rgb(var(--rgb-accent-green));
-}
-
-main > section {
-    border: 1px solid rgb(var(--rgb-light-gray));
-    margin: 0.25rem 0 0;
 }
 
 :where(

@@ -1,3 +1,5 @@
+/* === brand common === */
+
 @font-face {
     font-family: "IBM Plex Sans";
     src: url("../../font/IBMPlexSans-Regular.woff2") format("woff2");
@@ -43,29 +45,19 @@
     }
 }
 
-/* === calendar === */
-
-#header {
-    column-gap:      1rem;
-    display:         flex;
-    flex-wrap:       wrap;
-    justify-content: space-between;
+body > header {
     margin-block-start: 1rem;
+    
+    & > * {
+        vertical-align: middle;
+    }
 }
+
+/* === calendar === */
 
 #header > nav {
     display:     flex;
     flex-wrap:   wrap;
-}
-
-#header_button-1 {
-    margin-inline-start: auto;
-}
-
-#header_h2 {
-    flex-basis:     100%;
-    min-block-size: 1lh;
-    text-align: center;
 }
 
 #main {
@@ -153,7 +145,7 @@
     font-weight: 600;
 }
 
-#header_nav-2_input {
+#header_input {
     inline-size: 8rem;
 }
 
