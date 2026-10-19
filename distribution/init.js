@@ -79,7 +79,9 @@ function start() {
     const params = new URLSearchParams(location.search);
     if (params.has("eruda")) {
         const s = document.createElement("script");
-        s.src = "https://cdn.jsdelivr.net/npm/eruda";
+        s.src = "https://cdn.jsdelivr.net/npm/eruda@3.4.3/eruda.js";
+        s.integrity = "sha384-weDBY9jeIj4NqaiZF9f6PMAMMY4lIu+0CAI+TjBIE73RctCQOxDoEHltYnstRszI";
+        s.crossOrigin = "anonymous";
         s.onload = () => eruda.init();
         document.body.appendChild(s);
     }

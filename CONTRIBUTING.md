@@ -39,7 +39,7 @@ curl -fsSL -H "Accept: application/vnd.github.raw+json" "https://api.github.com/
 
 ## Links
 
-- [Debug link with eruda (dev tools)](https://app.animagram.jp/?eruda)
+- [Debug link with eruda (dev tools)](https://app.animagram.jp/?eruda) eruda 3.4.3 (fixed)
 
 ## Commands for development
 
