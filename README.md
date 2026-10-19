@@ -1,9 +1,10 @@
 # animagram-jp/app
 
-[English](#version) | [日本語](#ja)
-
 A general-purpose boilerplate for GUI applications that edit and read structured data.
 The application owns a single event loop and is designed to run on multiple host environments, such as WebAssembly in a browser.
+
+構造を持つデータを編集・閲覧する、一般的な用途を想定したアプリケーションシステムのボイラープレート。
+アプリ内にイベントループを持ち、複数のホスト環境(ブラウザのWebAssemblyなど)で動作するよう設計されている。
 
 ## Version
 
@@ -20,44 +21,24 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 Applications built on this boilerplate. They share the same core.
 
-| App | Description |
-|-|-|
-| [Calendar](#calendar---web-calendar) | Web calendar with reservation management. |
-| [CoC7th](#coc7th---call-of-cthulhu-7th-edition-playing-tool) | Call of Cthulhu 7th edition playing tool. |
+このボイラープレート上に構築されたアプリケーション。同じコアを共有する。
 
-### Calendar - Web calendar
+| App | Description | 説明 |
+|-|-|-|
+| [Calendar](#calendar) | Web calendar with reservation management. | 予約管理を含むWebカレンダー。 |
+| [CoC7th](#coc7th) | Call of Cthulhu 7th edition playing tool. | 新クトゥルフ神話TRPGをオンラインで遊ぶためのツール。 |
+
+### Calendar
 
 A web calendar with day, 3-day, week, and month views. Supports recurring events, reservation management, and JSON import and export.
 
-### CoC7th - Call of Cthulhu 7th edition playing tool
+日・3日・週・月の表示を持つWebカレンダー。繰り返し予定、予約管理、JSONのインポート・エクスポートに対応する。
+
+### CoC7th
 
 An online tool dedicated to Call of Cthulhu TRPG 7th Edition. Supports character sheet editing, dice rolling during sessions, and post-session log management and tallying.
 
----
-
-## Ja
-
-構造を持つデータを編集・閲覧する、一般的な用途を想定したアプリケーションシステムのボイラープレート。
-アプリ内にイベントループを持ち、複数のホスト環境(ブラウザのWebAssemblyなど)で動作するよう、設計開発されている。
-
-### アプリ
-
-このボイラープレート上に構築されたアプリケーションです。同じコアを共有します。
-
-| アプリ | 説明 |
-|-|-|
-| [Calendar](#calendar---webカレンダー) | 予約管理を含むWebカレンダー。 |
-| [CoC7th](#coc7th---新クトゥルフ神話trpg-セッション用アプリ) | 新クトゥルフ神話TRPGをオンラインで遊ぶためのツール。 |
-
-#### Calendar - Webカレンダー
-
-日・3日・週・月の表示を持つWebカレンダーです。
-繰り返し予定、予約管理、JSONのインポート・エクスポートに対応しています。
-
-#### CoC7th - 新クトゥルフ神話TRPG セッション用アプリ
-
-新クトゥルフ神話TRPGに特化した、オンラインツールです。
-キャラクターシートの編集や、セッション時のダイスロール、セッション後のログや集計が可能です。
+新クトゥルフ神話TRPGに特化したオンラインツール。キャラクターシートの編集、セッション時のダイスロール、セッション後のログ管理と集計が可能。
 
 ---
 
