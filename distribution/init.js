@@ -547,7 +547,7 @@ const ROOTS = ["header", "main", "modal", "form", "toast"]
     .map(id => document.getElementById(id));
 
 /**
- *  DOM event type. index == js_client.rs:EventType::decode_u8
+ *  DOM event type. index == host.rs:EventType::decode_u8
  */
 const EVENT_TYPES = [
     null,
@@ -574,7 +574,7 @@ const EVENT_TYPES = [
 ];
 
 /**
- *  Key name. index == js_client.rs:KeyName::decode_u8
+ *  Key name. index == host.rs:KeyName::decode_u8
  */
 const KEY_NAMES = [
     null,
@@ -683,7 +683,7 @@ const KEY_NAMES = [
 ];
 
 /**
- *  Tag name. index == js_client.rs:dom::Tag::encode_u8
+ *  Tag name. index == host.rs:dom::Tag::encode_u8
  */
 const TAGS = [
     "",
@@ -729,7 +729,7 @@ const TAGS = [
 ];
 
 /**
- *  HTML attribute name. index == js_client.rs:Attribute
+ *  HTML attribute name. index == host.rs:Attribute
  */
 const ATTRIBUTES = [
     null,
@@ -741,7 +741,7 @@ const ATTRIBUTES = [
 ];
 
 /**
- *  CSS class name. index == js_client.rs:ClassName
+ *  CSS class name. index == host.rs:ClassName
  */
 const CLASS_NAMES = [
     null,
@@ -793,7 +793,7 @@ const STYLE_UNITS = [
 ];
 
 /**
- *  js_fn key. index == js_client.rs:FnName
+ *  js_fn key. index == host.rs:FnName
  */
 const FN_NAMES = [
     null,

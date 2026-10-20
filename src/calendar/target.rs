@@ -9,7 +9,7 @@ use core::{
 };
 
 use super::grid::{AXES, Axis};
-use crate::js_client::dom::{Id, Tag};
+use crate::host::dom::{Id, Tag};
 
 const FIELDS: [EditField; 8] = [
     EditField::Title,

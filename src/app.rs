@@ -22,10 +22,11 @@ use crate::file_store::StoreId;
 use crate::{
     Error,
     arena::{APP, RUNNING, emit},
-    event::{Event, EventError, Response, WindowEvent},
-    js_client::{
-        CanvasEvent, Command, EventType, Input, Output, Pointer, Thresholds, detect_device,
+    event::{
+        Event, EventError, Handler as _, Response, WindowEvent,
+        gesture::{Pointer, Thresholds, detect_device},
     },
+    host::{CanvasEvent, Command, EventType, Input, Output},
 };
 
 pub fn now() -> f64 {
@@ -209,8 +210,8 @@ mod tests {
     use crate::file_store::{Backend, FileStore, StoreId};
     use crate::{
         Rng, block_on,
-        event::EVENT_CANVAS,
-        js_client::{Gesture, Output, dom},
+        event::gesture::Gesture,
+        host::{EVENT_CANVAS, Output, dom},
     };
 
     const POINTER_DOWN: u8 = 16;
@@ -326,7 +327,7 @@ mod tests {
     #[cfg(feature = "calendar")]
     fn fetch_frame(request: u32, status: u16, last: bool, bytes: &[u8]) -> Vec<u8> {
         let mut frame = Vec::new();
-        frame.push(crate::event::EVENT_FETCH);
+        frame.push(crate::host::EVENT_FETCH);
         request.encode(&mut frame);
         frame.extend_from_slice(&status.to_le_bytes());
         frame.push(last as u8);
@@ -430,7 +431,7 @@ mod tests {
                         let length = rng.below(20);
                         let bytes = rng.bytes(length);
                         let mut frame = Vec::new();
-                        frame.push(crate::event::EVENT_FETCH);
+                        frame.push(crate::host::EVENT_FETCH);
                         (1 + rng.below(3) as u32).encode(&mut frame);
                         frame.extend_from_slice(&(200 + rng.below(300) as u16).to_le_bytes());
                         frame.push(rng.below(2) as u8);

@@ -24,12 +24,15 @@ use crate::{
         target::{CardPart, EditField, Target},
     },
     data_struct::DataStruct,
-    event::{Event, Opened, Response},
+    event::{
+        Event, Handler as _, Opened, Response,
+        gesture::{Gesture, Pointer},
+        store,
+    },
     file_store::{Backend, FileStore, FileStoreError, StoreId},
-    js_client::{
-        Attribute, CanvasEvent, Command, Decimal, EventType, FullscreenEvent, Gesture, Keyword,
-        Method, Pointer, StyleProperty, StyleValue, Unit, VisibilityState, dom::Id, parse,
-        parse_url_search_params, stringify,
+    host::{
+        Attribute, CanvasEvent, Command, Decimal, EventType, Keyword, Method, StyleProperty,
+        StyleValue, Unit, dom::Id, parse, parse_url_search_params, stringify,
     },
     object::Predicate,
     timestamp::{
@@ -155,33 +158,6 @@ pub struct Handler {
 }
 
 impl Handler {
-    pub async fn ready(
-        viewport_width_px: f64,
-        _viewport_height_px: f64,
-        rem_in_px: f64,
-        now: f64,
-        timezone_offset_minutes: i32,
-    ) -> Self {
-        let utc = from_ut(now, true, &Timezone::None);
-        let offset = Timevolume::new(
-            TimevolumeUnit::Minute,
-            u64::from(timezone_offset_minutes.unsigned_abs()),
-        );
-        let local = if timezone_offset_minutes < 0 { sub(utc, offset) } else { add(utc, offset) };
-        let today = [HOUR, MINUTE, SECOND, CENTISECOND, IS_UTC]
-            .into_iter()
-            .fold(local, |timestamp, field| LAYOUT.set(timestamp, field, 0u64));
-        #[cfg_attr(not(feature = "file_store"), allow(unused_mut))]
-        let mut handler = Self::new(viewport_width_px, today, rem_in_px);
-        handler.now = now;
-        #[cfg(feature = "file_store")]
-        match Backend::open(STORE, true).await.and_then(Backend::new) {
-            Ok(opened) => handler.attach(opened),
-            Err(error) => handler.startup.push(Error::FileStore(error)),
-        }
-        handler
-    }
-
     pub fn attach(&mut self, store: Backend) {
         if let Err(error) = data::check(&store, &appointment::KINDS) {
             self.startup.push(Error::Data(error));
@@ -242,121 +218,8 @@ impl Handler {
         }
     }
 
-    pub fn close(&self) -> Vec<Command> {
-        if let Some(store) = &self.store {
-            store.close();
-        }
-        vec![]
-    }
-
     pub fn axis(&self) -> Axis {
         self.axis
-    }
-
-    pub fn initial_draw(&mut self) -> (Vec<Event>, Vec<Command>) {
-        let mut commands = self.view_commands();
-        let failed = !self.startup.is_empty();
-        commands.extend(self.startup.drain(..).map(|error| Command::Error { error }));
-        if !failed {
-            if self.loaded() {
-                commands.extend(self.loaded_commands());
-            } else {
-                commands.push(Command::Fetch {
-                    request: LOAD_REQUEST,
-                    method:  Method::Get,
-                    path:    String::from(LOAD_PATH),
-                    body:    Vec::new(),
-                });
-            }
-        }
-        commands.push(hidden(Target::Body.to_dom(), false));
-        (vec![], commands)
-    }
-
-    pub fn process_fetched(&mut self, response: &Response) -> (Vec<Event>, Vec<Command>) {
-        if response.request != LOAD_REQUEST {
-            return (vec![], vec![]);
-        }
-        if response.status != STATUS_OK {
-            return (vec![], vec![data_error(DataError::Status(response.status))]);
-        }
-        let (events, mut commands) = match self.import_commands(&response.body) {
-            Ok(result) => result,
-            Err(error) => return (vec![], vec![data_error(error)]),
-        };
-        self.resources = self.count_resources();
-        self.fit_rectgrid();
-        commands.extend(self.view_commands());
-        commands.extend(self.option_commands());
-        (events, commands)
-    }
-
-    pub fn process_canvas(
-        &mut self,
-        event: &CanvasEvent,
-        _pointer: &Pointer,
-    ) -> (Vec<Event>, Vec<Command>) {
-        let target = Target::from_dom(&event.id);
-        match event.event_type {
-            EventType::Click => {
-                target.map_or((vec![], vec![]), |target| self.click_control(target))
-            }
-            EventType::Input if target == Some(Target::Zoom) => (vec![], self.zoom(&event.value)),
-            EventType::Change => match target {
-                Some(Target::Axis(axis)) => (vec![], self.change_axis(axis)),
-                _ => (vec![], vec![]),
-            },
-            EventType::PointerDown => (vec![], self.press(event, target)),
-            EventType::Close if target == Some(Target::Modal) => {
-                self.editing = None;
-                (vec![], vec![])
-            }
-            EventType::Submit if target == Some(Target::EditForm) => {
-                (vec![], self.submit(&event.value))
-            }
-            EventType::Scroll => {
-                if target == Some(Target::Surface) {
-                    self.scroll_x = event.x;
-                }
-                (vec![], vec![])
-            }
-            _ => (vec![], vec![]),
-        }
-    }
-
-    pub fn process_gesture(
-        &mut self,
-        gesture: &Gesture,
-        _pointer: &Pointer,
-        _origin: Option<&CanvasEvent>,
-    ) -> (Vec<Event>, Vec<Command>) {
-        match gesture {
-            Gesture::Drag { x, y } => (vec![], self.drag(*x, *y)),
-            Gesture::Tap => (vec![], self.tap()),
-            Gesture::DragEnd => (vec![], self.drag_end()),
-            Gesture::DragCancel => (vec![], self.drag_cancel()),
-            _ => (vec![], vec![]),
-        }
-    }
-
-    pub fn process_resize(&mut self, width_px: f64, _height_px: f64) -> (Vec<Event>, Vec<Command>) {
-        self.viewport_width_px = width_px;
-        self.fit_rectgrid();
-        let mut commands = self.band_commands();
-        commands.extend(self.card_commands());
-        (vec![], commands)
-    }
-
-    pub fn process_scroll(&mut self, _x: f64, _y: f64) -> (Vec<Event>, Vec<Command>) {
-        (vec![], vec![])
-    }
-
-    pub fn process_fullscreen(&mut self, _event: FullscreenEvent) -> (Vec<Event>, Vec<Command>) {
-        (vec![], vec![])
-    }
-
-    pub fn process_visibility(&mut self, _state: VisibilityState) -> (Vec<Event>, Vec<Command>) {
-        (vec![], vec![])
     }
 
     fn set_origin(&mut self, root_origin: (f64, f64)) {
@@ -1480,7 +1343,7 @@ impl Handler {
         appointment::import(store, body)?;
         Ok(match store.save() {
             Ok(()) => (vec![], vec![]),
-            Err(error) => file_store_error(error),
+            Err(error) => store::failed(STORE, error),
         })
     }
 
@@ -1496,7 +1359,7 @@ impl Handler {
             return (vec![], vec![]);
         };
         if let Err(error) = store.save() {
-            return file_store_error(error);
+            return store::failed(STORE, error);
         }
         self.dirty = false;
         (
@@ -1514,7 +1377,7 @@ impl Handler {
             return (vec![], vec![]);
         };
         if let Err(error) = store.discard() {
-            return file_store_error(error);
+            return store::failed(STORE, error);
         }
         let resources = self.count_resources();
         let mut commands = Vec::new();
@@ -1533,27 +1396,6 @@ impl Handler {
             });
         }
         (vec![], commands)
-    }
-
-    pub fn process_lost(&mut self) -> (Vec<Event>, Vec<Command>) {
-        if let Some(store) = self.store.take() {
-            self.lost = store.pending();
-            store.close();
-        }
-        (vec![], vec![])
-    }
-
-    pub fn process_opened(&mut self, opened: Opened) -> (Vec<Event>, Vec<Command>) {
-        match opened.and_then(Backend::new) {
-            Ok(mut store) => {
-                store.replay(core::mem::take(&mut self.lost));
-                self.store = Some(store);
-                (vec![], vec![])
-            }
-            Err(error) => {
-                (vec![], vec![Command::Error { error: Error::FileStore(error) }, Command::Reload])
-            }
-        }
     }
 
     pub fn dirty(&self) -> bool {
@@ -1730,6 +1572,145 @@ impl Handler {
     }
 }
 
+impl crate::event::Handler for Handler {
+    async fn ready(
+        viewport_width_px: f64,
+        _viewport_height_px: f64,
+        rem_in_px: f64,
+        now: f64,
+        timezone_offset_minutes: i32,
+    ) -> Self {
+        let utc = from_ut(now, true, &Timezone::None);
+        let offset = Timevolume::new(
+            TimevolumeUnit::Minute,
+            u64::from(timezone_offset_minutes.unsigned_abs()),
+        );
+        let local = if timezone_offset_minutes < 0 { sub(utc, offset) } else { add(utc, offset) };
+        let today = [HOUR, MINUTE, SECOND, CENTISECOND, IS_UTC]
+            .into_iter()
+            .fold(local, |timestamp, field| LAYOUT.set(timestamp, field, 0u64));
+        #[cfg_attr(not(feature = "file_store"), allow(unused_mut))]
+        let mut handler = Self::new(viewport_width_px, today, rem_in_px);
+        handler.now = now;
+        #[cfg(feature = "file_store")]
+        match store::open(STORE).await {
+            Ok(opened) => handler.attach(opened),
+            Err(error) => handler.startup.push(Error::FileStore(error)),
+        }
+        handler
+    }
+
+    fn close(&self) -> Vec<Command> {
+        if let Some(store) = &self.store {
+            store.close();
+        }
+        vec![]
+    }
+
+    fn initial_draw(&mut self) -> (Vec<Event>, Vec<Command>) {
+        let mut commands = self.view_commands();
+        let failed = !self.startup.is_empty();
+        commands.extend(self.startup.drain(..).map(|error| Command::Error { error }));
+        if !failed {
+            if self.loaded() {
+                commands.extend(self.loaded_commands());
+            } else {
+                commands.push(Command::Fetch {
+                    request: LOAD_REQUEST,
+                    method:  Method::Get,
+                    path:    String::from(LOAD_PATH),
+                    body:    Vec::new(),
+                });
+            }
+        }
+        commands.push(hidden(Target::Body.to_dom(), false));
+        (vec![], commands)
+    }
+
+    fn process_fetched(&mut self, response: &Response) -> (Vec<Event>, Vec<Command>) {
+        if response.request != LOAD_REQUEST {
+            return (vec![], vec![]);
+        }
+        if response.status != STATUS_OK {
+            return (vec![], vec![data_error(DataError::Status(response.status))]);
+        }
+        let (events, mut commands) = match self.import_commands(&response.body) {
+            Ok(result) => result,
+            Err(error) => return (vec![], vec![data_error(error)]),
+        };
+        self.resources = self.count_resources();
+        self.fit_rectgrid();
+        commands.extend(self.view_commands());
+        commands.extend(self.option_commands());
+        (events, commands)
+    }
+
+    fn process_canvas(
+        &mut self,
+        event: &CanvasEvent,
+        _pointer: &Pointer,
+    ) -> (Vec<Event>, Vec<Command>) {
+        let target = Target::from_dom(&event.id);
+        match event.event_type {
+            EventType::Click => {
+                target.map_or((vec![], vec![]), |target| self.click_control(target))
+            }
+            EventType::Input if target == Some(Target::Zoom) => (vec![], self.zoom(&event.value)),
+            EventType::Change => match target {
+                Some(Target::Axis(axis)) => (vec![], self.change_axis(axis)),
+                _ => (vec![], vec![]),
+            },
+            EventType::PointerDown => (vec![], self.press(event, target)),
+            EventType::Close if target == Some(Target::Modal) => {
+                self.editing = None;
+                (vec![], vec![])
+            }
+            EventType::Submit if target == Some(Target::EditForm) => {
+                (vec![], self.submit(&event.value))
+            }
+            EventType::Scroll => {
+                if target == Some(Target::Surface) {
+                    self.scroll_x = event.x;
+                }
+                (vec![], vec![])
+            }
+            _ => (vec![], vec![]),
+        }
+    }
+
+    fn process_gesture(
+        &mut self,
+        gesture: &Gesture,
+        _pointer: &Pointer,
+        _origin: Option<&CanvasEvent>,
+    ) -> (Vec<Event>, Vec<Command>) {
+        match gesture {
+            Gesture::Drag { x, y } => (vec![], self.drag(*x, *y)),
+            Gesture::Tap => (vec![], self.tap()),
+            Gesture::DragEnd => (vec![], self.drag_end()),
+            Gesture::DragCancel => (vec![], self.drag_cancel()),
+            _ => (vec![], vec![]),
+        }
+    }
+
+    fn process_resize(&mut self, width_px: f64, _height_px: f64) -> (Vec<Event>, Vec<Command>) {
+        self.viewport_width_px = width_px;
+        self.fit_rectgrid();
+        let mut commands = self.band_commands();
+        commands.extend(self.card_commands());
+        (vec![], commands)
+    }
+
+    fn process_lost(&mut self) -> (Vec<Event>, Vec<Command>) {
+        self.lost = store::lost(&mut self.store);
+        (vec![], vec![])
+    }
+
+    fn process_opened(&mut self, opened: Opened) -> (Vec<Event>, Vec<Command>) {
+        store::opened(&mut self.store, &mut self.lost, opened)
+    }
+}
+
 fn column_of(resources: &[DataStruct], uid: u128) -> Option<usize> {
     resources.iter().position(|resource| tag::Uid::read(resource) == uid)
 }
@@ -1849,15 +1830,6 @@ fn corner_cursor(corner: Corner) -> Option<Keyword> {
     }
 }
 
-fn file_store_error(error: FileStoreError) -> (Vec<Event>, Vec<Command>) {
-    match error {
-        FileStoreError::InvalidState(_) => {
-            (vec![Event::StoreLost(STORE)], vec![Command::Error { error: Error::FileStore(error) }])
-        }
-        _ => (vec![], vec![Command::Error { error: Error::FileStore(error) }]),
-    }
-}
-
 fn data_error(error: DataError) -> Command {
     Command::Error { error: Error::Data(error) }
 }
@@ -1873,7 +1845,7 @@ mod tests {
         calendar::data::SCHEMA_SIZE,
         data_struct::{ID_CREATED_AT, ID_MODIFIED_AT, encode_time},
         file_store::{MemoryHandles, MemoryStore},
-        js_client::KeyName,
+        host::KeyName,
         timestamp::pack,
     };
 
@@ -3678,7 +3650,7 @@ mod tests {
 
     #[test]
     fn only_an_invalid_handle_asks_for_a_new_one() {
-        let (events, commands) = file_store_error(FileStoreError::InvalidState(String::new()));
+        let (events, commands) = store::failed(STORE, FileStoreError::InvalidState(String::new()));
         assert!(
             matches!(events.as_slice(), [Event::StoreLost(id)] if id.name == "calendar" && id.version == STORE.version)
         );
@@ -3686,7 +3658,7 @@ mod tests {
             commands.as_slice(),
             [Command::Error { error: Error::FileStore(FileStoreError::InvalidState(_)) }]
         ));
-        let (events, commands) = file_store_error(FileStoreError::QuotaExceeded(String::new()));
+        let (events, commands) = store::failed(STORE, FileStoreError::QuotaExceeded(String::new()));
         assert!(events.is_empty());
         assert!(matches!(
             commands.as_slice(),

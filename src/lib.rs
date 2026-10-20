@@ -40,7 +40,7 @@ pub mod event;
 pub mod field;
 #[cfg(feature = "file_store")]
 pub mod file_store;
-pub mod js_client;
+pub mod host;
 pub mod list;
 pub mod object;
 pub mod timestamp;
@@ -145,7 +145,7 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
     };
 
     report_error(Error::Panic(PanicError { location, message: format!("{}", info.message()) }));
-    let _ = crate::arena::emit(&[crate::js_client::OPERATION_RELOAD]);
+    let _ = crate::arena::emit(&[crate::host::OPERATION_RELOAD]);
 
     core::arch::wasm32::unreachable()
 }
@@ -248,8 +248,8 @@ impl Rng {
         (0..length).map(|_| letters[self.below(letters.len())]).collect()
     }
 
-    fn id(&mut self) -> js_client::dom::Id {
-        use js_client::dom;
+    fn id(&mut self) -> host::dom::Id {
+        use host::dom;
 
         let depth = self.below(5);
         let segments: alloc::vec::Vec<(dom::Tag, Option<u32>)> = (0..depth)

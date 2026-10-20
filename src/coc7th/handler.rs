@@ -1,7 +1,7 @@
 use alloc::{string::String, vec, vec::Vec};
 use core::{
     matches,
-    option::Option::{self, None, Some},
+    option::Option::{None, Some},
     primitive::{f64, i32, u8, u32},
 };
 
@@ -10,18 +10,15 @@ use arbitrary_int::u2;
 #[cfg(feature = "file_store")]
 use crate::{
     Error,
-    event::Opened,
+    event::{Opened, store},
     file_store::{Backend, FileStore, StoreId},
 };
 use crate::{
     Lang,
     coc7th::character::SCHEMA_SIZE,
     data_struct::DataStruct,
-    event::{Event, Response},
-    js_client::{
-        Attribute, CanvasEvent, Command, EventType, FullscreenEvent, Gesture, Pointer,
-        VisibilityState, dom,
-    },
+    event::{Event, gesture::Pointer},
+    host::{Attribute, CanvasEvent, Command, EventType, dom},
 };
 
 pub enum CharacterSheet {
@@ -58,7 +55,20 @@ pub struct Handler {
 }
 
 impl Handler {
-    pub async fn ready(
+    #[cfg(feature = "file_store")]
+    pub fn save(&mut self) -> (Vec<Event>, Vec<Command>) {
+        let Some(characters) = self.characters.as_mut() else {
+            return (vec![], vec![]);
+        };
+        match characters.save() {
+            Ok(()) => (vec![], vec![]),
+            Err(error) => store::failed(CHARACTER_STORE, error),
+        }
+    }
+}
+
+impl crate::event::Handler for Handler {
+    async fn ready(
         _viewport_width: f64,
         _viewport_height: f64,
         _rem_in_px: f64,
@@ -82,14 +92,14 @@ impl Handler {
             logs: Vec::new(),
         };
         #[cfg(feature = "file_store")]
-        match Backend::open(CHARACTER_STORE, true).await.and_then(Backend::new) {
+        match store::open(CHARACTER_STORE).await {
             Ok(store) => handler.characters = Some(store),
             Err(error) => handler.startup.push(Error::FileStore(error)),
         }
         handler
     }
 
-    pub fn close(&self) -> Vec<Command> {
+    fn close(&self) -> Vec<Command> {
         #[cfg(feature = "file_store")]
         if let Some(store) = &self.characters {
             store.close();
@@ -98,64 +108,17 @@ impl Handler {
     }
 
     #[cfg(feature = "file_store")]
-    pub fn save(&mut self) -> (Vec<Event>, Vec<Command>) {
-        let Some(store) = self.characters.as_mut() else {
-            return (vec![], vec![]);
-        };
-        match store.save() {
-            Ok(()) => (vec![], vec![]),
-            Err(e @ crate::file_store::FileStoreError::InvalidState(_)) => (
-                vec![Event::StoreLost(CHARACTER_STORE)],
-                vec![Command::Error { error: Error::FileStore(e) }],
-            ),
-            Err(e) => (vec![], vec![Command::Error { error: Error::FileStore(e) }]),
-        }
-    }
-
-    #[cfg(feature = "file_store")]
-    pub fn process_lost(&mut self) -> (Vec<Event>, Vec<Command>) {
-        if let Some(store) = self.characters.take() {
-            self.lost = store.pending();
-            store.close();
-        }
+    fn process_lost(&mut self) -> (Vec<Event>, Vec<Command>) {
+        self.lost = store::lost(&mut self.characters);
         (vec![], vec![])
     }
 
     #[cfg(feature = "file_store")]
-    pub fn process_opened(&mut self, opened: Opened) -> (Vec<Event>, Vec<Command>) {
-        match opened.and_then(Backend::new) {
-            Ok(mut store) => {
-                store.replay(core::mem::take(&mut self.lost));
-                self.characters = Some(store);
-                (vec![], vec![])
-            }
-            Err(error) => {
-                (vec![], vec![Command::Error { error: Error::FileStore(error) }, Command::Reload])
-            }
-        }
+    fn process_opened(&mut self, opened: Opened) -> (Vec<Event>, Vec<Command>) {
+        store::opened(&mut self.characters, &mut self.lost, opened)
     }
 
-    pub fn process_resize(&mut self, _width: f64, _height: f64) -> (Vec<Event>, Vec<Command>) {
-        (vec![], vec![])
-    }
-
-    pub fn process_scroll(&mut self, _x: f64, _y: f64) -> (Vec<Event>, Vec<Command>) {
-        (vec![], vec![])
-    }
-
-    pub fn process_visibility(&mut self, _state: VisibilityState) -> (Vec<Event>, Vec<Command>) {
-        (vec![], vec![])
-    }
-
-    pub fn process_fullscreen(&mut self, _event: FullscreenEvent) -> (Vec<Event>, Vec<Command>) {
-        (vec![], vec![])
-    }
-
-    pub fn process_fetched(&mut self, _response: &Response) -> (Vec<Event>, Vec<Command>) {
-        (vec![], vec![])
-    }
-
-    pub fn initial_draw(&mut self) -> (Vec<Event>, Vec<Command>) {
+    fn initial_draw(&mut self) -> (Vec<Event>, Vec<Command>) {
         let mut commands = Vec::new();
         #[cfg(feature = "file_store")]
         commands.extend(self.startup.drain(..).map(|error| Command::Error { error }));
@@ -166,7 +129,7 @@ impl Handler {
         (vec![], commands)
     }
 
-    pub fn process_canvas(
+    fn process_canvas(
         &mut self,
         event: &CanvasEvent,
         _pointer: &Pointer,
@@ -197,15 +160,6 @@ impl Handler {
         ];
         (vec![], commands)
     }
-
-    pub fn process_gesture(
-        &mut self,
-        _gesture: &Gesture,
-        _pointer: &Pointer,
-        _origin: Option<&CanvasEvent>,
-    ) -> (Vec<Event>, Vec<Command>) {
-        (vec![], vec![])
-    }
 }
 
 #[cfg(all(test, target_arch = "wasm32"))]
@@ -217,8 +171,10 @@ mod tests {
     use crate::{
         app::App,
         arena::{ARENA, COMMAND_RING, EVENT_RING, initialize, process_event},
-        event::EVENT_CANVAS,
-        js_client::{EventType, OPERATION_REMOVE_ATTRIBUTE, OPERATION_SET_ATTRIBUTE, Output, dom},
+        host::{
+            EVENT_CANVAS, EventType, OPERATION_REMOVE_ATTRIBUTE, OPERATION_SET_ATTRIBUTE, Output,
+            dom,
+        },
     };
 
     const CLICK: u8 = 3;
@@ -263,7 +219,7 @@ mod toggle_tests {
     use alloc::{string::String, vec::Vec};
 
     use super::*;
-    use crate::{block_on, js_client::KeyName};
+    use crate::{block_on, event::Handler as _, host::KeyName};
 
     fn click(handler: &mut Handler, id: dom::Id) -> Vec<Command> {
         let event = CanvasEvent {

@@ -11,7 +11,7 @@ use crate::{
     WireError,
     data_struct::{DataStruct, ID_CREATED_AT, ID_IDENTITY, ID_MODIFIED_AT, encode_time},
     file_store::FileStore,
-    js_client::parse,
+    host::parse,
     list::ListError,
     object::Predicate,
     timestamp::{DAY, LAYOUT, MONTH, Timevolume, TimevolumeUnit, YEAR, days_in_month},
@@ -129,7 +129,7 @@ pub mod tag {
     use crate::{
         Lang,
         data_struct::DataStruct,
-        js_client::{Output, parse},
+        host::{Output, parse},
         object::{Predicate, SubjectTrait},
     };
 
@@ -209,7 +209,7 @@ pub mod appointment {
         calendar::{HOUR_MINUTE, YEAR_DAY},
         data_struct::DataStruct,
         file_store::FileStore,
-        js_client::{Input, Output, parse},
+        host::{Input, Output, parse},
         object::{Predicate, SubjectTrait},
         timestamp::{Format, Timevolume, TimevolumeUnit, add, display},
     };

@@ -2,7 +2,7 @@
 
 # Gesture
 
-Reference data for `js_client::Pointer::detect()`
+Reference data for `event::gesture::Pointer::detect()`
 
 ## References
 
