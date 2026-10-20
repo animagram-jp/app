@@ -1,7 +1,9 @@
 use alloc::{string::String, vec, vec::Vec};
+#[cfg(feature = "file_store")]
+use core::option::Option::None;
 use core::{
     matches,
-    option::Option::{None, Some},
+    option::Option::Some,
     primitive::{f64, i32, u8, u32},
 };
 
@@ -15,16 +17,14 @@ use crate::{
 };
 use crate::{
     Lang,
-    coc7th::character::SCHEMA_SIZE,
+    coc7th::{
+        character::SCHEMA_SIZE,
+        target::{Sheet, Target},
+    },
     data_struct::DataStruct,
     event::{Event, gesture::Pointer},
-    host::{Attribute, CanvasEvent, Command, EventType, dom},
+    host::{Attribute, CanvasEvent, Command, EventType},
 };
-
-pub enum CharacterSheet {
-    Immutable,
-    Editable,
-}
 
 pub enum Dialog {
     None,
@@ -39,7 +39,7 @@ pub struct Log;
 const CHARACTER_STORE: StoreId = StoreId { name: "characters", version: "0.0" };
 
 pub struct Handler {
-    character_sheet: CharacterSheet,
+    character_sheet: Sheet,
     dialog:          Dialog,
     lang:            Lang,
     last_toast:      u2,
@@ -77,7 +77,7 @@ impl crate::event::Handler for Handler {
     ) -> Self {
         #[cfg_attr(not(feature = "file_store"), allow(unused_mut))]
         let mut handler = Self {
-            character_sheet: CharacterSheet::Immutable,
+            character_sheet: Sheet::Immutable,
             dialog: Dialog::None,
             lang: Lang::Ja,
             last_toast: u2::new(1),
@@ -123,7 +123,7 @@ impl crate::event::Handler for Handler {
         #[cfg(feature = "file_store")]
         commands.extend(self.startup.drain(..).map(|error| Command::Error { error }));
         commands.push(Command::RemoveAttribute {
-            id:        dom::Id::new(&[(dom::Tag::Body, None)]),
+            id:        Target::Body.to_dom(),
             attribute: Attribute::Hidden,
         });
         (vec![], commands)
@@ -134,26 +134,24 @@ impl crate::event::Handler for Handler {
         event: &CanvasEvent,
         _pointer: &Pointer,
     ) -> (Vec<Event>, Vec<Command>) {
-        let toggle = dom::Id::new(&[(dom::Tag::Header, None), (dom::Tag::Button, Some(3))]);
-        if !matches!(event.event_type, EventType::Click) || event.id != toggle {
+        let target = Target::from_dom(&event.id);
+        if !matches!(event.event_type, EventType::Click) || target != Some(Target::Edit) {
             return (vec![], vec![]);
         }
 
-        let section = |n| dom::Id::new(&[(dom::Tag::Main, None), (dom::Tag::Section, Some(n))]);
-        let (shown, hidden) = match self.character_sheet {
-            CharacterSheet::Immutable => {
-                self.character_sheet = CharacterSheet::Editable;
-                (2, 1)
-            }
-            CharacterSheet::Editable => {
-                self.character_sheet = CharacterSheet::Immutable;
-                (1, 2)
-            }
+        let hidden = self.character_sheet;
+        let shown = match hidden {
+            Sheet::Immutable => Sheet::Editable,
+            Sheet::Editable => Sheet::Immutable,
         };
+        self.character_sheet = shown;
         let commands = vec![
-            Command::RemoveAttribute { id: section(shown), attribute: Attribute::Hidden },
+            Command::RemoveAttribute {
+                id:        Target::Sheet(shown).to_dom(),
+                attribute: Attribute::Hidden,
+            },
             Command::SetAttribute {
-                id:        section(hidden),
+                id:        Target::Sheet(hidden).to_dom(),
                 attribute: Attribute::Hidden,
                 value:     String::new(),
             },
@@ -171,9 +169,9 @@ mod tests {
     use crate::{
         app::App,
         arena::{ARENA, COMMAND_RING, EVENT_RING, initialize, process_event},
+        coc7th::target::Target,
         host::{
             EVENT_CANVAS, EventType, OPERATION_REMOVE_ATTRIBUTE, OPERATION_SET_ATTRIBUTE, Output,
-            dom,
         },
     };
 
@@ -191,7 +189,7 @@ mod tests {
         let mut frame = Vec::new();
         frame.push(EVENT_CANVAS);
         frame.push(CLICK);
-        dom::Id::new(&[(dom::Tag::Header, None), (dom::Tag::Button, Some(3))]).encode(&mut frame);
+        Target::Edit.to_dom().encode(&mut frame);
         frame.push(0);
         frame.push(0);
         str::encode("", &mut frame);
@@ -219,7 +217,11 @@ mod toggle_tests {
     use alloc::{string::String, vec::Vec};
 
     use super::*;
-    use crate::{block_on, event::Handler as _, host::KeyName};
+    use crate::{
+        block_on,
+        event::Handler as _,
+        host::{KeyName, dom},
+    };
 
     fn click(handler: &mut Handler, id: dom::Id) -> Vec<Command> {
         let event = CanvasEvent {
@@ -239,7 +241,7 @@ mod toggle_tests {
     }
 
     fn toggle_button() -> dom::Id {
-        dom::Id::new(&[(dom::Tag::Header, None), (dom::Tag::Button, Some(3))])
+        Target::Edit.to_dom()
     }
 
     fn hidden_change(command: &Command) -> (bool, dom::Id) {
@@ -250,8 +252,8 @@ mod toggle_tests {
         }
     }
 
-    fn section(n: u32) -> dom::Id {
-        dom::Id::new(&[(dom::Tag::Main, None), (dom::Tag::Section, Some(n))])
+    fn sheet(sheet: Sheet) -> dom::Id {
+        Target::Sheet(sheet).to_dom()
     }
 
     #[test]
@@ -260,11 +262,11 @@ mod toggle_tests {
 
         let first: Vec<_> =
             click(&mut handler, toggle_button()).iter().map(hidden_change).collect();
-        assert_eq!(first, [(false, section(2)), (true, section(1))]);
+        assert_eq!(first, [(false, sheet(Sheet::Editable)), (true, sheet(Sheet::Immutable))]);
 
         let second: Vec<_> =
             click(&mut handler, toggle_button()).iter().map(hidden_change).collect();
-        assert_eq!(second, [(false, section(1)), (true, section(2))]);
+        assert_eq!(second, [(false, sheet(Sheet::Immutable)), (true, sheet(Sheet::Editable))]);
     }
 
     #[test]
@@ -274,17 +276,17 @@ mod toggle_tests {
         assert!(events.is_empty());
         assert_eq!(
             commands.iter().map(hidden_change).collect::<Vec<_>>(),
-            [(false, dom::Id::new(&[(dom::Tag::Body, None)]))]
+            [(false, Target::Body.to_dom())]
         );
     }
 
     #[test]
     fn other_targets_and_events_change_nothing() {
         let mut handler = block_on(Handler::ready(0.0, 0.0, 16.0, 0.0, 0));
-        assert!(click(&mut handler, section(1)).is_empty());
+        assert!(click(&mut handler, sheet(Sheet::Immutable)).is_empty());
         let first: Vec<_> =
             click(&mut handler, toggle_button()).iter().map(hidden_change).collect();
-        assert_eq!(first, [(false, section(2)), (true, section(1))]);
+        assert_eq!(first, [(false, sheet(Sheet::Editable)), (true, sheet(Sheet::Immutable))]);
     }
 
     #[cfg(feature = "file_store")]
