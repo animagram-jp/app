@@ -17,7 +17,7 @@ arbitrary-int = "2"
 wasm-bindgen         = { version = "0.2", default-features = false }
 wasm-bindgen-futures = { version = "0.4", default-features = false }
 js-sys               = { version = "0.3", default-features = false }
-web-sys = { version = "0.3", default-features = false, features = [
+web-sys = { version = "0.3", default-features = false, optional = true, features = [
     "WorkerGlobalScope",
     "WorkerNavigator",
     "StorageManager",
@@ -43,9 +43,9 @@ talc          = { version = "5.1", default-features = false }
 spinning_top  = { version = "0.3", default-features = false }
 
 [features]
-default = ["worker"]
-calendar = ["dep:rectgrid", "dep:serde_json"]
-worker = [] # for dedicated worker. Alse required RUSTFLAGS -Ctarget-feature=+atomics
+default = ["file_store"]
+calendar = ["file_store", "dep:rectgrid", "dep:serde_json"]
+file_store = ["dep:web-sys"]
 
 [profile.release]
 panic         = "abort"

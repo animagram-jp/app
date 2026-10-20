@@ -5,9 +5,10 @@ use core::{
     primitive::{f64, u8},
 };
 
+#[cfg(feature = "file_store")]
+use crate::file_store::{Backend, FileStore, FileStoreError, StoreId};
 use crate::{
     WireError,
-    file_store::{Backend, FileStore, FileStoreError, StoreId},
     js_client::{
         CanvasEvent, EventType, FullscreenEvent, Gesture, Input, KeyName, VisibilityState,
     },
@@ -53,10 +54,13 @@ pub enum Event {
     Window(WindowEvent),
     FetchChunk(FetchChunk),
     Fetched(Response),
+    #[cfg(feature = "file_store")]
     StoreLost(StoreId),
+    #[cfg(feature = "file_store")]
     StoreOpened(Opened),
 }
 
+#[cfg(feature = "file_store")]
 pub type Opened = Result<<Backend as FileStore>::Handle, FileStoreError>;
 
 pub struct FetchChunk {

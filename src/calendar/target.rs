@@ -119,9 +119,7 @@ impl Target {
                     &[(Tag::Fieldset, None), (Tag::Label, Some(n)), (Tag::Input, None)],
                 )
             }
-            Self::Step(n) => {
-                join(header(), &[(Tag::Div, Some(1)), (Tag::Button, Some(n))])
-            }
+            Self::Step(n) => join(header(), &[(Tag::Div, Some(1)), (Tag::Button, Some(n))]),
             Self::Zoom => join(header(), &[(Tag::Input, None)]),
             Self::Reload => join(header(), &[(Tag::Button, Some(RELOAD_BUTTON))]),
             Self::Save => join(header(), &[(Tag::Button, Some(SAVE_BUTTON))]),

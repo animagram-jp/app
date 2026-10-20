@@ -7,15 +7,16 @@ use core::{
 
 use arbitrary_int::u2;
 
-#[cfg(feature = "worker")]
+#[cfg(feature = "file_store")]
 use crate::{
     Error,
+    event::Opened,
     file_store::{Backend, FileStore, StoreId},
 };
 use crate::{
     Lang,
     data_struct::DataStruct,
-    event::{Event, Opened, Response},
+    event::{Event, Response},
     js_client::{
         Attribute, CanvasEvent, Command, EventType, FullscreenEvent, Gesture, Pointer,
         VisibilityState, dom,
@@ -37,7 +38,7 @@ pub enum Dialog {
 
 pub struct Log;
 
-#[cfg(feature = "worker")]
+#[cfg(feature = "file_store")]
 const CHARACTER_STORE: StoreId = StoreId { name: "characters", version: "0.0" };
 
 pub struct Handler {
@@ -47,10 +48,12 @@ pub struct Handler {
     last_toast:      u2,
     character:       DataStruct,
     pub now:         f64,
-    #[cfg(feature = "worker")]
-    characters:      Backend,
-    #[cfg(feature = "worker")]
+    #[cfg(feature = "file_store")]
+    characters:      Option<Backend>,
+    #[cfg(feature = "file_store")]
     lost:            Vec<(u32, Option<Vec<u8>>)>,
+    #[cfg(feature = "file_store")]
+    startup:         Vec<Error>,
     logs:            Vec<Log>,
 }
 
@@ -62,33 +65,44 @@ impl Handler {
         _now: f64,
         _timezone_offset_minutes: i32,
     ) -> Self {
-        Self {
+        #[cfg_attr(not(feature = "file_store"), allow(unused_mut))]
+        let mut handler = Self {
             character_sheet: CharacterSheet::Immutable,
             dialog: Dialog::None,
             lang: Lang::Ja,
             last_toast: u2::new(1),
             character: DataStruct::new(0, 0.0, SCHEMA_SIZE),
             now: 0.0,
-            #[cfg(feature = "worker")]
-            characters: Backend::open(CHARACTER_STORE, true)
-                .await
-                .and_then(Backend::new)
-                .unwrap_or_else(|e| panic!("FileStore open failed: {e}")),
-            #[cfg(feature = "worker")]
+            #[cfg(feature = "file_store")]
+            characters: None,
+            #[cfg(feature = "file_store")]
             lost: Vec::new(),
+            #[cfg(feature = "file_store")]
+            startup: Vec::new(),
             logs: Vec::new(),
+        };
+        #[cfg(feature = "file_store")]
+        match Backend::open(CHARACTER_STORE, true).await.and_then(Backend::new) {
+            Ok(store) => handler.characters = Some(store),
+            Err(error) => handler.startup.push(Error::FileStore(error)),
         }
+        handler
     }
 
     pub fn close(&self) -> Vec<Command> {
-        #[cfg(feature = "worker")]
-        self.characters.close();
+        #[cfg(feature = "file_store")]
+        if let Some(store) = &self.characters {
+            store.close();
+        }
         vec![]
     }
 
-    #[cfg(feature = "worker")]
+    #[cfg(feature = "file_store")]
     pub fn save(&mut self) -> (Vec<Event>, Vec<Command>) {
-        match self.characters.save() {
+        let Some(store) = self.characters.as_mut() else {
+            return (vec![], vec![]);
+        };
+        match store.save() {
             Ok(()) => (vec![], vec![]),
             Err(e @ crate::file_store::FileStoreError::InvalidState(_)) => (
                 vec![Event::StoreLost(CHARACTER_STORE)],
@@ -98,35 +112,27 @@ impl Handler {
         }
     }
 
-    #[cfg(feature = "worker")]
+    #[cfg(feature = "file_store")]
     pub fn process_lost(&mut self) -> (Vec<Event>, Vec<Command>) {
-        self.lost = self.characters.pending();
-        self.characters.close();
+        if let Some(store) = self.characters.take() {
+            self.lost = store.pending();
+            store.close();
+        }
         (vec![], vec![])
     }
 
-    #[cfg(feature = "worker")]
+    #[cfg(feature = "file_store")]
     pub fn process_opened(&mut self, opened: Opened) -> (Vec<Event>, Vec<Command>) {
         match opened.and_then(Backend::new) {
             Ok(mut store) => {
                 store.replay(core::mem::take(&mut self.lost));
-                self.characters = store;
+                self.characters = Some(store);
                 (vec![], vec![])
             }
             Err(error) => {
                 (vec![], vec![Command::Error { error: Error::FileStore(error) }, Command::Reload])
             }
         }
-    }
-
-    #[cfg(not(feature = "worker"))]
-    pub fn process_lost(&mut self) -> (Vec<Event>, Vec<Command>) {
-        (vec![], vec![])
-    }
-
-    #[cfg(not(feature = "worker"))]
-    pub fn process_opened(&mut self, _opened: Opened) -> (Vec<Event>, Vec<Command>) {
-        (vec![], vec![])
     }
 
     pub fn process_resize(&mut self, _width: f64, _height: f64) -> (Vec<Event>, Vec<Command>) {
@@ -150,7 +156,14 @@ impl Handler {
     }
 
     pub fn initial_draw(&mut self) -> (Vec<Event>, Vec<Command>) {
-        (vec![], vec![])
+        let mut commands = Vec::new();
+        #[cfg(feature = "file_store")]
+        commands.extend(self.startup.drain(..).map(|error| Command::Error { error }));
+        commands.push(Command::RemoveAttribute {
+            id:        dom::Id::new(&[(dom::Tag::Body, None)]),
+            attribute: Attribute::Hidden,
+        });
+        (vec![], commands)
     }
 
     pub fn process_canvas(
@@ -215,6 +228,9 @@ mod tests {
         assert_eq!(EventType::from_u8(CLICK), EventType::Click);
         initialize();
         App::init(false, 0.0, 0.0, 16.0, 0.0, 0).await;
+        while ARENA.read_ring(COMMAND_RING).is_some() {
+            ARENA.advance_ring(COMMAND_RING);
+        }
 
         let mut frame = Vec::new();
         frame.push(EVENT_CANVAS);
@@ -296,6 +312,17 @@ mod toggle_tests {
     }
 
     #[test]
+    fn the_initial_draw_reveals_the_body() {
+        let mut handler = block_on(Handler::ready(0.0, 0.0, 16.0, 0.0, 0));
+        let (events, commands) = handler.initial_draw();
+        assert!(events.is_empty());
+        assert_eq!(
+            commands.iter().map(hidden_change).collect::<Vec<_>>(),
+            [(false, dom::Id::new(&[(dom::Tag::Body, None)]))]
+        );
+    }
+
+    #[test]
     fn other_targets_and_events_change_nothing() {
         let mut handler = block_on(Handler::ready(0.0, 0.0, 16.0, 0.0, 0));
         assert!(click(&mut handler, section(1)).is_empty());
@@ -304,7 +331,7 @@ mod toggle_tests {
         assert_eq!(first, [(false, section(2)), (true, section(1))]);
     }
 
-    #[cfg(feature = "worker")]
+    #[cfg(feature = "file_store")]
     #[test]
     fn closing_the_handler_releases_the_store() {
         let mut handler = block_on(Handler::ready(0.0, 0.0, 16.0, 0.0, 0));
@@ -320,11 +347,11 @@ mod toggle_tests {
         ));
     }
 
-    #[cfg(feature = "worker")]
+    #[cfg(feature = "file_store")]
     #[test]
     fn a_lost_store_is_replaced_and_the_pending_change_survives() {
         let mut handler = block_on(Handler::ready(0.0, 0.0, 16.0, 0.0, 0));
-        handler.characters.set(1, b"kept".to_vec());
+        handler.characters.as_mut().unwrap().set(1, b"kept".to_vec());
         let disk = block_on(Backend::open(CHARACTER_STORE, true)).unwrap();
 
         handler.close();
@@ -332,7 +359,7 @@ mod toggle_tests {
         assert!(matches!(events.as_slice(), [Event::StoreLost(_)]));
         handler.process_lost();
         handler.process_opened(Ok(disk.clone()));
-        assert_eq!(handler.characters.get(1), Some(&b"kept"[..]));
+        assert_eq!(handler.characters.as_ref().unwrap().get(1), Some(&b"kept"[..]));
         assert!(handler.save().1.is_empty());
         assert_eq!(Backend::new(disk).unwrap().get(1), Some(&b"kept"[..]));
     }

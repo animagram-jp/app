@@ -18,7 +18,7 @@ use core::{
 use wasm_bindgen::prelude::wasm_bindgen;
 
 use crate::{Error, WireError, app::App, js_client::Output};
-#[cfg(all(target_arch = "wasm32", target_feature = "atomics"))]
+#[cfg(all(target_arch = "wasm32", target_feature = "atomics", feature = "file_store"))]
 use crate::{
     event::Event,
     file_store::{Backend, FileStore},
@@ -256,17 +256,20 @@ fn flush(app: &App) {
 pub async fn serve_event() {
     while unsafe { RUNNING } {
         process_event();
-        #[allow(clippy::deref_addrof)]
-        let wanted = unsafe { (*(&raw mut APP)).as_mut() }.and_then(App::reopen_wanted);
-        if let Some(id) = wanted {
-            let opened = Backend::open(id, true).await;
+        #[cfg(feature = "file_store")]
+        {
             #[allow(clippy::deref_addrof)]
-            if let Some(app) = unsafe { (*(&raw mut APP)).as_mut() } {
-                app.clear();
-                app.run(Event::StoreOpened(opened));
-                flush(app);
+            let wanted = unsafe { (*(&raw mut APP)).as_mut() }.and_then(App::reopen_wanted);
+            if let Some(id) = wanted {
+                let opened = Backend::open(id, true).await;
+                #[allow(clippy::deref_addrof)]
+                if let Some(app) = unsafe { (*(&raw mut APP)).as_mut() } {
+                    app.clear();
+                    app.run(Event::StoreOpened(opened));
+                    flush(app);
+                }
+                continue;
             }
-            continue;
         }
         let write = ARENA.get_write_count(EVENT_RING);
         if ARENA.get_read_count(EVENT_RING) == write {

@@ -15,13 +15,14 @@ use wasm_bindgen::prelude::wasm_bindgen;
 
 #[cfg(feature = "calendar")]
 use crate::calendar::handler::Handler;
+#[cfg(feature = "file_store")]
+use crate::file_store::StoreId;
 #[cfg(not(feature = "calendar"))]
 use crate::handler::Handler;
 use crate::{
     Error,
     arena::{APP, RUNNING, emit},
     event::{Event, EventError, Response, WindowEvent},
-    file_store::StoreId,
     js_client::{
         CanvasEvent, Command, EventType, Input, Output, Pointer, Thresholds, detect_device,
     },
@@ -49,6 +50,7 @@ pub struct App {
     commands:   Vec<Command>,
     origin:     Option<CanvasEvent>,
     responses:  BTreeMap<u32, Vec<u8>>,
+    #[cfg(feature = "file_store")]
     reopen:     Option<StoreId>,
 }
 
@@ -104,7 +106,7 @@ impl App {
     }
 
     fn dispatch(&mut self, event: Event) -> (Vec<Event>, Vec<Command>) {
-        let Self { handler, pointer, thresholds, origin, responses, reopen, .. } = self;
+        let Self { handler, pointer, thresholds, origin, responses, .. } = self;
 
         match event {
             Event::Canvas(canvas_event) => {
@@ -146,10 +148,12 @@ impl App {
                 (vec![Event::Fetched(response)], vec![])
             }
             Event::Fetched(response) => handler.process_fetched(&response),
+            #[cfg(feature = "file_store")]
             Event::StoreLost(id) => {
-                *reopen = Some(id);
+                self.reopen = Some(id);
                 handler.process_lost()
             }
+            #[cfg(feature = "file_store")]
             Event::StoreOpened(opened) => handler.process_opened(opened),
             Event::Window(WindowEvent::Shutdown) => {
                 unsafe { RUNNING = false };
@@ -169,6 +173,7 @@ impl App {
             commands: Vec::new(),
             origin: None,
             responses: BTreeMap::new(),
+            #[cfg(feature = "file_store")]
             reopen: None,
         }
     }
@@ -183,6 +188,7 @@ impl App {
         }
     }
 
+    #[cfg(feature = "file_store")]
     pub(crate) fn reopen_wanted(&mut self) -> Option<StoreId> {
         self.reopen.take()
     }
@@ -199,10 +205,11 @@ mod tests {
     use std::fs;
 
     use super::*;
+    #[cfg(feature = "file_store")]
+    use crate::file_store::{Backend, FileStore, StoreId};
     use crate::{
         Rng, block_on,
         event::EVENT_CANVAS,
-        file_store::{Backend, FileStore, StoreId},
         js_client::{Gesture, Output, dom},
     };
 
@@ -445,6 +452,7 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "file_store")]
     #[test]
     fn a_lost_store_is_remembered_once_for_the_serve_loop() {
         let mut app = new_app();

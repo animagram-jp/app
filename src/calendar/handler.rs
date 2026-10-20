@@ -171,10 +171,10 @@ impl Handler {
         let today = [HOUR, MINUTE, SECOND, CENTISECOND, IS_UTC]
             .into_iter()
             .fold(local, |timestamp, field| LAYOUT.set(timestamp, field, 0u64));
-        #[allow(unused_mut)]
+        #[cfg_attr(not(feature = "file_store"), allow(unused_mut))]
         let mut handler = Self::new(viewport_width_px, today, rem_in_px);
         handler.now = now;
-        #[cfg(target_arch = "wasm32")]
+        #[cfg(feature = "file_store")]
         match Backend::open(STORE, true).await.and_then(Backend::new) {
             Ok(opened) => handler.attach(opened),
             Err(error) => handler.startup.push(Error::FileStore(error)),

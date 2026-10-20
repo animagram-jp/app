@@ -53,8 +53,7 @@ curl -fsSL -H "Accept: application/vnd.github.raw+json" "https://api.github.com/
 cargo test --doc # docTest
 cargo test --lib # unit test
 cargo test --features calendar --lib # calendar feature
-cargo test --no-default-features --lib # unit test (no worker feature)
-cargo test --no-default-features --features calendar --lib
+cargo test --no-default-features --lib # unit test (no file_store feature)
 ```
 
 ### Headless browser test
@@ -72,17 +71,31 @@ pkill -f "geckodriver --port 8000"
 
 ### Build wasm
 
-| Thread | Memory |
-|-|-|
-| dedicated worker | WebAssembly.Memory(shared=true)  |
-| main thread      | WebAssembly.Memory(shared=false) |
+The thread is a consequence of the feature `file_store` (default on). The `FileStore` needs
+`createSyncAccessHandle`, which the browser provides only to a dedicated worker, so the
+worker build requires `+atomics` and shared memory (`compile_error!` enforces this on wasm32).
+An app without `file_store` runs on the main thread and declares
+`<meta name="thread" content="main">` in its index.html (`worker` when absent).
+`calendar` enables `file_store`.
+
+スレッドは feature `file_store`(既定で有効)の帰結として決まる。`FileStore` が使う
+`createSyncAccessHandle` はブラウザでは dedicated worker にしか提供されないため、worker ビルドは
+`+atomics` と shared memory を要求する(wasm32 では `compile_error!` で強制される)。
+`file_store` を持たないアプリは main スレッドで動作し、index.html に
+`<meta name="thread" content="main">` を宣言する(無い場合は `worker`)。
+`calendar` は `file_store` を有効にする。
+
+| feature `file_store` | Thread | Memory |
+|-|-|-|
+| on (default) | dedicated worker | WebAssembly.Memory(shared=true)  |
+| off          | main thread      | WebAssembly.Memory(shared=false) |
 
 ```bash
-# thread="worker"
+# file_store (default)
 RUSTFLAGS="-Ctarget-feature=+atomics,+bulk-memory -Clink-arg=--import-memory -Clink-arg=--shared-memory -Clink-arg=--max-memory=134217728 -Clink-arg=--export=__wasm_init_tls -Clink-arg=--export=__tls_size -Clink-arg=--export=__tls_align -Clink-arg=--export=__tls_base" cargo build --release --target wasm32-unknown-unknown -Zbuild-std=std,panic_abort
 wasm-bindgen --target web --out-dir distribution/app --out-name app target/wasm32-unknown-unknown/release/app.wasm
 
-# thread="main"
+# no file_store
 cargo build --release --target wasm32-unknown-unknown --no-default-features
 wasm-bindgen --target web --out-dir distribution/app --out-name app target/wasm32-unknown-unknown/release/app.wasm
 

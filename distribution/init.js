@@ -32,7 +32,7 @@ const EVENT_FETCH = 5;
 const EVENT_FULLSCREEN = 6;
 const EVENT_SHUTDOWN = 8;
 
-const THREAD = crossOriginIsolated ? "worker" : "main";
+const THREAD = document.querySelector("meta[name='thread']")?.content ?? "worker";
 
 const RELOAD_LOG_KEY = "app:reload-log";
 const RELOAD_WINDOW_MS = 60000;
@@ -52,7 +52,7 @@ const S = {
     memory: new WebAssembly.Memory({
         initial: Math.ceil(ARENA_SIZE / 65536) + 256,
         maximum: MEMORY_MAXIMUM_PAGES,
-        shared: THREAD === "worker",
+        shared: THREAD === "worker" && crossOriginIsolated,
     }),
     arena_offset: 0,
     buffer: null,
@@ -91,9 +91,7 @@ function start() {
     const timezone_offset_minutes = -new Date().getTimezoneOffset();
 
     if (THREAD === "main") {
-        try_recover_to_worker_thread().then(async (reloading) => {
-            if (reloading) return;
-
+        (async () => {
             const { default: init, App, arena_offset, initialize, process_event } =
                 await import("./app/app.js?v={version}");
             await init({ module_or_path: "./app/app_bg.wasm?v={version}", memory: S.memory });
@@ -114,6 +112,13 @@ function start() {
             );
             bind();
             S.call_app();
+        })();
+        return;
+    }
+
+    if (!crossOriginIsolated) {
+        try_recover_to_worker_thread().then((reloading) => {
+            if (!reloading) console.error("[init] cross-origin isolation unavailable");
         });
         return;
     }

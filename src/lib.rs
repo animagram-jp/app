@@ -9,6 +9,13 @@
 
 extern crate alloc;
 extern crate core;
+#[cfg(all(
+    target_arch = "wasm32",
+    feature = "file_store",
+    not(target_feature = "atomics"),
+    not(test)
+))]
+compile_error!("feature `file_store` on wasm32 requires -Ctarget-feature=+atomics");
 #[cfg(any(test, not(target_arch = "wasm32")))]
 extern crate std;
 
@@ -16,10 +23,11 @@ use alloc::{string::String, vec::Vec};
 
 #[cfg(feature = "calendar")]
 use crate::calendar::data::DataError;
+#[cfg(feature = "file_store")]
+use crate::file_store::FileStoreError;
 use crate::{
     arena::{ArenaError, PanicError},
     event::EventError,
-    file_store::FileStoreError,
 };
 
 pub mod app;
@@ -29,6 +37,7 @@ pub mod calendar;
 pub mod data_struct;
 pub mod event;
 pub mod field;
+#[cfg(feature = "file_store")]
 pub mod file_store;
 pub mod handler;
 pub mod js_client;
@@ -81,6 +90,7 @@ wire_error! {
         Arena(ArenaError) = 1,
         Event(EventError) = 2,
         Panic(PanicError) = 3,
+        #[cfg(feature = "file_store")]
         FileStore(FileStoreError) = 4,
         #[cfg(feature = "calendar")]
         Data(DataError) = 5,
@@ -150,7 +160,7 @@ mod error_tests {
     #[test]
     fn every_error_has_a_stable_wire_path_and_detail() {
         let message = || String::from("m");
-        #[cfg_attr(not(feature = "calendar"), allow(unused_mut))]
+        #[cfg_attr(not(feature = "file_store"), allow(unused_mut))]
         let mut cases: Vec<(Error, Vec<u16>, &str)> = vec![
             (Error::Arena(ArenaError::CommandOverflow), vec![1, 1], ""),
             (Error::Event(EventError::Decode), vec![2, 1], ""),
@@ -159,6 +169,9 @@ mod error_tests {
                 vec![3, 1],
                 "a.rs:1: m",
             ),
+        ];
+        #[cfg(feature = "file_store")]
+        cases.extend([
             (Error::FileStore(FileStoreError::InvalidState(message())), vec![4, 1], "m"),
             (Error::FileStore(FileStoreError::QuotaExceeded(message())), vec![4, 2], "m"),
             (Error::FileStore(FileStoreError::UnsupportedOp(message())), vec![4, 3], "m"),
@@ -166,7 +179,7 @@ mod error_tests {
             (Error::FileStore(FileStoreError::Unknown(message())), vec![4, 5], "m"),
             (Error::FileStore(FileStoreError::NotFound(message())), vec![4, 6], "m"),
             (Error::FileStore(FileStoreError::Locked(message())), vec![4, 7], "m"),
-        ];
+        ]);
         #[cfg(feature = "calendar")]
         cases.extend([
             (Error::Data(DataError::Status(404)), vec![5, 1], "404"),
