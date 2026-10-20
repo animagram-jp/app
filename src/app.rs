@@ -295,29 +295,33 @@ mod tests {
     #[cfg(not(feature = "calendar"))]
     #[test]
     fn commands_accumulate_across_frames_and_a_bad_frame_does_not_break_the_queue() {
+        use crate::coc7th::target::{SHEET_PARTS, Sheet, Target};
+
         const CLICK: u8 = 3;
         let toggle = dom::Id::new(&[(dom::Tag::Header, None), (dom::Tag::Button, Some(3))]);
         let mut app = new_app();
 
         app.process(&pointer_frame(CLICK, &toggle, 0.0, 0, 0.0));
-        assert!(matches!(
-            app.commands(),
-            [Command::RemoveAttribute { .. }, Command::SetAttribute { .. }]
-        ));
+        let parts = SHEET_PARTS as usize;
+        assert_eq!(app.commands().len(), parts * 2);
+        assert!(
+            app.commands()[..parts].iter().all(|c| matches!(c, Command::RemoveAttribute { .. }))
+        );
+        assert!(app.commands()[parts..].iter().all(|c| matches!(c, Command::SetAttribute { .. })));
 
         app.process(&[]);
         assert!(matches!(
             app.commands(),
             [.., Command::Error { error: Error::Event(EventError::Decode) }]
         ));
-        assert_eq!(app.commands().len(), 3);
+        assert_eq!(app.commands().len(), parts * 2 + 1);
 
         app.process(&pointer_frame(CLICK, &toggle, 0.0, 0, 0.0));
         let [.., Command::SetAttribute { id: hidden, .. }] = app.commands() else {
             panic!("not toggled back");
         };
-        assert_eq!(*hidden, section(2));
-        assert_eq!(app.commands().len(), 5);
+        assert_eq!(*hidden, Target::Sheet(Sheet::Editable, SHEET_PARTS).to_dom());
+        assert_eq!(app.commands().len(), parts * 4 + 1);
         assert!(app.events.is_empty());
 
         app.clear();

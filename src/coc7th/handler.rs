@@ -19,7 +19,7 @@ use crate::{
     Lang,
     coc7th::{
         character::SCHEMA_SIZE,
-        target::{Sheet, Target},
+        target::{SHEET_PARTS, Sheet, Target},
     },
     data_struct::DataStruct,
     event::{Event, gesture::Pointer},
@@ -145,17 +145,16 @@ impl crate::event::Handler for Handler {
             Sheet::Editable => Sheet::Immutable,
         };
         self.character_sheet = shown;
-        let commands = vec![
-            Command::RemoveAttribute {
-                id:        Target::Sheet(shown).to_dom(),
-                attribute: Attribute::Hidden,
-            },
-            Command::SetAttribute {
-                id:        Target::Sheet(hidden).to_dom(),
-                attribute: Attribute::Hidden,
-                value:     String::new(),
-            },
-        ];
+        let mut commands = Vec::new();
+        commands.extend((1..=SHEET_PARTS).map(|part| Command::RemoveAttribute {
+            id:        Target::Sheet(shown, part).to_dom(),
+            attribute: Attribute::Hidden,
+        }));
+        commands.extend((1..=SHEET_PARTS).map(|part| Command::SetAttribute {
+            id:        Target::Sheet(hidden, part).to_dom(),
+            attribute: Attribute::Hidden,
+            value:     String::new(),
+        }));
         (vec![], commands)
     }
 }
@@ -163,13 +162,14 @@ impl crate::event::Handler for Handler {
 #[cfg(all(test, target_arch = "wasm32"))]
 mod tests {
     use alloc::vec::Vec;
+    use core::iter::repeat_n;
 
     use wasm_bindgen_test::*;
 
     use crate::{
         app::App,
         arena::{ARENA, COMMAND_RING, EVENT_RING, initialize, process_event},
-        coc7th::target::Target,
+        coc7th::target::{SHEET_PARTS, Target},
         host::{
             EVENT_CANVAS, EventType, OPERATION_REMOVE_ATTRIBUTE, OPERATION_SET_ATTRIBUTE, Output,
         },
@@ -208,7 +208,11 @@ mod tests {
             operations.push(command[0]);
             ARENA.advance_ring(COMMAND_RING);
         }
-        assert_eq!(operations, [OPERATION_REMOVE_ATTRIBUTE, OPERATION_SET_ATTRIBUTE]);
+        let parts = SHEET_PARTS as usize;
+        let expected: Vec<_> = repeat_n(OPERATION_REMOVE_ATTRIBUTE, parts)
+            .chain(repeat_n(OPERATION_SET_ATTRIBUTE, parts))
+            .collect();
+        assert_eq!(operations, expected);
     }
 }
 
@@ -252,8 +256,11 @@ mod toggle_tests {
         }
     }
 
-    fn sheet(sheet: Sheet) -> dom::Id {
-        Target::Sheet(sheet).to_dom()
+    fn toggled(shown: Sheet, hidden: Sheet) -> Vec<(bool, dom::Id)> {
+        let change = |sheet, is_hidden| {
+            (1..=SHEET_PARTS).map(move |part| (is_hidden, Target::Sheet(sheet, part).to_dom()))
+        };
+        change(shown, false).chain(change(hidden, true)).collect()
     }
 
     #[test]
@@ -262,11 +269,11 @@ mod toggle_tests {
 
         let first: Vec<_> =
             click(&mut handler, toggle_button()).iter().map(hidden_change).collect();
-        assert_eq!(first, [(false, sheet(Sheet::Editable)), (true, sheet(Sheet::Immutable))]);
+        assert_eq!(first, toggled(Sheet::Editable, Sheet::Immutable));
 
         let second: Vec<_> =
             click(&mut handler, toggle_button()).iter().map(hidden_change).collect();
-        assert_eq!(second, [(false, sheet(Sheet::Immutable)), (true, sheet(Sheet::Editable))]);
+        assert_eq!(second, toggled(Sheet::Immutable, Sheet::Editable));
     }
 
     #[test]
@@ -283,10 +290,10 @@ mod toggle_tests {
     #[test]
     fn other_targets_and_events_change_nothing() {
         let mut handler = block_on(Handler::ready(0.0, 0.0, 16.0, 0.0, 0));
-        assert!(click(&mut handler, sheet(Sheet::Immutable)).is_empty());
+        assert!(click(&mut handler, Target::Sheet(Sheet::Immutable, 1).to_dom()).is_empty());
         let first: Vec<_> =
             click(&mut handler, toggle_button()).iter().map(hidden_change).collect();
-        assert_eq!(first, [(false, sheet(Sheet::Editable)), (true, sheet(Sheet::Immutable))]);
+        assert_eq!(first, toggled(Sheet::Editable, Sheet::Immutable));
     }
 
     #[cfg(feature = "file_store")]

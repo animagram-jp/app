@@ -16,28 +16,20 @@ const EDIT_BUTTON: u32 = 3;
 const DICE_BUTTON: u32 = 4;
 const SAVE_BUTTON: u32 = 5;
 const APPEARANCE_BUTTON: u32 = 6;
+const SHEET_SECTION: u32 = 1;
+pub const SHEET_PARTS: u32 = 8;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Sheet {
-    Immutable = 1,
+    Immutable,
     Editable,
 }
 
 impl Sheet {
-    /// ```
-    /// # use app::coc7th::target::Sheet;
-    /// assert_eq!(Sheet::Immutable.number(), 1);
-    /// assert_eq!(Sheet::Editable.number(), 2);
-    /// ```
-    pub fn number(self) -> u32 {
-        self as u32
-    }
-
-    fn from_number(n: u32) -> Option<Self> {
-        match n {
-            1 => Some(Self::Immutable),
-            2 => Some(Self::Editable),
-            _ => None,
+    fn tag(self) -> Tag {
+        match self {
+            Self::Immutable => Tag::Section,
+            Self::Editable => Tag::Fieldset,
         }
     }
 }
@@ -51,7 +43,7 @@ pub enum Target {
     Dice,
     Save,
     Appearance,
-    Sheet(Sheet),
+    Sheet(Sheet, u32),
 }
 
 impl Target {
@@ -65,9 +57,11 @@ impl Target {
             Self::Dice => button(DICE_BUTTON),
             Self::Save => button(SAVE_BUTTON),
             Self::Appearance => button(APPEARANCE_BUTTON),
-            Self::Sheet(sheet) => {
-                Vec::from([(Tag::Main, None), (Tag::Section, Some(sheet.number()))])
-            }
+            Self::Sheet(sheet, part) => Vec::from([
+                (Tag::Main, None),
+                (Tag::Section, Some(SHEET_SECTION)),
+                (sheet.tag(), Some(part)),
+            ]),
         };
         Id::new(&path)
     }
@@ -85,9 +79,18 @@ impl Target {
                 APPEARANCE_BUTTON => Self::Appearance,
                 _ => return None,
             },
-            [(Tag::Main, None), (Tag::Section, Some(n)), ..] => {
-                Self::Sheet(Sheet::from_number(*n)?)
-            }
+            [
+                (Tag::Main, None),
+                (Tag::Section, Some(SHEET_SECTION)),
+                (Tag::Section, Some(n)),
+                ..,
+            ] if (1..=SHEET_PARTS).contains(n) => Self::Sheet(Sheet::Immutable, *n),
+            [
+                (Tag::Main, None),
+                (Tag::Section, Some(SHEET_SECTION)),
+                (Tag::Fieldset, Some(n)),
+                ..,
+            ] if (1..=SHEET_PARTS).contains(n) => Self::Sheet(Sheet::Editable, *n),
             _ => return None,
         })
     }
@@ -101,7 +104,7 @@ mod tests {
     use super::*;
 
     fn every_target() -> Vec<Target> {
-        Vec::from([
+        let mut targets = Vec::from([
             Target::Body,
             Target::Language,
             Target::Character,
@@ -109,9 +112,12 @@ mod tests {
             Target::Dice,
             Target::Save,
             Target::Appearance,
-            Target::Sheet(Sheet::Immutable),
-            Target::Sheet(Sheet::Editable),
-        ])
+        ]);
+        for part in 1..=SHEET_PARTS {
+            targets.push(Target::Sheet(Sheet::Immutable, part));
+            targets.push(Target::Sheet(Sheet::Editable, part));
+        }
+        targets
     }
 
     fn html_id(id: &Id) -> String {
@@ -158,12 +164,12 @@ mod tests {
     fn descendants_of_a_sheet_resolve_to_the_sheet() {
         let inside = Id::new(&[
             (Tag::Main, None),
-            (Tag::Section, Some(2)),
+            (Tag::Section, Some(1)),
             (Tag::Fieldset, Some(2)),
             (Tag::Label, Some(3)),
             (Tag::Input, None),
         ]);
-        assert_eq!(Target::from_dom(&inside), Some(Target::Sheet(Sheet::Editable)));
+        assert_eq!(Target::from_dom(&inside), Some(Target::Sheet(Sheet::Editable, 2)));
     }
 
     #[test]
@@ -173,6 +179,9 @@ mod tests {
             Id::new(&[(Tag::Header, None), (Tag::Button, Some(7))]),
             Id::new(&[(Tag::Header, None), (Tag::Div, Some(1))]),
             Id::new(&[(Tag::Main, None), (Tag::Section, Some(3))]),
+            Id::new(&[(Tag::Main, None), (Tag::Section, Some(2)), (Tag::Fieldset, Some(2))]),
+            Id::new(&[(Tag::Main, None), (Tag::Section, Some(1)), (Tag::H3, Some(1))]),
+            Id::new(&[(Tag::Main, None), (Tag::Section, Some(1)), (Tag::Fieldset, Some(9))]),
             Id::new(&[(Tag::Main, None), (Tag::H2, Some(1))]),
         ];
         for id in unknown {

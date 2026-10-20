@@ -86,7 +86,17 @@
                 <span aria-label="Updated At">
                     <span></span>
                     <span>2026-04-18</span></span>
-                    <button id="main_section-1_section-1_button" type="button" aria-label="delete character sheet" data-surround="outline">◌</button></section>
+                <button id="main_section-1_section-1_button" type="button" aria-label="delete character sheet" data-surround="outline">◌</button></section>
+            <fieldset id="main_section-1_fieldset-1" aria-labelledby="main_section-1_h3-1" hidden>
+                <span aria-label="Identity">
+                    <span>ID</span>
+                    <span></span></span>
+                <span aria-label="Created At">
+                    <span></span>
+                    <span>2024-02-07</span></span>
+                <span aria-label="Updated At">
+                    <span></span>
+                    <span>2026-04-18</span></span></fieldset>
 
             <h3 id="main_section-1_h3-2">プロフィール</h3>
             <section id="main_section-1_section-2" aria-labelledby="main_section-1_h3-2">
@@ -108,6 +118,33 @@
                 <span>
                     <span>年齢</span>
                     <span id="main_section-1_section-2_span-6_span-2">20</span></span></section>
+            <fieldset id="main_section-1_fieldset-2" aria-labelledby="main_section-1_h3-2" hidden>
+                <label id="main_section-1_fieldset-2_label-1" for="main_section-1_fieldset-2_label-1_input">
+                    <span>名前</span>
+                    <input id="main_section-1_fieldset-2_label-1_input" type="text" name="main_section-1_fieldset-2_label-1_input-1" maxlength="100"></label>
+                <label id="main_section-1_fieldset-2_label-2" for="main_section-1_fieldset-2_label-2_input">
+                    <span>名前</span>
+                    <input id="main_section-1_fieldset-2_label-2_input" type="text" name="main_section-1_fieldset-2_label-1_input-2" placeholder="( )" maxlength="100"></label>
+                <label id="main_section-1_fieldset-2_label-3" for="main_section-1_fieldset-2_label-3_input">
+                    <span>出身</span>
+                    <input id="main_section-1_fieldset-2_label-3_input" type="text" name="main_section-1_fieldset-2_label-2_input" maxlength="100"></label>
+                <label id="main_section-1_fieldset-2_label-4" for="main_section-1_fieldset-2_label-4_input">
+                    <span>性別</span>
+                    <input id="main_section-1_fieldset-2_label-4_input" type="text" name="main_section-1_fieldset-2_label-3_input" maxlength="100"></label>
+                <label id="main_section-1_fieldset-2_label-5" for="main_section-1_fieldset-2_label-5_input">
+                    <span>職業</span>
+                    <input id="main_section-1_fieldset-2_label-5_input" type="text" name="main_section-1_fieldset-2_label-4_input-1" maxlength="100"></label>
+                <label id="main_section-1_fieldset-2_label-6" for="main_section-1_fieldset-2_label-6_input">
+                    <span>職業</span>
+                    <input id="main_section-1_fieldset-2_label-6_input" type="text" name="main_section-1_fieldset-2_label-4_input-2" placeholder="( )" maxlength="100"></label>
+                <label id="main_section-1_fieldset-2_label-7" for="main_section-1_fieldset-2_label-7_input">
+                    <span>住所</span>
+                    <input id="main_section-1_fieldset-2_label-7_input" type="text" name="main_section-1_fieldset-2_label-5_input" maxlength="100"></label>
+                <label id="main_section-1_fieldset-2_label-8" for="main_section-1_fieldset-2_label-8_input" data-group="inline">
+                    <span>年齢</span>
+                    <button type="button" data-sign="minus" tabindex="-1" aria-label="decrement"></button>
+                    <input id="main_section-1_fieldset-2_label-8_input" type="text" inputmode="numeric" pattern="[0-9]*" role="spinbutton" name="main_section-1_fieldset-2_label-8_input" placeholder="0">
+                    <button type="button" data-sign="plus" tabindex="-1" aria-label="increment"></button></label></fieldset>
 
             <h3 id="main_section-1_h3-3">能力値</h3>
             <section id="main_section-1_section-3" aria-labelledby="main_section-1_h3-3">
@@ -151,6 +188,98 @@
                     <span>90</span>
                     <span>45</span>
                     <span>18</span></span></section>
+            <!-- fieldset-3: Characteristic (label / initial / change / modifier / sum) -->
+            <fieldset id="main_section-1_fieldset-3" aria-labelledby="main_section-1_h3-3" hidden>
+                <table id="main_section-1_fieldset-3_table-1" data-size="sm" data-stripe>
+                    <thead>
+                        <tr>
+                            <th></th>
+                            <th scope="col" aria-label="initial"></th>
+                            <th scope="col" aria-label="change"></th>
+                            <th scope="col" aria-label="modifier"></th>
+                            <th scope="col" aria-label="sum"></th></tr></thead>
+                    <tbody>
+                        <tr id="main_section-1_fieldset-3_table-1_tbody_tr-1">
+                            <th scope="row">STR</th>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^(1000|[1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
+                            <td></td></tr>
+                        <tr id="main_section-1_fieldset-3_table-1_tbody_tr-2">
+                            <th scope="row">CON</th>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^(1000|[1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
+                            <td></td></tr>
+                        <tr id="main_section-1_fieldset-3_table-1_tbody_tr-3">
+                            <th scope="row">SIZ</th>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^(1000|[1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
+                            <td></td></tr>
+                        <tr id="main_section-1_fieldset-3_table-1_tbody_tr-4">
+                            <th scope="row">DEX</th>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^(1000|[1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
+                            <td></td></tr></tbody></table>
+                <table id="main_section-1_fieldset-3_table-2" data-size="sm" data-stripe>
+                    <thead>
+                        <tr>
+                            <th></th>
+                            <th id="" scope="col" aria-label="base value"></th>
+                            <th scope="col" aria-label="base value"></th>
+                            <th scope="col" aria-label="modifier"></th>
+                            <th scope="col" aria-label="sum"></th></tr></thead>
+                    <tbody>
+                        <tr id="main_section-1_fieldset-3_table-2_tbody_tr-1">
+                            <th>APP</th>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^(1000|[1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
+                            <td></td></tr>
+                        <tr id="main_section-1_fieldset-3_table-2_tbody_tr-2">
+                            <th>INT</th>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^(1000|[1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
+                            <td></td></tr>
+                        <tr id="main_section-1_fieldset-3_table-2_tbody_tr-3">
+                            <th>POW</th>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^(1000|[1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
+                            <td></td></tr>
+                        <tr id="main_section-1_fieldset-3_table-2_tbody_tr-4">
+                            <th>EDU</th>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^(1000|[1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
+                            <td></td></tr></tbody></table></fieldset>
 
             <h3 id="main_section-1_h3-4">ほかの属性</h3>
             <section id="main_section-1_section-4" aria-labelledby="main_section-1_h3-4">
@@ -181,6 +310,14 @@
                 <span aria-label="Interest Skill Points">
                     <span>興味技能ポイント</span>
                     <span>180</span></span></section>
+            <!-- fieldset-4: Secondary Attributes -->
+            <fieldset id="main_section-1_fieldset-4" aria-labelledby="main_section-1_h3-4" hidden>
+                <label id="main_section-1_fieldset-4_label-1" for="main_section-1_fieldset-4_label-1_input">
+                    <span>幸運</span>
+                    <input id="main_section-1_fieldset-4_label-1_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" name="main_section-1_fieldset-4_label-1_input-1" maxlength="3"></label>
+                <label id="main_section-1_fieldset-4_label-2" for="main_section-1_fieldset-4_label-2_input">
+                    <span>正気度</span>
+                    <input id="main_section-1_fieldset-4_label-2_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" name="main_section-1_fieldset-4_label-1_input-2" maxlength="3"></label></fieldset>
 
             <h3 id="main_section-1_h3-5">技能</h3>
             <section id="main_section-1_section-5" aria-label="Skills">
@@ -314,6 +451,793 @@
                     <span>75</span>
                     <span>37</span>
                     <span>15</span></span></section>
+            <!-- fieldset-5: Skill (label / speciality / base value / occupation pt / interest pt / modifier / sum) -->
+            <fieldset id="main_section-1_fieldset-5" aria-labelledby="main_section-1_h3-5" hidden>
+                <table id="main_section-1_fieldset-5_table" data-size="sm" data-stripe>
+                    <thead>
+                        <tr>
+                            <th></th>
+                            <th>専門分野</th>
+                            <th>基本値</th>
+                            <th>職業PT</th>
+                            <th>興味PT</th>
+                            <th>修正値</th>
+                            <th>合計</th></tr></thead>
+                    <tbody>
+                        <!-- tr-1: 経理 -->
+                        <tr id="main_section-1_fieldset-5_table_tbody_tr-1">
+                            <th>経理</th>
+                            <td></td>
+                            <td>5</td>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td></td></tr>
+                        <!-- tr-2: 人類学 -->
+                        <tr id="main_section-1_fieldset-5_table_tbody_tr-2">
+                            <th>人類学</th>
+                            <td></td>
+                            <td>1</td>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td></td></tr>
+                        <!-- tr-3: 考古学 -->
+                        <tr id="main_section-1_fieldset-5_table_tbody_tr-3">
+                            <th>考古学</th>
+                            <td></td>
+                            <td>1</td>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td></td></tr>
+                        <!-- tr-4: 鑑定 -->
+                        <tr id="main_section-1_fieldset-5_table_tbody_tr-4">
+                            <th>鑑定</th>
+                            <td></td>
+                            <td>5</td>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td></td></tr>
+                        <!-- tr-5a: 芸術/製作（演劇） — rs: Acting -->
+                        <tr id="main_section-1_fieldset-5_table_tbody_tr-5">
+                            <th>芸術/製作</th>
+                            <td id="main_section-1_fieldset-5_table_tbody_tr-5_td-1">
+                                <label data-group="inline">
+                                    <input id="main_section-1_fieldset-5_table_tbody_tr-5_td-1_label_input" type="text" value="演劇" maxlength="100" data-size="sm">
+                                    <button id="main_section-1_fieldset-5_table_tbody_tr-5_td-1_label_button" type="button" popovertarget="main_section-1_fieldset-5_table_tbody_tr-5_td-1_div" aria-haspopup="listbox" aria-expanded="false" aria-controls="main_section-1_fieldset-5_table_tbody_tr-5_td-1_div" aria-label="choose specialization" data-size="sm"></button></label>
+                                <div id="main_section-1_fieldset-5_table_tbody_tr-5_td-1_div" popover="auto" role="listbox" aria-labelledby="main_section-1_fieldset-5_table_tbody_tr-5_td-1_label_button">
+                                    <button role="option" aria-selected="true">演劇</button>
+                                    <button role="option">ダンス</button>
+                                    <button role="option">料理</button>
+                                    <button role="option">書道</button>
+                                    <button role="option">執筆</button>
+                                    <button role="option">絵画</button>
+                                    <button role="option">文書偽造</button>
+                                    <button role="option">写真術</button></div></td>
+                            <td>5</td>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td></td></tr>
+                        <!-- tr-5b: 芸術/製作（ダンス） — rs: Dancing -->
+                        <tr id="main_section-1_fieldset-5_table_tbody_tr-6">
+                            <th>芸術/製作</th>
+                            <td id="main_section-1_fieldset-5_table_tbody_tr-6_td-1">
+                                <label data-group="inline">
+                                    <input id="main_section-1_fieldset-5_table_tbody_tr-6_td-1_label_input" type="text" value="ダンス" maxlength="100" data-size="sm">
+                                    <button id="main_section-1_fieldset-5_table_tbody_tr-6_td-1_label_button" type="button" popovertarget="main_section-1_fieldset-5_table_tbody_tr-6_td-1_div" aria-haspopup="listbox" aria-expanded="false" aria-controls="main_section-1_fieldset-5_table_tbody_tr-6_td-1_div" aria-label="choose specialization" data-size="sm"></button></label>
+                                <div id="main_section-1_fieldset-5_table_tbody_tr-6_td-1_div" popover="auto" role="listbox" aria-labelledby="main_section-1_fieldset-5_table_tbody_tr-6_td-1_label_button">
+                                    <button role="option" aria-selected="true">ダンス</button>
+                                    <button role="option">演劇</button>
+                                    <button role="option">料理</button>
+                                    <button role="option">書道</button>
+                                    <button role="option">執筆</button>
+                                    <button role="option">絵画</button>
+                                    <button role="option">文書偽造</button>
+                                    <button role="option">写真術</button></div></td>
+                            <td>5</td>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td></td></tr>
+                        <!-- tr-5c: 芸術/製作（花札） — rs にない専門分野: input -->
+                        <tr id="main_section-1_fieldset-5_table_tbody_tr-7">
+                            <th>芸術/製作</th>
+                            <td>
+                                <input type="text" placeholder="花札" maxlength="100" data-size="sm"></td>
+                            <td>5</td>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td></td></tr>
+                        <!-- tr-5d: 芸術/製作（百人一首） — rs にない専門分野: input -->
+                        <tr id="main_section-1_fieldset-5_table_tbody_tr-8">
+                            <th>芸術/製作</th>
+                            <td>
+                                <input type="text" placeholder="百人一首" maxlength="100" data-size="sm"></td>
+                            <td>5</td>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td></td></tr>
+                        <!-- tr-5e: 芸術/製作（愛） — rs にない専門分野: input -->
+                        <tr id="main_section-1_fieldset-5_table_tbody_tr-9">
+                            <th>芸術/製作</th>
+                            <td>
+                                <input type="text" placeholder="愛" maxlength="100" data-size="sm"></td>
+                            <td>5</td>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td></td></tr>
+                        <!-- tr-5f: 芸術/製作（音楽） — rs にない専門分野: input -->
+                        <tr id="main_section-1_fieldset-5_table_tbody_tr-10">
+                            <th>芸術/製作</th>
+                            <td>
+                                <input type="text" placeholder="音楽" maxlength="100" data-size="sm"></td>
+                            <td>5</td>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td></td></tr>
+                        <!-- tr-5g: 芸術/製作（声楽） — rs にない専門分野: input -->
+                        <tr id="main_section-1_fieldset-5_table_tbody_tr-11">
+                            <th>芸術/製作</th>
+                            <td>
+                                <input type="text" placeholder="声楽" maxlength="100" data-size="sm"></td>
+                            <td>5</td>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td></td></tr>
+                        <!-- tr-6: 魅惑 -->
+                        <tr id="main_section-1_fieldset-5_table_tbody_tr-12">
+                            <th>魅惑</th>
+                            <td></td>
+                            <td>15</td>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td></td></tr>
+                        <!-- tr-7: 登攀 -->
+                        <tr id="main_section-1_fieldset-5_table_tbody_tr-13">
+                            <th>登攀</th>
+                            <td></td>
+                            <td>20</td>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td></td></tr>
+                        <!-- tr-8: コンピューター -->
+                        <tr id="main_section-1_fieldset-5_table_tbody_tr-14">
+                            <th>コンピューター</th>
+                            <td></td>
+                            <td>5</td>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td></td></tr>
+                        <!-- tr-9: 信用 -->
+                        <tr id="main_section-1_fieldset-5_table_tbody_tr-15">
+                            <th>信用</th>
+                            <td></td>
+                            <td>0</td>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td>
+                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td>
+                            <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                        <td></td></tr>
+                    <!-- tr-10: クトゥルフ神話 -->
+                    <tr id="main_section-1_fieldset-5_table_tbody_tr-16">
+                        <th>クトゥルフ神話</th>
+                        <td></td>
+                        <td>0</td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                        <td></td></tr>
+                    <!-- tr-11: 変装 -->
+                    <tr id="main_section-1_fieldset-5_table_tbody_tr-17">
+                        <th>変装</th>
+                        <td></td>
+                        <td>5</td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                        <td></td></tr>
+                    <!-- tr-12: 回避 (base=DEX/2=30) -->
+                    <tr id="main_section-1_fieldset-5_table_tbody_tr-18">
+                        <th>回避</th>
+                        <td></td>
+                        <td>30</td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                        <td></td></tr>
+                    <!-- tr-13: 運転（自動車） -->
+                    <tr id="main_section-1_fieldset-5_table_tbody_tr-19">
+                        <th>運転（自動車）</th>
+                        <td></td>
+                        <td>20</td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                        <td></td></tr>
+                    <!-- tr-14: 電気修理 -->
+                    <tr id="main_section-1_fieldset-5_table_tbody_tr-20">
+                        <th>電気修理</th>
+                        <td></td>
+                        <td>10</td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                        <td></td></tr>
+                    <!-- tr-15: 電子工学 -->
+                    <tr id="main_section-1_fieldset-5_table_tbody_tr-21">
+                        <th>電子工学</th>
+                        <td></td>
+                        <td>1</td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                        <td></td></tr>
+                    <!-- tr-16: 言いくるめ -->
+                    <tr id="main_section-1_fieldset-5_table_tbody_tr-22">
+                        <th>言いくるめ</th>
+                        <td></td>
+                        <td>5</td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                        <td></td></tr>
+                    <!-- tr-17a: 近接戦闘（格闘） — rs: Brawl -->
+                    <tr id="main_section-1_fieldset-5_table_tbody_tr-23">
+                        <th>近接戦闘</th>
+                        <td id="main_section-1_fieldset-5_table_tbody_tr-23_td-1">
+                            <label data-group="inline">
+                                <input id="main_section-1_fieldset-5_table_tbody_tr-23_td-1_label_input" type="text" value="格闘" maxlength="100" data-size="sm">
+                                <button id="main_section-1_fieldset-5_table_tbody_tr-23_td-1_label_button" type="button" popovertarget="main_section-1_fieldset-5_table_tbody_tr-23_td-1_div" aria-haspopup="listbox" aria-expanded="false" aria-controls="main_section-1_fieldset-5_table_tbody_tr-23_td-1_div" aria-label="choose specialization" data-size="sm"></button></label>
+                            <div id="main_section-1_fieldset-5_table_tbody_tr-23_td-1_div" popover="auto" role="listbox" aria-labelledby="main_section-1_fieldset-5_table_tbody_tr-23_td-1_label_button">
+                                <button role="option" aria-selected="true">格闘</button>
+                                <button role="option">斧</button>
+                                <button role="option">チェーンソー</button>
+                                <button role="option">フレイル</button>
+                                <button role="option">絞殺ひも</button>
+                                <button role="option">槍</button>
+                                <button role="option">刀剣</button>
+                                <button role="option">鞭</button></div></td>
+                        <td>25</td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                        <td></td></tr>
+                    <!-- tr-17b: 近接戦闘（刀剣） — rs: Sword -->
+                    <tr id="main_section-1_fieldset-5_table_tbody_tr-24">
+                        <th>近接戦闘</th>
+                        <td id="main_section-1_fieldset-5_table_tbody_tr-24_td-1">
+                            <label data-group="inline">
+                                <input id="main_section-1_fieldset-5_table_tbody_tr-24_td-1_label_input" type="text" value="刀剣" maxlength="100" data-size="sm">
+                                <button id="main_section-1_fieldset-5_table_tbody_tr-24_td-1_label_button" type="button" popovertarget="main_section-1_fieldset-5_table_tbody_tr-24_td-1_div" aria-haspopup="listbox" aria-expanded="false" aria-controls="main_section-1_fieldset-5_table_tbody_tr-24_td-1_div" aria-label="choose specialization" data-size="sm"></button></label>
+                            <div id="main_section-1_fieldset-5_table_tbody_tr-24_td-1_div" popover="auto" role="listbox" aria-labelledby="main_section-1_fieldset-5_table_tbody_tr-24_td-1_label_button">
+                                <button role="option" aria-selected="true">刀剣</button>
+                                <button role="option">斧</button>
+                                <button role="option">格闘</button>
+                                <button role="option">チェーンソー</button>
+                                <button role="option">フレイル</button>
+                                <button role="option">絞殺ひも</button>
+                                <button role="option">槍</button>
+                                <button role="option">鞭</button></div></td>
+                        <td>20</td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                        <td></td></tr>
+                    <!-- tr-18: 射撃 — Handgun -->
+                    <tr id="main_section-1_fieldset-5_table_tbody_tr-25">
+                        <th>射撃</th>
+                        <td id="main_section-1_fieldset-5_table_tbody_tr-25_td-1">
+                            <label data-group="inline">
+                                <input id="main_section-1_fieldset-5_table_tbody_tr-25_td-1_label_input" type="text" value="拳銃" maxlength="100" data-size="sm">
+                                <button id="main_section-1_fieldset-5_table_tbody_tr-25_td-1_label_button" type="button" popovertarget="main_section-1_fieldset-5_table_tbody_tr-25_td-1_div" aria-haspopup="listbox" aria-expanded="false" aria-controls="main_section-1_fieldset-5_table_tbody_tr-25_td-1_div" aria-label="choose specialization" data-size="sm"></button></label>
+                            <div id="main_section-1_fieldset-5_table_tbody_tr-25_td-1_div" popover="auto" role="listbox" aria-labelledby="main_section-1_fieldset-5_table_tbody_tr-25_td-1_label_button">
+                                <button role="option" aria-selected="true">拳銃</button>
+                                <button role="option">弓</button>
+                                <button role="option">重火器</button>
+                                <button role="option">機関銃</button>
+                                <button role="option">ライフル/ショットガン</button>
+                                <button role="option">サブマシンガン</button></div></td>
+                        <td>20</td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                        <td></td></tr>
+                    <!-- tr-19: 応急手当 -->
+                    <tr id="main_section-1_fieldset-5_table_tbody_tr-26">
+                        <th>応急手当</th>
+                        <td></td>
+                        <td>30</td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                        <td></td></tr>
+                    <!-- tr-20: 歴史 -->
+                    <tr id="main_section-1_fieldset-5_table_tbody_tr-27">
+                        <th>歴史</th>
+                        <td></td>
+                        <td>5</td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                        <td></td></tr>
+                    <!-- tr-21: 威圧 -->
+                    <tr id="main_section-1_fieldset-5_table_tbody_tr-28">
+                        <th>威圧</th>
+                        <td></td>
+                        <td>15</td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                        <td></td></tr>
+                    <!-- tr-22: 跳躍 -->
+                    <tr id="main_section-1_fieldset-5_table_tbody_tr-29">
+                        <th>跳躍</th>
+                        <td></td>
+                        <td>20</td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                        <td></td></tr>
+                    <!-- tr-23: ほかの言語 — English -->
+                    <tr id="main_section-1_fieldset-5_table_tbody_tr-30">
+                        <th>ほかの言語</th>
+                        <td>
+                            <input type="text" placeholder="English" maxlength="100" data-size="sm"></td>
+                        <td>1</td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                        <td></td></tr>
+                    <!-- tr-24: 母国語 (base=EDU=90) -->
+                    <tr id="main_section-1_fieldset-5_table_tbody_tr-31">
+                        <th>母国語</th>
+                        <td></td>
+                        <td>90</td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                        <td></td></tr>
+                    <!-- tr-25: 法律 -->
+                    <tr id="main_section-1_fieldset-5_table_tbody_tr-32">
+                        <th>法律</th>
+                        <td></td>
+                        <td>5</td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                        <td></td></tr>
+                    <!-- tr-26: 図書館 -->
+                    <tr id="main_section-1_fieldset-5_table_tbody_tr-33">
+                        <th>図書館</th>
+                        <td></td>
+                        <td>20</td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                        <td></td></tr>
+                    <!-- tr-27: 聞き耳 -->
+                    <tr id="main_section-1_fieldset-5_table_tbody_tr-34">
+                        <th>聞き耳</th>
+                        <td></td>
+                        <td>20</td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                        <td></td></tr>
+                    <!-- tr-28: 鍵開け -->
+                    <tr id="main_section-1_fieldset-5_table_tbody_tr-35">
+                        <th>鍵開け</th>
+                        <td></td>
+                        <td>1</td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                        <td></td></tr>
+                    <!-- tr-29: 機械修理 -->
+                    <tr id="main_section-1_fieldset-5_table_tbody_tr-36">
+                        <th>機械修理</th>
+                        <td></td>
+                        <td>10</td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                        <td></td></tr>
+                    <!-- tr-30: 医学 -->
+                    <tr id="main_section-1_fieldset-5_table_tbody_tr-37">
+                        <th>医学</th>
+                        <td></td>
+                        <td>1</td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                        <td></td></tr>
+                    <!-- tr-31: 自然 -->
+                    <tr id="main_section-1_fieldset-5_table_tbody_tr-38">
+                        <th>自然</th>
+                        <td></td>
+                        <td>10</td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                        <td></td></tr>
+                    <!-- tr-32: ナビゲート -->
+                    <tr id="main_section-1_fieldset-5_table_tbody_tr-39">
+                        <th>ナビゲート</th>
+                        <td></td>
+                        <td>10</td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                        <td></td></tr>
+                    <!-- tr-33: オカルト -->
+                    <tr id="main_section-1_fieldset-5_table_tbody_tr-40">
+                        <th>オカルト</th>
+                        <td></td>
+                        <td>5</td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                        <td></td></tr>
+                    <!-- tr-34: 説得 -->
+                    <tr id="main_section-1_fieldset-5_table_tbody_tr-41">
+                        <th>説得</th>
+                        <td></td>
+                        <td>10</td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                        <td></td></tr>
+                    <!-- tr-35: 操縦 — Boat -->
+                    <tr id="main_section-1_fieldset-5_table_tbody_tr-42">
+                        <th>操縦</th>
+                        <td id="main_section-1_fieldset-5_table_tbody_tr-42_td-1">
+                            <label data-group="inline">
+                                <input id="main_section-1_fieldset-5_table_tbody_tr-42_td-1_label_input" type="text" value="ボート" maxlength="100" data-size="sm">
+                                <button id="main_section-1_fieldset-5_table_tbody_tr-42_td-1_label_button" type="button" popovertarget="main_section-1_fieldset-5_table_tbody_tr-42_td-1_div" aria-haspopup="listbox" aria-expanded="false" aria-controls="main_section-1_fieldset-5_table_tbody_tr-42_td-1_div" aria-label="choose specialization" data-size="sm"></button></label>
+                            <div id="main_section-1_fieldset-5_table_tbody_tr-42_td-1_div" popover="auto" role="listbox" aria-labelledby="main_section-1_fieldset-5_table_tbody_tr-42_td-1_label_button">
+                                <button role="option" aria-selected="true">ボート</button>
+                                <button role="option">汽船</button>
+                                <button role="option">帆船</button>
+                                <button role="option">民間プロペラ機</button>
+                                <button role="option">気球</button>
+                                <button role="option">飛行船</button>
+                                <button role="option">民間ジェット機</button>
+                                <button role="option">旅客機</button>
+                                <button role="option">ジェット戦闘機</button>
+                                <button role="option">ヘリコプター</button></div></td>
+                        <td>1</td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                        <td></td></tr>
+                    <!-- tr-36: 精神分析 -->
+                    <tr id="main_section-1_fieldset-5_table_tbody_tr-43">
+                        <th>精神分析</th>
+                        <td></td>
+                        <td>1</td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                        <td></td></tr>
+                    <!-- tr-37: 心理学 -->
+                    <tr id="main_section-1_fieldset-5_table_tbody_tr-44">
+                        <th>心理学</th>
+                        <td></td>
+                        <td>10</td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                        <td></td></tr>
+                    <!-- tr-38: 乗馬 -->
+                    <tr id="main_section-1_fieldset-5_table_tbody_tr-45">
+                        <th>乗馬</th>
+                        <td></td>
+                        <td>5</td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                        <td></td></tr>
+                    <!-- tr-39: 科学 — Astronomy -->
+                    <tr id="main_section-1_fieldset-5_table_tbody_tr-46">
+                        <th>科学</th>
+                        <td id="main_section-1_fieldset-5_table_tbody_tr-46_td-1">
+                            <label data-group="inline">
+                                <input id="main_section-1_fieldset-5_table_tbody_tr-46_td-1_label_input" type="text" value="天文学" maxlength="100" data-size="sm">
+                                <button id="main_section-1_fieldset-5_table_tbody_tr-46_td-1_label_button" type="button" popovertarget="main_section-1_fieldset-5_table_tbody_tr-46_td-1_div" aria-haspopup="listbox" aria-expanded="false" aria-controls="main_section-1_fieldset-5_table_tbody_tr-46_td-1_div" aria-label="choose specialization" data-size="sm"></button></label>
+                            <div id="main_section-1_fieldset-5_table_tbody_tr-46_td-1_div" popover="auto" role="listbox" aria-labelledby="main_section-1_fieldset-5_table_tbody_tr-46_td-1_label_button">
+                                <button role="option" aria-selected="true">天文学</button>
+                                <button role="option">生物学</button>
+                                <button role="option">植物学</button>
+                                <button role="option">化学</button>
+                                <button role="option">暗号学</button>
+                                <button role="option">工学</button>
+                                <button role="option">法医学</button>
+                                <button role="option">地質学</button>
+                                <button role="option">数学</button>
+                                <button role="option">気象学</button>
+                                <button role="option">薬学</button>
+                                <button role="option">物理学</button>
+                                <button role="option">動物学</button>
+                                <button role="option">✏️</button></div></td>
+                        <td>1</td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                        <td></td></tr>
+                    <!-- tr-40: 手さばき -->
+                    <tr id="main_section-1_fieldset-5_table_tbody_tr-47">
+                        <th>手さばき</th>
+                        <td></td>
+                        <td>10</td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                        <td></td></tr>
+                    <!-- tr-41: 目星 -->
+                    <tr id="main_section-1_fieldset-5_table_tbody_tr-48">
+                        <th>目星</th>
+                        <td></td>
+                        <td>25</td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                        <td></td></tr>
+                    <!-- tr-42: 隠密 -->
+                    <tr id="main_section-1_fieldset-5_table_tbody_tr-49">
+                        <th>隠密</th>
+                        <td></td>
+                        <td>20</td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                        <td></td></tr>
+                    <!-- tr-43: サバイバル -->
+                    <tr id="main_section-1_fieldset-5_table_tbody_tr-50">
+                        <th>サバイバル</th>
+                        <td id="main_section-1_fieldset-5_table_tbody_tr-50_td-1">
+                            <label data-group="inline">
+                                <input id="main_section-1_fieldset-5_table_tbody_tr-50_td-1_label_input" type="text" placeholder="選択" maxlength="100" data-size="sm">
+                                <button id="main_section-1_fieldset-5_table_tbody_tr-50_td-1_label_button" type="button" popovertarget="main_section-1_fieldset-5_table_tbody_tr-50_td-1_div" aria-haspopup="listbox" aria-expanded="false" aria-controls="main_section-1_fieldset-5_table_tbody_tr-50_td-1_div" aria-label="choose specialization" data-size="sm"></button></label>
+                            <div id="main_section-1_fieldset-5_table_tbody_tr-50_td-1_div" popover="auto" role="listbox" aria-labelledby="main_section-1_fieldset-5_table_tbody_tr-50_td-1_label_button">
+                                <button role="option" aria-selected="true">選択</button>
+                                <button role="option">極地</button>
+                                <button role="option">砂漠</button>
+                                <button role="option">海</button></div></td>
+                        <td>10</td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                        <td></td></tr>
+                    <!-- tr-44: 水泳 -->
+                    <tr id="main_section-1_fieldset-5_table_tbody_tr-51">
+                        <th>水泳</th>
+                        <td></td>
+                        <td>20</td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                        <td></td></tr>
+                    <!-- tr-45: 投擲 -->
+                    <tr id="main_section-1_fieldset-5_table_tbody_tr-52">
+                        <th>投擲</th>
+                        <td></td>
+                        <td>20</td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                        <td></td></tr>
+                    <!-- tr-46: 追跡 -->
+                    <tr id="main_section-1_fieldset-5_table_tbody_tr-53">
+                        <th>追跡</th>
+                        <td></td>
+                        <td>10</td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                        <td></td></tr>
+                    <!-- tr-47: カスタム（自由記入） -->
+                    <tr id="main_section-1_fieldset-5_table_tbody_tr-54">
+                        <th>
+                            <input type="text" placeholder="技能名" maxlength="100" data-size="sm"></th>
+                        <td>
+                            <input type="text" placeholder="専門分野" maxlength="100" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                        <td></td></tr>
+                    <tr id="main_section-1_fieldset-5_table_tbody_tr-55" hidden>
+                        <th>
+                            <input type="text" placeholder="技能名" maxlength="100" data-size="sm"></th>
+                        <td id="main_section-1_fieldset-5_table_tbody_tr-55_td-1">
+                            <label data-group="inline">
+                                <input id="main_section-1_fieldset-5_table_tbody_tr-55_td-1_label_input" type="text" placeholder="自由記入" maxlength="100" data-size="sm">
+                                <button id="main_section-1_fieldset-5_table_tbody_tr-55_td-1_label_button" type="button" popovertarget="main_section-1_fieldset-5_table_tbody_tr-55_td-1_div" aria-haspopup="listbox" aria-expanded="false" aria-controls="main_section-1_fieldset-5_table_tbody_tr-55_td-1_div" aria-label="choose specialization" data-size="sm"></button></label>
+                            <div id="main_section-1_fieldset-5_table_tbody_tr-55_td-1_div" popover="auto" role="listbox" aria-labelledby="main_section-1_fieldset-5_table_tbody_tr-55_td-1_label_button">
+                                <span role="presentation">選択してください</span>
+                                <button role="option" aria-selected="true">選択</button></div></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                        <td>
+                            <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                        <td></td></tr></tbody></table></fieldset>
 
             <h3 id="main_section-1_h3-6">所持品</h3>
             <section id="main_section-1_section-6" aria-label="Possessions">
@@ -401,1022 +1325,81 @@
                     <span aria-label="Description">
                         <span>説明</span>
                         <span>1枚。ジップロックに封入。申し訳程度の職質対策。</span></span></article></section>
+            <!-- fieldset-6: Possession -->
+            <fieldset id="main_section-1_fieldset-6" aria-labelledby="main_section-1_h3-6" hidden>
+                <label id="main_section-1_fieldset-6_label-1" for="main_section-1_fieldset-6_label-1_input">
+                    <span></span>
+                    <input id="main_section-1_fieldset-6_label-1_input" type="text" inputmode="numeric" name="main_section-1_fieldset-6_label-1_input"></label>
+                <label id="main_section-1_fieldset-6_label-2" for="main_section-1_fieldset-6_label-2_input">
+                    <span></span>
+                    <input id="main_section-1_fieldset-6_label-2_input" type="text" inputmode="numeric" name="main_section-1_fieldset-6_label-2_input"></label></fieldset>
 
-                <h3 id="main_section-1_h3-7">バックストーリー</h3>
-                <section id="main_section-1_section-7" aria-label="Backstory">
-                    <dl>
-                        <dt aria-label="Personal Description"></dt>
-                        <dd></dd>
-                        <dt aria-label="Ideology & Beliefs"></dt>
-                        <dd></dd>
-                        <dt aria-label="Significant People"></dt>
-                        <dd></dd>
-                        <dt aria-label="Meaningful Location"></dt>
-                        <dd></dd>
-                        <dt aria-label="Treasured Possession"></dt>
-                        <dd></dd>
-                        <dt aria-label="Trait"></dt>
-                        <dd></dd>
-                        <dt aria-label="Injuries & Scars"></dt>
-                        <dd></dd>
-                        <dt aria-label="Phobias & Manias"></dt>
-                        <dd></dd>
-                        <dt aria-label="Arcane Tomes & Spells"></dt>
-                        <dd></dd>
-                        <dt aria-label="Encounters with Strange Entities"></dt>
-                        <dd></dd></dl></section>
+            <h3 id="main_section-1_h3-7">バックストーリー</h3>
+            <section id="main_section-1_section-7" aria-label="Backstory">
+                <dl>
+                    <dt aria-label="Personal Description"></dt>
+                    <dd></dd>
+                    <dt aria-label="Ideology & Beliefs"></dt>
+                    <dd></dd>
+                    <dt aria-label="Significant People"></dt>
+                    <dd></dd>
+                    <dt aria-label="Meaningful Location"></dt>
+                    <dd></dd>
+                    <dt aria-label="Treasured Possession"></dt>
+                    <dd></dd>
+                    <dt aria-label="Trait"></dt>
+                    <dd></dd>
+                    <dt aria-label="Injuries & Scars"></dt>
+                    <dd></dd>
+                    <dt aria-label="Phobias & Manias"></dt>
+                    <dd></dd>
+                    <dt aria-label="Arcane Tomes & Spells"></dt>
+                    <dd></dd>
+                    <dt aria-label="Encounters with Strange Entities"></dt>
+                    <dd></dd></dl></section>
+            <!-- fieldset-7: Backstory -->
+            <fieldset id="main_section-1_fieldset-7" aria-label="Backstory" aria-labelledby="main_section-1_h3-7" hidden>
+                <article>
+                    <label for="main_section-1_fieldset-7_article-1_textarea" aria-label="Personal Description"></label>
+                    <textarea id="main_section-1_fieldset-7_article-1_textarea" maxlength="1000"></textarea></article>
+                <article>
+                    <label for="main_section-1_fieldset-7_article-2_textarea" aria-label="Ideology & Beliefs"></label>
+                    <textarea id="main_section-1_fieldset-7_article-2_textarea" maxlength="1000"></textarea></article>
+                <article>
+                    <label for="main_section-1_fieldset-7_article-3_textarea" aria-label="Significant People"></label>
+                    <textarea id="main_section-1_fieldset-7_article-3_textarea" maxlength="1000"></textarea></article>
+                <article>
+                    <label for="main_section-1_fieldset-7_article-4_textarea" aria-label="Meaningful Location"></label>
+                    <textarea id="main_section-1_fieldset-7_article-4_textarea" maxlength="1000"></textarea></article>
+                <article>
+                    <label for="main_section-1_fieldset-7_article-5_textarea" aria-label="Treasured Possession"></label>
+                    <textarea id="main_section-1_fieldset-7_article-5_textarea" maxlength="1000"></textarea></article>
+                <article>
+                    <label for="main_section-1_fieldset-7_article-6_textarea" aria-label="Trait"></label>
+                    <textarea id="main_section-1_fieldset-7_article-6_textarea" maxlength="1000"></textarea></article>
+                <article>
+                    <label for="main_section-1_fieldset-7_article-7_textarea" aria-label="Injuries & Scars"></label>
+                    <textarea id="main_section-1_fieldset-7_article-7_textarea" maxlength="1000"></textarea></article>
+                <article>
+                    <label for="main_section-1_fieldset-7_article-8_textarea" aria-label="Phobias & Manias"></label>
+                    <textarea id="main_section-1_fieldset-7_article-8_textarea" maxlength="1000"></textarea></article>
+                <article>
+                    <label for="main_section-1_fieldset-7_article-9_textarea" aria-label="Arcane Tomes & Spells"></label>
+                    <textarea id="main_section-1_fieldset-7_article-9_textarea" maxlength="1000"></textarea></article>
+                <article>
+                    <label for="main_section-1_fieldset-7_article-10_textarea" aria-label="Encounters with Strange Entities"></label>
+                    <textarea id="main_section-1_fieldset-7_article-10_textarea" maxlength="1000"></textarea></article></fieldset>
 
             <h3 id="main_section-1_h3-8">メモ</h3>
-            <section id="main_section-1_section-8" aria-label="Memo" aria-labelledby="main_section-1_h3-7">
+            <section id="main_section-1_section-8" aria-label="Memo" aria-labelledby="main_section-1_h3-8">
                 <dl>
                     <dt aria-label="title"></dt>
-                    <dd></dd></dl></section></section>
-
-            <section id="main_section-2" aria-label="Edit Character" hidden>
-                <h3 id="main_section-2_h3-1">管理データ</h3>
-                <fieldset id="main_section-2_fieldset-1" aria-labelledby="main_section-2_h3-1">
-                    <span aria-label="Identity">
-                        <span>ID</span>
-                        <span></span></span>
-                    <span aria-label="Created At">
-                        <span></span>
-                        <span>2024-02-07</span></span>
-                    <span aria-label="Updated At">
-                        <span></span>
-                        <span>2026-04-18</span></span></fieldset>
-                        
-                <h3 id="main_section-2_h3-2">プロフィール</h3>
-                <fieldset id="main_section-2_fieldset-2" aria-labelledby="main_section-2_h3-1">
-                    <label id="main_section-2_fieldset-2_label-1" for="main_section-2_fieldset-2_label-1_input">
-                        <span>名前</span>
-                        <input id="main_section-2_fieldset-2_label-1_input" type="text" name="main_section-2_fieldset-2_label-1_input-1" maxlength="100"></label>
-                    <label id="main_section-2_fieldset-2_label-2" for="main_section-2_fieldset-2_label-2_input">
-                        <span>名前</span>
-                        <input id="main_section-2_fieldset-2_label-2_input" type="text" name="main_section-2_fieldset-2_label-1_input-2" placeholder="( )" maxlength="100"></label>
-                    <label id="main_section-2_fieldset-2_label-3" for="main_section-2_fieldset-2_label-3_input">
-                        <span>出身</span>
-                        <input id="main_section-2_fieldset-2_label-3_input" type="text" name="main_section-2_fieldset-2_label-2_input" maxlength="100"></label>
-                    <label id="main_section-2_fieldset-2_label-4" for="main_section-2_fieldset-2_label-4_input">
-                        <span>性別</span>
-                        <input id="main_section-2_fieldset-2_label-4_input" type="text" name="main_section-2_fieldset-2_label-3_input" maxlength="100"></label>
-                    <label id="main_section-2_fieldset-2_label-5" for="main_section-2_fieldset-2_label-5_input">
-                        <span>職業</span>
-                        <input id="main_section-2_fieldset-2_label-5_input" type="text" name="main_section-2_fieldset-2_label-4_input-1" maxlength="100"></label>
-                    <label id="main_section-2_fieldset-2_label-6" for="main_section-2_fieldset-2_label-6_input">
-                        <span>職業</span>
-                        <input id="main_section-2_fieldset-2_label-6_input" type="text" name="main_section-2_fieldset-2_label-4_input-2" placeholder="( )" maxlength="100"></label>
-                    <label id="main_section-2_fieldset-2_label-7" for="main_section-2_fieldset-2_label-7_input">
-                        <span>住所</span>
-                        <input id="main_section-2_fieldset-2_label-7_input" type="text" name="main_section-2_fieldset-2_label-5_input" maxlength="100"></label>
-                    <label id="main_section-2_fieldset-2_label-8" for="main_section-2_fieldset-2_label-8_input" data-group="inline">
-                        <span>年齢</span>
-                        <button type="button" data-sign="minus" tabindex="-1" aria-label="decrement"></button>
-                        <input id="main_section-2_fieldset-2_label-8_input" type="text" inputmode="numeric" pattern="[0-9]*" role="spinbutton" name="main_section-2_fieldset-2_label-8_input" placeholder="0">
-                        <button type="button" data-sign="plus" tabindex="-1" aria-label="increment"></button></label></fieldset>
-
-                <!-- fieldset-3: Characteristic (label / initial / change / modifier / sum) -->
-                <h3 id="main_section-2_h3-3">能力値</h3>
-                <fieldset id="main_section-2_fieldset-3" aria-labelledby="main_section-2_h3-3">
-                    <table id="main_section-2_fieldset-3_table-1" data-size="sm" data-stripe>
-                        <thead>
-                            <tr>
-                                <th></th>
-                                <th scope="col" aria-label="initial"></th>
-                                <th scope="col" aria-label="change"></th>
-                                <th scope="col" aria-label="modifier"></th>
-                                <th scope="col" aria-label="sum"></th></tr></thead>
-                        <tbody>
-                            <tr id="main_section-2_fieldset-3_table-1_tbody_tr-1">
-                                <th scope="row">STR</th>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^(1000|[1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
-                                <td></td></tr>
-                            <tr id="main_section-2_fieldset-3_table-1_tbody_tr-2">
-                                <th scope="row">CON</th>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^(1000|[1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
-                                <td></td></tr>
-                            <tr id="main_section-2_fieldset-3_table-1_tbody_tr-3">
-                                <th scope="row">SIZ</th>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^(1000|[1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
-                                <td></td></tr>
-                            <tr id="main_section-2_fieldset-3_table-1_tbody_tr-4">
-                                <th scope="row">DEX</th>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^(1000|[1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
-                                <td></td></tr></tbody></table>
-                    <table id="main_section-2_fieldset-3_table-2" data-size="sm" data-stripe>
-                        <thead>
-                            <tr>
-                                <th></th>
-                                <th id="" scope="col" aria-label="base value"></th>
-                                <th scope="col" aria-label="base value"></th>
-                                <th scope="col" aria-label="modifier"></th>
-                                <th scope="col" aria-label="sum"></th></tr></thead>
-                        <tbody>
-                            <tr id="main_section-2_fieldset-3_table-2_tbody_tr-1">
-                                <th>APP</th>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^(1000|[1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
-                                <td></td></tr>
-                            <tr id="main_section-2_fieldset-3_table-2_tbody_tr-2">
-                                <th>INT</th>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^(1000|[1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
-                                <td></td></tr>
-                            <tr id="main_section-2_fieldset-3_table-2_tbody_tr-3">
-                                <th>POW</th>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^(1000|[1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
-                                <td></td></tr>
-                            <tr id="main_section-2_fieldset-3_table-2_tbody_tr-4">
-                                <th>EDU</th>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^(1000|[1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
-                                <td></td></tr></tbody></table></fieldset>
-
-                <!-- fieldset-4: Secondary Attributes -->
-                <h3 id="main_section-2_h3-4">ほかの属性</h3>
-                <fieldset id="main_section-2_fieldset-4" aria-labelledby="main_section-2_h3-4">
-                    <label id="main_section-2_fieldset-4_label-1" for="main_section-2_fieldset-4_label-1_input">
-                        <span>幸運</span>
-                        <input id="main_section-2_fieldset-4_label-1_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" name="main_section-2_fieldset-4_label-1_input-1" maxlength="3"></label>
-                    <label id="main_section-2_fieldset-4_label-2" for="main_section-2_fieldset-4_label-2_input">
-                        <span>正気度</span>
-                        <input id="main_section-2_fieldset-4_label-2_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" name="main_section-2_fieldset-4_label-1_input-2" maxlength="3"></label></fieldset>
-
-                <!-- fieldset-5: Skill (label / speciality / base value / occupation pt / interest pt / modifier / sum) -->
-                <h3 id="main_section-2_h3-5">技能</h3>
-                <fieldset id="main_section-2_fieldset-5" aria-labelledby="main_section-2_h3-5">
-                    <table id="main_section-2_fieldset-5_table" data-size="sm" data-stripe>
-                        <thead>
-                            <tr>
-                                <th></th>
-                                <th>専門分野</th>
-                                <th>基本値</th>
-                                <th>職業PT</th>
-                                <th>興味PT</th>
-                                <th>修正値</th>
-                                <th>合計</th></tr></thead>
-                        <tbody>
-                            <!-- tr-1: 経理 -->
-                            <tr id="main_section-2_fieldset-5_table_tbody_tr-1">
-                                <th>経理</th>
-                                <td></td>
-                                <td>5</td>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
-                                <td></td></tr>
-                            <!-- tr-2: 人類学 -->
-                            <tr id="main_section-2_fieldset-5_table_tbody_tr-2">
-                                <th>人類学</th>
-                                <td></td>
-                                <td>1</td>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
-                                <td></td></tr>
-                            <!-- tr-3: 考古学 -->
-                            <tr id="main_section-2_fieldset-5_table_tbody_tr-3">
-                                <th>考古学</th>
-                                <td></td>
-                                <td>1</td>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
-                                <td></td></tr>
-                            <!-- tr-4: 鑑定 -->
-                            <tr id="main_section-2_fieldset-5_table_tbody_tr-4">
-                                <th>鑑定</th>
-                                <td></td>
-                                <td>5</td>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
-                                <td></td></tr>
-                            <!-- tr-5a: 芸術/製作（演劇） — rs: Acting -->
-                            <tr id="main_section-2_fieldset-5_table_tbody_tr-5">
-                                <th>芸術/製作</th>
-                                <td id="main_section-2_fieldset-5_table_tbody_tr-5_td-1">
-                                    <label data-group="inline">
-                                        <input id="main_section-2_fieldset-5_table_tbody_tr-5_td-1_label_input" type="text" value="演劇" maxlength="100" data-size="sm">
-                                        <button id="main_section-2_fieldset-5_table_tbody_tr-5_td-1_label_button" type="button" popovertarget="main_section-2_fieldset-5_table_tbody_tr-5_td-1_div" aria-haspopup="listbox" aria-expanded="false" aria-controls="main_section-2_fieldset-5_table_tbody_tr-5_td-1_div" aria-label="choose specialization" data-size="sm"></button></label>
-                                    <div id="main_section-2_fieldset-5_table_tbody_tr-5_td-1_div" popover="auto" role="listbox" aria-labelledby="main_section-2_fieldset-5_table_tbody_tr-5_td-1_label_button">
-                                        <button role="option" aria-selected="true">演劇</button>
-                                        <button role="option">ダンス</button>
-                                        <button role="option">料理</button>
-                                        <button role="option">書道</button>
-                                        <button role="option">執筆</button>
-                                        <button role="option">絵画</button>
-                                        <button role="option">文書偽造</button>
-                                        <button role="option">写真術</button></div></td>
-                                <td>5</td>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
-                                <td></td></tr>
-                            <!-- tr-5b: 芸術/製作（ダンス） — rs: Dancing -->
-                            <tr id="main_section-2_fieldset-5_table_tbody_tr-6">
-                                <th>芸術/製作</th>
-                                <td id="main_section-2_fieldset-5_table_tbody_tr-6_td-1">
-                                    <label data-group="inline">
-                                        <input id="main_section-2_fieldset-5_table_tbody_tr-6_td-1_label_input" type="text" value="ダンス" maxlength="100" data-size="sm">
-                                        <button id="main_section-2_fieldset-5_table_tbody_tr-6_td-1_label_button" type="button" popovertarget="main_section-2_fieldset-5_table_tbody_tr-6_td-1_div" aria-haspopup="listbox" aria-expanded="false" aria-controls="main_section-2_fieldset-5_table_tbody_tr-6_td-1_div" aria-label="choose specialization" data-size="sm"></button></label>
-                                    <div id="main_section-2_fieldset-5_table_tbody_tr-6_td-1_div" popover="auto" role="listbox" aria-labelledby="main_section-2_fieldset-5_table_tbody_tr-6_td-1_label_button">
-                                        <button role="option" aria-selected="true">ダンス</button>
-                                        <button role="option">演劇</button>
-                                        <button role="option">料理</button>
-                                        <button role="option">書道</button>
-                                        <button role="option">執筆</button>
-                                        <button role="option">絵画</button>
-                                        <button role="option">文書偽造</button>
-                                        <button role="option">写真術</button></div></td>
-                                <td>5</td>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
-                                <td></td></tr>
-                            <!-- tr-5c: 芸術/製作（花札） — rs にない専門分野: input -->
-                            <tr id="main_section-2_fieldset-5_table_tbody_tr-7">
-                                <th>芸術/製作</th>
-                                <td>
-                                    <input type="text" placeholder="花札" maxlength="100" data-size="sm"></td>
-                                <td>5</td>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
-                                <td></td></tr>
-                            <!-- tr-5d: 芸術/製作（百人一首） — rs にない専門分野: input -->
-                            <tr id="main_section-2_fieldset-5_table_tbody_tr-8">
-                                <th>芸術/製作</th>
-                                <td>
-                                    <input type="text" placeholder="百人一首" maxlength="100" data-size="sm"></td>
-                                <td>5</td>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
-                                <td></td></tr>
-                            <!-- tr-5e: 芸術/製作（愛） — rs にない専門分野: input -->
-                            <tr id="main_section-2_fieldset-5_table_tbody_tr-9">
-                                <th>芸術/製作</th>
-                                <td>
-                                    <input type="text" placeholder="愛" maxlength="100" data-size="sm"></td>
-                                <td>5</td>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
-                                <td></td></tr>
-                            <!-- tr-5f: 芸術/製作（音楽） — rs にない専門分野: input -->
-                            <tr id="main_section-2_fieldset-5_table_tbody_tr-10">
-                                <th>芸術/製作</th>
-                                <td>
-                                    <input type="text" placeholder="音楽" maxlength="100" data-size="sm"></td>
-                                <td>5</td>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
-                                <td></td></tr>
-                            <!-- tr-5g: 芸術/製作（声楽） — rs にない専門分野: input -->
-                            <tr id="main_section-2_fieldset-5_table_tbody_tr-11">
-                                <th>芸術/製作</th>
-                                <td>
-                                    <input type="text" placeholder="声楽" maxlength="100" data-size="sm"></td>
-                                <td>5</td>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
-                                <td></td></tr>
-                            <!-- tr-6: 魅惑 -->
-                            <tr id="main_section-2_fieldset-5_table_tbody_tr-12">
-                                <th>魅惑</th>
-                                <td></td>
-                                <td>15</td>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
-                                <td></td></tr>
-                            <!-- tr-7: 登攀 -->
-                            <tr id="main_section-2_fieldset-5_table_tbody_tr-13">
-                                <th>登攀</th>
-                                <td></td>
-                                <td>20</td>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
-                                <td></td></tr>
-                            <!-- tr-8: コンピューター -->
-                            <tr id="main_section-2_fieldset-5_table_tbody_tr-14">
-                                <th>コンピューター</th>
-                                <td></td>
-                                <td>5</td>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
-                                <td></td></tr>
-                            <!-- tr-9: 信用 -->
-                            <tr id="main_section-2_fieldset-5_table_tbody_tr-15">
-                                <th>信用</th>
-                                <td></td>
-                                <td>0</td>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                                <td>
-                                    <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                                <td>
-                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
-                            <td></td></tr>
-                        <!-- tr-10: クトゥルフ神話 -->
-                        <tr id="main_section-2_fieldset-5_table_tbody_tr-16">
-                            <th>クトゥルフ神話</th>
-                            <td></td>
-                            <td>0</td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
-                            <td></td></tr>
-                        <!-- tr-11: 変装 -->
-                        <tr id="main_section-2_fieldset-5_table_tbody_tr-17">
-                            <th>変装</th>
-                            <td></td>
-                            <td>5</td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
-                            <td></td></tr>
-                        <!-- tr-12: 回避 (base=DEX/2=30) -->
-                        <tr id="main_section-2_fieldset-5_table_tbody_tr-18">
-                            <th>回避</th>
-                            <td></td>
-                            <td>30</td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
-                            <td></td></tr>
-                        <!-- tr-13: 運転（自動車） -->
-                        <tr id="main_section-2_fieldset-5_table_tbody_tr-19">
-                            <th>運転（自動車）</th>
-                            <td></td>
-                            <td>20</td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
-                            <td></td></tr>
-                        <!-- tr-14: 電気修理 -->
-                        <tr id="main_section-2_fieldset-5_table_tbody_tr-20">
-                            <th>電気修理</th>
-                            <td></td>
-                            <td>10</td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
-                            <td></td></tr>
-                        <!-- tr-15: 電子工学 -->
-                        <tr id="main_section-2_fieldset-5_table_tbody_tr-21">
-                            <th>電子工学</th>
-                            <td></td>
-                            <td>1</td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
-                            <td></td></tr>
-                        <!-- tr-16: 言いくるめ -->
-                        <tr id="main_section-2_fieldset-5_table_tbody_tr-22">
-                            <th>言いくるめ</th>
-                            <td></td>
-                            <td>5</td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
-                            <td></td></tr>
-                        <!-- tr-17a: 近接戦闘（格闘） — rs: Brawl -->
-                        <tr id="main_section-2_fieldset-5_table_tbody_tr-23">
-                            <th>近接戦闘</th>
-                            <td id="main_section-2_fieldset-5_table_tbody_tr-23_td-1">
-                                <label data-group="inline">
-                                    <input id="main_section-2_fieldset-5_table_tbody_tr-23_td-1_label_input" type="text" value="格闘" maxlength="100" data-size="sm">
-                                    <button id="main_section-2_fieldset-5_table_tbody_tr-23_td-1_label_button" type="button" popovertarget="main_section-2_fieldset-5_table_tbody_tr-23_td-1_div" aria-haspopup="listbox" aria-expanded="false" aria-controls="main_section-2_fieldset-5_table_tbody_tr-23_td-1_div" aria-label="choose specialization" data-size="sm"></button></label>
-                                <div id="main_section-2_fieldset-5_table_tbody_tr-23_td-1_div" popover="auto" role="listbox" aria-labelledby="main_section-2_fieldset-5_table_tbody_tr-23_td-1_label_button">
-                                    <button role="option" aria-selected="true">格闘</button>
-                                    <button role="option">斧</button>
-                                    <button role="option">チェーンソー</button>
-                                    <button role="option">フレイル</button>
-                                    <button role="option">絞殺ひも</button>
-                                    <button role="option">槍</button>
-                                    <button role="option">刀剣</button>
-                                    <button role="option">鞭</button></div></td>
-                            <td>25</td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
-                            <td></td></tr>
-                        <!-- tr-17b: 近接戦闘（刀剣） — rs: Sword -->
-                        <tr id="main_section-2_fieldset-5_table_tbody_tr-24">
-                            <th>近接戦闘</th>
-                            <td id="main_section-2_fieldset-5_table_tbody_tr-24_td-1">
-                                <label data-group="inline">
-                                    <input id="main_section-2_fieldset-5_table_tbody_tr-24_td-1_label_input" type="text" value="刀剣" maxlength="100" data-size="sm">
-                                    <button id="main_section-2_fieldset-5_table_tbody_tr-24_td-1_label_button" type="button" popovertarget="main_section-2_fieldset-5_table_tbody_tr-24_td-1_div" aria-haspopup="listbox" aria-expanded="false" aria-controls="main_section-2_fieldset-5_table_tbody_tr-24_td-1_div" aria-label="choose specialization" data-size="sm"></button></label>
-                                <div id="main_section-2_fieldset-5_table_tbody_tr-24_td-1_div" popover="auto" role="listbox" aria-labelledby="main_section-2_fieldset-5_table_tbody_tr-24_td-1_label_button">
-                                    <button role="option" aria-selected="true">刀剣</button>
-                                    <button role="option">斧</button>
-                                    <button role="option">格闘</button>
-                                    <button role="option">チェーンソー</button>
-                                    <button role="option">フレイル</button>
-                                    <button role="option">絞殺ひも</button>
-                                    <button role="option">槍</button>
-                                    <button role="option">鞭</button></div></td>
-                            <td>20</td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
-                            <td></td></tr>
-                        <!-- tr-18: 射撃 — Handgun -->
-                        <tr id="main_section-2_fieldset-5_table_tbody_tr-25">
-                            <th>射撃</th>
-                            <td id="main_section-2_fieldset-5_table_tbody_tr-25_td-1">
-                                <label data-group="inline">
-                                    <input id="main_section-2_fieldset-5_table_tbody_tr-25_td-1_label_input" type="text" value="拳銃" maxlength="100" data-size="sm">
-                                    <button id="main_section-2_fieldset-5_table_tbody_tr-25_td-1_label_button" type="button" popovertarget="main_section-2_fieldset-5_table_tbody_tr-25_td-1_div" aria-haspopup="listbox" aria-expanded="false" aria-controls="main_section-2_fieldset-5_table_tbody_tr-25_td-1_div" aria-label="choose specialization" data-size="sm"></button></label>
-                                <div id="main_section-2_fieldset-5_table_tbody_tr-25_td-1_div" popover="auto" role="listbox" aria-labelledby="main_section-2_fieldset-5_table_tbody_tr-25_td-1_label_button">
-                                    <button role="option" aria-selected="true">拳銃</button>
-                                    <button role="option">弓</button>
-                                    <button role="option">重火器</button>
-                                    <button role="option">機関銃</button>
-                                    <button role="option">ライフル/ショットガン</button>
-                                    <button role="option">サブマシンガン</button></div></td>
-                            <td>20</td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
-                            <td></td></tr>
-                        <!-- tr-19: 応急手当 -->
-                        <tr id="main_section-2_fieldset-5_table_tbody_tr-26">
-                            <th>応急手当</th>
-                            <td></td>
-                            <td>30</td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
-                            <td></td></tr>
-                        <!-- tr-20: 歴史 -->
-                        <tr id="main_section-2_fieldset-5_table_tbody_tr-27">
-                            <th>歴史</th>
-                            <td></td>
-                            <td>5</td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
-                            <td></td></tr>
-                        <!-- tr-21: 威圧 -->
-                        <tr id="main_section-2_fieldset-5_table_tbody_tr-28">
-                            <th>威圧</th>
-                            <td></td>
-                            <td>15</td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
-                            <td></td></tr>
-                        <!-- tr-22: 跳躍 -->
-                        <tr id="main_section-2_fieldset-5_table_tbody_tr-29">
-                            <th>跳躍</th>
-                            <td></td>
-                            <td>20</td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
-                            <td></td></tr>
-                        <!-- tr-23: ほかの言語 — English -->
-                        <tr id="main_section-2_fieldset-5_table_tbody_tr-30">
-                            <th>ほかの言語</th>
-                            <td>
-                                <input type="text" placeholder="English" maxlength="100" data-size="sm"></td>
-                            <td>1</td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
-                            <td></td></tr>
-                        <!-- tr-24: 母国語 (base=EDU=90) -->
-                        <tr id="main_section-2_fieldset-5_table_tbody_tr-31">
-                            <th>母国語</th>
-                            <td></td>
-                            <td>90</td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
-                            <td></td></tr>
-                        <!-- tr-25: 法律 -->
-                        <tr id="main_section-2_fieldset-5_table_tbody_tr-32">
-                            <th>法律</th>
-                            <td></td>
-                            <td>5</td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
-                            <td></td></tr>
-                        <!-- tr-26: 図書館 -->
-                        <tr id="main_section-2_fieldset-5_table_tbody_tr-33">
-                            <th>図書館</th>
-                            <td></td>
-                            <td>20</td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
-                            <td></td></tr>
-                        <!-- tr-27: 聞き耳 -->
-                        <tr id="main_section-2_fieldset-5_table_tbody_tr-34">
-                            <th>聞き耳</th>
-                            <td></td>
-                            <td>20</td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
-                            <td></td></tr>
-                        <!-- tr-28: 鍵開け -->
-                        <tr id="main_section-2_fieldset-5_table_tbody_tr-35">
-                            <th>鍵開け</th>
-                            <td></td>
-                            <td>1</td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
-                            <td></td></tr>
-                        <!-- tr-29: 機械修理 -->
-                        <tr id="main_section-2_fieldset-5_table_tbody_tr-36">
-                            <th>機械修理</th>
-                            <td></td>
-                            <td>10</td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
-                            <td></td></tr>
-                        <!-- tr-30: 医学 -->
-                        <tr id="main_section-2_fieldset-5_table_tbody_tr-37">
-                            <th>医学</th>
-                            <td></td>
-                            <td>1</td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
-                            <td></td></tr>
-                        <!-- tr-31: 自然 -->
-                        <tr id="main_section-2_fieldset-5_table_tbody_tr-38">
-                            <th>自然</th>
-                            <td></td>
-                            <td>10</td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
-                            <td></td></tr>
-                        <!-- tr-32: ナビゲート -->
-                        <tr id="main_section-2_fieldset-5_table_tbody_tr-39">
-                            <th>ナビゲート</th>
-                            <td></td>
-                            <td>10</td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
-                            <td></td></tr>
-                        <!-- tr-33: オカルト -->
-                        <tr id="main_section-2_fieldset-5_table_tbody_tr-40">
-                            <th>オカルト</th>
-                            <td></td>
-                            <td>5</td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
-                            <td></td></tr>
-                        <!-- tr-34: 説得 -->
-                        <tr id="main_section-2_fieldset-5_table_tbody_tr-41">
-                            <th>説得</th>
-                            <td></td>
-                            <td>10</td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
-                            <td></td></tr>
-                        <!-- tr-35: 操縦 — Boat -->
-                        <tr id="main_section-2_fieldset-5_table_tbody_tr-42">
-                            <th>操縦</th>
-                            <td id="main_section-2_fieldset-5_table_tbody_tr-42_td-1">
-                                <label data-group="inline">
-                                    <input id="main_section-2_fieldset-5_table_tbody_tr-42_td-1_label_input" type="text" value="ボート" maxlength="100" data-size="sm">
-                                    <button id="main_section-2_fieldset-5_table_tbody_tr-42_td-1_label_button" type="button" popovertarget="main_section-2_fieldset-5_table_tbody_tr-42_td-1_div" aria-haspopup="listbox" aria-expanded="false" aria-controls="main_section-2_fieldset-5_table_tbody_tr-42_td-1_div" aria-label="choose specialization" data-size="sm"></button></label>
-                                <div id="main_section-2_fieldset-5_table_tbody_tr-42_td-1_div" popover="auto" role="listbox" aria-labelledby="main_section-2_fieldset-5_table_tbody_tr-42_td-1_label_button">
-                                    <button role="option" aria-selected="true">ボート</button>
-                                    <button role="option">汽船</button>
-                                    <button role="option">帆船</button>
-                                    <button role="option">民間プロペラ機</button>
-                                    <button role="option">気球</button>
-                                    <button role="option">飛行船</button>
-                                    <button role="option">民間ジェット機</button>
-                                    <button role="option">旅客機</button>
-                                    <button role="option">ジェット戦闘機</button>
-                                    <button role="option">ヘリコプター</button></div></td>
-                            <td>1</td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
-                            <td></td></tr>
-                        <!-- tr-36: 精神分析 -->
-                        <tr id="main_section-2_fieldset-5_table_tbody_tr-43">
-                            <th>精神分析</th>
-                            <td></td>
-                            <td>1</td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
-                            <td></td></tr>
-                        <!-- tr-37: 心理学 -->
-                        <tr id="main_section-2_fieldset-5_table_tbody_tr-44">
-                            <th>心理学</th>
-                            <td></td>
-                            <td>10</td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
-                            <td></td></tr>
-                        <!-- tr-38: 乗馬 -->
-                        <tr id="main_section-2_fieldset-5_table_tbody_tr-45">
-                            <th>乗馬</th>
-                            <td></td>
-                            <td>5</td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
-                            <td></td></tr>
-                        <!-- tr-39: 科学 — Astronomy -->
-                        <tr id="main_section-2_fieldset-5_table_tbody_tr-46">
-                            <th>科学</th>
-                            <td id="main_section-2_fieldset-5_table_tbody_tr-46_td-1">
-                                <label data-group="inline">
-                                    <input id="main_section-2_fieldset-5_table_tbody_tr-46_td-1_label_input" type="text" value="天文学" maxlength="100" data-size="sm">
-                                    <button id="main_section-2_fieldset-5_table_tbody_tr-46_td-1_label_button" type="button" popovertarget="main_section-2_fieldset-5_table_tbody_tr-46_td-1_div" aria-haspopup="listbox" aria-expanded="false" aria-controls="main_section-2_fieldset-5_table_tbody_tr-46_td-1_div" aria-label="choose specialization" data-size="sm"></button></label>
-                                <div id="main_section-2_fieldset-5_table_tbody_tr-46_td-1_div" popover="auto" role="listbox" aria-labelledby="main_section-2_fieldset-5_table_tbody_tr-46_td-1_label_button">
-                                    <button role="option" aria-selected="true">天文学</button>
-                                    <button role="option">生物学</button>
-                                    <button role="option">植物学</button>
-                                    <button role="option">化学</button>
-                                    <button role="option">暗号学</button>
-                                    <button role="option">工学</button>
-                                    <button role="option">法医学</button>
-                                    <button role="option">地質学</button>
-                                    <button role="option">数学</button>
-                                    <button role="option">気象学</button>
-                                    <button role="option">薬学</button>
-                                    <button role="option">物理学</button>
-                                    <button role="option">動物学</button>
-                                    <button role="option">✏️</button></div></td>
-                            <td>1</td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
-                            <td></td></tr>
-                        <!-- tr-40: 手さばき -->
-                        <tr id="main_section-2_fieldset-5_table_tbody_tr-47">
-                            <th>手さばき</th>
-                            <td></td>
-                            <td>10</td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
-                            <td></td></tr>
-                        <!-- tr-41: 目星 -->
-                        <tr id="main_section-2_fieldset-5_table_tbody_tr-48">
-                            <th>目星</th>
-                            <td></td>
-                            <td>25</td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
-                            <td></td></tr>
-                        <!-- tr-42: 隠密 -->
-                        <tr id="main_section-2_fieldset-5_table_tbody_tr-49">
-                            <th>隠密</th>
-                            <td></td>
-                            <td>20</td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
-                            <td></td></tr>
-                        <!-- tr-43: サバイバル -->
-                        <tr id="main_section-2_fieldset-5_table_tbody_tr-50">
-                            <th>サバイバル</th>
-                            <td id="main_section-2_fieldset-5_table_tbody_tr-50_td-1">
-                                <label data-group="inline">
-                                    <input id="main_section-2_fieldset-5_table_tbody_tr-50_td-1_label_input" type="text" placeholder="選択" maxlength="100" data-size="sm">
-                                    <button id="main_section-2_fieldset-5_table_tbody_tr-50_td-1_label_button" type="button" popovertarget="main_section-2_fieldset-5_table_tbody_tr-50_td-1_div" aria-haspopup="listbox" aria-expanded="false" aria-controls="main_section-2_fieldset-5_table_tbody_tr-50_td-1_div" aria-label="choose specialization" data-size="sm"></button></label>
-                                <div id="main_section-2_fieldset-5_table_tbody_tr-50_td-1_div" popover="auto" role="listbox" aria-labelledby="main_section-2_fieldset-5_table_tbody_tr-50_td-1_label_button">
-                                    <button role="option" aria-selected="true">選択</button>
-                                    <button role="option">極地</button>
-                                    <button role="option">砂漠</button>
-                                    <button role="option">海</button></div></td>
-                            <td>10</td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
-                            <td></td></tr>
-                        <!-- tr-44: 水泳 -->
-                        <tr id="main_section-2_fieldset-5_table_tbody_tr-51">
-                            <th>水泳</th>
-                            <td></td>
-                            <td>20</td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
-                            <td></td></tr>
-                        <!-- tr-45: 投擲 -->
-                        <tr id="main_section-2_fieldset-5_table_tbody_tr-52">
-                            <th>投擲</th>
-                            <td></td>
-                            <td>20</td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
-                            <td></td></tr>
-                        <!-- tr-46: 追跡 -->
-                        <tr id="main_section-2_fieldset-5_table_tbody_tr-53">
-                            <th>追跡</th>
-                            <td></td>
-                            <td>10</td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
-                            <td></td></tr>
-                        <!-- tr-47: カスタム（自由記入） -->
-                        <tr id="main_section-2_fieldset-5_table_tbody_tr-54">
-                            <th>
-                                <input type="text" placeholder="技能名" maxlength="100" data-size="sm"></th>
-                            <td>
-                                <input type="text" placeholder="専門分野" maxlength="100" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
-                            <td></td></tr>
-                        <tr id="main_section-2_fieldset-5_table_tbody_tr-55" hidden>
-                            <th>
-                                <input type="text" placeholder="技能名" maxlength="100" data-size="sm"></th>
-                            <td id="main_section-2_fieldset-5_table_tbody_tr-55_td-1">
-                                <label data-group="inline">
-                                    <input id="main_section-2_fieldset-5_table_tbody_tr-55_td-1_label_input" type="text" placeholder="自由記入" maxlength="100" data-size="sm">
-                                    <button id="main_section-2_fieldset-5_table_tbody_tr-55_td-1_label_button" type="button" popovertarget="main_section-2_fieldset-5_table_tbody_tr-55_td-1_div" aria-haspopup="listbox" aria-expanded="false" aria-controls="main_section-2_fieldset-5_table_tbody_tr-55_td-1_div" aria-label="choose specialization" data-size="sm"></button></label>
-                                <div id="main_section-2_fieldset-5_table_tbody_tr-55_td-1_div" popover="auto" role="listbox" aria-labelledby="main_section-2_fieldset-5_table_tbody_tr-55_td-1_label_button">
-                                    <span role="presentation">選択してください</span>
-                                    <button role="option" aria-selected="true">選択</button></div></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
-                            <td>
-                                <input type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
-                            <td></td></tr></tbody></table></fieldset>
-
-                <!-- fieldset-6: Possession -->
-                <h3 id="main_section-2_h3-6">装備と所持品</h3>
-                <fieldset id="main_section-2_fieldset-6" aria-labelledby="main_section-2_h3-6">
-                    <label id="main_section-2_fieldset-6_label-1" for="main_section-2_fieldset-6_label-1_input">
-                        <span></span>
-                        <input id="main_section-2_fieldset-6_label-1_input" type="text" inputmode="numeric" name="main_section-2_fieldset-6_label-1_input"></label>
-                    <label id="main_section-2_fieldset-6_label-2" for="main_section-2_fieldset-6_label-2_input">
-                        <span></span>
-                        <input id="main_section-2_fieldset-6_label-2_input" type="text" inputmode="numeric" name="main_section-2_fieldset-6_label-2_input"></label></fieldset>
-
-                <!-- fieldset-7: Backstory -->
-                <h3 id="main_section-2_h3-7" aria-label="Backstory">Backstory</h3>
-                <fieldset id="main_section-2_fieldset-7" aria-labelledby="main_section-2_h3-7">
-                    <article>
-                        <label for="main_section-2_fieldset-7_article-1_textarea" aria-label="Personal Description"></label>
-                        <textarea id="main_section-2_fieldset-7_article-1_textarea" maxlength="1000"></textarea></article>
-                    <article>
-                        <label for="main_section-2_fieldset-7_article-2_textarea" aria-label="Ideology & Beliefs"></label>
-                        <textarea id="main_section-2_fieldset-7_article-2_textarea" maxlength="1000"></textarea></article>
-                    <article>
-                        <label for="main_section-2_fieldset-7_article-3_textarea" aria-label="Significant People"></label>
-                        <textarea id="main_section-2_fieldset-7_article-3_textarea" maxlength="1000"></textarea></article>
-                    <article>
-                        <label for="main_section-2_fieldset-7_article-4_textarea" aria-label="Meaningful Location"></label>
-                        <textarea id="main_section-2_fieldset-7_article-4_textarea" maxlength="1000"></textarea></article>
-                    <article>
-                        <label for="main_section-2_fieldset-7_article-5_textarea" aria-label="Treasured Possession"></label>
-                        <textarea id="main_section-2_fieldset-7_article-5_textarea" maxlength="1000"></textarea></article>
-                    <article>
-                        <label for="main_section-2_fieldset-7_article-6_textarea" aria-label="Trait"></label>
-                        <textarea id="main_section-2_fieldset-7_article-6_textarea" maxlength="1000"></textarea></article>
-                    <article>
-                        <label for="main_section-2_fieldset-7_article-7_textarea" aria-label="Injuries & Scars"></label>
-                        <textarea id="main_section-2_fieldset-7_article-7_textarea" maxlength="1000"></textarea></article>
-                    <article>
-                        <label for="main_section-2_fieldset-7_article-8_textarea" aria-label="Phobias & Manias"></label>
-                        <textarea id="main_section-2_fieldset-7_article-8_textarea" maxlength="1000"></textarea></article>
-                    <article>
-                        <label for="main_section-2_fieldset-7_article-9_textarea" aria-label="Arcane Tomes & Spells"></label>
-                        <textarea id="main_section-2_fieldset-7_article-9_textarea" maxlength="1000"></textarea></article>
-                    <article>
-                        <label for="main_section-2_fieldset-7_article-10_textarea" aria-label="Encounters with Strange Entities"></label>
-                        <textarea id="main_section-2_fieldset-7_article-10_textarea" maxlength="1000"></textarea></article></fieldset>
-
-                <h3 id="main_section-2_h3-8" aria-label="Character Memo">メモ</h3>
-                <fieldset id="main_section-2_fieldset-8" aria-labelledby="main_section-2_h3-8">
-                    <article>
-                        <label id="main_section-2_fieldset-8_article_label" for="main_section-2_fieldset-8_article_label_input">
-                            <input id="main_section-2_fieldset-8_article_label_input" type="text" name="main_section-2_fieldset-8_article_label_input" placeholder="title" maxlength="100"></label>
-                        <textarea id="main_section-2_fieldset-8_article_textarea" name="main_section-2_fieldset-8_article_textarea" maxlength="1000"></textarea></article></fieldset></section>
+                    <dd></dd></dl></section>
+            <fieldset id="main_section-1_fieldset-8" aria-label="Character Memo" aria-labelledby="main_section-1_h3-8" hidden>
+                <article>
+                    <label id="main_section-1_fieldset-8_article_label" for="main_section-1_fieldset-8_article_label_input">
+                        <input id="main_section-1_fieldset-8_article_label_input" type="text" name="main_section-1_fieldset-8_article_label_input" placeholder="title" maxlength="100"></label>
+                    <textarea id="main_section-1_fieldset-8_article_textarea" name="main_section-1_fieldset-8_article_textarea" maxlength="1000"></textarea></article></fieldset></section>
 
         <h2 id="main_h2-2">チャットログ</h2>
         <section id="main_section-3" aria-label="Chat Log" aria-labelledby="main_h2-2">
