@@ -8,7 +8,10 @@ use core::{
 
 use rectgrid::{BBox, Unit};
 
-use crate::timestamp::{Timevolume, TimevolumeUnit};
+use crate::{
+    Language,
+    timestamp::{Timevolume, TimevolumeUnit},
+};
 
 pub const CLOCK: Clock = Clock::new(
     Timevolume::new(TimevolumeUnit::Hour, 9),
@@ -30,6 +33,19 @@ impl Axis {
         match self {
             Self::Day(day) => day.len(),
             Self::Month => Day::Week.len(),
+        }
+    }
+
+    pub const fn display(self, language: Language) -> &'static str {
+        match (self, language) {
+            (Self::Day(Day::Day), Language::En(_)) => "1 day",
+            (Self::Day(Day::Day), Language::Ja) => "1日",
+            (Self::Day(Day::ThreeDays), Language::En(_)) => "3 days",
+            (Self::Day(Day::ThreeDays), Language::Ja) => "3日",
+            (Self::Day(Day::Week), Language::En(_)) => "1 week",
+            (Self::Day(Day::Week), Language::Ja) => "1週間",
+            (Self::Month, Language::En(_)) => "1 month",
+            (Self::Month, Language::Ja) => "1ヶ月",
         }
     }
 }

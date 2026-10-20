@@ -30,26 +30,26 @@
             <strong id="header_span_strong"></strong></span>
         <fieldset id="header_fieldset" aria-label="表示期間" data-group="inline">
             <label id="header_fieldset_label-1">
-                <span id="header_fieldset_label-1_span">1日</span>
+                <span id="header_fieldset_label-1_span"></span>
                 <input id="header_fieldset_label-1_input" type="radio" name="view"></label>
             <label id="header_fieldset_label-2">
-                <span id="header_fieldset_label-2_span">3日</span>
+                <span id="header_fieldset_label-2_span"></span>
                 <input id="header_fieldset_label-2_input" type="radio" name="view"></label>
             <label id="header_fieldset_label-3">
-                <span id="header_fieldset_label-3_span">1週間</span>
+                <span id="header_fieldset_label-3_span"></span>
                 <input id="header_fieldset_label-3_input" type="radio" name="view" checked></label>
             <label id="header_fieldset_label-4">
-                <span id="header_fieldset_label-4_span">1ヶ月</span>
+                <span id="header_fieldset_label-4_span"></span>
                 <input id="header_fieldset_label-4_input" type="radio" name="view"></label></fieldset>
         <div id="header_div-1" role="group" aria-label="移動" data-group="inline">
             <button id="header_div-1_button-1" type="button" aria-label="previous page" data-surround="fill">&lt;&lt;</button>
             <button id="header_div-1_button-2" type="button" aria-label="previous" data-surround="fill">&lt;</button>
-            <button id="header_div-1_button-3" type="button" data-surround="fill">本日</button>
+            <button id="header_div-1_button-3" type="button" data-surround="fill"></button>
             <button id="header_div-1_button-4" type="button" aria-label="next" data-surround="fill">&gt;</button>
             <button id="header_div-1_button-5" type="button" aria-label="next page" data-surround="fill">&gt;&gt;</button></div>
         <input id="header_input" type="range" min="1" max="3" step="0.25" value="1.75" aria-label="縦倍率" data-size="sm">
         <button id="header_button-1" type="button" aria-label="再読み込み" data-surround="outline" data-facet="reload"></button>
-        <button id="header_button-2" type="button" disabled data-surround="outline">保存</button>
+        <button id="header_button-2" type="button" disabled data-surround="outline"></button>
         <button id="header_button-3" type="button" popovertarget="header_div-2" aria-haspopup="listbox" aria-expanded="false" aria-controls="header_div-2" aria-label="Appearance" data-surround="outline">🎨</button>
         <div id="header_div-2" popover="auto" role="listbox" aria-labelledby="header_button-3">
             <span role="presentation">Appearance</span>
@@ -70,7 +70,14 @@
                 <span>Dark</span></label>
             <label id="header_div-2_label-6">
                 <input name="color-scheme" role="option" type="radio" value="dark-more-contrast" data-sign="check" data-sign-style="inline">
-                <span>Dark (more contrast)</span></label></div></header>
+                <span>Dark (more contrast)</span></label></div>
+        <button id="header_button-4" type="button" popovertarget="header_div-3" aria-haspopup="listbox" aria-expanded="false" aria-controls="header_div-3" data-surround="outline">
+            <span>🌐</span>
+            <span id="header_button-4_span-2"></span></button>
+        <div id="header_div-3" popover="auto" role="listbox" aria-labelledby="header_button-4">
+            <span role="presentation">Select Language</span>
+            <button id="header_div-3_button-1" role="option" lang="en" value="1"></button>
+            <button id="header_div-3_button-2" role="option" lang="ja" value="2"></button></div></header>
 
     <main id="main">
         <ol id="main_ol" aria-hidden="true" style="grid-template-rows: var(--head-height) repeat(44, 1.75rem)">

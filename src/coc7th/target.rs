@@ -8,14 +8,19 @@ use core::{
     primitive::u32,
 };
 
-use crate::host::dom::{Id, Tag};
+use crate::{
+    Language,
+    host::dom::{Id, Tag},
+};
 
-const LANGUAGE_BUTTON: u32 = 1;
-const CHARACTER_BUTTON: u32 = 2;
-const EDIT_BUTTON: u32 = 3;
-const DICE_BUTTON: u32 = 4;
-const SAVE_BUTTON: u32 = 5;
-const APPEARANCE_BUTTON: u32 = 6;
+const CHARACTER_BUTTON: u32 = 1;
+const EDIT_BUTTON: u32 = 2;
+const DICE_BUTTON: u32 = 3;
+const SAVE_BUTTON: u32 = 4;
+const APPEARANCE_BUTTON: u32 = 5;
+const LANGUAGE_BUTTON: u32 = 6;
+const LANGUAGE_SPAN: u32 = 2;
+const LANGUAGE_LIST: u32 = 3;
 const SHEET_SECTION: u32 = 1;
 pub const SHEET_PARTS: u32 = 8;
 
@@ -25,19 +30,11 @@ pub enum Sheet {
     Editable,
 }
 
-impl Sheet {
-    fn tag(self) -> Tag {
-        match self {
-            Self::Immutable => Tag::Section,
-            Self::Editable => Tag::Fieldset,
-        }
-    }
-}
-
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Target {
     Body,
     Language,
+    LanguageOption(Language),
     Character,
     Edit,
     Dice,
@@ -51,7 +48,16 @@ impl Target {
         let button = |n| Vec::from([(Tag::Header, None), (Tag::Button, Some(n))]);
         let path = match self {
             Self::Body => Vec::from([(Tag::Body, None)]),
-            Self::Language => button(LANGUAGE_BUTTON),
+            Self::Language => Vec::from([
+                (Tag::Header, None),
+                (Tag::Button, Some(LANGUAGE_BUTTON)),
+                (Tag::Span, Some(LANGUAGE_SPAN)),
+            ]),
+            Self::LanguageOption(l) => Vec::from([
+                (Tag::Header, None),
+                (Tag::Div, Some(LANGUAGE_LIST)),
+                (Tag::Button, Some(l.number())),
+            ]),
             Self::Character => button(CHARACTER_BUTTON),
             Self::Edit => button(EDIT_BUTTON),
             Self::Dice => button(DICE_BUTTON),
@@ -60,7 +66,13 @@ impl Target {
             Self::Sheet(sheet, part) => Vec::from([
                 (Tag::Main, None),
                 (Tag::Section, Some(SHEET_SECTION)),
-                (sheet.tag(), Some(part)),
+                (
+                    match sheet {
+                        Sheet::Immutable => Tag::Section,
+                        Sheet::Editable => Tag::Fieldset,
+                    },
+                    Some(part),
+                ),
             ]),
         };
         Id::new(&path)
@@ -71,7 +83,6 @@ impl Target {
         Some(match path.as_slice() {
             [(Tag::Body, None)] => Self::Body,
             [(Tag::Header, None), (Tag::Button, Some(n))] => match *n {
-                LANGUAGE_BUTTON => Self::Language,
                 CHARACTER_BUTTON => Self::Character,
                 EDIT_BUTTON => Self::Edit,
                 DICE_BUTTON => Self::Dice,
@@ -79,6 +90,14 @@ impl Target {
                 APPEARANCE_BUTTON => Self::Appearance,
                 _ => return None,
             },
+            [
+                (Tag::Header, None),
+                (Tag::Button, Some(LANGUAGE_BUTTON)),
+                (Tag::Span, Some(LANGUAGE_SPAN)),
+            ] => Self::Language,
+            [(Tag::Header, None), (Tag::Div, Some(LANGUAGE_LIST)), (Tag::Button, Some(n))] => {
+                Self::LanguageOption(*Language::list().iter().find(|l| l.number() == *n)?)
+            }
             [
                 (Tag::Main, None),
                 (Tag::Section, Some(SHEET_SECTION)),
@@ -102,6 +121,7 @@ mod tests {
     use std::fs;
 
     use super::*;
+    use crate::En;
 
     fn every_target() -> Vec<Target> {
         let mut targets = Vec::from([
@@ -112,6 +132,8 @@ mod tests {
             Target::Dice,
             Target::Save,
             Target::Appearance,
+            Target::LanguageOption(Language::En(En::Gb)),
+            Target::LanguageOption(Language::Ja),
         ]);
         for part in 1..=SHEET_PARTS {
             targets.push(Target::Sheet(Sheet::Immutable, part));
@@ -178,6 +200,7 @@ mod tests {
             Id::new(&[(Tag::Footer, None)]),
             Id::new(&[(Tag::Header, None), (Tag::Button, Some(7))]),
             Id::new(&[(Tag::Header, None), (Tag::Div, Some(1))]),
+            Id::new(&[(Tag::Header, None), (Tag::Div, Some(3)), (Tag::Button, Some(3))]),
             Id::new(&[(Tag::Main, None), (Tag::Section, Some(3))]),
             Id::new(&[(Tag::Main, None), (Tag::Section, Some(2)), (Tag::Fieldset, Some(2))]),
             Id::new(&[(Tag::Main, None), (Tag::Section, Some(1)), (Tag::H3, Some(1))]),

@@ -2,7 +2,7 @@ use alloc::{format, string::String};
 
 use arbitrary_int::{u1, u4, u5, u6, u7, u10, u13};
 
-use crate::{Lang, field::Layout};
+use crate::{Language, field::Layout};
 
 // timestamp (64 bits)
 // note:
@@ -80,10 +80,10 @@ pub enum Youbi {
     Sunday,
 }
 impl Youbi {
-    pub const fn display(self, lang: Lang) -> &'static str {
-        let names = match lang {
-            Lang::En(_) => ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
-            Lang::Ja => ["月", "火", "水", "木", "金", "土", "日"],
+    pub const fn display(self, language: Language) -> &'static str {
+        let names = match language {
+            Language::En(_) => ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+            Language::Ja => ["月", "火", "水", "木", "金", "土", "日"],
         };
         names[self as usize - 1]
     }
@@ -247,34 +247,34 @@ pub fn from_ut(ut: f64, is_utc: bool, timezone: &Timezone) -> u64 {
 }
 
 /// ```
-/// use app::{En, Lang, timestamp::{*, TimevolumeUnit::*}};
+/// use app::{En, Language, timestamp::{*, TimevolumeUnit::*}};
 ///
 /// let timestamp = pack(2026, 10, 2, 9, 30, 5, 7, 0, 0);
-/// assert_eq!(display(timestamp, Lang::Ja, (Year, Day), Format::Iso), "2026-10-02");
-/// assert_eq!(display(timestamp, Lang::Ja, (Year, Minute), Format::Iso), "2026-10-02 09:30");
-/// assert_eq!(display(timestamp, Lang::Ja, (Hour, Minute), Format::Iso), "09:30");
-/// assert_eq!(display(timestamp, Lang::Ja, (Hour, Centisecond), Format::Iso), "09:30:05.07");
-/// assert_eq!(display(timestamp, Lang::Ja, (Month, Day), Format::WithYoubi), "10/2(金)");
-/// assert_eq!(display(timestamp, Lang::Ja, (Month, Day), Format::WithoutYoubi), "10/2");
-/// assert_eq!(display(timestamp, Lang::Ja, (Day, Day), Format::WithoutYoubi), "2");
-/// assert_eq!(display(timestamp, Lang::Ja, (Year, Day), Format::WithoutYoubi), "2026年10月2日");
-/// assert_eq!(display(timestamp, Lang::Ja, (Year, Minute), Format::WithoutYoubi), "2026年10月2日 9時30分");
-/// assert_eq!(display(timestamp, Lang::Ja, (Year, Day), Format::WithYoubi), "2026年10月2日(金)");
-/// assert_eq!(display(timestamp, Lang::Ja, (Year, Minute), Format::WithYoubi), "2026年10月2日(金) 9時30分");
-/// assert_eq!(display(timestamp, Lang::Ja, (Month, Minute), Format::WithYoubi), "10/2(金) 9:30");
-/// assert_eq!(display(timestamp, Lang::Ja, (Hour, Minute), Format::WithYoubi), "9:30");
-/// assert_eq!(display(timestamp, Lang::En(En::Gb), (Month, Day), Format::WithYoubi), "Fri 2 Oct");
-/// assert_eq!(display(timestamp, Lang::En(En::Gb), (Month, Day), Format::WithoutYoubi), "2 Oct");
-/// assert_eq!(display(timestamp, Lang::En(En::Gb), (Year, Day), Format::WithoutYoubi), "2 Oct 2026");
-/// assert_eq!(display(timestamp, Lang::En(En::Gb), (Year, Day), Format::WithYoubi), "Fri 2 Oct 2026");
-/// assert_eq!(display(timestamp, Lang::En(En::Gb), (Year, Minute), Format::WithYoubi), "Fri 2 Oct 2026 09:30");
-/// assert_eq!(display(timestamp, Lang::En(En::Gb), (Month, Minute), Format::WithYoubi), "Fri 2 Oct 09:30");
-/// assert_eq!(display(timestamp, Lang::En(En::Gb), (Year, Month), Format::WithYoubi), "Oct 2026");
-/// assert_eq!(display(timestamp, Lang::En(En::Gb), (Hour, Centisecond), Format::WithYoubi), "09:30:05.07");
+/// assert_eq!(display(timestamp, Language::Ja, (Year, Day), Format::Iso), "2026-10-02");
+/// assert_eq!(display(timestamp, Language::Ja, (Year, Minute), Format::Iso), "2026-10-02 09:30");
+/// assert_eq!(display(timestamp, Language::Ja, (Hour, Minute), Format::Iso), "09:30");
+/// assert_eq!(display(timestamp, Language::Ja, (Hour, Centisecond), Format::Iso), "09:30:05.07");
+/// assert_eq!(display(timestamp, Language::Ja, (Month, Day), Format::WithYoubi), "10/2(金)");
+/// assert_eq!(display(timestamp, Language::Ja, (Month, Day), Format::WithoutYoubi), "10/2");
+/// assert_eq!(display(timestamp, Language::Ja, (Day, Day), Format::WithoutYoubi), "2");
+/// assert_eq!(display(timestamp, Language::Ja, (Year, Day), Format::WithoutYoubi), "2026年10月2日");
+/// assert_eq!(display(timestamp, Language::Ja, (Year, Minute), Format::WithoutYoubi), "2026年10月2日 9時30分");
+/// assert_eq!(display(timestamp, Language::Ja, (Year, Day), Format::WithYoubi), "2026年10月2日(金)");
+/// assert_eq!(display(timestamp, Language::Ja, (Year, Minute), Format::WithYoubi), "2026年10月2日(金) 9時30分");
+/// assert_eq!(display(timestamp, Language::Ja, (Month, Minute), Format::WithYoubi), "10/2(金) 9:30");
+/// assert_eq!(display(timestamp, Language::Ja, (Hour, Minute), Format::WithYoubi), "9:30");
+/// assert_eq!(display(timestamp, Language::En(En::Gb), (Month, Day), Format::WithYoubi), "Fri 2 Oct");
+/// assert_eq!(display(timestamp, Language::En(En::Gb), (Month, Day), Format::WithoutYoubi), "2 Oct");
+/// assert_eq!(display(timestamp, Language::En(En::Gb), (Year, Day), Format::WithoutYoubi), "2 Oct 2026");
+/// assert_eq!(display(timestamp, Language::En(En::Gb), (Year, Day), Format::WithYoubi), "Fri 2 Oct 2026");
+/// assert_eq!(display(timestamp, Language::En(En::Gb), (Year, Minute), Format::WithYoubi), "Fri 2 Oct 2026 09:30");
+/// assert_eq!(display(timestamp, Language::En(En::Gb), (Month, Minute), Format::WithYoubi), "Fri 2 Oct 09:30");
+/// assert_eq!(display(timestamp, Language::En(En::Gb), (Year, Month), Format::WithYoubi), "Oct 2026");
+/// assert_eq!(display(timestamp, Language::En(En::Gb), (Hour, Centisecond), Format::WithYoubi), "09:30:05.07");
 /// ```
 pub fn display(
     timestamp: u64,
-    lang: Lang,
+    language: Language,
     scope: (TimevolumeUnit, TimevolumeUnit),
     format: Format,
 ) -> String {
@@ -301,11 +301,11 @@ pub fn display(
     };
     let verbal = within(Year);
     let name = if within(Day) && format == Format::WithYoubi {
-        youbi(timestamp).display(lang)
+        youbi(timestamp).display(language)
     } else {
         ""
     };
-    match (format, lang) {
+    match (format, language) {
         (Format::Iso, _) => {
             let date = dates
                 .iter()
@@ -318,7 +318,7 @@ pub fn display(
                 .join("-");
             join(date, clock(true))
         }
-        (Format::WithYoubi | Format::WithoutYoubi, Lang::Ja) if verbal => {
+        (Format::WithYoubi | Format::WithoutYoubi, Language::Ja) if verbal => {
             let date = dates
                 .iter()
                 .filter(|(unit, _)| within(*unit))
@@ -337,7 +337,7 @@ pub fn display(
                 .collect::<String>();
             join(format!("{date}{suffix}"), clock)
         }
-        (Format::WithYoubi | Format::WithoutYoubi, Lang::Ja) => {
+        (Format::WithYoubi | Format::WithoutYoubi, Language::Ja) => {
             let date = dates
                 .iter()
                 .filter(|(unit, _)| within(*unit))
@@ -347,7 +347,7 @@ pub fn display(
             let suffix = if name.is_empty() { String::new() } else { format!("({name})") };
             join(format!("{date}{suffix}"), clock(false))
         }
-        (Format::WithYoubi | Format::WithoutYoubi, Lang::En(_)) => {
+        (Format::WithYoubi | Format::WithoutYoubi, Language::En(_)) => {
             let month_name = if within(Month) {
                 ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
                     [month as usize - 1]
@@ -669,23 +669,32 @@ mod tests {
         use TimevolumeUnit::*;
 
         let timestamp = pack(2026, 5, 6, 7, 8, 9, 10, 1, 0);
-        assert_eq!(display(timestamp, Lang::Ja, (Year, Minute), Format::Iso), "2026-05-06 07:08");
-        assert_eq!(display(timestamp, Lang::Ja, (Year, Day), Format::Iso), "2026-05-06");
-        assert_eq!(display(timestamp, Lang::Ja, (Hour, Minute), Format::Iso), "07:08");
-        assert_eq!(display(timestamp, Lang::Ja, (Month, Day), Format::WithYoubi), "5/6(水)");
         assert_eq!(
-            display(timestamp, Lang::Ja, (Year, Day), Format::WithYoubi),
+            display(timestamp, Language::Ja, (Year, Minute), Format::Iso),
+            "2026-05-06 07:08"
+        );
+        assert_eq!(display(timestamp, Language::Ja, (Year, Day), Format::Iso), "2026-05-06");
+        assert_eq!(display(timestamp, Language::Ja, (Hour, Minute), Format::Iso), "07:08");
+        assert_eq!(display(timestamp, Language::Ja, (Month, Day), Format::WithYoubi), "5/6(水)");
+        assert_eq!(
+            display(timestamp, Language::Ja, (Year, Day), Format::WithYoubi),
             "2026年5月6日(水)"
         );
         assert_eq!(
-            display(timestamp, Lang::Ja, (Year, Centisecond), Format::WithYoubi),
+            display(timestamp, Language::Ja, (Year, Centisecond), Format::WithYoubi),
             "2026年5月6日(水) 7時8分9.10秒"
         );
-        assert_eq!(display(timestamp, Lang::Ja, (Year, Year), Format::WithYoubi), "2026年");
-        assert_eq!(display(timestamp, Lang::Ja, (Day, Day), Format::WithYoubi), "6(水)");
-        assert_eq!(display(timestamp, Lang::Ja, (Minute, Second), Format::Iso), "08:09");
-        assert_eq!(display(timestamp, Lang::En(En::Gb), (Year, Year), Format::WithYoubi), "2026");
-        assert_eq!(display(timestamp, Lang::En(En::Gb), (Day, Day), Format::WithYoubi), "Wed 6");
+        assert_eq!(display(timestamp, Language::Ja, (Year, Year), Format::WithYoubi), "2026年");
+        assert_eq!(display(timestamp, Language::Ja, (Day, Day), Format::WithYoubi), "6(水)");
+        assert_eq!(display(timestamp, Language::Ja, (Minute, Second), Format::Iso), "08:09");
+        assert_eq!(
+            display(timestamp, Language::En(En::Gb), (Year, Year), Format::WithYoubi),
+            "2026"
+        );
+        assert_eq!(
+            display(timestamp, Language::En(En::Gb), (Day, Day), Format::WithYoubi),
+            "Wed 6"
+        );
     }
 
     fn leap(year: i64) -> bool {

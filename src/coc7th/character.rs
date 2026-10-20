@@ -14,7 +14,7 @@ use core::{
 use arbitrary_int::{i10, u7, u9};
 
 use crate::{
-    Lang,
+    Language,
     data_struct::DataStruct,
     field::{Fields, Layout},
     object::{Predicate, SubjectTrait},
@@ -109,22 +109,22 @@ impl Character {
         }
     }
 
-    pub fn display(&self, lang: Lang) -> &'static str {
-        match (self, lang) {
-            (Self::Profile, Lang::En(_)) => "Profile",
-            (Self::Profile, Lang::Ja) => "プロフィール",
-            (Self::Characteristic, Lang::En(_)) => "Characteristics",
-            (Self::Characteristic, Lang::Ja) => "能力値",
-            (Self::SecondaryAttribute, Lang::En(_)) => "Secondary Attributes",
-            (Self::SecondaryAttribute, Lang::Ja) => "ほかの属性",
-            (Self::Skill, Lang::En(_)) => "Skills",
-            (Self::Skill, Lang::Ja) => "技能",
-            (Self::Possession, Lang::En(_)) => "Gear & Possessions",
-            (Self::Possession, Lang::Ja) => "装備と所持品",
-            (Self::Backstory, Lang::En(_)) => "Backstory",
-            (Self::Backstory, Lang::Ja) => "バックストーリー",
-            (Self::Memo, Lang::En(_)) => "Memo",
-            (Self::Memo, Lang::Ja) => "メモ",
+    pub fn display(&self, language: Language) -> &'static str {
+        match (self, language) {
+            (Self::Profile, Language::En(_)) => "Profile",
+            (Self::Profile, Language::Ja) => "プロフィール",
+            (Self::Characteristic, Language::En(_)) => "Characteristics",
+            (Self::Characteristic, Language::Ja) => "能力値",
+            (Self::SecondaryAttribute, Language::En(_)) => "Secondary Attributes",
+            (Self::SecondaryAttribute, Language::Ja) => "ほかの属性",
+            (Self::Skill, Language::En(_)) => "Skills",
+            (Self::Skill, Language::Ja) => "技能",
+            (Self::Possession, Language::En(_)) => "Gear & Possessions",
+            (Self::Possession, Language::Ja) => "装備と所持品",
+            (Self::Backstory, Language::En(_)) => "Backstory",
+            (Self::Backstory, Language::Ja) => "バックストーリー",
+            (Self::Memo, Language::En(_)) => "Memo",
+            (Self::Memo, Language::Ja) => "メモ",
         }
     }
 
@@ -168,20 +168,20 @@ impl SubjectTrait for Profile {
         }
     }
 
-    fn display(&self, lang: Lang) -> &'static str {
-        match (self, lang) {
-            (Self::Name, Lang::En(_)) => "Name",
-            (Self::Name, Lang::Ja) => "名前",
-            (Self::Birthpalce, Lang::En(_)) => "Birthplace",
-            (Self::Birthpalce, Lang::Ja) => "出身",
-            (Self::Pronoun, Lang::En(_)) => "Pronoun",
-            (Self::Pronoun, Lang::Ja) => "性別",
-            (Self::Occupation, Lang::En(_)) => "Occupation",
-            (Self::Occupation, Lang::Ja) => "職業",
-            (Self::Residence, Lang::En(_)) => "Residence",
-            (Self::Residence, Lang::Ja) => "住所",
-            (Self::Age, Lang::En(_)) => "Age",
-            (Self::Age, Lang::Ja) => "年齢",
+    fn display(&self, language: Language) -> &'static str {
+        match (self, language) {
+            (Self::Name, Language::En(_)) => "Name",
+            (Self::Name, Language::Ja) => "名前",
+            (Self::Birthpalce, Language::En(_)) => "Birthplace",
+            (Self::Birthpalce, Language::Ja) => "出身",
+            (Self::Pronoun, Language::En(_)) => "Pronoun",
+            (Self::Pronoun, Language::Ja) => "性別",
+            (Self::Occupation, Language::En(_)) => "Occupation",
+            (Self::Occupation, Language::Ja) => "職業",
+            (Self::Residence, Language::En(_)) => "Residence",
+            (Self::Residence, Language::Ja) => "住所",
+            (Self::Age, Language::En(_)) => "Age",
+            (Self::Age, Language::Ja) => "年齢",
         }
     }
 
@@ -298,65 +298,65 @@ impl Occupation {
         kind: &OccupationKind,
         custom_name: Option<&str>,
         title: Option<&str>,
-        lang: Lang,
+        language: Language,
     ) -> String {
-        let name = match (kind, lang) {
-            (OccupationKind::Activist, Lang::En(_)) => "Activist",
-            (OccupationKind::Activist, Lang::Ja) => "活動家",
-            (OccupationKind::Antiquarian, Lang::En(_)) => "Antiquarian",
-            (OccupationKind::Antiquarian, Lang::Ja) => "古物研究家",
-            (OccupationKind::Artist, Lang::En(_)) => "Artist",
-            (OccupationKind::Artist, Lang::Ja) => "芸術家",
-            (OccupationKind::Athlete, Lang::En(_)) => "Athlete",
-            (OccupationKind::Athlete, Lang::Ja) => "スポーツ選手",
-            (OccupationKind::Author, Lang::En(_)) => "Author",
-            (OccupationKind::Author, Lang::Ja) => "作家",
-            (OccupationKind::Clergy, Lang::En(_)) => "Clergy",
-            (OccupationKind::Clergy, Lang::Ja) => "聖職者",
-            (OccupationKind::Criminal, Lang::En(_)) => "Criminal",
-            (OccupationKind::Criminal, Lang::Ja) => "犯罪者",
-            (OccupationKind::PoliceDetective, Lang::En(_)) => "Police Detective",
-            (OccupationKind::PoliceDetective, Lang::Ja) => "刑事",
-            (OccupationKind::Dilettante, Lang::En(_)) => "Dilettante",
-            (OccupationKind::Dilettante, Lang::Ja) => "ディレッタント",
-            (OccupationKind::Doctor, Lang::En(_)) => "Doctor",
-            (OccupationKind::Doctor, Lang::Ja) => "医師",
-            (OccupationKind::Drifter, Lang::En(_)) => "Drifter",
-            (OccupationKind::Drifter, Lang::Ja) => "放浪者",
-            (OccupationKind::Engineer, Lang::En(_)) => "Engineer",
-            (OccupationKind::Engineer, Lang::Ja) => "技術者",
-            (OccupationKind::Entertainer, Lang::En(_)) => "Entertainer",
-            (OccupationKind::Entertainer, Lang::Ja) => "エンターテイナー",
-            (OccupationKind::Farmer, Lang::En(_)) => "Farmer",
-            (OccupationKind::Farmer, Lang::Ja) => "農民",
-            (OccupationKind::Hacker, Lang::En(_)) => "Hacker",
-            (OccupationKind::Hacker, Lang::Ja) => "ハッカー",
-            (OccupationKind::Journalist, Lang::En(_)) => "Journalist",
-            (OccupationKind::Journalist, Lang::Ja) => "ジャーナリスト",
-            (OccupationKind::Lawyer, Lang::En(_)) => "Lawyer",
-            (OccupationKind::Lawyer, Lang::Ja) => "弁護士",
-            (OccupationKind::Librarian, Lang::En(_)) => "Librarian",
-            (OccupationKind::Librarian, Lang::Ja) => "司書",
-            (OccupationKind::MilitaryOfficer, Lang::En(_)) => "Military Officer",
-            (OccupationKind::MilitaryOfficer, Lang::Ja) => "士官",
-            (OccupationKind::Missionary, Lang::En(_)) => "Missionary",
-            (OccupationKind::Missionary, Lang::Ja) => "伝道者",
-            (OccupationKind::Musician, Lang::En(_)) => "Musician",
-            (OccupationKind::Musician, Lang::Ja) => "ミュージシャン",
-            (OccupationKind::Parapsychologist, Lang::En(_)) => "Parapsychologist",
-            (OccupationKind::Parapsychologist, Lang::Ja) => "超心理学者",
-            (OccupationKind::Pilot, Lang::En(_)) => "Pilot",
-            (OccupationKind::Pilot, Lang::Ja) => "パイロット",
-            (OccupationKind::Police, Lang::En(_)) => "Police",
-            (OccupationKind::Police, Lang::Ja) => "警察官",
-            (OccupationKind::PrivateInvestigator, Lang::En(_)) => "Private Investigator",
-            (OccupationKind::PrivateInvestigator, Lang::Ja) => "私立探偵",
-            (OccupationKind::Professor, Lang::En(_)) => "Professor",
-            (OccupationKind::Professor, Lang::Ja) => "教授",
-            (OccupationKind::Soldier, Lang::En(_)) => "Soldier",
-            (OccupationKind::Soldier, Lang::Ja) => "兵士",
-            (OccupationKind::TribeMember, Lang::En(_)) => "Tribe Member",
-            (OccupationKind::TribeMember, Lang::Ja) => "トライブ・メンバー",
+        let name = match (kind, language) {
+            (OccupationKind::Activist, Language::En(_)) => "Activist",
+            (OccupationKind::Activist, Language::Ja) => "活動家",
+            (OccupationKind::Antiquarian, Language::En(_)) => "Antiquarian",
+            (OccupationKind::Antiquarian, Language::Ja) => "古物研究家",
+            (OccupationKind::Artist, Language::En(_)) => "Artist",
+            (OccupationKind::Artist, Language::Ja) => "芸術家",
+            (OccupationKind::Athlete, Language::En(_)) => "Athlete",
+            (OccupationKind::Athlete, Language::Ja) => "スポーツ選手",
+            (OccupationKind::Author, Language::En(_)) => "Author",
+            (OccupationKind::Author, Language::Ja) => "作家",
+            (OccupationKind::Clergy, Language::En(_)) => "Clergy",
+            (OccupationKind::Clergy, Language::Ja) => "聖職者",
+            (OccupationKind::Criminal, Language::En(_)) => "Criminal",
+            (OccupationKind::Criminal, Language::Ja) => "犯罪者",
+            (OccupationKind::PoliceDetective, Language::En(_)) => "Police Detective",
+            (OccupationKind::PoliceDetective, Language::Ja) => "刑事",
+            (OccupationKind::Dilettante, Language::En(_)) => "Dilettante",
+            (OccupationKind::Dilettante, Language::Ja) => "ディレッタント",
+            (OccupationKind::Doctor, Language::En(_)) => "Doctor",
+            (OccupationKind::Doctor, Language::Ja) => "医師",
+            (OccupationKind::Drifter, Language::En(_)) => "Drifter",
+            (OccupationKind::Drifter, Language::Ja) => "放浪者",
+            (OccupationKind::Engineer, Language::En(_)) => "Engineer",
+            (OccupationKind::Engineer, Language::Ja) => "技術者",
+            (OccupationKind::Entertainer, Language::En(_)) => "Entertainer",
+            (OccupationKind::Entertainer, Language::Ja) => "エンターテイナー",
+            (OccupationKind::Farmer, Language::En(_)) => "Farmer",
+            (OccupationKind::Farmer, Language::Ja) => "農民",
+            (OccupationKind::Hacker, Language::En(_)) => "Hacker",
+            (OccupationKind::Hacker, Language::Ja) => "ハッカー",
+            (OccupationKind::Journalist, Language::En(_)) => "Journalist",
+            (OccupationKind::Journalist, Language::Ja) => "ジャーナリスト",
+            (OccupationKind::Lawyer, Language::En(_)) => "Lawyer",
+            (OccupationKind::Lawyer, Language::Ja) => "弁護士",
+            (OccupationKind::Librarian, Language::En(_)) => "Librarian",
+            (OccupationKind::Librarian, Language::Ja) => "司書",
+            (OccupationKind::MilitaryOfficer, Language::En(_)) => "Military Officer",
+            (OccupationKind::MilitaryOfficer, Language::Ja) => "士官",
+            (OccupationKind::Missionary, Language::En(_)) => "Missionary",
+            (OccupationKind::Missionary, Language::Ja) => "伝道者",
+            (OccupationKind::Musician, Language::En(_)) => "Musician",
+            (OccupationKind::Musician, Language::Ja) => "ミュージシャン",
+            (OccupationKind::Parapsychologist, Language::En(_)) => "Parapsychologist",
+            (OccupationKind::Parapsychologist, Language::Ja) => "超心理学者",
+            (OccupationKind::Pilot, Language::En(_)) => "Pilot",
+            (OccupationKind::Pilot, Language::Ja) => "パイロット",
+            (OccupationKind::Police, Language::En(_)) => "Police",
+            (OccupationKind::Police, Language::Ja) => "警察官",
+            (OccupationKind::PrivateInvestigator, Language::En(_)) => "Private Investigator",
+            (OccupationKind::PrivateInvestigator, Language::Ja) => "私立探偵",
+            (OccupationKind::Professor, Language::En(_)) => "Professor",
+            (OccupationKind::Professor, Language::Ja) => "教授",
+            (OccupationKind::Soldier, Language::En(_)) => "Soldier",
+            (OccupationKind::Soldier, Language::Ja) => "兵士",
+            (OccupationKind::TribeMember, Language::En(_)) => "Tribe Member",
+            (OccupationKind::TribeMember, Language::Ja) => "トライブ・メンバー",
             (OccupationKind::Custom, _) => custom_name.unwrap_or(""),
         };
         match title {
@@ -502,8 +502,8 @@ pub enum Characteristic {
 }
 
 impl Characteristic {
-    pub fn display(&self, lang: Lang) -> &'static str {
-        match (self, lang) {
+    pub fn display(&self, language: Language) -> &'static str {
+        match (self, language) {
             (Self::Strength, _) => "STR",
             (Self::Constitution, _) => "CON",
             (Self::Size, _) => "SIZ",
@@ -625,24 +625,24 @@ impl SecondaryAttribute {
         Character::SecondaryAttribute.base_id() + *self as u32
     }
 
-    pub fn display(&self, lang: Lang) -> &'static str {
-        match (self, lang) {
+    pub fn display(&self, language: Language) -> &'static str {
+        match (self, language) {
             (Self::HitPoints, _) => "HP",
             (Self::MagicPoints, _) => "MP",
-            (Self::Luck, Lang::En(_)) => "Luck",
-            (Self::Luck, Lang::Ja) => "幸運",
-            (Self::Sanity, Lang::En(_)) => "Sanity",
-            (Self::Sanity, Lang::Ja) => "正気度",
-            (Self::Build, Lang::En(_)) => "Build",
-            (Self::Build, Lang::Ja) => "ビルド",
-            (Self::DamageBonus, Lang::En(_)) => "Damage Bonus",
-            (Self::DamageBonus, Lang::Ja) => "ダメージボーナス",
-            (Self::MoveRate, Lang::En(_)) => "Move Rate",
-            (Self::MoveRate, Lang::Ja) => "移動率 (MOV)",
-            (Self::OccupationSkillPoints, Lang::En(_)) => "Occupation Skill Points",
-            (Self::OccupationSkillPoints, Lang::Ja) => "職業技能ポイント",
-            (Self::InterestSkillPoints, Lang::En(_)) => "Interest Skill Points",
-            (Self::InterestSkillPoints, Lang::Ja) => "興味技能ポイント",
+            (Self::Luck, Language::En(_)) => "Luck",
+            (Self::Luck, Language::Ja) => "幸運",
+            (Self::Sanity, Language::En(_)) => "Sanity",
+            (Self::Sanity, Language::Ja) => "正気度",
+            (Self::Build, Language::En(_)) => "Build",
+            (Self::Build, Language::Ja) => "ビルド",
+            (Self::DamageBonus, Language::En(_)) => "Damage Bonus",
+            (Self::DamageBonus, Language::Ja) => "ダメージボーナス",
+            (Self::MoveRate, Language::En(_)) => "Move Rate",
+            (Self::MoveRate, Language::Ja) => "移動率 (MOV)",
+            (Self::OccupationSkillPoints, Language::En(_)) => "Occupation Skill Points",
+            (Self::OccupationSkillPoints, Language::Ja) => "職業技能ポイント",
+            (Self::InterestSkillPoints, Language::En(_)) => "Interest Skill Points",
+            (Self::InterestSkillPoints, Language::Ja) => "興味技能ポイント",
         }
     }
 }
@@ -858,15 +858,15 @@ impl OccupationSkillPoints {
 
     pub fn display(
         characteristic_tuple: Option<(Characteristic, Characteristic)>,
-        lang: Lang,
+        language: Language,
     ) -> String {
         let Some((c1, c2)) = characteristic_tuple else {
             return String::new();
         };
         if c1.id() == c2.id() {
-            format!("{}×4", c1.display(lang))
+            format!("{}×4", c1.display(language))
         } else {
-            format!("{}×2+{}×2", c1.display(lang), c2.display(lang))
+            format!("{}×2+{}×2", c1.display(language), c2.display(language))
         }
     }
 
@@ -1101,100 +1101,100 @@ impl Skill {
         }
     }
 
-    pub fn display(&self, lang: Lang) -> &'static str {
-        match (self, lang) {
-            (Self::Accounting, Lang::En(_)) => "Accounting",
-            (Self::Accounting, Lang::Ja) => "経理",
-            (Self::Anthropology, Lang::En(_)) => "Anthropology",
-            (Self::Anthropology, Lang::Ja) => "人類学",
-            (Self::Appraise, Lang::En(_)) => "Appraise",
-            (Self::Appraise, Lang::Ja) => "鑑定",
-            (Self::Archaeology, Lang::En(_)) => "Archaeology",
-            (Self::Archaeology, Lang::Ja) => "考古学",
-            (Self::ArtAndCraft, Lang::En(_)) => "Art / Craft",
-            (Self::ArtAndCraft, Lang::Ja) => "芸術/製作",
-            (Self::Charm, Lang::En(_)) => "Charm",
-            (Self::Charm, Lang::Ja) => "魅惑",
-            (Self::Climb, Lang::En(_)) => "Climb",
-            (Self::Climb, Lang::Ja) => "登攀",
-            (Self::ComputerUse, Lang::En(_)) => "Computer Use",
-            (Self::ComputerUse, Lang::Ja) => "コンピューター",
-            (Self::CreditRating, Lang::En(_)) => "Credit Rating",
-            (Self::CreditRating, Lang::Ja) => "信用",
-            (Self::CthulhuMythos, Lang::En(_)) => "Cthulhu Mythos",
-            (Self::CthulhuMythos, Lang::Ja) => "クトゥルフ神話",
-            (Self::Disguise, Lang::En(_)) => "Disguise",
-            (Self::Disguise, Lang::Ja) => "変装",
-            (Self::Dodge, Lang::En(_)) => "Dodge",
-            (Self::Dodge, Lang::Ja) => "回避",
-            (Self::DriveAuto, Lang::En(_)) => "Drive Auto",
-            (Self::DriveAuto, Lang::Ja) => "運転（自動車）",
-            (Self::ElectricalRepair, Lang::En(_)) => "Elec. Repair",
-            (Self::ElectricalRepair, Lang::Ja) => "電気修理",
-            (Self::Electronics, Lang::En(_)) => "Electronics",
-            (Self::Electronics, Lang::Ja) => "電子工学",
-            (Self::FastTalk, Lang::En(_)) => "Fast Talk",
-            (Self::FastTalk, Lang::Ja) => "言いくるめ",
-            (Self::Fighting, Lang::En(_)) => "Fighting",
-            (Self::Fighting, Lang::Ja) => "近接戦闘",
-            (Self::Firearms, Lang::En(_)) => "Firearms",
-            (Self::Firearms, Lang::Ja) => "射撃",
-            (Self::FirstAid, Lang::En(_)) => "First Aid",
-            (Self::FirstAid, Lang::Ja) => "応急手当",
-            (Self::History, Lang::En(_)) => "History",
-            (Self::History, Lang::Ja) => "歴史",
-            (Self::Intimidate, Lang::En(_)) => "Intimidate",
-            (Self::Intimidate, Lang::Ja) => "威圧",
-            (Self::Jump, Lang::En(_)) => "Jump",
-            (Self::Jump, Lang::Ja) => "跳躍",
-            (Self::LanguageOther, Lang::En(_)) => "Language (Other)",
-            (Self::LanguageOther, Lang::Ja) => "ほかの言語",
-            (Self::LanguageOwn, Lang::En(_)) => "Language (Own)",
-            (Self::LanguageOwn, Lang::Ja) => "母国語",
-            (Self::Law, Lang::En(_)) => "Law",
-            (Self::Law, Lang::Ja) => "法律",
-            (Self::LibraryUse, Lang::En(_)) => "Library Use",
-            (Self::LibraryUse, Lang::Ja) => "図書館",
-            (Self::Listen, Lang::En(_)) => "Listen",
-            (Self::Listen, Lang::Ja) => "聞き耳",
-            (Self::Locksmith, Lang::En(_)) => "Locksmith",
-            (Self::Locksmith, Lang::Ja) => "鍵開け",
-            (Self::MechanicalRepair, Lang::En(_)) => "Mech. Repair",
-            (Self::MechanicalRepair, Lang::Ja) => "機械修理",
-            (Self::Medicine, Lang::En(_)) => "Medicine",
-            (Self::Medicine, Lang::Ja) => "医学",
-            (Self::NaturalWorld, Lang::En(_)) => "Natural World",
-            (Self::NaturalWorld, Lang::Ja) => "自然",
-            (Self::Navigate, Lang::En(_)) => "Navigate",
-            (Self::Navigate, Lang::Ja) => "ナビゲート",
-            (Self::Occult, Lang::En(_)) => "Occult",
-            (Self::Occult, Lang::Ja) => "オカルト",
-            (Self::Persuade, Lang::En(_)) => "Persuade",
-            (Self::Persuade, Lang::Ja) => "説得",
-            (Self::Pilot, Lang::En(_)) => "Pilot",
-            (Self::Pilot, Lang::Ja) => "操縦",
-            (Self::Psychoanalysis, Lang::En(_)) => "Psychoanalysis",
-            (Self::Psychoanalysis, Lang::Ja) => "精神分析",
-            (Self::Psychology, Lang::En(_)) => "Psychology",
-            (Self::Psychology, Lang::Ja) => "心理学",
-            (Self::Ride, Lang::En(_)) => "Ride",
-            (Self::Ride, Lang::Ja) => "乗馬",
-            (Self::Science, Lang::En(_)) => "Science",
-            (Self::Science, Lang::Ja) => "科学",
-            (Self::SleightOfHand, Lang::En(_)) => "Sleight of Hand",
-            (Self::SleightOfHand, Lang::Ja) => "手さばき",
-            (Self::SpotHidden, Lang::En(_)) => "Spot Hidden",
-            (Self::SpotHidden, Lang::Ja) => "目星",
-            (Self::Stealth, Lang::En(_)) => "Stealth",
-            (Self::Stealth, Lang::Ja) => "隠密",
-            (Self::Survival, Lang::En(_)) => "Survival",
-            (Self::Survival, Lang::Ja) => "サバイバル",
-            (Self::Swim, Lang::En(_)) => "Swim",
-            (Self::Swim, Lang::Ja) => "水泳",
-            (Self::Throw, Lang::En(_)) => "Throw",
-            (Self::Throw, Lang::Ja) => "投擲",
-            (Self::Track, Lang::En(_)) => "Track",
-            (Self::Track, Lang::Ja) => "追跡",
+    pub fn display(&self, language: Language) -> &'static str {
+        match (self, language) {
+            (Self::Accounting, Language::En(_)) => "Accounting",
+            (Self::Accounting, Language::Ja) => "経理",
+            (Self::Anthropology, Language::En(_)) => "Anthropology",
+            (Self::Anthropology, Language::Ja) => "人類学",
+            (Self::Appraise, Language::En(_)) => "Appraise",
+            (Self::Appraise, Language::Ja) => "鑑定",
+            (Self::Archaeology, Language::En(_)) => "Archaeology",
+            (Self::Archaeology, Language::Ja) => "考古学",
+            (Self::ArtAndCraft, Language::En(_)) => "Art / Craft",
+            (Self::ArtAndCraft, Language::Ja) => "芸術/製作",
+            (Self::Charm, Language::En(_)) => "Charm",
+            (Self::Charm, Language::Ja) => "魅惑",
+            (Self::Climb, Language::En(_)) => "Climb",
+            (Self::Climb, Language::Ja) => "登攀",
+            (Self::ComputerUse, Language::En(_)) => "Computer Use",
+            (Self::ComputerUse, Language::Ja) => "コンピューター",
+            (Self::CreditRating, Language::En(_)) => "Credit Rating",
+            (Self::CreditRating, Language::Ja) => "信用",
+            (Self::CthulhuMythos, Language::En(_)) => "Cthulhu Mythos",
+            (Self::CthulhuMythos, Language::Ja) => "クトゥルフ神話",
+            (Self::Disguise, Language::En(_)) => "Disguise",
+            (Self::Disguise, Language::Ja) => "変装",
+            (Self::Dodge, Language::En(_)) => "Dodge",
+            (Self::Dodge, Language::Ja) => "回避",
+            (Self::DriveAuto, Language::En(_)) => "Drive Auto",
+            (Self::DriveAuto, Language::Ja) => "運転（自動車）",
+            (Self::ElectricalRepair, Language::En(_)) => "Elec. Repair",
+            (Self::ElectricalRepair, Language::Ja) => "電気修理",
+            (Self::Electronics, Language::En(_)) => "Electronics",
+            (Self::Electronics, Language::Ja) => "電子工学",
+            (Self::FastTalk, Language::En(_)) => "Fast Talk",
+            (Self::FastTalk, Language::Ja) => "言いくるめ",
+            (Self::Fighting, Language::En(_)) => "Fighting",
+            (Self::Fighting, Language::Ja) => "近接戦闘",
+            (Self::Firearms, Language::En(_)) => "Firearms",
+            (Self::Firearms, Language::Ja) => "射撃",
+            (Self::FirstAid, Language::En(_)) => "First Aid",
+            (Self::FirstAid, Language::Ja) => "応急手当",
+            (Self::History, Language::En(_)) => "History",
+            (Self::History, Language::Ja) => "歴史",
+            (Self::Intimidate, Language::En(_)) => "Intimidate",
+            (Self::Intimidate, Language::Ja) => "威圧",
+            (Self::Jump, Language::En(_)) => "Jump",
+            (Self::Jump, Language::Ja) => "跳躍",
+            (Self::LanguageOther, Language::En(_)) => "Language (Other)",
+            (Self::LanguageOther, Language::Ja) => "ほかの言語",
+            (Self::LanguageOwn, Language::En(_)) => "Language (Own)",
+            (Self::LanguageOwn, Language::Ja) => "母国語",
+            (Self::Law, Language::En(_)) => "Law",
+            (Self::Law, Language::Ja) => "法律",
+            (Self::LibraryUse, Language::En(_)) => "Library Use",
+            (Self::LibraryUse, Language::Ja) => "図書館",
+            (Self::Listen, Language::En(_)) => "Listen",
+            (Self::Listen, Language::Ja) => "聞き耳",
+            (Self::Locksmith, Language::En(_)) => "Locksmith",
+            (Self::Locksmith, Language::Ja) => "鍵開け",
+            (Self::MechanicalRepair, Language::En(_)) => "Mech. Repair",
+            (Self::MechanicalRepair, Language::Ja) => "機械修理",
+            (Self::Medicine, Language::En(_)) => "Medicine",
+            (Self::Medicine, Language::Ja) => "医学",
+            (Self::NaturalWorld, Language::En(_)) => "Natural World",
+            (Self::NaturalWorld, Language::Ja) => "自然",
+            (Self::Navigate, Language::En(_)) => "Navigate",
+            (Self::Navigate, Language::Ja) => "ナビゲート",
+            (Self::Occult, Language::En(_)) => "Occult",
+            (Self::Occult, Language::Ja) => "オカルト",
+            (Self::Persuade, Language::En(_)) => "Persuade",
+            (Self::Persuade, Language::Ja) => "説得",
+            (Self::Pilot, Language::En(_)) => "Pilot",
+            (Self::Pilot, Language::Ja) => "操縦",
+            (Self::Psychoanalysis, Language::En(_)) => "Psychoanalysis",
+            (Self::Psychoanalysis, Language::Ja) => "精神分析",
+            (Self::Psychology, Language::En(_)) => "Psychology",
+            (Self::Psychology, Language::Ja) => "心理学",
+            (Self::Ride, Language::En(_)) => "Ride",
+            (Self::Ride, Language::Ja) => "乗馬",
+            (Self::Science, Language::En(_)) => "Science",
+            (Self::Science, Language::Ja) => "科学",
+            (Self::SleightOfHand, Language::En(_)) => "Sleight of Hand",
+            (Self::SleightOfHand, Language::Ja) => "手さばき",
+            (Self::SpotHidden, Language::En(_)) => "Spot Hidden",
+            (Self::SpotHidden, Language::Ja) => "目星",
+            (Self::Stealth, Language::En(_)) => "Stealth",
+            (Self::Stealth, Language::Ja) => "隠密",
+            (Self::Survival, Language::En(_)) => "Survival",
+            (Self::Survival, Language::Ja) => "サバイバル",
+            (Self::Swim, Language::En(_)) => "Swim",
+            (Self::Swim, Language::Ja) => "水泳",
+            (Self::Throw, Language::En(_)) => "Throw",
+            (Self::Throw, Language::Ja) => "投擲",
+            (Self::Track, Language::En(_)) => "Track",
+            (Self::Track, Language::Ja) => "追跡",
             (_, _) => "",
         }
     }
@@ -1258,7 +1258,7 @@ pub trait SkillTrait<const S: Skill> {
 
     // -> skill_name, specialization_name
     fn as_editable_string(&self) -> (String, String) {
-        (S.display(Lang::Ja).to_owned(), String::new())
+        (S.display(Language::Ja).to_owned(), String::new())
     }
 
     // -> base, occupation_points, interest_points, change, modifier, sum
@@ -1278,7 +1278,7 @@ pub trait SkillTrait<const S: Skill> {
     }
 
     fn as_immutable_string(&self) -> String {
-        S.display(Lang::Ja).to_owned()
+        S.display(Language::Ja).to_owned()
     }
 }
 
@@ -1410,12 +1410,12 @@ impl LanguageOwn {
     }
 
     // -> skill_name, name
-    pub fn as_editable_string<'a>(name: &'a str, lang: Lang) -> (&'static str, &'a str) {
-        (Skill::LanguageOwn.display(lang), name)
+    pub fn as_editable_string<'a>(name: &'a str, language: Language) -> (&'static str, &'a str) {
+        (Skill::LanguageOwn.display(language), name)
     }
 
-    pub fn as_immutable_string(name: &str, lang: Lang) -> String {
-        format!("{} ({})", Skill::LanguageOwn.display(lang), name)
+    pub fn as_immutable_string(name: &str, language: Language) -> String {
+        format!("{} ({})", Skill::LanguageOwn.display(language), name)
     }
 }
 
@@ -1441,32 +1441,32 @@ impl ArtAndCraft {
         Skill::ArtAndCraft.base_id() + *self as u32
     }
 
-    pub fn display(&self, lang: Lang) -> &str {
-        match (self, lang) {
-            (Self::Acting, Lang::En(_)) => "Acting",
-            (Self::Acting, Lang::Ja) => "演劇",
-            (Self::Barber, Lang::En(_)) => "Barber",
-            (Self::Barber, Lang::Ja) => "理容",
-            (Self::Calligraphy, Lang::En(_)) => "Calligraphy",
-            (Self::Calligraphy, Lang::Ja) => "書道",
-            (Self::Carpentry, Lang::En(_)) => "Carpentry",
-            (Self::Carpentry, Lang::Ja) => "大工仕事",
-            (Self::Cook, Lang::En(_)) => "Cook",
-            (Self::Cook, Lang::Ja) => "料理",
-            (Self::Dancing, Lang::En(_)) => "Dancing",
-            (Self::Dancing, Lang::Ja) => "ダンス",
-            (Self::FineArt, Lang::En(_)) => "Fine Art",
-            (Self::FineArt, Lang::Ja) => "絵画",
-            (Self::Forgery, Lang::En(_)) => "Forgery",
-            (Self::Forgery, Lang::Ja) => "文書偽造",
-            (Self::Photography, Lang::En(_)) => "Photography",
-            (Self::Photography, Lang::Ja) => "写真術",
-            (Self::Pottery, Lang::En(_)) => "Pottery",
-            (Self::Pottery, Lang::Ja) => "陶芸",
-            (Self::Sculpting, Lang::En(_)) => "Sculpting",
-            (Self::Sculpting, Lang::Ja) => "彫刻",
-            (Self::Writing, Lang::En(_)) => "Writing",
-            (Self::Writing, Lang::Ja) => "執筆",
+    pub fn display(&self, language: Language) -> &str {
+        match (self, language) {
+            (Self::Acting, Language::En(_)) => "Acting",
+            (Self::Acting, Language::Ja) => "演劇",
+            (Self::Barber, Language::En(_)) => "Barber",
+            (Self::Barber, Language::Ja) => "理容",
+            (Self::Calligraphy, Language::En(_)) => "Calligraphy",
+            (Self::Calligraphy, Language::Ja) => "書道",
+            (Self::Carpentry, Language::En(_)) => "Carpentry",
+            (Self::Carpentry, Language::Ja) => "大工仕事",
+            (Self::Cook, Language::En(_)) => "Cook",
+            (Self::Cook, Language::Ja) => "料理",
+            (Self::Dancing, Language::En(_)) => "Dancing",
+            (Self::Dancing, Language::Ja) => "ダンス",
+            (Self::FineArt, Language::En(_)) => "Fine Art",
+            (Self::FineArt, Language::Ja) => "絵画",
+            (Self::Forgery, Language::En(_)) => "Forgery",
+            (Self::Forgery, Language::Ja) => "文書偽造",
+            (Self::Photography, Language::En(_)) => "Photography",
+            (Self::Photography, Language::Ja) => "写真術",
+            (Self::Pottery, Language::En(_)) => "Pottery",
+            (Self::Pottery, Language::Ja) => "陶芸",
+            (Self::Sculpting, Language::En(_)) => "Sculpting",
+            (Self::Sculpting, Language::Ja) => "彫刻",
+            (Self::Writing, Language::En(_)) => "Writing",
+            (Self::Writing, Language::Ja) => "執筆",
             (Self::Custom, _) => {
                 unreachable!("ArtAndCraft::Customはリスト格納スロットでありname() 不可")
             }
@@ -1520,8 +1520,8 @@ pub trait ArtAndCraftTrait<const A: ArtAndCraft> {
     }
 
     // -> skill_name, specialization_name
-    fn as_editable_string(&self, lang: Lang) -> (String, String) {
-        (Skill::ArtAndCraft.display(lang).to_owned(), A.display(lang).to_owned())
+    fn as_editable_string(&self, language: Language) -> (String, String) {
+        (Skill::ArtAndCraft.display(language).to_owned(), A.display(language).to_owned())
     }
 
     // -> base, occupation_points, interest_points, change, modifier, sum
@@ -1626,12 +1626,12 @@ impl ArtAndCraftCustom {
     }
 
     // -> skill_name, specialization_name
-    pub fn as_editable_string<'a>(name: &'a str, lang: Lang) -> (&'static str, &'a str) {
-        (Skill::ArtAndCraft.display(lang), name)
+    pub fn as_editable_string<'a>(name: &'a str, language: Language) -> (&'static str, &'a str) {
+        (Skill::ArtAndCraft.display(language), name)
     }
 
-    pub fn as_immutable_string(name: &str, lang: Lang) -> String {
-        format!("{} ({})", Skill::ArtAndCraft.display(lang), name)
+    pub fn as_immutable_string(name: &str, language: Language) -> String {
+        format!("{} ({})", Skill::ArtAndCraft.display(language), name)
     }
 }
 
@@ -1680,24 +1680,24 @@ impl Fighting {
         }
     }
 
-    pub fn display(&self, lang: Lang) -> &str {
-        match (self, lang) {
-            (Self::Axe, Lang::En(_)) => "Axe",
-            (Self::Axe, Lang::Ja) => "斧",
-            (Self::Brawl, Lang::En(_)) => "Brawl",
-            (Self::Brawl, Lang::Ja) => "格闘",
-            (Self::Chainsaw, Lang::En(_)) => "Chainsaw",
-            (Self::Chainsaw, Lang::Ja) => "チェーンソー",
-            (Self::Flail, Lang::En(_)) => "Flail",
-            (Self::Flail, Lang::Ja) => "フレイル",
-            (Self::Garrote, Lang::En(_)) => "Garrote",
-            (Self::Garrote, Lang::Ja) => "絞殺ひも",
-            (Self::Spear, Lang::En(_)) => "Spear",
-            (Self::Spear, Lang::Ja) => "槍",
-            (Self::Sword, Lang::En(_)) => "Sword",
-            (Self::Sword, Lang::Ja) => "刀剣",
-            (Self::Whip, Lang::En(_)) => "Whip",
-            (Self::Whip, Lang::Ja) => "鞭",
+    pub fn display(&self, language: Language) -> &str {
+        match (self, language) {
+            (Self::Axe, Language::En(_)) => "Axe",
+            (Self::Axe, Language::Ja) => "斧",
+            (Self::Brawl, Language::En(_)) => "Brawl",
+            (Self::Brawl, Language::Ja) => "格闘",
+            (Self::Chainsaw, Language::En(_)) => "Chainsaw",
+            (Self::Chainsaw, Language::Ja) => "チェーンソー",
+            (Self::Flail, Language::En(_)) => "Flail",
+            (Self::Flail, Language::Ja) => "フレイル",
+            (Self::Garrote, Language::En(_)) => "Garrote",
+            (Self::Garrote, Language::Ja) => "絞殺ひも",
+            (Self::Spear, Language::En(_)) => "Spear",
+            (Self::Spear, Language::Ja) => "槍",
+            (Self::Sword, Language::En(_)) => "Sword",
+            (Self::Sword, Language::Ja) => "刀剣",
+            (Self::Whip, Language::En(_)) => "Whip",
+            (Self::Whip, Language::Ja) => "鞭",
             (Self::Custom, _) => {
                 unreachable!("Fighting::Customはリスト格納スロットでありname() 不可")
             }
@@ -1733,8 +1733,8 @@ pub trait FightingTrait<const F: Fighting> {
     }
 
     // -> skill_name, specialization_name
-    fn as_editable_string(&self, lang: Lang) -> (&'static str, &'static str) {
-        (Skill::Fighting.display(lang), F.display(lang))
+    fn as_editable_string(&self, language: Language) -> (&'static str, &'static str) {
+        (Skill::Fighting.display(language), F.display(language))
     }
 
     // -> base, occupation_points, interest_points, change, modifier, sum
@@ -1849,12 +1849,12 @@ impl FightingCustom {
     }
 
     // -> skill_name, specialization_name
-    pub fn as_editable_string<'a>(name: &'a str, lang: Lang) -> (&'static str, &'a str) {
-        (Skill::Fighting.display(lang), name)
+    pub fn as_editable_string<'a>(name: &'a str, language: Language) -> (&'static str, &'a str) {
+        (Skill::Fighting.display(language), name)
     }
 
-    pub fn as_immutable_string(name: &str, lang: Lang) -> String {
-        format!("{} ({})", Skill::Fighting.display(lang), name)
+    pub fn as_immutable_string(name: &str, language: Language) -> String {
+        format!("{} ({})", Skill::Fighting.display(language), name)
     }
 }
 
@@ -1900,22 +1900,22 @@ impl Firearms {
         }
     }
 
-    pub fn display(&self, lang: Lang) -> &str {
-        match (self, lang) {
-            (Self::Bow, Lang::En(_)) => "Bow",
-            (Self::Bow, Lang::Ja) => "弓",
-            (Self::FlameThrower, Lang::En(_)) => "Flamethrower",
-            (Self::FlameThrower, Lang::Ja) => "火炎放射器",
-            (Self::Handgun, Lang::En(_)) => "Handgun",
-            (Self::Handgun, Lang::Ja) => "拳銃",
-            (Self::HeavyWeapons, Lang::En(_)) => "Heavy Weapons",
-            (Self::HeavyWeapons, Lang::Ja) => "重火器",
-            (Self::MachineGun, Lang::En(_)) => "Machine Gun",
-            (Self::MachineGun, Lang::Ja) => "マシンガン",
-            (Self::RifleShotgun, Lang::En(_)) => "Rifle/Shotgun",
-            (Self::RifleShotgun, Lang::Ja) => "ライフル/ショットガン",
-            (Self::SubmachineGun, Lang::En(_)) => "Submachine Gun",
-            (Self::SubmachineGun, Lang::Ja) => "サブマシンガン",
+    pub fn display(&self, language: Language) -> &str {
+        match (self, language) {
+            (Self::Bow, Language::En(_)) => "Bow",
+            (Self::Bow, Language::Ja) => "弓",
+            (Self::FlameThrower, Language::En(_)) => "Flamethrower",
+            (Self::FlameThrower, Language::Ja) => "火炎放射器",
+            (Self::Handgun, Language::En(_)) => "Handgun",
+            (Self::Handgun, Language::Ja) => "拳銃",
+            (Self::HeavyWeapons, Language::En(_)) => "Heavy Weapons",
+            (Self::HeavyWeapons, Language::Ja) => "重火器",
+            (Self::MachineGun, Language::En(_)) => "Machine Gun",
+            (Self::MachineGun, Language::Ja) => "マシンガン",
+            (Self::RifleShotgun, Language::En(_)) => "Rifle/Shotgun",
+            (Self::RifleShotgun, Language::Ja) => "ライフル/ショットガン",
+            (Self::SubmachineGun, Language::En(_)) => "Submachine Gun",
+            (Self::SubmachineGun, Language::Ja) => "サブマシンガン",
             (Self::Custom, _) => {
                 unreachable!("Firearms::Customはリスト格納スロットでありname() 不可")
             }
@@ -1950,8 +1950,8 @@ pub trait FirearmsTrait<const F: Firearms> {
     }
 
     // -> skill_name, specialization_label
-    fn as_editable_string(&self, lang: Lang) -> (&'static str, &'static str) {
-        (Skill::Firearms.display(lang), F.display(lang))
+    fn as_editable_string(&self, language: Language) -> (&'static str, &'static str) {
+        (Skill::Firearms.display(language), F.display(language))
     }
 
     // -> base, occupation_points, interest_points, change, modifier, sum
@@ -2064,12 +2064,12 @@ impl FirearmsCustom {
     }
 
     // -> skill_name, specialization_name
-    pub fn as_editable_string<'a>(name: &'a str, lang: Lang) -> (&'static str, &'a str) {
-        (Skill::Firearms.display(lang), name)
+    pub fn as_editable_string<'a>(name: &'a str, language: Language) -> (&'static str, &'a str) {
+        (Skill::Firearms.display(language), name)
     }
 
-    pub fn as_immutable_string(name: &str, lang: Lang) -> String {
-        format!("{} ({})", Skill::Firearms.display(lang), name)
+    pub fn as_immutable_string(name: &str, language: Language) -> String {
+        format!("{} ({})", Skill::Firearms.display(language), name)
     }
 }
 
@@ -2141,12 +2141,12 @@ impl LanguageOther {
     }
 
     // -> skill_name, language_name
-    pub fn as_editable_string<'a>(name: &'a str, lang: Lang) -> (&'static str, &'a str) {
-        (Skill::LanguageOther.display(lang), name)
+    pub fn as_editable_string<'a>(name: &'a str, language: Language) -> (&'static str, &'a str) {
+        (Skill::LanguageOther.display(language), name)
     }
 
-    pub fn as_immutable_string(name: &str, lang: Lang) -> String {
-        format!("{} ({})", Skill::LanguageOther.display(lang), name)
+    pub fn as_immutable_string(name: &str, language: Language) -> String {
+        format!("{} ({})", Skill::LanguageOther.display(language), name)
     }
 }
 
@@ -2189,28 +2189,28 @@ impl Pilot {
         1
     }
 
-    pub const fn display(&self, lang: Lang) -> &'static str {
-        match (self, lang) {
-            (Self::Boat, Lang::Ja) => "ボート",
-            (Self::Boat, Lang::En(_)) => "Boat",
-            (Self::SteamShip, Lang::Ja) => "汽船",
-            (Self::SteamShip, Lang::En(_)) => "Steam Ship",
-            (Self::Sailboat, Lang::Ja) => "帆船",
-            (Self::Sailboat, Lang::En(_)) => "Sailboat",
-            (Self::CivilProp, Lang::Ja) => "民間プロペラ機",
-            (Self::CivilProp, Lang::En(_)) => "Civil Prop",
-            (Self::Balloon, Lang::Ja) => "気球",
-            (Self::Balloon, Lang::En(_)) => "Balloon",
-            (Self::Dirigible, Lang::Ja) => "飛行船",
-            (Self::Dirigible, Lang::En(_)) => "Dirigible",
-            (Self::CivilJet, Lang::Ja) => "民間ジェット機",
-            (Self::CivilJet, Lang::En(_)) => "Civil Jet",
-            (Self::Airliner, Lang::Ja) => "旅客機",
-            (Self::Airliner, Lang::En(_)) => "Airliner",
-            (Self::JetFighter, Lang::Ja) => "ジェット戦闘機",
-            (Self::JetFighter, Lang::En(_)) => "Jet Fighter",
-            (Self::Helicopter, Lang::Ja) => "ヘリコプター",
-            (Self::Helicopter, Lang::En(_)) => "Helicopter",
+    pub const fn display(&self, language: Language) -> &'static str {
+        match (self, language) {
+            (Self::Boat, Language::Ja) => "ボート",
+            (Self::Boat, Language::En(_)) => "Boat",
+            (Self::SteamShip, Language::Ja) => "汽船",
+            (Self::SteamShip, Language::En(_)) => "Steam Ship",
+            (Self::Sailboat, Language::Ja) => "帆船",
+            (Self::Sailboat, Language::En(_)) => "Sailboat",
+            (Self::CivilProp, Language::Ja) => "民間プロペラ機",
+            (Self::CivilProp, Language::En(_)) => "Civil Prop",
+            (Self::Balloon, Language::Ja) => "気球",
+            (Self::Balloon, Language::En(_)) => "Balloon",
+            (Self::Dirigible, Language::Ja) => "飛行船",
+            (Self::Dirigible, Language::En(_)) => "Dirigible",
+            (Self::CivilJet, Language::Ja) => "民間ジェット機",
+            (Self::CivilJet, Language::En(_)) => "Civil Jet",
+            (Self::Airliner, Language::Ja) => "旅客機",
+            (Self::Airliner, Language::En(_)) => "Airliner",
+            (Self::JetFighter, Language::Ja) => "ジェット戦闘機",
+            (Self::JetFighter, Language::En(_)) => "Jet Fighter",
+            (Self::Helicopter, Language::Ja) => "ヘリコプター",
+            (Self::Helicopter, Language::En(_)) => "Helicopter",
             (Self::Custom, _) => unreachable!(),
         }
     }
@@ -2242,8 +2242,8 @@ pub trait PilotTrait<const P: Pilot> {
         character
     }
 
-    fn as_editable_string(&self, lang: Lang) -> (&'static str, &'static str) {
-        (Skill::Pilot.display(lang), P.display(lang))
+    fn as_editable_string(&self, language: Language) -> (&'static str, &'static str) {
+        (Skill::Pilot.display(language), P.display(language))
     }
 
     fn as_editable_numeric(
@@ -2354,12 +2354,12 @@ impl PilotCustom {
     }
 
     // -> skill_name, specialization_name
-    pub fn as_editable_string<'a>(name: &'a str, lang: Lang) -> (&'static str, &'a str) {
-        (Skill::Pilot.display(lang), name)
+    pub fn as_editable_string<'a>(name: &'a str, language: Language) -> (&'static str, &'a str) {
+        (Skill::Pilot.display(language), name)
     }
 
-    pub fn as_immutable_string(name: &str, lang: Lang) -> String {
-        format!("{} ({})", Skill::Pilot.display(lang), name)
+    pub fn as_immutable_string(name: &str, language: Language) -> String {
+        format!("{} ({})", Skill::Pilot.display(language), name)
     }
 }
 
@@ -2415,35 +2415,35 @@ impl Science {
         }
     }
 
-    pub fn display(&self, lang: Lang) -> Option<&'static str> {
-        match (self, lang) {
+    pub fn display(&self, language: Language) -> Option<&'static str> {
+        match (self, language) {
             (Self::None, _) => None,
-            (Self::Astronomy, Lang::Ja) => Some("天文学"),
-            (Self::Astronomy, Lang::En(_)) => Some("Astronomy"),
-            (Self::Biology, Lang::Ja) => Some("生物学"),
-            (Self::Biology, Lang::En(_)) => Some("Biology"),
-            (Self::Botany, Lang::Ja) => Some("植物学"),
-            (Self::Botany, Lang::En(_)) => Some("Botany"),
-            (Self::Chemistry, Lang::Ja) => Some("化学"),
-            (Self::Chemistry, Lang::En(_)) => Some("Chemistry"),
-            (Self::Cryptography, Lang::Ja) => Some("暗号学"),
-            (Self::Cryptography, Lang::En(_)) => Some("Cryptography"),
-            (Self::Engineering, Lang::Ja) => Some("工学"),
-            (Self::Engineering, Lang::En(_)) => Some("Engineering"),
-            (Self::Forensics, Lang::Ja) => Some("法医学"),
-            (Self::Forensics, Lang::En(_)) => Some("Forensics"),
-            (Self::Geology, Lang::Ja) => Some("地質学"),
-            (Self::Geology, Lang::En(_)) => Some("Geology"),
-            (Self::Mathematics, Lang::Ja) => Some("数学"),
-            (Self::Mathematics, Lang::En(_)) => Some("Mathematics"),
-            (Self::Meteorology, Lang::Ja) => Some("気象学"),
-            (Self::Meteorology, Lang::En(_)) => Some("Meteorology"),
-            (Self::Pharmacy, Lang::Ja) => Some("薬学"),
-            (Self::Pharmacy, Lang::En(_)) => Some("Pharmacy"),
-            (Self::Physics, Lang::Ja) => Some("物理学"),
-            (Self::Physics, Lang::En(_)) => Some("Physics"),
-            (Self::Zoology, Lang::Ja) => Some("動物学"),
-            (Self::Zoology, Lang::En(_)) => Some("Zoology"),
+            (Self::Astronomy, Language::Ja) => Some("天文学"),
+            (Self::Astronomy, Language::En(_)) => Some("Astronomy"),
+            (Self::Biology, Language::Ja) => Some("生物学"),
+            (Self::Biology, Language::En(_)) => Some("Biology"),
+            (Self::Botany, Language::Ja) => Some("植物学"),
+            (Self::Botany, Language::En(_)) => Some("Botany"),
+            (Self::Chemistry, Language::Ja) => Some("化学"),
+            (Self::Chemistry, Language::En(_)) => Some("Chemistry"),
+            (Self::Cryptography, Language::Ja) => Some("暗号学"),
+            (Self::Cryptography, Language::En(_)) => Some("Cryptography"),
+            (Self::Engineering, Language::Ja) => Some("工学"),
+            (Self::Engineering, Language::En(_)) => Some("Engineering"),
+            (Self::Forensics, Language::Ja) => Some("法医学"),
+            (Self::Forensics, Language::En(_)) => Some("Forensics"),
+            (Self::Geology, Language::Ja) => Some("地質学"),
+            (Self::Geology, Language::En(_)) => Some("Geology"),
+            (Self::Mathematics, Language::Ja) => Some("数学"),
+            (Self::Mathematics, Language::En(_)) => Some("Mathematics"),
+            (Self::Meteorology, Language::Ja) => Some("気象学"),
+            (Self::Meteorology, Language::En(_)) => Some("Meteorology"),
+            (Self::Pharmacy, Language::Ja) => Some("薬学"),
+            (Self::Pharmacy, Language::En(_)) => Some("Pharmacy"),
+            (Self::Physics, Language::Ja) => Some("物理学"),
+            (Self::Physics, Language::En(_)) => Some("Physics"),
+            (Self::Zoology, Language::Ja) => Some("動物学"),
+            (Self::Zoology, Language::En(_)) => Some("Zoology"),
             (Self::Custom, _) => None,
         }
     }
@@ -2475,8 +2475,8 @@ pub trait ScienceTrait<const S: Science> {
         character
     }
 
-    fn as_editable_string(&self, lang: Lang) -> (&'static str, Option<&'static str>) {
-        (Skill::Science.display(lang), S.display(lang))
+    fn as_editable_string(&self, language: Language) -> (&'static str, Option<&'static str>) {
+        (Skill::Science.display(language), S.display(language))
     }
 
     fn as_editable_numeric(
@@ -2593,12 +2593,12 @@ impl ScienceCustom {
     }
 
     // -> skill_name, specialization_name
-    pub fn as_editable_string<'a>(name: &'a str, lang: Lang) -> (&'static str, &'a str) {
-        (Skill::Science.display(lang), name)
+    pub fn as_editable_string<'a>(name: &'a str, language: Language) -> (&'static str, &'a str) {
+        (Skill::Science.display(language), name)
     }
 
-    pub fn as_immutable_string(name: &str, lang: Lang) -> String {
-        format!("{} ({})", Skill::Science.display(lang), name)
+    pub fn as_immutable_string(name: &str, language: Language) -> String {
+        format!("{} ({})", Skill::Science.display(language), name)
     }
 }
 
@@ -2623,14 +2623,14 @@ impl Survival {
         10
     }
 
-    pub fn display(&self, lang: Lang) -> &'static str {
-        match (self, lang) {
-            (Self::Arctic, Lang::Ja) => "極地",
-            (Self::Arctic, Lang::En(_)) => "Arctic",
-            (Self::Desert, Lang::Ja) => "砂漠",
-            (Self::Desert, Lang::En(_)) => "Desert",
-            (Self::Sea, Lang::Ja) => "海",
-            (Self::Sea, Lang::En(_)) => "Sea",
+    pub fn display(&self, language: Language) -> &'static str {
+        match (self, language) {
+            (Self::Arctic, Language::Ja) => "極地",
+            (Self::Arctic, Language::En(_)) => "Arctic",
+            (Self::Desert, Language::Ja) => "砂漠",
+            (Self::Desert, Language::En(_)) => "Desert",
+            (Self::Sea, Language::Ja) => "海",
+            (Self::Sea, Language::En(_)) => "Sea",
             (Self::Custom, _) => {
                 unreachable!("Survival::Customはリスト格納スロットでありname() 不可")
             }
@@ -2664,8 +2664,8 @@ pub trait SurvivalTrait<const S: Survival> {
         character
     }
 
-    fn as_editable_string(&self, lang: Lang) -> (&'static str, &'static str) {
-        (Skill::Survival.display(lang), S.display(lang))
+    fn as_editable_string(&self, language: Language) -> (&'static str, &'static str) {
+        (Skill::Survival.display(language), S.display(language))
     }
 
     fn as_editable_numeric(
@@ -2762,12 +2762,12 @@ impl SurvivalCustom {
     }
 
     // -> skill_name, specialization_name
-    pub fn as_editable_string<'a>(name: &'a str, lang: Lang) -> (&'static str, &'a str) {
-        (Skill::Survival.display(lang), name)
+    pub fn as_editable_string<'a>(name: &'a str, language: Language) -> (&'static str, &'a str) {
+        (Skill::Survival.display(language), name)
     }
 
-    pub fn as_immutable_string(name: &str, lang: Lang) -> String {
-        format!("{} ({})", Skill::Survival.display(lang), name)
+    pub fn as_immutable_string(name: &str, language: Language) -> String {
+        format!("{} ({})", Skill::Survival.display(language), name)
     }
 }
 
@@ -2786,16 +2786,16 @@ impl Possession {
         Character::Possession.base_id() + *self as u32
     }
 
-    pub fn display(&self, lang: Lang) -> &'static str {
-        match (self, lang) {
-            (Self::Weapon, Lang::En(_)) => "Weapon",
-            (Self::Weapon, Lang::Ja) => "武器",
-            (Self::Armor, Lang::En(_)) => "Armor",
-            (Self::Armor, Lang::Ja) => "装甲",
-            (Self::Equipment, Lang::En(_)) => "Equipment",
-            (Self::Equipment, Lang::Ja) => "所持品",
-            (Self::Wealth, Lang::En(_)) => "Wealth",
-            (Self::Wealth, Lang::Ja) => "収入と財産",
+    pub fn display(&self, language: Language) -> &'static str {
+        match (self, language) {
+            (Self::Weapon, Language::En(_)) => "Weapon",
+            (Self::Weapon, Language::Ja) => "武器",
+            (Self::Armor, Language::En(_)) => "Armor",
+            (Self::Armor, Language::Ja) => "装甲",
+            (Self::Equipment, Language::En(_)) => "Equipment",
+            (Self::Equipment, Language::Ja) => "所持品",
+            (Self::Wealth, Language::En(_)) => "Wealth",
+            (Self::Wealth, Language::Ja) => "収入と財産",
         }
     }
 }
@@ -2849,96 +2849,96 @@ pub enum Weapon {
 }
 
 impl Weapon {
-    pub fn display(&self, lang: Lang) -> &str {
-        match (self, lang) {
-            (Self::BowAndArrows, Lang::En(_)) => "Bow and Arrows",
-            (Self::BowAndArrows, Lang::Ja) => "弓と矢",
-            (Self::BrassKnuckles, Lang::En(_)) => "Brass Knuckles",
-            (Self::BrassKnuckles, Lang::Ja) => "ブラスナックル",
-            (Self::Bullwhip, Lang::En(_)) => "Bullwhip",
-            (Self::Bullwhip, Lang::Ja) => "むち",
-            (Self::BurningTorch, Lang::En(_)) => "Burning Torch",
-            (Self::BurningTorch, Lang::Ja) => "燃えているたいまつ",
-            (Self::Blackjack, Lang::En(_)) => "Blackjack",
-            (Self::Blackjack, Lang::Ja) => "ブラックジャック",
-            (Self::ClubLarge, Lang::En(_)) => "Club, Large",
-            (Self::ClubLarge, Lang::Ja) => "大きい棍棒",
-            (Self::ClubSmall, Lang::En(_)) => "Club, Small",
-            (Self::ClubSmall, Lang::Ja) => "小さい棍棒",
-            (Self::Crossbow, Lang::En(_)) => "Crossbow",
-            (Self::Crossbow, Lang::Ja) => "クロスボウ",
-            (Self::Garrote, Lang::En(_)) => "Garrote",
-            (Self::Garrote, Lang::Ja) => "絞殺ひも",
-            (Self::HatchetSickle, Lang::En(_)) => "Hatchet/Sickle",
-            (Self::HatchetSickle, Lang::Ja) => "手斧/小鎌",
-            (Self::KnifeLarge, Lang::En(_)) => "Knife, Large",
-            (Self::KnifeLarge, Lang::Ja) => "大型ナイフ",
-            (Self::KnifeMedium, Lang::En(_)) => "Knife, Medium",
-            (Self::KnifeMedium, Lang::Ja) => "中型ナイフ",
-            (Self::KnifeSmall, Lang::En(_)) => "Knife, Small",
-            (Self::KnifeSmall, Lang::Ja) => "小型ナイフ",
-            (Self::Nunchaku, Lang::En(_)) => "Nunchaku",
-            (Self::Nunchaku, Lang::Ja) => "ヌンチャク",
-            (Self::RockThrown, Lang::En(_)) => "Rock, Thrown",
-            (Self::RockThrown, Lang::Ja) => "投石",
-            (Self::Shuriken, Lang::En(_)) => "Shuriken",
-            (Self::Shuriken, Lang::Ja) => "手裏剣",
-            (Self::Spear, Lang::En(_)) => "Spear",
-            (Self::Spear, Lang::Ja) => "騎兵槍",
-            (Self::SpearThrown, Lang::En(_)) => "Spear, Thrown",
-            (Self::SpearThrown, Lang::Ja) => "投げ槍",
-            (Self::Auto22Short, Lang::En(_)) => ".22 Short Automatic",
-            (Self::Auto22Short, Lang::Ja) => ".22ショートオートマチック",
-            (Self::Derringer25, Lang::En(_)) => ".25 Derringer",
-            (Self::Derringer25, Lang::Ja) => ".25デリンジャー",
-            (Self::Revolver32, Lang::En(_)) => ".32 Revolver",
-            (Self::Revolver32, Lang::Ja) => ".32リボルバー",
-            (Self::Automatic32, Lang::En(_)) => ".32 Automatic",
-            (Self::Automatic32, Lang::Ja) => ".32オートマチック",
-            (Self::LugerP08, Lang::En(_)) => "Model P08 Luger",
-            (Self::LugerP08, Lang::Ja) => "P08ルガー",
-            (Self::Revolver45, Lang::En(_)) => ".45 Revolver",
-            (Self::Revolver45, Lang::Ja) => ".45リボルバー",
-            (Self::Automatic45, Lang::En(_)) => ".45 Automatic",
-            (Self::Automatic45, Lang::Ja) => ".45オートマチック",
-            (Self::BoltAction22, Lang::En(_)) => ".22 Bolt-Action Rifle",
-            (Self::BoltAction22, Lang::Ja) => ".22ボルトアクションライフル",
-            (Self::LeverAction30, Lang::En(_)) => ".30 Lever-Action Carbine",
-            (Self::LeverAction30, Lang::Ja) => ".30レバーアクションカービン",
-            (Self::MartiniHenry45, Lang::En(_)) => ".45 Martini-Henry Rifle",
-            (Self::MartiniHenry45, Lang::Ja) => ".45マルティニ・ヘンリー",
-            (Self::MoranAirRifle, Lang::En(_)) => "Col. Moran's Air Rifle",
-            (Self::MoranAirRifle, Lang::Ja) => "モラン大佐の空気銃",
-            (Self::LeeEnfield303, Lang::En(_)) => ".303 Lee-Enfield",
-            (Self::LeeEnfield303, Lang::Ja) => ".303リー・エンフィールド",
-            (Self::BoltAction3006, Lang::En(_)) => ".30-06 Bolt-Action Rifle",
-            (Self::BoltAction3006, Lang::Ja) => ".30-06ボルトアクションライフル",
-            (Self::ElephantGun, Lang::En(_)) => "Elephant Gun",
-            (Self::ElephantGun, Lang::Ja) => "エレファントガン",
-            (Self::Shotgun20Gauge, Lang::En(_)) => "20-gauge Shotgun",
-            (Self::Shotgun20Gauge, Lang::Ja) => "20ゲージショットガン",
-            (Self::Shotgun16Gauge, Lang::En(_)) => "16-gauge Shotgun",
-            (Self::Shotgun16Gauge, Lang::Ja) => "16ゲージショットガン",
-            (Self::Shotgun12Gauge, Lang::En(_)) => "12-gauge Shotgun",
-            (Self::Shotgun12Gauge, Lang::Ja) => "12ゲージショットガン",
-            (Self::Shotgun12GaugeSemiAuto, Lang::En(_)) => "12-gauge Shotgun (semi-auto)",
-            (Self::Shotgun12GaugeSemiAuto, Lang::Ja) => "12ゲージショットガン(半自動)",
-            (Self::Shotgun12GaugeSawedOff, Lang::En(_)) => "12-gauge Shotgun (sawed off)",
-            (Self::Shotgun12GaugeSawedOff, Lang::Ja) => "12ゲージショットガン(短銃身)",
-            (Self::BergmannMP18, Lang::En(_)) => "Bergmann MP18",
-            (Self::BergmannMP18, Lang::Ja) => "ベルグマンMP18",
-            (Self::Thompson, Lang::En(_)) => "Thompson",
-            (Self::Thompson, Lang::Ja) => "トンプソン",
-            (Self::BrowningAutoRifle, Lang::En(_)) => "Browning Automatic Rifle M1918",
-            (Self::BrowningAutoRifle, Lang::Ja) => "ブローニング自動小銃M1918",
-            (Self::BrowningM1917, Lang::En(_)) => ".30 Browning M1917A1",
-            (Self::BrowningM1917, Lang::Ja) => ".30ブローニングM1917A1",
-            (Self::BrenGun, Lang::En(_)) => "Bren Gun",
-            (Self::BrenGun, Lang::Ja) => "ブレンガン",
-            (Self::LewisGun, Lang::En(_)) => "Mark I Lewis Gun",
-            (Self::LewisGun, Lang::Ja) => "ルイス軽機関銃Mk.I",
-            (Self::Vickers303, Lang::En(_)) => "Vickers .303 Machine Gun",
-            (Self::Vickers303, Lang::Ja) => "ヴィッカース.303機関銃",
+    pub fn display(&self, language: Language) -> &str {
+        match (self, language) {
+            (Self::BowAndArrows, Language::En(_)) => "Bow and Arrows",
+            (Self::BowAndArrows, Language::Ja) => "弓と矢",
+            (Self::BrassKnuckles, Language::En(_)) => "Brass Knuckles",
+            (Self::BrassKnuckles, Language::Ja) => "ブラスナックル",
+            (Self::Bullwhip, Language::En(_)) => "Bullwhip",
+            (Self::Bullwhip, Language::Ja) => "むち",
+            (Self::BurningTorch, Language::En(_)) => "Burning Torch",
+            (Self::BurningTorch, Language::Ja) => "燃えているたいまつ",
+            (Self::Blackjack, Language::En(_)) => "Blackjack",
+            (Self::Blackjack, Language::Ja) => "ブラックジャック",
+            (Self::ClubLarge, Language::En(_)) => "Club, Large",
+            (Self::ClubLarge, Language::Ja) => "大きい棍棒",
+            (Self::ClubSmall, Language::En(_)) => "Club, Small",
+            (Self::ClubSmall, Language::Ja) => "小さい棍棒",
+            (Self::Crossbow, Language::En(_)) => "Crossbow",
+            (Self::Crossbow, Language::Ja) => "クロスボウ",
+            (Self::Garrote, Language::En(_)) => "Garrote",
+            (Self::Garrote, Language::Ja) => "絞殺ひも",
+            (Self::HatchetSickle, Language::En(_)) => "Hatchet/Sickle",
+            (Self::HatchetSickle, Language::Ja) => "手斧/小鎌",
+            (Self::KnifeLarge, Language::En(_)) => "Knife, Large",
+            (Self::KnifeLarge, Language::Ja) => "大型ナイフ",
+            (Self::KnifeMedium, Language::En(_)) => "Knife, Medium",
+            (Self::KnifeMedium, Language::Ja) => "中型ナイフ",
+            (Self::KnifeSmall, Language::En(_)) => "Knife, Small",
+            (Self::KnifeSmall, Language::Ja) => "小型ナイフ",
+            (Self::Nunchaku, Language::En(_)) => "Nunchaku",
+            (Self::Nunchaku, Language::Ja) => "ヌンチャク",
+            (Self::RockThrown, Language::En(_)) => "Rock, Thrown",
+            (Self::RockThrown, Language::Ja) => "投石",
+            (Self::Shuriken, Language::En(_)) => "Shuriken",
+            (Self::Shuriken, Language::Ja) => "手裏剣",
+            (Self::Spear, Language::En(_)) => "Spear",
+            (Self::Spear, Language::Ja) => "騎兵槍",
+            (Self::SpearThrown, Language::En(_)) => "Spear, Thrown",
+            (Self::SpearThrown, Language::Ja) => "投げ槍",
+            (Self::Auto22Short, Language::En(_)) => ".22 Short Automatic",
+            (Self::Auto22Short, Language::Ja) => ".22ショートオートマチック",
+            (Self::Derringer25, Language::En(_)) => ".25 Derringer",
+            (Self::Derringer25, Language::Ja) => ".25デリンジャー",
+            (Self::Revolver32, Language::En(_)) => ".32 Revolver",
+            (Self::Revolver32, Language::Ja) => ".32リボルバー",
+            (Self::Automatic32, Language::En(_)) => ".32 Automatic",
+            (Self::Automatic32, Language::Ja) => ".32オートマチック",
+            (Self::LugerP08, Language::En(_)) => "Model P08 Luger",
+            (Self::LugerP08, Language::Ja) => "P08ルガー",
+            (Self::Revolver45, Language::En(_)) => ".45 Revolver",
+            (Self::Revolver45, Language::Ja) => ".45リボルバー",
+            (Self::Automatic45, Language::En(_)) => ".45 Automatic",
+            (Self::Automatic45, Language::Ja) => ".45オートマチック",
+            (Self::BoltAction22, Language::En(_)) => ".22 Bolt-Action Rifle",
+            (Self::BoltAction22, Language::Ja) => ".22ボルトアクションライフル",
+            (Self::LeverAction30, Language::En(_)) => ".30 Lever-Action Carbine",
+            (Self::LeverAction30, Language::Ja) => ".30レバーアクションカービン",
+            (Self::MartiniHenry45, Language::En(_)) => ".45 Martini-Henry Rifle",
+            (Self::MartiniHenry45, Language::Ja) => ".45マルティニ・ヘンリー",
+            (Self::MoranAirRifle, Language::En(_)) => "Col. Moran's Air Rifle",
+            (Self::MoranAirRifle, Language::Ja) => "モラン大佐の空気銃",
+            (Self::LeeEnfield303, Language::En(_)) => ".303 Lee-Enfield",
+            (Self::LeeEnfield303, Language::Ja) => ".303リー・エンフィールド",
+            (Self::BoltAction3006, Language::En(_)) => ".30-06 Bolt-Action Rifle",
+            (Self::BoltAction3006, Language::Ja) => ".30-06ボルトアクションライフル",
+            (Self::ElephantGun, Language::En(_)) => "Elephant Gun",
+            (Self::ElephantGun, Language::Ja) => "エレファントガン",
+            (Self::Shotgun20Gauge, Language::En(_)) => "20-gauge Shotgun",
+            (Self::Shotgun20Gauge, Language::Ja) => "20ゲージショットガン",
+            (Self::Shotgun16Gauge, Language::En(_)) => "16-gauge Shotgun",
+            (Self::Shotgun16Gauge, Language::Ja) => "16ゲージショットガン",
+            (Self::Shotgun12Gauge, Language::En(_)) => "12-gauge Shotgun",
+            (Self::Shotgun12Gauge, Language::Ja) => "12ゲージショットガン",
+            (Self::Shotgun12GaugeSemiAuto, Language::En(_)) => "12-gauge Shotgun (semi-auto)",
+            (Self::Shotgun12GaugeSemiAuto, Language::Ja) => "12ゲージショットガン(半自動)",
+            (Self::Shotgun12GaugeSawedOff, Language::En(_)) => "12-gauge Shotgun (sawed off)",
+            (Self::Shotgun12GaugeSawedOff, Language::Ja) => "12ゲージショットガン(短銃身)",
+            (Self::BergmannMP18, Language::En(_)) => "Bergmann MP18",
+            (Self::BergmannMP18, Language::Ja) => "ベルグマンMP18",
+            (Self::Thompson, Language::En(_)) => "Thompson",
+            (Self::Thompson, Language::Ja) => "トンプソン",
+            (Self::BrowningAutoRifle, Language::En(_)) => "Browning Automatic Rifle M1918",
+            (Self::BrowningAutoRifle, Language::Ja) => "ブローニング自動小銃M1918",
+            (Self::BrowningM1917, Language::En(_)) => ".30 Browning M1917A1",
+            (Self::BrowningM1917, Language::Ja) => ".30ブローニングM1917A1",
+            (Self::BrenGun, Language::En(_)) => "Bren Gun",
+            (Self::BrenGun, Language::Ja) => "ブレンガン",
+            (Self::LewisGun, Language::En(_)) => "Mark I Lewis Gun",
+            (Self::LewisGun, Language::Ja) => "ルイス軽機関銃Mk.I",
+            (Self::Vickers303, Language::En(_)) => "Vickers .303 Machine Gun",
+            (Self::Vickers303, Language::Ja) => "ヴィッカース.303機関銃",
             (Self::Custom(_), _) => "Custom",
         }
     }
@@ -2947,7 +2947,7 @@ impl Weapon {
         todo!()
     }
 
-    pub fn range(&self, _lang: Lang) -> (u8, &str) {
+    pub fn range(&self, _lang: Language) -> (u8, &str) {
         // integer, unit
         todo!()
     }
@@ -3175,26 +3175,26 @@ pub enum Armor {
 }
 
 impl Armor {
-    pub fn display(&self, lang: Lang) -> &str {
-        match (self, lang) {
-            (Self::ThickLeatherJacket, Lang::En(_)) => "Thick Leather Jacket",
-            (Self::ThickLeatherJacket, Lang::Ja) => "厚い皮のジャケット",
-            (Self::WwiHelmet, Lang::En(_)) => "WWI Helmet",
-            (Self::WwiHelmet, Lang::Ja) => "第一次大戦型のヘルメット",
-            (Self::Hardwood1In, Lang::En(_)) => "1\" Hardwood",
-            (Self::Hardwood1In, Lang::Ja) => "3cmの堅い木",
-            (Self::PresentUsHelmet, Lang::En(_)) => "Present U.S. Helmet",
-            (Self::PresentUsHelmet, Lang::Ja) => "現代アメリカ軍のヘルメット",
-            (Self::HeavyKevlarVest, Lang::En(_)) => "Heavy Kevlar Vest",
-            (Self::HeavyKevlarVest, Lang::Ja) => "厚いケブラー製のベスト",
-            (Self::MilitaryBodyArmor, Lang::En(_)) => "Military Body Armor",
-            (Self::MilitaryBodyArmor, Lang::Ja) => "軍用ボディ・アーマー",
-            (Self::BulletproofGlass, Lang::En(_)) => "1.5\" Bulletproof Glass",
-            (Self::BulletproofGlass, Lang::Ja) => "4cmの防弾ガラス",
-            (Self::SteelPlate1In, Lang::En(_)) => "1\" Steel Plate",
-            (Self::SteelPlate1In, Lang::Ja) => "5cmの鋼鉄板",
-            (Self::LargeSandbag, Lang::En(_)) => "Large Sandbag",
-            (Self::LargeSandbag, Lang::Ja) => "大きなサンドバッグ",
+    pub fn display(&self, language: Language) -> &str {
+        match (self, language) {
+            (Self::ThickLeatherJacket, Language::En(_)) => "Thick Leather Jacket",
+            (Self::ThickLeatherJacket, Language::Ja) => "厚い皮のジャケット",
+            (Self::WwiHelmet, Language::En(_)) => "WWI Helmet",
+            (Self::WwiHelmet, Language::Ja) => "第一次大戦型のヘルメット",
+            (Self::Hardwood1In, Language::En(_)) => "1\" Hardwood",
+            (Self::Hardwood1In, Language::Ja) => "3cmの堅い木",
+            (Self::PresentUsHelmet, Language::En(_)) => "Present U.S. Helmet",
+            (Self::PresentUsHelmet, Language::Ja) => "現代アメリカ軍のヘルメット",
+            (Self::HeavyKevlarVest, Language::En(_)) => "Heavy Kevlar Vest",
+            (Self::HeavyKevlarVest, Language::Ja) => "厚いケブラー製のベスト",
+            (Self::MilitaryBodyArmor, Language::En(_)) => "Military Body Armor",
+            (Self::MilitaryBodyArmor, Language::Ja) => "軍用ボディ・アーマー",
+            (Self::BulletproofGlass, Language::En(_)) => "1.5\" Bulletproof Glass",
+            (Self::BulletproofGlass, Language::Ja) => "4cmの防弾ガラス",
+            (Self::SteelPlate1In, Language::En(_)) => "1\" Steel Plate",
+            (Self::SteelPlate1In, Language::Ja) => "5cmの鋼鉄板",
+            (Self::LargeSandbag, Language::En(_)) => "Large Sandbag",
+            (Self::LargeSandbag, Language::Ja) => "大きなサンドバッグ",
             (Self::Custom(s), _) => s.as_str(),
         }
     }
@@ -3236,14 +3236,14 @@ pub enum WealthField {
 }
 
 impl WealthField {
-    pub fn display(&self, lang: Lang) -> &'static str {
-        match (self, lang) {
-            (Self::SpendingLevel, Lang::En(_)) => "Spending Level",
-            (Self::SpendingLevel, Lang::Ja) => "支出レベル",
-            (Self::Cash, Lang::En(_)) => "Cash",
-            (Self::Cash, Lang::Ja) => "現金",
-            (Self::Assets, Lang::En(_)) => "Assets",
-            (Self::Assets, Lang::Ja) => "資産",
+    pub fn display(&self, language: Language) -> &'static str {
+        match (self, language) {
+            (Self::SpendingLevel, Language::En(_)) => "Spending Level",
+            (Self::SpendingLevel, Language::Ja) => "支出レベル",
+            (Self::Cash, Language::En(_)) => "Cash",
+            (Self::Cash, Language::Ja) => "現金",
+            (Self::Assets, Language::En(_)) => "Assets",
+            (Self::Assets, Language::Ja) => "資産",
         }
     }
 }
@@ -3281,32 +3281,32 @@ impl Backstory {
             }
     }
 
-    pub fn display(&self, lang: Lang) -> &'static str {
-        match (self, lang) {
-            (Self::KeyConnection(_), Lang::En(_)) => "Key Connection",
-            (Self::KeyConnection(_), Lang::Ja) => "キーコネクション",
-            (Self::PersonalDescription, Lang::En(_)) => "Personal Description",
-            (Self::PersonalDescription, Lang::Ja) => "容姿の描写",
-            (Self::IdeologyAndBeliefs, Lang::En(_)) => "Ideology & Beliefs",
-            (Self::IdeologyAndBeliefs, Lang::Ja) => "イデオロギー・信念",
-            (Self::SignificantPeople, Lang::En(_)) => "Significant People",
-            (Self::SignificantPeople, Lang::Ja) => "重要な人物",
-            (Self::MeaningfulLocation, Lang::En(_)) => "Meaningful Location",
-            (Self::MeaningfulLocation, Lang::Ja) => "意味のある場所",
-            (Self::TreasuredPossession, Lang::En(_)) => "Treasured Possession",
-            (Self::TreasuredPossession, Lang::Ja) => "秘蔵の品",
-            (Self::Trait, Lang::En(_)) => "Trait",
-            (Self::Trait, Lang::Ja) => "特徴",
-            (Self::InjuresAndScars, Lang::En(_)) => "Injuries & Scars",
-            (Self::InjuresAndScars, Lang::Ja) => "負傷、傷跡",
-            (Self::PhobiasAndManias, Lang::En(_)) => "Phobias & Manias",
-            (Self::PhobiasAndManias, Lang::Ja) => "恐怖症とマニア",
-            (Self::ArcaneTomesAndSpells, Lang::En(_)) => "Arcane Tomes & Spells",
-            (Self::ArcaneTomesAndSpells, Lang::Ja) => "魔道書、呪文、アーティファクト",
-            (Self::EncountersWithStrangeEntities, Lang::En(_)) => {
+    pub fn display(&self, language: Language) -> &'static str {
+        match (self, language) {
+            (Self::KeyConnection(_), Language::En(_)) => "Key Connection",
+            (Self::KeyConnection(_), Language::Ja) => "キーコネクション",
+            (Self::PersonalDescription, Language::En(_)) => "Personal Description",
+            (Self::PersonalDescription, Language::Ja) => "容姿の描写",
+            (Self::IdeologyAndBeliefs, Language::En(_)) => "Ideology & Beliefs",
+            (Self::IdeologyAndBeliefs, Language::Ja) => "イデオロギー・信念",
+            (Self::SignificantPeople, Language::En(_)) => "Significant People",
+            (Self::SignificantPeople, Language::Ja) => "重要な人物",
+            (Self::MeaningfulLocation, Language::En(_)) => "Meaningful Location",
+            (Self::MeaningfulLocation, Language::Ja) => "意味のある場所",
+            (Self::TreasuredPossession, Language::En(_)) => "Treasured Possession",
+            (Self::TreasuredPossession, Language::Ja) => "秘蔵の品",
+            (Self::Trait, Language::En(_)) => "Trait",
+            (Self::Trait, Language::Ja) => "特徴",
+            (Self::InjuresAndScars, Language::En(_)) => "Injuries & Scars",
+            (Self::InjuresAndScars, Language::Ja) => "負傷、傷跡",
+            (Self::PhobiasAndManias, Language::En(_)) => "Phobias & Manias",
+            (Self::PhobiasAndManias, Language::Ja) => "恐怖症とマニア",
+            (Self::ArcaneTomesAndSpells, Language::En(_)) => "Arcane Tomes & Spells",
+            (Self::ArcaneTomesAndSpells, Language::Ja) => "魔道書、呪文、アーティファクト",
+            (Self::EncountersWithStrangeEntities, Language::En(_)) => {
                 "Encounters with Strange Entities"
             }
-            (Self::EncountersWithStrangeEntities, Lang::Ja) => "遭遇した超自然の存在",
+            (Self::EncountersWithStrangeEntities, Language::Ja) => "遭遇した超自然の存在",
         }
     }
 }

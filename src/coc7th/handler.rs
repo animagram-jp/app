@@ -16,7 +16,7 @@ use crate::{
     file_store::{Backend, FileStore, StoreId},
 };
 use crate::{
-    Lang,
+    Language,
     coc7th::{
         character::SCHEMA_SIZE,
         target::{SHEET_PARTS, Sheet, Target},
@@ -41,7 +41,7 @@ const CHARACTER_STORE: StoreId = StoreId { name: "characters", version: "0.0" };
 pub struct Handler {
     character_sheet: Sheet,
     dialog:          Dialog,
-    lang:            Lang,
+    language:        Language,
     last_toast:      u2,
     character:       DataStruct,
     pub now:         f64,
@@ -79,7 +79,7 @@ impl crate::event::Handler for Handler {
         let mut handler = Self {
             character_sheet: Sheet::Immutable,
             dialog: Dialog::None,
-            lang: Lang::Ja,
+            language: Language::Ja,
             last_toast: u2::new(1),
             character: DataStruct::new(0, 0.0, SCHEMA_SIZE),
             now: 0.0,
@@ -122,6 +122,14 @@ impl crate::event::Handler for Handler {
         let mut commands = Vec::new();
         #[cfg(feature = "file_store")]
         commands.extend(self.startup.drain(..).map(|error| Command::Error { error }));
+        commands.push(Command::SetText {
+            id:    Target::Language.to_dom(),
+            value: self.language.display().into(),
+        });
+        commands.extend(Language::list().iter().map(|&l| Command::SetText {
+            id:    Target::LanguageOption(l).to_dom(),
+            value: l.display().into(),
+        }));
         commands.push(Command::RemoveAttribute {
             id:        Target::Body.to_dom(),
             attribute: Attribute::Hidden,
@@ -135,7 +143,20 @@ impl crate::event::Handler for Handler {
         _pointer: &Pointer,
     ) -> (Vec<Event>, Vec<Command>) {
         let target = Target::from_dom(&event.id);
-        if !matches!(event.event_type, EventType::Click) || target != Some(Target::Edit) {
+        if !matches!(event.event_type, EventType::Click) {
+            return (vec![], vec![]);
+        }
+        if let Some(Target::LanguageOption(l)) = target {
+            self.language = l;
+            return (
+                vec![],
+                vec![Command::SetText {
+                    id:    Target::Language.to_dom(),
+                    value: l.display().into(),
+                }],
+            );
+        }
+        if target != Some(Target::Edit) {
             return (vec![], vec![]);
         }
 
@@ -222,7 +243,7 @@ mod toggle_tests {
 
     use super::*;
     use crate::{
-        block_on,
+        En, block_on,
         event::Handler as _,
         host::{KeyName, dom},
     };
@@ -256,6 +277,17 @@ mod toggle_tests {
         }
     }
 
+    fn set_text(command: &Command) -> (dom::Id, String) {
+        match command {
+            Command::SetText { id, value } => (id.clone(), value.clone()),
+            _ => panic!("unexpected command"),
+        }
+    }
+
+    fn labelled(language: Language) -> (dom::Id, String) {
+        (Target::Language.to_dom(), String::from(language.display()))
+    }
+
     fn toggled(shown: Sheet, hidden: Sheet) -> Vec<(bool, dom::Id)> {
         let change = |sheet, is_hidden| {
             (1..=SHEET_PARTS).map(move |part| (is_hidden, Target::Sheet(sheet, part).to_dom()))
@@ -277,14 +309,36 @@ mod toggle_tests {
     }
 
     #[test]
-    fn the_initial_draw_reveals_the_body() {
+    fn the_initial_draw_labels_the_language_and_reveals_the_body() {
         let mut handler = block_on(Handler::ready(0.0, 0.0, 16.0, 0.0, 0));
         let (events, commands) = handler.initial_draw();
         assert!(events.is_empty());
+        let (texts, reveal) = commands.split_at(commands.len() - 1);
+        let expected: Vec<_> = [labelled(Language::Ja)]
+            .into_iter()
+            .chain(
+                Language::list()
+                    .iter()
+                    .map(|&l| (Target::LanguageOption(l).to_dom(), String::from(l.display()))),
+            )
+            .collect();
+        assert_eq!(texts.iter().map(set_text).collect::<Vec<_>>(), expected);
         assert_eq!(
-            commands.iter().map(hidden_change).collect::<Vec<_>>(),
+            reveal.iter().map(hidden_change).collect::<Vec<_>>(),
             [(false, Target::Body.to_dom())]
         );
+    }
+
+    #[test]
+    fn choosing_a_language_relabels_the_button() {
+        let mut handler = block_on(Handler::ready(0.0, 0.0, 16.0, 0.0, 0));
+        let english = Language::En(En::Gb);
+        let commands = click(&mut handler, Target::LanguageOption(english).to_dom());
+        assert_eq!(commands.iter().map(set_text).collect::<Vec<_>>(), [labelled(english)]);
+        assert_eq!(handler.language, english);
+        let commands = click(&mut handler, Target::LanguageOption(Language::Ja).to_dom());
+        assert_eq!(commands.iter().map(set_text).collect::<Vec<_>>(), [labelled(Language::Ja)]);
+        assert_eq!(handler.language, Language::Ja);
     }
 
     #[test]

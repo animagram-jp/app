@@ -15,6 +15,7 @@ curl -fsSL -H "Accept: application/vnd.github.raw+json" "https://api.github.com/
 - moduleなどitemは、概念を表す名詞として語彙選定する。
 - 関数名は、namespaceで上位に既に並ぶ語彙・引数に現れている目的語は含まず、その上で{verb}_{adje
   ctive}_{object}のように命名する。
+- script中の変数であっても、略語を用いない。但し、シグネチャでは無い関数内matchやiterator処理では、最初の一文字で表してよい。
 - コメントによる仕切り線は `//(/) === text ===`、または`// --- text ---`とする。`/* */`はなるべく使わない。
 - hrefの値は、相対パスは"./"、絶対パスは"/"で必ず始める。原則、相対パスに統一する。
 - HTMLのID, フォーマット規則は[ORG_CONTRIBUTING.md](./ORG_CONTRIBUTING.md)に従う。

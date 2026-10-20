@@ -18,7 +18,7 @@
 ## Example
 
 ```rust
-use app::{Lang, En};
+use app::{Language, En};
 use data_struct::DataStruct;
 
 /// 被定義関係の終端オブジェクト
@@ -43,10 +43,10 @@ impl Subject {
     }
 
     /// display: 定義者のデータに依存しない集合名は被定義者に所属する
-    pub const fn display(&self, lang: Lang) -> &'static str {
-        match (self, lang) {
-            (Self::Predicate, Lang::En(_)) => "Predicate",
-            (Self::Predicate, Lang::Ja)    => "定義者",
+    pub const fn display(&self, language: Language) -> &'static str {
+        match (self, language) {
+            (Self::Predicate, Language::En(_)) => "Predicate",
+            (Self::Predicate, Language::Ja)    => "定義者",
             (_, _) => "",
         }
     }
@@ -129,7 +129,7 @@ impl Handler {
         ok()
     }
 
-    pub fn process(event: Event, lang: Lang) -> Vec<Command> {
+    pub fn process(event: Event, language: Language) -> Vec<Command> {
         match event {
             _ =>
         }

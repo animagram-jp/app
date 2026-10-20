@@ -1,14 +1,14 @@
 use alloc::vec::Vec;
 use core::{array::from_fn, primitive::u8};
 
-use crate::{Lang, data_struct::DataStruct, list::ListError};
+use crate::{Language, data_struct::DataStruct, list::ListError};
 
 // === SubjectTrait ===
 
 pub trait SubjectTrait {
     const SCHEMA_SIZE: u32;
     fn ids(&self) -> &'static [u32];
-    fn display(&self, lang: Lang) -> &'static str;
+    fn display(&self, language: Language) -> &'static str;
     fn list() -> &'static [Self]
     where
         Self: Sized;

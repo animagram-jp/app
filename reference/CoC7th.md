@@ -189,20 +189,20 @@ pub enum StandardOfLiving {
 }
 
 impl StandardOfLiving {
-    pub fn display(self, lang: Lang) -> &'static str {
-        match (self, lang) {
-            (Self::Pauper,    Lang::Ja) => "無一文",
-            (Self::Pauper,    Lang::En(_)) => "Pauper",
-            (Self::Poor,      Lang::Ja) => "貧乏",
-            (Self::Poor,      Lang::En(_)) => "Poor",
-            (Self::Average,   Lang::Ja) => "平均",
-            (Self::Average,   Lang::En(_)) => "Average",
-            (Self::Wealthy,   Lang::Ja) => "裕福",
-            (Self::Wealthy,   Lang::En(_)) => "Wealthy",
-            (Self::Rich,      Lang::Ja) => "富豪",
-            (Self::Rich,      Lang::En(_)) => "Rich",
-            (Self::SuperRich, Lang::Ja) => "大富豪",
-            (Self::SuperRich, Lang::En(_)) => "Super Rich",
+    pub fn display(self, language: Language) -> &'static str {
+        match (self, language) {
+            (Self::Pauper,    Language::Ja) => "無一文",
+            (Self::Pauper,    Language::En(_)) => "Pauper",
+            (Self::Poor,      Language::Ja) => "貧乏",
+            (Self::Poor,      Language::En(_)) => "Poor",
+            (Self::Average,   Language::Ja) => "平均",
+            (Self::Average,   Language::En(_)) => "Average",
+            (Self::Wealthy,   Language::Ja) => "裕福",
+            (Self::Wealthy,   Language::En(_)) => "Wealthy",
+            (Self::Rich,      Language::Ja) => "富豪",
+            (Self::Rich,      Language::En(_)) => "Rich",
+            (Self::SuperRich, Language::Ja) => "大富豪",
+            (Self::SuperRich, Language::En(_)) => "Super Rich",
         }
     }
 }
@@ -276,29 +276,29 @@ impl AgeCategory {
         matches!(self, Self::Teen)
     }
 
-    pub fn display(&self, lang: Lang) -> &'static str {
-        match (self, lang) {
-            (Self::Teen,    Lang::Ja) => "10代 (15-19)",
-            (Self::Teen,    Lang::En(_)) => "Teen (15-19)",
-            (Self::Young,   Lang::Ja) => "若年 (20-39)",
-            (Self::Young,   Lang::En(_)) => "Young Adult (20-39)",
-            (Self::Middle,  Lang::Ja) => "中年 (40-49)",
-            (Self::Middle,  Lang::En(_)) => "Middle-Aged (40-49)",
-            (Self::Senior,  Lang::Ja) => "熟年 (50-59)",
-            (Self::Senior,  Lang::En(_)) => "Senior (50-59)",
-            (Self::Elderly, Lang::Ja) => "老年 (60-69)",
-            (Self::Elderly, Lang::En(_)) => "Elderly (60-69)",
-            (Self::Old,     Lang::Ja) => "高齢 (70-79)",
-            (Self::Old,     Lang::En(_)) => "Old (70-79)",
-            (Self::Ancient, Lang::Ja) => "超高齢 (80+)",
-            (Self::Ancient, Lang::En(_)) => "Very Old (80+)",
+    pub fn display(&self, language: Language) -> &'static str {
+        match (self, language) {
+            (Self::Teen,    Language::Ja) => "10代 (15-19)",
+            (Self::Teen,    Language::En(_)) => "Teen (15-19)",
+            (Self::Young,   Language::Ja) => "若年 (20-39)",
+            (Self::Young,   Language::En(_)) => "Young Adult (20-39)",
+            (Self::Middle,  Language::Ja) => "中年 (40-49)",
+            (Self::Middle,  Language::En(_)) => "Middle-Aged (40-49)",
+            (Self::Senior,  Language::Ja) => "熟年 (50-59)",
+            (Self::Senior,  Language::En(_)) => "Senior (50-59)",
+            (Self::Elderly, Language::Ja) => "老年 (60-69)",
+            (Self::Elderly, Language::En(_)) => "Elderly (60-69)",
+            (Self::Old,     Language::Ja) => "高齢 (70-79)",
+            (Self::Old,     Language::En(_)) => "Old (70-79)",
+            (Self::Ancient, Language::Ja) => "超高齢 (80+)",
+            (Self::Ancient, Language::En(_)) => "Very Old (80+)",
         }
     }
 }
 
 // --- Roll ---
-            (Self::AutoFireRoll,    Lang::Ja) => "自動火器の連射判定",
-            (Self::AutoFireRoll, Lang::En(_)) => "Automatic Fire Roll",
+            (Self::AutoFireRoll,    Language::Ja) => "自動火器の連射判定",
+            (Self::AutoFireRoll, Language::En(_)) => "Automatic Fire Roll",
 
 // 自動火器射撃判定 (Full Auto Roll)
 #[derive(Debug)]

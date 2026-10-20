@@ -127,7 +127,7 @@ pub mod tag {
 
     use super::blank;
     use crate::{
-        Lang,
+        Language,
         data_struct::DataStruct,
         host::{Output, parse},
         object::{Predicate, SubjectTrait},
@@ -155,15 +155,15 @@ pub mod tag {
             }
         }
 
-        fn display(&self, lang: Lang) -> &'static str {
-            match (self, lang) {
-                (Self::Parent, Lang::En(_)) => "Parent",
-                (Self::Parent, Lang::Ja) => "親",
+        fn display(&self, language: Language) -> &'static str {
+            match (self, language) {
+                (Self::Parent, Language::En(_)) => "Parent",
+                (Self::Parent, Language::Ja) => "親",
                 (Self::Uid, _) => "UID",
-                (Self::Code, Lang::En(_)) => "Code",
-                (Self::Code, Lang::Ja) => "コード",
-                (Self::Label, Lang::En(_)) => "Label",
-                (Self::Label, Lang::Ja) => "表示",
+                (Self::Code, Language::En(_)) => "Code",
+                (Self::Code, Language::Ja) => "コード",
+                (Self::Label, Language::En(_)) => "Label",
+                (Self::Label, Language::Ja) => "表示",
             }
         }
 
@@ -205,7 +205,7 @@ pub mod appointment {
         DataError, blank, entries, format_error, parse_date, parse_time, parse_uid, tag, tags,
     };
     use crate::{
-        Lang,
+        Language,
         calendar::{HOUR_MINUTE, YEAR_DAY},
         data_struct::DataStruct,
         file_store::FileStore,
@@ -266,21 +266,21 @@ pub mod appointment {
             }
         }
 
-        fn display(&self, lang: Lang) -> &'static str {
-            match (self, lang) {
+        fn display(&self, language: Language) -> &'static str {
+            match (self, language) {
                 (Self::Uid, _) => "UID",
-                (Self::Places, Lang::En(_)) => "Places",
-                (Self::Places, Lang::Ja) => "配置",
-                (Self::Range, Lang::En(_)) => "Time",
-                (Self::Range, Lang::Ja) => "時間帯",
-                (Self::Title, Lang::En(_)) => "Title",
-                (Self::Title, Lang::Ja) => "タイトル",
-                (Self::Category, Lang::En(_)) => "Category",
-                (Self::Category, Lang::Ja) => "カテゴリ",
-                (Self::Status, Lang::En(_)) => "Status",
-                (Self::Status, Lang::Ja) => "状態",
-                (Self::Note, Lang::En(_)) => "Note",
-                (Self::Note, Lang::Ja) => "メモ",
+                (Self::Places, Language::En(_)) => "Places",
+                (Self::Places, Language::Ja) => "配置",
+                (Self::Range, Language::En(_)) => "Time",
+                (Self::Range, Language::Ja) => "時間帯",
+                (Self::Title, Language::En(_)) => "Title",
+                (Self::Title, Language::Ja) => "タイトル",
+                (Self::Category, Language::En(_)) => "Category",
+                (Self::Category, Language::Ja) => "カテゴリ",
+                (Self::Status, Language::En(_)) => "Status",
+                (Self::Status, Language::Ja) => "状態",
+                (Self::Note, Language::En(_)) => "Note",
+                (Self::Note, Language::Ja) => "メモ",
             }
         }
 
@@ -422,7 +422,7 @@ pub mod appointment {
     }
 
     pub fn export(store: &impl FileStore) -> Result<Vec<u8>, DataError> {
-        let date = |day: u64| display(day, Lang::Ja, YEAR_DAY, Format::Iso);
+        let date = |day: u64| display(day, Language::Ja, YEAR_DAY, Format::Iso);
         let option =
             |t: &DataStruct| json!({"code": tag::Code::read(t), "label": tag::Label::read(t)});
         let appointments: Vec<Value> = entries(store, KIND)?
@@ -438,8 +438,8 @@ pub mod appointment {
                 json!({
                     "uid": format!("{}", Uid::read(a)),
                     "places": places,
-                    "start": display(add(anchor, start), Lang::Ja, HOUR_MINUTE, Format::Iso),
-                    "end": display(add(anchor, end), Lang::Ja, HOUR_MINUTE, Format::Iso),
+                    "start": display(add(anchor, start), Language::Ja, HOUR_MINUTE, Format::Iso),
+                    "end": display(add(anchor, end), Language::Ja, HOUR_MINUTE, Format::Iso),
                     "title": Title::read(a),
                     "category": Category::read(a),
                     "status": Status::read(a),

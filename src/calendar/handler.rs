@@ -12,7 +12,7 @@ use rectgrid::{
 };
 
 use crate::{
-    Error, Lang,
+    Error, Language,
     calendar::{
         HOUR_MINUTE, MONTH_DAY, YEAR_DAY,
         data::{
@@ -21,7 +21,7 @@ use crate::{
             parse_date, parse_time, tag,
         },
         grid::{AXES, Axis, CLOCK, Cell, Clock, Day, Grid, Month, lane_box, lanes, span},
-        target::{CardPart, EditField, Target},
+        target::{CardPart, EditField, STEP_TODAY, Target},
     },
     data_struct::DataStruct,
     event::{
@@ -55,8 +55,6 @@ const COLUMN_MIN_REM: f64 = 5.0;
 const AXIS_REM: f64 = 4.0;
 const HEAD_REM: f64 = 5.0;
 const STEP_COUNT: u32 = 5;
-const LANG: Lang = Lang::Ja;
-const STEP_TODAY: u32 = 3;
 const LOAD_REQUEST: u32 = 1;
 const LOAD_PATH: &str = "data/calendar.json";
 const STATUS_OK: u16 = 200;
@@ -154,6 +152,7 @@ pub struct Handler {
     viewport_width_px: f64,
     rem_in_px:         f64,
     scroll_x:          f64,
+    language:          Language,
     rectgrid:          RectGrid<2>,
 }
 
@@ -207,6 +206,7 @@ impl Handler {
             viewport_width_px,
             rem_in_px,
             scroll_x: 0.0,
+            language: Language::Ja,
             rectgrid: RectGrid::new(
                 [Px::new(0.0), Px::new(0.0)],
                 [
@@ -477,15 +477,18 @@ impl Handler {
                 EditField::Status,
                 option_value(&self.tags(appointment::STATUS), |s| tag::Code::read(s) == status),
             ),
-            (EditField::Date, display(place.day, LANG, YEAR_DAY, Format::Iso)),
+            (EditField::Date, display(place.day, self.language, YEAR_DAY, Format::Iso)),
             (
                 EditField::Resource,
                 option_value(&self.tags(appointment::RESOURCE), |r| {
                     tag::Uid::read(r) == place.resource
                 }),
             ),
-            (EditField::Start, display(add(place.day, start), Lang::Ja, HOUR_MINUTE, Format::Iso)),
-            (EditField::End, display(add(place.day, end), Lang::Ja, HOUR_MINUTE, Format::Iso)),
+            (
+                EditField::Start,
+                display(add(place.day, start), Language::Ja, HOUR_MINUTE, Format::Iso),
+            ),
+            (EditField::End, display(add(place.day, end), Language::Ja, HOUR_MINUTE, Format::Iso)),
             (EditField::Note, appointment::Note::read(draft)),
         ];
         let mut commands = vec![
@@ -990,6 +993,16 @@ impl Handler {
                 };
                 (vec![], self.date_commands())
             }
+            Target::LanguageOption(l) => {
+                self.language = l;
+                let mut commands = self.date_commands();
+                commands.extend(self.header_commands());
+                commands.push(Command::SetText {
+                    id:    Target::Language.to_dom(),
+                    value: l.display().into(),
+                });
+                (vec![], commands)
+            }
             Target::Modal => {
                 self.editing = None;
                 (vec![], vec![Command::CloseModal { id: Target::Modal.to_dom() }])
@@ -1205,7 +1218,7 @@ impl Handler {
             } else {
                 (TimevolumeUnit::Day, TimevolumeUnit::Day)
             };
-            let label = display(day, LANG, scope, Format::WithoutYoubi);
+            let label = display(day, self.language, scope, Format::WithoutYoubi);
             let current = day == self.today;
             commands.push(Command::SetText { id: Target::BandLabel(n).to_dom(), value: label });
             commands.push(if current {
@@ -1306,8 +1319,8 @@ impl Handler {
                     Target::CardPart(n, CardPart::Time).to_dom(),
                     format!(
                         "{}–{}",
-                        display(add(self.base, start), Lang::Ja, HOUR_MINUTE, Format::Iso),
-                        display(add(self.base, end), Lang::Ja, HOUR_MINUTE, Format::Iso)
+                        display(add(self.base, start), Language::Ja, HOUR_MINUTE, Format::Iso),
+                        display(add(self.base, end), Language::Ja, HOUR_MINUTE, Format::Iso)
                     ),
                 ),
                 (Target::CardPart(n, CardPart::Title).to_dom(), appointment::Title::read(entry)),
@@ -1402,6 +1415,25 @@ impl Handler {
         self.dirty
     }
 
+    fn header_commands(&self) -> Vec<Command> {
+        let mut commands: Vec<Command> = AXES
+            .iter()
+            .map(|&axis| Command::SetText {
+                id:    Target::AxisName(axis).to_dom(),
+                value: axis.display(self.language).into(),
+            })
+            .collect();
+        commands.extend([Target::Step(STEP_TODAY), Target::Save].into_iter().filter_map(
+            |target| {
+                Some(Command::SetText {
+                    id:    target.to_dom(),
+                    value: target.display(self.language)?.into(),
+                })
+            },
+        ));
+        commands
+    }
+
     fn date_commands(&self) -> Vec<Command> {
         let first = self.first_day();
         let days = self.axis.days();
@@ -1411,15 +1443,19 @@ impl Handler {
                 Command::SetText {
                     id:    Target::DayTitle(n).to_dom(),
                     value: if self.month() {
-                        String::from(youbi(day).display(LANG))
+                        String::from(youbi(day).display(self.language))
                     } else {
-                        display(day, LANG, MONTH_DAY, Format::WithYoubi)
+                        display(day, self.language, MONTH_DAY, Format::WithYoubi)
                     },
                 }
             })
             .collect();
-        let value =
-            display(first, LANG, (TimevolumeUnit::Day, TimevolumeUnit::Day), Format::WithoutYoubi);
+        let value = display(
+            first,
+            self.language,
+            (TimevolumeUnit::Day, TimevolumeUnit::Day),
+            Format::WithoutYoubi,
+        );
         commands.push(Command::SetText { id: Target::Title.to_dom(), value });
         if self.month() {
             commands.extend(self.axis_commands());
@@ -1512,7 +1548,7 @@ impl Handler {
                 match Month::locate([0, row as i32]) {
                     Some((day, None)) => display(
                         add(first, Timevolume::new(TimevolumeUnit::Day, u64::from(day))),
-                        LANG,
+                        self.language,
                         MONTH_DAY,
                         Format::WithoutYoubi,
                     ),
@@ -1520,7 +1556,7 @@ impl Handler {
                 }
             } else {
                 self.clock.time(f64::from(row)).map_or_else(String::new, |time| {
-                    display(add(first, time), Lang::Ja, HOUR_MINUTE, Format::Iso)
+                    display(add(first, time), Language::Ja, HOUR_MINUTE, Format::Iso)
                 })
             };
             for side in 1..=2 {
@@ -1609,6 +1645,15 @@ impl crate::event::Handler for Handler {
 
     fn initial_draw(&mut self) -> (Vec<Event>, Vec<Command>) {
         let mut commands = self.view_commands();
+        commands.extend(self.header_commands());
+        commands.push(Command::SetText {
+            id:    Target::Language.to_dom(),
+            value: self.language.display().into(),
+        });
+        commands.extend(Language::list().iter().map(|&l| Command::SetText {
+            id:    Target::LanguageOption(l).to_dom(),
+            value: l.display().into(),
+        }));
         let failed = !self.startup.is_empty();
         commands.extend(self.startup.drain(..).map(|error| Command::Error { error }));
         if !failed {
@@ -2063,6 +2108,50 @@ mod tests {
         assert_eq!(text_of(&commands, &Target::DayTitle(1).to_dom()).unwrap(), "10/2(金)");
         assert_eq!(text_of(&commands, &Target::DayTitle(7).to_dom()).unwrap(), "10/8(木)");
         assert_eq!(text_of(&commands, &Target::Title.to_dom()).unwrap(), "2");
+    }
+
+    #[test]
+    fn initial_draw_labels_the_language_button() {
+        let mut handler = Handler::new(VIEWPORT, today(), REM);
+        let (_, commands) = handler.initial_draw();
+        assert_eq!(text_of(&commands, &Target::Language.to_dom()).unwrap(), "日本語");
+        assert_eq!(
+            text_of(&commands, &Target::LanguageOption(Language::list()[0]).to_dom()).unwrap(),
+            "en-GB"
+        );
+        assert_eq!(
+            text_of(&commands, &Target::LanguageOption(Language::Ja).to_dom()).unwrap(),
+            "日本語"
+        );
+    }
+
+    #[test]
+    fn the_header_texts_follow_the_language() {
+        let mut handler = Handler::new(VIEWPORT, today(), REM);
+        let (_, commands) = handler.initial_draw();
+        let text =
+            |commands: &[Command], target: Target| text_of(commands, &target.to_dom()).unwrap();
+        assert_eq!(text(&commands, Target::AxisName(Axis::Month)), "1ヶ月");
+        assert_eq!(text(&commands, Target::AxisName(Axis::Day(Day::Day))), "1日");
+        assert_eq!(text(&commands, Target::Step(3)), "本日");
+        assert_eq!(text(&commands, Target::Save), "保存");
+        let commands =
+            press(&mut handler, Target::LanguageOption(Language::En(crate::En::Gb)).to_dom());
+        assert_eq!(text(&commands, Target::AxisName(Axis::Month)), "1 month");
+        assert_eq!(text(&commands, Target::AxisName(Axis::Day(Day::Week))), "1 week");
+        assert_eq!(text(&commands, Target::Step(3)), "Today");
+        assert_eq!(text(&commands, Target::Save), "Save");
+    }
+
+    #[test]
+    fn choosing_a_language_relabels_the_button_and_redraws_the_dates() {
+        let mut handler = Handler::new(VIEWPORT, today(), REM);
+        let english = Language::En(crate::En::Gb);
+        let commands = press(&mut handler, Target::LanguageOption(english).to_dom());
+        assert_eq!(text_of(&commands, &Target::Language.to_dom()).unwrap(), "en-GB");
+        assert_eq!(text_of(&commands, &Target::DayTitle(1).to_dom()).unwrap(), "Fri 2 Oct");
+        let commands = press(&mut handler, Target::LanguageOption(Language::Ja).to_dom());
+        assert_eq!(text_of(&commands, &Target::DayTitle(1).to_dom()).unwrap(), "10/2(金)");
     }
 
     #[test]
@@ -3284,7 +3373,7 @@ mod tests {
         );
         assert_eq!(
             value_of(&commands, &Target::EditField(EditField::Date).to_dom()).unwrap(),
-            display(base, Lang::Ja, YEAR_DAY, Format::Iso)
+            display(base, Language::Ja, YEAR_DAY, Format::Iso)
         );
         assert_eq!(
             value_of(&commands, &Target::EditField(EditField::Resource).to_dom()).unwrap(),
@@ -3330,7 +3419,7 @@ mod tests {
         assert_eq!(value_of(&commands, &Target::EditField(EditField::Title).to_dom()).unwrap(), "");
         assert_eq!(
             value_of(&commands, &Target::EditField(EditField::Date).to_dom()).unwrap(),
-            display(base, Lang::Ja, YEAR_DAY, Format::Iso)
+            display(base, Language::Ja, YEAR_DAY, Format::Iso)
         );
         assert_eq!(
             value_of(&commands, &Target::EditField(EditField::Resource).to_dom()).unwrap(),
@@ -3384,7 +3473,7 @@ mod tests {
         );
         assert_eq!(
             value_of(&commands, &Target::EditField(EditField::Date).to_dom()).unwrap(),
-            display(base, Lang::Ja, YEAR_DAY, Format::Iso)
+            display(base, Language::Ja, YEAR_DAY, Format::Iso)
         );
         assert!(commands.iter().any(|c| matches!(c,
             Command::SetAttribute { id, attribute: Attribute::Hidden, .. } if *id == Target::Preview.to_dom())));
@@ -3403,7 +3492,7 @@ mod tests {
         assert_eq!(cells[3], Place { day: after(base, 1), resource: 102 });
         let query = form_query(
             "Span",
-            &display(base, Lang::Ja, YEAR_DAY, Format::Iso),
+            &display(base, Language::Ja, YEAR_DAY, Format::Iso),
             3,
             "12:30",
             "14:30",
@@ -3513,11 +3602,11 @@ mod tests {
         handler.process_fetched(&sample_response(1, 200));
         let before = appointments(&handler).len();
         tap_empty(&mut handler, 0.0, 0.0);
-        let date = display(today(), Lang::Ja, YEAR_DAY, Format::Iso);
+        let date = display(today(), Language::Ja, YEAR_DAY, Format::Iso);
         let (open, close) = (at(600), at(660));
         let (start, end) = (
-            display(add(today(), open), Lang::Ja, HOUR_MINUTE, Format::Iso),
-            display(add(today(), close), Lang::Ja, HOUR_MINUTE, Format::Iso),
+            display(add(today(), open), Language::Ja, HOUR_MINUTE, Format::Iso),
+            display(add(today(), close), Language::Ja, HOUR_MINUTE, Format::Iso),
         );
         let query = form_query("Neo", &date, 1, &start, &end);
         let commands = submit(&mut handler, &query);
@@ -3560,8 +3649,13 @@ mod tests {
     fn a_form_missing_a_field_is_rejected() {
         let (mut handler, base) = drag_fixture();
         tap_empty(&mut handler, 0.0, 0.0);
-        let query =
-            form_query("x", &display(base, Lang::Ja, YEAR_DAY, Format::Iso), 1, "09:30", "10:30");
+        let query = form_query(
+            "x",
+            &display(base, Language::Ja, YEAR_DAY, Format::Iso),
+            1,
+            "09:30",
+            "10:30",
+        );
         let missing = query.replace("&8=n", "");
         let commands = submit(&mut handler, &missing);
         assert_eq!(
@@ -3971,7 +4065,7 @@ mod tests {
     #[test]
     fn a_form_with_an_option_outside_the_data_is_rejected() {
         let (mut handler, base) = drag_fixture();
-        let date = display(base, Lang::Ja, YEAR_DAY, Format::Iso);
+        let date = display(base, Language::Ja, YEAR_DAY, Format::Iso);
         for (query, message) in [
             (form_query("x", &date, 1, "10:00", "11:00").replace("&3=1", "&3=2"), "状態が不正です"),
             (form_query("x", &date, 5, "10:00", "11:00"), "資源が不正です"),
@@ -4043,7 +4137,7 @@ mod tests {
                         let titles = ["", "Neo", "x"];
                         let query = form_query(
                             titles[rng.below(titles.len())],
-                            &display(day, Lang::Ja, YEAR_DAY, Format::Iso),
+                            &display(day, Language::Ja, YEAR_DAY, Format::Iso),
                             1 + rng.below(5) as u32,
                             &format!("{:02}:{:02}", rng.below(24), rng.below(60)),
                             &format!("{:02}:{:02}", rng.below(24), rng.below(60)),
@@ -4239,7 +4333,7 @@ mod tests {
         );
         let query = form_query(
             "t1",
-            &display(today(), Lang::Ja, YEAR_DAY, Format::Iso),
+            &display(today(), Language::Ja, YEAR_DAY, Format::Iso),
             2,
             "10:00",
             "11:00",

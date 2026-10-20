@@ -298,7 +298,7 @@ mod tests {
         use crate::coc7th::target::{SHEET_PARTS, Sheet, Target};
 
         const CLICK: u8 = 3;
-        let toggle = dom::Id::new(&[(dom::Tag::Header, None), (dom::Tag::Button, Some(3))]);
+        let toggle = Target::Edit.to_dom();
         let mut app = new_app();
 
         app.process(&pointer_frame(CLICK, &toggle, 0.0, 0, 0.0));

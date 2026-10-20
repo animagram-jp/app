@@ -9,7 +9,10 @@ use core::{
 };
 
 use super::grid::{AXES, Axis};
-use crate::host::dom::{Id, Tag};
+use crate::{
+    Language,
+    host::dom::{Id, Tag},
+};
 
 const FIELDS: [EditField; 8] = [
     EditField::Title,
@@ -23,6 +26,10 @@ const FIELDS: [EditField; 8] = [
 ];
 const RELOAD_BUTTON: u32 = 1;
 const SAVE_BUTTON: u32 = 2;
+pub const STEP_TODAY: u32 = 3;
+const LANGUAGE_BUTTON: u32 = 4;
+const LANGUAGE_SPAN: u32 = 2;
+const LANGUAGE_LIST: u32 = 3;
 const DELETE_BUTTON: u32 = 2;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -62,10 +69,13 @@ pub enum Target {
     Body,
     Title,
     Axis(Axis),
+    AxisName(Axis),
     Step(u32),
     Zoom,
     Reload,
     Save,
+    Language,
+    LanguageOption(Language),
     TimeAxis,
     AxisLabel(u32, u32),
     Surface,
@@ -91,6 +101,16 @@ pub enum Target {
 }
 
 impl Target {
+    pub fn display(self, language: Language) -> Option<&'static str> {
+        match (self, language) {
+            (Self::Step(STEP_TODAY), Language::En(_)) => Some("Today"),
+            (Self::Step(STEP_TODAY), Language::Ja) => Some("本日"),
+            (Self::Save, Language::En(_)) => Some("Save"),
+            (Self::Save, Language::Ja) => Some("保存"),
+            _ => None,
+        }
+    }
+
     pub fn to_dom(self) -> Id {
         let header = || Vec::from([(Tag::Header, None)]);
         let surface = || Vec::from([(Tag::Main, None), (Tag::Section, None)]);
@@ -104,6 +124,10 @@ impl Target {
             path.extend_from_slice(tail);
             path
         };
+        let axis_tail = |axis: Axis, tag: Tag| {
+            let n = AXES.iter().position(|a| *a == axis).map_or(0, |i| i as u32 + 1);
+            join(header(), &[(Tag::Fieldset, None), (Tag::Label, Some(n)), (tag, None)])
+        };
         let option = |field: EditField| {
             let mut path = modal_form();
             path.extend([(Tag::Dl, None), (Tag::Dd, Some(field.number())), (Tag::Select, None)]);
@@ -112,17 +136,19 @@ impl Target {
         let path = match self {
             Self::Body => Vec::from([(Tag::Body, None)]),
             Self::Title => Vec::from([(Tag::Header, None), (Tag::Span, None), (Tag::Strong, None)]),
-            Self::Axis(axis) => {
-                let n = AXES.iter().position(|a| *a == axis).map_or(0, |i| i as u32 + 1);
-                join(
-                    Vec::from([(Tag::Header, None)]),
-                    &[(Tag::Fieldset, None), (Tag::Label, Some(n)), (Tag::Input, None)],
-                )
-            }
+            Self::Axis(axis) => axis_tail(axis, Tag::Input),
+            Self::AxisName(axis) => axis_tail(axis, Tag::Span),
             Self::Step(n) => join(header(), &[(Tag::Div, Some(1)), (Tag::Button, Some(n))]),
             Self::Zoom => join(header(), &[(Tag::Input, None)]),
             Self::Reload => join(header(), &[(Tag::Button, Some(RELOAD_BUTTON))]),
             Self::Save => join(header(), &[(Tag::Button, Some(SAVE_BUTTON))]),
+            Self::Language => join(
+                header(),
+                &[(Tag::Button, Some(LANGUAGE_BUTTON)), (Tag::Span, Some(LANGUAGE_SPAN))],
+            ),
+            Self::LanguageOption(l) => {
+                join(header(), &[(Tag::Div, Some(LANGUAGE_LIST)), (Tag::Button, Some(l.number()))])
+            }
             Self::TimeAxis => Vec::from([(Tag::Main, None), (Tag::Ol, None)]),
             Self::AxisLabel(side, row) => Vec::from([
                 (Tag::Main, None),
@@ -182,6 +208,12 @@ impl Target {
                 (Tag::Label, Some(n)),
                 (Tag::Input, None),
             ] => Self::Axis(*AXES.get(n.checked_sub(1)? as usize)?),
+            [
+                (Tag::Header, None),
+                (Tag::Fieldset, None),
+                (Tag::Label, Some(n)),
+                (Tag::Span, None),
+            ] => Self::AxisName(*AXES.get(n.checked_sub(1)? as usize)?),
             [(Tag::Header, None), (Tag::Div, Some(1)), (Tag::Button, Some(n))] => Self::Step(*n),
             [(Tag::Header, None), (Tag::Input, None)] => Self::Zoom,
             [(Tag::Header, None), (Tag::Button, Some(n))] => match *n {
@@ -242,6 +274,14 @@ impl Target {
                 }
                 _ => return None,
             },
+            [
+                (Tag::Header, None),
+                (Tag::Button, Some(LANGUAGE_BUTTON)),
+                (Tag::Span, Some(LANGUAGE_SPAN)),
+            ] => Self::Language,
+            [(Tag::Header, None), (Tag::Div, Some(LANGUAGE_LIST)), (Tag::Button, Some(n))] => {
+                Self::LanguageOption(*Language::list().iter().find(|l| l.number() == *n)?)
+            }
             _ => return None,
         })
     }
@@ -253,6 +293,7 @@ mod tests {
     use std::fs;
 
     use super::*;
+    use crate::En;
 
     fn every_target() -> Vec<Target> {
         let mut targets = Vec::from([
@@ -261,6 +302,9 @@ mod tests {
             Target::Zoom,
             Target::Reload,
             Target::Save,
+            Target::Language,
+            Target::LanguageOption(Language::En(En::Gb)),
+            Target::LanguageOption(Language::Ja),
             Target::Surface,
             Target::DayList,
             Target::Preview,
@@ -271,6 +315,7 @@ mod tests {
             Target::Delete,
         ]);
         targets.extend(AXES.map(Target::Axis));
+        targets.extend(AXES.map(Target::AxisName));
         targets.extend(FIELDS.map(Target::EditField));
         targets.extend((1..=4).flat_map(|n| {
             [Target::CategoryOption(n), Target::StatusOption(n), Target::ResourceOption(n)]
@@ -365,6 +410,7 @@ mod tests {
             Id::new(&[(Tag::Footer, None)]),
             Id::new(&[(Tag::Header, None), (Tag::Div, Some(2)), (Tag::Button, Some(5))]),
             Id::new(&[(Tag::Header, None), (Tag::Button, Some(9))]),
+            Id::new(&[(Tag::Header, None), (Tag::Div, Some(3)), (Tag::Button, Some(3))]),
             Id::new(&[(Tag::Modal, None), (Tag::Form, Some(3))]),
         ];
         for id in unknown {

@@ -106,10 +106,10 @@ use talc::{sync::TalcLock, wasm::*};
 static ALLOCATOR: TalcLock<spinning_top::RawSpinlock, WasmGrowAndClaim, WasmBinning> =
     TalcLock::new(WasmGrowAndClaim);
 
-// === Lang ===
+// === Language ===
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Lang {
+pub enum Language {
     En(En),
     Ja,
 }
@@ -120,12 +120,23 @@ pub enum En {
     Us,
 }
 
-impl Lang {
-    fn display(self) -> &'static str {
+impl Language {
+    pub fn list() -> &'static [Self] {
+        &[Self::En(En::Gb), Self::Ja]
+    }
+
+    pub fn number(self) -> u32 {
+        match self {
+            Self::En(_) => 1,
+            Self::Ja => 2,
+        }
+    }
+
+    pub fn display(self) -> &'static str {
         match self {
             Self::En(En::Gb) => "en-GB",
             Self::En(En::Us) => "en-US",
-            Self::Ja => "ja",
+            Self::Ja => "日本語",
         }
     }
 }
