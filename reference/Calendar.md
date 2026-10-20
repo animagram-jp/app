@@ -11,7 +11,7 @@
 - time calendar: 原点epochと、lengthの最小単位secondによって定義された時系の1次元座標。
 - time epoch: calendarの原点(datum.originに該当する)。
 - time stamp: 時刻。暦に従って有限量の値をとる。
-- time unit: year, month, day, hour, minutes, second: 階層関係付き離散単位、second以外への変換時の修正値(関数)を示すtimezoneとその標準値utcからなる。さらにこの上に、youbi (day of the week)のようなグリッドレイアウト用の座標が追加されている。
+- time unit: year, month, day, hour, minutes, second: 階層関係付き離散単位、second以外への変換時の修正値(関数)を示すtimezoneとその標準値utcからなる。さらにこの上に、youbi (day of the week)や Nth week in the month の座標が構築されている。
 
 - `time::stamp: [u8; 8]`: 4桁のyear以下、0.01 secondまでを保持したデータレイアウト。year, month, dayの値が0..0である時、値はtimestampのパターンを意味する。hour以下、最小単位から連続して0..0の値を持つ時、それはNone(ワイルドカード)として解釈できる。
 
