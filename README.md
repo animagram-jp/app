@@ -25,8 +25,8 @@ Applications built on this boilerplate. They share the same core.
 
 | App | Description | 説明 |
 |-|-|-|
-| [Calendar](#calendar) | Web calendar with reservation management. | 予約管理を含むWebカレンダー。 |
-| [CoC7th](#coc7th) | Call of Cthulhu 7th edition playing tool. | 新クトゥルフ神話TRPGをオンラインで遊ぶためのツール。 |
+| [calendar](#calendar) | Web calendar with reservation management. | 予約管理を含むWebカレンダー。 |
+| [coc7th](#coc7th) | Call of Cthulhu 7th edition playing tool. | 新クトゥルフ神話TRPGをオンラインで遊ぶためのツール。 |
 
 ### Calendar
 
