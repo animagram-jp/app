@@ -34,16 +34,15 @@ pub mod app;
 pub mod arena;
 #[cfg(feature = "calendar")]
 pub mod calendar;
+pub mod coc7th;
 pub mod data_struct;
 pub mod event;
 pub mod field;
 #[cfg(feature = "file_store")]
 pub mod file_store;
-pub mod handler;
 pub mod js_client;
 pub mod list;
 pub mod object;
-pub mod roll;
 pub mod timestamp;
 
 // === Error ===

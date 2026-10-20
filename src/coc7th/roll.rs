@@ -3,7 +3,7 @@ use core::{
     primitive::{i8, u8},
 };
 
-use crate::{Lang, object::dice};
+use crate::{Lang, coc7th::character::dice};
 
 const unsafe fn all_variants<T: Copy, const N: usize>(first: T) -> [T; N] {
     assert!(size_of::<T>() == 1 && N == variant_count::<T>());

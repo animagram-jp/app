@@ -15,13 +15,13 @@ use crate::{
 };
 use crate::{
     Lang,
+    coc7th::character::SCHEMA_SIZE,
     data_struct::DataStruct,
     event::{Event, Response},
     js_client::{
         Attribute, CanvasEvent, Command, EventType, FullscreenEvent, Gesture, Pointer,
         VisibilityState, dom,
     },
-    object::SCHEMA_SIZE,
 };
 
 pub enum CharacterSheet {

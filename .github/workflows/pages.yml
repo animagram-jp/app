@@ -44,6 +44,7 @@ jobs:
             - name: "cargo test (doctest only; --lib requires a browser runner)"
               run: |
                   cargo test --doc --locked
+                  cargo test --doc --locked --no-default-features
                   cargo test --doc --locked --features calendar
 
             - name: "build both sites"

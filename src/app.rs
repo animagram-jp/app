@@ -15,10 +15,10 @@ use wasm_bindgen::prelude::wasm_bindgen;
 
 #[cfg(feature = "calendar")]
 use crate::calendar::handler::Handler;
+#[cfg(not(feature = "calendar"))]
+use crate::coc7th::handler::Handler;
 #[cfg(feature = "file_store")]
 use crate::file_store::StoreId;
-#[cfg(not(feature = "calendar"))]
-use crate::handler::Handler;
 use crate::{
     Error,
     arena::{APP, RUNNING, emit},
