@@ -15,26 +15,25 @@
 //!
 //! See FileStore.md for details.
 
+#[cfg(test)]
+use alloc::collections::BTreeSet;
+#[cfg(feature = "file_store")]
+use alloc::string::ToString;
 use alloc::{
     collections::BTreeMap,
     fmt,
     fmt::{Display, Formatter},
     format,
-    string::{String, ToString},
+    rc::Rc,
+    string::String,
     vec,
     vec::Vec,
 };
-#[cfg(test)]
-use alloc::{collections::BTreeSet, rc::Rc};
-#[cfg(test)]
 use core::{
     cell::{Cell, RefCell},
-    future::ready,
-};
-use core::{
     clone::Clone,
     cmp::PartialEq,
-    future::Future,
+    future::{Future, ready},
     option::Option::{self, None, Some},
     primitive::{u8, u32},
     result::Result::{self, Ok},
@@ -43,9 +42,13 @@ use core::{
 #[cfg(test)]
 use std::thread_local;
 
+#[cfg(feature = "file_store")]
 use js_sys;
+#[cfg(feature = "file_store")]
 use wasm_bindgen::{JsCast, JsValue};
+#[cfg(feature = "file_store")]
 use wasm_bindgen_futures::JsFuture;
+#[cfg(feature = "file_store")]
 use web_sys::{
     DomException, FileSystemDirectoryHandle, FileSystemFileHandle, FileSystemGetFileOptions,
     FileSystemReadWriteOptions, FileSystemSyncAccessHandle, WorkerGlobalScope,
@@ -695,6 +698,7 @@ pub trait FileStore: Sized {
 /// read/write/truncate paths the spec reserves `TypeError` for unsupported
 /// positioned I/O. Paths where `TypeError` means something else must use a
 /// dedicated classifier (see `classify_get_file_handle`).
+#[cfg(feature = "file_store")]
 fn classify(context: &str, error: JsValue) -> FileStoreError {
     if let Some(exception) = error.dyn_ref::<DomException>() {
         let message = format!("{}: {} ({})", context, exception.message(), exception.name());
@@ -714,6 +718,7 @@ fn classify(context: &str, error: JsValue) -> FileStoreError {
 /// meaning `classify()` assumes — so it maps to `InvalidName` instead.
 /// A genuine `DOMException` (NotAllowedError / NotFoundError /
 /// TypeMismatchError, …) still goes through the common classification.
+#[cfg(feature = "file_store")]
 fn classify_get_file_handle(context: &str, error: JsValue, create: bool) -> FileStoreError {
     if let Some(exception) = error.dyn_ref::<DomException>() {
         if !create && exception.name() == "NotFoundError" {
@@ -725,6 +730,7 @@ fn classify_get_file_handle(context: &str, error: JsValue, create: bool) -> File
 }
 
 /// Read/write options positioned at byte offset `shift`.
+#[cfg(feature = "file_store")]
 fn options_at(shift: u32) -> FileSystemReadWriteOptions {
     let options = FileSystemReadWriteOptions::new();
     options.set_at(shift as f64);
@@ -733,6 +739,7 @@ fn options_at(shift: u32) -> FileSystemReadWriteOptions {
 
 /// Open `filename` inside `dir` and take its `SyncAccessHandle`
 /// (an exclusive lock on the file).
+#[cfg(feature = "file_store")]
 async fn open(
     dir: &FileSystemDirectoryHandle,
     filename: &str,
@@ -754,6 +761,7 @@ async fn open(
     Ok(handle.unchecked_into())
 }
 
+#[cfg(feature = "file_store")]
 pub struct OpfsHandles {
     snap: FileSystemSyncAccessHandle,
     log:  FileSystemSyncAccessHandle,
@@ -782,12 +790,14 @@ pub struct OpfsHandles {
 /// store.close();                                  // once, right before worker shutdown
 /// # Ok(()) }
 /// ```
+#[cfg(feature = "file_store")]
 pub struct OpfsStore {
     snap:  FileSystemSyncAccessHandle,
     log:   FileSystemSyncAccessHandle,
     index: Index,
 }
 
+#[cfg(feature = "file_store")]
 impl OpfsStore {
     fn file(&self, file: File) -> &FileSystemSyncAccessHandle {
         match file {
@@ -797,6 +807,7 @@ impl OpfsStore {
     }
 }
 
+#[cfg(feature = "file_store")]
 impl FileStore for OpfsStore {
     type Handle = OpfsHandles;
 
@@ -868,24 +879,20 @@ impl FileStore for OpfsStore {
     }
 }
 
-#[cfg(test)]
 #[derive(Default)]
 struct MemoryFileState {
     bytes: Vec<u8>,
 }
 
-#[cfg(test)]
 #[derive(Default)]
 pub struct MemoryFile(Rc<RefCell<MemoryFileState>>, Cell<bool>);
 
-#[cfg(test)]
 impl Clone for MemoryFile {
     fn clone(&self) -> Self {
         Self(self.0.clone(), Cell::new(false))
     }
 }
 
-#[cfg(test)]
 #[derive(Clone, Default)]
 pub struct MemoryHandles {
     snap: MemoryFile,
@@ -897,14 +904,12 @@ thread_local! {
     static DISKS: RefCell<BTreeMap<String, MemoryHandles>> = const { RefCell::new(BTreeMap::new()) };
 }
 
-#[cfg(test)]
 pub struct MemoryStore {
     snap:  MemoryFile,
     log:   MemoryFile,
     index: Index,
 }
 
-#[cfg(test)]
 impl MemoryStore {
     fn select(&self, file: File) -> &MemoryFile {
         match file {
@@ -921,7 +926,6 @@ impl MemoryStore {
     }
 }
 
-#[cfg(test)]
 impl FileStore for MemoryStore {
     type Handle = MemoryHandles;
 
@@ -930,13 +934,18 @@ impl FileStore for MemoryStore {
         create: bool,
     ) -> impl Future<Output = Result<MemoryHandles, FileStoreError>> {
         let key = id.file("mem");
-        ready(DISKS.with(|disks| {
+        #[cfg(test)]
+        let handles = DISKS.with(|disks| {
             let mut disks = disks.borrow_mut();
             if !create && !disks.contains_key(&key) {
                 return Err(FileStoreError::NotFound(key));
             }
             Ok(disks.entry(key).or_default().clone())
-        }))
+        });
+        #[cfg(not(test))]
+        let handles =
+            if create { Ok(MemoryHandles::default()) } else { Err(FileStoreError::NotFound(key)) };
+        ready(handles)
     }
 
     fn from_handle(handle: MemoryHandles) -> Self {
@@ -992,12 +1001,6 @@ impl FileStore for MemoryStore {
     }
 }
 
-#[cfg(test)]
-pub type Backend = cases::FaultInjector<MemoryStore>;
-#[cfg(not(test))]
-pub type Backend = OpfsStore;
-
-#[cfg(test)]
 impl Default for MemoryStore {
     fn default() -> Self {
         Self::new(MemoryHandles::default()).unwrap()
@@ -2025,7 +2028,7 @@ mod memory_tests {
     }
 }
 
-#[cfg(all(test, target_arch = "wasm32"))]
+#[cfg(all(test, target_arch = "wasm32", feature = "file_store"))]
 mod opfs_tests {
     //! Runs against real OPFS inside a dedicated worker
     //! (`run_in_dedicated_worker` — the environment

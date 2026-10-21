@@ -29,7 +29,7 @@ use crate::{
         gesture::{Gesture, Pointer},
         store,
     },
-    file_store::{Backend, FileStore, StoreId},
+    file_store::{FileStore, StoreId},
     host::{
         Attribute, CanvasEvent, Command, Decimal, EventType, Keyword, Method, StyleProperty,
         StyleValue, Unit, dom::Id, parse, parse_url_search_params, stringify,
@@ -131,7 +131,7 @@ struct Card {
     outer: [bool; 2],
 }
 
-pub struct Handler {
+pub struct Handler<S: FileStore> {
     axis:              Axis,
     clock:             Clock,
     resources:         u32,
@@ -146,7 +146,7 @@ pub struct Handler {
     slot_rem:          f64,
     drag:              Option<Drag>,
     dirty:             bool,
-    store:             Option<Backend>,
+    store:             Option<S>,
     lost:              Vec<(u32, Option<Vec<u8>>)>,
     startup:           Vec<Error>,
     viewport_width_px: f64,
@@ -156,8 +156,8 @@ pub struct Handler {
     rectgrid:          RectGrid<2>,
 }
 
-impl Handler {
-    pub fn attach(&mut self, store: Backend) {
+impl<S: FileStore> Handler<S> {
+    pub fn attach(&mut self, store: S) {
         if let Err(error) = data::check(&store, &appointment::KINDS) {
             self.startup.push(Error::Data(error));
         }
@@ -1605,7 +1605,9 @@ impl Handler {
     }
 }
 
-impl event::Handler for Handler {
+impl<S: FileStore> event::Handler for Handler<S> {
+    type Store = S;
+
     async fn ready(
         viewport_width_px: f64,
         _viewport_height_px: f64,
@@ -1622,11 +1624,9 @@ impl event::Handler for Handler {
         let today = [HOUR, MINUTE, SECOND, CENTISECOND, IS_UTC]
             .into_iter()
             .fold(local, |timestamp, field| LAYOUT.set(timestamp, field, 0u64));
-        #[cfg_attr(not(feature = "file_store"), allow(unused_mut))]
         let mut handler = Self::new(viewport_width_px, today, rem_in_px);
         handler.now = now;
-        #[cfg(feature = "file_store")]
-        match store::open(STORE).await {
+        match store::open::<S>(STORE).await {
             Ok(opened) => handler.attach(opened),
             Err(error) => handler.startup.push(Error::FileStore(error)),
         }
@@ -1742,7 +1742,7 @@ impl event::Handler for Handler {
         (vec![], vec![])
     }
 
-    fn process_opened(&mut self, opened: Opened) -> (Vec<Event>, Vec<Command>) {
+    fn process_opened(&mut self, opened: Opened<S>) -> (Vec<Event>, Vec<Command>) {
         store::opened(&mut self.store, &mut self.lost, opened)
     }
 }
@@ -1906,7 +1906,7 @@ mod tests {
         calendar::data::SCHEMA_SIZE,
         data_struct::{ID_CREATED_AT, ID_MODIFIED_AT, encode_time},
         event::Handler as _,
-        file_store::{FileStoreError, MemoryHandles, MemoryStore},
+        file_store::{FileStoreError, MemoryHandles, MemoryStore, cases::FaultInjector},
         host::KeyName,
         timestamp::pack,
     };
@@ -1942,7 +1942,7 @@ mod tests {
             (new_millennium + 899.0 * 60_000.0, 540, (2000, 1, 1)),
             (new_millennium + 900.0 * 60_000.0, 540, (2000, 1, 2)),
         ] {
-            let handler = block_on(Handler::ready(VIEWPORT, 0.0, REM, now, offset));
+            let handler = block_on(Handler::<MemoryStore>::ready(VIEWPORT, 0.0, REM, now, offset));
             let (year, month, day) = expected;
             assert_eq!(handler.base(), pack(year, month, day, 0, 0, 0, 0, 0, 0), "{now} {offset}");
         }
@@ -2018,7 +2018,7 @@ mod tests {
 
     #[test]
     fn initial_draw_sets_week_geometry() {
-        let mut handler = Handler::new(VIEWPORT, today(), REM);
+        let mut handler = Handler::<MemoryStore>::new(VIEWPORT, today(), REM);
         load(&mut handler, vec![]);
         let (_, commands) = handler.initial_draw();
         assert_eq!(grid_columns(&commands), week_grid(28, 7));
@@ -2030,7 +2030,7 @@ mod tests {
 
     #[test]
     fn view_radio_switches_days_columns_and_hides_the_rest() {
-        let mut handler = Handler::new(VIEWPORT, today(), REM);
+        let mut handler = Handler::<MemoryStore>::new(VIEWPORT, today(), REM);
         load(&mut handler, vec![]);
         let commands = choose(&mut handler, Axis::Day(Day::ThreeDays));
         assert_eq!(handler.axis(), Axis::Day(Day::ThreeDays));
@@ -2053,7 +2053,7 @@ mod tests {
 
     #[test]
     fn view_radio_for_the_current_view_or_a_click_emits_nothing() {
-        let mut handler = Handler::new(VIEWPORT, today(), REM);
+        let mut handler = Handler::<MemoryStore>::new(VIEWPORT, today(), REM);
         assert!(choose(&mut handler, Axis::Day(Day::Week)).is_empty());
         assert!(press(&mut handler, Target::Axis(Axis::Day(Day::Day)).to_dom()).is_empty());
         assert_eq!(handler.axis(), Axis::Day(Day::Week));
@@ -2061,7 +2061,7 @@ mod tests {
 
     #[test]
     fn cell_follows_column_width_of_the_view() {
-        let mut handler = Handler::new(VIEWPORT, today(), REM);
+        let mut handler = Handler::<MemoryStore>::new(VIEWPORT, today(), REM);
         load(&mut handler, vec![]);
         let x = AXIS_PX + COLUMN_MIN_PX * 5.0 + 1.0;
         let y = ROOT.1 + HEAD_PX + SLOT_PX * 3.0 + 1.0;
@@ -2075,7 +2075,7 @@ mod tests {
 
     #[test]
     fn cell_outside_the_grid_is_none() {
-        let mut handler = Handler::new(VIEWPORT, today(), REM);
+        let mut handler = Handler::<MemoryStore>::new(VIEWPORT, today(), REM);
         assert_eq!(handler.cell_at(ROOT, AXIS_PX - 1.0, ROOT.1 + HEAD_PX + 1.0), None);
         assert_eq!(handler.cell_at(ROOT, AXIS_PX + 1.0, ROOT.1 + HEAD_PX - 1.0), None);
         let below = ROOT.1 + HEAD_PX + SLOT_PX * CLOCK.count() as f64 + 1.0;
@@ -2084,7 +2084,7 @@ mod tests {
 
     #[test]
     fn cell_accounts_for_horizontal_scroll() {
-        let mut handler = Handler::new(VIEWPORT, today(), REM);
+        let mut handler = Handler::<MemoryStore>::new(VIEWPORT, today(), REM);
         load(&mut handler, vec![]);
         handler.scroll_x = COLUMN_MIN_PX * 4.0;
         let x = AXIS_PX + 1.0;
@@ -2117,7 +2117,7 @@ mod tests {
         })
     }
 
-    fn choose(handler: &mut Handler, view: Axis) -> Vec<Command> {
+    fn choose<S: FileStore>(handler: &mut Handler<S>, view: Axis) -> Vec<Command> {
         let event = CanvasEvent {
             event_type: EventType::Change,
             ..click(Target::Axis(view).to_dom(), 10.0, 10.0)
@@ -2125,13 +2125,13 @@ mod tests {
         handler.process_canvas(&event, &pointer()).1
     }
 
-    fn press(handler: &mut Handler, id: Id) -> Vec<Command> {
+    fn press<S: FileStore>(handler: &mut Handler<S>, id: Id) -> Vec<Command> {
         handler.process_canvas(&click(id, 10.0, 10.0), &pointer()).1
     }
 
     #[test]
     fn initial_draw_titles_the_week_from_today() {
-        let mut handler = Handler::new(VIEWPORT, today(), REM);
+        let mut handler = Handler::<MemoryStore>::new(VIEWPORT, today(), REM);
         let (_, commands) = handler.initial_draw();
         assert_eq!(text_of(&commands, &Target::DayTitle(1).to_dom()).unwrap(), "10/2(金)");
         assert_eq!(text_of(&commands, &Target::DayTitle(7).to_dom()).unwrap(), "10/8(木)");
@@ -2140,7 +2140,7 @@ mod tests {
 
     #[test]
     fn initial_draw_labels_the_language_button() {
-        let mut handler = Handler::new(VIEWPORT, today(), REM);
+        let mut handler = Handler::<MemoryStore>::new(VIEWPORT, today(), REM);
         let (_, commands) = handler.initial_draw();
         assert_eq!(text_of(&commands, &Target::Language.to_dom()).unwrap(), "日本語");
         assert_eq!(lang_of(&commands, &Target::Html.to_dom()).unwrap(), "ja");
@@ -2160,7 +2160,7 @@ mod tests {
 
     #[test]
     fn the_header_texts_follow_the_language() {
-        let mut handler = Handler::new(VIEWPORT, today(), REM);
+        let mut handler = Handler::<MemoryStore>::new(VIEWPORT, today(), REM);
         let (_, commands) = handler.initial_draw();
         let text =
             |commands: &[Command], target: Target| text_of(commands, &target.to_dom()).unwrap();
@@ -2177,7 +2177,7 @@ mod tests {
 
     #[test]
     fn choosing_a_language_relabels_the_button_and_redraws_the_dates() {
-        let mut handler = Handler::new(VIEWPORT, today(), REM);
+        let mut handler = Handler::<MemoryStore>::new(VIEWPORT, today(), REM);
         let english = Language::En(En::Gb);
         let commands = press(&mut handler, Target::LanguageOption(english).to_dom());
         assert_eq!(text_of(&commands, &Target::Language.to_dom()).unwrap(), "English");
@@ -2189,7 +2189,7 @@ mod tests {
 
     #[test]
     fn step_buttons_move_the_base_and_today_returns() {
-        let mut handler = Handler::new(VIEWPORT, today(), REM);
+        let mut handler = Handler::<MemoryStore>::new(VIEWPORT, today(), REM);
         for (button, expected) in [(5, 7), (1, 0), (2, -1), (4, 0), (4, 1)] {
             press(&mut handler, Target::Step(button).to_dom());
             assert_eq!(diff(today(), handler.base(), TimevolumeUnit::Day), expected);
@@ -2201,7 +2201,7 @@ mod tests {
 
     #[test]
     fn single_day_view_titles_one_date() {
-        let mut handler = Handler::new(VIEWPORT, today(), REM);
+        let mut handler = Handler::<MemoryStore>::new(VIEWPORT, today(), REM);
         choose(&mut handler, Axis::Day(Day::Day));
         let commands = press(&mut handler, Target::Step(4).to_dom());
         assert_eq!(text_of(&commands, &Target::Title.to_dom()).unwrap(), "3");
@@ -2219,7 +2219,7 @@ mod tests {
 
     #[test]
     fn initial_draw_requests_the_calendar_once() {
-        let mut handler = Handler::new(VIEWPORT, today(), REM);
+        let mut handler = Handler::<MemoryStore>::new(VIEWPORT, today(), REM);
         let (_, commands) = handler.initial_draw();
         let fetches: Vec<_> = commands
             .iter()
@@ -2271,7 +2271,7 @@ mod tests {
 
     #[test]
     fn fetched_for_another_request_is_ignored() {
-        let mut handler = Handler::new(VIEWPORT, today(), REM);
+        let mut handler = Handler::<MemoryStore>::new(VIEWPORT, today(), REM);
         let (_, commands) = handler.process_fetched(&sample_response(9, 200));
         assert!(commands.is_empty());
         assert!(!handler.loaded());
@@ -2295,13 +2295,15 @@ mod tests {
     const STATUS_CODE: &str = "done";
     const CATEGORY_CODE: &str = "c";
 
-    fn appointments(handler: &Handler) -> Vec<DataStruct> {
+    fn appointments<S: FileStore>(handler: &Handler<S>) -> Vec<DataStruct> {
         handler.read(appointment::KIND)
     }
 
-    fn load(handler: &mut Handler, appointments: Vec<DataStruct>) {
-        let mut backend =
-            handler.store.take().unwrap_or_else(|| Backend::new(MemoryHandles::default()).unwrap());
+    fn load(handler: &mut Handler<MemoryStore>, appointments: Vec<DataStruct>) {
+        let mut backend = handler
+            .store
+            .take()
+            .unwrap_or_else(|| MemoryStore::new(MemoryHandles::default()).unwrap());
         let store = &mut backend;
         for id in 101..105u32 {
             let uid = u128::from(id);
@@ -2357,7 +2359,7 @@ mod tests {
     #[test]
     fn cards_are_placed_in_one_batch_inside_the_range() {
         let base = today();
-        let mut handler = Handler::new(VIEWPORT, base, REM);
+        let mut handler = Handler::<MemoryStore>::new(VIEWPORT, base, REM);
         load(
             &mut handler,
             vec![
@@ -2392,7 +2394,7 @@ mod tests {
     #[test]
     fn narrowing_the_range_hides_the_surplus_cards_once() {
         let base = today();
-        let mut handler = Handler::new(VIEWPORT, base, REM);
+        let mut handler = Handler::<MemoryStore>::new(VIEWPORT, base, REM);
         load(
             &mut handler,
             vec![
@@ -2427,7 +2429,7 @@ mod tests {
     #[test]
     fn cards_follow_the_column_width_of_the_view() {
         let base = today();
-        let mut handler = Handler::new(VIEWPORT, base, REM);
+        let mut handler = Handler::<MemoryStore>::new(VIEWPORT, base, REM);
         load(&mut handler, vec![entry(1, base, 103, 540, 600)]);
         let commands = choose(&mut handler, Axis::Day(Day::Day));
         let column_px = (VIEWPORT - 2.0 * AXIS_PX) / 4.0;
@@ -2453,7 +2455,7 @@ mod tests {
     #[test]
     fn resize_replaces_the_cards() {
         let base = today();
-        let mut handler = Handler::new(VIEWPORT, base, REM);
+        let mut handler = Handler::<MemoryStore>::new(VIEWPORT, base, REM);
         load(&mut handler, vec![entry(1, base, 101, 600, 660)]);
         handler.card_commands();
         choose(&mut handler, Axis::Day(Day::Day));
@@ -2464,9 +2466,9 @@ mod tests {
 
     #[test]
     fn the_column_axis_follows_the_resources_in_the_store() {
-        let mut handler = Handler::new(VIEWPORT, today(), REM);
+        let mut handler = Handler::<MemoryStore>::new(VIEWPORT, today(), REM);
         assert_eq!(handler.columns(), 0);
-        let mut store = Backend::new(MemoryHandles::default()).unwrap();
+        let mut store = MemoryStore::new(MemoryHandles::default()).unwrap();
         for id in 1..=2u32 {
             data::put(&mut store, &tag::new(id, appointment::RESOURCE, u128::from(id), "", "r"));
         }
@@ -2518,7 +2520,7 @@ mod tests {
     #[test]
     fn cards_scale_with_the_root_font_size() {
         let base = today();
-        let mut handler = Handler::new(VIEWPORT, base, 20.0);
+        let mut handler = Handler::<MemoryStore>::new(VIEWPORT, base, 20.0);
         load(&mut handler, vec![entry(1, base, 101, 600, 660)]);
         let commands = handler.card_commands();
         let height = commands.iter().find_map(|command| match command {
@@ -2536,15 +2538,15 @@ mod tests {
         (ROOT.0 + AXIS_PX, ROOT.1 + HEAD_PX)
     }
 
-    fn drag_fixture() -> (Handler, u64) {
+    fn drag_fixture() -> (Handler<MemoryStore>, u64) {
         let base = today();
-        let mut handler = Handler::new(VIEWPORT, base, REM);
+        let mut handler = Handler::<MemoryStore>::new(VIEWPORT, base, REM);
         load(&mut handler, vec![entry(1, base, 101, 600, 660), entry(2, base, 102, 540, 600)]);
         handler.card_commands();
         (handler, base)
     }
 
-    fn grab(handler: &mut Handler, n: u32) -> (f64, f64) {
+    fn grab<S: FileStore>(handler: &mut Handler<S>, n: u32) -> (f64, f64) {
         let (ox, oy) = grid_origin();
         let (x, y) = (ox + GRAB_X, oy + 4.0 * SLOT_PX + GRAB_Y);
         handler.process_canvas(
@@ -2554,11 +2556,11 @@ mod tests {
         (x, y)
     }
 
-    fn drag_to(handler: &mut Handler, x: f64, y: f64) -> Vec<Command> {
+    fn drag_to<S: FileStore>(handler: &mut Handler<S>, x: f64, y: f64) -> Vec<Command> {
         handler.process_gesture(&Gesture::Drag { x, y }, &pointer(), None).1
     }
 
-    fn end(handler: &mut Handler) -> Vec<Command> {
+    fn end<S: FileStore>(handler: &mut Handler<S>) -> Vec<Command> {
         handler.process_gesture(&Gesture::DragEnd, &pointer(), None).1
     }
 
@@ -2741,7 +2743,7 @@ mod tests {
             [(Axis::Day(Day::Day), 1u32), (Axis::Day(Day::ThreeDays), 3), (Axis::Day(Day::Week), 7)]
         {
             let base = today();
-            let mut handler = Handler::new(VIEWPORT, base, REM);
+            let mut handler = Handler::<MemoryStore>::new(VIEWPORT, base, REM);
             load(&mut handler, vec![entry(1, base, 101, 600, 660)]);
             choose(&mut handler, view);
             let axis = Grid::new(days, handler.resources, handler.clock);
@@ -2776,7 +2778,7 @@ mod tests {
     #[test]
     fn the_same_card_box_resolves_to_different_data_after_a_view_switch() {
         let base = today();
-        let mut handler = Handler::new(VIEWPORT, base, REM);
+        let mut handler = Handler::<MemoryStore>::new(VIEWPORT, base, REM);
         load(&mut handler, vec![]);
         let week = handler.grid();
         let bx = week.bbox(Cell { day: 1, resource: 1 }, at(600), at(660)).unwrap();
@@ -2787,9 +2789,9 @@ mod tests {
         assert_eq!(handler.grid().resolve(&bx).unwrap().cells, [Cell { day: 1, resource: 1 }]);
     }
 
-    fn multi_fixture(view: Axis) -> (Handler, u64) {
+    fn multi_fixture(view: Axis) -> (Handler<MemoryStore>, u64) {
         let base = today();
-        let mut handler = Handler::new(VIEWPORT, base, REM);
+        let mut handler = Handler::<MemoryStore>::new(VIEWPORT, base, REM);
         let mut spanning = entry(1, base, 102, 600, 660);
         let mut cells = appointment::Places::read(&spanning);
         cells.push(Place { day: base, resource: 103 });
@@ -2800,7 +2802,7 @@ mod tests {
         (handler, base)
     }
 
-    fn drag_piece(handler: &mut Handler, n: u32, from_unit: u32, to_unit: u32) {
+    fn drag_piece<S: FileStore>(handler: &mut Handler<S>, n: u32, from_unit: u32, to_unit: u32) {
         let column_px = column_px(VIEWPORT, handler.columns(), REM);
         let (ox, oy) = grid_origin();
         let y = oy + 4.0 * SLOT_PX + GRAB_Y;
@@ -2816,7 +2818,7 @@ mod tests {
         end(handler);
     }
 
-    fn places(handler: &Handler) -> Vec<(u64, u128)> {
+    fn places<S: FileStore>(handler: &Handler<S>) -> Vec<(u64, u128)> {
         appointment::Places::read(&appointments(&handler)[0])
             .iter()
             .map(|place| (place.day, place.resource))
@@ -2862,7 +2864,7 @@ mod tests {
     #[test]
     fn a_cell_outside_the_view_still_moves_with_the_others() {
         let base = today();
-        let mut handler = Handler::new(VIEWPORT, base, REM);
+        let mut handler = Handler::<MemoryStore>::new(VIEWPORT, base, REM);
         let mut crossing = entry(1, base, 104, 600, 660);
         let mut cells = appointment::Places::read(&crossing);
         cells.push(Place { day: after(base, 1), resource: 101 });
@@ -2883,15 +2885,15 @@ mod tests {
         assert_eq!(places(&handler), before);
     }
 
-    fn lone(unit_resource: u32) -> Handler {
+    fn lone(unit_resource: u32) -> Handler<MemoryStore> {
         let base = today();
-        let mut handler = Handler::new(VIEWPORT, base, REM);
+        let mut handler = Handler::<MemoryStore>::new(VIEWPORT, base, REM);
         load(&mut handler, vec![entry(1, base, u128::from(unit_resource), 600, 660)]);
         handler.card_commands();
         handler
     }
 
-    fn press_local(handler: &mut Handler, n: u32, x: f64, y: f64) -> Vec<Command> {
+    fn press_local<S: FileStore>(handler: &mut Handler<S>, n: u32, x: f64, y: f64) -> Vec<Command> {
         let (ox, oy) = grid_origin();
         handler
             .process_canvas(
@@ -2901,14 +2903,14 @@ mod tests {
             .1
     }
 
-    fn resize_corner(handler: &Handler) -> Option<Corner> {
+    fn resize_corner<S: FileStore>(handler: &Handler<S>) -> Option<Corner> {
         match &handler.drag.as_ref()?.kind {
             DragKind::Resize { corner, .. } => Some(*corner),
             DragKind::Move => None,
         }
     }
 
-    fn drag_by(handler: &mut Handler, dx: f64, dy: f64) -> Vec<Command> {
+    fn drag_by<S: FileStore>(handler: &mut Handler<S>, dx: f64, dy: f64) -> Vec<Command> {
         let [x, y] = handler.drag.as_ref().unwrap().pointer;
         drag_to(handler, x + dx, y + dy)
     }
@@ -2928,7 +2930,7 @@ mod tests {
         time.total(TimevolumeUnit::Minute) as u32
     }
 
-    fn times(handler: &Handler) -> (u32, u32) {
+    fn times<S: FileStore>(handler: &Handler<S>) -> (u32, u32) {
         let (start, end) = appointment::Range::read(&appointments(handler)[0]);
         (minutes(start), minutes(end))
     }
@@ -3098,7 +3100,7 @@ mod tests {
     #[test]
     fn horizontal_handles_exist_only_on_the_outer_lanes() {
         let base = today();
-        let mut handler = Handler::new(VIEWPORT, base, REM);
+        let mut handler = Handler::<MemoryStore>::new(VIEWPORT, base, REM);
         load(&mut handler, vec![entry(1, base, 101, 600, 660), entry(2, base, 101, 630, 690)]);
         handler.card_commands();
         press_local(&mut handler, 1, 40.0 - 3.0, 168.0);
@@ -3115,7 +3117,7 @@ mod tests {
     fn a_cell_outside_the_view_is_kept_by_a_vertical_resize_and_joined_by_a_horizontal_one() {
         let base = today();
         let make = || {
-            let mut handler = Handler::new(VIEWPORT, base, REM);
+            let mut handler = Handler::<MemoryStore>::new(VIEWPORT, base, REM);
             let mut crossing = entry(1, base, 104, 600, 660);
             let mut cells = appointment::Places::read(&crossing);
             cells.push(Place { day: after(base, 1), resource: 101 });
@@ -3264,18 +3266,24 @@ mod tests {
         assert!(!handler.dirty());
     }
 
-    fn with_store() -> (Handler, MemoryHandles) {
+    fn with_store() -> (Handler<MemoryStore>, MemoryHandles) {
         let disk = MemoryHandles::default();
-        let mut handler = Handler::new(VIEWPORT, today(), REM);
-        handler.attach(Backend::new(disk.clone()).unwrap());
+        let mut handler = Handler::<MemoryStore>::new(VIEWPORT, today(), REM);
+        handler.attach(MemoryStore::new(disk.clone()).unwrap());
         (handler, disk)
     }
 
-    fn pending(handler: &Handler) -> usize {
+    fn with_faulty_store() -> Handler<FaultInjector<MemoryStore>> {
+        let mut handler = Handler::<FaultInjector<MemoryStore>>::new(VIEWPORT, today(), REM);
+        handler.attach(FaultInjector::<MemoryStore>::new(MemoryHandles::default()).unwrap());
+        handler
+    }
+
+    fn pending<S: FileStore>(handler: &Handler<S>) -> usize {
         handler.store.as_ref().unwrap().index().count_pending()
     }
 
-    fn drag_first_card_by(handler: &mut Handler, dy: f64) -> (u32, Timevolume) {
+    fn drag_first_card_by<S: FileStore>(handler: &mut Handler<S>, dy: f64) -> (u32, Timevolume) {
         handler.card_commands();
         let (index, base) = {
             let placed = handler.placed.borrow();
@@ -3313,7 +3321,7 @@ mod tests {
         data::entry(&MemoryStore::new(disk.clone()).unwrap(), key, appointment::KIND).unwrap()
     }
 
-    fn appointment_of(handler: &Handler, key: u32) -> DataStruct {
+    fn appointment_of<S: FileStore>(handler: &Handler<S>, key: u32) -> DataStruct {
         handler.appointment(key).unwrap()
     }
 
@@ -3334,8 +3342,8 @@ mod tests {
     fn a_later_run_loads_from_the_store_without_fetching() {
         let (mut first, disk) = with_store();
         first.process_fetched(&sample_response(1, 200));
-        let mut second = Handler::new(VIEWPORT, today(), REM);
-        second.attach(Backend::new(disk).unwrap());
+        let mut second = Handler::<MemoryStore>::new(VIEWPORT, today(), REM);
+        second.attach(MemoryStore::new(disk).unwrap());
         assert_eq!(appointments(&second).len(), 380);
         let (_, commands) = second.initial_draw();
         assert!(!commands.iter().any(|command| matches!(command, Command::Fetch { .. })));
@@ -3359,8 +3367,8 @@ mod tests {
         assert_eq!(pending(&handler), 0);
         assert_eq!(appointment::Range::read(&committed(&disk, index)).0, after);
 
-        let mut reloaded = Handler::new(VIEWPORT, today(), REM);
-        reloaded.attach(Backend::new(disk).unwrap());
+        let mut reloaded = Handler::<MemoryStore>::new(VIEWPORT, today(), REM);
+        reloaded.attach(MemoryStore::new(disk).unwrap());
         assert_eq!(appointment::Range::read(&appointment_of(&reloaded, index)).0, after);
     }
 
@@ -3369,8 +3377,8 @@ mod tests {
         let (mut handler, disk) = with_store();
         handler.process_fetched(&sample_response(1, 200));
         let (index, before) = drag_first_card_by(&mut handler, 2.0 * SLOT_PX);
-        let mut reloaded = Handler::new(VIEWPORT, today(), REM);
-        reloaded.attach(Backend::new(disk).unwrap());
+        let mut reloaded = Handler::<MemoryStore>::new(VIEWPORT, today(), REM);
+        reloaded.attach(MemoryStore::new(disk).unwrap());
         assert_eq!(appointment::Range::read(&appointment_of(&reloaded, index)).0, before);
     }
 
@@ -3422,7 +3430,7 @@ mod tests {
         assert!(!handler.dirty());
     }
 
-    fn tap_empty(handler: &mut Handler, column: f64, slot: f64) -> Vec<Command> {
+    fn tap_empty<S: FileStore>(handler: &mut Handler<S>, column: f64, slot: f64) -> Vec<Command> {
         let (ox, oy) = grid_origin();
         let (x, y) = (
             ox + (column + 0.5) * column_px(VIEWPORT, handler.columns(), REM),
@@ -3436,7 +3444,7 @@ mod tests {
         format!("1={title}&2=1&3=1&4={date}&5={resource}&6={start}&7={end}&8=n")
     }
 
-    fn submit(handler: &mut Handler, query: &str) -> Vec<Command> {
+    fn submit<S: FileStore>(handler: &mut Handler<S>, query: &str) -> Vec<Command> {
         let event = CanvasEvent {
             event_type: EventType::Submit,
             value: String::from(query),
@@ -3472,7 +3480,11 @@ mod tests {
         assert!(matches!(handler.editing, Some(Editing::New(_))));
     }
 
-    fn drag_create(handler: &mut Handler, from: (f64, f64), to: (f64, f64)) -> Vec<Command> {
+    fn drag_create(
+        handler: &mut Handler<MemoryStore>,
+        from: (f64, f64),
+        to: (f64, f64),
+    ) -> Vec<Command> {
         let (ox, oy) = grid_origin();
         let column = column_px(VIEWPORT, handler.columns(), REM);
         let at = |(c, s): (f64, f64)| (ox + (c + 0.5) * column, oy + (s + 0.5) * SLOT_PX);
@@ -3708,7 +3720,7 @@ mod tests {
         assert!(handler.editing.is_none());
     }
 
-    fn modal_closed(handler: &mut Handler) -> Vec<Command> {
+    fn modal_closed<S: FileStore>(handler: &mut Handler<S>) -> Vec<Command> {
         let event =
             CanvasEvent { event_type: EventType::Close, ..click(Target::Modal.to_dom(), 0.0, 0.0) };
         handler.process_canvas(&event, &pointer()).1
@@ -3746,7 +3758,7 @@ mod tests {
 
     #[test]
     fn a_failed_save_reports_the_error_and_stays_dirty() {
-        let (mut handler, _) = with_store();
+        let mut handler = with_faulty_store();
         handler.process_fetched(&sample_response(1, 200));
         drag_first_card_by(&mut handler, 2.0 * SLOT_PX);
         handler.store.as_ref().unwrap().fail_writes_to.set(Some("log"));
@@ -3793,7 +3805,7 @@ mod tests {
         ));
     }
 
-    fn save_pressed(handler: &mut Handler) -> (Vec<Event>, Vec<Command>) {
+    fn save_pressed<S: FileStore>(handler: &mut Handler<S>) -> (Vec<Event>, Vec<Command>) {
         handler.process_canvas(&click(Target::Save.to_dom(), 10.0, 10.0), &pointer())
     }
 
@@ -3839,8 +3851,8 @@ mod tests {
         let mut corrupting = MemoryStore::new(disk.clone()).unwrap();
         corrupting.set(data::key(&appointments(&seeding)[0]), b"{".to_vec());
         corrupting.save().unwrap();
-        let mut handler = Handler::new(VIEWPORT, today(), REM);
-        handler.attach(Backend::new(disk).unwrap());
+        let mut handler = Handler::<MemoryStore>::new(VIEWPORT, today(), REM);
+        handler.attach(MemoryStore::new(disk).unwrap());
         let (_, commands) = handler.initial_draw();
         assert!(commands.iter().any(|command| matches!(
             command,
@@ -3851,13 +3863,13 @@ mod tests {
 
     #[test]
     fn save_and_discard_without_a_store_do_nothing() {
-        let mut handler = Handler::new(VIEWPORT, today(), REM);
+        let mut handler = Handler::<MemoryStore>::new(VIEWPORT, today(), REM);
         assert!(press(&mut handler, Target::Save.to_dom()).is_empty());
         assert!(handler.discard_commands().1.is_empty());
     }
 
-    fn month_fixture(appointments: Vec<DataStruct>) -> Handler {
-        let mut handler = Handler::new(VIEWPORT, today(), REM);
+    fn month_fixture(appointments: Vec<DataStruct>) -> Handler<MemoryStore> {
+        let mut handler = Handler::<MemoryStore>::new(VIEWPORT, today(), REM);
         load(&mut handler, appointments);
         choose(&mut handler, Axis::Month);
         handler
@@ -3876,7 +3888,7 @@ mod tests {
         )
     }
 
-    fn placed_ids(handler: &Handler) -> Vec<(u32, [f64; 2])> {
+    fn placed_ids<S: FileStore>(handler: &Handler<S>) -> Vec<(u32, [f64; 2])> {
         handler
             .placed
             .borrow()
@@ -3896,7 +3908,7 @@ mod tests {
 
     #[test]
     fn month_button_lays_out_weeks_inside_the_shared_frame() {
-        let mut handler = Handler::new(VIEWPORT, today(), REM);
+        let mut handler = Handler::<MemoryStore>::new(VIEWPORT, today(), REM);
         load(&mut handler, vec![]);
         let commands = choose(&mut handler, Axis::Month);
         assert_eq!(handler.axis(), Axis::Month);
@@ -4042,7 +4054,7 @@ mod tests {
 
     #[test]
     fn page_steps_skip_the_span_of_each_view() {
-        let mut handler = Handler::new(VIEWPORT, today(), REM);
+        let mut handler = Handler::<MemoryStore>::new(VIEWPORT, today(), REM);
         for (view, page) in
             [(Axis::Day(Day::Day), 1), (Axis::Day(Day::ThreeDays), 3), (Axis::Day(Day::Week), 7)]
         {
@@ -4244,7 +4256,7 @@ mod tests {
         })
     }
 
-    fn open_first_card(handler: &mut Handler) -> (u32, Vec<Command>) {
+    fn open_first_card<S: FileStore>(handler: &mut Handler<S>) -> (u32, Vec<Command>) {
         handler.card_commands();
         let (key, base) = {
             let placed = handler.placed.borrow();
@@ -4307,8 +4319,8 @@ mod tests {
         assert!(
             data::entry(&MemoryStore::new(disk.clone()).unwrap(), key, appointment::KIND).is_none()
         );
-        let mut reloaded = Handler::new(VIEWPORT, today(), REM);
-        reloaded.attach(Backend::new(disk).unwrap());
+        let mut reloaded = Handler::<MemoryStore>::new(VIEWPORT, today(), REM);
+        reloaded.attach(MemoryStore::new(disk).unwrap());
         assert_eq!(appointments(&reloaded).len(), before - 1);
     }
 
@@ -4346,8 +4358,9 @@ mod tests {
     #[test]
     fn deleting_a_resource_leaves_its_appointments_as_they_were_and_they_read_as_unassigned() {
         let (mut handler, _) = drag_fixture();
-        let stored =
-            |handler: &Handler, key| handler.store.as_ref().unwrap().get(key).map(<[u8]>::to_vec);
+        let stored = |handler: &Handler<MemoryStore>, key| {
+            handler.store.as_ref().unwrap().get(key).map(<[u8]>::to_vec)
+        };
         let appointment_1 = stored(&handler, 1);
         handler.store.as_mut().unwrap().delete(101);
 

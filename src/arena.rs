@@ -18,11 +18,8 @@ use core::{
 use wasm_bindgen::prelude::wasm_bindgen;
 
 use crate::{Error, WireError, app::App, host::Output};
-#[cfg(all(target_arch = "wasm32", target_feature = "atomics", feature = "file_store"))]
-use crate::{
-    event::Event,
-    file_store::{Backend, FileStore},
-};
+#[cfg(all(target_arch = "wasm32", target_feature = "atomics"))]
+use crate::{app::Store, file_store::FileStore};
 
 // === ring ===
 
@@ -256,16 +253,15 @@ fn flush(app: &App) {
 pub async fn serve_event() {
     while unsafe { RUNNING } {
         process_event();
-        #[cfg(feature = "file_store")]
         {
             #[allow(clippy::deref_addrof)]
             let wanted = unsafe { (*(&raw mut APP)).as_mut() }.and_then(App::reopen_wanted);
             if let Some(id) = wanted {
-                let opened = Backend::open(id, true).await;
+                let opened = Store::open(id, true).await;
                 #[allow(clippy::deref_addrof)]
                 if let Some(app) = unsafe { (*(&raw mut APP)).as_mut() } {
                     app.clear();
-                    app.run(Event::StoreOpened(opened));
+                    app.opened(opened);
                     flush(app);
                 }
                 continue;

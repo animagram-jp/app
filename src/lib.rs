@@ -27,11 +27,10 @@ use core::panic::PanicInfo;
 
 #[cfg(feature = "calendar")]
 use crate::calendar::data::DataError;
-#[cfg(feature = "file_store")]
-use crate::file_store::FileStoreError;
 use crate::{
     arena::{ArenaError, PanicError},
     event::EventError,
+    file_store::FileStoreError,
 };
 
 pub mod app;
@@ -42,7 +41,6 @@ pub mod coc7th;
 pub mod data_struct;
 pub mod event;
 pub mod field;
-#[cfg(feature = "file_store")]
 pub mod file_store;
 pub mod host;
 pub mod list;
@@ -93,7 +91,6 @@ wire_error! {
         Arena(ArenaError) = 1,
         Event(EventError) = 2,
         Panic(PanicError) = 3,
-        #[cfg(feature = "file_store")]
         FileStore(FileStoreError) = 4,
         #[cfg(feature = "calendar")]
         Data(DataError) = 5,
@@ -178,7 +175,6 @@ mod error_tests {
     #[test]
     fn every_error_has_a_stable_wire_path_and_detail() {
         let message = || String::from("m");
-        #[cfg_attr(not(feature = "file_store"), allow(unused_mut))]
         let mut cases: Vec<(Error, Vec<u16>, &str)> = vec![
             (Error::Arena(ArenaError::CommandOverflow), vec![1, 1], ""),
             (Error::Event(EventError::Decode), vec![2, 1], ""),
@@ -188,7 +184,6 @@ mod error_tests {
                 "a.rs:1: m",
             ),
         ];
-        #[cfg(feature = "file_store")]
         cases.extend([
             (Error::FileStore(FileStoreError::InvalidState(message())), vec![4, 1], "m"),
             (Error::FileStore(FileStoreError::QuotaExceeded(message())), vec![4, 2], "m"),

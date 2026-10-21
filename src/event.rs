@@ -7,10 +7,9 @@ use core::{
 };
 
 use self::gesture::{Gesture, Pointer};
-#[cfg(feature = "file_store")]
-use crate::file_store::{Backend, FileStore, FileStoreError, StoreId};
 use crate::{
     WireError,
+    file_store::{FileStore, FileStoreError, StoreId},
     host::{CanvasEvent, Command, FullscreenEvent, VisibilityState},
 };
 
@@ -45,14 +44,10 @@ pub enum Event {
     Window(WindowEvent),
     FetchChunk(FetchChunk),
     Fetched(Response),
-    #[cfg(feature = "file_store")]
     StoreLost(StoreId),
-    #[cfg(feature = "file_store")]
-    StoreOpened(Opened),
 }
 
-#[cfg(feature = "file_store")]
-pub type Opened = Result<<Backend as FileStore>::Handle, FileStoreError>;
+pub type Opened<S> = Result<<S as FileStore>::Handle, FileStoreError>;
 
 pub struct FetchChunk {
     pub request: u32,
@@ -78,6 +73,7 @@ pub enum WindowEvent {
 // === handler ===
 
 pub trait Handler: Sized {
+    type Store: FileStore;
     fn ready(
         viewport_width: f64,
         viewport_height: f64,
@@ -122,20 +118,17 @@ pub trait Handler: Sized {
         (vec![], vec![])
     }
 
-    #[cfg(feature = "file_store")]
     fn process_lost(&mut self) -> (Vec<Event>, Vec<Command>) {
         (vec![], vec![])
     }
 
-    #[cfg(feature = "file_store")]
-    fn process_opened(&mut self, _opened: Opened) -> (Vec<Event>, Vec<Command>) {
+    fn process_opened(&mut self, _opened: Opened<Self::Store>) -> (Vec<Event>, Vec<Command>) {
         (vec![], vec![])
     }
 }
 
 // === store ===
 
-#[cfg(feature = "file_store")]
 pub mod store {
     use alloc::{vec, vec::Vec};
     use core::{
@@ -148,15 +141,15 @@ pub mod store {
     use crate::{
         Error,
         event::{Event, Opened},
-        file_store::{Backend, FileStore, FileStoreError, StoreId},
+        file_store::{FileStore, FileStoreError, StoreId},
         host::Command,
     };
 
-    pub async fn open(id: StoreId) -> Result<Backend, FileStoreError> {
-        Backend::open(id, true).await.and_then(Backend::new)
+    pub async fn open<S: FileStore>(id: StoreId) -> Result<S, FileStoreError> {
+        S::open(id, true).await.and_then(S::new)
     }
 
-    pub fn lost(store: &mut Option<Backend>) -> Vec<(u32, Option<Vec<u8>>)> {
+    pub fn lost<S: FileStore>(store: &mut Option<S>) -> Vec<(u32, Option<Vec<u8>>)> {
         match store.take() {
             Some(store) => {
                 let pending = store.pending();
@@ -167,12 +160,12 @@ pub mod store {
         }
     }
 
-    pub fn opened(
-        store: &mut Option<Backend>,
+    pub fn opened<S: FileStore>(
+        store: &mut Option<S>,
         lost: &mut Vec<(u32, Option<Vec<u8>>)>,
-        opened: Opened,
+        opened: Opened<S>,
     ) -> (Vec<Event>, Vec<Command>) {
-        match opened.and_then(Backend::new) {
+        match opened.and_then(S::new) {
             Ok(mut reopened) => {
                 reopened.replay(take(lost));
                 *store = Some(reopened);

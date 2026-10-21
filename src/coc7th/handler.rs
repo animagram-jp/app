@@ -1,28 +1,21 @@
 use alloc::{string::String, vec, vec::Vec};
-#[cfg(feature = "file_store")]
-use core::option::Option::None;
 use core::{
     matches,
-    option::Option::Some,
+    option::Option::{None, Some},
     primitive::{f64, i32, u8, u32},
 };
 
 use arbitrary_int::u2;
 
-#[cfg(feature = "file_store")]
 use crate::{
-    Error,
-    event::{Opened, store},
-    file_store::{Backend, FileStore, StoreId},
-};
-use crate::{
-    Language,
+    Error, Language,
     coc7th::{
         character::SCHEMA_SIZE,
         target::{SHEET_PARTS, Sheet, Target},
     },
     data_struct::DataStruct,
-    event::{self, Event, gesture::Pointer},
+    event::{self, Event, Opened, gesture::Pointer, store},
+    file_store::{FileStore, StoreId},
     host::{Attribute, CanvasEvent, Command, EventType},
 };
 
@@ -34,28 +27,22 @@ pub enum Dialog {
 }
 
 pub struct Log;
-
-#[cfg(feature = "file_store")]
 const CHARACTER_STORE: StoreId = StoreId { name: "characters", version: "0.0" };
 
-pub struct Handler {
+pub struct Handler<S: FileStore> {
     character_sheet: Sheet,
     dialog:          Dialog,
     language:        Language,
     last_toast:      u2,
     character:       DataStruct,
     pub now:         f64,
-    #[cfg(feature = "file_store")]
-    characters:      Option<Backend>,
-    #[cfg(feature = "file_store")]
+    characters:      Option<S>,
     lost:            Vec<(u32, Option<Vec<u8>>)>,
-    #[cfg(feature = "file_store")]
     startup:         Vec<Error>,
     logs:            Vec<Log>,
 }
 
-impl Handler {
-    #[cfg(feature = "file_store")]
+impl<S: FileStore> Handler<S> {
     pub fn save(&mut self) -> (Vec<Event>, Vec<Command>) {
         let Some(characters) = self.characters.as_mut() else {
             return (vec![], vec![]);
@@ -67,7 +54,9 @@ impl Handler {
     }
 }
 
-impl event::Handler for Handler {
+impl<S: FileStore> event::Handler for Handler<S> {
+    type Store = S;
+
     async fn ready(
         _viewport_width: f64,
         _viewport_height: f64,
@@ -75,24 +64,19 @@ impl event::Handler for Handler {
         _now: f64,
         _timezone_offset_minutes: i32,
     ) -> Self {
-        #[cfg_attr(not(feature = "file_store"), allow(unused_mut))]
         let mut handler = Self {
             character_sheet: Sheet::Immutable,
-            dialog: Dialog::None,
-            language: Language::Ja,
-            last_toast: u2::new(1),
-            character: DataStruct::new(0, 0.0, SCHEMA_SIZE),
-            now: 0.0,
-            #[cfg(feature = "file_store")]
-            characters: None,
-            #[cfg(feature = "file_store")]
-            lost: Vec::new(),
-            #[cfg(feature = "file_store")]
-            startup: Vec::new(),
-            logs: Vec::new(),
+            dialog:          Dialog::None,
+            language:        Language::Ja,
+            last_toast:      u2::new(1),
+            character:       DataStruct::new(0, 0.0, SCHEMA_SIZE),
+            now:             0.0,
+            characters:      None,
+            lost:            Vec::new(),
+            startup:         Vec::new(),
+            logs:            Vec::new(),
         };
-        #[cfg(feature = "file_store")]
-        match store::open(CHARACTER_STORE).await {
+        match store::open::<S>(CHARACTER_STORE).await {
             Ok(store) => handler.characters = Some(store),
             Err(error) => handler.startup.push(Error::FileStore(error)),
         }
@@ -100,27 +84,21 @@ impl event::Handler for Handler {
     }
 
     fn close(&self) -> Vec<Command> {
-        #[cfg(feature = "file_store")]
         if let Some(store) = &self.characters {
             store.close();
         }
         vec![]
     }
-
-    #[cfg(feature = "file_store")]
     fn process_lost(&mut self) -> (Vec<Event>, Vec<Command>) {
         self.lost = store::lost(&mut self.characters);
         (vec![], vec![])
     }
-
-    #[cfg(feature = "file_store")]
-    fn process_opened(&mut self, opened: Opened) -> (Vec<Event>, Vec<Command>) {
+    fn process_opened(&mut self, opened: Opened<S>) -> (Vec<Event>, Vec<Command>) {
         store::opened(&mut self.characters, &mut self.lost, opened)
     }
 
     fn initial_draw(&mut self) -> (Vec<Event>, Vec<Command>) {
         let mut commands = Vec::new();
-        #[cfg(feature = "file_store")]
         commands.extend(self.startup.drain(..).map(|error| Command::Error { error }));
         commands.extend(language_commands(self.language));
         commands.extend(Language::list().iter().flat_map(|&l| option_commands(l)));
@@ -255,15 +233,14 @@ mod toggle_tests {
     use alloc::{string::String, vec::Vec};
 
     use super::*;
-    #[cfg(feature = "file_store")]
-    use crate::file_store::FileStoreError;
     use crate::{
         En, block_on,
         event::Handler as _,
+        file_store::{FileStoreError, MemoryStore},
         host::{KeyName, dom},
     };
 
-    fn click(handler: &mut Handler, id: dom::Id) -> Vec<Command> {
+    fn click(handler: &mut Handler<MemoryStore>, id: dom::Id) -> Vec<Command> {
         let event = CanvasEvent {
             event_type: EventType::Click,
             id,
@@ -323,7 +300,7 @@ mod toggle_tests {
 
     #[test]
     fn the_first_click_shows_the_edit_section_and_the_second_returns_to_the_view() {
-        let mut handler = block_on(Handler::ready(0.0, 0.0, 16.0, 0.0, 0));
+        let mut handler = block_on(Handler::<MemoryStore>::ready(0.0, 0.0, 16.0, 0.0, 0));
 
         let first: Vec<_> =
             click(&mut handler, toggle_button()).iter().map(hidden_change).collect();
@@ -336,7 +313,7 @@ mod toggle_tests {
 
     #[test]
     fn the_initial_draw_labels_the_language_and_reveals_the_body() {
-        let mut handler = block_on(Handler::ready(0.0, 0.0, 16.0, 0.0, 0));
+        let mut handler = block_on(Handler::<MemoryStore>::ready(0.0, 0.0, 16.0, 0.0, 0));
         let (events, commands) = handler.initial_draw();
         assert!(events.is_empty());
         let (texts, reveal) = commands.split_at(commands.len() - 1);
@@ -356,7 +333,7 @@ mod toggle_tests {
 
     #[test]
     fn choosing_a_language_relabels_the_button() {
-        let mut handler = block_on(Handler::ready(0.0, 0.0, 16.0, 0.0, 0));
+        let mut handler = block_on(Handler::<MemoryStore>::ready(0.0, 0.0, 16.0, 0.0, 0));
         let english = Language::En(En::Gb);
         let commands = click(&mut handler, Target::LanguageOption(english).to_dom());
         assert_eq!(
@@ -374,17 +351,15 @@ mod toggle_tests {
 
     #[test]
     fn other_targets_and_events_change_nothing() {
-        let mut handler = block_on(Handler::ready(0.0, 0.0, 16.0, 0.0, 0));
+        let mut handler = block_on(Handler::<MemoryStore>::ready(0.0, 0.0, 16.0, 0.0, 0));
         assert!(click(&mut handler, Target::Sheet(Sheet::Immutable, 1).to_dom()).is_empty());
         let first: Vec<_> =
             click(&mut handler, toggle_button()).iter().map(hidden_change).collect();
         assert_eq!(first, toggled(Sheet::Editable, Sheet::Immutable));
     }
-
-    #[cfg(feature = "file_store")]
     #[test]
     fn closing_the_handler_releases_the_store() {
-        let mut handler = block_on(Handler::ready(0.0, 0.0, 16.0, 0.0, 0));
+        let mut handler = block_on(Handler::<MemoryStore>::ready(0.0, 0.0, 16.0, 0.0, 0));
         assert!(handler.save().1.is_empty());
         assert!(handler.close().is_empty());
         let (events, commands) = handler.save();
@@ -394,13 +369,11 @@ mod toggle_tests {
             [Command::Error { error: Error::FileStore(FileStoreError::InvalidState(_)) }]
         ));
     }
-
-    #[cfg(feature = "file_store")]
     #[test]
     fn a_lost_store_is_replaced_and_the_pending_change_survives() {
-        let mut handler = block_on(Handler::ready(0.0, 0.0, 16.0, 0.0, 0));
+        let mut handler = block_on(Handler::<MemoryStore>::ready(0.0, 0.0, 16.0, 0.0, 0));
         handler.characters.as_mut().unwrap().set(1, b"kept".to_vec());
-        let disk = block_on(Backend::open(CHARACTER_STORE, true)).unwrap();
+        let disk = block_on(MemoryStore::open(CHARACTER_STORE, true)).unwrap();
 
         handler.close();
         let (events, _) = handler.save();
@@ -409,6 +382,6 @@ mod toggle_tests {
         handler.process_opened(Ok(disk.clone()));
         assert_eq!(handler.characters.as_ref().unwrap().get(1), Some(&b"kept"[..]));
         assert!(handler.save().1.is_empty());
-        assert_eq!(Backend::new(disk).unwrap().get(1), Some(&b"kept"[..]));
+        assert_eq!(MemoryStore::new(disk).unwrap().get(1), Some(&b"kept"[..]));
     }
 }

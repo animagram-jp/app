@@ -17,17 +17,21 @@ use wasm_bindgen::prelude::wasm_bindgen;
 use crate::calendar::handler::Handler;
 #[cfg(not(feature = "calendar"))]
 use crate::coc7th::handler::Handler;
-#[cfg(feature = "file_store")]
-use crate::file_store::StoreId;
 use crate::{
     Error,
     arena::{APP, RUNNING, emit},
     event::{
-        Event, EventError, Handler as _, Response, WindowEvent,
+        Event, EventError, Handler as _, Opened, Response, WindowEvent,
         gesture::{Pointer, Thresholds, detect_device},
     },
+    file_store::StoreId,
     host::{CanvasEvent, Command, EventType, Input, Output},
 };
+
+#[cfg(all(feature = "file_store", not(test)))]
+pub(crate) type Store = crate::file_store::OpfsStore;
+#[cfg(not(all(feature = "file_store", not(test))))]
+pub(crate) type Store = crate::file_store::MemoryStore;
 
 pub fn now() -> f64 {
     #[cfg(target_arch = "wasm32")]
@@ -47,11 +51,10 @@ pub struct App {
     pointer:    Pointer,
     thresholds: Thresholds,
     events:     VecDeque<Event>,
-    handler:    Handler,
+    handler:    Handler<Store>,
     commands:   Vec<Command>,
     origin:     Option<CanvasEvent>,
     responses:  BTreeMap<u32, Vec<u8>>,
-    #[cfg(feature = "file_store")]
     reopen:     Option<StoreId>,
 }
 
@@ -149,13 +152,10 @@ impl App {
                 (vec![Event::Fetched(response)], vec![])
             }
             Event::Fetched(response) => handler.process_fetched(&response),
-            #[cfg(feature = "file_store")]
             Event::StoreLost(id) => {
                 self.reopen = Some(id);
                 handler.process_lost()
             }
-            #[cfg(feature = "file_store")]
-            Event::StoreOpened(opened) => handler.process_opened(opened),
             Event::Window(WindowEvent::Shutdown) => {
                 unsafe { RUNNING = false };
                 (vec![], self.handler.close())
@@ -165,7 +165,7 @@ impl App {
 }
 
 impl App {
-    pub(crate) fn new(pointer_coarse: bool, handler: Handler) -> Self {
+    pub(crate) fn new(pointer_coarse: bool, handler: Handler<Store>) -> Self {
         Self {
             pointer: Pointer::default(),
             thresholds: Thresholds::for_device(detect_device(pointer_coarse)),
@@ -174,7 +174,6 @@ impl App {
             commands: Vec::new(),
             origin: None,
             responses: BTreeMap::new(),
-            #[cfg(feature = "file_store")]
             reopen: None,
         }
     }
@@ -189,9 +188,16 @@ impl App {
         }
     }
 
-    #[cfg(feature = "file_store")]
     pub(crate) fn reopen_wanted(&mut self) -> Option<StoreId> {
         self.reopen.take()
+    }
+
+    pub(crate) fn opened(&mut self, opened: Opened<Store>) {
+        let (events, commands) = self.handler.process_opened(opened);
+        self.commands.extend(commands);
+        for event in events {
+            self.run(event);
+        }
     }
 
     pub fn commands(&self) -> &[Command] {
@@ -208,11 +214,10 @@ mod tests {
     use super::*;
     #[cfg(feature = "calendar")]
     use crate::calendar::data::appointment;
-    #[cfg(feature = "file_store")]
-    use crate::file_store::{Backend, FileStore, StoreId};
     use crate::{
         Rng, block_on,
         event::{FetchChunk, gesture::Gesture},
+        file_store::FileStore,
         host::{EVENT_CANVAS, EVENT_FETCH, Output, dom},
     };
 
@@ -220,7 +225,7 @@ mod tests {
     const POINTER_UP: u8 = 18;
 
     fn new_app() -> App {
-        App::new(false, block_on(Handler::ready(0.0, 0.0, 16.0, 0.0, 0)))
+        App::new(false, block_on(Handler::<Store>::ready(0.0, 0.0, 16.0, 0.0, 0)))
     }
 
     fn section(n: u32) -> dom::Id {
@@ -351,7 +356,7 @@ mod tests {
         ))
         .unwrap();
         let mut app = new_app();
-        app.handler.attach(Backend::new(Default::default()).unwrap());
+        app.handler.attach(Store::new(Default::default()).unwrap());
 
         let chunks: Vec<&[u8]> = body.chunks(4000).collect();
         let last = chunks.len() - 1;
@@ -459,7 +464,6 @@ mod tests {
         }
     }
 
-    #[cfg(feature = "file_store")]
     #[test]
     fn a_lost_store_is_remembered_once_for_the_serve_loop() {
         let mut app = new_app();
@@ -468,7 +472,7 @@ mod tests {
         app.run(Event::StoreLost(id));
         assert_eq!(app.reopen_wanted().map(|id| (id.name, id.version)), Some(("x", "0.0")));
         assert!(app.reopen_wanted().is_none());
-        app.run(Event::StoreOpened(block_on(Backend::open(id, true))));
+        app.opened(block_on(Store::open(id, true)));
         assert!(app.events.is_empty());
     }
 }
