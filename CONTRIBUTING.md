@@ -117,6 +117,8 @@ sh reference/build.sh
 | Filename | Description |
 |-|-|
 | lib.rs | `#![no_std]`。`WireError` と `wire_error!`、ワイヤ形式の `Input` / `Output`(LE、u32 長さ前置の slice / str)、`Decimal`、`scalar!` / `wire_enum!`、`parse` / `stringify`。 |
+| credential.rs | 認証プロトコル v1。email の正規化、`salt` / `auth_key` / `wrap_key` の HKDF 導出、`stretch`(Argon2id、feature `vault`)、`verifier` / `verify`(HMAC + 定数時間比較)、`digest`、`hex`。server と共有する。 |
+| vault.rs | feature `vault`。`root_key` の生成と `wrap_key` による包み込み、store 名ごとの `store_key`、レコードの AEAD(XChaCha20-Poly1305、`key` を AAD に束ねる)。 |
 | app.rs | - initとprocessの公開apiを持つ、Appインスタンス。eventsとcommandsの2つのキューを持ち、handler::Handler.process_*へevents消費を移譲ループする。保存するアプリに共通の`StoreLost`(ストアの失効)は、ここで`serve_event`への「開き直したい」要求(`reopen`)に変え、`StoreOpened`は`Handler`へ渡す。 |
 | arena.rs | JavaScriptとappが共有するメモリのレイアウトと、event / commandのリングバッファ。`serve_event`(async)が、処理待ちの要求があれば`Store::open`をawaitして、結果を`App::opened`に渡す。 |
 | host.rs | ホストとの境界。Command, Eventのフレーム形式(operation番号 / event種別)、DOM語彙(dom::Id、Attribute、StyleProperty など)。 |

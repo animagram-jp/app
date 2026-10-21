@@ -27,8 +27,11 @@ use core::panic::PanicInfo;
 
 #[cfg(feature = "calendar")]
 use crate::calendar::data::DataError;
+#[cfg(feature = "vault")]
+use crate::vault::VaultError;
 use crate::{
     arena::{ArenaError, PanicError},
+    credential::CredentialError,
     event::EventError,
     file_store::FileStoreError,
 };
@@ -38,6 +41,7 @@ pub mod arena;
 #[cfg(feature = "calendar")]
 pub mod calendar;
 pub mod coc7th;
+pub mod credential;
 pub mod data_struct;
 pub mod event;
 pub mod field;
@@ -46,6 +50,8 @@ pub mod host;
 pub mod list;
 pub mod object;
 pub mod timestamp;
+#[cfg(feature = "vault")]
+pub mod vault;
 
 // === Error ===
 
@@ -94,6 +100,9 @@ wire_error! {
         FileStore(FileStoreError) = 4,
         #[cfg(feature = "calendar")]
         Data(DataError) = 5,
+        Credential(CredentialError) = 8,
+        #[cfg(feature = "vault")]
+        Vault(VaultError) = 13,
     }
 }
 
@@ -474,6 +483,16 @@ mod error_tests {
             (Error::Data(DataError::Status(404)), vec![5, 1], "404"),
             (Error::Data(DataError::Parse(message())), vec![5, 2], "m"),
             (Error::Data(DataError::Format(message())), vec![5, 3], "m"),
+        ]);
+        cases.extend([
+            (Error::Credential(CredentialError::Email), vec![8, 1], "Email"),
+            (Error::Credential(CredentialError::Password), vec![8, 2], "Password"),
+            (Error::Credential(CredentialError::Stretch), vec![8, 3], "Stretch"),
+        ]);
+        #[cfg(feature = "vault")]
+        cases.extend([
+            (Error::Vault(VaultError::Length(1)), vec![13, 2], "Length(1)"),
+            (Error::Vault(VaultError::Open), vec![13, 3], "Open"),
         ]);
         for (error, path, detail) in cases {
             let mut actual = Vec::new();
