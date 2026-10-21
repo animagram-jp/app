@@ -18,14 +18,14 @@ use crate::calendar::handler::Handler;
 #[cfg(not(feature = "calendar"))]
 use crate::coc7th::handler::Handler;
 use crate::{
-    Error,
+    Error, Input, Output,
     arena::{APP, RUNNING, emit},
     event::{
         Event, EventError, Handler as _, Opened, Response, WindowEvent,
         gesture::{Pointer, Thresholds, detect_device},
     },
     file_store::StoreId,
-    host::{CanvasEvent, Command, EventType, Input, Output},
+    host::{CanvasEvent, Command, EventType},
 };
 
 #[cfg(all(feature = "file_store", not(test)))]
@@ -215,10 +215,10 @@ mod tests {
     #[cfg(feature = "calendar")]
     use crate::calendar::data::appointment;
     use crate::{
-        Rng, block_on,
+        Output, Rng, block_on,
         event::{FetchChunk, gesture::Gesture},
         file_store::FileStore,
-        host::{EVENT_CANVAS, EVENT_FETCH, Output, dom},
+        host::{EVENT_CANVAS, EVENT_FETCH, dom},
     };
 
     const POINTER_DOWN: u8 = 16;

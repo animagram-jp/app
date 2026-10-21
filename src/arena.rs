@@ -17,7 +17,7 @@ use core::{
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::wasm_bindgen;
 
-use crate::{Error, WireError, app::App, host::Output};
+use crate::{Error, Output, WireError, app::App};
 #[cfg(all(target_arch = "wasm32", target_feature = "atomics"))]
 use crate::{app::Store, file_store::FileStore};
 

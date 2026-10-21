@@ -11,9 +11,9 @@ use crate::{
     WireError,
     data_struct::{DataStruct, ID_CREATED_AT, ID_IDENTITY, ID_MODIFIED_AT, encode_time},
     file_store::FileStore,
-    host::parse,
     list::ListError,
     object::Predicate,
+    parse,
     timestamp::{DAY, LAYOUT, MONTH, Timevolume, TimevolumeUnit, YEAR, days_in_month},
 };
 
@@ -127,10 +127,10 @@ pub mod tag {
 
     use super::blank;
     use crate::{
-        Language,
+        Language, Output,
         data_struct::DataStruct,
-        host::{Output, parse},
         object::{Predicate, SubjectTrait},
+        parse,
     };
 
     pub const KIND: u32 = 1;
@@ -205,12 +205,12 @@ pub mod appointment {
         DataError, blank, entries, format_error, parse_date, parse_time, parse_uid, tag, tags,
     };
     use crate::{
-        Language,
+        Input, Language, Output,
         calendar::{HOUR_MINUTE, YEAR_DAY},
         data_struct::DataStruct,
         file_store::FileStore,
-        host::{Input, Output, parse},
         object::{Predicate, SubjectTrait},
+        parse,
         timestamp::{Format, Timevolume, TimevolumeUnit, add, display},
     };
 
