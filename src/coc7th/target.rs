@@ -32,6 +32,7 @@ pub enum Sheet {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Target {
+    Html,
     Body,
     Language,
     LanguageOption(Language),
@@ -47,6 +48,7 @@ impl Target {
     pub fn to_dom(self) -> Id {
         let button = |n| Vec::from([(Tag::Header, None), (Tag::Button, Some(n))]);
         let path = match self {
+            Self::Html => Vec::from([(Tag::Html, None)]),
             Self::Body => Vec::from([(Tag::Body, None)]),
             Self::Language => Vec::from([
                 (Tag::Header, None),
@@ -81,6 +83,7 @@ impl Target {
     pub fn from_dom(id: &Id) -> Option<Self> {
         let path: Vec<(&Tag, Option<u32>)> = id.0.iter().map(|s| (&s.tag, s.n)).collect();
         Some(match path.as_slice() {
+            [(Tag::Html, None)] => Self::Html,
             [(Tag::Body, None)] => Self::Body,
             [(Tag::Header, None), (Tag::Button, Some(n))] => match *n {
                 CHARACTER_BUTTON => Self::Character,
@@ -125,6 +128,7 @@ mod tests {
 
     fn every_target() -> Vec<Target> {
         let mut targets = Vec::from([
+            Target::Html,
             Target::Body,
             Target::Language,
             Target::Character,

@@ -1,4 +1,5 @@
-use alloc::{format, string::String};
+use alloc::{format, string::String, vec::Vec};
+use core::{array::from_fn, cmp::Ordering};
 
 use arbitrary_int::{u1, u4, u5, u6, u7, u10, u13};
 
@@ -183,13 +184,13 @@ impl PartialEq for Timevolume {
 impl Eq for Timevolume {}
 
 impl PartialOrd for Timevolume {
-    fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
 impl Ord for Timevolume {
-    fn cmp(&self, other: &Self) -> core::cmp::Ordering {
+    fn cmp(&self, other: &Self) -> Ordering {
         self.key().cmp(&other.key())
     }
 }
@@ -281,7 +282,7 @@ pub fn display(
     use TimevolumeUnit::*;
 
     let (year, month, day, hour, minute, second, centisecond, ..) = unpack(timestamp);
-    let within = |unit: TimevolumeUnit| scope.0 <= unit && unit <= scope.1;
+    let within = |unit: TimevolumeUnit| (scope.0..=scope.1).contains(&unit);
     let dates = [(Year, year), (Month, month), (Day, day)];
     let clocks = [(Hour, hour), (Minute, minute), (Second, second), (Centisecond, centisecond)];
     let clock = |padded: bool| {
@@ -314,7 +315,7 @@ pub fn display(
                     Year => format!("{value:04}"),
                     _ => format!("{value:02}"),
                 })
-                .collect::<alloc::vec::Vec<_>>()
+                .collect::<Vec<_>>()
                 .join("-");
             join(date, clock(true))
         }
@@ -342,7 +343,7 @@ pub fn display(
                 .iter()
                 .filter(|(unit, _)| within(*unit))
                 .map(|(_, value)| format!("{value}"))
-                .collect::<alloc::vec::Vec<_>>()
+                .collect::<Vec<_>>()
                 .join("/");
             let suffix = if name.is_empty() { String::new() } else { format!("({name})") };
             join(format!("{date}{suffix}"), clock(false))
@@ -363,7 +364,7 @@ pub fn display(
             .into_iter()
             .filter(|(unit, text)| within(*unit) && !text.is_empty())
             .map(|(_, text)| text)
-            .collect::<alloc::vec::Vec<_>>()
+            .collect::<Vec<_>>()
             .join(" ");
             join(date, clock(true))
         }
@@ -567,7 +568,7 @@ pub fn days_in_month(year: i64, month: i64) -> i64 {
 }
 
 pub fn unpack(timestamp: u64) -> (i64, i64, i64, i64, i64, i64, i64, u64, u64) {
-    let fields: [u64; 9] = core::array::from_fn(|index| LAYOUT.get(timestamp, index));
+    let fields: [u64; 9] = from_fn(|index| LAYOUT.get(timestamp, index));
     (
         fields[YEAR] as i64,
         fields[MONTH] as i64,

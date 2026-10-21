@@ -214,6 +214,7 @@ impl<T: Fields> Layout<T> {
 #[cfg(test)]
 mod tests {
     use alloc::{boxed::Box, vec::Vec};
+    use core::array::from_fn;
 
     use arbitrary_int::{i3, i10, u1, u4, u5, u6, u7, u9, u10, u13};
 
@@ -300,11 +301,10 @@ mod tests {
         const FIELDS: usize = 5;
         for seed in 0..3000 {
             let mut rng = Rng::new(seed);
-            let widths: [u32; FIELDS] = core::array::from_fn(|_| 1 + rng.below(12) as u32);
-            let signed: [bool; FIELDS] = core::array::from_fn(|_| rng.chance(50));
-            let specs: [Spec; FIELDS] = core::array::from_fn(|i| {
-                if signed[i] { Signed(widths[i]) } else { Unsigned(widths[i]) }
-            });
+            let widths: [u32; FIELDS] = from_fn(|_| 1 + rng.below(12) as u32);
+            let signed: [bool; FIELDS] = from_fn(|_| rng.chance(50));
+            let specs: [Spec; FIELDS] =
+                from_fn(|i| if signed[i] { Signed(widths[i]) } else { Unsigned(widths[i]) });
             let padding = rng.below(5) as u32;
             let layout = Layout::<()>::from_specs(Box::leak(Box::new(specs)), padding);
 
@@ -325,11 +325,11 @@ mod tests {
                     low as i64
                 }
             };
-            let values: [u64; FIELDS] = core::array::from_fn(|_| rng.next_u64());
+            let values: [u64; FIELDS] = from_fn(|_| rng.next_u64());
             let raw = layout.pack_raw(&values);
             assert_eq!(raw >> bits, 0, "seed {seed}");
             assert_eq!(raw & ((1u64 << padding) - 1), 0, "seed {seed}");
-            let unpacked: [i64; FIELDS] = core::array::from_fn(|i| layout.get(raw, i));
+            let unpacked: [i64; FIELDS] = from_fn(|i| layout.get(raw, i));
             for index in 0..FIELDS {
                 assert_eq!(
                     unpacked[index],
@@ -341,7 +341,7 @@ mod tests {
             let index = rng.below(FIELDS);
             let replacement = rng.next_u64();
             let changed: [i64; FIELDS] =
-                core::array::from_fn(|i| layout.get(layout.set(raw, index, replacement), i));
+                from_fn(|i| layout.get(layout.set(raw, index, replacement), i));
             for other in 0..FIELDS {
                 let want =
                     if other == index { expect(index, replacement) } else { unpacked[other] };

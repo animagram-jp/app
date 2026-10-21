@@ -21,28 +21,8 @@
     --font-family-monospace: "Fira Code", "BIZ UDGothic", monospace;
     
     --rgb-theme-purple: 91 47 145;
-    --color-emphasis-ink:   rgb(var(--rgb-theme-purple));
-    --color-emphasis-paper: color-mix(in srgb, rgb(var(--rgb-theme-purple)) 73%, rgb(255,255,255));
-}
-@media (prefers-color-scheme: dark) {
-    :root {
-        --color-emphasis-ink:   color-mix(in srgb, rgb(var(--rgb-theme-purple)) 38%, rgb(255,255,255));
-        --color-emphasis-paper: color-mix(in srgb, rgb(var(--rgb-theme-purple)) 74%, rgb(255,255,255));
-    }
-}
-@media (forced-colors: none) {
-    :root[data-color-scheme="light"],
-    :root[data-color-scheme="light-more-contrast"],
-    :root[data-color-scheme="light-less-contrast"] {
-        --color-emphasis-ink:   rgb(var(--rgb-theme-purple));
-        --color-emphasis-paper: color-mix(in srgb, rgb(var(--rgb-theme-purple)) 73%, rgb(255,255,255));
-    }
-    :root[data-color-scheme="dark"],
-    :root[data-color-scheme="dark-more-contrast"],
-    :root[data-color-scheme="dark-less-contrast"] {
-        --color-emphasis-ink:   color-mix(in srgb, rgb(var(--rgb-theme-purple)) 38%, rgb(255,255,255));
-        --color-emphasis-paper: color-mix(in srgb, rgb(var(--rgb-theme-purple)) 74%, rgb(255,255,255));
-    }
+    --color-emphasis-ink:   light-dark(rgb(var(--rgb-theme-purple)), oklch(from rgb(var(--rgb-theme-purple)) 0.787 0.118 h));
+    --color-emphasis-paper: light-dark(color-mix(in srgb, rgb(var(--rgb-theme-purple)) 73%, rgb(255,255,255)), oklch(from rgb(var(--rgb-theme-purple)) 0.495 0.15 h));
 }
 
 body > header {

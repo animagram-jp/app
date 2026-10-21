@@ -38,7 +38,10 @@ use core::{
     option::Option::{self, None, Some},
     primitive::{u8, u32},
     result::Result::{self, Ok},
+    slice::Iter,
 };
+#[cfg(test)]
+use std::thread_local;
 
 use js_sys;
 use wasm_bindgen::{JsCast, JsValue};
@@ -282,7 +285,7 @@ impl IdSet {
             Err(_) => false,
         }
     }
-    fn iter(&self) -> core::slice::Iter<'_, u32> {
+    fn iter(&self) -> Iter<'_, u32> {
         self.0.iter()
     }
     fn clear(&mut self) {
@@ -890,7 +893,7 @@ pub struct MemoryHandles {
 }
 
 #[cfg(test)]
-std::thread_local! {
+thread_local! {
     static DISKS: RefCell<BTreeMap<String, MemoryHandles>> = const { RefCell::new(BTreeMap::new()) };
 }
 

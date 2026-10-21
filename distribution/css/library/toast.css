@@ -1,4 +1,9 @@
-/* Usage:
+/*
+ * SPDX-FileCopyrightText: 2026 Andyou <andyou@animagram.jp>
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/*  Usage:
 
     <section data-type="toast" aria-live="polite" aria-atomic="true">
         <output>
@@ -19,7 +24,7 @@
     [data-type="toast"] {
         bottom:           1.5rem;
         display:          flex;
-        flex-direction:   column-reverse;
+        flex-direction:   column;
         gap:              0.75rem;
         inset-inline-end: 1.5rem;
         max-inline-size:  calc(100vw - 3rem);

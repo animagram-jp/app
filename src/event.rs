@@ -139,6 +139,7 @@ pub trait Handler: Sized {
 pub mod store {
     use alloc::{vec, vec::Vec};
     use core::{
+        mem::take,
         option::Option::{self, None, Some},
         primitive::{u8, u32},
         result::Result::{self, Err, Ok},
@@ -173,7 +174,7 @@ pub mod store {
     ) -> (Vec<Event>, Vec<Command>) {
         match opened.and_then(Backend::new) {
             Ok(mut reopened) => {
-                reopened.replay(core::mem::take(lost));
+                reopened.replay(take(lost));
                 *store = Some(reopened);
                 (vec![], vec![])
             }
@@ -203,6 +204,7 @@ pub mod gesture {
         default::Default,
         fmt::Debug,
         marker::Copy,
+        mem::take,
         option::Option::{self, None, Some},
         primitive::{bool, f64, u32},
     };
@@ -946,7 +948,7 @@ pub mod gesture {
                 TwoFingerMode::Undetermined => None,
                 TwoFingerMode::Pinch => Some(Gesture::PinchEnd),
                 TwoFingerMode::Pan => {
-                    if !core::mem::take(&mut self.panning) {
+                    if !take(&mut self.panning) {
                         return None;
                     }
                     let (cx, cy) = self.current();

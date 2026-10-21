@@ -337,6 +337,7 @@ impl VariableList {
 #[cfg(test)]
 mod tests {
     use alloc::{collections::BTreeMap, format, vec::Vec};
+    use core::mem::discriminant;
 
     use super::*;
     use crate::Rng;
@@ -504,9 +505,7 @@ mod tests {
                     };
                     let same = |got: Result<&[u8], ListError>| match (got, &expected) {
                         (Ok(a), Ok(b)) => a == *b,
-                        (Err(a), Err(b)) => {
-                            core::mem::discriminant(&a) == core::mem::discriminant(b)
-                        }
+                        (Err(a), Err(b)) => discriminant(&a) == discriminant(b),
                         _ => false,
                     };
                     assert!(same(list.get(&id)), "{context} get {id}");

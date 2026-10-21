@@ -25,11 +25,11 @@ use crate::{
     },
     data_struct::DataStruct,
     event::{
-        Event, Handler as _, Opened, Response,
+        self, Event, Opened, Response,
         gesture::{Gesture, Pointer},
         store,
     },
-    file_store::{Backend, FileStore, FileStoreError, StoreId},
+    file_store::{Backend, FileStore, StoreId},
     host::{
         Attribute, CanvasEvent, Command, Decimal, EventType, Keyword, Method, StyleProperty,
         StyleValue, Unit, dom::Id, parse, parse_url_search_params, stringify,
@@ -486,9 +486,9 @@ impl Handler {
             ),
             (
                 EditField::Start,
-                display(add(place.day, start), Language::Ja, HOUR_MINUTE, Format::Iso),
+                display(add(place.day, start), self.language, HOUR_MINUTE, Format::Iso),
             ),
-            (EditField::End, display(add(place.day, end), Language::Ja, HOUR_MINUTE, Format::Iso)),
+            (EditField::End, display(add(place.day, end), self.language, HOUR_MINUTE, Format::Iso)),
             (EditField::Note, appointment::Note::read(draft)),
         ];
         let mut commands = vec![
@@ -997,10 +997,7 @@ impl Handler {
                 self.language = l;
                 let mut commands = self.date_commands();
                 commands.extend(self.header_commands());
-                commands.push(Command::SetText {
-                    id:    Target::Language.to_dom(),
-                    value: l.display().into(),
-                });
+                commands.extend(language_commands(l));
                 (vec![], commands)
             }
             Target::Modal => {
@@ -1319,8 +1316,8 @@ impl Handler {
                     Target::CardPart(n, CardPart::Time).to_dom(),
                     format!(
                         "{}–{}",
-                        display(add(self.base, start), Language::Ja, HOUR_MINUTE, Format::Iso),
-                        display(add(self.base, end), Language::Ja, HOUR_MINUTE, Format::Iso)
+                        display(add(self.base, start), self.language, HOUR_MINUTE, Format::Iso),
+                        display(add(self.base, end), self.language, HOUR_MINUTE, Format::Iso)
                     ),
                 ),
                 (Target::CardPart(n, CardPart::Title).to_dom(), appointment::Title::read(entry)),
@@ -1556,7 +1553,7 @@ impl Handler {
                 }
             } else {
                 self.clock.time(f64::from(row)).map_or_else(String::new, |time| {
-                    display(add(first, time), Language::Ja, HOUR_MINUTE, Format::Iso)
+                    display(add(first, time), self.language, HOUR_MINUTE, Format::Iso)
                 })
             };
             for side in 1..=2 {
@@ -1608,7 +1605,7 @@ impl Handler {
     }
 }
 
-impl crate::event::Handler for Handler {
+impl event::Handler for Handler {
     async fn ready(
         viewport_width_px: f64,
         _viewport_height_px: f64,
@@ -1646,14 +1643,8 @@ impl crate::event::Handler for Handler {
     fn initial_draw(&mut self) -> (Vec<Event>, Vec<Command>) {
         let mut commands = self.view_commands();
         commands.extend(self.header_commands());
-        commands.push(Command::SetText {
-            id:    Target::Language.to_dom(),
-            value: self.language.display().into(),
-        });
-        commands.extend(Language::list().iter().map(|&l| Command::SetText {
-            id:    Target::LanguageOption(l).to_dom(),
-            value: l.display().into(),
-        }));
+        commands.extend(language_commands(self.language));
+        commands.extend(Language::list().iter().flat_map(|&l| option_commands(l)));
         let failed = !self.startup.is_empty();
         commands.extend(self.startup.drain(..).map(|error| Command::Error { error }));
         if !failed {
@@ -1754,6 +1745,31 @@ impl crate::event::Handler for Handler {
     fn process_opened(&mut self, opened: Opened) -> (Vec<Event>, Vec<Command>) {
         store::opened(&mut self.store, &mut self.lost, opened)
     }
+}
+
+fn language_commands(language: Language) -> [Command; 2] {
+    let (tag, label) = language.display();
+    [
+        Command::SetAttribute {
+            id:        Target::Html.to_dom(),
+            attribute: Attribute::Lang,
+            value:     tag.into(),
+        },
+        Command::SetText { id: Target::Language.to_dom(), value: label.into() },
+    ]
+}
+
+fn option_commands(language: Language) -> [Command; 2] {
+    let (tag, label) = language.display();
+    let id = Target::LanguageOption(language).to_dom();
+    [
+        Command::SetAttribute {
+            id:        id.clone(),
+            attribute: Attribute::Lang,
+            value:     tag.into(),
+        },
+        Command::SetText { id, value: label.into() },
+    ]
 }
 
 fn column_of(resources: &[DataStruct], uid: u128) -> Option<usize> {
@@ -1886,10 +1902,11 @@ mod tests {
 
     use super::*;
     use crate::{
-        Rng, block_on,
+        En, Rng, block_on,
         calendar::data::SCHEMA_SIZE,
         data_struct::{ID_CREATED_AT, ID_MODIFIED_AT, encode_time},
-        file_store::{MemoryHandles, MemoryStore},
+        event::Handler as _,
+        file_store::{FileStoreError, MemoryHandles, MemoryStore},
         host::KeyName,
         timestamp::pack,
     };
@@ -2089,6 +2106,17 @@ mod tests {
         texts(commands).into_iter().find(|(target, _)| target == id).map(|(_, value)| value)
     }
 
+    fn lang_of(commands: &[Command], id: &Id) -> Option<String> {
+        commands.iter().find_map(|command| match command {
+            Command::SetAttribute { id: target, attribute: Attribute::Lang, value }
+                if target == id =>
+            {
+                Some(value.clone())
+            }
+            _ => None,
+        })
+    }
+
     fn choose(handler: &mut Handler, view: Axis) -> Vec<Command> {
         let event = CanvasEvent {
             event_type: EventType::Change,
@@ -2115,9 +2143,14 @@ mod tests {
         let mut handler = Handler::new(VIEWPORT, today(), REM);
         let (_, commands) = handler.initial_draw();
         assert_eq!(text_of(&commands, &Target::Language.to_dom()).unwrap(), "日本語");
+        assert_eq!(lang_of(&commands, &Target::Html.to_dom()).unwrap(), "ja");
+        assert_eq!(
+            lang_of(&commands, &Target::LanguageOption(Language::list()[0]).to_dom()).unwrap(),
+            "en-GB"
+        );
         assert_eq!(
             text_of(&commands, &Target::LanguageOption(Language::list()[0]).to_dom()).unwrap(),
-            "en-GB"
+            "English"
         );
         assert_eq!(
             text_of(&commands, &Target::LanguageOption(Language::Ja).to_dom()).unwrap(),
@@ -2135,8 +2168,7 @@ mod tests {
         assert_eq!(text(&commands, Target::AxisName(Axis::Day(Day::Day))), "1日");
         assert_eq!(text(&commands, Target::Step(3)), "本日");
         assert_eq!(text(&commands, Target::Save), "保存");
-        let commands =
-            press(&mut handler, Target::LanguageOption(Language::En(crate::En::Gb)).to_dom());
+        let commands = press(&mut handler, Target::LanguageOption(Language::En(En::Gb)).to_dom());
         assert_eq!(text(&commands, Target::AxisName(Axis::Month)), "1 month");
         assert_eq!(text(&commands, Target::AxisName(Axis::Day(Day::Week))), "1 week");
         assert_eq!(text(&commands, Target::Step(3)), "Today");
@@ -2146,9 +2178,10 @@ mod tests {
     #[test]
     fn choosing_a_language_relabels_the_button_and_redraws_the_dates() {
         let mut handler = Handler::new(VIEWPORT, today(), REM);
-        let english = Language::En(crate::En::Gb);
+        let english = Language::En(En::Gb);
         let commands = press(&mut handler, Target::LanguageOption(english).to_dom());
-        assert_eq!(text_of(&commands, &Target::Language.to_dom()).unwrap(), "en-GB");
+        assert_eq!(text_of(&commands, &Target::Language.to_dom()).unwrap(), "English");
+        assert_eq!(lang_of(&commands, &Target::Html.to_dom()).unwrap(), "en-GB");
         assert_eq!(text_of(&commands, &Target::DayTitle(1).to_dom()).unwrap(), "Fri 2 Oct");
         let commands = press(&mut handler, Target::LanguageOption(Language::Ja).to_dom());
         assert_eq!(text_of(&commands, &Target::DayTitle(1).to_dom()).unwrap(), "10/2(金)");

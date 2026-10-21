@@ -4,7 +4,7 @@ self.addEventListener("message", async (e) => {
 
     const { default: init, App, arena_offset, initialize, serve_event } =
         await import("./app/app.js?v={version}");
-    await init({ module_or_path: "./app/app_bg.wasm?v={version}", memory: payload.memory });
+    const wasm = await init({ module_or_path: "./app/app_bg.wasm?v={version}", memory: payload.memory });
 
     initialize();
     self.postMessage({ type: "ready", arena_offset: arena_offset() });
@@ -18,4 +18,8 @@ self.addEventListener("message", async (e) => {
         payload.timezone_offset_minutes,
     );
     await serve_event();
+
+    wasm.__wbindgen_thread_destroy();
+    self.postMessage({ type: "done" });
+    self.close();
 });

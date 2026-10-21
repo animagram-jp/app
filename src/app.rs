@@ -36,9 +36,9 @@ pub fn now() -> f64 {
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map_or(0.0, |d| d.as_millis() as f64)
+        use std::time::{SystemTime, UNIX_EPOCH};
+
+        SystemTime::now().duration_since(UNIX_EPOCH).map_or(0.0, |d| d.as_millis() as f64)
     }
 }
 
@@ -206,12 +206,14 @@ mod tests {
     use std::fs;
 
     use super::*;
+    #[cfg(feature = "calendar")]
+    use crate::calendar::data::appointment;
     #[cfg(feature = "file_store")]
     use crate::file_store::{Backend, FileStore, StoreId};
     use crate::{
         Rng, block_on,
-        event::gesture::Gesture,
-        host::{EVENT_CANVAS, Output, dom},
+        event::{FetchChunk, gesture::Gesture},
+        host::{EVENT_CANVAS, EVENT_FETCH, Output, dom},
     };
 
     const POINTER_DOWN: u8 = 16;
@@ -247,7 +249,7 @@ mod tests {
     }
 
     fn chunk(request: u32, status: u16, last: bool, bytes: &[u8]) -> Event {
-        Event::FetchChunk(crate::event::FetchChunk { request, status, last, bytes: bytes.to_vec() })
+        Event::FetchChunk(FetchChunk { request, status, last, bytes: bytes.to_vec() })
     }
 
     #[test]
@@ -331,7 +333,7 @@ mod tests {
     #[cfg(feature = "calendar")]
     fn fetch_frame(request: u32, status: u16, last: bool, bytes: &[u8]) -> Vec<u8> {
         let mut frame = Vec::new();
-        frame.push(crate::host::EVENT_FETCH);
+        frame.push(EVENT_FETCH);
         request.encode(&mut frame);
         frame.extend_from_slice(&status.to_le_bytes());
         frame.push(last as u8);
@@ -349,7 +351,7 @@ mod tests {
         ))
         .unwrap();
         let mut app = new_app();
-        app.handler.attach(crate::file_store::Backend::new(Default::default()).unwrap());
+        app.handler.attach(Backend::new(Default::default()).unwrap());
 
         let chunks: Vec<&[u8]> = body.chunks(4000).collect();
         let last = chunks.len() - 1;
@@ -357,7 +359,7 @@ mod tests {
             assert!(!app.handler.loaded());
             app.process(&fetch_frame(1, 200, index == last, chunk));
         }
-        assert_eq!(app.handler.read(crate::calendar::data::appointment::KIND).len(), 380);
+        assert_eq!(app.handler.read(appointment::KIND).len(), 380);
         assert!(app.responses.is_empty());
     }
 
@@ -435,7 +437,7 @@ mod tests {
                         let length = rng.below(20);
                         let bytes = rng.bytes(length);
                         let mut frame = Vec::new();
-                        frame.push(crate::host::EVENT_FETCH);
+                        frame.push(EVENT_FETCH);
                         (1 + rng.below(3) as u32).encode(&mut frame);
                         frame.extend_from_slice(&(200 + rng.below(300) as u16).to_le_bytes());
                         frame.push(rng.below(2) as u8);

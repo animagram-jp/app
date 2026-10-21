@@ -1,4 +1,4 @@
-use alloc::vec::Vec;
+use alloc::{vec, vec::Vec};
 use core::{
     cmp::Ord,
     marker::Copy,
@@ -160,7 +160,7 @@ impl Clock {
     /// assert!(!CLOCK.contains(44.0));
     /// ```
     pub fn contains(&self, unit: f64) -> bool {
-        unit >= 0.0 && unit < self.count() as f64
+        (0.0..self.count() as f64).contains(&unit)
     }
 
     /// ```
@@ -185,7 +185,7 @@ impl Clock {
     /// assert_eq!(CLOCK.time(-0.1), None);
     /// ```
     pub fn time(&self, unit: f64) -> Option<Timevolume> {
-        (unit >= 0.0 && unit <= self.count() as f64).then(|| {
+        (0.0..=self.count() as f64).contains(&unit).then(|| {
             let minutes = libm::floor(unit * minutes_of(self.unit) as f64) as i64;
             time_of(minutes_of(self.start) + minutes)
         })
@@ -380,7 +380,7 @@ pub fn lanes<T: Copy + Ord>(spans: &[(T, T)]) -> Vec<(u32, u32)> {
     let mut order: Vec<usize> = (0..spans.len()).collect();
     order.sort_by(|a, b| spans[*a].0.cmp(&spans[*b].0).then(spans[*b].1.cmp(&spans[*a].1)));
 
-    let mut result = alloc::vec![(0, 1); spans.len()];
+    let mut result = vec![(0, 1); spans.len()];
     let mut cluster: Vec<(usize, T, u32)> = Vec::new();
     let mut cluster_end: Option<T> = None;
     for index in order {
@@ -431,6 +431,7 @@ pub fn lane_box(logical: &BBox<2>, lane: u32, count: u32) -> BBox<2> {
 #[cfg(test)]
 mod tests {
     use alloc::vec::Vec;
+    use core::iter::once;
 
     use super::*;
 
@@ -576,7 +577,7 @@ mod tests {
     #[test]
     fn month_bbox_and_locate_are_inverse_for_every_day_and_row() {
         for day in 0..Month::days() {
-            for row in core::iter::once(None).chain((0..Month::ROWS).map(Some)) {
+            for row in once(None).chain((0..Month::ROWS).map(Some)) {
                 let bx = Month::bbox(day, row).unwrap();
                 let unit = [bx.base()[0].get() as i32, bx.base()[1].get() as i32];
                 assert_eq!(Month::locate(unit), Some((day, row)));
@@ -602,7 +603,7 @@ mod tests {
             .iter()
             .map(|&i| {
                 let at = spans[i].0;
-                members.iter().filter(|&&j| spans[j].0 <= at && at < spans[j].1).count() as u32
+                members.iter().filter(|&&j| (spans[j].0..spans[j].1).contains(&at)).count() as u32
             })
             .max()
             .unwrap_or(1)

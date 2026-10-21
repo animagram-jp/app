@@ -1,3 +1,8 @@
+/*
+ * SPDX-FileCopyrightText: 2026 Andyou <andyou@animagram.jp>
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 /*  Usage:
 
     <label>
@@ -245,9 +250,10 @@
         it sits in rather than to the row, which would grow. */
 
     [data-step="block"]:has(> label > input[type="radio"]) {
-        margin-block:        calc((var(--md-line-height) - var(--md-box-height)) / 2);
+        margin-block-end:    calc(((var(--md-line-height) - var(--md-box-height)) / 2) + var(--md-border-width));
+        margin-block-start:  calc((var(--md-line-height) - var(--md-box-height)) / 2);
         margin-inline-start: calc(var(--md-border-radius) / 2);
-        vertical-align:      middle;
+        vertical-align:      top;
     }
 
     [data-step="block"] > label:first-child:has(> input[type="radio"]) {
@@ -267,11 +273,7 @@
         this is a label > input[type="radio"] like any other, so css.radio
         styles it as a circle: only what the triangle contradicts is undone
         here, and the radius has to go with the border or the focus ring is
-        drawn as an ellipse around a triangle.
-
-        half a box height each, so the pair fills the cell between its borders:
-        the row height a th gets from css.table is its line-height plus the
-        block padding on both sides, which is one box height. */
+        drawn as an ellipse around a triangle. */
 
     [data-step="block"] > label > input[type="radio"] {
         border:        0;
@@ -279,7 +281,7 @@
         color:         var(--color-ink-mix);
         display:       block;
         inline-size:   var(--md-box-height);
-        block-size:    calc(var(--md-box-height) / 2);
+        block-size:    calc((var(--md-box-height) - var(--md-border-width)) / 2);
     }
 
     /*  css.radio rounds this pseudo-element into the inner circle of a radio;
@@ -314,12 +316,13 @@
         rather than a data-size of its own. */
 
     table[data-size="xs"] [data-step="block"]:has(> label > input[type="radio"]) {
-        margin-block:        calc((var(--xs-line-height) - var(--xs-box-height)) / 2);
+        margin-block-end:    calc(((var(--xs-line-height) - var(--xs-box-height)) / 2) + var(--xs-border-width));
+        margin-block-start:  calc((var(--xs-line-height) - var(--xs-box-height)) / 2);
         margin-inline-start: calc(var(--xs-border-radius) / 2);
     }
     table[data-size="xs"] [data-step="block"] > label > input[type="radio"] {
         inline-size: var(--xs-box-height);
-        block-size:  calc(var(--xs-box-height) / 2);
+        block-size:  calc((var(--xs-box-height) - var(--xs-border-width)) / 2);
     }
     table[data-size="xs"] [data-step="block"] > label > input[type="radio"]::after {
         border-inline: calc(var(--xs-box-height) / 4) solid transparent;
@@ -332,12 +335,13 @@
     }
 
     table[data-size="sm"] [data-step="block"]:has(> label > input[type="radio"]) {
-        margin-block:        calc((var(--sm-line-height) - var(--sm-box-height)) / 2);
+        margin-block-end:    calc(((var(--sm-line-height) - var(--sm-box-height)) / 2) + var(--sm-border-width));
+        margin-block-start:  calc((var(--sm-line-height) - var(--sm-box-height)) / 2);
         margin-inline-start: calc(var(--sm-border-radius) / 2);
     }
     table[data-size="sm"] [data-step="block"] > label > input[type="radio"] {
         inline-size: var(--sm-box-height);
-        block-size:  calc(var(--sm-box-height) / 2);
+        block-size:  calc((var(--sm-box-height) - var(--sm-border-width)) / 2);
     }
     table[data-size="sm"] [data-step="block"] > label > input[type="radio"]::after {
         border-inline: calc(var(--sm-box-height) / 4) solid transparent;
@@ -350,12 +354,13 @@
     }
 
     table[data-size="lg"] [data-step="block"]:has(> label > input[type="radio"]) {
-        margin-block:        calc((var(--lg-line-height) - var(--lg-box-height)) / 2);
+        margin-block-end:    calc(((var(--lg-line-height) - var(--lg-box-height)) / 2) + var(--lg-border-width));
+        margin-block-start:  calc((var(--lg-line-height) - var(--lg-box-height)) / 2);
         margin-inline-start: calc(var(--lg-border-radius) / 2);
     }
     table[data-size="lg"] [data-step="block"] > label > input[type="radio"] {
         inline-size: var(--lg-box-height);
-        block-size:  calc(var(--lg-box-height) / 2);
+        block-size:  calc((var(--lg-box-height) - var(--lg-border-width)) / 2);
     }
     table[data-size="lg"] [data-step="block"] > label > input[type="radio"]::after {
         border-inline: calc(var(--lg-box-height) / 4) solid transparent;
@@ -368,12 +373,13 @@
     }
 
     table[data-size="xl"] [data-step="block"]:has(> label > input[type="radio"]) {
-        margin-block:        calc((var(--xl-line-height) - var(--xl-box-height)) / 2);
+        margin-block-end:    calc(((var(--xl-line-height) - var(--xl-box-height)) / 2) + var(--xl-border-width));
+        margin-block-start:  calc((var(--xl-line-height) - var(--xl-box-height)) / 2);
         margin-inline-start: calc(var(--xl-border-radius) / 2);
     }
     table[data-size="xl"] [data-step="block"] > label > input[type="radio"] {
         inline-size: var(--xl-box-height);
-        block-size:  calc(var(--xl-box-height) / 2);
+        block-size:  calc((var(--xl-box-height) - var(--xl-border-width)) / 2);
     }
     table[data-size="xl"] [data-step="block"] > label > input[type="radio"]::after {
         border-inline: calc(var(--xl-box-height) / 4) solid transparent;
@@ -386,12 +392,13 @@
     }
 
     table[data-size="2xl"] [data-step="block"]:has(> label > input[type="radio"]) {
-        margin-block:        calc((var(--2xl-line-height) - var(--2xl-box-height)) / 2);
+        margin-block-end:    calc(((var(--2xl-line-height) - var(--2xl-box-height)) / 2) + var(--2xl-border-width));
+        margin-block-start:  calc((var(--2xl-line-height) - var(--2xl-box-height)) / 2);
         margin-inline-start: calc(var(--2xl-border-radius) / 2);
     }
     table[data-size="2xl"] [data-step="block"] > label > input[type="radio"] {
         inline-size: var(--2xl-box-height);
-        block-size:  calc(var(--2xl-box-height) / 2);
+        block-size:  calc((var(--2xl-box-height) - var(--2xl-border-width)) / 2);
     }
     table[data-size="2xl"] [data-step="block"] > label > input[type="radio"]::after {
         border-inline: calc(var(--2xl-box-height) / 4) solid transparent;

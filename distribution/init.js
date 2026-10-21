@@ -123,11 +123,21 @@ function start() {
         return;
     }
 
-    const w = new Worker("./worker.js?v={version}", { type: "module" });
+    let serving = false;
 
-    w.addEventListener("message", async (e) => {
-        if (e.data.type === "ready") {
+    const spawn = () => {
+        const w = new Worker("./worker.js?v={version}", { type: "module" });
+
+        w.addEventListener("message", async (e) => {
+            if (e.data.type === "done") {
+                w.terminate();
+                spawn();
+                return;
+            }
+            if (e.data.type !== "ready") return;
             S.arena_offset = e.data.arena_offset;
+            if (serving) return;
+            serving = true;
 
             for (;;) {
                 drain();
@@ -137,27 +147,28 @@ function start() {
                 const result = Atomics.waitAsync(S.int32, index, write);
                 if (result.async) await result.value;
             }
-        }
-    });
+        });
 
-    w.addEventListener("error", (e) => {
-        console.error("[worker] reload:", e.message);
-        execute(Uint8Array.of(15));
-    });
+        w.addEventListener("error", (e) => {
+            console.error("[worker] reload:", e.message);
+            execute(Uint8Array.of(15));
+        });
 
-    w.postMessage({
-        type: "init",
-        payload: {
-            memory: S.memory,
-            pointer_coarse: window.matchMedia("(pointer: coarse)").matches,
-            viewport_width: document.documentElement.clientWidth,
-            viewport_height: window.innerHeight,
-            rem_in_px,
-            now,
-            timezone_offset_minutes,
-        },
-    });
+        w.postMessage({
+            type: "init",
+            payload: {
+                memory: S.memory,
+                pointer_coarse: window.matchMedia("(pointer: coarse)").matches,
+                viewport_width: document.documentElement.clientWidth,
+                viewport_height: window.innerHeight,
+                rem_in_px,
+                now: Date.now(),
+                timezone_offset_minutes,
+            },
+        });
+    };
 
+    spawn();
     bind();
 }
 
@@ -703,6 +714,7 @@ const TAGS = [
     "h3",
     "header",
     "hgroup",
+    "html",
     "input",
     "label",
     "li",
@@ -738,6 +750,7 @@ const ATTRIBUTES = [
     "data-surround",
     "disabled",
     "hidden",
+    "lang",
 ];
 
 /**

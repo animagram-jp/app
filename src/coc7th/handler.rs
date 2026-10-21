@@ -22,7 +22,7 @@ use crate::{
         target::{SHEET_PARTS, Sheet, Target},
     },
     data_struct::DataStruct,
-    event::{Event, gesture::Pointer},
+    event::{self, Event, gesture::Pointer},
     host::{Attribute, CanvasEvent, Command, EventType},
 };
 
@@ -67,7 +67,7 @@ impl Handler {
     }
 }
 
-impl crate::event::Handler for Handler {
+impl event::Handler for Handler {
     async fn ready(
         _viewport_width: f64,
         _viewport_height: f64,
@@ -122,14 +122,8 @@ impl crate::event::Handler for Handler {
         let mut commands = Vec::new();
         #[cfg(feature = "file_store")]
         commands.extend(self.startup.drain(..).map(|error| Command::Error { error }));
-        commands.push(Command::SetText {
-            id:    Target::Language.to_dom(),
-            value: self.language.display().into(),
-        });
-        commands.extend(Language::list().iter().map(|&l| Command::SetText {
-            id:    Target::LanguageOption(l).to_dom(),
-            value: l.display().into(),
-        }));
+        commands.extend(language_commands(self.language));
+        commands.extend(Language::list().iter().flat_map(|&l| option_commands(l)));
         commands.push(Command::RemoveAttribute {
             id:        Target::Body.to_dom(),
             attribute: Attribute::Hidden,
@@ -148,13 +142,7 @@ impl crate::event::Handler for Handler {
         }
         if let Some(Target::LanguageOption(l)) = target {
             self.language = l;
-            return (
-                vec![],
-                vec![Command::SetText {
-                    id:    Target::Language.to_dom(),
-                    value: l.display().into(),
-                }],
-            );
+            return (vec![], Vec::from(language_commands(l)));
         }
         if target != Some(Target::Edit) {
             return (vec![], vec![]);
@@ -178,6 +166,31 @@ impl crate::event::Handler for Handler {
         }));
         (vec![], commands)
     }
+}
+
+fn language_commands(language: Language) -> [Command; 2] {
+    let (tag, label) = language.display();
+    [
+        Command::SetAttribute {
+            id:        Target::Html.to_dom(),
+            attribute: Attribute::Lang,
+            value:     tag.into(),
+        },
+        Command::SetText { id: Target::Language.to_dom(), value: label.into() },
+    ]
+}
+
+fn option_commands(language: Language) -> [Command; 2] {
+    let (tag, label) = language.display();
+    let id = Target::LanguageOption(language).to_dom();
+    [
+        Command::SetAttribute {
+            id:        id.clone(),
+            attribute: Attribute::Lang,
+            value:     tag.into(),
+        },
+        Command::SetText { id, value: label.into() },
+    ]
 }
 
 #[cfg(all(test, target_arch = "wasm32"))]
@@ -242,6 +255,8 @@ mod toggle_tests {
     use alloc::{string::String, vec::Vec};
 
     use super::*;
+    #[cfg(feature = "file_store")]
+    use crate::file_store::FileStoreError;
     use crate::{
         En, block_on,
         event::Handler as _,
@@ -277,15 +292,26 @@ mod toggle_tests {
         }
     }
 
-    fn set_text(command: &Command) -> (dom::Id, String) {
+    fn written(command: &Command) -> (dom::Id, Option<Attribute>, String) {
         match command {
-            Command::SetText { id, value } => (id.clone(), value.clone()),
+            Command::SetText { id, value } => (id.clone(), None, value.clone()),
+            Command::SetAttribute { id, attribute, value } => {
+                (id.clone(), Some(*attribute), value.clone())
+            }
             _ => panic!("unexpected command"),
         }
     }
 
-    fn labelled(language: Language) -> (dom::Id, String) {
-        (Target::Language.to_dom(), String::from(language.display()))
+    fn labelled(
+        target: Target,
+        root: Target,
+        language: Language,
+    ) -> Vec<(dom::Id, Option<Attribute>, String)> {
+        let (tag, label) = language.display();
+        Vec::from([
+            (root.to_dom(), Some(Attribute::Lang), String::from(tag)),
+            (target.to_dom(), None, String::from(label)),
+        ])
     }
 
     fn toggled(shown: Sheet, hidden: Sheet) -> Vec<(bool, dom::Id)> {
@@ -314,15 +340,14 @@ mod toggle_tests {
         let (events, commands) = handler.initial_draw();
         assert!(events.is_empty());
         let (texts, reveal) = commands.split_at(commands.len() - 1);
-        let expected: Vec<_> = [labelled(Language::Ja)]
-            .into_iter()
-            .chain(
-                Language::list()
-                    .iter()
-                    .map(|&l| (Target::LanguageOption(l).to_dom(), String::from(l.display()))),
-            )
-            .collect();
-        assert_eq!(texts.iter().map(set_text).collect::<Vec<_>>(), expected);
+        let expected: Vec<_> =
+            labelled(Target::Language, Target::Html, Language::Ja)
+                .into_iter()
+                .chain(Language::list().iter().flat_map(|&l| {
+                    labelled(Target::LanguageOption(l), Target::LanguageOption(l), l)
+                }))
+                .collect();
+        assert_eq!(texts.iter().map(written).collect::<Vec<_>>(), expected);
         assert_eq!(
             reveal.iter().map(hidden_change).collect::<Vec<_>>(),
             [(false, Target::Body.to_dom())]
@@ -334,10 +359,16 @@ mod toggle_tests {
         let mut handler = block_on(Handler::ready(0.0, 0.0, 16.0, 0.0, 0));
         let english = Language::En(En::Gb);
         let commands = click(&mut handler, Target::LanguageOption(english).to_dom());
-        assert_eq!(commands.iter().map(set_text).collect::<Vec<_>>(), [labelled(english)]);
+        assert_eq!(
+            commands.iter().map(written).collect::<Vec<_>>(),
+            labelled(Target::Language, Target::Html, english)
+        );
         assert_eq!(handler.language, english);
         let commands = click(&mut handler, Target::LanguageOption(Language::Ja).to_dom());
-        assert_eq!(commands.iter().map(set_text).collect::<Vec<_>>(), [labelled(Language::Ja)]);
+        assert_eq!(
+            commands.iter().map(written).collect::<Vec<_>>(),
+            labelled(Target::Language, Target::Html, Language::Ja)
+        );
         assert_eq!(handler.language, Language::Ja);
     }
 
@@ -360,9 +391,7 @@ mod toggle_tests {
         assert!(matches!(events.as_slice(), [Event::StoreLost(_)]));
         assert!(matches!(
             commands.as_slice(),
-            [Command::Error {
-                error: Error::FileStore(crate::file_store::FileStoreError::InvalidState(_)),
-            }]
+            [Command::Error { error: Error::FileStore(FileStoreError::InvalidState(_)) }]
         ));
     }
 

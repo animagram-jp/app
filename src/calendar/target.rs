@@ -66,6 +66,7 @@ pub enum CardPart {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Target {
+    Html,
     Body,
     Title,
     Axis(Axis),
@@ -134,6 +135,7 @@ impl Target {
             path
         };
         let path = match self {
+            Self::Html => Vec::from([(Tag::Html, None)]),
             Self::Body => Vec::from([(Tag::Body, None)]),
             Self::Title => Vec::from([(Tag::Header, None), (Tag::Span, None), (Tag::Strong, None)]),
             Self::Axis(axis) => axis_tail(axis, Tag::Input),
@@ -200,6 +202,7 @@ impl Target {
     pub fn from_dom(id: &Id) -> Option<Self> {
         let path: Vec<(&Tag, Option<u32>)> = id.0.iter().map(|s| (&s.tag, s.n)).collect();
         Some(match path.as_slice() {
+            [(Tag::Html, None)] => Self::Html,
             [(Tag::Body, None)] => Self::Body,
             [(Tag::Header, None), (Tag::Span, None), (Tag::Strong, None)] => Self::Title,
             [
@@ -297,6 +300,7 @@ mod tests {
 
     fn every_target() -> Vec<Target> {
         let mut targets = Vec::from([
+            Target::Html,
             Target::Body,
             Target::Title,
             Target::Zoom,

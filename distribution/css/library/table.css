@@ -1,5 +1,9 @@
 /*
-    Usage:
+ * SPDX-FileCopyrightText: 2026 Andyou <andyou@animagram.jp>
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/*  Usage:
 
     <table>
         <caption></caption>
@@ -80,7 +84,8 @@
     /* === data-border === */
 
     table:where(:not([data-border]), [data-border="sectioned"]) thead tr:last-of-type :where(td, th) {
-        border-block-end: var(--md-border-width) solid var(--color-ink);
+        border-block-end:  var(--md-border-width) solid var(--color-ink);
+        padding-block-end: calc(((var(--md-box-height) - var(--md-line-height)) / 2) - var(--md-border-width));
     }
 
     table:where(:not([data-border]), [data-border="sectioned"]) tbody th[scope="row"] {
@@ -88,20 +93,21 @@
     }
 
     table:where(:not([data-border]), [data-border="sectioned"]) tfoot tr:first-of-type :where(td, th) {
-        border-block-start: var(--md-border-width) solid var(--color-ink);
+        border-block-start:  var(--md-border-width) solid var(--color-ink);
+        padding-block-start: calc(((var(--md-box-height) - var(--md-line-height)) / 2) - var(--md-border-width));
     }
-    
+
+    table[data-border="grid"] {
+        border-block-start:  var(--md-border-width) solid var(--color-ink);
+        border-inline-start: var(--md-border-width) solid var(--color-ink);
+    }
     table[data-border="grid"] :where(td, th) {
-        border: var(--md-border-width) solid var(--color-ink-mix);
-    }
-    table[data-border="grid"] tr:first-child :where(td, th) {
-        border-block-start-color: var(--color-ink);
+        border-block-end:  var(--md-border-width) solid var(--color-ink-mix);
+        border-inline-end: var(--md-border-width) solid var(--color-ink-mix);
+        padding-block-end: calc(((var(--md-box-height) - var(--md-line-height)) / 2) - var(--md-border-width));
     }
     table[data-border="grid"] tr:last-child :where(td, th) {
         border-block-end-color: var(--color-ink);
-    }
-    table[data-border="grid"] :where(td, th):first-child {
-        border-inline-start-color: var(--color-ink);
     }
     table[data-border="grid"] :where(td, th):last-child {
         border-inline-end-color: var(--color-ink);
@@ -111,7 +117,130 @@
         border-block: var(--md-border-width) solid var(--color-ink);
     }
     table[data-border="booktabs"] thead tr:last-of-type :where(td, th) {
-        border-block-end: var(--md-border-width) solid var(--color-ink);
+        border-block-end:  var(--md-border-width) solid var(--color-ink);
+        padding-block-end: calc(((var(--md-box-height) - var(--md-line-height)) / 2) - var(--md-border-width));
+    }
+
+    /* --- size --- */
+
+    table[data-size="xs"]:where(:not([data-border]), [data-border="sectioned"], [data-border="booktabs"]) thead tr:last-of-type :where(td, th) {
+        border-block-end-width: var(--xs-border-width);
+        padding-block-end:      calc(((var(--xs-box-height) - var(--xs-line-height)) / 2) - var(--xs-border-width));
+    }
+    table[data-size="xs"]:where(:not([data-border]), [data-border="sectioned"]) tbody th[scope="row"] {
+        border-inline-end-width: var(--xs-border-width);
+    }
+    table[data-size="xs"]:where(:not([data-border]), [data-border="sectioned"]) tfoot tr:first-of-type :where(td, th) {
+        border-block-start-width: var(--xs-border-width);
+        padding-block-start:      calc(((var(--xs-box-height) - var(--xs-line-height)) / 2) - var(--xs-border-width));
+    }
+    table[data-size="xs"][data-border="grid"] {
+        border-block-start-width:  var(--xs-border-width);
+        border-inline-start-width: var(--xs-border-width);
+    }
+    table[data-size="xs"][data-border="grid"] :where(td, th) {
+        border-block-end-width:  var(--xs-border-width);
+        border-inline-end-width: var(--xs-border-width);
+        padding-block-end:       calc(((var(--xs-box-height) - var(--xs-line-height)) / 2) - var(--xs-border-width));
+    }
+    table[data-size="xs"][data-border="booktabs"] {
+        border-block-width: var(--xs-border-width);
+    }
+
+    table[data-size="sm"]:where(:not([data-border]), [data-border="sectioned"], [data-border="booktabs"]) thead tr:last-of-type :where(td, th) {
+        border-block-end-width: var(--sm-border-width);
+        padding-block-end:      calc(((var(--sm-box-height) - var(--sm-line-height)) / 2) - var(--sm-border-width));
+    }
+    table[data-size="sm"]:where(:not([data-border]), [data-border="sectioned"]) tbody th[scope="row"] {
+        border-inline-end-width: var(--sm-border-width);
+    }
+    table[data-size="sm"]:where(:not([data-border]), [data-border="sectioned"]) tfoot tr:first-of-type :where(td, th) {
+        border-block-start-width: var(--sm-border-width);
+        padding-block-start:      calc(((var(--sm-box-height) - var(--sm-line-height)) / 2) - var(--sm-border-width));
+    }
+    table[data-size="sm"][data-border="grid"] {
+        border-block-start-width:  var(--sm-border-width);
+        border-inline-start-width: var(--sm-border-width);
+    }
+    table[data-size="sm"][data-border="grid"] :where(td, th) {
+        border-block-end-width:  var(--sm-border-width);
+        border-inline-end-width: var(--sm-border-width);
+        padding-block-end:       calc(((var(--sm-box-height) - var(--sm-line-height)) / 2) - var(--sm-border-width));
+    }
+    table[data-size="sm"][data-border="booktabs"] {
+        border-block-width: var(--sm-border-width);
+    }
+
+    table[data-size="lg"]:where(:not([data-border]), [data-border="sectioned"], [data-border="booktabs"]) thead tr:last-of-type :where(td, th) {
+        border-block-end-width: var(--lg-border-width);
+        padding-block-end:      calc(((var(--lg-box-height) - var(--lg-line-height)) / 2) - var(--lg-border-width));
+    }
+    table[data-size="lg"]:where(:not([data-border]), [data-border="sectioned"]) tbody th[scope="row"] {
+        border-inline-end-width: var(--lg-border-width);
+    }
+    table[data-size="lg"]:where(:not([data-border]), [data-border="sectioned"]) tfoot tr:first-of-type :where(td, th) {
+        border-block-start-width: var(--lg-border-width);
+        padding-block-start:      calc(((var(--lg-box-height) - var(--lg-line-height)) / 2) - var(--lg-border-width));
+    }
+    table[data-size="lg"][data-border="grid"] {
+        border-block-start-width:  var(--lg-border-width);
+        border-inline-start-width: var(--lg-border-width);
+    }
+    table[data-size="lg"][data-border="grid"] :where(td, th) {
+        border-block-end-width:  var(--lg-border-width);
+        border-inline-end-width: var(--lg-border-width);
+        padding-block-end:       calc(((var(--lg-box-height) - var(--lg-line-height)) / 2) - var(--lg-border-width));
+    }
+    table[data-size="lg"][data-border="booktabs"] {
+        border-block-width: var(--lg-border-width);
+    }
+
+    table[data-size="xl"]:where(:not([data-border]), [data-border="sectioned"], [data-border="booktabs"]) thead tr:last-of-type :where(td, th) {
+        border-block-end-width: var(--xl-border-width);
+        padding-block-end:      calc(((var(--xl-box-height) - var(--xl-line-height)) / 2) - var(--xl-border-width));
+    }
+    table[data-size="xl"]:where(:not([data-border]), [data-border="sectioned"]) tbody th[scope="row"] {
+        border-inline-end-width: var(--xl-border-width);
+    }
+    table[data-size="xl"]:where(:not([data-border]), [data-border="sectioned"]) tfoot tr:first-of-type :where(td, th) {
+        border-block-start-width: var(--xl-border-width);
+        padding-block-start:      calc(((var(--xl-box-height) - var(--xl-line-height)) / 2) - var(--xl-border-width));
+    }
+    table[data-size="xl"][data-border="grid"] {
+        border-block-start-width:  var(--xl-border-width);
+        border-inline-start-width: var(--xl-border-width);
+    }
+    table[data-size="xl"][data-border="grid"] :where(td, th) {
+        border-block-end-width:  var(--xl-border-width);
+        border-inline-end-width: var(--xl-border-width);
+        padding-block-end:       calc(((var(--xl-box-height) - var(--xl-line-height)) / 2) - var(--xl-border-width));
+    }
+    table[data-size="xl"][data-border="booktabs"] {
+        border-block-width: var(--xl-border-width);
+    }
+
+    table[data-size="2xl"]:where(:not([data-border]), [data-border="sectioned"], [data-border="booktabs"]) thead tr:last-of-type :where(td, th) {
+        border-block-end-width: var(--2xl-border-width);
+        padding-block-end:      calc(((var(--2xl-box-height) - var(--2xl-line-height)) / 2) - var(--2xl-border-width));
+    }
+    table[data-size="2xl"]:where(:not([data-border]), [data-border="sectioned"]) tbody th[scope="row"] {
+        border-inline-end-width: var(--2xl-border-width);
+    }
+    table[data-size="2xl"]:where(:not([data-border]), [data-border="sectioned"]) tfoot tr:first-of-type :where(td, th) {
+        border-block-start-width: var(--2xl-border-width);
+        padding-block-start:      calc(((var(--2xl-box-height) - var(--2xl-line-height)) / 2) - var(--2xl-border-width));
+    }
+    table[data-size="2xl"][data-border="grid"] {
+        border-block-start-width:  var(--2xl-border-width);
+        border-inline-start-width: var(--2xl-border-width);
+    }
+    table[data-size="2xl"][data-border="grid"] :where(td, th) {
+        border-block-end-width:  var(--2xl-border-width);
+        border-inline-end-width: var(--2xl-border-width);
+        padding-block-end:       calc(((var(--2xl-box-height) - var(--2xl-line-height)) / 2) - var(--2xl-border-width));
+    }
+    table[data-size="2xl"][data-border="booktabs"] {
+        border-block-width: var(--2xl-border-width);
     }
 
     /* === data-stripe === */
@@ -136,7 +265,7 @@
     }
 
     @media (forced-colors: active) {
-        table :where(td, th) {
+        :where(table, table :is(td, th)) {
             border-color: CanvasText;
         }
     }

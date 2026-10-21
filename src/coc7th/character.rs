@@ -8,6 +8,7 @@ use alloc::{
 };
 use core::{
     array::from_fn,
+    marker::ConstParamTy_,
     primitive::{i8, i32, u8},
 };
 
@@ -1200,7 +1201,7 @@ impl Skill {
     }
 }
 
-impl core::marker::ConstParamTy_ for Skill {}
+impl ConstParamTy_ for Skill {}
 
 const OCCUPATION_POINTS: usize = 0;
 const INTEREST_POINTS: usize = 1;
@@ -1492,7 +1493,7 @@ impl ArtAndCraft {
     }
 }
 
-impl core::marker::ConstParamTy_ for ArtAndCraft {}
+impl ConstParamTy_ for ArtAndCraft {}
 
 pub trait ArtAndCraftTrait<const A: ArtAndCraft> {
     const SKILL: Skill = Skill::ArtAndCraft;
@@ -1705,7 +1706,7 @@ impl Fighting {
     }
 }
 
-impl core::marker::ConstParamTy_ for Fighting {}
+impl ConstParamTy_ for Fighting {}
 
 pub trait FightingTrait<const F: Fighting> {
     const SKILL: Skill = Skill::Fighting;
@@ -1923,7 +1924,7 @@ impl Firearms {
     }
 }
 
-impl core::marker::ConstParamTy_ for Firearms {}
+impl ConstParamTy_ for Firearms {}
 
 pub trait FirearmsTrait<const F: Firearms> {
     const SKILL: Skill = Skill::Firearms;
@@ -2216,7 +2217,7 @@ impl Pilot {
     }
 }
 
-impl core::marker::ConstParamTy_ for Pilot {}
+impl ConstParamTy_ for Pilot {}
 
 pub trait PilotTrait<const P: Pilot> {
     const SKILL: Skill = Skill::Pilot;
@@ -2449,7 +2450,7 @@ impl Science {
     }
 }
 
-impl core::marker::ConstParamTy_ for Science {}
+impl ConstParamTy_ for Science {}
 
 pub trait ScienceTrait<const S: Science> {
     const SKILL: Skill = Skill::Science;
@@ -2638,7 +2639,7 @@ impl Survival {
     }
 }
 
-impl core::marker::ConstParamTy_ for Survival {}
+impl ConstParamTy_ for Survival {}
 
 pub trait SurvivalTrait<const S: Survival> {
     const SKILL: Skill = Skill::Survival;

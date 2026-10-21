@@ -20,6 +20,10 @@ compile_error!("feature `file_store` on wasm32 requires -Ctarget-feature=+atomic
 extern crate std;
 
 use alloc::{string::String, vec::Vec};
+#[cfg(test)]
+use core::future::Future;
+#[cfg(all(target_arch = "wasm32", not(test)))]
+use core::panic::PanicInfo;
 
 #[cfg(feature = "calendar")]
 use crate::calendar::data::DataError;
@@ -132,11 +136,11 @@ impl Language {
         }
     }
 
-    pub fn display(self) -> &'static str {
+    pub fn display(self) -> (&'static str, &'static str) {
         match self {
-            Self::En(En::Gb) => "en-GB",
-            Self::En(En::Us) => "en-US",
-            Self::Ja => "日本語",
+            Self::En(En::Gb) => ("en-GB", "English"),
+            Self::En(En::Us) => ("en-US", "English"),
+            Self::Ja => ("ja", "日本語"),
         }
     }
 }
@@ -145,20 +149,24 @@ impl Language {
 
 #[cfg(all(target_arch = "wasm32", not(test)))]
 #[panic_handler]
-fn panic(info: &core::panic::PanicInfo) -> ! {
+fn panic(info: &PanicInfo) -> ! {
     use alloc::format;
+    use core::arch::wasm32::unreachable;
 
-    use crate::arena::{PanicError, report_error};
+    use crate::{
+        arena::{PanicError, emit, report_error},
+        host::OPERATION_RELOAD,
+    };
 
     let location = match info.location() {
         Some(location) => format!("{}:{}", location.file(), location.line()),
-        None => alloc::string::String::from("unknown"),
+        None => String::from("unknown"),
     };
 
     report_error(Error::Panic(PanicError { location, message: format!("{}", info.message()) }));
-    let _ = crate::arena::emit(&[crate::host::OPERATION_RELOAD]);
+    let _ = emit(&[OPERATION_RELOAD]);
 
-    core::arch::wasm32::unreachable()
+    unreachable()
 }
 
 #[cfg(test)]
@@ -208,7 +216,7 @@ mod error_tests {
 // === For test ===
 
 #[cfg(test)]
-fn block_on<F: core::future::Future>(future: F) -> F::Output {
+fn block_on<F: Future>(future: F) -> F::Output {
     use core::{
         pin::pin,
         task::{Context, Poll, Waker},
@@ -249,11 +257,11 @@ impl Rng {
         self.next_u64() % 100 < percent
     }
 
-    fn bytes(&mut self, length: usize) -> alloc::vec::Vec<u8> {
+    fn bytes(&mut self, length: usize) -> Vec<u8> {
         (0..length).map(|_| self.next_u64() as u8).collect()
     }
 
-    fn string(&mut self) -> alloc::string::String {
+    fn string(&mut self) -> String {
         let letters = ['a', 'Z', 'é', '日', '😀', ' ', '\0'];
         let length = self.below(10);
         (0..length).map(|_| letters[self.below(letters.len())]).collect()
@@ -263,7 +271,7 @@ impl Rng {
         use host::dom;
 
         let depth = self.below(5);
-        let segments: alloc::vec::Vec<(dom::Tag, Option<u32>)> = (0..depth)
+        let segments: Vec<(dom::Tag, Option<u32>)> = (0..depth)
             .map(|_| {
                 let tag = dom::Tag::from_u8(self.below(24) as u8);
                 let number =
