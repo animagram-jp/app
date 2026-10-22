@@ -15,7 +15,7 @@ use wasm_bindgen::prelude::wasm_bindgen;
 
 #[cfg(feature = "calendar")]
 use crate::calendar::handler::Handler;
-#[cfg(not(feature = "calendar"))]
+#[cfg(all(feature = "coc7th", not(feature = "calendar")))]
 use crate::coc7th::handler::Handler;
 use crate::{
     Error, Input, Output,
@@ -58,55 +58,18 @@ pub struct App {
     reopen:     Option<StoreId>,
 }
 
-#[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 impl App {
-    pub async fn init(
-        pointer_coarse: bool,
-        viewport_width: f64,
-        viewport_height: f64,
-        rem_in_px: f64,
-        now: f64,
-        timezone_offset_minutes: i32,
-    ) {
-        let mut app = App::new(
-            pointer_coarse,
-            Handler::ready(
-                viewport_width,
-                viewport_height,
-                rem_in_px,
-                now,
-                timezone_offset_minutes,
-            )
-            .await,
-        );
-
-        let (_events, commands) = app.handler.initial_draw();
-        for command in &commands {
-            let mut frame = Vec::new();
-            command.encode(&mut frame);
-            emit(&frame);
+    pub(crate) fn new(pointer_coarse: bool, handler: Handler<Store>) -> Self {
+        Self {
+            pointer: Pointer::default(),
+            thresholds: Thresholds::for_device(detect_device(pointer_coarse)),
+            events: VecDeque::new(),
+            handler,
+            commands: Vec::new(),
+            origin: None,
+            responses: BTreeMap::new(),
+            reopen: None,
         }
-
-        #[allow(clippy::deref_addrof)]
-        unsafe {
-            *(&raw mut APP) = Some(app)
-        };
-    }
-
-    /// Decode a event frame and dispatch it together with every event
-    /// it derives, in FIFO order, appending the resulting commands.
-    pub fn process(&mut self, frame: &[u8]) {
-        self.handler.now = now();
-        let Some(event) = Event::decode(&mut { frame }) else {
-            self.commands.push(Command::Error { error: Error::Event(EventError::Decode) });
-            return;
-        };
-
-        self.run(event);
-    }
-
-    pub fn clear(&mut self) {
-        self.commands.clear();
     }
 
     fn dispatch(&mut self, event: Event) -> (Vec<Event>, Vec<Command>) {
@@ -162,21 +125,6 @@ impl App {
             }
         }
     }
-}
-
-impl App {
-    pub(crate) fn new(pointer_coarse: bool, handler: Handler<Store>) -> Self {
-        Self {
-            pointer: Pointer::default(),
-            thresholds: Thresholds::for_device(detect_device(pointer_coarse)),
-            events: VecDeque::new(),
-            handler,
-            commands: Vec::new(),
-            origin: None,
-            responses: BTreeMap::new(),
-            reopen: None,
-        }
-    }
 
     pub(crate) fn run(&mut self, event: Event) {
         self.events.push_back(event);
@@ -188,8 +136,16 @@ impl App {
         }
     }
 
-    pub(crate) fn reopen_wanted(&mut self) -> Option<StoreId> {
-        self.reopen.take()
+    /// Decode a event frame and dispatch it together with every event
+    /// it derives, in FIFO order, appending the resulting commands.
+    pub fn process(&mut self, frame: &[u8]) {
+        self.handler.now = now();
+        let Some(event) = Event::decode(&mut { frame }) else {
+            self.commands.push(Command::Error { error: Error::Event(EventError::Decode) });
+            return;
+        };
+
+        self.run(event);
     }
 
     pub(crate) fn opened(&mut self, opened: Opened<Store>) {
@@ -200,8 +156,52 @@ impl App {
         }
     }
 
+    pub(crate) fn reopen_wanted(&mut self) -> Option<StoreId> {
+        self.reopen.take()
+    }
+
+    pub fn clear(&mut self) {
+        self.commands.clear();
+    }
+
     pub fn commands(&self) -> &[Command] {
         &self.commands
+    }
+}
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
+impl App {
+    pub async fn init(
+        pointer_coarse: bool,
+        viewport_width: f64,
+        viewport_height: f64,
+        rem_in_px: f64,
+        now: f64,
+        timezone_offset_minutes: i32,
+    ) {
+        let mut app = App::new(
+            pointer_coarse,
+            Handler::ready(
+                viewport_width,
+                viewport_height,
+                rem_in_px,
+                now,
+                timezone_offset_minutes,
+            )
+            .await,
+        );
+
+        let (_events, commands) = app.handler.initial_draw();
+        for command in &commands {
+            let mut frame = Vec::new();
+            command.encode(&mut frame);
+            emit(&frame);
+        }
+
+        #[allow(clippy::deref_addrof)]
+        unsafe {
+            *(&raw mut APP) = Some(app)
+        };
     }
 }
 
@@ -299,7 +299,7 @@ mod tests {
         assert!(commands.is_empty());
     }
 
-    #[cfg(not(feature = "calendar"))]
+    #[cfg(all(feature = "coc7th", not(feature = "calendar")))]
     #[test]
     fn commands_accumulate_across_frames_and_a_bad_frame_does_not_break_the_queue() {
         use crate::coc7th::target::{SHEET_PARTS, Sheet, Target};

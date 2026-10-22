@@ -12,7 +12,7 @@ RUSTFLAGS="$FILE_STORE_FLAGS" cargo build --release --target wasm32-unknown-unkn
 wasm-bindgen --target web --out-dir "$DIST/app" --out-name app target/wasm32-unknown-unknown/release/app.wasm
 rm -f "$DIST/app/README.md" "$DIST/app/LICENSE" "$DIST/app/.gitignore"
 
-RUSTFLAGS="$FILE_STORE_FLAGS" cargo build --release --target wasm32-unknown-unknown -Zbuild-std=std,panic_abort --features calendar
+RUSTFLAGS="$FILE_STORE_FLAGS" cargo build --release --target wasm32-unknown-unknown -Zbuild-std=std,panic_abort --no-default-features --features calendar,vault
 wasm-bindgen --target web --out-dir "$CALENDAR_DIR/app" --out-name app target/wasm32-unknown-unknown/release/app.wasm
 rm -f "$CALENDAR_DIR/app/README.md" "$CALENDAR_DIR/app/LICENSE" "$CALENDAR_DIR/app/.gitignore"
 cp "$DIST/init.js" "$DIST/worker.js" "$CALENDAR_DIR/"

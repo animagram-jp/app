@@ -55,7 +55,7 @@ curl -fsSL -H "Accept: application/vnd.github.raw+json" "https://api.github.com/
 cargo test --doc # docTest
 cargo test --lib # unit test
 cargo test --features calendar --lib # calendar feature
-cargo test --no-default-features --lib # unit test (no file_store feature)
+cargo test --no-default-features --features coc7th --lib # unit test (no file_store feature)
 ```
 
 ### Headless browser test
@@ -80,6 +80,7 @@ An app without `file_store` runs on the main thread and declares
 `<meta name="thread" content="main">` in its index.html (`worker` when absent).
 Its store is `MemoryStore`, which is not persisted.
 `calendar` enables `file_store`.
+Either `calendar` or `coc7th` (default on) is required. `vault` enables `credential`.
 
 当プロジェクトでは、 WebAssembly(wasm32-unknown-unknown) コンパイルをブラウザホスト環境向けに利用している。
 この環境でのアプリケーションプロセスの記憶域は、メインスレッドまたはワーカーに位置する。
@@ -91,6 +92,7 @@ feature `file_store`を追加すると、`createSyncAccessHandle` dedicated work
 `<meta name="thread" content="main">` を宣言する(無い場合は `worker`)。
 ストアは `MemoryStore` で、永続化されない。
 `calendar` は `file_store` を有効にする。
+`calendar` か `coc7th`(デフォルト有効)のどちらかが必須。`vault` は `credential` を有効にする。
 
 | feature `file_store` | Memory | Thread |
 |-|-|-|
@@ -103,7 +105,7 @@ RUSTFLAGS="-Ctarget-feature=+atomics,+bulk-memory -Clink-arg=--import-memory -Cl
 wasm-bindgen --target web --out-dir distribution/app --out-name app target/wasm32-unknown-unknown/release/app.wasm
 
 # file_store off
-cargo build --release --target wasm32-unknown-unknown --no-default-features
+cargo build --release --target wasm32-unknown-unknown --no-default-features --features coc7th
 wasm-bindgen --target web --out-dir distribution/app --out-name app target/wasm32-unknown-unknown/release/app.wasm
 
 # app + calendar + deploy output (output dir: target/cloudflare)

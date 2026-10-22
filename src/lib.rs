@@ -1,7 +1,7 @@
 #![no_std]
 #![feature(adt_const_params)]
-#![feature(const_param_ty_trait)]
-#![feature(variant_count)]
+#![cfg_attr(feature = "coc7th", feature(const_param_ty_trait))]
+#![cfg_attr(feature = "coc7th", feature(variant_count))]
 #![cfg_attr(
     all(target_arch = "wasm32", target_feature = "atomics"),
     feature(stdarch_wasm_atomic_wait)
@@ -16,6 +16,8 @@ extern crate core;
     not(test)
 ))]
 compile_error!("feature `file_store` on wasm32 requires -Ctarget-feature=+atomics");
+#[cfg(not(any(feature = "calendar", feature = "coc7th")))]
+compile_error!("either feature `calendar` or `coc7th` is required");
 #[cfg(any(test, not(target_arch = "wasm32")))]
 extern crate std;
 
@@ -27,11 +29,12 @@ use core::panic::PanicInfo;
 
 #[cfg(feature = "calendar")]
 use crate::calendar::data::DataError;
+#[cfg(feature = "credential")]
+use crate::credential::CredentialError;
 #[cfg(feature = "vault")]
 use crate::vault::VaultError;
 use crate::{
     arena::{ArenaError, PanicError},
-    credential::CredentialError,
     event::EventError,
     file_store::FileStoreError,
 };
@@ -40,7 +43,9 @@ pub mod app;
 pub mod arena;
 #[cfg(feature = "calendar")]
 pub mod calendar;
+#[cfg(feature = "coc7th")]
 pub mod coc7th;
+#[cfg(feature = "credential")]
 pub mod credential;
 pub mod data_struct;
 pub mod event;
@@ -100,6 +105,7 @@ wire_error! {
         FileStore(FileStoreError) = 4,
         #[cfg(feature = "calendar")]
         Data(DataError) = 5,
+        #[cfg(feature = "credential")]
         Credential(CredentialError) = 8,
         #[cfg(feature = "vault")]
         Vault(VaultError) = 13,
@@ -484,6 +490,7 @@ mod error_tests {
             (Error::Data(DataError::Parse(message())), vec![5, 2], "m"),
             (Error::Data(DataError::Format(message())), vec![5, 3], "m"),
         ]);
+        #[cfg(feature = "credential")]
         cases.extend([
             (Error::Credential(CredentialError::Email), vec![8, 1], "Email"),
             (Error::Credential(CredentialError::Password), vec![8, 2], "Password"),

@@ -13,10 +13,21 @@ include = ["/src/**", "/Cargo.toml", "/README.md", "/LICENSE", "/NOTICE"]
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-arbitrary-int = "2"
-wasm-bindgen         = { version = "0.2", default-features = false }
+arbitrary-int    = "2"
+argon2           = { version = "0.6", default-features = false, features = ["alloc"], optional = true }
+chacha20poly1305 = { version = "0.11", default-features = false, features = ["alloc"], optional = true }
+hmac             = { version = "0.13", default-features = false, optional = true }
+libm             = { version = "0.2", default-features = false }
+serde_json       = { version = "1", default-features = false, features = ["alloc"], optional = true }
+sha2             = { version = "0.11", default-features = false, optional = true }
+subtle           = { version = "2", default-features = false, optional = true }
+wasm-bindgen     = { version = "0.2", default-features = false }
+getrandom = { version = "0.4", default-features = false }
+hkdf      = { version = "0.13", default-features = false, optional = true }
+js-sys    = { version = "0.3", default-features = false }
+rectgrid  = { version = "0.4", features = ["geometry"], optional = true }
+rand                 = { version = "0.10", default-features = false, features = ["sys_rng"], optional = true }
 wasm-bindgen-futures = { version = "0.4", default-features = false }
-js-sys               = { version = "0.3", default-features = false }
 web-sys = { version = "0.3", default-features = false, optional = true, features = [
     "WorkerGlobalScope",
     "WorkerNavigator",
@@ -28,31 +39,22 @@ web-sys = { version = "0.3", default-features = false, optional = true, features
     "FileSystemSyncAccessHandle",
     "DomException",
 ] }
-rand  = { version = "0.10", default-features = false, features = ["sys_rng"] }
-sha2   = { version = "0.11", default-features = false }
-hmac   = { version = "0.13", default-features = false }
-hkdf   = { version = "0.13", default-features = false }
-subtle = { version = "2", default-features = false }
-argon2           = { version = "0.6", default-features = false, features = ["alloc"], optional = true }
-chacha20poly1305 = { version = "0.11", default-features = false, features = ["alloc"], optional = true }
-getrandom = { version = "0.4", default-features = false }
-libm  = { version = "0.2", default-features = false }
-rectgrid   = { version = "0.4", features = ["geometry"], optional = true }
-serde_json = { version = "1", default-features = false, features = ["alloc"], optional = true }
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom     = { version = "0.4", default-features = false, features = ["wasm_js"] }
-talc          = { version = "5.1", default-features = false }
 spinning_top  = { version = "0.3", default-features = false }
+talc          = { version = "5.1", default-features = false }
 
 [features]
-default = ["file_store", "vault"]
-calendar = ["file_store", "dep:rectgrid", "dep:serde_json"]
+default = ["coc7th", "file_store", "vault"]
+coc7th     = ["dep:rand"]
+credential = ["dep:hmac", "dep:sha2", "dep:subtle", "dep:hkdf"]
 file_store = ["dep:web-sys"]
-vault = ["dep:argon2", "dep:chacha20poly1305"]
+calendar = ["file_store", "dep:serde_json", "dep:rectgrid"]
+vault    = ["credential", "dep:argon2", "dep:chacha20poly1305"]
 
 [profile.release]
 panic         = "abort"
