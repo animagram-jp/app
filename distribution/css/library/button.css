@@ -80,60 +80,13 @@
 
     /* --- size --- */
 
-    input[type="file"] {
-        &[data-size="xs"]::file-selector-button {
-            border-radius:     var(--xs-border-radius);
-            border-width:      var(--xs-border-width);
-            margin-inline-end: var(--xs-border-radius);
-            min-height:        var(--xs-box-height);
-            padding-block:     calc(((var(--xs-box-height) - var(--xs-line-height)) / 2) - var(--xs-border-width));
-            padding-inline:    var(--xs-border-radius);
-        }
-
-        &[data-size="sm"]::file-selector-button {
-            border-radius:     var(--sm-border-radius);
-            border-width:      var(--sm-border-width);
-            margin-inline-end: var(--sm-border-radius);
-            min-height:        var(--sm-box-height);
-            padding-block:     calc(((var(--sm-box-height) - var(--sm-line-height)) / 2) - var(--sm-border-width));
-            padding-inline:    var(--sm-border-radius);
-        }
-
-        &:where([data-size="md"], :not([data-size]))::file-selector-button {
-            border-radius:     var(--md-border-radius);
-            border-width:      var(--md-border-width);
-            margin-inline-end: var(--md-border-radius);
-            min-height:        var(--md-box-height);
-            padding-block:     calc(((var(--md-box-height) - var(--md-line-height)) / 2) - var(--md-border-width));
-            padding-inline:    var(--md-border-radius);
-        }
-
-        &[data-size="lg"]::file-selector-button {
-            border-radius:     var(--lg-border-radius);
-            border-width:      var(--lg-border-width);
-            margin-inline-end: var(--lg-border-radius);
-            min-height:        var(--lg-box-height);
-            padding-block:     calc(((var(--lg-box-height) - var(--lg-line-height)) / 2) - var(--lg-border-width));
-            padding-inline:    var(--lg-border-radius);
-        }
-
-        &[data-size="xl"]::file-selector-button {
-            border-radius:     var(--xl-border-radius);
-            border-width:      var(--xl-border-width);
-            margin-inline-end: var(--xl-border-radius);
-            min-height:        var(--xl-box-height);
-            padding-block:     calc(((var(--xl-box-height) - var(--xl-line-height)) / 2) - var(--xl-border-width));
-            padding-inline:    var(--xl-border-radius);
-        }
-
-        &[data-size="2xl"]::file-selector-button {
-            border-radius:     var(--2xl-border-radius);
-            border-width:      var(--2xl-border-width);
-            margin-inline-end: var(--2xl-border-radius);
-            min-height:        var(--2xl-box-height);
-            padding-block:     calc(((var(--2xl-box-height) - var(--2xl-line-height)) / 2) - var(--2xl-border-width));
-            padding-inline:    var(--2xl-border-radius);
-        }
+    input[type="file"]::file-selector-button {
+        border-radius:     var(--border-radius);
+        border-width:      var(--border-width);
+        margin-inline-end: var(--border-radius);
+        min-height:        var(--box-height);
+        padding-block:     calc(((var(--box-height) - var(--line-height)) / 2) - var(--border-width));
+        padding-inline:    var(--border-radius);
     }
 
     /* --- hover --- */

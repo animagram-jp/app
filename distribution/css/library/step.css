@@ -27,31 +27,8 @@
 
     /* === size === */
 
-    label:has(> input[inputmode="numeric"]) > button[data-size="xs"] {
-        inline-size: var(--xs-box-height);
-    }
-
-    label:has(> input[inputmode="numeric"]) > button[data-size="sm"] {
-        inline-size: var(--sm-box-height);
-    }
-
-    label:has(> input[inputmode="numeric"]) > button:where(
-        [data-size="md"],
-        :not([data-size])
-    ) {
-        inline-size: var(--md-box-height);
-    }
-
-    label:has(> input[inputmode="numeric"]) > button[data-size="lg"] {
-        inline-size: var(--lg-box-height);
-    }
-
-    label:has(> input[inputmode="numeric"]) > button[data-size="xl"] {
-        inline-size: var(--xl-box-height);
-    }
-
-    label:has(> input[inputmode="numeric"]) > button[data-size="2xl"] {
-        inline-size: var(--2xl-box-height);
+    label:has(> input[inputmode="numeric"]) > button {
+        inline-size: var(--box-height);
     }
 
     /* === input === */
@@ -88,26 +65,8 @@
         padding-block:  0;
     }
 
-    span[data-step="block"] > button[data-size="xs"] {
-        block-size: calc(var(--xs-box-height) / 2);
-    }
-    span[data-step="block"] > button[data-size="sm"] {
-        block-size: calc(var(--sm-box-height) / 2);
-    }
-    span[data-step="block"] > button:where(
-        [data-size="md"],
-        :not([data-size])
-    ) {
-        block-size: calc(var(--md-box-height) / 2);
-    }
-    span[data-step="block"] > button[data-size="lg"] {
-        block-size: calc(var(--lg-box-height) / 2);
-    }
-    span[data-step="block"] > button[data-size="xl"] {
-        block-size: calc(var(--xl-box-height) / 2);
-    }
-    span[data-step="block"] > button[data-size="2xl"] {
-        block-size: calc(var(--2xl-box-height) / 2);
+    span[data-step="block"] > button {
+        block-size: calc(var(--box-height) / 2);
     }
 
     /*  only the end edge is shared here: the start edge is the outside of the
@@ -117,52 +76,17 @@
         border-inline-end-width:   0;
         border-inline-start-width: var(--md-border-width);
     }
-    label > input[inputmode="numeric"][data-size="xs"]:has(+ span[data-step="block"]) {
-        border-inline-start-width: var(--xs-border-width);
-    }
-    label > input[inputmode="numeric"][data-size="sm"]:has(+ span[data-step="block"]) {
-        border-inline-start-width: var(--sm-border-width);
-    }
-    label > input[inputmode="numeric"][data-size="lg"]:has(+ span[data-step="block"]) {
-        border-inline-start-width: var(--lg-border-width);
-    }
-    label > input[inputmode="numeric"][data-size="xl"]:has(+ span[data-step="block"]) {
-        border-inline-start-width: var(--xl-border-width);
-    }
-    label > input[inputmode="numeric"][data-size="2xl"]:has(+ span[data-step="block"]) {
-        border-inline-start-width: var(--2xl-border-width);
+    label > input[inputmode="numeric"]:has(+ span[data-step="block"]) {
+        border-inline-start-width: var(--border-width);
     }
 
     /*  corners: the input owns the start edge, the buttons the end edge. the
         inline form squares off the input entirely, so the start corners are
         given back here: they are the outside of the group. */
 
-    label > input[inputmode="numeric"][data-size="xs"]:has(+ span[data-step="block"]) {
-        border-end-start-radius:   var(--xs-border-radius);
-        border-start-start-radius: var(--xs-border-radius);
-    }
-    label > input[inputmode="numeric"][data-size="sm"]:has(+ span[data-step="block"]) {
-        border-end-start-radius:   var(--sm-border-radius);
-        border-start-start-radius: var(--sm-border-radius);
-    }
-    label > input[inputmode="numeric"]:where(
-        [data-size="md"],
-        :not([data-size])
-    ):has(+ span[data-step="block"]) {
-        border-end-start-radius:   var(--md-border-radius);
-        border-start-start-radius: var(--md-border-radius);
-    }
-    label > input[inputmode="numeric"][data-size="lg"]:has(+ span[data-step="block"]) {
-        border-end-start-radius:   var(--lg-border-radius);
-        border-start-start-radius: var(--lg-border-radius);
-    }
-    label > input[inputmode="numeric"][data-size="xl"]:has(+ span[data-step="block"]) {
-        border-end-start-radius:   var(--xl-border-radius);
-        border-start-start-radius: var(--xl-border-radius);
-    }
-    label > input[inputmode="numeric"][data-size="2xl"]:has(+ span[data-step="block"]) {
-        border-end-start-radius:   var(--2xl-border-radius);
-        border-start-start-radius: var(--2xl-border-radius);
+    label > input[inputmode="numeric"]:has(+ span[data-step="block"]) {
+        border-end-start-radius:   var(--border-radius);
+        border-start-start-radius: var(--border-radius);
     }
 
     label > input[inputmode="numeric"]:has(+ span[data-step="block"]) {
@@ -186,48 +110,12 @@
         explicitly per size instead, so this variant stands on its own
         regardless of what any other rule elsewhere does or stops doing. */
 
-    span[data-step="block"] > button:first-child[data-size="xs"] {
-        border-start-end-radius: var(--xs-border-radius);
-    }
-    span[data-step="block"] > button:first-child[data-size="sm"] {
-        border-start-end-radius: var(--sm-border-radius);
-    }
-    span[data-step="block"] > button:first-child:where(
-        [data-size="md"],
-        :not([data-size])
-    ) {
-        border-start-end-radius: var(--md-border-radius);
-    }
-    span[data-step="block"] > button:first-child[data-size="lg"] {
-        border-start-end-radius: var(--lg-border-radius);
-    }
-    span[data-step="block"] > button:first-child[data-size="xl"] {
-        border-start-end-radius: var(--xl-border-radius);
-    }
-    span[data-step="block"] > button:first-child[data-size="2xl"] {
-        border-start-end-radius: var(--2xl-border-radius);
+    span[data-step="block"] > button:first-child {
+        border-start-end-radius: var(--border-radius);
     }
 
-    span[data-step="block"] > button:last-child[data-size="xs"] {
-        border-end-end-radius: var(--xs-border-radius);
-    }
-    span[data-step="block"] > button:last-child[data-size="sm"] {
-        border-end-end-radius: var(--sm-border-radius);
-    }
-    span[data-step="block"] > button:last-child:where(
-        [data-size="md"],
-        :not([data-size])
-    ) {
-        border-end-end-radius: var(--md-border-radius);
-    }
-    span[data-step="block"] > button:last-child[data-size="lg"] {
-        border-end-end-radius: var(--lg-border-radius);
-    }
-    span[data-step="block"] > button:last-child[data-size="xl"] {
-        border-end-end-radius: var(--xl-border-radius);
-    }
-    span[data-step="block"] > button:last-child[data-size="2xl"] {
-        border-end-end-radius: var(--2xl-border-radius);
+    span[data-step="block"] > button:last-child {
+        border-end-end-radius: var(--border-radius);
     }
 
     /* === sort button === */
@@ -315,99 +203,23 @@
         the cell sets the height here, so the pair follows table[data-size]
         rather than a data-size of its own. */
 
-    table[data-size="xs"] [data-step="block"]:has(> label > input[type="radio"]) {
-        margin-block-end:    calc(((var(--xs-line-height) - var(--xs-box-height)) / 2) + var(--xs-border-width));
-        margin-block-start:  calc((var(--xs-line-height) - var(--xs-box-height)) / 2);
-        margin-inline-start: calc(var(--xs-border-radius) / 2);
+    table:where([data-size]) [data-step="block"]:has(> label > input[type="radio"]) {
+        margin-block-end:    calc(((var(--line-height) - var(--box-height)) / 2) + var(--border-width));
+        margin-block-start:  calc((var(--line-height) - var(--box-height)) / 2);
+        margin-inline-start: calc(var(--border-radius) / 2);
     }
-    table[data-size="xs"] [data-step="block"] > label > input[type="radio"] {
-        inline-size: var(--xs-box-height);
-        block-size:  calc((var(--xs-box-height) - var(--xs-border-width)) / 2);
+    table:where([data-size]) [data-step="block"] > label > input[type="radio"] {
+        inline-size: var(--box-height);
+        block-size:  calc((var(--box-height) - var(--border-width)) / 2);
     }
-    table[data-size="xs"] [data-step="block"] > label > input[type="radio"]::after {
-        border-inline: calc(var(--xs-box-height) / 4) solid transparent;
+    table:where([data-size]) [data-step="block"] > label > input[type="radio"]::after {
+        border-inline: calc(var(--box-height) / 4) solid transparent;
     }
-    table[data-size="xs"] [data-step="block"] > label:first-child > input[type="radio"]::after {
-        border-block-end: calc(var(--xs-box-height) / 4) solid currentColor;
+    table:where([data-size]) [data-step="block"] > label:first-child > input[type="radio"]::after {
+        border-block-end: calc(var(--box-height) / 4) solid currentColor;
     }
-    table[data-size="xs"] [data-step="block"] > label:last-child > input[type="radio"]::after {
-        border-block-start: calc(var(--xs-box-height) / 4) solid currentColor;
-    }
-
-    table[data-size="sm"] [data-step="block"]:has(> label > input[type="radio"]) {
-        margin-block-end:    calc(((var(--sm-line-height) - var(--sm-box-height)) / 2) + var(--sm-border-width));
-        margin-block-start:  calc((var(--sm-line-height) - var(--sm-box-height)) / 2);
-        margin-inline-start: calc(var(--sm-border-radius) / 2);
-    }
-    table[data-size="sm"] [data-step="block"] > label > input[type="radio"] {
-        inline-size: var(--sm-box-height);
-        block-size:  calc((var(--sm-box-height) - var(--sm-border-width)) / 2);
-    }
-    table[data-size="sm"] [data-step="block"] > label > input[type="radio"]::after {
-        border-inline: calc(var(--sm-box-height) / 4) solid transparent;
-    }
-    table[data-size="sm"] [data-step="block"] > label:first-child > input[type="radio"]::after {
-        border-block-end: calc(var(--sm-box-height) / 4) solid currentColor;
-    }
-    table[data-size="sm"] [data-step="block"] > label:last-child > input[type="radio"]::after {
-        border-block-start: calc(var(--sm-box-height) / 4) solid currentColor;
-    }
-
-    table[data-size="lg"] [data-step="block"]:has(> label > input[type="radio"]) {
-        margin-block-end:    calc(((var(--lg-line-height) - var(--lg-box-height)) / 2) + var(--lg-border-width));
-        margin-block-start:  calc((var(--lg-line-height) - var(--lg-box-height)) / 2);
-        margin-inline-start: calc(var(--lg-border-radius) / 2);
-    }
-    table[data-size="lg"] [data-step="block"] > label > input[type="radio"] {
-        inline-size: var(--lg-box-height);
-        block-size:  calc((var(--lg-box-height) - var(--lg-border-width)) / 2);
-    }
-    table[data-size="lg"] [data-step="block"] > label > input[type="radio"]::after {
-        border-inline: calc(var(--lg-box-height) / 4) solid transparent;
-    }
-    table[data-size="lg"] [data-step="block"] > label:first-child > input[type="radio"]::after {
-        border-block-end: calc(var(--lg-box-height) / 4) solid currentColor;
-    }
-    table[data-size="lg"] [data-step="block"] > label:last-child > input[type="radio"]::after {
-        border-block-start: calc(var(--lg-box-height) / 4) solid currentColor;
-    }
-
-    table[data-size="xl"] [data-step="block"]:has(> label > input[type="radio"]) {
-        margin-block-end:    calc(((var(--xl-line-height) - var(--xl-box-height)) / 2) + var(--xl-border-width));
-        margin-block-start:  calc((var(--xl-line-height) - var(--xl-box-height)) / 2);
-        margin-inline-start: calc(var(--xl-border-radius) / 2);
-    }
-    table[data-size="xl"] [data-step="block"] > label > input[type="radio"] {
-        inline-size: var(--xl-box-height);
-        block-size:  calc((var(--xl-box-height) - var(--xl-border-width)) / 2);
-    }
-    table[data-size="xl"] [data-step="block"] > label > input[type="radio"]::after {
-        border-inline: calc(var(--xl-box-height) / 4) solid transparent;
-    }
-    table[data-size="xl"] [data-step="block"] > label:first-child > input[type="radio"]::after {
-        border-block-end: calc(var(--xl-box-height) / 4) solid currentColor;
-    }
-    table[data-size="xl"] [data-step="block"] > label:last-child > input[type="radio"]::after {
-        border-block-start: calc(var(--xl-box-height) / 4) solid currentColor;
-    }
-
-    table[data-size="2xl"] [data-step="block"]:has(> label > input[type="radio"]) {
-        margin-block-end:    calc(((var(--2xl-line-height) - var(--2xl-box-height)) / 2) + var(--2xl-border-width));
-        margin-block-start:  calc((var(--2xl-line-height) - var(--2xl-box-height)) / 2);
-        margin-inline-start: calc(var(--2xl-border-radius) / 2);
-    }
-    table[data-size="2xl"] [data-step="block"] > label > input[type="radio"] {
-        inline-size: var(--2xl-box-height);
-        block-size:  calc((var(--2xl-box-height) - var(--2xl-border-width)) / 2);
-    }
-    table[data-size="2xl"] [data-step="block"] > label > input[type="radio"]::after {
-        border-inline: calc(var(--2xl-box-height) / 4) solid transparent;
-    }
-    table[data-size="2xl"] [data-step="block"] > label:first-child > input[type="radio"]::after {
-        border-block-end: calc(var(--2xl-box-height) / 4) solid currentColor;
-    }
-    table[data-size="2xl"] [data-step="block"] > label:last-child > input[type="radio"]::after {
-        border-block-start: calc(var(--2xl-box-height) / 4) solid currentColor;
+    table:where([data-size]) [data-step="block"] > label:last-child > input[type="radio"]::after {
+        border-block-start: calc(var(--box-height) / 4) solid currentColor;
     }
 
     /* the direction in force is the one drawn in ink. */

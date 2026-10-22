@@ -21,8 +21,8 @@
     --font-family-monospace: "Fira Code", "BIZ UDGothic", monospace;
     
     --rgb-theme-purple: 91 47 145;
-    --color-emphasis-ink:   light-dark(rgb(var(--rgb-theme-purple)), oklch(from rgb(var(--rgb-theme-purple)) 0.787 0.118 h));
-    --color-emphasis-paper: light-dark(color-mix(in srgb, rgb(var(--rgb-theme-purple)) 73%, rgb(255,255,255)), oklch(from rgb(var(--rgb-theme-purple)) 0.495 0.15 h));
+    --color-emphasis-ink:   light-dark(rgb(var(--rgb-theme-purple)), oklch(from rgb(var(--rgb-theme-purple)) 0.787 0.120 h));
+    --color-emphasis-paper: light-dark(oklch(from rgb(var(--rgb-theme-purple)) 0.672 0.154 h), oklch(from rgb(var(--rgb-theme-purple)) 0.557 0.154 h));
 }
 
 body > header {
@@ -154,6 +154,8 @@ body > header {
         position:         absolute;
         translate:        0 1.849%;
         z-index:          -1;
+        block-size:       calc(var(--line-height) * 1.75);
+        inline-size:      calc(var(--line-height) * 1.75);
         clip-path: shape(
             from 0% 94.203%,
             line to 0% 87.784%,
@@ -170,29 +172,5 @@ body > header {
             line to 40% 94.203%,
             close
         );
-
-    &[data-size="xs"]::before {
-        block-size:  calc(var(--xs-line-height) * 1.75);
-        inline-size: calc(var(--xs-line-height) * 1.75);
-    }
-    &[data-size="sm"]::before {
-        block-size:  calc(var(--sm-line-height) * 1.75);
-        inline-size: calc(var(--sm-line-height) * 1.75);
-    }
-    &:where([data-size="md"], :not([data-size]))::before {
-        block-size:  calc(var(--md-line-height) * 1.75);
-        inline-size: calc(var(--md-line-height) * 1.75);
-    }
-    &[data-size="lg"]::before {
-        block-size:  calc(var(--lg-line-height) * 1.75);
-        inline-size: calc(var(--lg-line-height) * 1.75);
-    }
-    &[data-size="xl"]::before {
-        block-size:  calc(var(--xl-line-height) * 1.75);
-        inline-size: calc(var(--xl-line-height) * 1.75);
-    }
-    &[data-size="2xl"]::before {
-        block-size:  calc(var(--2xl-line-height) * 1.75);
-        inline-size: calc(var(--2xl-line-height) * 1.75);
     }
 }

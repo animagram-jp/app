@@ -203,11 +203,99 @@
         --2xl-letter-spacing: 0;
         --2xl-line-height:    3rem;
 
+        --border-radius:  var(--md-border-radius);
+        --border-width:   var(--md-border-width);
+        --box-height:     var(--md-box-height);
+        --font-size:      var(--md-font-size);
+        --letter-spacing: var(--md-letter-spacing);
+        --line-height:    var(--md-line-height);
+
         --font-family-sans-serif: ui-sans-serif, system-ui, sans-serif;
         --font-family-serif:      ui-serif, serif;
         --font-family-monospace:  ui-monospace, monospace;
 
         font-family: var(--font-family-sans-serif);
+    }
+
+    [data-size="xs"] {
+        --border-radius:  var(--xs-border-radius);
+        --border-width:   var(--xs-border-width);
+        --box-height:     var(--xs-box-height);
+        --font-size:      var(--xs-font-size);
+        --letter-spacing: var(--xs-letter-spacing);
+        --line-height:    var(--xs-line-height);
+    }
+
+    [data-size="sm"] {
+        --border-radius:  var(--sm-border-radius);
+        --border-width:   var(--sm-border-width);
+        --box-height:     var(--sm-box-height);
+        --font-size:      var(--sm-font-size);
+        --letter-spacing: var(--sm-letter-spacing);
+        --line-height:    var(--sm-line-height);
+    }
+
+    [data-size="md"] {
+        --border-radius:  var(--md-border-radius);
+        --border-width:   var(--md-border-width);
+        --box-height:     var(--md-box-height);
+        --font-size:      var(--md-font-size);
+        --letter-spacing: var(--md-letter-spacing);
+        --line-height:    var(--md-line-height);
+    }
+
+    [data-size="lg"] {
+        --border-radius:  var(--lg-border-radius);
+        --border-width:   var(--lg-border-width);
+        --box-height:     var(--lg-box-height);
+        --font-size:      var(--lg-font-size);
+        --letter-spacing: var(--lg-letter-spacing);
+        --line-height:    var(--lg-line-height);
+    }
+
+    [data-size="xl"] {
+        --border-radius:  var(--xl-border-radius);
+        --border-width:   var(--xl-border-width);
+        --box-height:     var(--xl-box-height);
+        --font-size:      var(--xl-font-size);
+        --letter-spacing: var(--xl-letter-spacing);
+        --line-height:    var(--xl-line-height);
+    }
+
+    [data-size="2xl"] {
+        --border-radius:  var(--2xl-border-radius);
+        --border-width:   var(--2xl-border-width);
+        --box-height:     var(--2xl-box-height);
+        --font-size:      var(--2xl-font-size);
+        --letter-spacing: var(--2xl-letter-spacing);
+        --line-height:    var(--2xl-line-height);
+    }
+
+    h3:not([data-size]) {
+        --border-radius:  var(--lg-border-radius);
+        --border-width:   var(--lg-border-width);
+        --box-height:     var(--lg-box-height);
+        --font-size:      var(--lg-font-size);
+        --letter-spacing: var(--lg-letter-spacing);
+        --line-height:    var(--lg-line-height);
+    }
+
+    h2:not([data-size]) {
+        --border-radius:  var(--xl-border-radius);
+        --border-width:   var(--xl-border-width);
+        --box-height:     var(--xl-box-height);
+        --font-size:      var(--xl-font-size);
+        --letter-spacing: var(--xl-letter-spacing);
+        --line-height:    var(--xl-line-height);
+    }
+
+    h1:not([data-size]) {
+        --border-radius:  var(--2xl-border-radius);
+        --border-width:   var(--2xl-border-width);
+        --box-height:     var(--2xl-box-height);
+        --font-size:      var(--2xl-font-size);
+        --letter-spacing: var(--2xl-letter-spacing);
+        --line-height:    var(--2xl-line-height);
     }
 
     @media print {

@@ -159,30 +159,7 @@
         transform:          translateY(calc(var(--2xl-box-height) / 8 * 0.707 + var(--2xl-box-height) / 12)) rotate(-45deg);
     }
 
-    label > input[type="search"][data-size="xs"] {
-        padding-inline-start: calc(var(--xs-box-height) * 0.75);
-    }
-
-    label > input[type="search"][data-size="sm"] {
-        padding-inline-start: calc(var(--sm-box-height) * 0.75);
-    }
-
-    label > input[type="search"]:where(
-        [data-size="md"],
-        :not([data-size])
-    ) {
-        padding-inline-start: calc(var(--md-box-height) * 0.75);
-    }
-
-    label > input[type="search"][data-size="lg"] {
-        padding-inline-start: calc(var(--lg-box-height) * 0.75);
-    }
-
-    label > input[type="search"][data-size="xl"] {
-        padding-inline-start: calc(var(--xl-box-height) * 0.75);
-    }
-
-    label > input[type="search"][data-size="2xl"] {
-        padding-inline-start: calc(var(--2xl-box-height) * 0.75);
+    label > input[type="search"] {
+        padding-inline-start: calc(var(--box-height) * 0.75);
     }
 }
