@@ -1,4 +1,4 @@
-use alloc::{format, string::String, vec::Vec};
+use alloc::{format, string::String, vec, vec::Vec};
 use core::{array::from_fn, cmp::Ordering};
 
 use arbitrary_int::{u1, u4, u5, u6, u7, u10, u13};
@@ -31,42 +31,467 @@ pub const TIMEZONE: usize = 8;
 pub type Parts = (u13, u4, u5, u5, u6, u6, u7, u1, u10);
 pub const LAYOUT: Layout<Parts> = Layout::aligned();
 
-#[derive(Clone, Copy)]
-pub enum Timezone {
-    None,
-    // UTC+9
-    AsiaSeoul,
-    AsiaTokyo,
-    // UTC+8
-    AsiaShanghai,
-    AsiaTaipei,
-    // UTC+1
-    EuropeBerlin,
-    EuropeParis,
-    // UTC+0
-    EuropeLondon,
-    // UTC-5
-    AmericaNewYork,
-    // UTC-8
-    AmericaLosAngeles,
-}
-impl Timezone {
-    pub const fn display(&self) -> &'static str {
-        match self {
-            Self::None => "",
-            Self::AsiaSeoul => "Asia/Seoul",
-            Self::AsiaTokyo => "Asia/Tokyo",
-            Self::AsiaShanghai => "Asia/Shanghai",
-            Self::AsiaTaipei => "Asia/Taipei",
-            Self::EuropeBerlin => "Europe/Berlin",
-            Self::EuropeParis => "Europe/Paris",
-            Self::EuropeLondon => "Europe/London",
-            Self::AmericaNewYork => "America/New_York",
-            Self::AmericaLosAngeles => "America/Los_Angeles",
-        }
-    }
-    pub const fn id(&self) -> u16 {
-        *self as u16
+pub struct Zone;
+
+impl Zone {
+    pub const LIST: [&str; 446] = [
+        "Etc/UTC",
+        "Etc/GMT",
+        "Etc/GMT+12",
+        "Etc/GMT+11",
+        "Etc/GMT+10",
+        "Etc/GMT+9",
+        "Etc/GMT+8",
+        "Etc/GMT+7",
+        "Etc/GMT+6",
+        "Etc/GMT+5",
+        "Etc/GMT+4",
+        "Etc/GMT+3",
+        "Etc/GMT+2",
+        "Etc/GMT+1",
+        "Etc/GMT-1",
+        "Etc/GMT-2",
+        "Etc/GMT-3",
+        "Etc/GMT-4",
+        "Etc/GMT-5",
+        "Etc/GMT-6",
+        "Etc/GMT-7",
+        "Etc/GMT-8",
+        "Etc/GMT-9",
+        "Etc/GMT-10",
+        "Etc/GMT-11",
+        "Etc/GMT-12",
+        "Etc/GMT-13",
+        "Etc/GMT-14",
+        "Africa/Abidjan",
+        "Africa/Accra",
+        "Africa/Addis_Ababa",
+        "Africa/Algiers",
+        "Africa/Asmara",
+        "Africa/Bamako",
+        "Africa/Bangui",
+        "Africa/Banjul",
+        "Africa/Bissau",
+        "Africa/Blantyre",
+        "Africa/Brazzaville",
+        "Africa/Bujumbura",
+        "Africa/Cairo",
+        "Africa/Casablanca",
+        "Africa/Ceuta",
+        "Africa/Conakry",
+        "Africa/Dakar",
+        "Africa/Dar_es_Salaam",
+        "Africa/Djibouti",
+        "Africa/Douala",
+        "Africa/El_Aaiun",
+        "Africa/Freetown",
+        "Africa/Gaborone",
+        "Africa/Harare",
+        "Africa/Johannesburg",
+        "Africa/Juba",
+        "Africa/Kampala",
+        "Africa/Khartoum",
+        "Africa/Kigali",
+        "Africa/Kinshasa",
+        "Africa/Lagos",
+        "Africa/Libreville",
+        "Africa/Lome",
+        "Africa/Luanda",
+        "Africa/Lubumbashi",
+        "Africa/Lusaka",
+        "Africa/Malabo",
+        "Africa/Maputo",
+        "Africa/Maseru",
+        "Africa/Mbabane",
+        "Africa/Mogadishu",
+        "Africa/Monrovia",
+        "Africa/Nairobi",
+        "Africa/Ndjamena",
+        "Africa/Niamey",
+        "Africa/Nouakchott",
+        "Africa/Ouagadougou",
+        "Africa/Porto-Novo",
+        "Africa/Sao_Tome",
+        "Africa/Tripoli",
+        "Africa/Tunis",
+        "Africa/Windhoek",
+        "America/Adak",
+        "America/Anchorage",
+        "America/Anguilla",
+        "America/Antigua",
+        "America/Araguaina",
+        "America/Argentina/Buenos_Aires",
+        "America/Argentina/Catamarca",
+        "America/Argentina/Cordoba",
+        "America/Argentina/Jujuy",
+        "America/Argentina/La_Rioja",
+        "America/Argentina/Mendoza",
+        "America/Argentina/Rio_Gallegos",
+        "America/Argentina/Salta",
+        "America/Argentina/San_Juan",
+        "America/Argentina/San_Luis",
+        "America/Argentina/Tucuman",
+        "America/Argentina/Ushuaia",
+        "America/Aruba",
+        "America/Asuncion",
+        "America/Atikokan",
+        "America/Bahia",
+        "America/Bahia_Banderas",
+        "America/Barbados",
+        "America/Belem",
+        "America/Belize",
+        "America/Blanc-Sablon",
+        "America/Boa_Vista",
+        "America/Bogota",
+        "America/Boise",
+        "America/Cambridge_Bay",
+        "America/Campo_Grande",
+        "America/Cancun",
+        "America/Caracas",
+        "America/Cayenne",
+        "America/Cayman",
+        "America/Chicago",
+        "America/Chihuahua",
+        "America/Ciudad_Juarez",
+        "America/Costa_Rica",
+        "America/Coyhaique",
+        "America/Creston",
+        "America/Cuiaba",
+        "America/Curacao",
+        "America/Danmarkshavn",
+        "America/Dawson",
+        "America/Dawson_Creek",
+        "America/Denver",
+        "America/Detroit",
+        "America/Dominica",
+        "America/Edmonton",
+        "America/Eirunepe",
+        "America/El_Salvador",
+        "America/Fort_Nelson",
+        "America/Fortaleza",
+        "America/Glace_Bay",
+        "America/Goose_Bay",
+        "America/Grand_Turk",
+        "America/Grenada",
+        "America/Guadeloupe",
+        "America/Guatemala",
+        "America/Guayaquil",
+        "America/Guyana",
+        "America/Halifax",
+        "America/Havana",
+        "America/Hermosillo",
+        "America/Indiana/Indianapolis",
+        "America/Indiana/Knox",
+        "America/Indiana/Marengo",
+        "America/Indiana/Petersburg",
+        "America/Indiana/Tell_City",
+        "America/Indiana/Vevay",
+        "America/Indiana/Vincennes",
+        "America/Indiana/Winamac",
+        "America/Inuvik",
+        "America/Iqaluit",
+        "America/Jamaica",
+        "America/Juneau",
+        "America/Kentucky/Louisville",
+        "America/Kentucky/Monticello",
+        "America/Kralendijk",
+        "America/La_Paz",
+        "America/Lima",
+        "America/Los_Angeles",
+        "America/Lower_Princes",
+        "America/Maceio",
+        "America/Managua",
+        "America/Manaus",
+        "America/Marigot",
+        "America/Martinique",
+        "America/Matamoros",
+        "America/Mazatlan",
+        "America/Menominee",
+        "America/Merida",
+        "America/Metlakatla",
+        "America/Mexico_City",
+        "America/Miquelon",
+        "America/Moncton",
+        "America/Monterrey",
+        "America/Montevideo",
+        "America/Montserrat",
+        "America/Nassau",
+        "America/New_York",
+        "America/Nome",
+        "America/Noronha",
+        "America/North_Dakota/Beulah",
+        "America/North_Dakota/Center",
+        "America/North_Dakota/New_Salem",
+        "America/Nuuk",
+        "America/Ojinaga",
+        "America/Panama",
+        "America/Paramaribo",
+        "America/Phoenix",
+        "America/Port-au-Prince",
+        "America/Port_of_Spain",
+        "America/Porto_Velho",
+        "America/Puerto_Rico",
+        "America/Punta_Arenas",
+        "America/Rankin_Inlet",
+        "America/Recife",
+        "America/Regina",
+        "America/Resolute",
+        "America/Rio_Branco",
+        "America/Santarem",
+        "America/Santiago",
+        "America/Santo_Domingo",
+        "America/Sao_Paulo",
+        "America/Scoresbysund",
+        "America/Sitka",
+        "America/St_Barthelemy",
+        "America/St_Johns",
+        "America/St_Kitts",
+        "America/St_Lucia",
+        "America/St_Thomas",
+        "America/St_Vincent",
+        "America/Swift_Current",
+        "America/Tegucigalpa",
+        "America/Thule",
+        "America/Tijuana",
+        "America/Toronto",
+        "America/Tortola",
+        "America/Vancouver",
+        "America/Whitehorse",
+        "America/Winnipeg",
+        "America/Yakutat",
+        "Antarctica/Casey",
+        "Antarctica/Davis",
+        "Antarctica/DumontDUrville",
+        "Antarctica/Macquarie",
+        "Antarctica/Mawson",
+        "Antarctica/McMurdo",
+        "Antarctica/Palmer",
+        "Antarctica/Rothera",
+        "Antarctica/Syowa",
+        "Antarctica/Troll",
+        "Antarctica/Vostok",
+        "Arctic/Longyearbyen",
+        "Asia/Aden",
+        "Asia/Almaty",
+        "Asia/Amman",
+        "Asia/Anadyr",
+        "Asia/Aqtau",
+        "Asia/Aqtobe",
+        "Asia/Ashgabat",
+        "Asia/Atyrau",
+        "Asia/Baghdad",
+        "Asia/Bahrain",
+        "Asia/Baku",
+        "Asia/Bangkok",
+        "Asia/Barnaul",
+        "Asia/Beirut",
+        "Asia/Bishkek",
+        "Asia/Brunei",
+        "Asia/Chita",
+        "Asia/Colombo",
+        "Asia/Damascus",
+        "Asia/Dhaka",
+        "Asia/Dili",
+        "Asia/Dubai",
+        "Asia/Dushanbe",
+        "Asia/Famagusta",
+        "Asia/Gaza",
+        "Asia/Hebron",
+        "Asia/Ho_Chi_Minh",
+        "Asia/Hong_Kong",
+        "Asia/Hovd",
+        "Asia/Irkutsk",
+        "Asia/Jakarta",
+        "Asia/Jayapura",
+        "Asia/Jerusalem",
+        "Asia/Kabul",
+        "Asia/Kamchatka",
+        "Asia/Karachi",
+        "Asia/Kathmandu",
+        "Asia/Khandyga",
+        "Asia/Kolkata",
+        "Asia/Krasnoyarsk",
+        "Asia/Kuala_Lumpur",
+        "Asia/Kuching",
+        "Asia/Kuwait",
+        "Asia/Macau",
+        "Asia/Magadan",
+        "Asia/Makassar",
+        "Asia/Manila",
+        "Asia/Muscat",
+        "Asia/Nicosia",
+        "Asia/Novokuznetsk",
+        "Asia/Novosibirsk",
+        "Asia/Omsk",
+        "Asia/Oral",
+        "Asia/Phnom_Penh",
+        "Asia/Pontianak",
+        "Asia/Pyongyang",
+        "Asia/Qatar",
+        "Asia/Qostanay",
+        "Asia/Qyzylorda",
+        "Asia/Riyadh",
+        "Asia/Sakhalin",
+        "Asia/Samarkand",
+        "Asia/Seoul",
+        "Asia/Shanghai",
+        "Asia/Singapore",
+        "Asia/Srednekolymsk",
+        "Asia/Taipei",
+        "Asia/Tashkent",
+        "Asia/Tbilisi",
+        "Asia/Tehran",
+        "Asia/Thimphu",
+        "Asia/Tokyo",
+        "Asia/Tomsk",
+        "Asia/Ulaanbaatar",
+        "Asia/Urumqi",
+        "Asia/Ust-Nera",
+        "Asia/Vientiane",
+        "Asia/Vladivostok",
+        "Asia/Yakutsk",
+        "Asia/Yangon",
+        "Asia/Yekaterinburg",
+        "Asia/Yerevan",
+        "Atlantic/Azores",
+        "Atlantic/Bermuda",
+        "Atlantic/Canary",
+        "Atlantic/Cape_Verde",
+        "Atlantic/Faroe",
+        "Atlantic/Madeira",
+        "Atlantic/Reykjavik",
+        "Atlantic/South_Georgia",
+        "Atlantic/St_Helena",
+        "Atlantic/Stanley",
+        "Australia/Adelaide",
+        "Australia/Brisbane",
+        "Australia/Broken_Hill",
+        "Australia/Darwin",
+        "Australia/Eucla",
+        "Australia/Hobart",
+        "Australia/Lindeman",
+        "Australia/Lord_Howe",
+        "Australia/Melbourne",
+        "Australia/Perth",
+        "Australia/Sydney",
+        "Europe/Amsterdam",
+        "Europe/Andorra",
+        "Europe/Astrakhan",
+        "Europe/Athens",
+        "Europe/Belgrade",
+        "Europe/Berlin",
+        "Europe/Bratislava",
+        "Europe/Brussels",
+        "Europe/Bucharest",
+        "Europe/Budapest",
+        "Europe/Busingen",
+        "Europe/Chisinau",
+        "Europe/Copenhagen",
+        "Europe/Dublin",
+        "Europe/Gibraltar",
+        "Europe/Guernsey",
+        "Europe/Helsinki",
+        "Europe/Isle_of_Man",
+        "Europe/Istanbul",
+        "Europe/Jersey",
+        "Europe/Kaliningrad",
+        "Europe/Kirov",
+        "Europe/Kyiv",
+        "Europe/Lisbon",
+        "Europe/Ljubljana",
+        "Europe/London",
+        "Europe/Luxembourg",
+        "Europe/Madrid",
+        "Europe/Malta",
+        "Europe/Mariehamn",
+        "Europe/Minsk",
+        "Europe/Monaco",
+        "Europe/Moscow",
+        "Europe/Oslo",
+        "Europe/Paris",
+        "Europe/Podgorica",
+        "Europe/Prague",
+        "Europe/Riga",
+        "Europe/Rome",
+        "Europe/Samara",
+        "Europe/San_Marino",
+        "Europe/Sarajevo",
+        "Europe/Saratov",
+        "Europe/Simferopol",
+        "Europe/Skopje",
+        "Europe/Sofia",
+        "Europe/Stockholm",
+        "Europe/Tallinn",
+        "Europe/Tirane",
+        "Europe/Ulyanovsk",
+        "Europe/Vaduz",
+        "Europe/Vatican",
+        "Europe/Vienna",
+        "Europe/Vilnius",
+        "Europe/Volgograd",
+        "Europe/Warsaw",
+        "Europe/Zagreb",
+        "Europe/Zurich",
+        "Indian/Antananarivo",
+        "Indian/Chagos",
+        "Indian/Christmas",
+        "Indian/Cocos",
+        "Indian/Comoro",
+        "Indian/Kerguelen",
+        "Indian/Mahe",
+        "Indian/Maldives",
+        "Indian/Mauritius",
+        "Indian/Mayotte",
+        "Indian/Reunion",
+        "Pacific/Apia",
+        "Pacific/Auckland",
+        "Pacific/Bougainville",
+        "Pacific/Chatham",
+        "Pacific/Chuuk",
+        "Pacific/Easter",
+        "Pacific/Efate",
+        "Pacific/Fakaofo",
+        "Pacific/Fiji",
+        "Pacific/Funafuti",
+        "Pacific/Galapagos",
+        "Pacific/Gambier",
+        "Pacific/Guadalcanal",
+        "Pacific/Guam",
+        "Pacific/Honolulu",
+        "Pacific/Kanton",
+        "Pacific/Kiritimati",
+        "Pacific/Kosrae",
+        "Pacific/Kwajalein",
+        "Pacific/Majuro",
+        "Pacific/Marquesas",
+        "Pacific/Midway",
+        "Pacific/Nauru",
+        "Pacific/Niue",
+        "Pacific/Norfolk",
+        "Pacific/Noumea",
+        "Pacific/Pago_Pago",
+        "Pacific/Palau",
+        "Pacific/Pitcairn",
+        "Pacific/Pohnpei",
+        "Pacific/Port_Moresby",
+        "Pacific/Rarotonga",
+        "Pacific/Saipan",
+        "Pacific/Tahiti",
+        "Pacific/Tarawa",
+        "Pacific/Tongatapu",
+        "Pacific/Wake",
+        "Pacific/Wallis",
+    ];
+
+    /// ```
+    /// use app::time::Zone;
+    ///
+    /// assert_eq!(Zone::index("Etc/UTC"), Some(0));
+    /// assert_eq!(Zone::index("Asia/Tokyo").map(|index| Zone::LIST[index as usize]), Some("Asia/Tokyo"));
+    /// assert_eq!(Zone::index("Asia/Calcutta"), None);
+    /// ```
+    pub fn index(identifier: &str) -> Option<u16> {
+        Self::LIST.iter().position(|name| *name == identifier).map(|index| index as u16)
     }
 }
 
@@ -125,7 +550,7 @@ pub enum TimevolumeUnit {
 }
 
 /// ```
-/// use app::timestamp::*;
+/// use app::time::*;
 ///
 /// let volume = Timevolume::new(TimevolumeUnit::Day, 2).with(TimevolumeUnit::Hour, 3);
 /// assert_eq!(volume.get(TimevolumeUnit::Day), 2);
@@ -196,46 +621,16 @@ impl Ord for Timevolume {
 }
 
 /// ```
-/// use app::timestamp::*;
+/// use app::time::*;
 ///
-/// // 2000-01-01 00:00:00 UTC = 946684800000 ms
-/// let ut = 946684800000.0_f64;
-///
-/// let timestamp = from_ut(ut, true, &Timezone::AsiaTokyo);
-/// let (year, month, day, hour, ..) = unpack(timestamp);
-/// assert_eq!(year, 2000);
-/// assert_eq!(month, 1);
-/// assert_eq!(day, 1);
-/// assert_eq!(hour, 0);
-///
-/// let timestamp = from_ut(ut, false, &Timezone::AsiaTokyo);
-/// let (year, month, day, hour, ..) = unpack(timestamp);
-/// assert_eq!(year, 2000);
-/// assert_eq!(month, 1);
-/// assert_eq!(day, 1);
-/// assert_eq!(hour, 9);
+/// let tokyo = Zone::index("Asia/Tokyo").unwrap();
+/// let timestamp = from_ut(946684800000.0, tokyo);
+/// assert_eq!(unpack(timestamp), (2000, 1, 1, 0, 0, 0, 0, 1, tokyo as u64));
 /// ```
-pub fn from_ut(ut: f64, is_utc: bool, timezone: &Timezone) -> u64 {
+pub fn from_ut(ut: f64, zone: u16) -> u64 {
     let milliseconds = ut as i64;
     let centisecond = milliseconds.rem_euclid(1000) / 10;
     let seconds = milliseconds.div_euclid(1000);
-    let (seconds, is_utc_bit) = if is_utc {
-        (seconds, 1u64)
-    } else {
-        let offset_seconds = match timezone {
-            Timezone::None => 0,
-            Timezone::AsiaSeoul => 9 * 3600,
-            Timezone::AsiaTokyo => 9 * 3600,
-            Timezone::AsiaShanghai => 8 * 3600,
-            Timezone::AsiaTaipei => 8 * 3600,
-            Timezone::EuropeBerlin => 1 * 3600,
-            Timezone::EuropeParis => 1 * 3600,
-            Timezone::EuropeLondon => 0,
-            Timezone::AmericaNewYork => -5 * 3600,
-            Timezone::AmericaLosAngeles => -8 * 3600,
-        };
-        (seconds + offset_seconds, 0u64)
-    };
 
     let seconds_of_day = seconds.rem_euclid(86400);
     let hour = seconds_of_day / 3600;
@@ -244,11 +639,11 @@ pub fn from_ut(ut: f64, is_utc: bool, timezone: &Timezone) -> u64 {
 
     let (year, month, day) = date_of(seconds.div_euclid(86400) + 719468);
 
-    pack(year, month, day, hour, minute, second, centisecond, is_utc_bit, timezone.id() as u64)
+    pack(year, month, day, hour, minute, second, centisecond, 1, zone as u64)
 }
 
 /// ```
-/// use app::{En, Language, timestamp::{*, TimevolumeUnit::*}};
+/// use app::{En, Language, time::{*, TimevolumeUnit::*}};
 ///
 /// let timestamp = pack(2026, 10, 2, 9, 30, 5, 7, 0, 0);
 /// assert_eq!(display(timestamp, Language::Ja, (Year, Day), Format::Iso), "2026-10-02");
@@ -372,7 +767,7 @@ pub fn display(
 }
 
 /// ```
-/// use app::timestamp::*;
+/// use app::time::*;
 ///
 /// assert_eq!(youbi(pack(1970, 1, 1, 0, 0, 0, 0, 0, 0)), Youbi::Thursday);
 /// assert_eq!(youbi(pack(2026, 10, 4, 0, 0, 0, 0, 0, 0)), Youbi::Sunday);
@@ -399,7 +794,7 @@ pub fn youbi(timestamp: u64) -> Youbi {
 }
 
 /// ```
-/// use app::timestamp::*;
+/// use app::time::*;
 ///
 /// let from = pack(2026, 10, 2, 23, 0, 0, 0, 0, 0);
 /// let to = pack(2026, 10, 4, 1, 0, 0, 50, 0, 0);
@@ -434,7 +829,7 @@ pub fn diff(timestamp: u64, other: u64, unit: TimevolumeUnit) -> i64 {
 }
 
 /// ```
-/// use app::timestamp::*;
+/// use app::time::*;
 ///
 /// let date = |timestamp: u64| {
 ///     let (year, month, day, hour, minute, ..) = unpack(timestamp);
@@ -460,7 +855,7 @@ pub fn add(timestamp: u64, volume: Timevolume) -> u64 {
 }
 
 /// ```
-/// use app::timestamp::*;
+/// use app::time::*;
 ///
 /// let date = |timestamp: u64| {
 ///     let (year, month, day, hour, minute, ..) = unpack(timestamp);
@@ -481,7 +876,7 @@ pub fn sub(timestamp: u64, volume: Timevolume) -> u64 {
 }
 
 /// ```
-/// use app::timestamp::*;
+/// use app::time::*;
 ///
 /// let day = pack(2026, 10, 2, 9, 30, 0, 0, 0, 0);
 /// assert_eq!(shift(day, TimevolumeUnit::Day, 30), pack(2026, 11, 1, 9, 30, 0, 0, 0, 0));
@@ -606,6 +1001,123 @@ pub const fn pack(
     ])
 }
 
+#[derive(Default, Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Timerange {
+    pub start:  u64,
+    pub volume: Timevolume,
+}
+
+pub struct Period {
+    pub include: Vec<Timerange>,
+    pub exclude: Vec<Timerange>,
+}
+
+pub struct Recurrence {
+    pub range:            Timerange, // activate 〜 until
+    pub months:           Option<Vec<Month>>,
+    pub weeks:            Option<Vec<u8>>, // 1th, 2th, 3rd, 4th, 5th, 6th
+    pub youbi:            Option<Vec<Youbi>>,
+    pub periods_in_a_day: Option<Vec<Timerange>>,
+}
+
+impl Recurrence {
+    /// ```
+    /// use app::time::*;
+    ///
+    /// let year_start = pack(2026, 1,  1,  0,  0, 0, 0, 1, 0);
+    /// let year_end   = pack(2026, 12, 31, 23, 59, 0, 0, 1, 0);
+    /// let year = Timevolume::new(TimevolumeUnit::Day, 364)
+    ///     .with(TimevolumeUnit::Hour, 23)
+    ///     .with(TimevolumeUnit::Minute, 59);
+    /// assert_eq!(add(year_start, year), year_end);
+    ///
+    /// let morning   = pack(2000, 1, 1,  9, 0, 0, 0, 1, 0);
+    /// let afternoon = pack(2000, 1, 1, 14, 0, 0, 0, 1, 0);
+    /// let hours = |n| Timevolume::new(TimevolumeUnit::Hour, n);
+    ///
+    /// let recurrence = Recurrence {
+    ///     range: Timerange { start: year_start, volume: year },
+    ///     months: Some(vec![Month::January, Month::March]),
+    ///     weeks:  Some(vec![1, 3]),
+    ///     youbi:  Some(vec![Youbi::Monday, Youbi::Wednesday]),
+    ///     periods_in_a_day: Some(vec![
+    ///         Timerange { start: morning,   volume: hours(3) },
+    ///         Timerange { start: afternoon, volume: hours(4) },
+    ///     ]),
+    /// };
+    ///
+    /// let result = recurrence.occurrences(year_start, year_end);
+    ///
+    /// assert_eq!(result.len(), 16);
+    ///
+    /// let (year, month, day, hour, minute, ..) = unpack(result[0].start);
+    /// assert_eq!((year, month, day, hour, minute), (2026, 1, 5, 9, 0));
+    /// let (_, _, _, end_hour, end_minute, ..) = unpack(add(result[0].start, result[0].volume));
+    /// assert_eq!((end_hour, end_minute), (12, 0));
+    /// ```
+    pub fn occurrences(&self, start: u64, end: u64) -> Vec<Timerange> {
+        let start = self.range.start.max(start);
+        let until = if self.range.start == 0 || self.range.volume == Timevolume::default() {
+            0
+        } else {
+            add(self.range.start, self.range.volume)
+        };
+        let end = match (until, end) {
+            (0, end) => end,
+            (until, 0) => until,
+            (until, end) => until.min(end),
+        };
+        if start == 0 || end == 0 || start > end {
+            return vec![];
+        }
+
+        let date = |timestamp: u64| timestamp >> LAYOUT.field(DAY).position;
+        let day = Timevolume::new(TimevolumeUnit::Day, 1);
+        let mut result = Vec::new();
+        let mut current = [HOUR, MINUTE, SECOND, CENTISECOND]
+            .into_iter()
+            .fold(start, |timestamp, field| LAYOUT.set(timestamp, field, 0u64));
+
+        while date(current) <= date(end) {
+            let month: u64 = LAYOUT.get(current, MONTH);
+            let nth = (LAYOUT.get::<u64>(current, DAY) - 1) / 7 + 1;
+            let selected = self
+                .months
+                .as_ref()
+                .is_none_or(|months| months.iter().any(|candidate| *candidate as u64 == month))
+                && self.weeks.as_ref().is_none_or(|weeks| weeks.contains(&(nth as u8)))
+                && self.youbi.as_ref().is_none_or(|youbis| youbis.contains(&youbi(current)));
+
+            if selected {
+                match &self.periods_in_a_day {
+                    Some(periods) => {
+                        for period in periods {
+                            let start = match period.start {
+                                0 => 0,
+                                time => {
+                                    [YEAR, MONTH, DAY].into_iter().fold(time, |timestamp, field| {
+                                        LAYOUT.set(
+                                            timestamp,
+                                            field,
+                                            LAYOUT.get::<u64>(current, field),
+                                        )
+                                    })
+                                }
+                            };
+                            result.push(Timerange { start, volume: period.volume });
+                        }
+                    }
+                    None => result.push(Timerange { start: current, volume: day }),
+                }
+            }
+
+            current = add(current, day);
+        }
+
+        result
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use alloc::format;
@@ -638,6 +1150,15 @@ mod tests {
         assert_eq!(pack(0, 0, 0, 0, 0, 0, 1, 0, 0), 1 << 18);
         assert_eq!(pack(0, 0, 0, 0, 0, 0, 0, 1, 0), 1 << 17);
         assert_eq!(pack(0, 0, 0, 0, 0, 0, 0, 0, 1), 1 << 7);
+    }
+
+    #[test]
+    fn timezones_are_unique_and_fit_the_field() {
+        let mut names = Zone::LIST.to_vec();
+        names.sort();
+        names.dedup();
+        assert_eq!(names.len(), Zone::LIST.len());
+        assert!(Zone::LIST.len() < 1 << 10);
     }
 
     #[test]
@@ -909,28 +1430,14 @@ mod tests {
     }
 
     #[test]
-    fn from_ut_matches_the_reference_for_utc_and_every_fixed_offset_zone() {
-        let zones = [
-            (Timezone::None, 0),
-            (Timezone::AsiaSeoul, 9),
-            (Timezone::AsiaTokyo, 9),
-            (Timezone::AsiaShanghai, 8),
-            (Timezone::AsiaTaipei, 8),
-            (Timezone::EuropeBerlin, 1),
-            (Timezone::EuropeParis, 1),
-            (Timezone::EuropeLondon, 0),
-            (Timezone::AmericaNewYork, -5),
-            (Timezone::AmericaLosAngeles, -8),
-        ];
+    fn from_ut_matches_the_reference_and_keeps_the_zone() {
         for seed in 0..3000 {
             let mut rng = Rng::new(seed);
             let milliseconds =
                 (rng.below(4_000_000) as i64 - 1_000_000) * 86_400 + rng.below(86_400_000) as i64;
-            let (zone, offset_hours) = &zones[rng.below(zones.len())];
-            let is_utc = rng.chance(50);
-            let shifted = milliseconds + if is_utc { 0 } else { offset_hours * 3_600_000 };
-            let (year, month, day) = civil(shifted.div_euclid(86_400_000));
-            let time = shifted.rem_euclid(86_400_000);
+            let zone = rng.below(Zone::LIST.len()) as u16;
+            let (year, month, day) = civil(milliseconds.div_euclid(86_400_000));
+            let time = milliseconds.rem_euclid(86_400_000);
             let expected = (
                 year,
                 month,
@@ -939,11 +1446,11 @@ mod tests {
                 time % 3_600_000 / 60_000,
                 time % 60_000 / 1000,
                 time % 1000 / 10,
-                is_utc as u64,
-                zone.id() as u64,
+                1,
+                zone as u64,
             );
             assert_eq!(
-                unpack(from_ut(milliseconds as f64, is_utc, zone)),
+                unpack(from_ut(milliseconds as f64, zone)),
                 expected,
                 "seed {seed} ms {milliseconds}"
             );

@@ -8,7 +8,7 @@ use core::{
 
 use crate::{
     list::{List, ListError, SetOutcome, VariableList, VariableListError, read_u32},
-    timestamp::{self, Timezone},
+    time,
 };
 
 pub const ID_IDENTITY: u32 = 1;
@@ -249,7 +249,7 @@ impl<'a> Instance<'a> {
 }
 
 pub(crate) fn encode_time(time: f64) -> [u8; 8] {
-    timestamp::from_ut(time, true, &Timezone::None).to_le_bytes()
+    time::from_ut(time, 0).to_le_bytes()
 }
 
 #[cfg(test)]

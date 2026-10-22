@@ -54,7 +54,7 @@ pub mod file_store;
 pub mod host;
 pub mod list;
 pub mod object;
-pub mod timestamp;
+pub mod time;
 #[cfg(feature = "vault")]
 pub mod vault;
 

@@ -10,7 +10,7 @@ use rectgrid::{BBox, Unit};
 
 use crate::{
     Language,
-    timestamp::{Timevolume, TimevolumeUnit},
+    time::{Timevolume, TimevolumeUnit},
 };
 
 pub const CLOCK: Clock = Clock::new(
@@ -165,7 +165,7 @@ impl Clock {
 
     /// ```
     /// # use app::calendar::grid::CLOCK;
-    /// # use app::timestamp::{Timevolume, TimevolumeUnit};
+    /// # use app::time::{Timevolume, TimevolumeUnit};
     /// let at = |hour, minute| Timevolume::new(TimevolumeUnit::Hour, hour).with(TimevolumeUnit::Minute, minute);
     /// assert_eq!(CLOCK.unit(at(10, 0)), 4.0);
     /// assert_eq!(CLOCK.unit(at(9, 5)), 1.0 / 3.0);
@@ -176,7 +176,7 @@ impl Clock {
 
     /// ```
     /// # use app::calendar::grid::CLOCK;
-    /// # use app::timestamp::{Timevolume, TimevolumeUnit};
+    /// # use app::time::{Timevolume, TimevolumeUnit};
     /// let at = |hour, minute| Timevolume::new(TimevolumeUnit::Hour, hour).with(TimevolumeUnit::Minute, minute);
     /// assert_eq!(CLOCK.time(4.0), Some(at(10, 0)));
     /// assert_eq!(CLOCK.time(4.5), Some(at(10, 7)));
@@ -290,7 +290,7 @@ impl Grid {
 
     /// ```
     /// # use app::calendar::grid::{CLOCK, Cell, Grid};
-    /// # use app::timestamp::{Timevolume, TimevolumeUnit};
+    /// # use app::time::{Timevolume, TimevolumeUnit};
     /// let at = |hour, minute| Timevolume::new(TimevolumeUnit::Hour, hour).with(TimevolumeUnit::Minute, minute);
     /// let grid = Grid::new(7, 4, CLOCK);
     /// let bx = grid.bbox(Cell { day: 1, resource: 2 }, at(10, 0), at(11, 0)).unwrap();
@@ -304,7 +304,7 @@ impl Grid {
 
     /// ```
     /// # use app::calendar::grid::{CLOCK, Grid};
-    /// # use app::timestamp::{Timevolume, TimevolumeUnit};
+    /// # use app::time::{Timevolume, TimevolumeUnit};
     /// let at = |hour, minute| Timevolume::new(TimevolumeUnit::Hour, hour).with(TimevolumeUnit::Minute, minute);
     /// let grid = Grid::new(7, 4, CLOCK);
     /// let bx = grid.bbox_flat(-2, 1, at(10, 0), at(11, 0)).unwrap();
@@ -330,7 +330,7 @@ impl Grid {
     /// ```
     /// # use app::calendar::grid::{CLOCK, Cell, Grid};
     /// # use rectgrid::{BBox, Unit};
-    /// # use app::timestamp::{Timevolume, TimevolumeUnit};
+    /// # use app::time::{Timevolume, TimevolumeUnit};
     /// let at = |hour, minute| Timevolume::new(TimevolumeUnit::Hour, hour).with(TimevolumeUnit::Minute, minute);
     /// let grid = Grid::new(7, 4, CLOCK);
     /// let bx = BBox::new([Unit::new(3.0), Unit::new(4.0)], [Unit::new(2.0), Unit::new(4.0)]);

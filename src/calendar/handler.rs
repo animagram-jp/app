@@ -36,9 +36,9 @@ use crate::{
     },
     object::Predicate,
     parse, stringify,
-    timestamp::{
+    time::{
         CENTISECOND, DAY, Format, HOUR, IS_UTC, LAYOUT, MINUTE, SECOND, Timevolume, TimevolumeUnit,
-        Timezone, add, diff, display, from_ut, shift, sub, youbi,
+        add, diff, display, from_ut, shift, sub, youbi,
     },
 };
 
@@ -1616,7 +1616,7 @@ impl<S: FileStore> event::Handler for Handler<S> {
         now: f64,
         timezone_offset_minutes: i32,
     ) -> Self {
-        let utc = from_ut(now, true, &Timezone::None);
+        let utc = from_ut(now, 0);
         let offset = Timevolume::new(
             TimevolumeUnit::Minute,
             u64::from(timezone_offset_minutes.unsigned_abs()),
@@ -1909,7 +1909,7 @@ mod tests {
         event::Handler as _,
         file_store::{FileStoreError, MemoryHandles, MemoryStore, cases::FaultInjector},
         host::KeyName,
-        timestamp::pack,
+        time::pack,
     };
 
     const VIEWPORT: f64 = 1500.0;

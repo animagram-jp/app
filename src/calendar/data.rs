@@ -14,7 +14,7 @@ use crate::{
     list::ListError,
     object::Predicate,
     parse,
-    timestamp::{DAY, LAYOUT, MONTH, Timevolume, TimevolumeUnit, YEAR, days_in_month},
+    time::{DAY, LAYOUT, MONTH, Timevolume, TimevolumeUnit, YEAR, days_in_month},
 };
 
 // --- layout ---
@@ -211,7 +211,7 @@ pub mod appointment {
         file_store::FileStore,
         object::{Predicate, SubjectTrait},
         parse,
-        timestamp::{Format, Timevolume, TimevolumeUnit, add, display},
+        time::{Format, Timevolume, TimevolumeUnit, add, display},
     };
 
     pub const KIND: u32 = 3;
@@ -529,7 +529,7 @@ pub fn parse_uid(text: &str) -> Result<u128, DataError> {
 
 /// ```
 /// # use app::calendar::data::parse_time;
-/// # use app::timestamp::{Timevolume, TimevolumeUnit};
+/// # use app::time::{Timevolume, TimevolumeUnit};
 /// assert_eq!(parse_time("09:30").unwrap(), Timevolume::new(TimevolumeUnit::Minute, 570));
 /// assert_eq!(parse_time("24:00").unwrap(), Timevolume::new(TimevolumeUnit::Hour, 24));
 /// assert_eq!(parse_time("00:00").unwrap(), Timevolume::default());
@@ -547,7 +547,7 @@ pub fn parse_time(text: &str) -> Result<Timevolume, DataError> {
 
 /// ```
 /// # use app::calendar::data::parse_date;
-/// # use app::timestamp::pack;
+/// # use app::time::pack;
 /// assert_eq!(parse_date("2026-10-02").unwrap(), pack(2026, 10, 2, 0, 0, 0, 0, 0, 0));
 /// assert!(parse_date("2026/10/02").is_err());
 /// assert!(parse_date("2026-02-29").is_err());
