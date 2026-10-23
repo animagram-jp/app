@@ -74,11 +74,11 @@ pkill -f "geckodriver --port 8000"
 
 ### Build wasm
 
-The thread is a consequence of the feature `file_store` (default on). The `FileStore` needs
-`createSyncAccessHandle`, which the browser provides only to a dedicated worker, so the
-worker build requires `+atomics` and shared memory (`compile_error!` enforces this on wasm32).
-An app without `file_store` runs on the main thread and declares
-`<meta name="thread" content="main">` in its index.html (`worker` when absent).
+This project compiles to WebAssembly (wasm32-unknown-unknown) for the browser host.
+The app process memory lives on the main thread or a worker.
+
+With feature `file_store`, `createSyncAccessHandle` is provided only to a dedicated worker, so it requires `+atomics` and shared memory (enforced by `compile_error!` on wasm32).
+An app without `file_store` runs on the main thread.
 Its store is `MemoryStore`, which is not persisted.
 `calendar` enables `file_store`.
 Either `calendar` or `coc7th` (default on) is required. `vault` enables `credential`.
@@ -86,11 +86,8 @@ Either `calendar` or `coc7th` (default on) is required. `vault` enables `credent
 当プロジェクトでは、 WebAssembly(wasm32-unknown-unknown) コンパイルをブラウザホスト環境向けに利用している。
 この環境でのアプリケーションプロセスの記憶域は、メインスレッドまたはワーカーに位置する。
 
-
-feature `file_store`を追加すると、`createSyncAccessHandle` dedicated worker にしか提供されないため、worker ビルドは
-`+atomics` と shared memory を要求する(wasm32 では `compile_error!` で強制される)。
-`file_store` を持たないアプリは main スレッドで動作し、index.html に
-`<meta name="thread" content="main">` を宣言する(無い場合は `worker`)。
+feature `file_store`を追加すると、`createSyncAccessHandle` は dedicated worker にしか提供されないため `+atomics` と shared memory を要求する(wasm32 では `compile_error!` で強制される)。
+`file_store` を持たないアプリは main スレッドで動作する。
 ストアは `MemoryStore` で、永続化されない。
 `calendar` は `file_store` を有効にする。
 `calendar` か `coc7th`(デフォルト有効)のどちらかが必須。`vault` は `credential` を有効にする。
@@ -163,27 +160,24 @@ sh reference/build.sh
    │                  ││
    │ native messaging ││websocket
    ▼                  ││
-┌───────────────┐     ││
+┌───────────────┐     │:http
 │ native worker │     ││
 │ (host api)    │     ││
 └──┬────────────┘     ││
    │ http request     ││
    │     ┌──────┬─────┤│
-   │     ▼stun  ▼turn │←: http
+   │     ▼stun  ▼turn ││
    │ ┌──────┐┌──────┐ ││
    │ │ stun ││ turn │ ││
    ▼ └──────┘└──────┘ ▼▼
 ┌────────────────────────┐
 │ server                 │
-│┌──────────────────────┐│
-││ nginx (external port)││
-│└──────────────────────┘│
-│┌──────────────────────┐│
-││ app (rust)           ││
-│└──────────────────────┘│
-│┌────┐                  │
-││ fs │                  │
-│└────┘                  │
+│┌───────┐┌────┐         │
+││ nginx ││ fs │         │
+│└───────┘└────┘         │
+│┌────────────┐          │
+││ app (rust) │          │
+│└────────────┘          │
 └────────────────────────┘
 ```
 
@@ -191,25 +185,11 @@ sh reference/build.sh
 
 # ホストAPI依存機能の設計
 
-`Handler::ready` は app repository と同じく `async fn` で、
-`OpfsStore::open(CHARACTER_SCHEMA_NAME).await` のあと `OpfsStore::new` を呼ぶ。
-往復にはしない。
-
-```
-App::init (async, worker の init フェーズ)
-  └ Handler::ready -> OpfsStore::open(..).await -> OpfsStore::new(..)
-       └ 失敗時は panic -> #[panic_handler] が Command::Error を送る
-```
-
-`await` が要るのは `OpfsStore::open` だけである (`new` は同期)。
-`FileSystemSyncAccessHandle` は名前の通り同期ハンドルであり、取得さえ
-済めば `get` / `set` / `save` / `close` は `serve_event` の中から直接呼べる。
-`serve_event` は `memory_atomic_wait32` で thread ごとブロックし、その間
-worker の JavaScript イベントループが回らないため Promise は解決しない。
+`async App::init`の呼ぶ`Handler::ready` は Futureを返し、
+`OpfsStore::open("{name}{version}").await` のあと `OpfsStore::new` を呼ぶ。
 
 この形が使えるのは OPFS が同期ハンドルを返すからであり、一般解ではない。
-接続後も継続的にコールバックが来る WebSocket / WebRTC / WebGPU は
-JavaScript 側 (イベントループが生きている側) に置き、
+接続後も継続的にコールバックが来る WebSocket / WebRTC / WebGPU は外部化し、
 コールバックからイベントリングへ `EVENT_*` フレームを push する。
 Wasm からの要求は `OPERATION_*` としてコマンドリングへ出す。
 各機能は、予測が妥当なホスト側の失敗時の復帰操作も設計する必要がある。
@@ -219,17 +199,3 @@ Wasm からの要求は `OPERATION_*` としてコマンドリングへ出す。
 | WebSocket | `onmessage` |
 | WebRTC | `ondatachannel` / ICE |
 | WebGPU | `mapAsync` などの Promise |
-
----
-
-## Sync API (future)
-
-```bash
-POST /sync/negotiate
-  req: { authorization, last_sync, requirements:{ own, extra } }
-  res: { session_id, transfer_spec }
-
-POST /sync/transfer
-  req: { authorization, session_id, data }
-  res: { ack, next_negotiate? }
-```

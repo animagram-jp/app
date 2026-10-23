@@ -4,7 +4,7 @@ self.addEventListener("message", async (e) => {
 
     const { default: init, App, arena_offset, initialize, serve_event } =
         await import("./app/app.js?v={version}");
-    const wasm = await init({ module_or_path: "./app/app_bg.wasm?v={version}", memory: payload.memory });
+    const wasm = await init({ module_or_path: payload.module, memory: payload.memory });
 
     initialize();
     self.postMessage({ type: "ready", arena_offset: arena_offset() });

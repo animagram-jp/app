@@ -32,8 +32,6 @@ const EVENT_FETCH = 5;
 const EVENT_FULLSCREEN = 6;
 const EVENT_SHUTDOWN = 8;
 
-const THREAD = document.querySelector("meta[name='thread']")?.content ?? "worker";
-
 const RELOAD_LOG_KEY = "app:reload-log";
 const RELOAD_WINDOW_IN_MS = 60000;
 const RELOAD_LIMIT = 3;
@@ -49,11 +47,7 @@ const MEMORY_MAXIMUM_PAGES = 2048;
  * typed array view must be regenerated when memory.buffer changes.
  */
 const S = {
-    memory: new WebAssembly.Memory({
-        initial: Math.ceil(ARENA_SIZE / 65536) + 256,
-        maximum: MEMORY_MAXIMUM_PAGES,
-        shared: THREAD === "worker" && crossOriginIsolated,
-    }),
+    memory: null,
     arena_offset: 0,
     buffer: null,
     int32: null,
@@ -75,7 +69,7 @@ const sw_registration = "serviceWorker" in navigator
 
 // === start ===
 
-function start() {
+async function start() {
     const params = new URLSearchParams(location.search);
     if (params.has("eruda")) {
         const s = document.createElement("script");
@@ -89,13 +83,15 @@ function start() {
     const rem_in_px = parseFloat(getComputedStyle(document.documentElement).fontSize);
     const now_in_ms = Date.now();
     const timezone_offset_minutes = -new Date().getTimezoneOffset();
+    const module = await WebAssembly.compileStreaming(fetch("./app/app_bg.wasm?v={version}"));
 
-    if (THREAD === "main") {
+    if (!WebAssembly.Module.imports(module).some((i) => i.kind === "memory")) {
         (async () => {
             const { default: init, App, arena_offset, initialize, process_event } =
                 await import("./app/app.js?v={version}");
-            await init({ module_or_path: "./app/app_bg.wasm?v={version}", memory: S.memory });
+            const wasm = await init({ module_or_path: module });
 
+            S.memory = wasm.memory;
             S.buffer = null;
             initialize();
             S.arena_offset = arena_offset();
@@ -123,6 +119,11 @@ function start() {
         return;
     }
 
+    S.memory = new WebAssembly.Memory({
+        initial: Math.ceil(ARENA_SIZE / 65536) + 256,
+        maximum: MEMORY_MAXIMUM_PAGES,
+        shared: true,
+    });
     let serving = false;
 
     const spawn = () => {
@@ -157,6 +158,7 @@ function start() {
         w.postMessage({
             type: "init",
             payload: {
+                module,
                 memory: S.memory,
                 pointer_coarse: window.matchMedia("(pointer: coarse)").matches,
                 viewport_width_in_px: document.documentElement.clientWidth,
