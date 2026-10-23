@@ -13,6 +13,7 @@ curl -fsSL -H "Accept: application/vnd.github.raw+json" "https://api.github.com/
 ```
 
 - Value 0...0 means null in each field. 1 byte = 1 octet = 8 bits.
+- 数値はLE。bit fieldは宣言順にbit 0から上位へ置き、比較に使う区間は幅を固定する。
 - moduleなどitemは、概念を表す名詞として語彙選定する。
 - 関数名は、namespaceで上位に既に並ぶ語彙・引数に現れている目的語は含まず、その上で{verb}_{adje
   ctive}_{object}のように命名する。
