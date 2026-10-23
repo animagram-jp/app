@@ -14,7 +14,7 @@ use crate::{
     list::ListError,
     object::Predicate,
     parse,
-    time::{DAY, LAYOUT, Length, MONTH, Stamp, Unit, YEAR, days_in_month},
+    time::{DAY, LAYOUT, Length, MONTH, Unit, YEAR, days_in_month},
 };
 
 // --- layout ---
@@ -211,7 +211,7 @@ pub mod appointment {
         file_store::FileStore,
         object::{Predicate, SubjectTrait},
         parse,
-        time::{Format, Length, Unit, add, display},
+        time::{Format, Length, Stamp, Unit, add, display},
     };
 
     pub const KIND: u32 = 3;

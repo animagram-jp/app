@@ -41,11 +41,12 @@ jobs:
                   version="$(grep -A1 '^name = "wasm-bindgen"$' Cargo.lock | sed -n 's/^version = "\(.*\)"$/\1/p')"
                   cargo install wasm-bindgen-cli --version "$version" --locked
 
-            - name: "cargo test (doctest only; --lib requires a browser runner)"
+            - name: "cargo test"
               run: |
                   cargo test --doc --locked
-                  cargo test --doc --locked --no-default-features
-                  cargo test --doc --locked --features calendar
+                  cargo test --lib --locked
+                  cargo test --lib --locked --features calendar
+                  cargo test --lib --locked --no-default-features --features coc7th
 
             - name: "build both sites"
               run: reference/build.sh

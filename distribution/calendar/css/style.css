@@ -35,9 +35,8 @@ body > header {
 
 /* === calendar === */
 
-#header > nav {
-    display:     flex;
-    flex-wrap:   wrap;
+#header :where(fieldset span, button) {
+    font-size: var(--sm-font-size);
 }
 
 #main {
