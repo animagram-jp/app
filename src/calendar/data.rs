@@ -14,7 +14,7 @@ use crate::{
     list::ListError,
     object::Predicate,
     parse,
-    time::{DAY, LAYOUT, MONTH, Timevolume, TimevolumeUnit, YEAR, days_in_month},
+    time::{DAY, LAYOUT, Length, MONTH, Stamp, Unit, YEAR, days_in_month},
 };
 
 // --- layout ---
@@ -211,7 +211,7 @@ pub mod appointment {
         file_store::FileStore,
         object::{Predicate, SubjectTrait},
         parse,
-        time::{Format, Timevolume, TimevolumeUnit, add, display},
+        time::{Format, Length, Unit, add, display},
     };
 
     pub const KIND: u32 = 3;
@@ -223,7 +223,7 @@ pub mod appointment {
     #[derive(Clone, Copy, Debug, PartialEq, Eq)]
     #[repr(C)]
     pub struct Place {
-        pub day:      u64,
+        pub day:      Stamp,
         pub resource: u128,
     }
 
@@ -307,24 +307,21 @@ pub mod appointment {
     pub struct Range;
 
     impl Predicate<2> for Range {
-        type Parsed = (Timevolume, Timevolume);
+        type Parsed = (Length, Length);
         type Subject = Field;
         const VARIANT: Field = Field::Range;
 
         fn parse(bytes: [Option<&[u8]>; 2]) -> Self::Parsed {
             let time = |bytes: Option<&[u8]>| {
-                Timevolume::new(
-                    TimevolumeUnit::Minute,
-                    bytes.and_then(parse::<u64>).unwrap_or_default(),
-                )
+                Length::new(Unit::Minute, bytes.and_then(parse::<u64>).unwrap_or_default())
             };
             (time(bytes[0]), time(bytes[1]))
         }
 
         fn encode(value: &Self::Parsed) -> [Option<Vec<u8>>; 2] {
-            let bytes = |time: Timevolume| {
+            let bytes = |time: Length| {
                 let mut output = Vec::new();
-                time.total(TimevolumeUnit::Minute).encode(&mut output);
+                time.total(Unit::Minute).encode(&mut output);
                 Some(output)
             };
             [bytes(value.0), bytes(value.1)]
@@ -334,8 +331,8 @@ pub mod appointment {
     pub fn new(
         key: u32,
         places: &[Place],
-        start: Timevolume,
-        end: Timevolume,
+        start: Length,
+        end: Length,
         title: &str,
         category: &str,
         status: &str,
@@ -422,7 +419,7 @@ pub mod appointment {
     }
 
     pub fn export(store: &impl FileStore) -> Result<Vec<u8>, DataError> {
-        let date = |day: u64| display(day, Language::Ja, YEAR_DAY, Format::Iso);
+        let date = |day: Stamp| display(day, Language::Ja, YEAR_DAY, Format::Iso);
         let option =
             |t: &DataStruct| json!({"code": tag::Code::read(t), "label": tag::Label::read(t)});
         let appointments: Vec<Value> = entries(store, KIND)?
@@ -529,20 +526,20 @@ pub fn parse_uid(text: &str) -> Result<u128, DataError> {
 
 /// ```
 /// # use app::calendar::data::parse_time;
-/// # use app::time::{Timevolume, TimevolumeUnit};
-/// assert_eq!(parse_time("09:30").unwrap(), Timevolume::new(TimevolumeUnit::Minute, 570));
-/// assert_eq!(parse_time("24:00").unwrap(), Timevolume::new(TimevolumeUnit::Hour, 24));
-/// assert_eq!(parse_time("00:00").unwrap(), Timevolume::default());
+/// # use app::time::{Length, Unit};
+/// assert_eq!(parse_time("09:30").unwrap(), Length::new(Unit::Minute, 570));
+/// assert_eq!(parse_time("24:00").unwrap(), Length::new(Unit::Hour, 24));
+/// assert_eq!(parse_time("00:00").unwrap(), Length::default());
 /// assert!(parse_time("9").is_err());
 /// ```
-pub fn parse_time(text: &str) -> Result<Timevolume, DataError> {
+pub fn parse_time(text: &str) -> Result<Length, DataError> {
     let (hour, minute) = text.split_once(':').ok_or_else(|| format_error("time", text))?;
     let hour: u64 = hour.parse().map_err(|_| format_error("time", text))?;
     let minute: u64 = minute.parse().map_err(|_| format_error("time", text))?;
     if hour > 24 || minute > 59 {
         return Err(format_error("time", text));
     }
-    Ok(Timevolume::new(TimevolumeUnit::Hour, hour).with(TimevolumeUnit::Minute, minute))
+    Ok(Length::new(Unit::Hour, hour).with(Unit::Minute, minute))
 }
 
 /// ```
@@ -587,8 +584,8 @@ mod tests {
 
     const OTHER: u32 = 9;
 
-    fn at(hour: u64, minute: u64) -> Timevolume {
-        Timevolume::new(TimevolumeUnit::Hour, hour).with(TimevolumeUnit::Minute, minute)
+    fn at(hour: u64, minute: u64) -> Length {
+        Length::new(Unit::Hour, hour).with(Unit::Minute, minute)
     }
 
     fn sample() -> Vec<u8> {
@@ -718,7 +715,7 @@ mod tests {
             }
         }
         assert!(seen.iter().all(|&s| s));
-        assert_eq!(Range::get_from_bytes(&[]), (Timevolume::default(), Timevolume::default()));
+        assert_eq!(Range::get_from_bytes(&[]), (Length::default(), Length::default()));
     }
 
     #[test]

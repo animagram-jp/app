@@ -8,15 +8,12 @@ use core::{
 
 use rectgrid::{BBox, Unit};
 
-use crate::{
-    Language,
-    time::{Timevolume, TimevolumeUnit},
-};
+use crate::{Language, time, time::Length};
 
 pub const CLOCK: Clock = Clock::new(
-    Timevolume::new(TimevolumeUnit::Hour, 9),
-    Timevolume::new(TimevolumeUnit::Hour, 20),
-    Timevolume::new(TimevolumeUnit::Minute, 15),
+    Length::new(time::Unit::Hour, 9),
+    Length::new(time::Unit::Hour, 20),
+    Length::new(time::Unit::Minute, 15),
 );
 pub const AXES: [Axis; 4] =
     [Axis::Day(Day::Day), Axis::Day(Day::ThreeDays), Axis::Day(Day::Week), Axis::Month];
@@ -126,21 +123,21 @@ pub struct Cell {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Clock {
-    start: Timevolume,
-    end:   Timevolume,
-    unit:  Timevolume,
+    start: Length,
+    end:   Length,
+    unit:  Length,
 }
 
 impl Clock {
-    pub const fn new(start: Timevolume, end: Timevolume, unit: Timevolume) -> Self {
+    pub const fn new(start: Length, end: Length, unit: Length) -> Self {
         Self { start, end, unit }
     }
 
-    pub const fn start(&self) -> Timevolume {
+    pub const fn start(&self) -> Length {
         self.start
     }
 
-    pub const fn end(&self) -> Timevolume {
+    pub const fn end(&self) -> Length {
         self.end
     }
 
@@ -165,56 +162,56 @@ impl Clock {
 
     /// ```
     /// # use app::calendar::grid::CLOCK;
-    /// # use app::time::{Timevolume, TimevolumeUnit};
-    /// let at = |hour, minute| Timevolume::new(TimevolumeUnit::Hour, hour).with(TimevolumeUnit::Minute, minute);
+    /// # use app::time::{self, Length};
+    /// let at = |hour, minute| Length::new(time::Unit::Hour, hour).with(time::Unit::Minute, minute);
     /// assert_eq!(CLOCK.unit(at(10, 0)), 4.0);
     /// assert_eq!(CLOCK.unit(at(9, 5)), 1.0 / 3.0);
     /// ```
-    pub fn unit(&self, time: Timevolume) -> f64 {
+    pub fn unit(&self, time: Length) -> f64 {
         (minutes_of(time) - minutes_of(self.start)) as f64 / minutes_of(self.unit) as f64
     }
 
     /// ```
     /// # use app::calendar::grid::CLOCK;
-    /// # use app::time::{Timevolume, TimevolumeUnit};
-    /// let at = |hour, minute| Timevolume::new(TimevolumeUnit::Hour, hour).with(TimevolumeUnit::Minute, minute);
+    /// # use app::time::{self, Length};
+    /// let at = |hour, minute| Length::new(time::Unit::Hour, hour).with(time::Unit::Minute, minute);
     /// assert_eq!(CLOCK.time(4.0), Some(at(10, 0)));
     /// assert_eq!(CLOCK.time(4.5), Some(at(10, 7)));
     /// assert_eq!(CLOCK.time(44.0), Some(at(20, 0)));
     /// assert_eq!(CLOCK.time(44.1), None);
     /// assert_eq!(CLOCK.time(-0.1), None);
     /// ```
-    pub fn time(&self, unit: f64) -> Option<Timevolume> {
+    pub fn time(&self, unit: f64) -> Option<Length> {
         (0.0..=self.count() as f64).contains(&unit).then(|| {
             let minutes = libm::floor(unit * minutes_of(self.unit) as f64) as i64;
             time_of(minutes_of(self.start) + minutes)
         })
     }
 
-    pub fn clip(&self, start: Timevolume, end: Timevolume) -> Option<(Timevolume, Timevolume)> {
+    pub fn clip(&self, start: Length, end: Length) -> Option<(Length, Length)> {
         let (start, end) = (start.max(self.start), end.min(self.end));
         (end > start).then_some((start, end))
     }
 
-    pub fn clamp_start(&self, start: Timevolume, units: f64) -> Timevolume {
+    pub fn clamp_start(&self, start: Length, units: f64) -> Length {
         let last = minutes_of(self.end) - libm::floor(units * minutes_of(self.unit) as f64) as i64;
         time_of(minutes_of(start).min(last).max(minutes_of(self.start)))
     }
 }
 
-fn minutes_of(time: Timevolume) -> i64 {
-    time.total(TimevolumeUnit::Minute) as i64
+fn minutes_of(length: Length) -> i64 {
+    length.total(time::Unit::Minute) as i64
 }
 
-fn time_of(minutes: i64) -> Timevolume {
-    Timevolume::new(TimevolumeUnit::Minute, minutes.max(0) as u64)
+fn time_of(minutes: i64) -> Length {
+    Length::new(time::Unit::Minute, minutes.max(0) as u64)
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Resolved {
     pub cells: Vec<Cell>,
-    pub start: Timevolume,
-    pub end:   Timevolume,
+    pub start: Length,
+    pub end:   Length,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -290,35 +287,29 @@ impl Grid {
 
     /// ```
     /// # use app::calendar::grid::{CLOCK, Cell, Grid};
-    /// # use app::time::{Timevolume, TimevolumeUnit};
-    /// let at = |hour, minute| Timevolume::new(TimevolumeUnit::Hour, hour).with(TimevolumeUnit::Minute, minute);
+    /// # use app::time::{self, Length};
+    /// let at = |hour, minute| Length::new(time::Unit::Hour, hour).with(time::Unit::Minute, minute);
     /// let grid = Grid::new(7, 4, CLOCK);
     /// let bx = grid.bbox(Cell { day: 1, resource: 2 }, at(10, 0), at(11, 0)).unwrap();
     /// assert_eq!((bx.base()[0].get(), bx.base()[1].get()), (6.0, 4.0));
     /// assert_eq!((bx.offset()[0].get(), bx.offset()[1].get()), (1.0, 4.0));
     /// ```
-    pub fn bbox(&self, cell: Cell, start: Timevolume, end: Timevolume) -> Option<BBox<2>> {
+    pub fn bbox(&self, cell: Cell, start: Length, end: Length) -> Option<BBox<2>> {
         let column = self.unit(cell)? as i32;
         self.bbox_flat(column, column, start, end)
     }
 
     /// ```
     /// # use app::calendar::grid::{CLOCK, Grid};
-    /// # use app::time::{Timevolume, TimevolumeUnit};
-    /// let at = |hour, minute| Timevolume::new(TimevolumeUnit::Hour, hour).with(TimevolumeUnit::Minute, minute);
+    /// # use app::time::{self, Length};
+    /// let at = |hour, minute| Length::new(time::Unit::Hour, hour).with(time::Unit::Minute, minute);
     /// let grid = Grid::new(7, 4, CLOCK);
     /// let bx = grid.bbox_flat(-2, 1, at(10, 0), at(11, 0)).unwrap();
     /// assert_eq!((bx.base()[0].get(), bx.base()[1].get()), (-2.0, 4.0));
     /// assert_eq!((bx.offset()[0].get(), bx.offset()[1].get()), (4.0, 4.0));
     /// assert!(grid.bbox_flat(0, 0, at(21, 40), at(23, 20)).is_none());
     /// ```
-    pub fn bbox_flat(
-        &self,
-        first: i32,
-        last: i32,
-        start: Timevolume,
-        end: Timevolume,
-    ) -> Option<BBox<2>> {
+    pub fn bbox_flat(&self, first: i32, last: i32, start: Length, end: Length) -> Option<BBox<2>> {
         let (start, end) = self.clock.clip(start, end)?;
         let (from, to) = (self.clock.unit(start), self.clock.unit(end));
         Some(BBox::new(
@@ -330,8 +321,8 @@ impl Grid {
     /// ```
     /// # use app::calendar::grid::{CLOCK, Cell, Grid};
     /// # use rectgrid::{BBox, Unit};
-    /// # use app::time::{Timevolume, TimevolumeUnit};
-    /// let at = |hour, minute| Timevolume::new(TimevolumeUnit::Hour, hour).with(TimevolumeUnit::Minute, minute);
+    /// # use app::time::{self, Length};
+    /// let at = |hour, minute| Length::new(time::Unit::Hour, hour).with(time::Unit::Minute, minute);
     /// let grid = Grid::new(7, 4, CLOCK);
     /// let bx = BBox::new([Unit::new(3.0), Unit::new(4.0)], [Unit::new(2.0), Unit::new(4.0)]);
     /// let resolved = grid.resolve(&bx).unwrap();
@@ -439,7 +430,7 @@ mod tests {
         Grid::new(days, 4, CLOCK)
     }
 
-    fn at(minutes: u32) -> Timevolume {
+    fn at(minutes: u32) -> Length {
         time_of(i64::from(minutes))
     }
 

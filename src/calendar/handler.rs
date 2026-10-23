@@ -37,8 +37,8 @@ use crate::{
     object::Predicate,
     parse, stringify,
     time::{
-        CENTISECOND, DAY, Format, HOUR, IS_UTC, LAYOUT, MINUTE, SECOND, Timevolume, TimevolumeUnit,
-        add, diff, display, from_unix_timestamp_in_ms, shift, sub, youbi,
+        CENTISECOND, DAY, Format, HOUR, IS_UTC, LAYOUT, Length, MINUTE, SECOND, Stamp, Unit, add,
+        diff, display, from_unix_timestamp_in_ms, shift, sub, youbi,
     },
 };
 
@@ -137,7 +137,7 @@ pub struct Handler<S: FileStore> {
     clock:                Clock,
     resources:            u32,
     pub now_in_ms:        u64,
-    today:                u64,
+    today:                Stamp,
     base:                 u64,
     placed:               RefCell<Vec<Placed>>,
     bands:                RefCell<Vec<Band>>,
@@ -183,7 +183,7 @@ impl<S: FileStore> Handler<S> {
         self.store.as_ref().is_some_and(data::loaded)
     }
 
-    pub fn new(viewport_width_in_px: f64, today: u64, rem_in_px: f64) -> Self {
+    pub fn new(viewport_width_in_px: f64, today: Stamp, rem_in_px: f64) -> Self {
         let axis = Axis::Day(Day::Week);
         let column_in_px = column_in_px(viewport_width_in_px, 0, rem_in_px);
         Self {
@@ -604,10 +604,7 @@ impl<S: FileStore> Handler<S> {
             .map(|cell| {
                 let resource = resources.get(cell.resource as usize)?;
                 Some(Place {
-                    day:      add(
-                        self.base,
-                        Timevolume::new(TimevolumeUnit::Day, u64::from(cell.day)),
-                    ),
+                    day:      add(self.base, Length::new(Unit::Day, u64::from(cell.day))),
                     resource: tag::Uid::read(resource),
                 })
             })
@@ -618,7 +615,7 @@ impl<S: FileStore> Handler<S> {
         commands
     }
 
-    fn new_form(&mut self, cells: Vec<Place>, start: Timevolume, end: Timevolume) -> Vec<Command> {
+    fn new_form(&mut self, cells: Vec<Place>, start: Length, end: Length) -> Vec<Command> {
         let Some(first) = cells.first() else {
             return vec![];
         };
@@ -652,14 +649,11 @@ impl<S: FileStore> Handler<S> {
             let Some(resource) = resources.first() else {
                 return vec![];
             };
-            let start = self.clock.clamp_start(Timevolume::default(), NEW_UNITS);
+            let start = self.clock.clamp_start(Length::default(), NEW_UNITS);
             let end =
                 self.clock.time(self.clock.unit(start) + NEW_UNITS).unwrap_or(self.clock.end());
             let place = Place {
-                day:      add(
-                    self.first_day(),
-                    Timevolume::new(TimevolumeUnit::Day, u64::from(day)),
-                ),
+                day:      add(self.first_day(), Length::new(Unit::Day, u64::from(day))),
                 resource: tag::Uid::read(resource),
             };
             return self.new_form(vec![place], start, end);
@@ -685,7 +679,7 @@ impl<S: FileStore> Handler<S> {
         let start = grid.clock.clamp_start(time, NEW_UNITS);
         let end = grid.clock.time(grid.clock.unit(start) + NEW_UNITS).unwrap_or(grid.clock.end());
         let place = Place {
-            day:      add(self.base, Timevolume::new(TimevolumeUnit::Day, u64::from(cell.day))),
+            day:      add(self.base, Length::new(Unit::Day, u64::from(cell.day))),
             resource: tag::Uid::read(resource),
         };
         self.new_form(vec![place], start, end)
@@ -850,7 +844,7 @@ impl<S: FileStore> Handler<S> {
                 .map(|flat| {
                     let (day, resource) = grid.locate(flat);
                     let resource = tag::Uid::read(resources.get(resource as usize)?);
-                    Some(Place { day: shift(base, TimevolumeUnit::Day, i64::from(day)), resource })
+                    Some(Place { day: shift(base, Unit::Day, i64::from(day)), resource })
                 })
                 .collect::<Option<Vec<Place>>>()
         });
@@ -881,7 +875,7 @@ impl<S: FileStore> Handler<S> {
         Some(entry)
     }
 
-    fn drop_target(&self, drag: &Drag) -> Option<(Cell, Timevolume)> {
+    fn drop_target(&self, drag: &Drag) -> Option<(Cell, Length)> {
         let entry = self.appointment(drag.key)?;
         let grid = self.grid();
         let pointer = [Px::new(drag.pointer[0]), Px::new(drag.pointer[1])];
@@ -913,14 +907,14 @@ impl<S: FileStore> Handler<S> {
         let mut entry = self.appointment(drag.key)?;
         let cells = appointment::Places::read(&entry);
         let pressed = cells.get(drag.cell)?;
-        let delta = i64::from(target) - diff(first, pressed.day, TimevolumeUnit::Day);
+        let delta = i64::from(target) - diff(first, pressed.day, Unit::Day);
         if delta == 0 {
             return None;
         }
         let moved: Vec<Place> = cells
             .iter()
             .map(|place| Place {
-                day:      shift(place.day, TimevolumeUnit::Day, delta),
+                day:      shift(place.day, Unit::Day, delta),
                 resource: place.resource,
             })
             .collect();
@@ -933,16 +927,15 @@ impl<S: FileStore> Handler<S> {
         key: u32,
         pressed: usize,
         target: Cell,
-        start: Timevolume,
+        start: Length,
     ) -> Option<DataStruct> {
         let base = self.base;
         let axis = self.grid();
         let resources = self.tags(appointment::RESOURCE);
         let mut entry = self.appointment(key)?;
         let flat = |place: &Place| {
-            column_of(&resources, place.resource).map(|position| {
-                axis.flat(diff(base, place.day, TimevolumeUnit::Day) as i32, position as u32)
-            })
+            column_of(&resources, place.resource)
+                .map(|position| axis.flat(diff(base, place.day, Unit::Day) as i32, position as u32))
         };
         let cells = appointment::Places::read(&entry);
         let from = cells.get(pressed).and_then(flat)?;
@@ -952,7 +945,7 @@ impl<S: FileStore> Handler<S> {
             .map(|place| {
                 let (day, resource) = axis.locate(flat(place)? + delta);
                 let resource = tag::Uid::read(resources.get(resource as usize)?);
-                Some(Place { day: shift(base, TimevolumeUnit::Day, i64::from(day)), resource })
+                Some(Place { day: shift(base, Unit::Day, i64::from(day)), resource })
             })
             .collect::<Option<_>>()?;
         let current = appointment::Range::read(&entry);
@@ -981,7 +974,7 @@ impl<S: FileStore> Handler<S> {
         Some((cell.day, cell.resource, slot as u32))
     }
 
-    pub fn base(&self) -> u64 {
+    pub fn base(&self) -> Stamp {
         self.base
     }
 
@@ -991,7 +984,7 @@ impl<S: FileStore> Handler<S> {
                 self.base = if n == STEP_TODAY {
                     self.today
                 } else {
-                    shift(self.base, TimevolumeUnit::Day, self.step_days(n))
+                    shift(self.base, Unit::Day, self.step_days(n))
                 };
                 (vec![], self.date_commands())
             }
@@ -1077,7 +1070,7 @@ impl<S: FileStore> Handler<S> {
 
     fn visible_cards(&self, appointments: &[DataStruct], resources: &[DataStruct]) -> Vec<Card> {
         let grid = self.grid();
-        let mut columns: BTreeMap<u32, Vec<(u32, usize, Timevolume, Timevolume)>> = BTreeMap::new();
+        let mut columns: BTreeMap<u32, Vec<(u32, usize, Length, Length)>> = BTreeMap::new();
         let mut extent: BTreeMap<u32, (i32, i32)> = BTreeMap::new();
         for entry in appointments {
             let key = data::key(entry);
@@ -1107,7 +1100,7 @@ impl<S: FileStore> Handler<S> {
             let Some(cell) = grid.cell(unit) else {
                 continue;
             };
-            let spans: Vec<(Timevolume, Timevolume)> =
+            let spans: Vec<(Length, Length)> =
                 items.iter().map(|(_, _, start, end)| (*start, *end)).collect();
             for ((key, cell_index, start, end), (lane, lanes)) in
                 items.into_iter().zip(lanes(&spans))
@@ -1136,7 +1129,7 @@ impl<S: FileStore> Handler<S> {
         for entry in appointments {
             let key = data::key(entry);
             for (cell, place) in appointment::Places::read(entry).iter().enumerate() {
-                let Ok(day) = u32::try_from(diff(first, place.day, TimevolumeUnit::Day)) else {
+                let Ok(day) = u32::try_from(diff(first, place.day, Unit::Day)) else {
                     continue;
                 };
                 if day >= Month::days() {
@@ -1171,10 +1164,7 @@ impl<S: FileStore> Handler<S> {
             .filter_map(|day| {
                 let bx = Month::bbox(day, None)?;
                 Some(Band {
-                    kind: BandKind::Date(add(
-                        first,
-                        Timevolume::new(TimevolumeUnit::Day, u64::from(day)),
-                    )),
+                    kind: BandKind::Date(add(first, Length::new(Unit::Day, u64::from(day)))),
                     bx,
                 })
             })
@@ -1212,11 +1202,8 @@ impl<S: FileStore> Handler<S> {
                 rem(height.get(), self.rem_in_px),
             ));
             let BandKind::Date(day) = band.kind;
-            let scope = if LAYOUT.get::<u64>(day, DAY) == 1 {
-                MONTH_DAY
-            } else {
-                (TimevolumeUnit::Day, TimevolumeUnit::Day)
-            };
+            let scope =
+                if LAYOUT.get::<u64>(day, DAY) == 1 { MONTH_DAY } else { (Unit::Day, Unit::Day) };
             let label = display(day, self.language, scope, Format::WithoutYoubi);
             let current = day == self.today;
             commands.push(Command::SetText { id: Target::BandLabel(n).to_dom(), value: label });
@@ -1438,7 +1425,7 @@ impl<S: FileStore> Handler<S> {
         let days = self.axis.days();
         let mut commands: Vec<Command> = (1..=days)
             .map(|n| {
-                let day = add(first, Timevolume::new(TimevolumeUnit::Day, u64::from(n - 1)));
+                let day = add(first, Length::new(Unit::Day, u64::from(n - 1)));
                 Command::SetText {
                     id:    Target::DayTitle(n).to_dom(),
                     value: if self.month() {
@@ -1449,12 +1436,7 @@ impl<S: FileStore> Handler<S> {
                 }
             })
             .collect();
-        let value = display(
-            first,
-            self.language,
-            (TimevolumeUnit::Day, TimevolumeUnit::Day),
-            Format::WithoutYoubi,
-        );
+        let value = display(first, self.language, (Unit::Day, Unit::Day), Format::WithoutYoubi);
         commands.push(Command::SetText { id: Target::Title.to_dom(), value });
         if self.month() {
             commands.extend(self.axis_commands());
@@ -1476,8 +1458,8 @@ impl<S: FileStore> Handler<S> {
         (self.tags(appointment::RESOURCE).len() as u32).min(AXIS_ELEMENT_MAX_COUNTS[1])
     }
 
-    fn day_offset(&self, day: u64) -> i32 {
-        diff(self.base, day, TimevolumeUnit::Day) as i32
+    fn day_offset(&self, day: Stamp) -> i32 {
+        diff(self.base, day, Unit::Day) as i32
     }
 
     fn columns(&self) -> u32 {
@@ -1488,9 +1470,9 @@ impl<S: FileStore> Handler<S> {
         self.axis == Axis::Month
     }
 
-    fn first_day(&self) -> u64 {
+    fn first_day(&self) -> Stamp {
         if self.month() {
-            sub(self.base, Timevolume::new(TimevolumeUnit::Day, youbi(self.base) as u64 - 1))
+            sub(self.base, Length::new(Unit::Day, youbi(self.base) as u64 - 1))
         } else {
             self.base
         }
@@ -1546,7 +1528,7 @@ impl<S: FileStore> Handler<S> {
             let value = if self.month() {
                 match Month::locate([0, row as i32]) {
                     Some((day, None)) => display(
-                        add(first, Timevolume::new(TimevolumeUnit::Day, u64::from(day))),
+                        add(first, Length::new(Unit::Day, u64::from(day))),
                         self.language,
                         MONTH_DAY,
                         Format::WithoutYoubi,
@@ -1618,10 +1600,7 @@ impl<S: FileStore> event::Handler for Handler<S> {
         timezone_offset_minutes: i32,
     ) -> Self {
         let utc = from_unix_timestamp_in_ms(now_in_ms as i64, 0);
-        let offset = Timevolume::new(
-            TimevolumeUnit::Minute,
-            u64::from(timezone_offset_minutes.unsigned_abs()),
-        );
+        let offset = Length::new(Unit::Minute, u64::from(timezone_offset_minutes.unsigned_abs()));
         let local = if timezone_offset_minutes < 0 { sub(utc, offset) } else { add(utc, offset) };
         let today = [HOUR, MINUTE, SECOND, CENTISECOND, IS_UTC]
             .into_iter()
@@ -1785,7 +1764,7 @@ fn column_of(resources: &[DataStruct], uid: u128) -> Option<usize> {
 fn shift_cells(
     resources: &[DataStruct],
     cells: &[Place],
-    day: u64,
+    day: Stamp,
     resource: usize,
 ) -> Result<Vec<Place>, &'static str> {
     let first = cells.first().ok_or("予約がありません")?;
@@ -1793,7 +1772,7 @@ fn shift_cells(
     let Some(origin) = column_of(resources, first.resource) else {
         return Ok(vec![Place { day, resource: target }]);
     };
-    let day_delta = diff(first.day, day, TimevolumeUnit::Day);
+    let day_delta = diff(first.day, day, Unit::Day);
     let resource_delta = resource as i32 - origin as i32;
     cells
         .iter()
@@ -1802,10 +1781,7 @@ fn shift_cells(
             let index =
                 usize::try_from(position as i32 + resource_delta).map_err(|_| "範囲外です")?;
             let moved = tag::Uid::read(resources.get(index).ok_or("範囲外です")?);
-            Ok(Place {
-                day:      shift(place.day, TimevolumeUnit::Day, day_delta),
-                resource: moved,
-            })
+            Ok(Place { day: shift(place.day, Unit::Day, day_delta), resource: moved })
         })
         .collect()
 }
@@ -1926,16 +1902,16 @@ mod tests {
     const GRAB_X: f64 = 40.0;
     const GRAB_Y: f64 = 40.0;
 
-    fn after(day: u64, n: i64) -> u64 {
-        shift(day, TimevolumeUnit::Day, n)
+    fn after(day: Stamp, n: i64) -> Stamp {
+        shift(day, Unit::Day, n)
     }
 
-    fn today() -> u64 {
+    fn today() -> Stamp {
         pack(2026, 10, 2, 0, 0, 0, 0, 0, 0)
     }
 
-    fn at(minutes: u32) -> Timevolume {
-        Timevolume::new(TimevolumeUnit::Minute, u64::from(minutes))
+    fn at(minutes: u32) -> Length {
+        Length::new(Unit::Minute, u64::from(minutes))
     }
 
     #[test]
@@ -2198,7 +2174,7 @@ mod tests {
         let mut handler = Handler::<MemoryStore>::new(VIEWPORT, today(), REM);
         for (button, expected) in [(5, 7), (1, 0), (2, -1), (4, 0), (4, 1)] {
             press(&mut handler, Target::Step(button).to_dom());
-            assert_eq!(diff(today(), handler.base(), TimevolumeUnit::Day), expected);
+            assert_eq!(diff(today(), handler.base(), Unit::Day), expected);
         }
         let commands = press(&mut handler, Target::Step(3).to_dom());
         assert_eq!(handler.base(), today());
@@ -2283,7 +2259,7 @@ mod tests {
         assert!(!handler.loaded());
     }
 
-    fn entry(id: u32, day: u64, resource: u128, start: u32, end: u32) -> DataStruct {
+    fn entry(id: u32, day: Stamp, resource: u128, start: u32, end: u32) -> DataStruct {
         appointment::new(
             id,
             &[Place { day, resource }],
@@ -2452,7 +2428,7 @@ mod tests {
         let expected = appointments(&handler)
             .iter()
             .flat_map(|a| appointment::Places::read(&a))
-            .filter(|cell| (0..7).contains(&diff(today(), cell.day, TimevolumeUnit::Day)))
+            .filter(|cell| (0..7).contains(&diff(today(), cell.day, Unit::Day)))
             .count();
         assert!(expected > 0);
         assert_eq!(shown_count(&commands), expected);
@@ -2935,8 +2911,8 @@ mod tests {
         })
     }
 
-    fn minutes(time: Timevolume) -> u32 {
-        time.total(TimevolumeUnit::Minute) as u32
+    fn minutes(time: Length) -> u32 {
+        time.total(Unit::Minute) as u32
     }
 
     fn times<S: FileStore>(handler: &Handler<S>) -> (u32, u32) {
@@ -3292,7 +3268,7 @@ mod tests {
         handler.store.as_ref().unwrap().index().count_pending()
     }
 
-    fn drag_first_card_by<S: FileStore>(handler: &mut Handler<S>, dy: f64) -> (u32, Timevolume) {
+    fn drag_first_card_by<S: FileStore>(handler: &mut Handler<S>, dy: f64) -> (u32, Length) {
         handler.card_commands();
         let (index, base) = {
             let placed = handler.placed.borrow();
@@ -3884,7 +3860,7 @@ mod tests {
         handler
     }
 
-    fn month_first() -> u64 {
+    fn month_first() -> Stamp {
         pack(2026, 9, 28, 0, 0, 0, 0, 0, 0)
     }
 
@@ -4071,7 +4047,7 @@ mod tests {
         {
             choose(&mut handler, view);
             press(&mut handler, Target::Step(5).to_dom());
-            assert_eq!(diff(today(), handler.base(), TimevolumeUnit::Day), page, "{view:?}");
+            assert_eq!(diff(today(), handler.base(), Unit::Day), page, "{view:?}");
             press(&mut handler, Target::Step(1).to_dom());
             assert_eq!(handler.base(), today(), "{view:?}");
         }

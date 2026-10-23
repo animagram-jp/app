@@ -3,10 +3,8 @@ pub mod grid;
 pub mod handler;
 pub mod target;
 
-use crate::time::TimevolumeUnit;
+use crate::time::Unit;
 
-pub const YEAR_DAY: (TimevolumeUnit, TimevolumeUnit) = (TimevolumeUnit::Year, TimevolumeUnit::Day);
-pub const MONTH_DAY: (TimevolumeUnit, TimevolumeUnit) =
-    (TimevolumeUnit::Month, TimevolumeUnit::Day);
-pub const HOUR_MINUTE: (TimevolumeUnit, TimevolumeUnit) =
-    (TimevolumeUnit::Hour, TimevolumeUnit::Minute);
+pub const YEAR_DAY: (Unit, Unit) = (Unit::Year, Unit::Day);
+pub const MONTH_DAY: (Unit, Unit) = (Unit::Month, Unit::Day);
+pub const HOUR_MINUTE: (Unit, Unit) = (Unit::Hour, Unit::Minute);
