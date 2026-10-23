@@ -121,12 +121,7 @@ impl<T: Fields> Default for Layout<T> {
 
 impl<T: Fields> Layout<T> {
     pub const fn new() -> Self {
-        Self::from_specs(T::SPECS, 0)
-    }
-
-    pub const fn aligned() -> Self {
-        let bits = Self::width_of(T::SPECS);
-        Self::from_specs(T::SPECS, bits.next_multiple_of(8) - bits)
+        Self::from_specs(T::SPECS)
     }
 
     const fn width_of(specs: &[Spec]) -> u32 {
@@ -139,8 +134,8 @@ impl<T: Fields> Layout<T> {
         bits
     }
 
-    const fn from_specs(specs: &'static [Spec], padding: u32) -> Self {
-        let bits = Self::width_of(specs) + padding;
+    const fn from_specs(specs: &'static [Spec]) -> Self {
+        let bits = Self::width_of(specs);
         assert!(bits <= 64);
         Self { specs, bits, marker: PhantomData }
     }
@@ -158,10 +153,10 @@ impl<T: Fields> Layout<T> {
     }
 
     pub const fn field(&self, index: usize) -> Field {
-        let mut position = self.bits;
+        let mut position = 0;
         let mut i = 0;
-        while i <= index {
-            position -= self.specs[i].width();
+        while i < index {
+            position += self.specs[i].width();
             i += 1;
         }
         match self.specs[index] {
@@ -216,7 +211,7 @@ mod tests {
     use alloc::{boxed::Box, vec::Vec};
     use core::array::from_fn;
 
-    use arbitrary_int::{i3, i10, u1, u4, u5, u6, u7, u9, u10, u13};
+    use arbitrary_int::{i3, i10, u1, u4, u7, u9, u13};
 
     use super::{
         Spec::{Signed, Unsigned},
@@ -255,22 +250,14 @@ mod tests {
     }
 
     #[test]
-    fn aligned_layouts_pad_up_to_the_next_byte_at_the_bottom() {
-        fn check<T: Fields>() {
-            let (packed, aligned) = (Layout::<T>::new(), Layout::<T>::aligned());
-            let bits = packed.bits();
-            assert_eq!(aligned.bits(), bits.next_multiple_of(8));
-            assert_eq!(aligned.bytes(), packed.bytes());
-            for i in 0..packed.count() {
-                let shift = aligned.bits() - bits;
-                assert_eq!(aligned.field(i).position, packed.field(i).position + shift);
-            }
-        }
-        check::<(u9, u9, i10, i10)>();
-        check::<(u9, u9, i10, i10, u7)>();
-        check::<(u13, u4, u5, u5, u6, u6, u7, u1, u10)>();
-        check::<(u8, u8)>();
-        check::<(u1,)>();
+    fn fields_follow_the_declaration_order_from_the_lowest_bit() {
+        const L: Layout<(u4, u4, u8)> = Layout::new();
+        assert_eq!((L.field(0).position, L.field(1).position, L.field(2).position), (0, 4, 8));
+        let raw = L.pack((u4::new(1), u4::new(2), 0x34u8));
+        assert_eq!(raw, 0x3421);
+        let (word, length) = L.encode(raw);
+        assert_eq!(&word[..length], &[0x21, 0x34]);
+        assert_eq!(L.decode(&[0x21, 0x34]), Some(raw));
     }
 
     fn typed_round_trip<T: Fields>(seed: u64) {
@@ -305,15 +292,14 @@ mod tests {
             let signed: [bool; FIELDS] = from_fn(|_| rng.chance(50));
             let specs: [Spec; FIELDS] =
                 from_fn(|i| if signed[i] { Signed(widths[i]) } else { Unsigned(widths[i]) });
-            let padding = rng.below(5) as u32;
-            let layout = Layout::<()>::from_specs(Box::leak(Box::new(specs)), padding);
+            let layout = Layout::<()>::from_specs(Box::leak(Box::new(specs)));
 
-            let bits = widths.iter().sum::<u32>() + padding;
+            let bits = widths.iter().sum::<u32>();
             assert_eq!((layout.bits(), layout.bytes()), (bits, bits.div_ceil(8) as usize));
-            let mut position = bits;
+            let mut position = 0;
             for (index, width) in widths.iter().enumerate() {
-                position -= width;
                 assert_eq!(layout.field(index).position, position, "seed {seed} field {index}");
+                position += width;
             }
 
             let expect = |index: usize, value: u64| -> i64 {
@@ -328,7 +314,6 @@ mod tests {
             let values: [u64; FIELDS] = from_fn(|_| rng.next_u64());
             let raw = layout.pack_raw(&values);
             assert_eq!(raw >> bits, 0, "seed {seed}");
-            assert_eq!(raw & ((1u64 << padding) - 1), 0, "seed {seed}");
             let unpacked: [i64; FIELDS] = from_fn(|i| layout.get(raw, i));
             for index in 0..FIELDS {
                 assert_eq!(

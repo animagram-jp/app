@@ -25,20 +25,20 @@ use crate::{Language, field::Layout};
 //   = 1: The value is UTC time (timezone iana id may store original zone info).
 //   = 0: The value is local time of timezone
 
-pub const YEAR: usize = 0;
-pub const MONTH: usize = 1;
-pub const DAY: usize = 2;
-pub const HOUR: usize = 3;
-pub const MINUTE: usize = 4;
-pub const SECOND: usize = 5;
-pub const CENTISECOND: usize = 6;
-// 1 = true (year~second is utc value) and 0 = false (iana local value)
-pub const IS_UTC: usize = 7;
 // id of IANA Time Zone Database
-pub const TIMEZONE: usize = 8;
+pub const TIMEZONE: usize = 0;
+// 1 = true (year~second is utc value) and 0 = false (iana local value)
+pub const IS_UTC: usize = 1;
+pub const CENTISECOND: usize = 2;
+pub const SECOND: usize = 3;
+pub const MINUTE: usize = 4;
+pub const HOUR: usize = 5;
+pub const DAY: usize = 6;
+pub const MONTH: usize = 7;
+pub const YEAR: usize = 8;
 
-pub type Parts = (u13, u4, u5, u5, u6, u6, u7, u1, u10);
-pub const LAYOUT: Layout<Parts> = Layout::aligned();
+pub type Parts = (u10, u1, u7, u6, u6, u5, u5, u4, u13);
+pub const LAYOUT: Layout<Parts> = Layout::new();
 
 pub struct Zone;
 
@@ -997,15 +997,15 @@ pub const fn pack(
     timezone: u64,
 ) -> u64 {
     LAYOUT.pack_raw(&[
-        year as u64,
-        month as u64,
-        day as u64,
-        hour as u64,
-        minute as u64,
-        second as u64,
-        centisecond as u64,
-        is_utc,
         timezone,
+        is_utc,
+        centisecond as u64,
+        second as u64,
+        minute as u64,
+        hour as u64,
+        day as u64,
+        month as u64,
+        year as u64,
     ])
 }
 
@@ -1149,15 +1149,23 @@ mod tests {
 
     #[test]
     fn layout_positions() {
-        assert_eq!(pack(1, 0, 0, 0, 0, 0, 0, 0, 0), 1 << 51);
-        assert_eq!(pack(0, 1, 0, 0, 0, 0, 0, 0, 0), 1 << 47);
-        assert_eq!(pack(0, 0, 1, 0, 0, 0, 0, 0, 0), 1 << 42);
-        assert_eq!(pack(0, 0, 0, 1, 0, 0, 0, 0, 0), 1 << 37);
-        assert_eq!(pack(0, 0, 0, 0, 1, 0, 0, 0, 0), 1 << 31);
-        assert_eq!(pack(0, 0, 0, 0, 0, 1, 0, 0, 0), 1 << 25);
-        assert_eq!(pack(0, 0, 0, 0, 0, 0, 1, 0, 0), 1 << 18);
-        assert_eq!(pack(0, 0, 0, 0, 0, 0, 0, 1, 0), 1 << 17);
-        assert_eq!(pack(0, 0, 0, 0, 0, 0, 0, 0, 1), 1 << 7);
+        assert_eq!(pack(1, 0, 0, 0, 0, 0, 0, 0, 0), 1 << 44);
+        assert_eq!(pack(0, 1, 0, 0, 0, 0, 0, 0, 0), 1 << 40);
+        assert_eq!(pack(0, 0, 1, 0, 0, 0, 0, 0, 0), 1 << 35);
+        assert_eq!(pack(0, 0, 0, 1, 0, 0, 0, 0, 0), 1 << 30);
+        assert_eq!(pack(0, 0, 0, 0, 1, 0, 0, 0, 0), 1 << 24);
+        assert_eq!(pack(0, 0, 0, 0, 0, 1, 0, 0, 0), 1 << 18);
+        assert_eq!(pack(0, 0, 0, 0, 0, 0, 1, 0, 0), 1 << 11);
+        assert_eq!(pack(0, 0, 0, 0, 0, 0, 0, 1, 0), 1 << 10);
+        assert_eq!(pack(0, 0, 0, 0, 0, 0, 0, 0, 1), 1);
+    }
+
+    #[test]
+    fn layout_bytes_are_little_endian_in_declaration_order() {
+        let timestamp = pack(2000, 1, 1, 0, 0, 0, 0, 1, 0);
+        assert_eq!(timestamp, 0x007D_0108_0000_0400);
+        assert_eq!(timestamp.to_le_bytes(), [0x00, 0x04, 0x00, 0x00, 0x08, 0x01, 0x7D, 0x00]);
+        assert_eq!(unpack(timestamp), (2000, 1, 1, 0, 0, 0, 0, 1, 0));
     }
 
     #[test]
@@ -1190,8 +1198,8 @@ mod tests {
     #[test]
     fn layout_widths_do_not_overlap_and_leave_padding_zero() {
         let all = pack(8191, 15, 31, 31, 63, 63, 127, 1, 1023);
-        assert_eq!(all, !0u64 << 7);
-        assert_eq!(all & 0x7f, 0);
+        assert_eq!(all, !0u64 >> 7);
+        assert_eq!(all >> LAYOUT.bits(), 0);
     }
 
     #[test]
