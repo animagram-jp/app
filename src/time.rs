@@ -1,5 +1,14 @@
 use alloc::{format, string::String, vec, vec::Vec};
-use core::{array::from_fn, cmp::Ordering};
+use core::{
+    array::from_fn,
+    clone::Clone,
+    cmp::{Ordering, PartialEq},
+    default::Default,
+    fmt::Debug,
+    marker::Copy,
+    option::Option::{self, None, Some},
+    primitive::{bool, i64, str, u8, u16, u64, usize},
+};
 
 use arbitrary_int::{u1, u4, u5, u6, u7, u10, u13};
 
@@ -624,13 +633,12 @@ impl Ord for Timevolume {
 /// use app::time::*;
 ///
 /// let tokyo = Zone::index("Asia/Tokyo").unwrap();
-/// let timestamp = from_ut(946684800000.0, tokyo);
+/// let timestamp = from_unix_timestamp_in_ms(946684800000, tokyo);
 /// assert_eq!(unpack(timestamp), (2000, 1, 1, 0, 0, 0, 0, 1, tokyo as u64));
 /// ```
-pub fn from_ut(ut: f64, zone: u16) -> u64 {
-    let milliseconds = ut as i64;
-    let centisecond = milliseconds.rem_euclid(1000) / 10;
-    let seconds = milliseconds.div_euclid(1000);
+pub fn from_unix_timestamp_in_ms(unix_timestamp_in_ms: i64, zone: u16) -> u64 {
+    let centisecond = unix_timestamp_in_ms.rem_euclid(1000) / 10;
+    let seconds = unix_timestamp_in_ms.div_euclid(1000);
 
     let seconds_of_day = seconds.rem_euclid(86400);
     let hour = seconds_of_day / 3600;
@@ -1430,7 +1438,7 @@ mod tests {
     }
 
     #[test]
-    fn from_ut_matches_the_reference_and_keeps_the_zone() {
+    fn from_unix_timestamp_in_ms_matches_the_reference_and_keeps_the_zone() {
         for seed in 0..3000 {
             let mut rng = Rng::new(seed);
             let milliseconds =
@@ -1450,7 +1458,7 @@ mod tests {
                 zone as u64,
             );
             assert_eq!(
-                unpack(from_ut(milliseconds as f64, zone)),
+                unpack(from_unix_timestamp_in_ms(milliseconds, zone)),
                 expected,
                 "seed {seed} ms {milliseconds}"
             );

@@ -7,7 +7,7 @@ use core::{
     default::Default,
     iter::Extend,
     option::Option::{None, Some},
-    primitive::{bool, f64, i32, u8},
+    primitive::{bool, f64, i32, u8, u64},
 };
 
 #[cfg(target_arch = "wasm32")]
@@ -33,16 +33,16 @@ pub(crate) type Store = crate::file_store::OpfsStore;
 #[cfg(not(all(feature = "file_store", not(test))))]
 pub(crate) type Store = crate::file_store::MemoryStore;
 
-pub fn now() -> f64 {
+pub fn now_in_ms() -> u64 {
     #[cfg(target_arch = "wasm32")]
     {
-        js_sys::Date::now()
+        js_sys::Date::now() as u64
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
         use std::time::{SystemTime, UNIX_EPOCH};
 
-        SystemTime::now().duration_since(UNIX_EPOCH).map_or(0.0, |d| d.as_millis() as f64)
+        SystemTime::now().duration_since(UNIX_EPOCH).map_or(0, |d| d.as_millis() as u64)
     }
 }
 
@@ -98,10 +98,12 @@ impl App {
                 }
             }
             Event::Gesture(gesture) => handler.process_gesture(&gesture, pointer, origin.as_ref()),
-            Event::Window(WindowEvent::Resize { width, height }) => {
-                handler.process_resize(width, height)
+            Event::Window(WindowEvent::Resize { width_in_px, height_in_px }) => {
+                handler.process_resize(width_in_px, height_in_px)
             }
-            Event::Window(WindowEvent::Scroll { x, y }) => handler.process_scroll(x, y),
+            Event::Window(WindowEvent::Scroll { x_in_px, y_in_px }) => {
+                handler.process_scroll(x_in_px, y_in_px)
+            }
             Event::Window(WindowEvent::Visibility { state }) => handler.process_visibility(state),
             Event::Window(WindowEvent::Fullscreen(event)) => handler.process_fullscreen(event),
             Event::FetchChunk(chunk) => {
@@ -139,7 +141,7 @@ impl App {
     /// Decode a event frame and dispatch it together with every event
     /// it derives, in FIFO order, appending the resulting commands.
     pub fn process(&mut self, frame: &[u8]) {
-        self.handler.now = now();
+        self.handler.now_in_ms = now_in_ms();
         let Some(event) = Event::decode(&mut { frame }) else {
             self.commands.push(Command::Error { error: Error::Event(EventError::Decode) });
             return;
@@ -173,19 +175,19 @@ impl App {
 impl App {
     pub async fn init(
         pointer_coarse: bool,
-        viewport_width: f64,
-        viewport_height: f64,
+        viewport_width_in_px: f64,
+        viewport_height_in_px: f64,
         rem_in_px: f64,
-        now: f64,
+        now_in_ms: u64,
         timezone_offset_minutes: i32,
     ) {
         let mut app = App::new(
             pointer_coarse,
             Handler::ready(
-                viewport_width,
-                viewport_height,
+                viewport_width_in_px,
+                viewport_height_in_px,
                 rem_in_px,
-                now,
+                now_in_ms,
                 timezone_offset_minutes,
             )
             .await,
@@ -225,7 +227,7 @@ mod tests {
     const POINTER_UP: u8 = 18;
 
     fn new_app() -> App {
-        App::new(false, block_on(Handler::<Store>::ready(0.0, 0.0, 16.0, 0.0, 0)))
+        App::new(false, block_on(Handler::<Store>::ready(0.0, 0.0, 16.0, 0, 0)))
     }
 
     fn section(n: u32) -> dom::Id {

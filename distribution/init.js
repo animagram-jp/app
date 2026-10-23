@@ -35,7 +35,7 @@ const EVENT_SHUTDOWN = 8;
 const THREAD = document.querySelector("meta[name='thread']")?.content ?? "worker";
 
 const RELOAD_LOG_KEY = "app:reload-log";
-const RELOAD_WINDOW_MS = 60000;
+const RELOAD_WINDOW_IN_MS = 60000;
 const RELOAD_LIMIT = 3;
 
 /**
@@ -87,7 +87,7 @@ function start() {
     }
 
     const rem_in_px = parseFloat(getComputedStyle(document.documentElement).fontSize);
-    const now = Date.now();
+    const now_in_ms = Date.now();
     const timezone_offset_minutes = -new Date().getTimezoneOffset();
 
     if (THREAD === "main") {
@@ -107,7 +107,7 @@ function start() {
                 document.documentElement.clientWidth,
                 window.innerHeight,
                 rem_in_px,
-                now,
+                BigInt(now_in_ms),
                 timezone_offset_minutes,
             );
             bind();
@@ -159,10 +159,10 @@ function start() {
             payload: {
                 memory: S.memory,
                 pointer_coarse: window.matchMedia("(pointer: coarse)").matches,
-                viewport_width: document.documentElement.clientWidth,
-                viewport_height: window.innerHeight,
+                viewport_width_in_px: document.documentElement.clientWidth,
+                viewport_height_in_px: window.innerHeight,
                 rem_in_px,
-                now: Date.now(),
+                now_in_ms: BigInt(Date.now()),
                 timezone_offset_minutes,
             },
         });
@@ -220,14 +220,14 @@ function execute(frame) {
 
     if (operation === 15) {
         try {
-            const now = Date.now();
+            const now_in_ms = Date.now();
             const log = JSON.parse(sessionStorage.getItem(RELOAD_LOG_KEY) ?? "[]")
-                .filter((time) => now - time < RELOAD_WINDOW_MS);
+                .filter((time_in_ms) => now_in_ms - time_in_ms < RELOAD_WINDOW_IN_MS);
             if (log.length >= RELOAD_LIMIT) {
                 console.error("[reload] suppressed:", log.length);
                 return false;
             }
-            log.push(now);
+            log.push(now_in_ms);
             sessionStorage.setItem(RELOAD_LOG_KEY, JSON.stringify(log));
         } catch (err) {
             console.error("[reload] suppressed:", err);

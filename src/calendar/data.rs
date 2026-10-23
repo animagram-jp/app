@@ -21,7 +21,7 @@ use crate::{
 
 pub const SCHEMA_SIZE: u32 = 12;
 const FIELD_KIND: u32 = 4;
-const CREATED: f64 = 0.0;
+const CREATED_IN_MS: u64 = 0;
 
 #[derive(Debug)]
 pub enum DataError {
@@ -62,7 +62,7 @@ impl WireError for DataError {
 // --- entry ---
 
 pub fn blank(key: u32, kind: u32) -> DataStruct {
-    let mut entry = DataStruct::new(key, CREATED, SCHEMA_SIZE);
+    let mut entry = DataStruct::new(key, CREATED_IN_MS, SCHEMA_SIZE);
     let _ = entry.set(FIELD_KIND, &kind.to_le_bytes(), None);
     entry
 }
@@ -78,22 +78,22 @@ pub fn kind(bytes: &[u8]) -> u32 {
         .unwrap_or(0)
 }
 
-pub fn touch(entry: &mut DataStruct, now: f64) {
-    let _ = entry.set(ID_MODIFIED_AT, &encode_time(now), None);
+pub fn touch(entry: &mut DataStruct, now_in_ms: u64) {
+    let _ = entry.set(ID_MODIFIED_AT, &encode_time(now_in_ms), None);
 }
 
-pub fn stamp(entry: &mut DataStruct, now: f64) {
-    let _ = entry.set(ID_CREATED_AT, &encode_time(now), None);
-    touch(entry, now);
+pub fn stamp(entry: &mut DataStruct, now_in_ms: u64) {
+    let _ = entry.set(ID_CREATED_AT, &encode_time(now_in_ms), None);
+    touch(entry, now_in_ms);
 }
 
-pub fn new_uid(now: f64) -> u128 {
-    let unix_ms = u128::from(now as u64);
+pub fn new_uid(now_in_ms: u64) -> u128 {
+    let unix_timestamp_in_ms = u128::from(now_in_ms);
     let mut bytes = [0u8; 10];
     getrandom::fill(&mut bytes).unwrap();
-    let rand_a = u128::from(u16::from_le_bytes([bytes[0], bytes[1]]) & 0x0FFF);
-    let rand_b = u128::from(u64::from_le_bytes(bytes[2..].try_into().unwrap()) >> 2);
-    (unix_ms & 0xFFFF_FFFF_FFFF) << 80 | 7 << 76 | rand_a << 64 | 2 << 62 | rand_b
+    let random_a = u128::from(u16::from_le_bytes([bytes[0], bytes[1]]) & 0x0FFF);
+    let random_b = u128::from(u64::from_le_bytes(bytes[2..].try_into().unwrap()) >> 2);
+    (unix_timestamp_in_ms & 0xFFFF_FFFF_FFFF) << 80 | 7 << 76 | random_a << 64 | 2 << 62 | random_b
 }
 
 macro_rules! predicate {
@@ -617,12 +617,12 @@ mod tests {
     fn touch_stamps_only_the_modified_time() {
         let mut entry = tag::new(1, 1, 2, "c", "l");
         let created = entry.get(ID_CREATED_AT).unwrap().to_vec();
-        touch(&mut entry, 77.0);
-        assert_eq!(entry.get(ID_MODIFIED_AT).unwrap(), encode_time(77.0));
+        touch(&mut entry, 77);
+        assert_eq!(entry.get(ID_MODIFIED_AT).unwrap(), encode_time(77));
         assert_eq!(entry.get(ID_CREATED_AT).unwrap(), created);
-        stamp(&mut entry, 88.0);
-        assert_eq!(entry.get(ID_CREATED_AT).unwrap(), encode_time(88.0));
-        assert_eq!(entry.get(ID_MODIFIED_AT).unwrap(), encode_time(88.0));
+        stamp(&mut entry, 88);
+        assert_eq!(entry.get(ID_CREATED_AT).unwrap(), encode_time(88));
+        assert_eq!(entry.get(ID_MODIFIED_AT).unwrap(), encode_time(88));
     }
 
     #[test]
@@ -768,7 +768,7 @@ mod tests {
             "s",
             "",
         );
-        Uid::write(&mut booking, &new_uid(0.0), None).unwrap();
+        Uid::write(&mut booking, &new_uid(0), None).unwrap();
         put(&mut store, &booking);
         put(&mut store, &tag::new(gone, RESOURCE, 42, "", "gone"));
         store.save().unwrap();

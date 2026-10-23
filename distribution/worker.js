@@ -11,10 +11,10 @@ self.addEventListener("message", async (e) => {
 
     await App.init(
         payload.pointer_coarse,
-        payload.viewport_width,
-        payload.viewport_height,
+        payload.viewport_width_in_px,
+        payload.viewport_height_in_px,
         payload.rem_in_px,
-        payload.now,
+        payload.now_in_ms,
         payload.timezone_offset_minutes,
     );
     await serve_event();

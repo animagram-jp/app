@@ -1,5 +1,8 @@
 use alloc::vec::Vec;
-use core::{array::from_fn, primitive::u8};
+use core::{
+    array::from_fn,
+    primitive::{u8, u64},
+};
 
 use crate::{Language, data_struct::DataStruct, list::ListError};
 
@@ -41,11 +44,11 @@ pub trait Predicate<const N: usize> {
     fn write(
         character: &mut DataStruct,
         value: &Self::Parsed,
-        time: Option<f64>,
+        now_in_ms: Option<u64>,
     ) -> Result<(), ListError> {
         let ids = Self::ids();
         let encoded = Self::encode(value);
         let entries: [(u32, Option<&[u8]>); N] = from_fn(|i| (ids[i], encoded[i].as_deref()));
-        character.set_many(entries, time)
+        character.set_many(entries, now_in_ms)
     }
 }

@@ -13,7 +13,6 @@ use argon2::{Algorithm, Argon2, Params, Version};
 use hkdf::Hkdf;
 use hmac::{Hmac, KeyInit, Mac};
 use sha2::{Digest, Sha256};
-use subtle::ConstantTimeEq;
 
 use crate::WireError;
 
@@ -122,15 +121,13 @@ pub fn verifier(pepper: &[u8], auth_key: &Key) -> Key {
 }
 
 pub fn verify(pepper: &[u8], auth_key: &Key, stored: &Key) -> bool {
-    verifier(pepper, auth_key).ct_eq(stored).into()
+    let mut mac = Hmac::<Sha256>::new_from_slice(pepper).expect("hmac accepts any key length");
+    mac.update(auth_key);
+    mac.verify_slice(stored).is_ok()
 }
 
 pub fn digest(token: &[u8]) -> Key {
     Sha256::digest(token).into()
-}
-
-pub fn equal(left: &[u8], right: &[u8]) -> bool {
-    left.ct_eq(right).into()
 }
 
 pub fn hex(bytes: &[u8]) -> String {

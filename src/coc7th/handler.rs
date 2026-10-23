@@ -2,7 +2,7 @@ use alloc::{string::String, vec, vec::Vec};
 use core::{
     matches,
     option::Option::{None, Some},
-    primitive::{f64, i32, u8, u32},
+    primitive::{f64, i32, u8, u32, u64},
 };
 
 use arbitrary_int::u2;
@@ -35,7 +35,7 @@ pub struct Handler<S: FileStore> {
     language:        Language,
     last_toast:      u2,
     character:       DataStruct,
-    pub now:         f64,
+    pub now_in_ms:   u64,
     characters:      Option<S>,
     lost:            Vec<(u32, Option<Vec<u8>>)>,
     startup:         Vec<Error>,
@@ -58,10 +58,10 @@ impl<S: FileStore> event::Handler for Handler<S> {
     type Store = S;
 
     async fn ready(
-        _viewport_width: f64,
-        _viewport_height: f64,
+        _viewport_width_in_px: f64,
+        _viewport_height_in_px: f64,
         _rem_in_px: f64,
-        _now: f64,
+        _now_in_ms: u64,
         _timezone_offset_minutes: i32,
     ) -> Self {
         let mut handler = Self {
@@ -69,8 +69,8 @@ impl<S: FileStore> event::Handler for Handler<S> {
             dialog:          Dialog::None,
             language:        Language::Ja,
             last_toast:      u2::new(1),
-            character:       DataStruct::new(0, 0.0, SCHEMA_SIZE),
-            now:             0.0,
+            character:       DataStruct::new(0, 0, SCHEMA_SIZE),
+            now_in_ms:       0,
             characters:      None,
             lost:            Vec::new(),
             startup:         Vec::new(),
@@ -300,7 +300,7 @@ mod toggle_tests {
 
     #[test]
     fn the_first_click_shows_the_edit_section_and_the_second_returns_to_the_view() {
-        let mut handler = block_on(Handler::<MemoryStore>::ready(0.0, 0.0, 16.0, 0.0, 0));
+        let mut handler = block_on(Handler::<MemoryStore>::ready(0.0, 0.0, 16.0, 0, 0));
 
         let first: Vec<_> =
             click(&mut handler, toggle_button()).iter().map(hidden_change).collect();
@@ -313,7 +313,7 @@ mod toggle_tests {
 
     #[test]
     fn the_initial_draw_labels_the_language_and_reveals_the_body() {
-        let mut handler = block_on(Handler::<MemoryStore>::ready(0.0, 0.0, 16.0, 0.0, 0));
+        let mut handler = block_on(Handler::<MemoryStore>::ready(0.0, 0.0, 16.0, 0, 0));
         let (events, commands) = handler.initial_draw();
         assert!(events.is_empty());
         let (texts, reveal) = commands.split_at(commands.len() - 1);
@@ -333,7 +333,7 @@ mod toggle_tests {
 
     #[test]
     fn choosing_a_language_relabels_the_button() {
-        let mut handler = block_on(Handler::<MemoryStore>::ready(0.0, 0.0, 16.0, 0.0, 0));
+        let mut handler = block_on(Handler::<MemoryStore>::ready(0.0, 0.0, 16.0, 0, 0));
         let english = Language::En(En::Gb);
         let commands = click(&mut handler, Target::LanguageOption(english).to_dom());
         assert_eq!(
@@ -351,7 +351,7 @@ mod toggle_tests {
 
     #[test]
     fn other_targets_and_events_change_nothing() {
-        let mut handler = block_on(Handler::<MemoryStore>::ready(0.0, 0.0, 16.0, 0.0, 0));
+        let mut handler = block_on(Handler::<MemoryStore>::ready(0.0, 0.0, 16.0, 0, 0));
         assert!(click(&mut handler, Target::Sheet(Sheet::Immutable, 1).to_dom()).is_empty());
         let first: Vec<_> =
             click(&mut handler, toggle_button()).iter().map(hidden_change).collect();
@@ -359,7 +359,7 @@ mod toggle_tests {
     }
     #[test]
     fn closing_the_handler_releases_the_store() {
-        let mut handler = block_on(Handler::<MemoryStore>::ready(0.0, 0.0, 16.0, 0.0, 0));
+        let mut handler = block_on(Handler::<MemoryStore>::ready(0.0, 0.0, 16.0, 0, 0));
         assert!(handler.save().1.is_empty());
         assert!(handler.close().is_empty());
         let (events, commands) = handler.save();
@@ -371,7 +371,7 @@ mod toggle_tests {
     }
     #[test]
     fn a_lost_store_is_replaced_and_the_pending_change_survives() {
-        let mut handler = block_on(Handler::<MemoryStore>::ready(0.0, 0.0, 16.0, 0.0, 0));
+        let mut handler = block_on(Handler::<MemoryStore>::ready(0.0, 0.0, 16.0, 0, 0));
         handler.characters.as_mut().unwrap().set(1, b"kept".to_vec());
         let disk = block_on(MemoryStore::open(CHARACTER_STORE, true)).unwrap();
 

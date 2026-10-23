@@ -3,7 +3,7 @@ use core::{
     fmt::{self, Debug, Display, Formatter},
     future::Future,
     option::Option,
-    primitive::{f64, i32, u8},
+    primitive::{f64, i32, u8, u64},
 };
 
 use self::gesture::{Gesture, Pointer};
@@ -63,8 +63,8 @@ pub struct Response {
 }
 
 pub enum WindowEvent {
-    Resize { width: f64, height: f64 },
-    Scroll { x: f64, y: f64 },
+    Resize { width_in_px: f64, height_in_px: f64 },
+    Scroll { x_in_px: f64, y_in_px: f64 },
     Shutdown,
     Visibility { state: VisibilityState },
     Fullscreen(FullscreenEvent),
@@ -75,10 +75,10 @@ pub enum WindowEvent {
 pub trait Handler: Sized {
     type Store: FileStore;
     fn ready(
-        viewport_width: f64,
-        viewport_height: f64,
+        viewport_width_in_px: f64,
+        viewport_height_in_px: f64,
         rem_in_px: f64,
-        now: f64,
+        now_in_ms: u64,
         timezone_offset_minutes: i32,
     ) -> impl Future<Output = Self>;
     fn initial_draw(&mut self) -> (Vec<Event>, Vec<Command>);
@@ -218,37 +218,37 @@ pub mod gesture {
 
     #[derive(Debug, Clone, Copy)]
     pub struct Thresholds {
-        pub long_press_ms:      f64,
-        pub long_press_slop_px: f64,
-        pub drag_start_px:      f64,
-        pub swipe_min_px:       f64,
-        pub swipe_min_velocity: f64,
-        pub swipe_max_ms:       f64,
-        pub tap_max_ms:         f64,
-        pub tap_slop_px:        f64,
+        pub long_press_in_ms:      f64,
+        pub long_press_slop_in_px: f64,
+        pub drag_start_in_px:      f64,
+        pub swipe_min_in_px:       f64,
+        pub swipe_min_velocity:    f64,
+        pub swipe_max_in_ms:       f64,
+        pub tap_max_in_ms:         f64,
+        pub tap_slop_in_px:        f64,
     }
 
     impl Thresholds {
         pub const MOUSE: Self = Self {
-            long_press_ms:      251.0,
-            long_press_slop_px: 9.0,
-            drag_start_px:      10.0,
-            swipe_min_px:       50.0,
-            swipe_min_velocity: 0.5,
-            swipe_max_ms:       250.0,
-            tap_max_ms:         250.0,
-            tap_slop_px:        9.0,
+            long_press_in_ms:      251.0,
+            long_press_slop_in_px: 9.0,
+            drag_start_in_px:      10.0,
+            swipe_min_in_px:       50.0,
+            swipe_min_velocity:    0.5,
+            swipe_max_in_ms:       250.0,
+            tap_max_in_ms:         250.0,
+            tap_slop_in_px:        9.0,
         };
 
         pub const TOUCH: Self = Self {
-            long_press_ms:      500.0,
-            long_press_slop_px: 16.0,
-            drag_start_px:      16.0,
-            swipe_min_px:       50.0,
-            swipe_min_velocity: 0.5,
-            swipe_max_ms:       300.0,
-            tap_max_ms:         300.0,
-            tap_slop_px:        16.0,
+            long_press_in_ms:      500.0,
+            long_press_slop_in_px: 16.0,
+            drag_start_in_px:      16.0,
+            swipe_min_in_px:       50.0,
+            swipe_min_velocity:    0.5,
+            swipe_max_in_ms:       300.0,
+            tap_max_in_ms:         300.0,
+            tap_slop_in_px:        16.0,
         };
 
         #[must_use]
@@ -472,9 +472,9 @@ pub mod gesture {
         fn touch_thresholds_are_looser() {
             let mouse = Thresholds::for_device(Device::Mouse);
             let touch = Thresholds::for_device(Device::Touch);
-            assert!(touch.long_press_ms > mouse.long_press_ms);
-            assert!(touch.long_press_slop_px > mouse.long_press_slop_px);
-            assert!(touch.drag_start_px > mouse.drag_start_px);
+            assert!(touch.long_press_in_ms > mouse.long_press_in_ms);
+            assert!(touch.long_press_slop_in_px > mouse.long_press_slop_in_px);
+            assert!(touch.drag_start_in_px > mouse.drag_start_in_px);
         }
 
         #[test]
@@ -519,7 +519,7 @@ pub mod gesture {
         Pinch,
     }
 
-    const TWO_FINGER_COMMIT_PX: f64 = 8.0;
+    const TWO_FINGER_COMMIT_IN_PX: f64 = 8.0;
 
     const PINCH_DOT_THRESHOLD: f64 = 0.0;
 
@@ -615,8 +615,8 @@ pub mod gesture {
             if self.mode == TwoFingerMode::Undetermined {
                 let d1 = p.displacement();
                 let d2 = s.displacement();
-                let moved1 = libm::sqrt(d1.0 * d1.0 + d1.1 * d1.1) > TWO_FINGER_COMMIT_PX;
-                let moved2 = libm::sqrt(d2.0 * d2.0 + d2.1 * d2.1) > TWO_FINGER_COMMIT_PX;
+                let moved1 = libm::sqrt(d1.0 * d1.0 + d1.1 * d1.1) > TWO_FINGER_COMMIT_IN_PX;
+                let moved2 = libm::sqrt(d2.0 * d2.0 + d2.1 * d2.1) > TWO_FINGER_COMMIT_IN_PX;
                 if !(moved1 && moved2) {
                     return FoldedInput::None;
                 }
@@ -800,8 +800,8 @@ pub mod gesture {
                 0.0
             };
             if velocity > thresholds.swipe_min_velocity
-                && distance > thresholds.swipe_min_px
-                && dt < thresholds.swipe_max_ms
+                && distance > thresholds.swipe_min_in_px
+                && dt < thresholds.swipe_max_in_ms
             {
                 let dx = self.current_x - self.start_x;
                 let dy = self.current_y - self.start_y;
@@ -818,11 +818,11 @@ pub mod gesture {
                 return None;
             }
 
-            if dt > thresholds.long_press_ms && distance < thresholds.long_press_slop_px {
+            if dt > thresholds.long_press_in_ms && distance < thresholds.long_press_slop_in_px {
                 return Some(Gesture::LongPress);
             }
 
-            if dt < thresholds.tap_max_ms && distance < thresholds.tap_slop_px {
+            if dt < thresholds.tap_max_in_ms && distance < thresholds.tap_slop_in_px {
                 return Some(Gesture::Tap);
             }
 
@@ -838,14 +838,14 @@ pub mod gesture {
 
             if !self.long_press_fired
                 && !self.is_dragging
-                && distance < thresholds.long_press_slop_px
-                && current_time - self.start_time > thresholds.long_press_ms
+                && distance < thresholds.long_press_slop_in_px
+                && current_time - self.start_time > thresholds.long_press_in_ms
             {
                 self.long_press_fired = true;
                 return Some(Gesture::LongPress);
             }
 
-            if distance <= thresholds.drag_start_px {
+            if distance <= thresholds.drag_start_in_px {
                 return None;
             }
 
@@ -854,9 +854,10 @@ pub mod gesture {
             }
 
             let dt = current_time - self.start_time;
-            if dt > 0.0 && dt < thresholds.swipe_max_ms {
+            if dt > 0.0 && dt < thresholds.swipe_max_in_ms {
                 let velocity = distance / dt;
-                if velocity > thresholds.swipe_min_velocity && distance > thresholds.swipe_min_px {
+                if velocity > thresholds.swipe_min_velocity && distance > thresholds.swipe_min_in_px
+                {
                     return None;
                 }
             }

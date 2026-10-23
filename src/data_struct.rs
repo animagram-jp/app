@@ -2,7 +2,7 @@ use alloc::{collections::BTreeMap, vec::Vec};
 use core::{
     clone::Clone,
     option::Option::{self, None, Some},
-    primitive::{f64, u8, u32},
+    primitive::{i64, u8, u32, u64},
     result::Result::{self, Err, Ok},
 };
 
@@ -35,8 +35,8 @@ pub struct DataStruct {
 }
 
 impl DataStruct {
-    pub fn new(id: u32, time: f64, schema_size: u32) -> Self {
-        let t = encode_time(time);
+    pub fn new(id: u32, now_in_ms: u64, schema_size: u32) -> Self {
+        let t = encode_time(now_in_ms);
         let mut data_struct = Self { schema_size, index: List::new(), values: VariableList::new() };
         let _ = data_struct.set(ID_IDENTITY, &id.to_le_bytes(), None);
         let _ = data_struct.set(ID_CREATED_AT, &t, None);
@@ -46,7 +46,7 @@ impl DataStruct {
 
     /// ```
     /// # use app::data_struct::DataStruct;
-    /// let mut instance = DataStruct::new(7, 0.0, 6);
+    /// let mut instance = DataStruct::new(7, 0, 6);
     /// instance.set(4, b"x", None).unwrap();
     /// let bytes = instance.to_bytes();
     /// assert_eq!(DataStruct::get_from_bytes(&bytes, 6, 4).unwrap(), b"x");
@@ -68,7 +68,7 @@ impl DataStruct {
         &mut self,
         schema_id: u32,
         value: &[u8],
-        time: Option<f64>,
+        now_in_ms: Option<u64>,
     ) -> Result<SetOutcome, ListError> {
         let outcome = match self.index.get(&schema_id) {
             Ok(&variable_id) => self.values.set(&variable_id, value, false, false)?,
@@ -82,7 +82,7 @@ impl DataStruct {
             }
         };
         if schema_id != ID_MODIFIED_AT {
-            if let Some(t) = time {
+            if let Some(t) = now_in_ms {
                 self.set(ID_MODIFIED_AT, &encode_time(t), None)?;
             }
         }
@@ -102,7 +102,7 @@ impl DataStruct {
     pub fn set_many<const N: usize>(
         &mut self,
         entries: [(u32, Option<&[u8]>); N],
-        time: Option<f64>,
+        now_in_ms: Option<u64>,
     ) -> Result<(), ListError> {
         let mut staged = self.clone();
         for (schema_id, value) in entries {
@@ -117,7 +117,7 @@ impl DataStruct {
                 },
             }
         }
-        if let Some(t) = time {
+        if let Some(t) = now_in_ms {
             staged.set(ID_MODIFIED_AT, &encode_time(t), None)?;
         }
         *self = staged;
@@ -248,8 +248,8 @@ impl<'a> Instance<'a> {
     }
 }
 
-pub(crate) fn encode_time(time: f64) -> [u8; 8] {
-    time::from_ut(time, 0).to_le_bytes()
+pub(crate) fn encode_time(now_in_ms: u64) -> [u8; 8] {
+    time::from_unix_timestamp_in_ms(now_in_ms as i64, 0).to_le_bytes()
 }
 
 #[cfg(test)]
@@ -259,14 +259,14 @@ mod tests {
     use super::*;
     use crate::Rng;
 
-    const Y2000: f64 = 946684800000.0;
+    const Y2000_IN_MS: u64 = 946684800000;
 
     fn word(bytes: &[u8], at: usize) -> u32 {
         u32::from_le_bytes(bytes[at..at + 4].try_into().unwrap())
     }
 
     fn sample() -> DataStruct {
-        let mut ds = DataStruct::new(7, Y2000, 8);
+        let mut ds = DataStruct::new(7, Y2000_IN_MS, 8);
         ds.set(4, b"alpha", None).unwrap();
         ds.set(5, b"", None).unwrap();
         ds.set(6, &[1, 2, 3, 4, 5, 6, 7, 8], None).unwrap();
@@ -275,7 +275,7 @@ mod tests {
 
     #[test]
     fn to_bytes_layout_is_u32_le_only() {
-        let ds = DataStruct::new(7, Y2000, 3);
+        let ds = DataStruct::new(7, Y2000_IN_MS, 3);
         let bytes = ds.to_bytes();
         let index: Vec<u32> = (0..4).map(|i| word(&bytes, i * 4)).collect();
         assert_eq!(index, vec![0, 1, 2, 3]);
@@ -323,7 +323,7 @@ mod tests {
         const LIST: u32 = 9;
         for seed in 0..800 {
             let mut rng = Rng::new(seed);
-            let start = Y2000 + rng.below(1000) as f64 * 86400000.0;
+            let start = Y2000_IN_MS + rng.below(1000) as u64 * 86400000;
             let mut ds = DataStruct::new(7, start, SIZE);
             let mut model: BTreeMap<u32, Vec<u8>> = BTreeMap::new();
             model.insert(ID_IDENTITY, 7u32.to_le_bytes().to_vec());
@@ -335,7 +335,7 @@ mod tests {
                 let id = 4 + rng.below(5) as u32;
                 let length = rng.below(8);
                 let value = rng.bytes(length);
-                let time = rng.chance(50).then(|| Y2000 + rng.below(100000) as f64 * 60000.0);
+                let time = rng.chance(50).then(|| Y2000_IN_MS + rng.below(100000) as u64 * 60000);
                 match rng.below(10) {
                     0..4 => {
                         ds.set(id, &value, time).unwrap();

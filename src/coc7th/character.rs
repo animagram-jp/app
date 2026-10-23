@@ -3371,7 +3371,7 @@ mod skill_storage_tests {
     use crate::Rng;
 
     fn character() -> DataStruct {
-        DataStruct::new(1, 0.0, SCHEMA_SIZE)
+        DataStruct::new(1, 0, SCHEMA_SIZE)
     }
 
     #[test]

@@ -723,12 +723,12 @@ impl Input<'_> for Event {
                 pointer_id: Input::decode(&mut input)?,
             }),
             EVENT_RESIZE => Event::Window(WindowEvent::Resize {
-                width:  f32::decode(&mut input)? as f64,
-                height: f32::decode(&mut input)? as f64,
+                width_in_px:  f32::decode(&mut input)? as f64,
+                height_in_px: f32::decode(&mut input)? as f64,
             }),
             EVENT_SCROLL => Event::Window(WindowEvent::Scroll {
-                x: f32::decode(&mut input)? as f64,
-                y: f32::decode(&mut input)? as f64,
+                x_in_px: f32::decode(&mut input)? as f64,
+                y_in_px: f32::decode(&mut input)? as f64,
             }),
             EVENT_VISIBILITY => Event::Window(WindowEvent::Visibility {
                 state: VisibilityState::from_u8(u8::decode(&mut input)?),
@@ -864,15 +864,15 @@ mod event_frame_tests {
                     assert_decodes_only_whole(&frame, seed);
                     let (a, b) = (f64::from(a), f64::from(b));
                     match decode_event(&frame) {
-                        Some(Event::Window(WindowEvent::Resize { width, height }))
+                        Some(Event::Window(WindowEvent::Resize { width_in_px, height_in_px }))
                             if kind == EVENT_RESIZE =>
                         {
-                            assert_eq!((width, height), (a, b), "seed {seed}")
+                            assert_eq!((width_in_px, height_in_px), (a, b), "seed {seed}")
                         }
-                        Some(Event::Window(WindowEvent::Scroll { x, y }))
+                        Some(Event::Window(WindowEvent::Scroll { x_in_px, y_in_px }))
                             if kind == EVENT_SCROLL =>
                         {
-                            assert_eq!((x, y), (a, b), "seed {seed}")
+                            assert_eq!((x_in_px, y_in_px), (a, b), "seed {seed}")
                         }
                         _ => panic!("seed {seed}: wrong window event"),
                     }
@@ -1083,7 +1083,7 @@ pub mod dom {
         pub n:   Option<u32>,
     }
 
-    /// element id。
+    /// element id
     #[derive(Debug, Clone, PartialEq)]
     pub struct Id(pub Vec<Segment>);
 
