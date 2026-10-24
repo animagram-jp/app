@@ -58,8 +58,6 @@ pub mod time;
 #[cfg(feature = "vault")]
 pub mod vault;
 
-// === Error ===
-
 pub trait WireError {
     fn identifiers(&self, path: &mut Vec<u16>);
     fn detail(&self) -> String;

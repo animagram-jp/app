@@ -72,25 +72,22 @@ geckodriver --port 8000 & GECKODRIVER_REMOTE=http://127.0.0.1:8000 WASM_BINDGEN_
 pkill -f "geckodriver --port 8000"
 ```
 
-### Build wasm
+### Build WebAssembly
 
-This project compiles to WebAssembly (wasm32-unknown-unknown) for the browser host.
+This project compiles to wasm32-unknown-unknown for the browser host.
 The app process memory lives on the main thread or a worker.
 
-With feature `file_store`, `createSyncAccessHandle` is provided only to a dedicated worker, so it requires `+atomics` and shared memory (enforced by `compile_error!` on wasm32).
+With feature `file_store`, `createSyncAccessHandle` is provided only to a dedicated worker, so it requires `+atomics` and shared memory.
 An app without `file_store` runs on the main thread.
 Its store is `MemoryStore`, which is not persisted.
 `calendar` enables `file_store`.
 Either `calendar` or `coc7th` (default on) is required. `vault` enables `credential`.
 
-当プロジェクトでは、 WebAssembly(wasm32-unknown-unknown) コンパイルをブラウザホスト環境向けに利用している。
-この環境でのアプリケーションプロセスの記憶域は、メインスレッドまたはワーカーに位置する。
+当プロジェクトでは、 wasm32-unknown-unknown コンパイルをブラウザホスト環境向けに利用している。
+この環境でのアプリケーションプロセスの記憶域は、メインスレッドまたはWebワーカーに位置する。
 
-feature `file_store`を追加すると、`createSyncAccessHandle` は dedicated worker にしか提供されないため `+atomics` と shared memory を要求する(wasm32 では `compile_error!` で強制される)。
+特に、feature `file_store`有効時、`createSyncAccessHandle` は `+atomics` と shared memory を要求し、
 `file_store` を持たないアプリは main スレッドで動作する。
-ストアは `MemoryStore` で、永続化されない。
-`calendar` は `file_store` を有効にする。
-`calendar` か `coc7th`(デフォルト有効)のどちらかが必須。`vault` は `credential` を有効にする。
 
 | feature `file_store` | Memory | Thread |
 |-|-|-|
@@ -116,9 +113,7 @@ sh reference/build.sh
 
 | Filename | Description |
 |-|-|
-| lib.rs | `#![no_std]`。`WireError` と `wire_error!`、ワイヤ形式の `Input` / `Output`(LE、u32 長さ前置の slice / str)、`Decimal`、`scalar!` / `wire_enum!`、`parse` / `stringify`。 |
-| credential.rs | 認証プロトコル v1。email の正規化、`salt` / `auth_key` / `wrap_key` の HKDF 導出、`stretch`(Argon2id、feature `vault`)、`verifier` / `verify`(HMAC + 定数時間比較)、`digest`、`hex`。server と共有する。 |
-| vault.rs | feature `vault`。`root_key` の生成と `wrap_key` による包み込み、store 名ごとの `store_key`、レコードの AEAD(XChaCha20-Poly1305、`key` を AAD に束ねる)。 |
+| lib.rs | `WireError` と `wire_error!`、ワイヤ形式の `Input` / `Output`(LE、u32 長さ前置の slice / str)、`Decimal`、`scalar!` / `wire_enum!`、`parse` / `stringify`。 |
 | app.rs | - initとprocessの公開apiを持つ、Appインスタンス。eventsとcommandsの2つのキューを持ち、handler::Handler.process_*へevents消費を移譲ループする。保存するアプリに共通の`StoreLost`(ストアの失効)は、ここで`serve_event`への「開き直したい」要求(`reopen`)に変え、`StoreOpened`は`Handler`へ渡す。 |
 | arena.rs | JavaScriptとappが共有するメモリのレイアウトと、event / commandのリングバッファ。`serve_event`(async)が、処理待ちの要求があれば`Store::open`をawaitして、結果を`App::opened`に渡す。 |
 | host.rs | ホストとの境界。Command, Eventのフレーム形式(operation番号 / event種別)、DOM語彙(dom::Id、Attribute、StyleProperty など)。 |
@@ -131,7 +126,8 @@ sh reference/build.sh
 | coc7th/ | CoC7thアプリ。character(`Dice`と`dice`(表示・ロール)を含む。ドメイン固有のデータモデルの全フィールドとロジックを、各自公開されたenumのネスト群で表現したモジュール。関数はitemのドメイン意味(表示)を定義する`label`, 一意なschema_idを発行する`id`, バイト列とdomからの流入(u32,str,f64)を相互変換する`read` / `write`, 値の表示を導出する`display`などを各enum itemに対して定義する。)、handler(canvasを操作する、ドメイン固有のステートを持つHandler定義。Handlerは、DataStructと、フィールド4~schema_sizeまでの操作ロジックを定義するobjectを束ねて操作を行う。hostのdom::Idとobjectのフィールドを相互にバルクマッピングする関数を定義して、canvasと内部データを相互変換する。)、roll(ロール種別と成功度) |
 | event.rs | appが受け取るeventの型(Canvas / Gesture / Window / Fetch、ワイヤに出ない内部のGesture / Fetched / StoreLost)、各アプリのHandlerが実装する`Handler` trait(`type Store: FileStore`。process_*はデフォルト実装が空)、`store`(open / lost / opened / failed。StoreLost / `App::opened` に対するストアの生存周期を関数で提供)、`gesture`(Pointer によるジェスチャー認識、Thresholds)。ワイヤからのデコードは host.rs が持つ。 |
 | calendar/ | カレンダーアプリ(feature `calendar`)。data(レコード定義と、JSONの`import` / `export`。全レコードが同じschema_sizeのDataStructで、種別はフィールド4(kind)、FileStoreのidはissue_idで採番する。このidは他のレコードに書かず、参照はJSONと同じ`uid`(資源)と`code`(状態・カテゴリ)で持つ。削除は参照元を書き換えず、参照先が無いことを「削除済み」として読む側が扱う)、grid / target(座標・レーン・DOM対応)、handler(`Calendar`のような集約を持たず、`FileStore`を走査して読み書きする。編集も削除もモーダルではメモリ操作で、save / discardの判断はhandler)。 |
-| testing.rs | テスト専用(`cfg(test)`)。`block_on`と、seed固定の疑似乱数`Rng`。 |
+| credential.rs | 認証プロトコル。email の正規化、`salt` / `auth_key` / `wrap_key` の HKDF 導出、`stretch`(Argon2id、feature `vault`)、`verifier` / `verify`(HMAC + 定数時間比較)、`digest`、`hex`。server と共有する。 |
+| vault.rs | `root_key` の生成と `wrap_key` による包み込み、store 名ごとの `store_key`、レコードの AEAD(XChaCha20-Poly1305、`key` を AAD に束ねる)。 |
 
 ---
 
