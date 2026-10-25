@@ -47,8 +47,10 @@
         }
     }
 
-    body {
-        min-block-size: 100dvb; /* per kiso.css:63 */
+    @media screen {
+        body {
+            min-block-size: 100dvb; /* per kiso.css:63 */
+        }
     }
 
     /* Revert Modal native behavior */

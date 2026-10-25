@@ -40,23 +40,15 @@ body > * {
     margin-inline: auto;
 }
 
-#header_button-1 {
-    anchor-name: --header_button-1;
-}
-#header_div-1 {
-    position-anchor: --header_button-1;
-}
+#header_button-1 { anchor-name: --header_button-1; }
+#header_div-1 { position-anchor: --header_button-1; }
 
 #header_button-4 {
     --color-emphasis-ink: rgb(var(--rgb-accent-green));
 }
 
-#header_button-6 {
-    anchor-name: --header_button-6;
-}
-#header_div-3 {
-    position-anchor: --header_button-6;
-}
+#header_button-6 { anchor-name: --header_button-6; }
+#header_div-3 { position-anchor: --header_button-6; }
 
 :where(
     #main_section-1_section-2, 
