@@ -214,11 +214,12 @@ pub struct CanvasEvent {
     pub pointer_id: u32,
 }
 
-const ALT: Field = Field::new(1, 1); // bit 1
-const CTRL: Field = Field::new(2, 1); // bit 2
-const META: Field = Field::new(3, 1); // bit 3
-const REPEAT: Field = Field::new(4, 1); // bit 4
-const SHIFT: Field = Field::new(5, 1); // bit 5
+const BUTTON: Field = Field::new(1, 2); // bit 1-2
+const ALT: Field = Field::new(3, 1); // bit 3
+const CTRL: Field = Field::new(4, 1); // bit 4
+const META: Field = Field::new(5, 1); // bit 5
+const REPEAT: Field = Field::new(6, 1); // bit 6
+const SHIFT: Field = Field::new(7, 1); // bit 7
 
 impl CanvasEvent {
     pub fn root_origin(&self) -> (f64, f64) {
@@ -243,6 +244,36 @@ impl CanvasEvent {
 
     pub fn shift(&self) -> bool {
         SHIFT.get::<u8>(self.flags as u64) == 1
+    }
+
+    pub fn button(&self) -> PointerButton {
+        PointerButton::from_u8(BUTTON.get::<u8>(self.flags as u64))
+    }
+}
+
+/// init.js key_flags BUTTONS
+///
+/// ```
+/// # use app::host::PointerButton;
+/// assert_eq!(PointerButton::from_u8(2), PointerButton::Primary);
+/// assert_eq!(PointerButton::from_u8(4), PointerButton::Other);
+/// ```
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum PointerButton {
+    Auxiliary = 1,
+    Primary,
+    Secondary,
+    Other = 0,
+}
+
+impl PointerButton {
+    pub fn from_u8(value: u8) -> Self {
+        match value {
+            1 => Self::Auxiliary,
+            2 => Self::Primary,
+            3 => Self::Secondary,
+            _ => Self::Other,
+        }
     }
 }
 
@@ -1234,6 +1265,21 @@ mod wire_tests {
     }
 
     #[test]
+    fn buttons_match_init_js() {
+        // index == MouseEvent.button, value == alphabetical rank
+        let js = js_array("BUTTONS");
+        let mut sorted = js.clone();
+        sorted.sort();
+        for (i, name) in sorted.iter().enumerate() {
+            let button = PointerButton::from_u8(i as u8 + 1);
+            assert_eq!(&format!("{button:?}").to_lowercase(), name, "rank {i}");
+        }
+        assert_eq!(js, ["primary", "auxiliary", "secondary"]);
+        assert_eq!(PointerButton::from_u8(js.len() as u8 + 1), PointerButton::Other);
+        assert_eq!(PointerButton::from_u8(0), PointerButton::Other);
+    }
+
+    #[test]
     fn key_names_match_init_js() {
         let js = js_array("KEY_NAMES");
         assert_eq!(js[0], "");
@@ -1272,11 +1318,13 @@ mod wire_tests {
     #[test]
     fn visibility_states_match_init_js() {
         let js = js_array("VISIBILITY_STATES");
-        assert_eq!(js, ["", "hidden", "visible"]);
-        assert_eq!(VisibilityState::from_u8(1), VisibilityState::Hidden);
-        assert_eq!(VisibilityState::from_u8(2), VisibilityState::Visible);
+        assert_eq!(js[0], "");
+        for (i, name) in js.iter().enumerate().skip(1) {
+            let state = VisibilityState::from_u8(i as u8);
+            assert_eq!(&format!("{state:?}").to_lowercase(), name, "index {i}");
+        }
+        assert_eq!(VisibilityState::from_u8(js.len() as u8), VisibilityState::Other);
         assert_eq!(VisibilityState::from_u8(0), VisibilityState::Other);
-        assert_eq!(VisibilityState::from_u8(3), VisibilityState::Other);
     }
 
     #[test]
@@ -1437,7 +1485,14 @@ mod wire_tests {
             .collect();
         assert_eq!(
             shifts,
-            [ALT.position, CTRL.position, META.position, REPEAT.position, SHIFT.position]
+            [
+                BUTTON.position,
+                ALT.position,
+                CTRL.position,
+                META.position,
+                REPEAT.position,
+                SHIFT.position
+            ]
         );
         assert!(shifts.iter().all(|position| *position >= 1));
     }
@@ -1457,17 +1512,27 @@ mod wire_tests {
             time: 0.0,
             pointer_id: 0,
         };
+        let positions =
+            [ALT.position, CTRL.position, META.position, REPEAT.position, SHIFT.position];
         for bit in 0..8u32 {
             let e = event(1 << bit);
             let got = [e.alt(), e.ctrl(), e.meta(), e.repeat(), e.shift()];
-            let mut want = [false; 5];
-            if (1..=5).contains(&bit) {
-                want[bit as usize - 1] = true;
-            }
+            let want = positions.map(|position| position == bit);
             assert_eq!(got, want, "bit {bit}");
         }
         let all = event(0xFF);
         assert!(all.alt() && all.ctrl() && all.meta() && all.repeat() && all.shift());
+
+        for (flags, button) in [
+            (0b000, PointerButton::Other),
+            (0b010, PointerButton::Auxiliary),
+            (0b100, PointerButton::Primary),
+            (0b110, PointerButton::Secondary),
+        ] {
+            let e = event(flags);
+            assert_eq!(e.button(), button);
+            assert!(!e.alt() && !e.ctrl() && !e.meta() && !e.repeat() && !e.shift());
+        }
     }
 
     #[test]

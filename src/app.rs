@@ -25,7 +25,7 @@ use crate::{
         gesture::{Pointer, Thresholds, detect_device},
     },
     file_store::StoreId,
-    host::{CanvasEvent, Command, EventType},
+    host::{CanvasEvent, Command, EventType, PointerButton},
 };
 
 #[cfg(all(feature = "file_store", not(test)))]
@@ -44,6 +44,11 @@ pub fn now_in_ms() -> u64 {
 
         SystemTime::now().duration_since(UNIX_EPOCH).map_or(0, |d| d.as_millis() as u64)
     }
+}
+
+fn is_secondary(event: &CanvasEvent) -> bool {
+    matches!(event.event_type, EventType::PointerDown | EventType::PointerUp)
+        && event.button() != PointerButton::Primary
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
@@ -77,6 +82,9 @@ impl App {
 
         match event {
             Event::Canvas(canvas_event) => {
+                if is_secondary(&canvas_event) {
+                    return handler.process_canvas(&canvas_event, pointer);
+                }
                 if canvas_event.event_type == EventType::PointerDown && !pointer.is_down() {
                     *origin = Some(canvas_event.clone());
                 }
@@ -235,12 +243,23 @@ mod tests {
     }
 
     fn pointer_frame(event_type: u8, id: &dom::Id, x: f32, pointer_id: u32, time: f64) -> Vec<u8> {
+        button_frame(event_type, id, x, pointer_id, time, PointerButton::Primary)
+    }
+
+    fn button_frame(
+        event_type: u8,
+        id: &dom::Id,
+        x: f32,
+        pointer_id: u32,
+        time: f64,
+        button: PointerButton,
+    ) -> Vec<u8> {
         let mut frame = Vec::new();
         frame.push(EVENT_CANVAS);
         frame.push(event_type);
         id.encode(&mut frame);
         frame.push(0);
-        frame.push(0);
+        frame.push((button as u8) << 1);
         str::encode("", &mut frame);
         x.encode(&mut frame);
         0.0f32.encode(&mut frame);
@@ -299,6 +318,24 @@ mod tests {
         let (events, commands) = app.dispatch(Event::Canvas(release));
         assert!(matches!(events.as_slice(), [Event::Gesture(Gesture::Tap)]));
         assert!(commands.is_empty());
+    }
+
+    #[test]
+    fn a_secondary_button_press_is_not_recognized_as_a_gesture() {
+        for button in [PointerButton::Secondary, PointerButton::Auxiliary, PointerButton::Other] {
+            let mut app = new_app();
+            let press = button_frame(POINTER_DOWN, &section(1), 10.0, 1, 0.0, button);
+            let release = button_frame(POINTER_UP, &section(1), 10.0, 1, 50.0, button);
+
+            app.process(&press);
+            assert_eq!(origin_id(&app), None, "{button:?} started a sequence");
+
+            let Some(Event::Canvas(release)) = Event::decode(&mut &release[..]) else {
+                panic!("not a canvas event");
+            };
+            let (events, _) = app.dispatch(Event::Canvas(release));
+            assert!(events.is_empty(), "{button:?} produced a gesture");
+        }
     }
 
     #[cfg(all(feature = "coc7th", not(feature = "calendar")))]

@@ -1678,6 +1678,7 @@ impl<S: FileStore> event::Handler for Handler<S> {
             EventType::Click => {
                 target.map_or((vec![], vec![]), |target| self.click_control(target))
             }
+            EventType::ContextMenu => (vec![], vec![]),
             EventType::Input if target == Some(Target::Zoom) => (vec![], self.zoom(&event.value)),
             EventType::Change => match target {
                 Some(Target::Axis(axis)) => (vec![], self.change_axis(axis)),

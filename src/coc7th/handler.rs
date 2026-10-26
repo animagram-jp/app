@@ -179,12 +179,11 @@ mod tests {
     use wasm_bindgen_test::*;
 
     use crate::{
+        Output,
         app::App,
         arena::{ARENA, COMMAND_RING, EVENT_RING, initialize, process_event},
         coc7th::target::{SHEET_PARTS, Target},
-        host::{
-            EVENT_CANVAS, EventType, OPERATION_REMOVE_ATTRIBUTE, OPERATION_SET_ATTRIBUTE, Output,
-        },
+        host::{EVENT_CANVAS, EventType, OPERATION_REMOVE_ATTRIBUTE, OPERATION_SET_ATTRIBUTE},
     };
 
     const CLICK: u8 = 3;
@@ -193,7 +192,7 @@ mod tests {
     async fn process_event_emits_one_frame_per_command() {
         assert_eq!(EventType::from_u8(CLICK), EventType::Click);
         initialize();
-        App::init(false, 0.0, 0.0, 16.0, 0.0, 0).await;
+        App::init(false, 0.0, 0.0, 16.0, 0, 0).await;
         while ARENA.read_ring(COMMAND_RING).is_some() {
             ARENA.advance_ring(COMMAND_RING);
         }

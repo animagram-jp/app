@@ -407,12 +407,18 @@ function key_index(e) {
     return Math.max(KEY_NAMES.indexOf(key), 0);
 }
 
+function button_index(e) {
+    if (!(e instanceof PointerEvent)) return 0;
+    return BUTTON_RANKS.indexOf(BUTTONS[e.button]) + 1;
+}
+
 function key_flags(e) {
-    return (e.altKey ? 1 << 1 : 0)
-        | (e.ctrlKey ? 1 << 2 : 0)
-        | (e.metaKey ? 1 << 3 : 0)
-        | (e.repeat ? 1 << 4 : 0)
-        | (e.shiftKey ? 1 << 5 : 0);
+    return (button_index(e) << 1)
+        | (e.altKey ? 1 << 3 : 0)
+        | (e.ctrlKey ? 1 << 4 : 0)
+        | (e.metaKey ? 1 << 5 : 0)
+        | (e.repeat ? 1 << 6 : 0)
+        | (e.shiftKey ? 1 << 7 : 0);
 }
 
 function root_of(target) {
@@ -543,6 +549,17 @@ function bind() {
         write_event(encode_visibility_event(S.event_frame, document.visibilityState));
     });
 }
+
+/**
+ *  Pointer button. index == MouseEvent.button
+ */
+const BUTTONS = [
+    "primary",
+    "auxiliary",
+    "secondary",
+];
+
+const BUTTON_RANKS = [...BUTTONS].sort();
 
 const VISIBILITY_STATES = [
     null,
