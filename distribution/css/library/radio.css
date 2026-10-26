@@ -56,8 +56,29 @@
     /* --- data-axis="inline" ---
         To fit vertical, needs grid-template-rows: repeat(N, ...); */
         
-    fieldset:has(> label > input[type="radio"])[data-axis="inline"] {
-        grid-template-columns: auto 1fr;
+    fieldset:has(> label > input[type="radio"])[data-axis="inline"]:has(> label:first-of-type:nth-last-of-type(1)) {
+        grid-template-columns: max-content repeat(1, max-content);
+    }
+    fieldset:has(> label > input[type="radio"])[data-axis="inline"]:has(> label:first-of-type:nth-last-of-type(2)) {
+        grid-template-columns: max-content repeat(2, max-content);
+    }
+    fieldset:has(> label > input[type="radio"])[data-axis="inline"]:has(> label:first-of-type:nth-last-of-type(3)) {
+        grid-template-columns: max-content repeat(3, max-content);
+    }
+    fieldset:has(> label > input[type="radio"])[data-axis="inline"]:has(> label:first-of-type:nth-last-of-type(4)) {
+        grid-template-columns: max-content repeat(4, max-content);
+    }
+    fieldset:has(> label > input[type="radio"])[data-axis="inline"]:has(> label:first-of-type:nth-last-of-type(5)) {
+        grid-template-columns: max-content repeat(5, max-content);
+    }
+    fieldset:has(> label > input[type="radio"])[data-axis="inline"]:has(> label:first-of-type:nth-last-of-type(6)) {
+        grid-template-columns: max-content repeat(6, max-content);
+    }
+    fieldset:has(> label > input[type="radio"])[data-axis="inline"]:has(> label:first-of-type:nth-last-of-type(7)) {
+        grid-template-columns: max-content repeat(7, max-content);
+    }
+    fieldset:has(> label > input[type="radio"])[data-axis="inline"]:has(> label:first-of-type:nth-last-of-type(8)) {
+        grid-template-columns: max-content repeat(8, max-content);
     }
 
     fieldset:has(> label > input[type="radio"]) > legend {
@@ -72,6 +93,13 @@
         grid-column:     1 / -1;
         min-inline-size: 0;
         margin:          0;
+    }
+
+    fieldset:has(> label > input[type="radio"]):where([data-axis="block"], :not([data-axis])):not([data-group="inline"]) > legend > *,
+    fieldset:has(> label > input[type="radio"]):where([data-axis="block"], :not([data-axis])):not([data-group="inline"]) > *:not(legend, label),
+    fieldset:has(> label > input[type="radio"])[data-axis="inline"]:has(> label:first-of-type:nth-last-of-type(n+9)) > legend > *,
+    fieldset:has(> label > input[type="radio"])[data-axis="inline"]:has(> label:first-of-type:nth-last-of-type(n+9)) > *:not(legend, label) {
+        contain: inline-size;
     }
 
     fieldset:has(> label > input[type="radio"])[data-axis="inline"] > legend > *,

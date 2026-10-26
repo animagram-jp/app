@@ -38,23 +38,6 @@
         min-inline-size: var(--box-height);
     }
 
-    /* --- block align center --- */
-
-    :where(
-        [data-sign="minus"],
-        [data-sign="plus"],
-        [data-sign="x"]
-    )::before,
-    :where(
-        [data-sign="hatch"],
-        [data-sign="minus"],
-        [data-sign="plus"],
-        [data-sign="x"]
-    )::after {
-        inset-block:  0;
-        margin-block: auto;
-    }
-
     /*  === sign-style: inline === */
 
     [data-sign-style="inline"] {
@@ -64,38 +47,74 @@
 
     /* === data-inline-align === */
 
-    /* --- center --- */
-
-    :where(
-        [data-sign="minus"],
-        [data-sign="plus"],
-        [data-sign="x"]
-    )::before,
     :where(
         [data-sign="check"],
         [data-sign="folder"],
         [data-sign="hatch"],
         [data-sign="minus"],
-        [data-sign="plus"],
         [data-sign="rule"],
-        [data-sign="x"]
+        [data-facet="chevron"]:not(select),
+        summary:not([data-facet]),
+        button[aria-haspopup="listbox"]:not([data-facet]),
+        [data-facet="eye"],
+        [data-facet="reload"],
+        [data-facet="sync"]
+    ):where([data-inline-align="start"])::before,
+    :where(
+        [data-sign="check"],
+        [data-sign="folder"],
+        [data-sign="hatch"],
+        [data-sign="minus"],
+        [data-sign="rule"],
+        [data-facet="chevron"]:not(select),
+        summary:not([data-facet]),
+        button[aria-haspopup="listbox"]:not([data-facet]),
+        [data-facet="eye"],
+        [data-facet="reload"],
+        [data-facet="sync"]
     ):not([data-inline-align="start"])::after,
+    :where(
+        [data-sign="copy"],
+        [data-sign="file"],
+        [data-sign="plus"],
+        [data-sign="x"]
+    )::before,
+    :where(
+        [data-sign="copy"],
+        [data-sign="file"],
+        [data-sign="plus"],
+        [data-sign="x"]
+    )::after,
     input[type="checkbox"]:not([role="switch"]):not([data-sign]):not([data-facet])::after {
-        content:  "";
-        position: absolute;
+        content:      "";
+        inset-block:  0;
+        margin-block: auto;
+        position:     absolute;
     }
+
+    /* --- center --- */
 
     :where(
         [data-sign="check"],
-        [data-sign="folder"]
-    )[data-inline-align="start"]::before {
-        content:  "";
-        position: absolute;
-    }
-
-    :where(
+        [data-sign="folder"],
         [data-sign="hatch"],
         [data-sign="minus"],
+        [data-facet="eye"],
+        [data-facet="reload"],
+        [data-facet="sync"]
+    ):where(
+        [data-inline-align="center"],
+        :not([data-inline-align])
+    )::after,
+    :where(
+        [data-sign="rule"],
+        [data-facet="chevron"]:not(select),
+        summary:not([data-facet]),
+        button[aria-haspopup="listbox"]:not([data-facet])
+    )[data-inline-align="center"]::after,
+    :where(
+        [data-sign="copy"],
+        [data-sign="file"],
         [data-sign="plus"],
         [data-sign="x"]
     ):where(
@@ -103,17 +122,14 @@
         :not([data-inline-align])
     )::before,
     :where(
-        [data-sign="check"],
-        [data-sign="folder"],
-        [data-sign="hatch"],
-        [data-sign="minus"],
+        [data-sign="copy"],
+        [data-sign="file"],
         [data-sign="plus"],
         [data-sign="x"]
     ):where(
         [data-inline-align="center"],
         :not([data-inline-align])
     )::after,
-    [data-sign="rule"][data-inline-align="center"]::after,
     input[type="checkbox"]:not([role="switch"]):not([data-sign]):not([data-facet])::after {
         inset-inline:  0;
         margin-inline: auto;
@@ -126,45 +142,98 @@
         [data-sign="folder"],
         [data-sign="hatch"],
         [data-sign="minus"],
+        [data-sign="rule"],
+        [data-facet="chevron"]:not(select),
+        summary:not([data-facet]),
+        button[aria-haspopup="listbox"]:not([data-facet]),
+        [data-facet="eye"],
+        [data-facet="reload"],
+        [data-facet="sync"]
+    )[data-inline-align="start"]::before,
+    :where(
+        [data-sign="copy"],
+        [data-sign="file"],
         [data-sign="plus"],
         [data-sign="x"]
     )[data-inline-align="start"]::before,
     :where(
+        [data-sign="copy"],
+        [data-sign="file"],
+        [data-sign="plus"],
+        [data-sign="x"]
+    )[data-inline-align="start"]::after {
+        inset-inline-start: var(--border-radius);
+        inset-inline-end:   auto;
+        margin-inline:      0;
+    }
+
+    :where(
+        [data-sign="check"],
+        [data-sign="copy"],
+        [data-sign="file"],
+        [data-sign="folder"],
         [data-sign="hatch"],
         [data-sign="minus"],
         [data-sign="plus"],
-        [data-sign="x"]
-    )[data-inline-align="start"]::after,
-    [data-sign="rule"]:where(
-        [data-inline-align="start"],
-        :not([data-inline-align])
-    )::after {
-        inset-inline-start: 0;
-        inset-inline-end:   auto;
-        margin-inline:      0;
+        [data-sign="x"],
+        [data-facet="eye"],
+        [data-facet="reload"],
+        [data-facet="sync"]
+    )[data-inline-align="start"] {
+        padding-inline-start: calc(var(--border-radius) * 2 + var(--line-height));
     }
 
     /* --- end --- */
 
     :where(
-        [data-sign="hatch"],
-        [data-sign="minus"],
-        [data-sign="plus"],
-        [data-sign="rule"],
-        [data-sign="x"]
-    )[data-inline-align="end"]::before,
-    :where(
         [data-sign="check"],
         [data-sign="folder"],
         [data-sign="hatch"],
         [data-sign="minus"],
-        [data-sign="plus"],
         [data-sign="rule"],
+        [data-facet="chevron"]:not(select),
+        summary:not([data-facet]),
+        button[aria-haspopup="listbox"]:not([data-facet]),
+        [data-facet="eye"],
+        [data-facet="reload"],
+        [data-facet="sync"]
+    )[data-inline-align="end"]::after,
+    :where(
+        [data-facet="chevron"]:not(select),
+        summary:not([data-facet]),
+        button[aria-haspopup="listbox"]:not([data-facet])
+    ):not([data-inline-align])::after,
+    :where(
+        [data-sign="copy"],
+        [data-sign="file"],
+        [data-sign="plus"],
+        [data-sign="x"]
+    )[data-inline-align="end"]::before,
+    :where(
+        [data-sign="copy"],
+        [data-sign="file"],
+        [data-sign="plus"],
         [data-sign="x"]
     )[data-inline-align="end"]::after {
         inset-inline-start: auto;
-        inset-inline-end:   0;
+        inset-inline-end:   var(--border-radius);
         margin-inline:      0;
+    }
+
+    :where(
+        [data-sign="check"],
+        [data-sign="copy"],
+        [data-sign="file"],
+        [data-sign="folder"],
+        [data-sign="hatch"],
+        [data-sign="minus"],
+        [data-sign="plus"],
+        [data-sign="x"],
+        [data-facet="eye"],
+        [data-facet="reload"],
+        [data-facet="sync"]
+    )[data-inline-align="end"] {
+        padding-inline-end: calc(var(--border-radius) * 2 + var(--line-height));
     }
 
     /* === check === */
@@ -199,8 +268,8 @@
         [data-sign="check"],
         input[type="checkbox"]:not([role="switch"]):not([data-sign]):not([data-facet])
     ) {
-        block-size:  var(--box-height);
-        inline-size: var(--box-height);
+        block-size:      var(--box-height);
+        min-inline-size: var(--box-height);
     }
 
     [data-sign="check"]:where([data-inline-align="start"])::before,
@@ -252,10 +321,6 @@
     [data-sign="copy"]::after {
         border-color: currentColor;
         border-style: solid;
-        content:      "";
-        inset:        0;
-        margin:       auto;
-        position:     absolute;
     }
     [data-sign="copy"]::after {
         background-color: inherit;
@@ -264,8 +329,8 @@
     /* --- size --- */
 
     [data-sign="copy"] {
-        block-size:  var(--line-height);
-        inline-size: var(--line-height);
+        block-size:      var(--line-height);
+        min-inline-size: var(--line-height);
 
         &::before,
         &::after {
@@ -300,19 +365,11 @@
         border-style:            solid;
         border-top-right-radius: 0;
         clip-path:               polygon(0% 0%, 62.5% 0%, 100% 28.125%, 100% 100%, 0% 100%);
-        content:                 "";
-        inset:                   0;
-        margin:                  auto;
-        position:                absolute;
     }
 
     [data-sign="file"]::after {
         background-color: currentColor;
         clip-path:        polygon(62.5% 0%, 100% 28.125%, 94.1074% 32.5444%, 56.6074% 4.4194%);
-        content:          "";
-        inset:            0;
-        margin:           auto;
-        position:         absolute;
     }
 
     /* --- size --- */
@@ -386,7 +443,8 @@
 
     /* === hatch === */
 
-    [data-sign="hatch"]::after {
+    [data-sign="hatch"]:where([data-inline-align="start"])::before,
+    [data-sign="hatch"]:not([data-inline-align="start"])::after {
         background-image: repeating-linear-gradient(
             -45deg,
             currentcolor 0,
@@ -399,26 +457,20 @@
 
     /* --- size --- */
 
-    [data-sign="hatch"]::after {
+    [data-sign="hatch"]:where([data-inline-align="start"])::before,
+    [data-sign="hatch"]:not([data-inline-align="start"])::after {
         block-size:  var(--line-height);
         inline-size: var(--line-height);
     }
 
     /*  === minus, plus === */
 
+    [data-sign="minus"]:where([data-inline-align="start"])::before,
+    [data-sign="minus"]:not([data-inline-align="start"])::after,
     [data-sign="plus"]::before,
-    :where(
-        [data-sign="minus"],
-        [data-sign="plus"]
-    )::after {
-        background-color: currentColor;
-    }
-    [data-sign="plus"]::before {
-        border-radius: 0;
-    }
-    [data-sign="minus"]::after,
     [data-sign="plus"]::after {
-        border-radius: 0;
+        background-color: currentColor;
+        border-radius:    0;
     }
     [data-sign="plus"]::after {
         rotate: 90deg;
@@ -426,14 +478,10 @@
 
     /* --- size --- */
 
-    [data-sign="plus"]::before {
-        block-size:  var(--border-width);
-        inline-size: calc(var(--line-height) * 0.625);
-    }
-    :where(
-        [data-sign="minus"],
-        [data-sign="plus"]
-    )::after {
+    [data-sign="minus"]:where([data-inline-align="start"])::before,
+    [data-sign="minus"]:not([data-inline-align="start"])::after,
+    [data-sign="plus"]::before,
+    [data-sign="plus"]::after {
         block-size:  var(--border-width);
         inline-size: calc(var(--line-height) * 0.625);
     }
@@ -446,21 +494,34 @@
     ) {
         padding-inline-start: 1.5rem;
     }
+    [data-sign="rule"][data-inline-align="end"] {
+        padding-inline-end: 1.5rem;
+    }
 
-    [data-sign="rule"]::after {
+    [data-sign="rule"]:where([data-inline-align="start"])::before,
+    [data-sign="rule"]:not([data-inline-align="start"])::after {
         background-color: var(--color-emphasis-ink);
         border-radius:     0;
         inline-size:       0.5rem;
     }
+    [data-sign="rule"][data-inline-align="start"]::before,
+    [data-sign="rule"]:not([data-inline-align])::after {
+        inset-inline-start: 0;
+    }
+    [data-sign="rule"][data-inline-align="end"]::after {
+        inset-inline-end: 0;
+    }
     @media (forced-colors: active) {
-        [data-sign="rule"]::after {
+        [data-sign="rule"]:where([data-inline-align="start"])::before,
+        [data-sign="rule"]:not([data-inline-align="start"])::after {
             background-color: CanvasText;
         }
     }
 
     /* --- size --- */
 
-    [data-sign="rule"]::after {
+    [data-sign="rule"]:where([data-inline-align="start"])::before,
+    [data-sign="rule"]:not([data-inline-align="start"])::after {
         inset-block: calc((var(--box-height) - var(--line-height)) / 2);
     }
 
@@ -491,9 +552,14 @@
     :where(
         [data-facet="chevron"]:not(select),
         summary:not([data-facet]),
-        button[aria-haspopup="listbox"]:not([data-facet]),
-        label:has(> select[data-facet="chevron"])
-    )::after {
+        button[aria-haspopup="listbox"]:not([data-facet])
+    ):where([data-inline-align="start"])::before,
+    :where(
+        [data-facet="chevron"]:not(select),
+        summary:not([data-facet]),
+        button[aria-haspopup="listbox"]:not([data-facet])
+    ):not([data-inline-align="start"])::after,
+    label:has(> select[data-facet="chevron"])::after {
         border-radius:        0;
         border-style:         solid;
         border-top-width:     0;
@@ -512,9 +578,14 @@
         :where(
             [data-facet="chevron"]:not(select),
             summary:not([data-facet]),
-            button[aria-haspopup="listbox"]:not([data-facet]),
-            label:has(> select[data-facet="chevron"])
-        )::after {
+            button[aria-haspopup="listbox"]:not([data-facet])
+        ):where([data-inline-align="start"])::before,
+        :where(
+            [data-facet="chevron"]:not(select),
+            summary:not([data-facet]),
+            button[aria-haspopup="listbox"]:not([data-facet])
+        ):not([data-inline-align="start"])::after,
+        label:has(> select[data-facet="chevron"])::after {
             transition: transform 0.15s ease;
         }
     }
@@ -525,11 +596,22 @@
         [data-facet="chevron"]:not(select),
         summary:not([data-facet]),
         button[aria-haspopup="listbox"]:not([data-facet])
-    ) {
+    ):where([data-inline-align="end"], :not([data-inline-align])) {
         padding-inline-end: calc(var(--border-radius) * 2 + var(--font-size) * 0.6 * 1.06);
 
         &:where([data-size="xs"], [data-size="sm"], [data-size="md"], :not([data-size])) {
             padding-inline-end: calc(var(--border-radius) * 2 + var(--font-size) * 0.75 * 1.06);
+        }
+    }
+    :where(
+        [data-facet="chevron"]:not(select),
+        summary:not([data-facet]),
+        button[aria-haspopup="listbox"]:not([data-facet])
+    )[data-inline-align="start"] {
+        padding-inline-start: calc(var(--border-radius) * 2 + var(--font-size) * 0.6 * 1.06);
+
+        &:where([data-size="xs"], [data-size="sm"], [data-size="md"], :not([data-size])) {
+            padding-inline-start: calc(var(--border-radius) * 2 + var(--font-size) * 0.75 * 1.06);
         }
     }
 
@@ -537,17 +619,26 @@
         [data-facet="chevron"]:not(select),
         summary:not([data-facet]),
         button[aria-haspopup="listbox"]:not([data-facet])
-    )::after {
-        block-size:       calc(var(--font-size) * 0.6 * 1.06);
-        inline-size:      calc(var(--font-size) * 0.6 * 1.06);
-        inset-inline-end: var(--border-radius);
+    ):where([data-inline-align="start"])::before,
+    :where(
+        [data-facet="chevron"]:not(select),
+        summary:not([data-facet]),
+        button[aria-haspopup="listbox"]:not([data-facet])
+    ):not([data-inline-align="start"])::after {
+        block-size:  calc(var(--font-size) * 0.6 * 1.06);
+        inline-size: calc(var(--font-size) * 0.6 * 1.06);
     }
 
     :where(
         [data-facet="chevron"]:not(select):where([data-size="xs"], [data-size="sm"], [data-size="md"], :not([data-size])),
         summary:not([data-facet]):where([data-size="xs"], [data-size="sm"], [data-size="md"], :not([data-size])),
         button[aria-haspopup="listbox"]:not([data-facet]):where([data-size="xs"], [data-size="sm"], [data-size="md"], :not([data-size]))
-    )::after {
+    ):where([data-inline-align="start"])::before,
+    :where(
+        [data-facet="chevron"]:not(select):where([data-size="xs"], [data-size="sm"], [data-size="md"], :not([data-size])),
+        summary:not([data-facet]):where([data-size="xs"], [data-size="sm"], [data-size="md"], :not([data-size])),
+        button[aria-haspopup="listbox"]:not([data-facet]):where([data-size="xs"], [data-size="sm"], [data-size="md"], :not([data-size]))
+    ):not([data-inline-align="start"])::after {
         block-size:  calc(var(--font-size) * 0.75 * 1.06);
         inline-size: calc(var(--font-size) * 0.75 * 1.06);
     }
@@ -556,7 +647,12 @@
         [data-facet="chevron"]:not(select):where([data-size="xs"], [data-size="sm"], [data-size="lg"]),
         summary:not([data-facet]):where([data-size="xs"], [data-size="sm"], [data-size="lg"]),
         button[aria-haspopup="listbox"]:not([data-facet]):where([data-size="xs"], [data-size="sm"], [data-size="lg"])
-    )::after {
+    ):where([data-inline-align="start"])::before,
+    :where(
+        [data-facet="chevron"]:not(select):where([data-size="xs"], [data-size="sm"], [data-size="lg"]),
+        summary:not([data-facet]):where([data-size="xs"], [data-size="sm"], [data-size="lg"]),
+        button[aria-haspopup="listbox"]:not([data-facet]):where([data-size="xs"], [data-size="sm"], [data-size="lg"])
+    ):not([data-inline-align="start"])::after {
         transform: translateY(-0.125rem) rotate(45deg);
     }
 
@@ -564,7 +660,12 @@
         [data-facet="chevron"]:not(select):where([data-size="xs"], [data-size="sm"], [data-size="lg"]):where(:open, :checked, :has(+ [popover]:popover-open)),
         details:open > summary:not([data-facet]):where([data-size="xs"], [data-size="sm"], [data-size="lg"]),
         button[aria-haspopup="listbox"]:not([data-facet]):where([data-size="xs"], [data-size="sm"], [data-size="lg"]):has(+ [popover]:popover-open)
-    )::after {
+    ):where([data-inline-align="start"])::before,
+    :where(
+        [data-facet="chevron"]:not(select):where([data-size="xs"], [data-size="sm"], [data-size="lg"]):where(:open, :checked, :has(+ [popover]:popover-open)),
+        details:open > summary:not([data-facet]):where([data-size="xs"], [data-size="sm"], [data-size="lg"]),
+        button[aria-haspopup="listbox"]:not([data-facet]):where([data-size="xs"], [data-size="sm"], [data-size="lg"]):has(+ [popover]:popover-open)
+    ):not([data-inline-align="start"])::after {
         transform: translateY(0.125rem) rotate(225deg);
     }
 
@@ -572,7 +673,12 @@
         [data-facet="chevron"]:not(select):where([data-size="md"], :not([data-size]), [data-size="xl"]),
         summary:not([data-facet]):where([data-size="md"], :not([data-size]), [data-size="xl"]),
         button[aria-haspopup="listbox"]:not([data-facet]):where([data-size="md"], :not([data-size]), [data-size="xl"])
-    )::after {
+    ):where([data-inline-align="start"])::before,
+    :where(
+        [data-facet="chevron"]:not(select):where([data-size="md"], :not([data-size]), [data-size="xl"]),
+        summary:not([data-facet]):where([data-size="md"], :not([data-size]), [data-size="xl"]),
+        button[aria-haspopup="listbox"]:not([data-facet]):where([data-size="md"], :not([data-size]), [data-size="xl"])
+    ):not([data-inline-align="start"])::after {
         transform: translateY(-0.1875rem) rotate(45deg);
     }
 
@@ -580,7 +686,12 @@
         [data-facet="chevron"]:not(select):where([data-size="md"], :not([data-size]), [data-size="xl"]):where(:open, :checked, :has(+ [popover]:popover-open)),
         details:open > summary:not([data-facet]):where([data-size="md"], :not([data-size]), [data-size="xl"]),
         button[aria-haspopup="listbox"]:not([data-facet]):where([data-size="md"], :not([data-size]), [data-size="xl"]):has(+ [popover]:popover-open)
-    )::after {
+    ):where([data-inline-align="start"])::before,
+    :where(
+        [data-facet="chevron"]:not(select):where([data-size="md"], :not([data-size]), [data-size="xl"]):where(:open, :checked, :has(+ [popover]:popover-open)),
+        details:open > summary:not([data-facet]):where([data-size="md"], :not([data-size]), [data-size="xl"]),
+        button[aria-haspopup="listbox"]:not([data-facet]):where([data-size="md"], :not([data-size]), [data-size="xl"]):has(+ [popover]:popover-open)
+    ):not([data-inline-align="start"])::after {
         transform: translateY(0.1875rem) rotate(225deg);
     }
 
@@ -588,7 +699,12 @@
         [data-facet="chevron"]:not(select)[data-size="2xl"],
         summary:not([data-facet])[data-size="2xl"],
         button[aria-haspopup="listbox"]:not([data-facet])[data-size="2xl"]
-    )::after {
+    ):where([data-inline-align="start"])::before,
+    :where(
+        [data-facet="chevron"]:not(select)[data-size="2xl"],
+        summary:not([data-facet])[data-size="2xl"],
+        button[aria-haspopup="listbox"]:not([data-facet])[data-size="2xl"]
+    ):not([data-inline-align="start"])::after {
         transform: translateY(-0.25rem) rotate(45deg);
     }
 
@@ -596,7 +712,12 @@
         [data-facet="chevron"]:not(select)[data-size="2xl"]:where(:open, :checked, :has(+ [popover]:popover-open)),
         details:open > summary:not([data-facet])[data-size="2xl"],
         button[aria-haspopup="listbox"]:not([data-facet])[data-size="2xl"]:has(+ [popover]:popover-open)
-    )::after {
+    ):where([data-inline-align="start"])::before,
+    :where(
+        [data-facet="chevron"]:not(select)[data-size="2xl"]:where(:open, :checked, :has(+ [popover]:popover-open)),
+        details:open > summary:not([data-facet])[data-size="2xl"],
+        button[aria-haspopup="listbox"]:not([data-facet])[data-size="2xl"]:has(+ [popover]:popover-open)
+    ):not([data-inline-align="start"])::after {
         transform: translateY(0.25rem) rotate(225deg);
     }
 
@@ -680,12 +801,9 @@
 
     /* === eye === */
 
-    [data-facet="eye"]::before {
+    [data-facet="eye"]:where([data-inline-align="start"])::before,
+    [data-facet="eye"]:not([data-inline-align="start"])::after {
         background-color: currentColor;
-        content:          "";
-        inset:            0;
-        margin:           auto;
-        position:         absolute;
         clip-path: shape(
             from 100% 50%,
             curve to 50% 15.625% with 100% 50% / 81.25% 15.625%,
@@ -707,7 +825,8 @@
         );
     }
 
-    [data-facet="eye"]:where(:checked, [aria-pressed="true"])::before {
+    [data-facet="eye"]:where(:checked, [aria-pressed="true"]):where([data-inline-align="start"])::before,
+    [data-facet="eye"]:where(:checked, [aria-pressed="true"]):not([data-inline-align="start"])::after {
         clip-path: shape(
             from 100% 50%,
             curve to 50% 15.625% with 100% 50% / 81.25% 15.625%,
@@ -734,7 +853,8 @@
 
     /* --- size --- */
 
-    [data-facet="eye"]::before {
+    [data-facet="eye"]:where([data-inline-align="start"])::before,
+    [data-facet="eye"]:not([data-inline-align="start"])::after {
         block-size:  var(--line-height);
         inline-size: var(--line-height);
     }
@@ -744,12 +864,12 @@
     :where(
         [data-facet="reload"],
         [data-facet="sync"]
-    )::after {
+    ):where([data-inline-align="start"])::before,
+    :where(
+        [data-facet="reload"],
+        [data-facet="sync"]
+    ):not([data-inline-align="start"])::after {
         background-color: currentColor;
-        content:           "";
-        inset:             0;
-        margin:            auto;
-        position:          absolute;
     }
 
     /* --- size --- */
@@ -757,14 +877,19 @@
     :where(
         [data-facet="reload"],
         [data-facet="sync"]
-    )::after {
+    ):where([data-inline-align="start"])::before,
+    :where(
+        [data-facet="reload"],
+        [data-facet="sync"]
+    ):not([data-inline-align="start"])::after {
         block-size:  var(--line-height);
         inline-size: var(--line-height);
     }
 
     /* === reload === */
 
-    [data-facet="reload"]::after {
+    [data-facet="reload"]:where([data-inline-align="start"])::before,
+    [data-facet="reload"]:not([data-inline-align="start"])::after {
         clip-path: shape(
             from 50% 18.75%,
             arc to 78.412% 36.962% of 31.25% 31.25% ccw large,
@@ -783,7 +908,8 @@
 
     /* === sync === */
 
-    [data-facet="sync"]::after {
+    [data-facet="sync"]:where([data-inline-align="start"])::before,
+    [data-facet="sync"]:not([data-inline-align="start"])::after {
         clip-path: shape(
             from 50% 18.75%,
             curve to 25.894% 30.112% with 40.3% 18.75% / 31.625% 23.169%,
@@ -823,7 +949,15 @@
         [aria-busy="true"],
         [aria-pressed="true"],
         :checked
-    )::after {
+    ):where([data-inline-align="start"])::before,
+    :is(
+        [data-facet="reload"],
+        [data-facet="sync"]
+    ):where(
+        [aria-busy="true"],
+        [aria-pressed="true"],
+        :checked
+    ):not([data-inline-align="start"])::after {
         background-color:    transparent;
         background-image:
             radial-gradient(circle closest-side, currentColor 95%, transparent 100%),
@@ -846,7 +980,15 @@
             [aria-busy="true"],
             [aria-pressed="true"],
             :checked
-        )::after {
+        ):where([data-inline-align="start"])::before,
+        :is(
+            [data-facet="reload"],
+            [data-facet="sync"]
+        ):where(
+            [aria-busy="true"],
+            [aria-pressed="true"],
+            :checked
+        ):not([data-inline-align="start"])::after {
             animation: sign-hop 1.5s ease infinite;
         }
 

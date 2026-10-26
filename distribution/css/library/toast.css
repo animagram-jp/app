@@ -14,7 +14,7 @@
             <p></p></button></section>
 
     The number of [data-type="toast"]'s children means the maximum number of toasts that can be displayed simultaneously.
-    Also see reference/style.js.
+    Also see reference/init.js.
 */
 
 @layer css.toast {

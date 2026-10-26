@@ -26,6 +26,10 @@
         font-weight: bold;
     }
 
+    hgroup:where([data-axis="block"], :not([data-axis])) > :where(h1, h2, h3, h4, h5, h6, p) {
+        display: block flow;
+    }
+
     /* --- data-axis="inline" --- */
 
     hgroup[data-axis="inline"] > :where(h1, h2, h3, h4, h5, h6) {
