@@ -1,6 +1,5 @@
 use alloc::{format, string::String, vec, vec::Vec};
 use core::{
-    array::from_fn,
     clone::Clone,
     cmp::{Ordering, PartialEq},
     default::Default,
@@ -10,38 +9,62 @@ use core::{
     primitive::{bool, i64, str, u8, u16, u64, usize},
 };
 
-use arbitrary_int::{u1, u4, u5, u6, u7, u10, u13};
+use arbitrary_int::{traits::Integer, u1, u4, u5, u6, u7, u10, u13};
 
-use crate::{Language, field::Layout};
+use crate::{Input, Language, bit, take};
 
-// timestamp (64 bits)
+// stamp (64 bits)
 // note:
-// - Null: all bits 0.
 // - Date (year, month, day) all 0: no date, time only.
-//   Time only 00:00 collides with null, so the day boundary is written as 24:00.
+//   Time only 00:00 collides with Stamp::ZERO, so the day boundary is written as 24:00.
 // - Zeros from the lowest field upward are unspecified;
 //   the lowest non-zero field is the precision.
 // - is_utc:
-//   = 1: The value is UTC time (timezone iana id may store original zone info).
-//   = 0: The value is local time of timezone
+//   = 1: The value is UTC time (zone iana id may store original zone info).
+//   = 0: The value is local time of zone
 
-pub const CENTISECOND: usize = 0;
-pub const SECOND: usize = 1;
-pub const MINUTE: usize = 2;
-pub const HOUR: usize = 3;
-pub const DAY: usize = 4;
-pub const MONTH: usize = 5;
-pub const YEAR: usize = 6;
-// 1 = true (year~second is utc value) and 0 = false (iana local value)
-pub const IS_UTC: usize = 7;
-// id of IANA Time Zone Database
-pub const TIMEZONE: usize = 8;
+bit::field! {
+    pub Centisecond(u7),
+    pub Second(u6),
+    pub Minute(u6),
+    pub Hour(u5),
+    pub Day(u5),
+    pub Year(u13),
+    // 1 = true (year~second is utc value) and 0 = false (iana local value)
+    pub IsUtc(u1),
+}
 
-pub type Stamp = u64;
-pub type Parts = (u7, u6, u6, u5, u5, u4, u13, u1, u10);
-pub const LAYOUT: Layout<Parts> = Layout::new();
+bit::composite! {
+    pub struct Stamp {
+        Centisecond,
+        Second,
+        Minute,
+        Hour,
+        Day,
+        Month,
+        Year,
+        IsUtc,
+        Zone,
+    }
+}
 
-pub struct Zone;
+impl Input<'_> for Stamp {
+    fn decode(input: &mut &[u8]) -> Option<Self> {
+        let stamp = Self::from_le_bytes(take(input, Self::BYTES)?.try_into().ok()?);
+        let (centisecond, second, minute, hour, day, month, year, _, zone) = unpack(stamp);
+        let clock = centisecond < 100
+            && second < 60
+            && minute < 60
+            && (hour < 24 || (hour, minute, second, centisecond) == (24, 0, 0, 0));
+        let date = month <= 12 && (month == 0 || day <= days_in_month(year, month));
+        (clock && date && (zone as usize) < Zone::LIST.len()).then_some(stamp)
+    }
+}
+
+bit::field! {
+    // id of IANA Time Zone Database
+    pub Zone(u10),
+}
 
 impl Zone {
     pub const LIST: [&str; 446] = [
@@ -496,12 +519,15 @@ impl Zone {
     /// ```
     /// use app::time::Zone;
     ///
-    /// assert_eq!(Zone::index("Etc/UTC"), Some(0));
-    /// assert_eq!(Zone::index("Asia/Tokyo").map(|index| Zone::LIST[index as usize]), Some("Asia/Tokyo"));
+    /// assert_eq!(Zone::index("Etc/UTC"), Some(Zone::default()));
+    /// assert_eq!(Zone::index("Asia/Tokyo").map(|zone| Zone::LIST[zone.0.value() as usize]), Some("Asia/Tokyo"));
     /// assert_eq!(Zone::index("Asia/Calcutta"), None);
     /// ```
-    pub fn index(identifier: &str) -> Option<u16> {
-        Self::LIST.iter().position(|name| *name == identifier).map(|index| index as u16)
+    pub fn index(identifier: &str) -> Option<Self> {
+        Self::LIST
+            .iter()
+            .position(|name| *name == identifier)
+            .map(|index| Self(u10::new(index as u16)))
     }
 }
 
@@ -525,20 +551,23 @@ impl Youbi {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Month {
-    January = 1,
-    February,
-    March,
-    April,
-    May,
-    June,
-    July,
-    August,
-    September,
-    October,
-    November,
-    December,
+bit::field! {
+    pub Month(u4),
+}
+
+impl Month {
+    pub const JANUARY: Self = Self(u4::new(1));
+    pub const FEBRUARY: Self = Self(u4::new(2));
+    pub const MARCH: Self = Self(u4::new(3));
+    pub const APRIL: Self = Self(u4::new(4));
+    pub const MAY: Self = Self(u4::new(5));
+    pub const JUNE: Self = Self(u4::new(6));
+    pub const JULY: Self = Self(u4::new(7));
+    pub const AUGUST: Self = Self(u4::new(8));
+    pub const SEPTEMBER: Self = Self(u4::new(9));
+    pub const OCTOBER: Self = Self(u4::new(10));
+    pub const NOVEMBER: Self = Self(u4::new(11));
+    pub const DECEMBER: Self = Self(u4::new(12));
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -550,13 +579,13 @@ pub enum Format {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Unit {
-    Year = 1,
-    Month,
-    Day,
-    Hour,
-    Minute,
+    Centisecond = 1,
     Second,
-    Centisecond,
+    Minute,
+    Hour,
+    Day,
+    Month,
+    Year,
 }
 
 /// ```
@@ -600,13 +629,13 @@ impl Length {
             Month => self.get(Year) * 12 + self.get(Month),
             unit => [(Day, 1), (Hour, 24), (Minute, 60), (Second, 60), (Centisecond, 100)]
                 .into_iter()
-                .take_while(|(slot, _)| *slot <= unit)
+                .take_while(|(slot, _)| *slot >= unit)
                 .fold(0, |total, (slot, scale)| total * scale + self.get(slot)),
         }
     }
 
     fn key(&self) -> (u64, u64) {
-        (self.total(Unit::Month), self.total(Unit::Centisecond))
+        (self.total(Unit::Centisecond), self.total(Unit::Month))
     }
 }
 
@@ -626,7 +655,8 @@ impl PartialOrd for Length {
 
 impl Ord for Length {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.key().cmp(&other.key())
+        let (key, other) = (self.key(), other.key());
+        key.1.cmp(&other.1).then(key.0.cmp(&other.0))
     }
 }
 
@@ -634,10 +664,10 @@ impl Ord for Length {
 /// use app::time::*;
 ///
 /// let tokyo = Zone::index("Asia/Tokyo").unwrap();
-/// let timestamp = from_unix_timestamp_in_ms(946684800000, tokyo);
-/// assert_eq!(unpack(timestamp), (2000, 1, 1, 0, 0, 0, 0, 1, tokyo as u64));
+/// let stamp = from_unix_timestamp_in_ms(946684800000, tokyo);
+/// assert_eq!(unpack(stamp), (0, 0, 0, 0, 1, 1, 2000, 1, u64::from(tokyo.0.value())));
 /// ```
-pub fn from_unix_timestamp_in_ms(unix_timestamp_in_ms: i64, zone: u16) -> Stamp {
+pub fn from_unix_timestamp_in_ms(unix_timestamp_in_ms: i64, zone: Zone) -> Stamp {
     let centisecond = unix_timestamp_in_ms.rem_euclid(1000) / 10;
     let seconds = unix_timestamp_in_ms.div_euclid(1000);
 
@@ -648,45 +678,40 @@ pub fn from_unix_timestamp_in_ms(unix_timestamp_in_ms: i64, zone: u16) -> Stamp 
 
     let (year, month, day) = date_of(seconds.div_euclid(86400) + 719468);
 
-    pack(year, month, day, hour, minute, second, centisecond, 1, zone as u64)
+    pack(centisecond, second, minute, hour, day, month, year, 1, u64::from(zone.0.value()))
 }
 
 /// ```
-/// use app::{En, Language, time::{*, Unit::*}};
+/// use app::{En, Language, time::{Format, Unit::*, display, pack}};
 ///
-/// let timestamp = pack(2026, 10, 2, 9, 30, 5, 7, 0, 0);
-/// assert_eq!(display(timestamp, Language::Ja, (Year, Day), Format::Iso), "2026-10-02");
-/// assert_eq!(display(timestamp, Language::Ja, (Year, Minute), Format::Iso), "2026-10-02 09:30");
-/// assert_eq!(display(timestamp, Language::Ja, (Hour, Minute), Format::Iso), "09:30");
-/// assert_eq!(display(timestamp, Language::Ja, (Hour, Centisecond), Format::Iso), "09:30:05.07");
-/// assert_eq!(display(timestamp, Language::Ja, (Month, Day), Format::WithYoubi), "10/2(金)");
-/// assert_eq!(display(timestamp, Language::Ja, (Month, Day), Format::WithoutYoubi), "10/2");
-/// assert_eq!(display(timestamp, Language::Ja, (Day, Day), Format::WithoutYoubi), "2");
-/// assert_eq!(display(timestamp, Language::Ja, (Year, Day), Format::WithoutYoubi), "2026年10月2日");
-/// assert_eq!(display(timestamp, Language::Ja, (Year, Minute), Format::WithoutYoubi), "2026年10月2日 9時30分");
-/// assert_eq!(display(timestamp, Language::Ja, (Year, Day), Format::WithYoubi), "2026年10月2日(金)");
-/// assert_eq!(display(timestamp, Language::Ja, (Year, Minute), Format::WithYoubi), "2026年10月2日(金) 9時30分");
-/// assert_eq!(display(timestamp, Language::Ja, (Month, Minute), Format::WithYoubi), "10/2(金) 9:30");
-/// assert_eq!(display(timestamp, Language::Ja, (Hour, Minute), Format::WithYoubi), "9:30");
-/// assert_eq!(display(timestamp, Language::En(En::Gb), (Month, Day), Format::WithYoubi), "Fri 2 Oct");
-/// assert_eq!(display(timestamp, Language::En(En::Gb), (Month, Day), Format::WithoutYoubi), "2 Oct");
-/// assert_eq!(display(timestamp, Language::En(En::Gb), (Year, Day), Format::WithoutYoubi), "2 Oct 2026");
-/// assert_eq!(display(timestamp, Language::En(En::Gb), (Year, Day), Format::WithYoubi), "Fri 2 Oct 2026");
-/// assert_eq!(display(timestamp, Language::En(En::Gb), (Year, Minute), Format::WithYoubi), "Fri 2 Oct 2026 09:30");
-/// assert_eq!(display(timestamp, Language::En(En::Gb), (Month, Minute), Format::WithYoubi), "Fri 2 Oct 09:30");
-/// assert_eq!(display(timestamp, Language::En(En::Gb), (Year, Month), Format::WithYoubi), "Oct 2026");
-/// assert_eq!(display(timestamp, Language::En(En::Gb), (Hour, Centisecond), Format::WithYoubi), "09:30:05.07");
+/// let stamp = pack(7, 5, 30, 9, 2, 10, 2026, 0, 0);
+/// assert_eq!(display(stamp, Language::Ja, (Year, Day), Format::Iso), "2026-10-02");
+/// assert_eq!(display(stamp, Language::Ja, (Year, Minute), Format::Iso), "2026-10-02 09:30");
+/// assert_eq!(display(stamp, Language::Ja, (Hour, Minute), Format::Iso), "09:30");
+/// assert_eq!(display(stamp, Language::Ja, (Hour, Centisecond), Format::Iso), "09:30:05.07");
+/// assert_eq!(display(stamp, Language::Ja, (Month, Day), Format::WithYoubi), "10/2(金)");
+/// assert_eq!(display(stamp, Language::Ja, (Month, Day), Format::WithoutYoubi), "10/2");
+/// assert_eq!(display(stamp, Language::Ja, (Day, Day), Format::WithoutYoubi), "2");
+/// assert_eq!(display(stamp, Language::Ja, (Year, Day), Format::WithoutYoubi), "2026年10月2日");
+/// assert_eq!(display(stamp, Language::Ja, (Year, Minute), Format::WithoutYoubi), "2026年10月2日 9時30分");
+/// assert_eq!(display(stamp, Language::Ja, (Year, Day), Format::WithYoubi), "2026年10月2日(金)");
+/// assert_eq!(display(stamp, Language::Ja, (Year, Minute), Format::WithYoubi), "2026年10月2日(金) 9時30分");
+/// assert_eq!(display(stamp, Language::Ja, (Month, Minute), Format::WithYoubi), "10/2(金) 9:30");
+/// assert_eq!(display(stamp, Language::Ja, (Hour, Minute), Format::WithYoubi), "9:30");
+/// assert_eq!(display(stamp, Language::En(En::Gb), (Month, Day), Format::WithYoubi), "Fri 2 Oct");
+/// assert_eq!(display(stamp, Language::En(En::Gb), (Month, Day), Format::WithoutYoubi), "2 Oct");
+/// assert_eq!(display(stamp, Language::En(En::Gb), (Year, Day), Format::WithoutYoubi), "2 Oct 2026");
+/// assert_eq!(display(stamp, Language::En(En::Gb), (Year, Day), Format::WithYoubi), "Fri 2 Oct 2026");
+/// assert_eq!(display(stamp, Language::En(En::Gb), (Year, Minute), Format::WithYoubi), "Fri 2 Oct 2026 09:30");
+/// assert_eq!(display(stamp, Language::En(En::Gb), (Month, Minute), Format::WithYoubi), "Fri 2 Oct 09:30");
+/// assert_eq!(display(stamp, Language::En(En::Gb), (Year, Month), Format::WithYoubi), "Oct 2026");
+/// assert_eq!(display(stamp, Language::En(En::Gb), (Hour, Centisecond), Format::WithYoubi), "09:30:05.07");
 /// ```
-pub fn display(
-    timestamp: Stamp,
-    language: Language,
-    scope: (Unit, Unit),
-    format: Format,
-) -> String {
+pub fn display(stamp: Stamp, language: Language, scope: (Unit, Unit), format: Format) -> String {
     use Unit::*;
 
-    let (year, month, day, hour, minute, second, centisecond, ..) = unpack(timestamp);
-    let within = |unit: Unit| (scope.0..=scope.1).contains(&unit);
+    let (centisecond, second, minute, hour, day, month, year, ..) = unpack(stamp);
+    let within = |unit: Unit| (scope.1..=scope.0).contains(&unit);
     let dates = [(Year, year), (Month, month), (Day, day)];
     let clocks = [(Hour, hour), (Minute, minute), (Second, second), (Centisecond, centisecond)];
     let clock = |padded: bool| {
@@ -706,7 +731,7 @@ pub fn display(
     };
     let verbal = within(Year);
     let name = if within(Day) && format == Format::WithYoubi {
-        youbi(timestamp).display(language)
+        youbi(stamp).display(language)
     } else {
         ""
     };
@@ -727,7 +752,9 @@ pub fn display(
             let date = dates
                 .iter()
                 .filter(|(unit, _)| within(*unit))
-                .map(|(unit, value)| format!("{value}{}", ["年", "月", "日"][*unit as usize - 1]))
+                .map(|(unit, value)| {
+                    format!("{value}{}", ["日", "月", "年"][*unit as usize - Day as usize])
+                })
                 .collect::<String>();
             let suffix = if name.is_empty() { String::new() } else { format!("({name})") };
             let clock = clocks
@@ -778,12 +805,12 @@ pub fn display(
 /// ```
 /// use app::time::*;
 ///
-/// assert_eq!(youbi(pack(1970, 1, 1, 0, 0, 0, 0, 0, 0)), Youbi::Thursday);
-/// assert_eq!(youbi(pack(2026, 10, 4, 0, 0, 0, 0, 0, 0)), Youbi::Sunday);
-/// assert_eq!(youbi(pack(2026, 1, 5, 0, 0, 0, 0, 0, 0)), Youbi::Monday);
+/// assert_eq!(youbi(pack(0, 0, 0, 0, 1, 1, 1970, 0, 0)), Youbi::Thursday);
+/// assert_eq!(youbi(pack(0, 0, 0, 0, 4, 10, 2026, 0, 0)), Youbi::Sunday);
+/// assert_eq!(youbi(pack(0, 0, 0, 0, 5, 1, 2026, 0, 0)), Youbi::Monday);
 /// ```
-pub fn youbi(timestamp: Stamp) -> Youbi {
-    let (year, month, day, ..) = unpack(timestamp);
+pub fn youbi(stamp: Stamp) -> Youbi {
+    let (.., day, month, year, _, _) = unpack(stamp);
     let month_offsets: [i64; 12] = [0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4];
     let adjusted_year = if month < 3 { year - 1 } else { year };
     let youbi_index = (adjusted_year + adjusted_year / 4 - adjusted_year / 100
@@ -805,8 +832,8 @@ pub fn youbi(timestamp: Stamp) -> Youbi {
 /// ```
 /// use app::time::*;
 ///
-/// let from = pack(2026, 10, 2, 23, 0, 0, 0, 0, 0);
-/// let to = pack(2026, 10, 4, 1, 0, 0, 50, 0, 0);
+/// let from = pack(0, 0, 0, 23, 2, 10, 2026, 0, 0);
+/// let to = pack(50, 0, 0, 1, 4, 10, 2026, 0, 0);
 /// let centiseconds = (24 + 2) * 3600 * 100 + 50;
 /// assert_eq!(diff(from, to, Unit::Centisecond), centiseconds);
 /// assert_eq!(diff(to, from, Unit::Centisecond), -centiseconds);
@@ -815,36 +842,36 @@ pub fn youbi(timestamp: Stamp) -> Youbi {
 /// assert_eq!(diff(from, to, Unit::Month), 0);
 ///
 /// let day = 24 * 3600 * 100;
-/// let leap = pack(2000, 2, 29, 0, 0, 0, 0, 0, 0);
-/// let next = pack(2001, 3, 1, 0, 0, 0, 0, 0, 0);
+/// let leap = pack(0, 0, 0, 0, 29, 2, 2000, 0, 0);
+/// let next = pack(0, 0, 0, 0, 1, 3, 2001, 0, 0);
 /// assert_eq!(diff(leap, next, Unit::Centisecond), 366 * day);
 /// assert_eq!(diff(leap, next, Unit::Day), 366);
 /// assert_eq!(diff(leap, next, Unit::Month), 13);
 /// assert_eq!(diff(leap, next, Unit::Year), 1);
 /// ```
-pub fn diff(timestamp: Stamp, other: Stamp, unit: Unit) -> i64 {
-    let count = |timestamp: Stamp| {
-        let (year, month, day, hour, minute, second, centisecond, ..) = unpack(timestamp);
+pub fn diff(stamp: Stamp, other: Stamp, unit: Unit) -> i64 {
+    let count = |stamp: Stamp| {
+        let (centisecond, second, minute, hour, day, month, year, ..) = unpack(stamp);
         match unit {
             Unit::Year => year,
             Unit::Month => year * 12 + month,
             unit => [(24, hour), (60, minute), (60, second), (100, centisecond)]
                 .iter()
-                .take(unit as usize - Unit::Day as usize)
+                .take(Unit::Day as usize - unit as usize)
                 .fold(day_number(year, month, day), |count, (scale, part)| count * scale + part),
         }
     };
-    count(other) - count(timestamp)
+    count(other) - count(stamp)
 }
 
 /// ```
 /// use app::time::*;
 ///
-/// let date = |timestamp: Stamp| {
-///     let (year, month, day, hour, minute, ..) = unpack(timestamp);
+/// let date = |stamp: Stamp| {
+///     let (_, _, minute, hour, day, month, year, ..) = unpack(stamp);
 ///     (year, month, day, hour, minute)
 /// };
-/// let at = |year, month, day, hour, minute| pack(year, month, day, hour, minute, 0, 0, 0, 0);
+/// let at = |year, month, day, hour, minute| pack(0, 0, minute, hour, day, month, year, 0, 0);
 /// let length = |unit, value| Length::new(unit, value);
 ///
 /// assert_eq!(date(add(at(2000, 2, 29, 0, 0), length(Unit::Year, 1))), (2001, 2, 28, 0, 0));
@@ -859,18 +886,18 @@ pub fn diff(timestamp: Stamp, other: Stamp, unit: Unit) -> i64 {
 /// assert_eq!(date(add(at(0, 0, 0, 9, 30), length(Unit::Minute, 45))), (0, 0, 0, 10, 15));
 /// assert_eq!(date(add(at(0, 0, 0, 9, 30), length(Unit::Day, 0))), (0, 0, 0, 9, 30));
 /// ```
-pub fn add(timestamp: Stamp, length: Length) -> Stamp {
-    shift_length(timestamp, length, 1)
+pub fn add(stamp: Stamp, length: Length) -> Stamp {
+    shift_length(stamp, length, 1)
 }
 
 /// ```
 /// use app::time::*;
 ///
-/// let date = |timestamp: Stamp| {
-///     let (year, month, day, hour, minute, ..) = unpack(timestamp);
+/// let date = |stamp: Stamp| {
+///     let (_, _, minute, hour, day, month, year, ..) = unpack(stamp);
 ///     (year, month, day, hour, minute)
 /// };
-/// let at = |year, month, day, hour, minute| pack(year, month, day, hour, minute, 0, 0, 0, 0);
+/// let at = |year, month, day, hour, minute| pack(0, 0, minute, hour, day, month, year, 0, 0);
 /// let length = |unit, value| Length::new(unit, value);
 ///
 /// assert_eq!(date(sub(at(2000, 2, 29, 0, 0), length(Unit::Year, 1))), (1999, 2, 28, 0, 0));
@@ -880,27 +907,27 @@ pub fn add(timestamp: Stamp, length: Length) -> Stamp {
 /// assert_eq!(date(sub(at(2001, 1, 2, 0, 0), length(Unit::Minute, 1))), (2001, 1, 1, 23, 59));
 /// assert_eq!(date(sub(at(0, 0, 0, 10, 15), length(Unit::Minute, 45))), (0, 0, 0, 9, 30));
 /// ```
-pub fn sub(timestamp: Stamp, length: Length) -> Stamp {
-    shift_length(timestamp, length, -1)
+pub fn sub(stamp: Stamp, length: Length) -> Stamp {
+    shift_length(stamp, length, -1)
 }
 
 /// ```
 /// use app::time::*;
 ///
-/// let day = pack(2026, 10, 2, 9, 30, 0, 0, 0, 0);
-/// assert_eq!(shift(day, Unit::Day, 30), pack(2026, 11, 1, 9, 30, 0, 0, 0, 0));
-/// assert_eq!(shift(day, Unit::Day, -2), pack(2026, 9, 30, 9, 30, 0, 0, 0, 0));
-/// assert_eq!(shift(day, Unit::Minute, -45), pack(2026, 10, 2, 8, 45, 0, 0, 0, 0));
+/// let day = pack(0, 0, 30, 9, 2, 10, 2026, 0, 0);
+/// assert_eq!(shift(day, Unit::Day, 30), pack(0, 0, 30, 9, 1, 11, 2026, 0, 0));
+/// assert_eq!(shift(day, Unit::Day, -2), pack(0, 0, 30, 9, 30, 9, 2026, 0, 0));
+/// assert_eq!(shift(day, Unit::Minute, -45), pack(0, 0, 45, 8, 2, 10, 2026, 0, 0));
 /// assert_eq!(shift(day, Unit::Month, 0), day);
 /// ```
-pub fn shift(timestamp: Stamp, unit: Unit, amount: i64) -> Stamp {
-    shift_length(timestamp, Length::new(unit, amount.unsigned_abs()), amount.signum())
+pub fn shift(stamp: Stamp, unit: Unit, value: i64) -> Stamp {
+    shift_length(stamp, Length::new(unit, value.unsigned_abs()), value.signum())
 }
 
-fn shift_length(timestamp: Stamp, length: Length, sign: i64) -> Stamp {
-    let amount = |unit: Unit| length.get(unit) as i64 * sign;
-    let (year, month, day, hour, minute, second, centisecond, is_utc, timezone) = unpack(timestamp);
-    let (year, month, day) = match amount(Unit::Year) * 12 + amount(Unit::Month) {
+fn shift_length(stamp: Stamp, length: Length, sign: i64) -> Stamp {
+    let value = |unit: Unit| length.get(unit) as i64 * sign;
+    let (centisecond, second, minute, hour, day, month, year, is_utc, zone) = unpack(stamp);
+    let (year, month, day) = match value(Unit::Year) * 12 + value(Unit::Month) {
         0 => (year, month, day),
         months => {
             let total = year * 12 + (month - 1) + months;
@@ -910,24 +937,24 @@ fn shift_length(timestamp: Stamp, length: Length, sign: i64) -> Stamp {
     };
     let total = ((hour * 60 + minute) * 60 + second) * 100
         + centisecond
-        + ((amount(Unit::Hour) * 60 + amount(Unit::Minute)) * 60 + amount(Unit::Second)) * 100
-        + amount(Unit::Centisecond);
-    let (year, month, day) = match amount(Unit::Day) + total.div_euclid(8_640_000) {
+        + ((value(Unit::Hour) * 60 + value(Unit::Minute)) * 60 + value(Unit::Second)) * 100
+        + value(Unit::Centisecond);
+    let (year, month, day) = match value(Unit::Day) + total.div_euclid(8_640_000) {
         0 => (year, month, day),
         days => date_of(day_number(year, month, day) + days),
     };
     let time = total.rem_euclid(8_640_000);
     let seconds = time / 100;
     pack(
-        year,
-        month,
-        day,
-        seconds / 3600,
-        seconds % 3600 / 60,
-        seconds % 60,
         time % 100,
+        seconds % 60,
+        seconds % 3600 / 60,
+        seconds / 3600,
+        day,
+        month,
+        year,
         is_utc,
-        timezone,
+        zone,
     )
 }
 
@@ -968,68 +995,48 @@ pub fn days_in_month(year: i64, month: i64) -> i64 {
     }
 }
 
-pub const CHRONOLOGICAL_BITS: u32 = LAYOUT.field(IS_UTC).position;
-
-pub const fn chronological(timestamp: Stamp) -> Stamp {
-    timestamp & ((1 << CHRONOLOGICAL_BITS) - 1)
-}
-
-pub fn parts(timestamp: Stamp) -> Parts {
-    LAYOUT.unpack(timestamp)
-}
-
-pub fn from_parts(parts: Parts) -> Stamp {
-    LAYOUT.pack(parts)
-}
-
-pub fn unpack(timestamp: Stamp) -> (i64, i64, i64, i64, i64, i64, i64, u64, u64) {
-    let fields: [u64; 9] = from_fn(|index| LAYOUT.get(timestamp, index));
+pub fn unpack(stamp: Stamp) -> (i64, i64, i64, i64, i64, i64, i64, u64, u64) {
     (
-        fields[YEAR] as i64,
-        fields[MONTH] as i64,
-        fields[DAY] as i64,
-        fields[HOUR] as i64,
-        fields[MINUTE] as i64,
-        fields[SECOND] as i64,
-        fields[CENTISECOND] as i64,
-        fields[IS_UTC],
-        fields[TIMEZONE],
+        i64::from(stamp.get::<Centisecond>().0.value()),
+        i64::from(stamp.get::<Second>().0.value()),
+        i64::from(stamp.get::<Minute>().0.value()),
+        i64::from(stamp.get::<Hour>().0.value()),
+        i64::from(stamp.get::<Day>().0.value()),
+        i64::from(stamp.get::<Month>().0.value()),
+        i64::from(stamp.get::<Year>().0.value()),
+        u64::from(stamp.get::<IsUtc>().0.value()),
+        u64::from(stamp.get::<Zone>().0.value()),
     )
 }
 
-pub const fn pack(
-    year: i64,
-    month: i64,
-    day: i64,
-    hour: i64,
-    minute: i64,
-    second: i64,
+pub fn pack(
     centisecond: i64,
+    second: i64,
+    minute: i64,
+    hour: i64,
+    day: i64,
+    month: i64,
+    year: i64,
     is_utc: u64,
-    timezone: u64,
+    zone: u64,
 ) -> Stamp {
-    LAYOUT.pack_raw(&[
-        centisecond as u64,
-        second as u64,
-        minute as u64,
-        hour as u64,
-        day as u64,
-        month as u64,
-        year as u64,
-        is_utc,
-        timezone,
-    ])
+    let mut stamp = Stamp::ZERO;
+    stamp.set(Centisecond(u7::masked_new(centisecond as u64)));
+    stamp.set(Second(u6::masked_new(second as u64)));
+    stamp.set(Minute(u6::masked_new(minute as u64)));
+    stamp.set(Hour(u5::masked_new(hour as u64)));
+    stamp.set(Day(u5::masked_new(day as u64)));
+    stamp.set(Month(u4::masked_new(month as u64)));
+    stamp.set(Year(u13::masked_new(year as u64)));
+    stamp.set(IsUtc(u1::masked_new(is_utc)));
+    stamp.set(Zone(u10::masked_new(zone)));
+    stamp
 }
 
 #[derive(Default, Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Range {
     pub start:  Stamp,
     pub length: Length,
-}
-
-pub struct Period {
-    pub include: Vec<Range>,
-    pub exclude: Vec<Range>,
 }
 
 pub struct Recurrence {
@@ -1044,20 +1051,20 @@ impl Recurrence {
     /// ```
     /// use app::time::*;
     ///
-    /// let year_start = pack(2026, 1,  1,  0,  0, 0, 0, 1, 0);
-    /// let year_end   = pack(2026, 12, 31, 23, 59, 0, 0, 1, 0);
+    /// let year_start = pack(0, 0, 0, 0, 1, 1, 2026, 1, 0);
+    /// let year_end   = pack(0, 0, 59, 23, 31, 12, 2026, 1, 0);
     /// let year = Length::new(Unit::Day, 364)
     ///     .with(Unit::Hour, 23)
     ///     .with(Unit::Minute, 59);
     /// assert_eq!(add(year_start, year), year_end);
     ///
-    /// let morning   = pack(2000, 1, 1,  9, 0, 0, 0, 1, 0);
-    /// let afternoon = pack(2000, 1, 1, 14, 0, 0, 0, 1, 0);
+    /// let morning   = pack(0, 0, 0, 9, 1, 1, 2000, 1, 0);
+    /// let afternoon = pack(0, 0, 0, 14, 1, 1, 2000, 1, 0);
     /// let hours = |n| Length::new(Unit::Hour, n);
     ///
     /// let recurrence = Recurrence {
     ///     range: Range { start: year_start, length: year },
-    ///     months: Some(vec![Month::January, Month::March]),
+    ///     months: Some(vec![Month::JANUARY, Month::MARCH]),
     ///     weeks:  Some(vec![1, 3]),
     ///     youbi:  Some(vec![Youbi::Monday, Youbi::Wednesday]),
     ///     periods_in_a_day: Some(vec![
@@ -1070,60 +1077,55 @@ impl Recurrence {
     ///
     /// assert_eq!(result.len(), 16);
     ///
-    /// let (year, month, day, hour, minute, ..) = unpack(result[0].start);
+    /// let (_, _, minute, hour, day, month, year, ..) = unpack(result[0].start);
     /// assert_eq!((year, month, day, hour, minute), (2026, 1, 5, 9, 0));
-    /// let (_, _, _, end_hour, end_minute, ..) = unpack(add(result[0].start, result[0].length));
+    /// let (_, _, end_minute, end_hour, ..) = unpack(add(result[0].start, result[0].length));
     /// assert_eq!((end_hour, end_minute), (12, 0));
     /// ```
     pub fn occurrences(&self, start: Stamp, end: Stamp) -> Vec<Range> {
         let start = self.range.start.max(start);
-        let until = if self.range.start == 0 || self.range.length == Length::default() {
-            0
+        let until = if self.range.start == Stamp::ZERO || self.range.length == Length::default() {
+            Stamp::ZERO
         } else {
             add(self.range.start, self.range.length)
         };
         let end = match (until, end) {
-            (0, end) => end,
-            (until, 0) => until,
+            (Stamp::ZERO, end) => end,
+            (until, Stamp::ZERO) => until,
             (until, end) => until.min(end),
         };
-        if start == 0 || end == 0 || start > end {
+        if start == Stamp::ZERO || end == Stamp::ZERO || start > end {
             return vec![];
         }
 
-        let date = |timestamp: Stamp| timestamp >> LAYOUT.field(DAY).position;
+        let date = |mut stamp: Stamp| {
+            stamp.set(Hour::default());
+            stamp.set(Minute::default());
+            stamp.set(Second::default());
+            stamp.set(Centisecond::default());
+            stamp
+        };
         let day = Length::new(Unit::Day, 1);
         let mut result = Vec::new();
-        let mut current = [HOUR, MINUTE, SECOND, CENTISECOND]
-            .into_iter()
-            .fold(start, |timestamp, field| LAYOUT.set(timestamp, field, 0u64));
+        let mut current = date(start);
 
-        while date(current) <= date(end) {
-            let month: u64 = LAYOUT.get(current, MONTH);
-            let nth = (LAYOUT.get::<u64>(current, DAY) - 1) / 7 + 1;
-            let selected = self
-                .months
-                .as_ref()
-                .is_none_or(|months| months.iter().any(|candidate| *candidate as u64 == month))
-                && self.weeks.as_ref().is_none_or(|weeks| weeks.contains(&(nth as u8)))
-                && self.youbi.as_ref().is_none_or(|youbis| youbis.contains(&youbi(current)));
+        while current <= date(end) {
+            let nth = (current.get::<Day>().0.value() - 1) / 7 + 1;
+            let selected =
+                self.months.as_ref().is_none_or(|months| months.contains(&current.get::<Month>()))
+                    && self.weeks.as_ref().is_none_or(|weeks| weeks.contains(&nth))
+                    && self.youbi.as_ref().is_none_or(|youbis| youbis.contains(&youbi(current)));
 
             if selected {
                 match &self.periods_in_a_day {
                     Some(periods) => {
                         for period in periods {
-                            let start = match period.start {
-                                0 => 0,
-                                time => {
-                                    [YEAR, MONTH, DAY].into_iter().fold(time, |timestamp, field| {
-                                        LAYOUT.set(
-                                            timestamp,
-                                            field,
-                                            LAYOUT.get::<u64>(current, field),
-                                        )
-                                    })
-                                }
-                            };
+                            let mut start = period.start;
+                            if start != Stamp::ZERO {
+                                start.set(current.get::<Year>());
+                                start.set(current.get::<Month>());
+                                start.set(current.get::<Day>());
+                            }
                             result.push(Range { start, length: period.length });
                         }
                     }
@@ -1145,9 +1147,13 @@ mod tests {
     use super::*;
     use crate::{En, Rng};
 
+    fn integer(stamp: Stamp) -> u64 {
+        u64::from_le_bytes(stamp.to_le_bytes())
+    }
+
     #[test]
     fn minute_arithmetic_keeps_a_zero_date_within_the_day() {
-        let at = |hour, minute| pack(0, 0, 0, hour, minute, 0, 0, 0, 0);
+        let at = |hour, minute| pack(0, 0, minute, hour, 0, 0, 0, 0, 0);
         let minutes = |n| Length::new(Unit::Minute, n);
         assert_eq!(add(at(9, 30), minutes(60)), at(10, 30));
         assert_eq!(add(at(9, 30), minutes(45)), at(10, 15));
@@ -1161,23 +1167,23 @@ mod tests {
 
     #[test]
     fn layout_positions() {
-        assert_eq!(pack(1, 0, 0, 0, 0, 0, 0, 0, 0), 1 << 33);
-        assert_eq!(pack(0, 1, 0, 0, 0, 0, 0, 0, 0), 1 << 29);
-        assert_eq!(pack(0, 0, 1, 0, 0, 0, 0, 0, 0), 1 << 24);
-        assert_eq!(pack(0, 0, 0, 1, 0, 0, 0, 0, 0), 1 << 19);
-        assert_eq!(pack(0, 0, 0, 0, 1, 0, 0, 0, 0), 1 << 13);
-        assert_eq!(pack(0, 0, 0, 0, 0, 1, 0, 0, 0), 1 << 7);
-        assert_eq!(pack(0, 0, 0, 0, 0, 0, 1, 0, 0), 1);
-        assert_eq!(pack(0, 0, 0, 0, 0, 0, 0, 1, 0), 1 << 46);
-        assert_eq!(pack(0, 0, 0, 0, 0, 0, 0, 0, 1), 1 << 47);
+        assert_eq!(integer(pack(0, 0, 0, 0, 0, 0, 1, 0, 0)), 1 << 33);
+        assert_eq!(integer(pack(0, 0, 0, 0, 0, 1, 0, 0, 0)), 1 << 29);
+        assert_eq!(integer(pack(0, 0, 0, 0, 1, 0, 0, 0, 0)), 1 << 24);
+        assert_eq!(integer(pack(0, 0, 0, 1, 0, 0, 0, 0, 0)), 1 << 19);
+        assert_eq!(integer(pack(0, 0, 1, 0, 0, 0, 0, 0, 0)), 1 << 13);
+        assert_eq!(integer(pack(0, 1, 0, 0, 0, 0, 0, 0, 0)), 1 << 7);
+        assert_eq!(integer(pack(1, 0, 0, 0, 0, 0, 0, 0, 0)), 1);
+        assert_eq!(integer(pack(0, 0, 0, 0, 0, 0, 0, 1, 0)), 1 << 46);
+        assert_eq!(integer(pack(0, 0, 0, 0, 0, 0, 0, 0, 1)), 1 << 47);
     }
 
     #[test]
     fn layout_bytes_are_little_endian_in_declaration_order() {
-        let timestamp = pack(2000, 1, 1, 0, 0, 0, 0, 1, 0);
-        assert_eq!(timestamp, 0x0000_4FA0_2100_0000);
-        assert_eq!(timestamp.to_le_bytes(), [0x00, 0x00, 0x00, 0x21, 0xA0, 0x4F, 0x00, 0x00]);
-        assert_eq!(unpack(timestamp), (2000, 1, 1, 0, 0, 0, 0, 1, 0));
+        let stamp = pack(0, 0, 0, 0, 1, 1, 2000, 1, 0);
+        assert_eq!(integer(stamp), 0x0000_4FA0_2100_0000);
+        assert_eq!(stamp.to_le_bytes(), [0x00, 0x00, 0x00, 0x21, 0xA0, 0x4F, 0x00, 0x00]);
+        assert_eq!(unpack(stamp), (0, 0, 0, 0, 1, 1, 2000, 1, 0));
     }
 
     #[test]
@@ -1190,62 +1196,36 @@ mod tests {
             let (hour, minute, second) =
                 (rng.below(24) as i64, rng.below(60) as i64, rng.below(60) as i64);
             let (centisecond, is_utc) = (rng.below(100) as i64, rng.below(2) as u64);
-            let timezone = rng.below(Zone::LIST.len()) as u64;
-            let timestamp =
-                pack(year, month, day, hour, minute, second, centisecond, is_utc, timezone);
+            let zone = rng.below(Zone::LIST.len()) as u64;
+            let stamp = pack(centisecond, second, minute, hour, day, month, year, is_utc, zone);
 
-            let p = parts(timestamp);
-            assert_eq!(p.6.value() as i64, year);
-            assert_eq!(p.5.value() as i64, month);
-            assert_eq!(p.4.value() as i64, day);
-            assert_eq!(p.3.value() as i64, hour);
-            assert_eq!(p.2.value() as i64, minute);
-            assert_eq!(p.1.value() as i64, second);
-            assert_eq!(p.0.value() as i64, centisecond);
-            assert_eq!(u64::from(p.7.value()), is_utc);
-            assert_eq!(u64::from(p.8.value()), timezone);
-            assert_eq!(from_parts(p), timestamp);
+            assert_eq!(i64::from(stamp.get::<Year>().0.value()), year);
+            assert_eq!(i64::from(stamp.get::<Month>().0.value()), month);
+            assert_eq!(i64::from(stamp.get::<Day>().0.value()), day);
+            assert_eq!(i64::from(stamp.get::<Hour>().0.value()), hour);
+            assert_eq!(i64::from(stamp.get::<Minute>().0.value()), minute);
+            assert_eq!(i64::from(stamp.get::<Second>().0.value()), second);
+            assert_eq!(i64::from(stamp.get::<Centisecond>().0.value()), centisecond);
+            assert_eq!(u64::from(stamp.get::<IsUtc>().0.value()), is_utc);
+            assert_eq!(u64::from(stamp.get::<Zone>().0.value()), zone);
+
+            let mut rebuilt = Stamp::ZERO;
+            rebuilt.set(stamp.get::<Centisecond>());
+            rebuilt.set(stamp.get::<Second>());
+            rebuilt.set(stamp.get::<Minute>());
+            rebuilt.set(stamp.get::<Hour>());
+            rebuilt.set(stamp.get::<Day>());
+            rebuilt.set(stamp.get::<Month>());
+            rebuilt.set(stamp.get::<Year>());
+            rebuilt.set(stamp.get::<IsUtc>());
+            rebuilt.set(stamp.get::<Zone>());
+            assert_eq!(rebuilt, stamp);
+            assert_eq!(Stamp::from_le_bytes(stamp.to_le_bytes()), stamp);
         }
     }
 
     #[test]
-    fn chronological_bits_order_as_the_fields_do_whatever_the_zone_is() {
-        let mut rng = Rng::new(1);
-        let date = |timestamp: Stamp| {
-            let (year, month, day, hour, minute, second, centisecond, ..) = unpack(timestamp);
-            (year, month, day, hour, minute, second, centisecond)
-        };
-        for _ in 0..3000 {
-            let at = |rng: &mut Rng| {
-                let year = rng.below(8192) as i64;
-                let month = 1 + rng.below(12) as i64;
-                let day = 1 + rng.below(days_in_month(year, month) as usize) as i64;
-                pack(
-                    year,
-                    month,
-                    day,
-                    rng.below(24) as i64,
-                    rng.below(60) as i64,
-                    rng.below(60) as i64,
-                    rng.below(100) as i64,
-                    rng.below(2) as u64,
-                    rng.below(Zone::LIST.len()) as u64,
-                )
-            };
-            let (a, b) = (at(&mut rng), at(&mut rng));
-            assert_eq!(
-                chronological(a).cmp(&chronological(b)),
-                date(a).cmp(&date(b)),
-                "{a:#X} vs {b:#X}"
-            );
-            assert_eq!(parts(chronological(a)).8.value(), 0);
-            assert_eq!(parts(chronological(a)).7.value(), 0);
-            assert_eq!(date(chronological(a)), date(a));
-        }
-    }
-
-    #[test]
-    fn timezones_are_unique_and_fit_the_field() {
+    fn zones_are_unique_and_fit_the_field() {
         let mut names = Zone::LIST.to_vec();
         names.sort();
         names.dedup();
@@ -1264,51 +1244,69 @@ mod tests {
             (Unit::Second, 258_514_588_799),
             (Unit::Centisecond, 25_851_458_879_999),
         ];
-        let first = pack(0, 1, 1, 0, 0, 0, 0, 0, 0);
-        let last = pack(8191, 12, 31, 23, 59, 59, 99, 0, 0);
+        let first = pack(0, 0, 0, 0, 1, 1, 0, 0, 0);
+        let last = pack(99, 59, 59, 23, 31, 12, 8191, 0, 0);
         for (unit, max) in maxes {
             assert_eq!(diff(first, last, unit), max, "{unit:?}");
         }
     }
 
     #[test]
+    fn decode_rejects_only_values_outside_each_field() {
+        let decode = |stamp: Stamp| Stamp::decode(&mut &stamp.to_le_bytes()[..]);
+        let last_zone = Zone::LIST.len() as u64 - 1;
+        for stamp in [
+            Stamp::ZERO,
+            pack(99, 59, 59, 23, 31, 12, 8191, 1, last_zone),
+            pack(0, 0, 0, 24, 1, 1, 2026, 0, 0),
+            pack(0, 0, 0, 0, 29, 2, 2028, 0, 0),
+            pack(0, 0, 0, 0, 0, 0, 2026, 0, 0),
+        ] {
+            assert_eq!(decode(stamp), Some(stamp), "{stamp:?}");
+        }
+        for stamp in [
+            pack(100, 0, 0, 0, 1, 1, 2026, 0, 0),
+            pack(0, 60, 0, 0, 1, 1, 2026, 0, 0),
+            pack(0, 0, 60, 0, 1, 1, 2026, 0, 0),
+            pack(0, 0, 0, 25, 1, 1, 2026, 0, 0),
+            pack(0, 0, 1, 24, 1, 1, 2026, 0, 0),
+            pack(0, 0, 0, 0, 1, 13, 2026, 0, 0),
+            pack(0, 0, 0, 0, 29, 2, 2026, 0, 0),
+            pack(0, 0, 0, 0, 1, 1, 2026, 0, last_zone + 1),
+        ] {
+            assert_eq!(decode(stamp), None, "{stamp:?}");
+        }
+    }
+
+    #[test]
     fn layout_widths_do_not_overlap_and_leave_padding_zero() {
-        let all = pack(8191, 15, 31, 31, 63, 63, 127, 1, 1023);
-        assert_eq!(all, !0u64 >> 7);
-        assert_eq!(all >> LAYOUT.bits(), 0);
+        let all = pack(127, 63, 63, 31, 31, 15, 8191, 1, 1023);
+        assert_eq!(integer(all), !0u64 >> 7);
+        assert_eq!(Stamp::BITS, 57);
     }
 
     #[test]
     fn display_format() {
         use Unit::*;
 
-        let timestamp = pack(2026, 5, 6, 7, 8, 9, 10, 1, 0);
+        let stamp = pack(10, 9, 8, 7, 6, 5, 2026, 1, 0);
+        assert_eq!(display(stamp, Language::Ja, (Year, Minute), Format::Iso), "2026-05-06 07:08");
+        assert_eq!(display(stamp, Language::Ja, (Year, Day), Format::Iso), "2026-05-06");
+        assert_eq!(display(stamp, Language::Ja, (Hour, Minute), Format::Iso), "07:08");
+        assert_eq!(display(stamp, Language::Ja, (Month, Day), Format::WithYoubi), "5/6(水)");
         assert_eq!(
-            display(timestamp, Language::Ja, (Year, Minute), Format::Iso),
-            "2026-05-06 07:08"
-        );
-        assert_eq!(display(timestamp, Language::Ja, (Year, Day), Format::Iso), "2026-05-06");
-        assert_eq!(display(timestamp, Language::Ja, (Hour, Minute), Format::Iso), "07:08");
-        assert_eq!(display(timestamp, Language::Ja, (Month, Day), Format::WithYoubi), "5/6(水)");
-        assert_eq!(
-            display(timestamp, Language::Ja, (Year, Day), Format::WithYoubi),
+            display(stamp, Language::Ja, (Year, Day), Format::WithYoubi),
             "2026年5月6日(水)"
         );
         assert_eq!(
-            display(timestamp, Language::Ja, (Year, Centisecond), Format::WithYoubi),
+            display(stamp, Language::Ja, (Year, Centisecond), Format::WithYoubi),
             "2026年5月6日(水) 7時8分9.10秒"
         );
-        assert_eq!(display(timestamp, Language::Ja, (Year, Year), Format::WithYoubi), "2026年");
-        assert_eq!(display(timestamp, Language::Ja, (Day, Day), Format::WithYoubi), "6(水)");
-        assert_eq!(display(timestamp, Language::Ja, (Minute, Second), Format::Iso), "08:09");
-        assert_eq!(
-            display(timestamp, Language::En(En::Gb), (Year, Year), Format::WithYoubi),
-            "2026"
-        );
-        assert_eq!(
-            display(timestamp, Language::En(En::Gb), (Day, Day), Format::WithYoubi),
-            "Wed 6"
-        );
+        assert_eq!(display(stamp, Language::Ja, (Year, Year), Format::WithYoubi), "2026年");
+        assert_eq!(display(stamp, Language::Ja, (Day, Day), Format::WithYoubi), "6(水)");
+        assert_eq!(display(stamp, Language::Ja, (Minute, Second), Format::Iso), "08:09");
+        assert_eq!(display(stamp, Language::En(En::Gb), (Year, Year), Format::WithYoubi), "2026");
+        assert_eq!(display(stamp, Language::En(En::Gb), (Day, Day), Format::WithYoubi), "Wed 6");
     }
 
     fn leap(year: i64) -> bool {
@@ -1353,37 +1351,37 @@ mod tests {
         (year, month, left + 1)
     }
 
-    fn centiseconds(timestamp: Stamp) -> i64 {
-        let (year, month, day, hour, minute, second, centisecond, ..) = unpack(timestamp);
+    fn centiseconds(stamp: Stamp) -> i64 {
+        let (centisecond, second, minute, hour, day, month, year, ..) = unpack(stamp);
         days_since_epoch(year, month, day) * 8_640_000
             + ((hour * 60 + minute) * 60 + second) * 100
             + centisecond
     }
 
     fn at_centiseconds(flags_from: Stamp, total: i64) -> Stamp {
-        let (.., is_utc, timezone) = unpack(flags_from);
+        let (.., is_utc, zone) = unpack(flags_from);
         let (year, month, day) = civil(total.div_euclid(8_640_000));
         let time = total.rem_euclid(8_640_000);
         let (seconds, centisecond) = (time / 100, time % 100);
         pack(
-            year,
-            month,
-            day,
-            seconds / 3600,
-            seconds % 3600 / 60,
-            seconds % 60,
             centisecond,
+            seconds % 60,
+            seconds % 3600 / 60,
+            seconds / 3600,
+            day,
+            month,
+            year,
             is_utc,
-            timezone,
+            zone,
         )
     }
 
-    fn step(timestamp: Stamp, unit: Unit, amount: i64) -> Stamp {
-        let length = Length::new(unit, amount.unsigned_abs());
-        if amount < 0 { sub(timestamp, length) } else { add(timestamp, length) }
+    fn step(stamp: Stamp, unit: Unit, value: i64) -> Stamp {
+        let length = Length::new(unit, value.unsigned_abs());
+        if value < 0 { sub(stamp, length) } else { add(stamp, length) }
     }
 
-    fn random_timestamp(rng: &mut Rng) -> Stamp {
+    fn random_stamp(rng: &mut Rng) -> Stamp {
         let year = if rng.chance(30) {
             [1900, 2000, 2100, 2400][rng.below(4)]
         } else {
@@ -1396,13 +1394,13 @@ mod tests {
             1 + rng.below(month_days(year, month) as usize) as i64
         };
         pack(
-            year,
-            month,
-            day,
-            rng.below(24) as i64,
-            rng.below(60) as i64,
-            rng.below(60) as i64,
             rng.below(100) as i64,
+            rng.below(60) as i64,
+            rng.below(60) as i64,
+            rng.below(24) as i64,
+            day,
+            month,
+            year,
             rng.below(2) as u64,
             rng.below(10) as u64,
         )
@@ -1412,12 +1410,12 @@ mod tests {
     fn calendar_arithmetic_agrees_with_a_naive_day_by_day_reference() {
         for seed in 0..3000 {
             let mut rng = Rng::new(seed);
-            let first = random_timestamp(&mut rng);
-            let second = random_timestamp(&mut rng);
+            let first = random_stamp(&mut rng);
+            let second = random_stamp(&mut rng);
             let context = format!("seed {seed}");
 
-            let date = |timestamp: Stamp| {
-                let (year, month, day, hour, minute, second, ..) = unpack(timestamp);
+            let date = |stamp: Stamp| {
+                let (_, second, minute, hour, day, month, year, ..) = unpack(stamp);
                 (year, month, day, hour, minute, second)
             };
             let (from, to) = (date(first), date(second));
@@ -1454,7 +1452,7 @@ mod tests {
                 (step(first, Unit::Hour, hours), 360_000, hours),
                 (step(first, Unit::Minute, minutes), 6_000, minutes),
             ]
-            .map(|(moved, unit, amount)| (moved, unit * amount, amount))
+            .map(|(moved, unit, value)| (moved, unit * value, value))
             {
                 assert_eq!(
                     moved,
@@ -1464,7 +1462,7 @@ mod tests {
             }
             assert_eq!(step(step(first, Unit::Day, days), Unit::Day, -days), first, "{context}");
 
-            let (year, month, day, ..) = unpack(first);
+            let (.., day, month, year, _, _) = unpack(first);
             let weekday = (days_since_epoch(year, month, day) + 4).rem_euclid(7);
             let expected = [
                 Youbi::Sunday,
@@ -1487,14 +1485,14 @@ mod tests {
             let (target_year, target_month) = (total.div_euclid(12), total.rem_euclid(12) + 1);
             let moved = unpack(step(first, Unit::Month, months));
             assert_eq!(
-                (moved.0, moved.1, moved.2),
+                (moved.6, moved.5, moved.4),
                 (target_year, target_month, day.min(month_days(target_year, target_month))),
                 "{context} months {months}"
             );
             let years = if rng.chance(30) { century - year } else { rng.below(201) as i64 - 100 };
             let moved = unpack(step(first, Unit::Year, years));
             assert_eq!(
-                (moved.0, moved.1, moved.2),
+                (moved.6, moved.5, moved.4),
                 (year + years, month, day.min(month_days(year + years, month))),
                 "{context} years {years}"
             );
@@ -1505,12 +1503,12 @@ mod tests {
                 step(first, Unit::Hour, hours),
                 step(first, Unit::Minute, minutes),
             ] {
-                let (.., second_of_minute, centisecond, is_utc, timezone) = unpack(shifted);
-                let (.., original_second, original_centisecond, original_utc, original_timezone) =
+                let (centisecond, second_of_minute, .., is_utc, zone) = unpack(shifted);
+                let (original_centisecond, original_second, .., original_utc, original_zone) =
                     unpack(first);
                 assert_eq!(
-                    (second_of_minute, centisecond, is_utc, timezone),
-                    (original_second, original_centisecond, original_utc, original_timezone),
+                    (second_of_minute, centisecond, is_utc, zone),
+                    (original_second, original_centisecond, original_utc, original_zone),
                     "{context}"
                 );
             }
@@ -1523,19 +1521,19 @@ mod tests {
             let mut rng = Rng::new(seed);
             let milliseconds =
                 (rng.below(4_000_000) as i64 - 1_000_000) * 86_400 + rng.below(86_400_000) as i64;
-            let zone = rng.below(Zone::LIST.len()) as u16;
+            let zone = Zone(u10::new(rng.below(Zone::LIST.len()) as u16));
             let (year, month, day) = civil(milliseconds.div_euclid(86_400_000));
             let time = milliseconds.rem_euclid(86_400_000);
             let expected = (
-                year,
-                month,
-                day,
-                time / 3_600_000,
-                time % 3_600_000 / 60_000,
-                time % 60_000 / 1000,
                 time % 1000 / 10,
+                time % 60_000 / 1000,
+                time % 3_600_000 / 60_000,
+                time / 3_600_000,
+                day,
+                month,
+                year,
                 1,
-                zone as u64,
+                u64::from(zone.0.value()),
             );
             assert_eq!(
                 unpack(from_unix_timestamp_in_ms(milliseconds, zone)),

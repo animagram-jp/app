@@ -236,7 +236,7 @@ mod toggle_tests {
         En, block_on,
         event::Handler as _,
         file_store::{FileStoreError, MemoryStore},
-        host::{KeyName, dom},
+        host::{Flags, KeyName, dom},
     };
 
     fn click(handler: &mut Handler<MemoryStore>, id: dom::Id) -> Vec<Command> {
@@ -244,7 +244,7 @@ mod toggle_tests {
             event_type: EventType::Click,
             id,
             key: KeyName::Other,
-            flags: 0,
+            flags: Flags::ZERO,
             value: String::new(),
             x: 0.0,
             y: 0.0,

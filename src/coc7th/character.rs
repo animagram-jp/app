@@ -12,13 +12,13 @@ use core::{
     primitive::{i8, i32, u8},
 };
 
-use arbitrary_int::{i10, u7, u9};
+use arbitrary_int::{i10, traits::Integer, u7, u9};
 
 use crate::{
-    Language,
+    Input, Language, Output, bit,
     data_struct::DataStruct,
-    field::{Fields, Layout},
     object::{Predicate, SubjectTrait},
+    parse, take,
 };
 
 pub const SCHEMA_SIZE: u32 = 256;
@@ -1203,22 +1203,90 @@ impl Skill {
 
 impl ConstParamTy_ for Skill {}
 
-const OCCUPATION_POINTS: usize = 0;
-const INTEREST_POINTS: usize = 1;
-const CHANGE: usize = 2;
-const MODIFIER: usize = 3;
-const PERCENT: usize = 4;
-
-const SKILL_LAYOUT: Layout<(u9, u9, i10, i10)> = Layout::new();
-const SKILL_WITH_PERCENT_LAYOUT: Layout<(u9, u9, i10, i10, u7)> = Layout::new();
-
-fn read_raw<T: Fields>(character: &DataStruct, id: u32, layout: &Layout<T>) -> u64 {
-    character.get(id).ok().and_then(|b| layout.decode(b)).unwrap_or(0)
+bit::field! {
+    OccupationPoints(u9),
+    InterestPoints(u9),
+    Change(i10),
+    Modifier(i10),
+    Percent(u7),
 }
 
-fn write_raw<T: Fields>(character: &mut DataStruct, id: u32, layout: &Layout<T>, raw: u64) {
-    let (word, len) = layout.encode(raw);
-    let _ = character.set(id, &word[..len], None);
+bit::composite! {
+    struct SkillValue { OccupationPoints, InterestPoints, Change, Modifier }
+}
+
+bit::composite! {
+    struct SkillValueWithPercent { OccupationPoints, InterestPoints, Change, Modifier, Percent }
+}
+
+impl Input<'_> for SkillValue {
+    fn decode(input: &mut &[u8]) -> Option<Self> {
+        Some(Self::from_le_bytes(take(input, Self::BYTES)?.try_into().ok()?))
+    }
+}
+
+impl Input<'_> for SkillValueWithPercent {
+    fn decode(input: &mut &[u8]) -> Option<Self> {
+        Some(Self::from_le_bytes(take(input, Self::BYTES)?.try_into().ok()?))
+    }
+}
+
+impl From<(u9, u9, i10, i10)> for SkillValue {
+    fn from((occupation_points, interest_points, change, modifier): (u9, u9, i10, i10)) -> Self {
+        let mut value = Self::ZERO;
+        value.set(OccupationPoints(occupation_points));
+        value.set(InterestPoints(interest_points));
+        value.set(Change(change));
+        value.set(Modifier(modifier));
+        value
+    }
+}
+
+impl From<SkillValue> for (u9, u9, i10, i10) {
+    fn from(value: SkillValue) -> Self {
+        (
+            value.get::<OccupationPoints>().0,
+            value.get::<InterestPoints>().0,
+            value.get::<Change>().0,
+            value.get::<Modifier>().0,
+        )
+    }
+}
+
+impl From<(u9, u9, i10, i10, u7)> for SkillValueWithPercent {
+    fn from(
+        (occupation_points, interest_points, change, modifier, percent): (u9, u9, i10, i10, u7),
+    ) -> Self {
+        let mut value = Self::ZERO;
+        value.set(OccupationPoints(occupation_points));
+        value.set(InterestPoints(interest_points));
+        value.set(Change(change));
+        value.set(Modifier(modifier));
+        value.set(Percent(percent));
+        value
+    }
+}
+
+impl From<SkillValueWithPercent> for (u9, u9, i10, i10, u7) {
+    fn from(value: SkillValueWithPercent) -> Self {
+        (
+            value.get::<OccupationPoints>().0,
+            value.get::<InterestPoints>().0,
+            value.get::<Change>().0,
+            value.get::<Modifier>().0,
+            value.get::<Percent>().0,
+        )
+    }
+}
+
+fn read_value<T: for<'a> Input<'a> + Default>(character: &DataStruct, id: u32) -> T {
+    character.get(id).ok().and_then(parse::<T>).unwrap_or_default()
+}
+
+fn write_value<T: Output>(character: &mut DataStruct, id: u32, value: T) {
+    let mut bytes = Vec::new();
+    value.encode(&mut bytes);
+    let _ = character.set(id, &bytes, None);
 }
 
 fn read_text(character: &DataStruct, id: u32) -> String {
@@ -1240,8 +1308,7 @@ pub trait SkillTrait<const S: Skill> {
 
     // -> occupation_points, interest_points, change, modifier
     fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
-        let raw = read_raw(character, Self::BASE_ID, &SKILL_LAYOUT);
-        SKILL_LAYOUT.unpack(raw)
+        read_value::<SkillValue>(character, Self::BASE_ID).into()
     }
 
     fn write<'a>(
@@ -1252,8 +1319,11 @@ pub trait SkillTrait<const S: Skill> {
         change: i10,
         modifier: i10,
     ) -> &'a mut DataStruct {
-        let raw = SKILL_LAYOUT.pack((occupation_points, interest_points, change, modifier));
-        write_raw(character, Self::BASE_ID, &SKILL_LAYOUT, raw);
+        write_value(
+            character,
+            Self::BASE_ID,
+            SkillValue::from((occupation_points, interest_points, change, modifier)),
+        );
         character
     }
 
@@ -1364,15 +1434,10 @@ impl LanguageOwn {
 
     // -> occupation_points, interest_points, change, modifier, name
     pub fn read(&self, character: &DataStruct) -> (u16, u16, i16, i16, String) {
-        let raw = read_raw(character, Self::BASE_ID, &SKILL_LAYOUT);
+        let (occupation_points, interest_points, change, modifier) =
+            read_value::<SkillValue>(character, Self::BASE_ID).into();
         let name = read_text(character, Self::BASE_ID + 1);
-        (
-            SKILL_LAYOUT.get(raw, OCCUPATION_POINTS),
-            SKILL_LAYOUT.get(raw, INTEREST_POINTS),
-            SKILL_LAYOUT.get(raw, CHANGE),
-            SKILL_LAYOUT.get(raw, MODIFIER),
-            name,
-        )
+        (occupation_points.value(), interest_points.value(), change.value(), modifier.value(), name)
     }
 
     pub fn write<'a>(
@@ -1384,13 +1449,13 @@ impl LanguageOwn {
         modifier: i16,
         name: &str,
     ) -> &'a mut DataStruct {
-        let raw = SKILL_LAYOUT.pack_raw(&[
-            occupation_points as u64,
-            interest_points as u64,
-            change as u64,
-            modifier as u64,
-        ]);
-        write_raw(character, Self::BASE_ID, &SKILL_LAYOUT, raw);
+        let value = SkillValue::from((
+            u9::masked_new(occupation_points),
+            u9::masked_new(interest_points),
+            i10::masked_new(change),
+            i10::masked_new(modifier),
+        ));
+        write_value(character, Self::BASE_ID, value);
         let _ = character.set(Self::BASE_ID + 1, name.as_bytes(), None);
         character
     }
@@ -1503,8 +1568,7 @@ pub trait ArtAndCraftTrait<const A: ArtAndCraft> {
 
     // -> occupation_points, interest_points, change, modifier
     fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
-        let raw = read_raw(character, Self::BASE_ID, &SKILL_LAYOUT);
-        SKILL_LAYOUT.unpack(raw)
+        read_value::<SkillValue>(character, Self::BASE_ID).into()
     }
 
     fn write<'a>(
@@ -1515,8 +1579,11 @@ pub trait ArtAndCraftTrait<const A: ArtAndCraft> {
         change: i10,
         modifier: i10,
     ) -> &'a mut DataStruct {
-        let raw = SKILL_LAYOUT.pack((occupation_points, interest_points, change, modifier));
-        write_raw(character, Self::BASE_ID, &SKILL_LAYOUT, raw);
+        write_value(
+            character,
+            Self::BASE_ID,
+            SkillValue::from((occupation_points, interest_points, change, modifier)),
+        );
         character
     }
 
@@ -1578,15 +1645,10 @@ impl ArtAndCraftCustom {
     // -> occupation_points, interest_points, change, modifier, name
     pub fn read(&self, character: &DataStruct) -> (u16, u16, i16, i16, String) {
         let [numeric_id, name_id] = read_ids(character, Self::LIST_ID, self.0 as usize);
-        let raw = read_raw(character, numeric_id, &SKILL_LAYOUT);
+        let (occupation_points, interest_points, change, modifier) =
+            read_value::<SkillValue>(character, numeric_id).into();
         let name = read_text(character, name_id);
-        (
-            SKILL_LAYOUT.get(raw, OCCUPATION_POINTS),
-            SKILL_LAYOUT.get(raw, INTEREST_POINTS),
-            SKILL_LAYOUT.get(raw, CHANGE),
-            SKILL_LAYOUT.get(raw, MODIFIER),
-            name,
-        )
+        (occupation_points.value(), interest_points.value(), change.value(), modifier.value(), name)
     }
 
     pub fn write<'a>(
@@ -1599,14 +1661,14 @@ impl ArtAndCraftCustom {
         modifier: i16,
         name: &str,
     ) -> &'a mut DataStruct {
-        let raw = SKILL_LAYOUT.pack_raw(&[
-            occupation_points as u64,
-            interest_points as u64,
-            change as u64,
-            modifier as u64,
-        ]);
+        let value = SkillValue::from((
+            u9::masked_new(occupation_points),
+            u9::masked_new(interest_points),
+            i10::masked_new(change),
+            i10::masked_new(modifier),
+        ));
         write_ids(character, Self::LIST_ID, self.0 as usize, ids);
-        write_raw(character, ids[0], &SKILL_LAYOUT, raw);
+        write_value(character, ids[0], value);
         let _ = character.set(ids[1], name.as_bytes(), None);
         character
     }
@@ -1716,8 +1778,7 @@ pub trait FightingTrait<const F: Fighting> {
 
     // -> occupation_points, interest_points, change, modifier
     fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
-        let raw = read_raw(character, Self::BASE_ID, &SKILL_LAYOUT);
-        SKILL_LAYOUT.unpack(raw)
+        read_value::<SkillValue>(character, Self::BASE_ID).into()
     }
 
     fn write<'a>(
@@ -1728,8 +1789,11 @@ pub trait FightingTrait<const F: Fighting> {
         change: i10,
         modifier: i10,
     ) -> &'a mut DataStruct {
-        let raw = SKILL_LAYOUT.pack((occupation_points, interest_points, change, modifier));
-        write_raw(character, Self::BASE_ID, &SKILL_LAYOUT, raw);
+        write_value(
+            character,
+            Self::BASE_ID,
+            SkillValue::from((occupation_points, interest_points, change, modifier)),
+        );
         character
     }
 
@@ -1797,14 +1861,15 @@ impl FightingCustom {
     // -> occupation_points, interest_points, change, modifier, name
     pub fn read(&self, character: &DataStruct) -> (u16, u16, u16, i16, i16, String) {
         let [numeric_id, name_id] = read_ids(character, Self::LIST_ID, self.0 as usize);
-        let raw = read_raw(character, numeric_id, &SKILL_WITH_PERCENT_LAYOUT);
+        let (occupation_points, interest_points, change, modifier, percent) =
+            read_value::<SkillValueWithPercent>(character, numeric_id).into();
         let name = read_text(character, name_id);
         (
-            SKILL_WITH_PERCENT_LAYOUT.get(raw, PERCENT),
-            SKILL_WITH_PERCENT_LAYOUT.get(raw, OCCUPATION_POINTS),
-            SKILL_WITH_PERCENT_LAYOUT.get(raw, INTEREST_POINTS),
-            SKILL_WITH_PERCENT_LAYOUT.get(raw, CHANGE),
-            SKILL_WITH_PERCENT_LAYOUT.get(raw, MODIFIER),
+            u16::from(percent.value()),
+            occupation_points.value(),
+            interest_points.value(),
+            change.value(),
+            modifier.value(),
             name,
         )
     }
@@ -1820,15 +1885,15 @@ impl FightingCustom {
         modifier: i16,
         name: &str,
     ) -> &'a mut DataStruct {
-        let raw = SKILL_WITH_PERCENT_LAYOUT.pack_raw(&[
-            occupation_points as u64,
-            interest_points as u64,
-            change as u64,
-            modifier as u64,
-            base_percent as u64,
-        ]);
+        let value = SkillValueWithPercent::from((
+            u9::masked_new(occupation_points),
+            u9::masked_new(interest_points),
+            i10::masked_new(change),
+            i10::masked_new(modifier),
+            u7::masked_new(base_percent),
+        ));
         write_ids(character, Self::LIST_ID, self.0 as usize, ids);
-        write_raw(character, ids[0], &SKILL_WITH_PERCENT_LAYOUT, raw);
+        write_value(character, ids[0], value);
         let _ = character.set(ids[1], name.as_bytes(), None);
         character
     }
@@ -1933,8 +1998,7 @@ pub trait FirearmsTrait<const F: Firearms> {
     const BASE_PERCENT: u16 = F.base_percent();
 
     fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
-        let raw = read_raw(character, Self::BASE_ID, &SKILL_LAYOUT);
-        SKILL_LAYOUT.unpack(raw)
+        read_value::<SkillValue>(character, Self::BASE_ID).into()
     }
 
     fn write<'a>(
@@ -1945,8 +2009,11 @@ pub trait FirearmsTrait<const F: Firearms> {
         change: i10,
         modifier: i10,
     ) -> &'a mut DataStruct {
-        let raw = SKILL_LAYOUT.pack((occupation_points, interest_points, change, modifier));
-        write_raw(character, Self::BASE_ID, &SKILL_LAYOUT, raw);
+        write_value(
+            character,
+            Self::BASE_ID,
+            SkillValue::from((occupation_points, interest_points, change, modifier)),
+        );
         character
     }
 
@@ -2012,14 +2079,15 @@ impl FirearmsCustom {
     // -> occupation_points, interest_points, change, modifier, name
     pub fn read(&self, character: &DataStruct) -> (u16, u16, u16, i16, i16, String) {
         let [numeric_id, name_id] = read_ids(character, Self::LIST_ID, self.0 as usize);
-        let raw = read_raw(character, numeric_id, &SKILL_WITH_PERCENT_LAYOUT);
+        let (occupation_points, interest_points, change, modifier, percent) =
+            read_value::<SkillValueWithPercent>(character, numeric_id).into();
         let name = read_text(character, name_id);
         (
-            SKILL_WITH_PERCENT_LAYOUT.get(raw, PERCENT),
-            SKILL_WITH_PERCENT_LAYOUT.get(raw, OCCUPATION_POINTS),
-            SKILL_WITH_PERCENT_LAYOUT.get(raw, INTEREST_POINTS),
-            SKILL_WITH_PERCENT_LAYOUT.get(raw, CHANGE),
-            SKILL_WITH_PERCENT_LAYOUT.get(raw, MODIFIER),
+            u16::from(percent.value()),
+            occupation_points.value(),
+            interest_points.value(),
+            change.value(),
+            modifier.value(),
             name,
         )
     }
@@ -2035,15 +2103,15 @@ impl FirearmsCustom {
         modifier: i16,
         name: &str,
     ) -> &'a mut DataStruct {
-        let raw = SKILL_WITH_PERCENT_LAYOUT.pack_raw(&[
-            occupation_points as u64,
-            interest_points as u64,
-            change as u64,
-            modifier as u64,
-            base_percent as u64,
-        ]);
+        let value = SkillValueWithPercent::from((
+            u9::masked_new(occupation_points),
+            u9::masked_new(interest_points),
+            i10::masked_new(change),
+            i10::masked_new(modifier),
+            u7::masked_new(base_percent),
+        ));
         write_ids(character, Self::LIST_ID, self.0 as usize, ids);
-        write_raw(character, ids[0], &SKILL_WITH_PERCENT_LAYOUT, raw);
+        write_value(character, ids[0], value);
         let _ = character.set(ids[1], name.as_bytes(), None);
         character
     }
@@ -2093,15 +2161,10 @@ impl LanguageOther {
     // -> occupation_points, interest_points, change, modifier, name
     pub fn read(&self, character: &DataStruct) -> (u16, u16, i16, i16, String) {
         let [numeric_id, name_id] = read_ids(character, Self::LIST_ID, self.0 as usize);
-        let raw = read_raw(character, numeric_id, &SKILL_LAYOUT);
+        let (occupation_points, interest_points, change, modifier) =
+            read_value::<SkillValue>(character, numeric_id).into();
         let name = read_text(character, name_id);
-        (
-            SKILL_LAYOUT.get(raw, OCCUPATION_POINTS),
-            SKILL_LAYOUT.get(raw, INTEREST_POINTS),
-            SKILL_LAYOUT.get(raw, CHANGE),
-            SKILL_LAYOUT.get(raw, MODIFIER),
-            name,
-        )
+        (occupation_points.value(), interest_points.value(), change.value(), modifier.value(), name)
     }
 
     pub fn write<'a>(
@@ -2114,14 +2177,14 @@ impl LanguageOther {
         modifier: i16,
         name: &str,
     ) -> &'a mut DataStruct {
-        let raw = SKILL_LAYOUT.pack_raw(&[
-            occupation_points as u64,
-            interest_points as u64,
-            change as u64,
-            modifier as u64,
-        ]);
+        let value = SkillValue::from((
+            u9::masked_new(occupation_points),
+            u9::masked_new(interest_points),
+            i10::masked_new(change),
+            i10::masked_new(modifier),
+        ));
         write_ids(character, Self::LIST_ID, self.0 as usize, ids);
-        write_raw(character, ids[0], &SKILL_LAYOUT, raw);
+        write_value(character, ids[0], value);
         let _ = character.set(ids[1], name.as_bytes(), None);
         character
     }
@@ -2226,8 +2289,7 @@ pub trait PilotTrait<const P: Pilot> {
     const BASE_PERCENT: u16 = 1;
 
     fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
-        let raw = read_raw(character, Self::BASE_ID, &SKILL_LAYOUT);
-        SKILL_LAYOUT.unpack(raw)
+        read_value::<SkillValue>(character, Self::BASE_ID).into()
     }
 
     fn write<'a>(
@@ -2238,8 +2300,11 @@ pub trait PilotTrait<const P: Pilot> {
         change: i10,
         modifier: i10,
     ) -> &'a mut DataStruct {
-        let raw = SKILL_LAYOUT.pack((occupation_points, interest_points, change, modifier));
-        write_raw(character, Self::BASE_ID, &SKILL_LAYOUT, raw);
+        write_value(
+            character,
+            Self::BASE_ID,
+            SkillValue::from((occupation_points, interest_points, change, modifier)),
+        );
         character
     }
 
@@ -2308,15 +2373,10 @@ impl PilotCustom {
 
     // -> occupation_points, interest_points, change, modifier, name
     pub fn read(&self, character: &DataStruct) -> (u16, u16, i16, i16, String) {
-        let raw = read_raw(character, self.numeric_id(), &SKILL_LAYOUT);
+        let (occupation_points, interest_points, change, modifier) =
+            read_value::<SkillValue>(character, self.numeric_id()).into();
         let name = read_text(character, self.name_id());
-        (
-            SKILL_LAYOUT.get(raw, OCCUPATION_POINTS),
-            SKILL_LAYOUT.get(raw, INTEREST_POINTS),
-            SKILL_LAYOUT.get(raw, CHANGE),
-            SKILL_LAYOUT.get(raw, MODIFIER),
-            name,
-        )
+        (occupation_points.value(), interest_points.value(), change.value(), modifier.value(), name)
     }
 
     pub fn write<'a>(
@@ -2328,13 +2388,13 @@ impl PilotCustom {
         modifier: i16,
         name: &str,
     ) -> &'a mut DataStruct {
-        let raw = SKILL_LAYOUT.pack_raw(&[
-            occupation_points as u64,
-            interest_points as u64,
-            change as u64,
-            modifier as u64,
-        ]);
-        write_raw(character, self.numeric_id(), &SKILL_LAYOUT, raw);
+        let value = SkillValue::from((
+            u9::masked_new(occupation_points),
+            u9::masked_new(interest_points),
+            i10::masked_new(change),
+            i10::masked_new(modifier),
+        ));
+        write_value(character, self.numeric_id(), value);
         let _ = character.set(self.name_id(), name.as_bytes(), None);
         character
     }
@@ -2459,8 +2519,7 @@ pub trait ScienceTrait<const S: Science> {
     const BASE_PERCENT: u16 = 1;
 
     fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
-        let raw = read_raw(character, Self::BASE_ID, &SKILL_LAYOUT);
-        SKILL_LAYOUT.unpack(raw)
+        read_value::<SkillValue>(character, Self::BASE_ID).into()
     }
 
     fn write<'a>(
@@ -2471,8 +2530,11 @@ pub trait ScienceTrait<const S: Science> {
         change: i10,
         modifier: i10,
     ) -> &'a mut DataStruct {
-        let raw = SKILL_LAYOUT.pack((occupation_points, interest_points, change, modifier));
-        write_raw(character, Self::BASE_ID, &SKILL_LAYOUT, raw);
+        write_value(
+            character,
+            Self::BASE_ID,
+            SkillValue::from((occupation_points, interest_points, change, modifier)),
+        );
         character
     }
 
@@ -2547,15 +2609,10 @@ impl ScienceCustom {
 
     // -> occupation_points, interest_points, change, modifier, name
     pub fn read(&self, character: &DataStruct) -> (u16, u16, i16, i16, String) {
-        let raw = read_raw(character, self.numeric_id(), &SKILL_LAYOUT);
+        let (occupation_points, interest_points, change, modifier) =
+            read_value::<SkillValue>(character, self.numeric_id()).into();
         let name = read_text(character, self.name_id());
-        (
-            SKILL_LAYOUT.get(raw, OCCUPATION_POINTS),
-            SKILL_LAYOUT.get(raw, INTEREST_POINTS),
-            SKILL_LAYOUT.get(raw, CHANGE),
-            SKILL_LAYOUT.get(raw, MODIFIER),
-            name,
-        )
+        (occupation_points.value(), interest_points.value(), change.value(), modifier.value(), name)
     }
 
     pub fn write<'a>(
@@ -2567,13 +2624,13 @@ impl ScienceCustom {
         modifier: i16,
         name: &str,
     ) -> &'a mut DataStruct {
-        let raw = SKILL_LAYOUT.pack_raw(&[
-            occupation_points as u64,
-            interest_points as u64,
-            change as u64,
-            modifier as u64,
-        ]);
-        write_raw(character, self.numeric_id(), &SKILL_LAYOUT, raw);
+        let value = SkillValue::from((
+            u9::masked_new(occupation_points),
+            u9::masked_new(interest_points),
+            i10::masked_new(change),
+            i10::masked_new(modifier),
+        ));
+        write_value(character, self.numeric_id(), value);
         let _ = character.set(self.name_id(), name.as_bytes(), None);
         character
     }
@@ -2648,8 +2705,7 @@ pub trait SurvivalTrait<const S: Survival> {
     const BASE_PERCENT: u16 = 10;
 
     fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
-        let raw = read_raw(character, Self::BASE_ID, &SKILL_LAYOUT);
-        SKILL_LAYOUT.unpack(raw)
+        read_value::<SkillValue>(character, Self::BASE_ID).into()
     }
 
     fn write<'a>(
@@ -2660,8 +2716,11 @@ pub trait SurvivalTrait<const S: Survival> {
         change: i10,
         modifier: i10,
     ) -> &'a mut DataStruct {
-        let raw = SKILL_LAYOUT.pack((occupation_points, interest_points, change, modifier));
-        write_raw(character, Self::BASE_ID, &SKILL_LAYOUT, raw);
+        write_value(
+            character,
+            Self::BASE_ID,
+            SkillValue::from((occupation_points, interest_points, change, modifier)),
+        );
         character
     }
 
@@ -2716,15 +2775,10 @@ impl SurvivalCustom {
 
     // -> occupation_points, interest_points, change, modifier, name
     pub fn read(&self, character: &DataStruct) -> (u16, u16, i16, i16, String) {
-        let raw = read_raw(character, self.numeric_id(), &SKILL_LAYOUT);
+        let (occupation_points, interest_points, change, modifier) =
+            read_value::<SkillValue>(character, self.numeric_id()).into();
         let name = read_text(character, self.name_id());
-        (
-            SKILL_LAYOUT.get(raw, OCCUPATION_POINTS),
-            SKILL_LAYOUT.get(raw, INTEREST_POINTS),
-            SKILL_LAYOUT.get(raw, CHANGE),
-            SKILL_LAYOUT.get(raw, MODIFIER),
-            name,
-        )
+        (occupation_points.value(), interest_points.value(), change.value(), modifier.value(), name)
     }
 
     pub fn write<'a>(
@@ -2736,13 +2790,13 @@ impl SurvivalCustom {
         modifier: i16,
         name: &str,
     ) -> &'a mut DataStruct {
-        let raw = SKILL_LAYOUT.pack_raw(&[
-            occupation_points as u64,
-            interest_points as u64,
-            change as u64,
-            modifier as u64,
-        ]);
-        write_raw(character, self.numeric_id(), &SKILL_LAYOUT, raw);
+        let value = SkillValue::from((
+            u9::masked_new(occupation_points),
+            u9::masked_new(interest_points),
+            i10::masked_new(change),
+            i10::masked_new(modifier),
+        ));
+        write_value(character, self.numeric_id(), value);
         let _ = character.set(self.name_id(), name.as_bytes(), None);
         character
     }
@@ -3484,7 +3538,7 @@ mod skill_storage_tests {
                         "seed {seed} step {step} position {position}"
                     );
                     if let Ok(bytes) = c.get(skill.base_id()) {
-                        assert_eq!(bytes.len(), SKILL_LAYOUT.bytes(), "seed {seed}");
+                        assert_eq!(bytes.len(), SkillValue::BYTES, "seed {seed}");
                     }
                 }
             }
@@ -3500,7 +3554,7 @@ mod skill_storage_tests {
     #[test]
     fn a_skill_value_shorter_than_its_layout_reads_as_zero() {
         let mut c = character();
-        for length in 0..SKILL_LAYOUT.bytes() {
+        for length in 0..SkillValue::BYTES {
             let _ = c.set(Skill::Accounting.base_id(), &[0xff; 8][..length], None);
             let (occupation, interest, change, modifier) = Accounting.read(&c);
             assert_eq!(

@@ -12,20 +12,23 @@ If "ORG_CONTRIBUTING.md" does not exist in the repository root of your working e
 curl -fsSL -H "Accept: application/vnd.github.raw+json" "https://api.github.com/repos/animagram-jp/.github/contents/.github/CONTRIBUTING.md?ref=main" -o "ORG_CONTRIBUTING.md"
 ```
 
-- Value 0...0 means null in each field. 1 byte = 1 octet = 8 bits.
-- 数値はLE。bit fieldは宣言順にbit 0から上位へ置き、比較に使う区間は幅を固定する。
+- ホスト機器には、1 byte = 1 octet = 8 bits、little endianのレジスターを現状想定している。
+- Value 0...0 means null in each field.
+- メモリ上の方向は、レジスターが読み出す時に動く方向(アドレス・桁の重み・添字が増える方向)を正とする。関数スコープ内で完結するデータを除き、定義は宣言順を正方向に揃える。bit fieldは宣言順にbit 0から上位へ置く。
+- データは[u8]として定義し、比較は幅を固定したbit rangeをuN(Nは8の倍数に限らない)のscalarとして解釈して行う。タプル・配列・derive(Ord)の辞書順(先頭が最上位)で比較しない。
+- 外部(人間の表記、JS、サーバー)の期待する順序との整合は、Commandの組み立て直前とEventのデコード直後でのみ取る。
 - moduleなどitemは、概念を表す名詞として語彙選定する。
 - 関数名は、namespaceで上位に既に並ぶ語彙・引数に現れている目的語は含まず、その上で{verb}_{adje
   ctive}_{object}のように命名する。
 - script中の変数であっても、略語を用いない。但し、シグネチャでは無い関数内matchやiterator処理では、最初の一文字で表してよい。
 - コメントによる仕切り線は `//(/) === text ===`、または`// --- text ---`とする。`/* */`はなるべく使わない。
-- hrefの値は、相対パスは"./"、絶対パスは"/"で必ず始める。原則、相対パスに統一する。
+- hrefの値は、相対パスは"./"または"../"、絶対パスは"/"で必ず始める。原則、相対パスに統一する。
 - HTMLのID, フォーマット規則は[ORG_CONTRIBUTING.md](./ORG_CONTRIBUTING.md)に従う。
 - HTMLは各アプリごとにindex.html 1ファイル完結とする。
 - FOUC防止のためHTMLのbodyにhidden属性を付与しておくのが望ましい。
 - HTML中のテキストは言語に左右されず、一切変化しない要素のみ静的に書く。aria-labelは必要なものだけ英語で書いておく。
 - 連番のタグ要素は、必ず有限に定めた最大数に基づき、全て書き込みhiddenを付与する。
-- divは使用せず、セマンティックタグを選定して使用する。
+- divは原則使用せず、セマンティックタグを選定して使用する。
 - 同列要素の中に段落要素を格納する時、タグを子に分離し、レイアウトをCSSに任せない。
 
 ---

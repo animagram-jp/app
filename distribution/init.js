@@ -413,12 +413,12 @@ function button_index(e) {
 }
 
 function key_flags(e) {
-    return (button_index(e) << 1)
-        | (e.altKey ? 1 << 3 : 0)
-        | (e.ctrlKey ? 1 << 4 : 0)
-        | (e.metaKey ? 1 << 5 : 0)
-        | (e.repeat ? 1 << 6 : 0)
-        | (e.shiftKey ? 1 << 7 : 0);
+    return button_index(e)
+        | (e.altKey ? 1 << 2 : 0)
+        | (e.ctrlKey ? 1 << 3 : 0)
+        | (e.metaKey ? 1 << 4 : 0)
+        | (e.repeat ? 1 << 5 : 0)
+        | (e.shiftKey ? 1 << 6 : 0);
 }
 
 function root_of(target) {
@@ -554,7 +554,7 @@ function bind() {
  *  Pointer button. index == MouseEvent.button
  */
 const BUTTONS = [
-    "primary",
+    "main",
     "auxiliary",
     "secondary",
 ];
@@ -573,7 +573,7 @@ const FULLSCREEN_EVENTS = [
     "fullscreenerror",
 ];
 
-const ROOTS = ["header", "main", "modal", "form", "toast"]
+const ROOTS = ["header", "main", "dialog", "form", "toast"]
     .map(id => document.getElementById(id));
 
 /**
@@ -717,13 +717,14 @@ const KEY_NAMES = [
  */
 const TAGS = [
     "",
+    "a",
     "article",
     "body",
     "button",
     "dd",
+    "dialog",
     "div",
     "dl",
-    "drawer",
     "dt",
     "fieldset",
     "footer",
@@ -738,7 +739,6 @@ const TAGS = [
     "label",
     "li",
     "main",
-    "modal",
     "nav",
     "ol",
     "option",
@@ -769,6 +769,7 @@ const ATTRIBUTES = [
     "data-surround",
     "disabled",
     "hidden",
+    "href",
     "lang",
 ];
 

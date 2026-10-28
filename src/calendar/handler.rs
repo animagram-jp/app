@@ -37,8 +37,8 @@ use crate::{
     object::Predicate,
     parse, stringify,
     time::{
-        CENTISECOND, DAY, Format, HOUR, IS_UTC, LAYOUT, Length, MINUTE, SECOND, Stamp,
-        Unit as TimeUnit, add, diff, display, from_unix_timestamp_in_ms, shift, sub, youbi,
+        self, Format, Length, Stamp, Unit as TimeUnit, Zone, add, diff, display,
+        from_unix_timestamp_in_ms, shift, sub, youbi,
     },
 };
 
@@ -102,7 +102,7 @@ struct Placed {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum BandKind {
-    Date(u64),
+    Date(Stamp),
 }
 
 #[derive(Clone, Copy)]
@@ -138,7 +138,7 @@ pub struct Handler<S: FileStore> {
     resources:            u32,
     pub now_in_ms:        u64,
     today:                Stamp,
-    base:                 u64,
+    base:                 Stamp,
     placed:               RefCell<Vec<Placed>>,
     bands:                RefCell<Vec<Band>>,
     editing:              Option<Editing>,
@@ -1203,7 +1203,7 @@ impl<S: FileStore> Handler<S> {
                 rem(height.get(), self.rem_in_px),
             ));
             let BandKind::Date(day) = band.kind;
-            let scope = if LAYOUT.get::<u64>(day, DAY) == 1 {
+            let scope = if day.get::<time::Day>().0.value() == 1 {
                 MONTH_DAY
             } else {
                 (TimeUnit::Day, TimeUnit::Day)
@@ -1604,13 +1604,16 @@ impl<S: FileStore> event::Handler for Handler<S> {
         now_in_ms: u64,
         timezone_offset_minutes: i32,
     ) -> Self {
-        let utc = from_unix_timestamp_in_ms(now_in_ms as i64, 0);
+        let utc = from_unix_timestamp_in_ms(now_in_ms as i64, Zone::default());
         let offset =
             Length::new(TimeUnit::Minute, u64::from(timezone_offset_minutes.unsigned_abs()));
         let local = if timezone_offset_minutes < 0 { sub(utc, offset) } else { add(utc, offset) };
-        let today = [HOUR, MINUTE, SECOND, CENTISECOND, IS_UTC]
-            .into_iter()
-            .fold(local, |timestamp, field| LAYOUT.set(timestamp, field, 0u64));
+        let mut today = local;
+        today.set(time::Hour::default());
+        today.set(time::Minute::default());
+        today.set(time::Second::default());
+        today.set(time::Centisecond::default());
+        today.set(time::IsUtc::default());
         let mut handler = Self::new(viewport_width_in_px, today, rem_in_px);
         handler.now_in_ms = now_in_ms;
         match store::open::<S>(STORE).await {
@@ -1896,7 +1899,7 @@ mod tests {
         data_struct::{ID_CREATED_AT, ID_MODIFIED_AT, encode_time},
         event::Handler as _,
         file_store::{FileStoreError, MemoryHandles, MemoryStore, cases::FaultInjector},
-        host::KeyName,
+        host::{Flags, KeyName},
         time::pack,
     };
 
@@ -1914,7 +1917,7 @@ mod tests {
     }
 
     fn today() -> Stamp {
-        pack(2026, 10, 2, 0, 0, 0, 0, 0, 0)
+        pack(0, 0, 0, 0, 2, 10, 2026, 0, 0)
     }
 
     fn at(minutes: u32) -> Length {
@@ -1933,7 +1936,7 @@ mod tests {
         ] {
             let handler = block_on(Handler::<MemoryStore>::ready(VIEWPORT, 0.0, REM, now, offset));
             let (year, month, day) = expected;
-            assert_eq!(handler.base(), pack(year, month, day, 0, 0, 0, 0, 0, 0), "{now} {offset}");
+            assert_eq!(handler.base(), pack(0, 0, 0, 0, day, month, year, 0, 0), "{now} {offset}");
         }
     }
     const ROOT: (f64, f64) = (0.0, 40.0);
@@ -1943,7 +1946,7 @@ mod tests {
             event_type: EventType::Click,
             id,
             key: KeyName::Other,
-            flags: 0,
+            flags: Flags::ZERO,
             value: String::new(),
             x,
             y,
@@ -2530,7 +2533,7 @@ mod tests {
         (ROOT.0 + AXIS_PX, ROOT.1 + HEAD_PX)
     }
 
-    fn drag_fixture() -> (Handler<MemoryStore>, u64) {
+    fn drag_fixture() -> (Handler<MemoryStore>, Stamp) {
         let base = today();
         let mut handler = Handler::<MemoryStore>::new(VIEWPORT, base, REM);
         load(&mut handler, vec![entry(1, base, 101, 600, 660), entry(2, base, 102, 540, 600)]);
@@ -2781,7 +2784,7 @@ mod tests {
         assert_eq!(handler.grid().resolve(&bx).unwrap().cells, [Cell { day: 1, resource: 1 }]);
     }
 
-    fn multi_fixture(view: Axis) -> (Handler<MemoryStore>, u64) {
+    fn multi_fixture(view: Axis) -> (Handler<MemoryStore>, Stamp) {
         let base = today();
         let mut handler = Handler::<MemoryStore>::new(VIEWPORT, base, REM);
         let mut spanning = entry(1, base, 102, 600, 660);
@@ -2810,7 +2813,7 @@ mod tests {
         end(handler);
     }
 
-    fn places<S: FileStore>(handler: &Handler<S>) -> Vec<(u64, u128)> {
+    fn places<S: FileStore>(handler: &Handler<S>) -> Vec<(Stamp, u128)> {
         appointment::Places::read(&appointments(&handler)[0])
             .iter()
             .map(|place| (place.day, place.resource))
@@ -3868,7 +3871,7 @@ mod tests {
     }
 
     fn month_first() -> Stamp {
-        pack(2026, 9, 28, 0, 0, 0, 0, 0, 0)
+        pack(0, 0, 0, 0, 28, 9, 2026, 0, 0)
     }
 
     fn month_point(day: u32, row: Option<u32>) -> (f64, f64) {
@@ -3892,7 +3895,7 @@ mod tests {
             .collect()
     }
 
-    fn multi(id: u32, places: &[(u64, u128)]) -> DataStruct {
+    fn multi(id: u32, places: &[(Stamp, u128)]) -> DataStruct {
         let places: Vec<Place> =
             places.iter().map(|(day, resource)| Place { day: *day, resource: *resource }).collect();
         appointment::new(id, &places, at(600), at(660), "m", CATEGORY_CODE, STATUS_CODE, "")

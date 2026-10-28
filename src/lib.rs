@@ -41,6 +41,7 @@ use crate::{
 
 pub mod app;
 pub mod arena;
+pub mod bit;
 #[cfg(feature = "calendar")]
 pub mod calendar;
 #[cfg(feature = "coc7th")]
@@ -49,7 +50,6 @@ pub mod coc7th;
 pub mod credential;
 pub mod data_struct;
 pub mod event;
-pub mod field;
 pub mod file_store;
 pub mod host;
 pub mod list;

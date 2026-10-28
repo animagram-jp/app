@@ -128,13 +128,13 @@ body > header {
     inline-size: 8rem;
 }
 
-#modal form {
+#dialog form {
     display:        flex;
     flex-direction: column;
     padding:        1rem;
 }
 
-#modal dl {
+#dialog dl {
     display:               grid;
     grid-template-columns: auto 1fr;
 }

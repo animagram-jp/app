@@ -46,11 +46,6 @@ pub fn now_in_ms() -> u64 {
     }
 }
 
-fn is_secondary(event: &CanvasEvent) -> bool {
-    matches!(event.event_type, EventType::PointerDown | EventType::PointerUp)
-        && event.button() != PointerButton::Primary
-}
-
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 pub struct App {
     pointer:    Pointer,
@@ -82,7 +77,9 @@ impl App {
 
         match event {
             Event::Canvas(canvas_event) => {
-                if is_secondary(&canvas_event) {
+                if matches!(canvas_event.event_type, EventType::PointerDown | EventType::PointerUp)
+                    && canvas_event.button() != PointerButton::Main
+                {
                     return handler.process_canvas(&canvas_event, pointer);
                 }
                 if canvas_event.event_type == EventType::PointerDown && !pointer.is_down() {
@@ -243,7 +240,7 @@ mod tests {
     }
 
     fn pointer_frame(event_type: u8, id: &dom::Id, x: f32, pointer_id: u32, time: f64) -> Vec<u8> {
-        button_frame(event_type, id, x, pointer_id, time, PointerButton::Primary)
+        button_frame(event_type, id, x, pointer_id, time, PointerButton::Main)
     }
 
     fn button_frame(
@@ -259,7 +256,7 @@ mod tests {
         frame.push(event_type);
         id.encode(&mut frame);
         frame.push(0);
-        frame.push((button as u8) << 1);
+        frame.push(button as u8);
         str::encode("", &mut frame);
         x.encode(&mut frame);
         0.0f32.encode(&mut frame);

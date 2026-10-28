@@ -7,6 +7,8 @@ use core::{
     result::Result::{self, Err, Ok},
 };
 
+use arbitrary_int::{traits::Integer, u4, u5, u13};
+
 use crate::{
     WireError,
     data_struct::{DataStruct, ID_CREATED_AT, ID_IDENTITY, ID_MODIFIED_AT, encode_time},
@@ -14,7 +16,7 @@ use crate::{
     list::ListError,
     object::Predicate,
     parse,
-    time::{DAY, LAYOUT, Length, MONTH, Unit, YEAR, days_in_month},
+    time::{Day, Length, Month, Stamp, Unit, Year, days_in_month},
 };
 
 // --- layout ---
@@ -229,7 +231,7 @@ pub mod appointment {
 
     impl Input<'_> for Place {
         fn decode(input: &mut &[u8]) -> Option<Self> {
-            Some(Self { day: u64::decode(input)?, resource: u128::decode(input)? })
+            Some(Self { day: Stamp::decode(input)?, resource: u128::decode(input)? })
         }
     }
 
@@ -298,7 +300,33 @@ pub mod appointment {
     }
 
     predicate!(Uid, Field::Uid, u128);
-    predicate!(Places, Field::Places, Vec<Place>);
+    pub struct Places;
+
+    impl Predicate<1> for Places {
+        type Parsed = Vec<Place>;
+        type Subject = Field;
+        const VARIANT: Field = Field::Places;
+
+        fn parse(bytes: [Option<&[u8]>; 1]) -> Self::Parsed {
+            let Some(mut input) = bytes[0] else {
+                return Vec::new();
+            };
+            let Some(count) = u32::decode(&mut input) else {
+                return Vec::new();
+            };
+            input
+                .chunks_exact(Stamp::BYTES + size_of::<u128>())
+                .take(count as usize)
+                .filter_map(parse::<Place>)
+                .collect()
+        }
+
+        fn encode(value: &Self::Parsed) -> [Option<Vec<u8>>; 1] {
+            let mut output = Vec::new();
+            value.encode(&mut output);
+            [Some(output)]
+        }
+    }
     predicate!(Title, Field::Title, String);
     predicate!(Category, Field::Category, String);
     predicate!(Status, Field::Status, String);
@@ -427,7 +455,7 @@ pub mod appointment {
             .map(|a| {
                 let (start, end) = Range::read(a);
                 let cells = Places::read(a);
-                let anchor = cells.first().map_or(0, |c| c.day);
+                let anchor = cells.first().map_or(Stamp::ZERO, |c| c.day);
                 let places: Vec<Value> = cells
                     .iter()
                     .map(|c| json!({"day": date(c.day), "resource_uid": format!("{}", c.resource)}))
@@ -545,12 +573,12 @@ pub fn parse_time(text: &str) -> Result<Length, DataError> {
 /// ```
 /// # use app::calendar::data::parse_date;
 /// # use app::time::pack;
-/// assert_eq!(parse_date("2026-10-02").unwrap(), pack(2026, 10, 2, 0, 0, 0, 0, 0, 0));
+/// assert_eq!(parse_date("2026-10-02").unwrap(), pack(0, 0, 0, 0, 2, 10, 2026, 0, 0));
 /// assert!(parse_date("2026/10/02").is_err());
 /// assert!(parse_date("2026-02-29").is_err());
 /// assert!(parse_date("2028-02-29").is_ok());
 /// ```
-pub fn parse_date(text: &str) -> Result<u64, DataError> {
+pub fn parse_date(text: &str) -> Result<Stamp, DataError> {
     let mut parts = text.split('-');
     let (Some(year), Some(month), Some(day), None) =
         (parts.next(), parts.next(), parts.next(), parts.next())
@@ -563,9 +591,11 @@ pub fn parse_date(text: &str) -> Result<u64, DataError> {
     if !(1..=12).contains(&month) || !(1..=days_in_month(year, month)).contains(&day) {
         return Err(format_error("day", text));
     }
-    Ok([(YEAR, year), (MONTH, month), (DAY, day)]
-        .into_iter()
-        .fold(0, |timestamp, (field, value)| LAYOUT.set(timestamp, field, value)))
+    let mut stamp = Stamp::ZERO;
+    stamp.set(Day(u5::masked_new(day as u64)));
+    stamp.set(Month(u4::masked_new(month as u64)));
+    stamp.set(Year(u13::masked_new(year as u64)));
+    Ok(stamp)
 }
 
 fn format_error(kind: &str, text: &str) -> DataError {
@@ -580,7 +610,10 @@ mod tests {
         appointment::{self, Place, Places, RESOURCE, Range, STATUS, Uid, export, import},
         *,
     };
-    use crate::file_store::{MemoryHandles, MemoryStore};
+    use crate::{
+        file_store::{MemoryHandles, MemoryStore},
+        time::pack,
+    };
 
     const OTHER: u32 = 9;
 
@@ -751,13 +784,24 @@ mod tests {
     }
 
     #[test]
+    fn a_broken_place_drops_alone() {
+        let valid = Place { day: pack(0, 0, 0, 0, 2, 10, 2026, 0, 0), resource: 1 };
+        let broken = Place { day: pack(0, 0, 0, 0, 2, 13, 2026, 0, 0), resource: 2 };
+        let [Some(bytes)] = Places::encode(&[valid, broken, valid].to_vec()) else {
+            unreachable!()
+        };
+        assert_eq!(Places::parse([Some(&bytes)]), [valid, valid]);
+        assert_eq!(Places::parse([Some(&bytes[..bytes.len() - 1])]), [valid]);
+    }
+
+    #[test]
     fn a_reissued_store_id_does_not_revive_a_reference() {
         let disk = MemoryHandles::default();
         let mut store = MemoryStore::new(disk.clone()).unwrap();
         let (booked, gone) = (store.issue_id(), store.issue_id());
         let mut booking = appointment::new(
             booked,
-            &[Place { day: 1, resource: 42 }],
+            &[Place { day: pack(1, 0, 0, 0, 0, 0, 0, 0, 0), resource: 42 }],
             at(10, 0),
             at(11, 0),
             "t",

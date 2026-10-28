@@ -8,10 +8,12 @@ use core::{
     primitive::{bool, char, f32, f64, i32, str, u8, u16, u32},
 };
 
+use arbitrary_int::{traits::Integer, u1, u2};
+
 use crate::{
     Error, Input, Output, WireError,
+    bit::{self, Field},
     event::{Event, FetchChunk, WindowEvent},
-    field::Field,
 };
 
 // === send operation ===
@@ -204,7 +206,7 @@ pub struct CanvasEvent {
     pub event_type: EventType,
     pub id:         dom::Id,
     pub key:        KeyName,
-    pub flags:      u8,
+    pub flags:      Flags,
     pub value:      String,
     pub x:          f64,
     pub y:          f64,
@@ -214,12 +216,23 @@ pub struct CanvasEvent {
     pub pointer_id: u32,
 }
 
-const BUTTON: Field = Field::new(1, 2); // bit 1-2
-const ALT: Field = Field::new(3, 1); // bit 3
-const CTRL: Field = Field::new(4, 1); // bit 4
-const META: Field = Field::new(5, 1); // bit 5
-const REPEAT: Field = Field::new(6, 1); // bit 6
-const SHIFT: Field = Field::new(7, 1); // bit 7
+bit::field! {
+    pub Alt(u1),
+    pub Ctrl(u1),
+    pub Meta(u1),
+    pub Repeat(u1),
+    pub Shift(u1),
+}
+
+bit::composite! {
+    pub struct Flags { PointerButton, Alt, Ctrl, Meta, Repeat, Shift }
+}
+
+impl Input<'_> for Flags {
+    fn decode(input: &mut &[u8]) -> Option<Self> {
+        Some(Self::from_le_bytes([u8::decode(input)?]))
+    }
+}
 
 impl CanvasEvent {
     pub fn root_origin(&self) -> (f64, f64) {
@@ -227,27 +240,27 @@ impl CanvasEvent {
     }
 
     pub fn alt(&self) -> bool {
-        ALT.get::<u8>(self.flags as u64) == 1
+        self.flags.get::<Alt>().0 == u1::MAX
     }
 
     pub fn ctrl(&self) -> bool {
-        CTRL.get::<u8>(self.flags as u64) == 1
+        self.flags.get::<Ctrl>().0 == u1::MAX
     }
 
     pub fn meta(&self) -> bool {
-        META.get::<u8>(self.flags as u64) == 1
+        self.flags.get::<Meta>().0 == u1::MAX
     }
 
     pub fn repeat(&self) -> bool {
-        REPEAT.get::<u8>(self.flags as u64) == 1
+        self.flags.get::<Repeat>().0 == u1::MAX
     }
 
     pub fn shift(&self) -> bool {
-        SHIFT.get::<u8>(self.flags as u64) == 1
+        self.flags.get::<Shift>().0 == u1::MAX
     }
 
     pub fn button(&self) -> PointerButton {
-        PointerButton::from_u8(BUTTON.get::<u8>(self.flags as u64))
+        self.flags.get::<PointerButton>()
     }
 }
 
@@ -255,22 +268,38 @@ impl CanvasEvent {
 ///
 /// ```
 /// # use app::host::PointerButton;
-/// assert_eq!(PointerButton::from_u8(2), PointerButton::Primary);
+/// assert_eq!(PointerButton::from_u8(2), PointerButton::Main);
 /// assert_eq!(PointerButton::from_u8(4), PointerButton::Other);
 /// ```
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum PointerButton {
     Auxiliary = 1,
-    Primary,
+    Main,
     Secondary,
     Other = 0,
+}
+
+impl Field for PointerButton {
+    type Value = u2;
+}
+
+impl From<u2> for PointerButton {
+    fn from(value: u2) -> Self {
+        Self::from_u8(value.value())
+    }
+}
+
+impl From<PointerButton> for u2 {
+    fn from(button: PointerButton) -> Self {
+        u2::new(button as u8)
+    }
 }
 
 impl PointerButton {
     pub fn from_u8(value: u8) -> Self {
         match value {
             1 => Self::Auxiliary,
-            2 => Self::Primary,
+            2 => Self::Main,
             3 => Self::Secondary,
             _ => Self::Other,
         }
@@ -284,6 +313,7 @@ pub enum Attribute {
     DataSurround,
     Disabled,
     Hidden,
+    Href,
     Lang,
 }
 
@@ -878,7 +908,7 @@ mod event_frame_tests {
                     assert_eq!(event.key, KeyName::from_u8(key), "seed {seed}");
                     assert_eq!(
                         (&event.id, &event.value, event.flags),
-                        (&id, &value, flags),
+                        (&id, &value, Flags::from_le_bytes([flags])),
                         "seed {seed}"
                     );
                     let [x, y, local_x, local_y] = coordinates.map(f64::from);
@@ -1001,13 +1031,14 @@ pub mod dom {
 
     #[derive(Debug, Clone, Copy, PartialEq)]
     pub enum Tag {
-        Article = 1,
+        A = 1,
+        Article,
         Body,
         Button,
         Dd,
+        Dialog,
         Div,
         Dl,
-        Drawer, // <dialog id="*drawer*">
         Dt,
         Fieldset,
         Footer,
@@ -1022,7 +1053,6 @@ pub mod dom {
         Label,
         Li,
         Main,
-        Modal, // <dialog id="*modal*">
         Nav,
         Ol,
         Option,
@@ -1049,7 +1079,7 @@ pub mod dom {
         ///
         /// ```
         /// # use app::host::dom::Tag;
-        /// assert_eq!(Tag::Article.as_u8(), 1);
+        /// assert_eq!(Tag::A.as_u8(), 1);
         /// assert_eq!(Tag::Other.as_u8(), 0);
         /// ```
         pub fn as_u8(&self) -> u8 {
@@ -1058,33 +1088,33 @@ pub mod dom {
 
         /// ```
         /// # use app::host::dom::Tag;
-        /// assert_eq!(Tag::from_u8(1), Tag::Article);
+        /// assert_eq!(Tag::from_u8(1), Tag::A);
         /// assert_eq!(Tag::from_u8(200), Tag::Other);
         /// ```
         pub fn from_u8(value: u8) -> Self {
             match value {
-                1 => Self::Article,
-                2 => Self::Body,
-                3 => Self::Button,
-                4 => Self::Dd,
-                5 => Self::Div,
-                6 => Self::Dl,
-                7 => Self::Drawer,
-                8 => Self::Dt,
-                9 => Self::Fieldset,
-                10 => Self::Footer,
-                11 => Self::Form,
-                12 => Self::H1,
-                13 => Self::H2,
-                14 => Self::H3,
-                15 => Self::Header,
-                16 => Self::Hgroup,
-                17 => Self::Html,
-                18 => Self::Input,
-                19 => Self::Label,
-                20 => Self::Li,
-                21 => Self::Main,
-                22 => Self::Modal,
+                1 => Self::A,
+                2 => Self::Article,
+                3 => Self::Body,
+                4 => Self::Button,
+                5 => Self::Dd,
+                6 => Self::Dialog,
+                7 => Self::Div,
+                8 => Self::Dl,
+                9 => Self::Dt,
+                10 => Self::Fieldset,
+                11 => Self::Footer,
+                12 => Self::Form,
+                13 => Self::H1,
+                14 => Self::H2,
+                15 => Self::H3,
+                16 => Self::Header,
+                17 => Self::Hgroup,
+                18 => Self::Html,
+                19 => Self::Input,
+                20 => Self::Label,
+                21 => Self::Li,
+                22 => Self::Main,
                 23 => Self::Nav,
                 24 => Self::Ol,
                 25 => Self::Option,
@@ -1157,6 +1187,7 @@ mod wire_tests {
     use crate::{
         Rng,
         arena::{ArenaError, PanicError},
+        bit::Composite,
         event::EventError,
     };
 
@@ -1257,7 +1288,7 @@ mod wire_tests {
     }
 
     fn id_bytes() -> [u8; 11] {
-        [2, 15, 255, 255, 255, 255, 3, 3, 0, 0, 0]
+        [2, 16, 255, 255, 255, 255, 4, 3, 0, 0, 0]
     }
 
     fn header_button_3() -> dom::Id {
@@ -1274,7 +1305,7 @@ mod wire_tests {
             let button = PointerButton::from_u8(i as u8 + 1);
             assert_eq!(&format!("{button:?}").to_lowercase(), name, "rank {i}");
         }
-        assert_eq!(js, ["primary", "auxiliary", "secondary"]);
+        assert_eq!(js, ["main", "auxiliary", "secondary"]);
         assert_eq!(PointerButton::from_u8(js.len() as u8 + 1), PointerButton::Other);
         assert_eq!(PointerButton::from_u8(0), PointerButton::Other);
     }
@@ -1382,6 +1413,7 @@ mod wire_tests {
                     (Attribute::DataSurround as u16, "data-surround"),
                     (Attribute::Disabled as u16, "disabled"),
                     (Attribute::Hidden as u16, "hidden"),
+                    (Attribute::Href as u16, "href"),
                     (Attribute::Lang as u16, "lang"),
                 ],
             ),
@@ -1483,37 +1515,42 @@ mod wire_tests {
                 rest.chars().take_while(char::is_ascii_digit).collect::<String>().parse().unwrap()
             })
             .collect();
+        assert!(body.contains("return button_index(e)\n"));
+        assert_eq!(<Flags as Composite<PointerButton>>::POSITION, 0);
         assert_eq!(
             shifts,
             [
-                BUTTON.position,
-                ALT.position,
-                CTRL.position,
-                META.position,
-                REPEAT.position,
-                SHIFT.position
+                <Flags as Composite<Alt>>::POSITION,
+                <Flags as Composite<Ctrl>>::POSITION,
+                <Flags as Composite<Meta>>::POSITION,
+                <Flags as Composite<Repeat>>::POSITION,
+                <Flags as Composite<Shift>>::POSITION,
             ]
         );
-        assert!(shifts.iter().all(|position| *position >= 1));
     }
 
     #[test]
     fn canvas_event_flags_are_independent_bits() {
         let event = |flags| CanvasEvent {
             event_type: EventType::KeyDown,
-            id: dom::Id::new(&[]),
-            key: KeyName::Enter,
-            flags,
-            value: String::new(),
-            x: 0.0,
-            y: 0.0,
-            local_x: 0.0,
-            local_y: 0.0,
-            time: 0.0,
+            id:         dom::Id::new(&[]),
+            key:        KeyName::Enter,
+            flags:      Flags::from_le_bytes([flags]),
+            value:      String::new(),
+            x:          0.0,
+            y:          0.0,
+            local_x:    0.0,
+            local_y:    0.0,
+            time:       0.0,
             pointer_id: 0,
         };
-        let positions =
-            [ALT.position, CTRL.position, META.position, REPEAT.position, SHIFT.position];
+        let positions = [
+            <Flags as Composite<Alt>>::POSITION,
+            <Flags as Composite<Ctrl>>::POSITION,
+            <Flags as Composite<Meta>>::POSITION,
+            <Flags as Composite<Repeat>>::POSITION,
+            <Flags as Composite<Shift>>::POSITION,
+        ];
         for bit in 0..8u32 {
             let e = event(1 << bit);
             let got = [e.alt(), e.ctrl(), e.meta(), e.repeat(), e.shift()];
@@ -1524,10 +1561,10 @@ mod wire_tests {
         assert!(all.alt() && all.ctrl() && all.meta() && all.repeat() && all.shift());
 
         for (flags, button) in [
-            (0b000, PointerButton::Other),
-            (0b010, PointerButton::Auxiliary),
-            (0b100, PointerButton::Primary),
-            (0b110, PointerButton::Secondary),
+            (0b00, PointerButton::Other),
+            (0b01, PointerButton::Auxiliary),
+            (0b10, PointerButton::Main),
+            (0b11, PointerButton::Secondary),
         ] {
             let e = event(flags);
             assert_eq!(e.button(), button);

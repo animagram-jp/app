@@ -115,7 +115,7 @@ impl Target {
     pub fn to_dom(self) -> Id {
         let header = || Vec::from([(Tag::Header, None)]);
         let surface = || Vec::from([(Tag::Main, None), (Tag::Section, None)]);
-        let modal_form = || Vec::from([(Tag::Modal, None), (Tag::Form, None)]);
+        let dialog_form = || Vec::from([(Tag::Dialog, None), (Tag::Form, None)]);
         let list = |n, item| {
             let mut path = surface();
             path.extend([(Tag::Ol, Some(n)), (Tag::Li, item)]);
@@ -130,7 +130,7 @@ impl Target {
             join(header(), &[(Tag::Fieldset, None), (Tag::Label, Some(n)), (tag, None)])
         };
         let option = |field: EditField| {
-            let mut path = modal_form();
+            let mut path = dialog_form();
             path.extend([(Tag::Dl, None), (Tag::Dd, Some(field.number())), (Tag::Select, None)]);
             path
         };
@@ -178,9 +178,9 @@ impl Target {
                 },
             ),
             Self::Preview => list(5, None),
-            Self::Modal => Vec::from([(Tag::Modal, None)]),
-            Self::EditForm => modal_form(),
-            Self::EditHeading => join(modal_form(), &[(Tag::Header, None), (Tag::H3, None)]),
+            Self::Modal => Vec::from([(Tag::Dialog, None)]),
+            Self::EditForm => dialog_form(),
+            Self::EditHeading => join(dialog_form(), &[(Tag::Header, None), (Tag::H3, None)]),
             Self::EditField(field) => {
                 let n = field.number();
                 let tag = match field {
@@ -188,13 +188,13 @@ impl Target {
                     EditField::Note => Tag::Textarea,
                     _ => Tag::Input,
                 };
-                join(modal_form(), &[(Tag::Dl, None), (Tag::Dd, Some(n)), (tag, None)])
+                join(dialog_form(), &[(Tag::Dl, None), (Tag::Dd, Some(n)), (tag, None)])
             }
             Self::CategoryOption(n) => join(option(EditField::Category), &[(Tag::Option, Some(n))]),
             Self::StatusOption(n) => join(option(EditField::Status), &[(Tag::Option, Some(n))]),
             Self::ResourceOption(n) => join(option(EditField::Resource), &[(Tag::Option, Some(n))]),
-            Self::EditMessage => join(modal_form(), &[(Tag::Output, None)]),
-            Self::Delete => join(modal_form(), &[(Tag::Button, Some(DELETE_BUTTON))]),
+            Self::EditMessage => join(dialog_form(), &[(Tag::Output, None)]),
+            Self::Delete => join(dialog_form(), &[(Tag::Button, Some(DELETE_BUTTON))]),
         };
         Id::new(&path)
     }
@@ -252,7 +252,7 @@ impl Target {
                 [(Tag::Ol, Some(5)), (Tag::Li, None)] => Self::Preview,
                 _ => Self::Surface,
             },
-            [(Tag::Modal, None), rest @ ..] => match rest {
+            [(Tag::Dialog, None), rest @ ..] => match rest {
                 [] => Self::Modal,
                 [(Tag::Form, None)] => Self::EditForm,
                 [(Tag::Form, None), (Tag::Header, None), (Tag::H3, None)] => Self::EditHeading,
@@ -415,7 +415,7 @@ mod tests {
             Id::new(&[(Tag::Header, None), (Tag::Div, Some(2)), (Tag::Button, Some(5))]),
             Id::new(&[(Tag::Header, None), (Tag::Button, Some(9))]),
             Id::new(&[(Tag::Header, None), (Tag::Div, Some(3)), (Tag::Button, Some(3))]),
-            Id::new(&[(Tag::Modal, None), (Tag::Form, Some(3))]),
+            Id::new(&[(Tag::Dialog, None), (Tag::Form, Some(3))]),
         ];
         for id in unknown {
             assert_eq!(Target::from_dom(&id), None);
