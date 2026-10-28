@@ -96,7 +96,8 @@
         font-weight: bold;
         margin:      0 0 0.5rem 0;
     }
-    p[data-type="error"]::before {
+    p[data-type="error"]:where([data-inline-align="start"])::before,
+    p[data-type="error"]:not([data-inline-align="start"])::after {
         background-color: var(--color-error);
     }
 

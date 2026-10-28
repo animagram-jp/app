@@ -100,13 +100,8 @@
         position: relative;
     }
 
-    label:has(> input[aria-controls]) > input:not([type="checkbox"]) {
-        field-sizing: fixed;
-        inline-size:  15rem;
-    }
-
     label:has(> input[aria-controls]) > input[type="checkbox"] {
-        inset-block:      0;
+        inset-block-end:  0;
         inset-inline-end: 0;
         position:         absolute;
     }
@@ -120,16 +115,16 @@
         padding-inline-end: var(--md-border-radius);
     }
 
-    select:not([data-facet]) {
+    select:not([data-facet]):not(label > select) {
         appearance: auto;
     }
 
     /* --- size --- */
 
-    label > select[data-facet="chevron"] {
+    label > select:is([data-facet="chevron"], :not([data-facet])) {
         padding-inline-end: calc(var(--box-height) * 0.6);
     }
-    label > select[data-facet="chevron"][data-size="xs"] {
+    label > select:is([data-facet="chevron"], :not([data-facet]))[data-size="xs"] {
         padding-inline-end: calc(var(--xs-box-height) * 0.75);
     }
 

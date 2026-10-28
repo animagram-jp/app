@@ -23,9 +23,20 @@
         [data-facet],
         summary:not([data-facet]),
         button[aria-haspopup="listbox"],
-        label:has(> select[data-facet="chevron"])
+        label:has(> select:is([data-facet="chevron"], :not([data-facet])))
     ) {
         position: relative;
+    }
+
+    /* --- label holding both a sign-bearing control and its own text --- */
+
+    label:has(> :where([data-facet], select, input[type="search"])):has(> span) {
+        inline-size: fit-content;
+    }
+
+    label:has(> :where([data-facet], select, input[type="search"])):has(> span) > span {
+        contain: inline-size;
+        display: block flow;
     }
 
     /* --- min inline size, min block size --- */
@@ -329,9 +340,6 @@
     /* --- size --- */
 
     [data-sign="copy"] {
-        block-size:      var(--line-height);
-        min-inline-size: var(--line-height);
-
         &::before,
         &::after {
             block-size:    calc(var(--line-height) * 0.875);
@@ -559,7 +567,7 @@
         summary:not([data-facet]),
         button[aria-haspopup="listbox"]:not([data-facet])
     ):not([data-inline-align="start"])::after,
-    label:has(> select[data-facet="chevron"])::after {
+    label:has(> select:is([data-facet="chevron"], :not([data-facet])))::after {
         border-radius:        0;
         border-style:         solid;
         border-top-width:     0;
@@ -585,7 +593,7 @@
             summary:not([data-facet]),
             button[aria-haspopup="listbox"]:not([data-facet])
         ):not([data-inline-align="start"])::after,
-        label:has(> select[data-facet="chevron"])::after {
+        label:has(> select:is([data-facet="chevron"], :not([data-facet])))::after {
             transition: transform 0.15s ease;
         }
     }
@@ -721,81 +729,99 @@
         transform: translateY(0.25rem) rotate(225deg);
     }
 
-    label:has(> select[data-facet="chevron"][data-size="xs"])::after {
+    label:has(> select:is([data-facet="chevron"], :not([data-facet]))[data-size="xs"])::after {
         block-size:          calc(var(--xs-font-size) * 0.75 * 1.06);
         border-bottom-width: var(--xs-border-width);
         border-right-width:  var(--xs-border-width);
         inline-size:         calc(var(--xs-font-size) * 0.75 * 1.06);
+        inset-block-end:     calc((var(--xs-box-height) - var(--xs-font-size) * 0.75 * 1.06) / 2);
+        inset-block-start:   auto;
         inset-inline-end:    var(--xs-border-radius);
+        margin-block:        0;
         transform:           translateY(-0.125rem) rotate(45deg);
     }
 
-    label:has(> select[data-facet="chevron"][data-size="xs"]:open)::after {
+    label:has(> select:is([data-facet="chevron"], :not([data-facet]))[data-size="xs"]:open)::after {
         transform: translateY(0.125rem) rotate(225deg);
     }
 
-    label:has(> select[data-facet="chevron"][data-size="sm"])::after {
+    label:has(> select:is([data-facet="chevron"], :not([data-facet]))[data-size="sm"])::after {
         block-size:          calc(var(--sm-font-size) * 0.75 * 1.06);
         border-bottom-width: var(--sm-border-width);
         border-right-width:  var(--sm-border-width);
         inline-size:         calc(var(--sm-font-size) * 0.75 * 1.06);
+        inset-block-end:     calc((var(--sm-box-height) - var(--sm-font-size) * 0.75 * 1.06) / 2);
+        inset-block-start:   auto;
         inset-inline-end:    var(--sm-border-radius);
+        margin-block:        0;
         transform:           translateY(-0.125rem) rotate(45deg);
     }
 
-    label:has(> select[data-facet="chevron"][data-size="sm"]:open)::after {
+    label:has(> select:is([data-facet="chevron"], :not([data-facet]))[data-size="sm"]:open)::after {
         transform: translateY(0.125rem) rotate(225deg);
     }
 
-    label:has(> select[data-facet="chevron"]:where([data-size="md"], :not([data-size])))::after {
+    label:has(> select:is([data-facet="chevron"], :not([data-facet])):where([data-size="md"], :not([data-size])))::after {
         block-size:          calc(var(--md-font-size) * 0.75 * 1.06);
         border-bottom-width: var(--md-border-width);
         border-right-width:  var(--md-border-width);
         inline-size:         calc(var(--md-font-size) * 0.75 * 1.06);
+        inset-block-end:     calc((var(--md-box-height) - var(--md-font-size) * 0.75 * 1.06) / 2);
+        inset-block-start:   auto;
         inset-inline-end:    var(--md-border-radius);
+        margin-block:        0;
         transform:           translateY(-0.1875rem) rotate(45deg);
     }
 
-    label:has(> select[data-facet="chevron"]:where([data-size="md"], :not([data-size])):open)::after {
+    label:has(> select:is([data-facet="chevron"], :not([data-facet])):where([data-size="md"], :not([data-size])):open)::after {
         transform: translateY(0.1875rem) rotate(225deg);
     }
 
-    label:has(> select[data-facet="chevron"][data-size="lg"])::after {
+    label:has(> select:is([data-facet="chevron"], :not([data-facet]))[data-size="lg"])::after {
         block-size:          calc(var(--lg-font-size) * 0.6 * 1.06);
         border-bottom-width: var(--lg-border-width);
         border-right-width:  var(--lg-border-width);
         inline-size:         calc(var(--lg-font-size) * 0.6 * 1.06);
+        inset-block-end:     calc((var(--lg-box-height) - var(--lg-font-size) * 0.6 * 1.06) / 2);
+        inset-block-start:   auto;
         inset-inline-end:    var(--lg-border-radius);
+        margin-block:        0;
         transform:           translateY(-0.125rem) rotate(45deg);
     }
 
-    label:has(> select[data-facet="chevron"][data-size="lg"]:open)::after {
+    label:has(> select:is([data-facet="chevron"], :not([data-facet]))[data-size="lg"]:open)::after {
         transform: translateY(0.125rem) rotate(225deg);
     }
 
-    label:has(> select[data-facet="chevron"][data-size="xl"])::after {
+    label:has(> select:is([data-facet="chevron"], :not([data-facet]))[data-size="xl"])::after {
         block-size:          calc(var(--xl-font-size) * 0.6 * 1.06);
         border-bottom-width: var(--xl-border-width);
         border-right-width:  var(--xl-border-width);
         inline-size:         calc(var(--xl-font-size) * 0.6 * 1.06);
+        inset-block-end:     calc((var(--xl-box-height) - var(--xl-font-size) * 0.6 * 1.06) / 2);
+        inset-block-start:   auto;
         inset-inline-end:    var(--xl-border-radius);
+        margin-block:        0;
         transform:           translateY(-0.1875rem) rotate(45deg);
     }
 
-    label:has(> select[data-facet="chevron"][data-size="xl"]:open)::after {
+    label:has(> select:is([data-facet="chevron"], :not([data-facet]))[data-size="xl"]:open)::after {
         transform: translateY(0.1875rem) rotate(225deg);
     }
 
-    label:has(> select[data-facet="chevron"][data-size="2xl"])::after {
+    label:has(> select:is([data-facet="chevron"], :not([data-facet]))[data-size="2xl"])::after {
         block-size:          calc(var(--2xl-font-size) * 0.6 * 1.06);
         border-bottom-width: var(--2xl-border-width);
         border-right-width:  var(--2xl-border-width);
         inline-size:         calc(var(--2xl-font-size) * 0.6 * 1.06);
+        inset-block-end:     calc((var(--2xl-box-height) - var(--2xl-font-size) * 0.6 * 1.06) / 2);
+        inset-block-start:   auto;
         inset-inline-end:    var(--2xl-border-radius);
+        margin-block:        0;
         transform:           translateY(-0.25rem) rotate(45deg);
     }
 
-    label:has(> select[data-facet="chevron"][data-size="2xl"]:open)::after {
+    label:has(> select:is([data-facet="chevron"], :not([data-facet]))[data-size="2xl"]:open)::after {
         transform: translateY(0.25rem) rotate(225deg);
     }
 
