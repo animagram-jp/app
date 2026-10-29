@@ -2,7 +2,7 @@
 name = "app"
 version = "0.1.0"
 edition = "2024"
-rust-version = "1.85" # 1.100.0-nightly
+rust-version = "1.85"
 description = "Gui application for editing and reading structured data."
 license = "Apache-2.0"
 repository = "https://github.com/animagram-jp/app"
@@ -61,3 +61,15 @@ lto           = "fat"
 strip         = true
 opt-level     = "z"
 codegen-units = 1
+
+[lints.rust]
+unsafe_op_in_unsafe_fn = "forbid"
+
+[lints.clippy]
+all                             = { level = "deny", priority = -1 }
+undocumented_unsafe_blocks      = "forbid"
+unnecessary_safety_comment      = "deny"
+unnecessary_safety_doc          = "deny"
+missing_safety_doc              = "deny"
+allow_attributes                = "deny"
+allow_attributes_without_reason = "deny"

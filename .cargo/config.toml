@@ -1,2 +1,5 @@
+[env]
+CLIPPY_CONF_DIR = { value = ".cargo", relative = true }
+
 [target.wasm32-unknown-unknown]
 runner = "wasm-bindgen-test-runner"
