@@ -33,8 +33,6 @@ curl -fsSL -H "Accept: application/vnd.github.raw+json" "https://api.github.com/
 - 連番のタグ要素は、必ず有限に定めた最大数に基づき、全て書き込みhiddenを付与する。
 - divは原則使用せず、セマンティックタグを選定して使用する。
 - HTMLの記述順と、レンダリング時のデフォルトの配置・挙動の方向は一致しなければならない。
-- Rustスクリプトについて、`unsafe`を含む行の直前には`// SAFETY:`コメントが必要であり、間にはコメント又は空行のみが許される。
-- lintの強さは`Cargo.toml`の`[lints]`、clippyの挙動は`.cargo/clippy.toml`にのみ記述する。`lib.rs`の`#![deny]`や`RUSTFLAGS=-D`は使わない。lintの抑制は`#[expect(..., reason = "...")]`に限る。
 
 ---
 
@@ -56,8 +54,8 @@ curl -fsSL -H "Accept: application/vnd.github.raw+json" "https://api.github.com/
 
 - Setup: `rustup toolchain install` (Recquire nightly)
 - Format: `cargo fmt`
-- Lint: `cargo clippy --all-targets --all-features`
-- Lint (wasm): `RUSTFLAGS="-Ctarget-feature=+atomics,+bulk-memory" cargo clippy --lib --all-features --target wasm32-unknown-unknown -Zbuild-std=std,panic_abort`
+- Checker: `cargo clippy --all-targets --all-features`
+- Checker (wasm): `RUSTFLAGS="-Ctarget-feature=+atomics,+bulk-memory" cargo clippy --lib --all-features --target wasm32-unknown-unknown -Zbuild-std=std,panic_abort`
 - Copy from animagram-jp/css: `cp -f ../css/css/*.css ./distribution/css/library/`
 
 ### Test
