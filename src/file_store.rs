@@ -3,7 +3,7 @@
 //! The instance is the single writer; transaction boundaries belong to the caller.
 //!
 //! On-disk layout is a snapshot/log pair per store name and version:
-//! - `<name>.<version>.snap` — clean snapshot, rewritten only by `compact`
+//! - `<name>.<version>.snapshot` — clean snapshot, rewritten only by `compact`
 //! - `<name>.<version>.log`  — append-only diffs accumulated since the last compact
 //!
 //! Log record wire format (variable length, all integers little-endian):
@@ -84,7 +84,7 @@ enum Operation {
     Delete,
 }
 
-/// One decoded record of the snap/log wire format (layout in module docs).
+/// One decoded record of the snapshot/log wire format (layout in module docs).
 struct LogRecord {
     operation: Operation,
     id:        u32,
@@ -599,7 +599,7 @@ pub trait FileStore: Sized {
     }
 
     /// Roll back: drop the pending sets/deletes and rebuild `memory` from
-    /// the flush-confirmed state (snap + log up to `log_end`; bytes past it
+    /// the flush-confirmed state (snapshot + log up to `log_end`; bytes past it
     /// were never acknowledged and are ignored). Reads the disk but never
     /// writes it — uncommitted data has no on-disk representation to undo.
     ///
@@ -628,30 +628,30 @@ pub trait FileStore: Sized {
         Ok(())
     }
 
-    /// Fold the log into the snap: rebuild the snap from the flush-confirmed
-    /// state (snap + log up to `log_end`), then empty the log.
+    /// Fold the log into the snapshot: rebuild the snapshot from the flush-confirmed
+    /// state (snapshot + log up to `log_end`), then empty the log.
     ///
     /// Deliberately disk -> disk: `memory` may hold unsaved changes, and
     /// deriving the snapshot from it would commit them while bypassing
-    /// `save()`. The committed state is therefore re-read from snap/log
+    /// `save()`. The committed state is therefore re-read from snapshot/log
     /// (validated prefix only) and `memory` is neither consulted nor
     /// modified.
     ///
-    /// The new snap is a full image of the committed state, and rewriting the
-    /// snap destroys the old one. The log only holds the diff since the last
-    /// compact, so ids that live only in the old snap would be lost if the
+    /// The new snapshot is a full image of the committed state, and rewriting the
+    /// snapshot destroys the old one. The log only holds the diff since the last
+    /// compact, so ids that live only in the old snapshot would be lost if the
     /// rewrite died halfway. Hence the order — a complete copy of the
-    /// committed state goes into the log *before* the snap is touched:
+    /// committed state goes into the log *before* the snapshot is touched:
     ///
     /// 0. Cut whatever lies past `log_end` (torn bytes, an unconfirmed batch)
     ///    so the copy below cannot land after bytes that stop replay.
     /// 1. Append the image to the log, flush, then advance `log_end`.
-    ///    Fails -> snap and log's confirmed prefix are intact.
-    /// 2. `snap.truncate(0)`, then write the image into the snap and flush.
-    ///    Fails or dies -> the snap is empty or partial, but snap + log
+    ///    Fails -> snapshot and log's confirmed prefix are intact.
+    /// 2. `snapshot.truncate(0)`, then write the image into the snapshot and flush.
+    ///    Fails or dies -> the snapshot is empty or partial, but snapshot + log
     ///    (which now holds the whole image) still replays to the committed
-    ///    state; a torn snap record is dropped by checksum validation.
-    /// 3. `log_end = 0`, `log.truncate(0)`, then flush. Fails -> the new snap
+    ///    state; a torn snapshot record is dropped by checksum validation.
+    /// 3. `log_end = 0`, `log.truncate(0)`, then flush. Fails -> the new snapshot
     ///    is complete and the stale log reapplies on top of it; set/delete
     ///    replay is idempotent, so the result is unchanged. Whatever the
     ///    failed truncate left in the log lies past `log_end` and is cut by
@@ -664,7 +664,7 @@ pub trait FileStore: Sized {
     ///
     /// `log_end` advances only once the image is flushed (step 1). It drops
     /// to 0 *before* the truncate in step 3, because a failed truncate may
-    /// or may not have taken effect and the snap no longer needs the log.
+    /// or may not have taken effect and the snapshot no longer needs the log.
     fn compact(&mut self) -> Result<(), FileStoreError> {
         let snapshot_bytes = read_all(&*self, File::Snapshot)?;
         let log_bytes = read_all(&*self, File::Log)?;
@@ -683,10 +683,10 @@ pub trait FileStore: Sized {
         // 1. The log holds a whole copy of the committed state.
         append(&*self, File::Log, log_end, &image)?;
         self.index_mut().log_end = log_end + image.len() as u32;
-        // 2. Only now is the old snap expendable.
+        // 2. Only now is the old snapshot expendable.
         self.truncate(File::Snapshot, 0)?;
         append(&*self, File::Snapshot, 0, &image)?;
-        // 3. The snap alone now holds the committed state, so nothing in the
+        // 3. The snapshot alone now holds the committed state, so nothing in the
         //    log is committed truth any more: reset `log_end` first. A failed
         //    truncate has an unknown effect (it may have emptied the file);
         //    with `log_end` still pointing into it, the next call would see
@@ -773,7 +773,7 @@ pub struct OpfsHandles {
     log:      FileSystemSyncAccessHandle,
 }
 
-/// OPFS-backed store: sync access handles to the snap/log pair plus the RAM
+/// OPFS-backed store: sync access handles to the snapshot/log pair plus the RAM
 /// index holding the entire current state.
 ///
 /// `unsaved` / `deleted` form the pending diff against the last successful
@@ -792,7 +792,7 @@ pub struct OpfsHandles {
 /// store.set(id, b"payload".to_vec());
 /// store.save()?;                                  // durable from here
 /// assert_eq!(store.get(id), Some(&b"payload"[..]));
-/// store.compact()?;                               // fold the log into the snap
+/// store.compact()?;                               // fold the log into the snapshot
 /// store.close();                                  // once, right before worker shutdown
 /// # Ok(()) }
 /// ```
@@ -830,7 +830,7 @@ impl FileStore for OpfsStore {
         let options = FileSystemGetFileOptions::new();
         options.set_create(create);
 
-        let snapshot = open(dir, &id.file("snap"), &options, create).await?;
+        let snapshot = open(dir, &id.file("snapshot"), &options, create).await?;
         let log = match open(dir, &id.file("log"), &options, create).await {
             Ok(log) => log,
             Err(error) => {
@@ -1159,7 +1159,7 @@ pub mod cases {
         pub calls:           RefCell<Vec<(&'static str, Io)>>,
         /// `(index into calls, where)`: the one call to break.
         pub at:              Cell<Option<(usize, Hit)>>,
-        /// Fail every write to this file (`"snap"` / `"log"`) before it lands.
+        /// Fail every write to this file (`"snapshot"` / `"log"`) before it lands.
         pub fail_writes_to:  Cell<Option<&'static str>>,
         /// Fail every flush of this file: what was written stays, unconfirmed.
         pub fail_flushes_of: Cell<Option<&'static str>>,
@@ -1171,7 +1171,7 @@ pub mod cases {
 
     fn display(file: File) -> &'static str {
         match file {
-            File::Snapshot => "snap",
+            File::Snapshot => "snapshot",
             File::Log => "log",
         }
     }
@@ -1295,7 +1295,7 @@ pub mod cases {
         }
     }
 
-    /// What the snap and the log hold on their own, not overlaid.
+    /// What the snapshot and the log hold on their own, not overlaid.
     fn separate(store: &impl FileStore) -> (BTreeMap<u32, Vec<u8>>, BTreeMap<u32, Vec<u8>>) {
         let (mut snapshot, mut log) = (BTreeMap::new(), BTreeMap::new());
         apply_log(&mut snapshot, &read_all(store, File::Snapshot).unwrap());
@@ -1389,8 +1389,8 @@ pub mod cases {
         Discard,
     }
 
-    /// State every sweep starts from: snap `{1, 2}`, log `{3, 4}`, and a
-    /// pending diff on top that deletes a snap-only id, overwrites a
+    /// State every sweep starts from: snapshot `{1, 2}`, log `{3, 4}`, and a
+    /// pending diff on top that deletes a snapshot-only id, overwrites a
     /// log-only id and adds a new one.
     struct Layout {
         /// Flush-confirmed truth.
@@ -1557,17 +1557,20 @@ pub mod cases {
         let (mut snapshot_dirty, mut log_dirty) = (false, false);
         for (index, (file, io)) in calls.iter().enumerate() {
             match (*file, *io) {
-                ("snap", Io::Write(_)) => snapshot_dirty = true,
+                ("snapshot", Io::Write(_)) => snapshot_dirty = true,
                 ("log", Io::Write(_)) => log_dirty = true,
-                ("snap", Io::Flush) => snapshot_dirty = false,
+                ("snapshot", Io::Flush) => snapshot_dirty = false,
                 ("log", Io::Flush) => log_dirty = false,
-                ("snap", Io::Truncate(_)) => {
-                    assert!(!log_dirty, "call {index}: snap truncated with unflushed log writes")
+                ("snapshot", Io::Truncate(_)) => {
+                    assert!(
+                        !log_dirty,
+                        "call {index}: snapshot truncated with unflushed log writes"
+                    )
                 }
                 ("log", Io::Truncate(_)) => {
                     assert!(
                         !snapshot_dirty,
-                        "call {index}: log truncated with unflushed snap writes"
+                        "call {index}: log truncated with unflushed snapshot writes"
                     )
                 }
                 _ => {}
@@ -1736,10 +1739,10 @@ pub mod cases {
                     }
                     78..84 => {
                         if rng.chance(30) {
-                            // The snap rewrite dies halfway. Nothing is lost:
+                            // The snapshot rewrite dies halfway. Nothing is lost:
                             // an empty committed state has nothing to write,
                             // so only then may the attempt succeed.
-                            store.fail_writes_to.set(Some("snap"));
+                            store.fail_writes_to.set(Some("snapshot"));
                             let attempt = store.compact();
                             store.fail_writes_to.set(None);
                             assert_eq!(attempt.is_err(), !model.committed.is_empty(), "{context}");
@@ -1772,13 +1775,13 @@ pub mod cases {
 
     // === recorded behavior ===
 
-    /// `compact` has no delta path, so a snap nobody touched is still
+    /// `compact` has no delta path, so a snapshot nobody touched is still
     /// truncated and rewritten in full.
     pub async fn pin_compact_rewrite<S: FileStore>(name: &'static str) {
         let id = derive_id(name, 0);
         let mut store = instrument::<S>(id).await;
 
-        // 1. ids 1..=100 compacted: the snap holds them, the log is empty.
+        // 1. ids 1..=100 compacted: the snapshot holds them, the log is empty.
         for _ in 1..=100 {
             let id = store.issue_id();
             store.set(id, id.to_le_bytes().to_vec());
@@ -1801,7 +1804,7 @@ pub mod cases {
         assert_eq!(snapshot_entries.len(), 100);
         assert_eq!(log.keys().copied().collect::<Vec<_>>(), [101, 102]);
 
-        // 3. the next compact truncates the snap anyway and writes all 102 back.
+        // 3. the next compact truncates the snapshot anyway and writes all 102 back.
         store.calls.borrow_mut().clear();
         store.compact().unwrap();
         let calls = store.calls.take();
@@ -1812,11 +1815,11 @@ pub mod cases {
                 _ => None,
             })
             .collect();
-        assert_eq!(truncates, [("snap", 0), ("log", 0)]);
+        assert_eq!(truncates, [("snapshot", 0), ("log", 0)]);
         let snapshot_written: u32 = calls
             .iter()
             .filter_map(|call| match call.1 {
-                Io::Write(length) if call.0 == "snap" => Some(length),
+                Io::Write(length) if call.0 == "snapshot" => Some(length),
                 _ => None,
             })
             .sum();
@@ -1967,7 +1970,7 @@ mod memory_tests {
     fn separate_versions() {
         let first = StoreId { name: "versions", version: "0.0" };
         let second = StoreId { name: "versions", version: "0.1" };
-        assert_eq!(second.file("snap"), "versions.0.1.snap");
+        assert_eq!(second.file("snapshot"), "versions.0.1.snapshot");
         assert_eq!(first.file("log"), "versions.0.0.log");
 
         let mut store = block_on(cases::mount::<MemoryStore>(first));

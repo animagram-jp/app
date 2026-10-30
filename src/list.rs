@@ -24,7 +24,7 @@ pub enum SetOutcome {
 #[derive(Debug)]
 pub enum ListError {
     OutOfBounds,
-    NotExist,
+    NotFound,
 }
 
 #[derive(Debug)]
@@ -72,7 +72,7 @@ impl<T: Copy + Zero + PartialEq> List<T> {
         let i = *identity as usize;
         let v = self.data.get(i).ok_or(ListError::OutOfBounds)?;
         if *v == T::ZERO {
-            return Err(ListError::NotExist);
+            return Err(ListError::NotFound);
         } // 0-value = vacant
         Ok(v)
     }
@@ -123,7 +123,7 @@ impl<T: Copy + Zero + PartialEq> List<T> {
 
     pub fn delete(&mut self, identity: &u32) -> Result<(), ListError> {
         if *identity == 0 {
-            return Err(ListError::NotExist);
+            return Err(ListError::NotFound);
         }
         let i = *identity as usize;
         if i >= self.data.len() {
@@ -200,7 +200,7 @@ impl VariableList {
         let s = read_u32(index, at).ok_or(ListError::OutOfBounds)? as usize;
         let e = read_u32(index, at + WORD).ok_or(ListError::OutOfBounds)? as usize;
         if s == 0 && e == 0 {
-            return Err(ListError::NotExist);
+            return Err(ListError::NotFound);
         }
         data.get(s..e).ok_or(ListError::OutOfBounds)
     }
@@ -210,7 +210,7 @@ impl VariableList {
         let s = *self.index.get(index_s).ok_or(ListError::OutOfBounds)?;
         let e = *self.index.get(index_s + 1).ok_or(ListError::OutOfBounds)?;
         if s == 0 && e == 0 {
-            return Err(ListError::NotExist);
+            return Err(ListError::NotFound);
         }
         self.data.get(s..e).ok_or(ListError::OutOfBounds)
     }
@@ -278,7 +278,7 @@ impl VariableList {
 
     pub fn delete(&mut self, identity: &u32) -> Result<(), ListError> {
         if *identity == 0 {
-            return Err(ListError::NotExist);
+            return Err(ListError::NotFound);
         }
         let index_s = *identity as usize * 2;
         let index_e = index_s + 2;
@@ -382,7 +382,7 @@ mod tests {
     fn list_get_sentinel_returns_not_exist() {
         let list: List<u32> = List::new();
         let err = list.get(&0).unwrap_err();
-        assert!(matches!(err, ListError::NotExist));
+        assert!(matches!(err, ListError::NotFound));
     }
 
     #[test]
@@ -470,7 +470,7 @@ mod tests {
                         let result = list.delete(&id);
                         match (id, id < count) {
                             (0, _) => {
-                                assert!(matches!(result, Err(ListError::NotExist)), "{context}")
+                                assert!(matches!(result, Err(ListError::NotFound)), "{context}")
                             }
                             (_, false) => {
                                 assert!(matches!(result, Err(ListError::OutOfBounds)), "{context}")
@@ -501,7 +501,7 @@ mod tests {
                 for id in 0..count + 2 {
                     let expected = match model.get(&id) {
                         Some(value) => Ok(value.as_slice()),
-                        None if id < count => Err(ListError::NotExist),
+                        None if id < count => Err(ListError::NotFound),
                         None => Err(ListError::OutOfBounds),
                     };
                     let same = |got: Result<&[u8], ListError>| match (got, &expected) {

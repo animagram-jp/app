@@ -112,7 +112,7 @@ impl DataStruct {
                 }
                 None => match staged.delete(schema_id) {
                     Ok(()) => {}
-                    Err(ListError::NotExist) => {}
+                    Err(ListError::NotFound) => {}
                     Err(e) => return Err(e),
                 },
             }
@@ -228,7 +228,7 @@ impl<'a> Instance<'a> {
         let variable_id =
             read_u32(self.index, schema_id as usize * 4).ok_or(ListError::OutOfBounds)?;
         if variable_id == 0 {
-            return Err(ListError::NotExist);
+            return Err(ListError::NotFound);
         }
         VariableList::get_from_bytes(self.values_index, self.values_data, &variable_id)
     }
@@ -294,7 +294,7 @@ mod tests {
         let bytes = ds.to_bytes();
         assert!(matches!(
             DataStruct::get_from_bytes(&bytes, ds.schema_size, 7),
-            Err(ListError::NotExist)
+            Err(ListError::NotFound)
         ));
         assert!(matches!(
             DataStruct::get_from_bytes(&bytes, ds.schema_size, 9),

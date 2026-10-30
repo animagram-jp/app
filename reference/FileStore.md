@@ -8,8 +8,8 @@
 
 | 関数 | 引数 | 戻り値 | 意味 |
 |-|-|-|-|
-| open   | id: StoreId, create: bool | `impl Future<Output = Result<Self::Handle, FileStoreError>>` | 永続化先から snap/log のハンドルを取得する（非同期。OPFS の取得は Promise）。`create: false` で無ければ `Err(NotFound)`（古いバージョンを探すとき、空のファイルを作らずに済む）。snap だけ開けて log が失敗したときは、snap を閉じてから返す。ファイル名は `<name>.<version>.snap` / `<name>.<version>.log`（`StoreId::file`）。実装ごとに書く |
-| new    | handle: Self::Handle | `Result<Self, FileStoreError>` | ハンドルから snap/log を読み、RAM index（`Index`）を復元する（同期）。デフォルト実装 |
+| open   | id: StoreId, create: bool | `impl Future<Output = Result<Self::Handle, FileStoreError>>` | 永続化先から snapshot/log のハンドルを取得する（非同期。OPFS の取得は Promise）。`create: false` で無ければ `Err(NotFound)`（古いバージョンを探すとき、空のファイルを作らずに済む）。snapshot だけ開けて log が失敗したときは、snapshot を閉じてから返す。ファイル名は `<name>.<version>.snapshot` / `<name>.<version>.log`（`StoreId::file`）。実装ごとに書く |
+| new    | handle: Self::Handle | `Result<Self, FileStoreError>` | ハンドルから snapshot/log を読み、RAM index（`Index`）を復元する（同期）。デフォルト実装 |
 | issue_id | &mut self | `u32` | 新規 id を発行する。デフォルト実装 |
 | pending | &self | `Vec<(u32, Option<Vec<u8>>)>` | 未保存の差分（`Some` は set、`None` は delete）を取り出す。ハンドルの失効で開き直すとき、旧ストアから差分を持ち出すために使う。デフォルト実装 |
 | replay  | &mut self, diff: Vec<(u32, Option<Vec<u8>>)> | | 差分を `set` / `delete` として積み直す。デフォルト実装 |
@@ -23,14 +23,14 @@
 | 関数 | 引数 | 戻り値 | 意味 |
 |-|-|-|-|
 | save    | &mut self | `Result<(), FileStoreError>` | 検証済み末尾（`log_end`）を超える torn 残留を切除した上で、`unsaved`（Set）と `deleted`（Delete）をまとめて検証済み末尾に一括 append し、成功時に両方 clear して `log_end` を進める。デフォルト実装 |
-| discard | &mut self | `Result<(), FileStoreError>` | rollback。`unsaved`/`deleted` を破棄し、`memory` を flush 確認済みの確定状態（`snap`+`log[..log_end]` を読み直したもの）に巻き戻す。ディスクへの書き込みは一切行わない。デフォルト実装 |
-| `compact` | `&mut self` | `Result<(), FileStoreError>` | snap/log（`log[..log_end]`）を読み直した一時的な状態（memory は参照しない）の全件を、まず log の末尾に追記し、そのあと snap を再構築し、log を空にする。デフォルト実装 |
-| close   | &self | | snap/log を閉じる。実装ごとに書く |
+| discard | &mut self | `Result<(), FileStoreError>` | rollback。`unsaved`/`deleted` を破棄し、`memory` を flush 確認済みの確定状態（`snapshot`+`log[..log_end]` を読み直したもの）に巻き戻す。ディスクへの書き込みは一切行わない。デフォルト実装 |
+| `compact` | `&mut self` | `Result<(), FileStoreError>` | snapshot/log（`log[..log_end]`）を読み直した一時的な状態（memory は参照しない）の全件を、まず log の末尾に追記し、そのあと snapshot を再構築し、log を空にする。デフォルト実装 |
+| close   | &self | | snapshot/log を閉じる。実装ごとに書く |
 
 バックエンドに依存する部分は、`open` / `from_handle`（実装の構築）/ `index` / `index_mut`（`Index` への accessor）と、ファイル操作のプリミティブ6つ（`size` / `read_at` / `write_at` / `flush` / `truncate` / `close`。どちらのファイルかは `File::Snapshot` / `File::Log` で指定する）だけである。ロジック（`new` / `save` / `discard` / `compact` ほか）は trait のデフォルト実装として1箇所にだけ書き、`OpfsStore` と `MemoryStore` が共有する。short read / short write のループ（`read_all` / `append`）もプリミティブの上に1つだけある。
 
 ```rust
-/// ストアの識別。ファイル名にバージョンをフラットに含める（`<name>.<version>.snap` / `.log`）。
+/// ストアの識別。ファイル名にバージョンをフラットに含める（`<name>.<version>.snapshot` / `.log`）。
 /// レイアウトを変えるときは version を上げ、旧 version のストアを読んで移す。
 pub struct StoreId { pub name: &'static str, pub version: &'static str }
 
@@ -83,7 +83,7 @@ pub struct OpfsHandles {
 }
 ```
 
-`open` は非同期、`new` は同期である。`Handler::ready` が `open(..).await` のあと `new(..)` を呼ぶ。`Handle` は実装ごとに決まる、`open` の出力と `new` の入力を結ぶ関連型で、`OpfsStore` では snap と log の2つのハンドルを束ねた `OpfsHandles` になる。トレイトは静的ディスパッチ（`dyn` は使わない）で使い、本番とテストの切り替えは `cfg` で行う。
+`open` は非同期、`new` は同期である。`Handler::ready` が `open(..).await` のあと `new(..)` を呼ぶ。`Handle` は実装ごとに決まる、`open` の出力と `new` の入力を結ぶ関連型で、`OpfsStore` では snapshot と log の2つのハンドルを束ねた `OpfsHandles` になる。トレイトは静的ディスパッチ（`dyn` は使わない）で使い、本番とテストの切り替えは `cfg` で行う。
 
 ---
 
@@ -96,16 +96,16 @@ pub struct OpfsHandles {
 - **`save` と `compact` は書く前に修復する**。物理サイズが `log_end` を超えていれば超過分を truncate してから書く。「ゴミの後ろに正常なデータが並び、次回 open の replay が手前で打ち切られて確定済みデータが消える」事故を避けるため。修復は冪等な1ステップでループを持たず、リトライは caller 所有。
 - **物理サイズが `log_end` を下回るのは単一 writer 前提の破れ**。`save` / `discard` / `compact` はいずれも `Unknown` で失敗し、何も書かない。伸長 truncate（ゼロ埋めが生じる）での「修復」はしない。
 - **`discard` / `compact` も `log[..log_end]` しか読まない**。flush が失敗した save の batch は整形済みバイト列としてハンドル越しに読めてしまうが、未確認である以上確定状態として拾わない。
-- **`compact` は、確定状態の全件コピーを log に置いてから snap を書き直す**。snap の書き直しは旧 snap を壊す（truncate → write）。log が持つのは前回 compact 以降の差分だけなので、先にコピーを置かないと、snap にだけある id が、書き直しの失敗やクラッシュで失われる。
+- **`compact` は、確定状態の全件コピーを log に置いてから snapshot を書き直す**。snapshot の書き直しは旧 snapshot を壊す（truncate → write）。log が持つのは前回 compact 以降の差分だけなので、先にコピーを置かないと、snapshot にだけある id が、書き直しの失敗やクラッシュで失われる。
 
     | 手順 | ここで失敗・クラッシュしたとき |
     |-|-|
     | 0. `log_end` の後ろの未確認バイトを切除 | 何も書いていない |
-    | 1. 全件コピーを log の末尾に append → flush → `log_end` を進める | snap は無傷。書きかけは `log_end` の後ろに残り、次の `save` / `compact` が切る |
-    | 2. `snap.truncate(0)` → 全件を snap に append → flush | snap は空か部分的だが、snap + log（コピー入り）で確定状態を復元できる。末尾の部分書きレコードは checksum で無視される |
-    | 3. `log_end = 0` → `log.truncate(0)` → flush | 新 snap は完全で、古い log が残る。set / delete は冪等なので再適用しても結果は同じ。truncate の失敗後に残った分は `log_end` の後ろの尾として次の `save` / `compact` が切る |
+    | 1. 全件コピーを log の末尾に append → flush → `log_end` を進める | snapshot は無傷。書きかけは `log_end` の後ろに残り、次の `save` / `compact` が切る |
+    | 2. `snapshot.truncate(0)` → 全件を snapshot に append → flush | snapshot は空か部分的だが、snapshot + log（コピー入り）で確定状態を復元できる。末尾の部分書きレコードは checksum で無視される |
+    | 3. `log_end = 0` → `log.truncate(0)` → flush | 新 snapshot は完全で、古い log が残る。set / delete は冪等なので再適用しても結果は同じ。truncate の失敗後に残った分は `log_end` の後ろの尾として次の `save` / `compact` が切る |
 
-    順序の条件が2つある。(1) 相手のファイルに未 flush の書き込みがある間は truncate しない（snap の flush 前に log を空にしない）。(2) 手順3で `log_end = 0` を truncate の**前**に置く。truncate は「効いたのにエラーを返す」ことがあり（`InvalidStateError` は「変更に失敗」も含む）、そのとき `log_end` が空のファイルの先を指したままだと、以後の呼び出しが「log が縮んだ」で恒久的に失敗する。この時点で snap だけが確定状態の全体を持つので、`log_end` を先に 0 にしても失うものはない。
+    順序の条件が2つある。(1) 相手のファイルに未 flush の書き込みがある間は truncate しない（snapshot の flush 前に log を空にしない）。(2) 手順3で `log_end = 0` を truncate の**前**に置く。truncate は「効いたのにエラーを返す」ことがあり（`InvalidStateError` は「変更に失敗」も含む）、そのとき `log_end` が空のファイルの先を指したままだと、以後の呼び出しが「log が縮んだ」で恒久的に失敗する。この時点で snapshot だけが確定状態の全体を持つので、`log_end` を先に 0 にしても失うものはない。
 
     コストは、書き込みが全件コピー分だけ増えること。手順2以降で失敗して再試行を繰り返すと、成功するまでコピーが log に1回ずつ追記される。
 - wire format の op は 1 = set / 2 = delete で、0 は意図的な欠番。`fletcher32` はゼロ列に対し 0 を返すため、op 0 を割り当てるとゼロ埋め領域が正当なレコード（`set(0, [])`）として解釈されてしまう。0 を欠番にすることでゼロ埋めは必ず replay を停止させる。
@@ -120,14 +120,14 @@ pub struct OpfsHandles {
 
 ## 容量と compact の負荷
 
-前提は、1ファイル（snap / log）で全件がメモリに載ること。上限は次で決まる。
+前提は、1ファイル（snapshot / log）で全件がメモリに載ること。上限は次で決まる。
 
 - wasm の線形メモリ: 128 MiB（[CONTRIBUTING.md](../CONTRIBUTING.md) のビルド手順の `--max-memory=134217728`）。
 - ファイルサイズ: 先頭からの offset が `u32` なので 4 GiB 未満（実際にはメモリのほうが先に尽きる）。
 
-実測の条件: headless Chromium 141 の実 OPFS、`opt-level = "z"`、1レコード 200 バイトのペイロード（calendar の1レコードは 12 バイトのセル × 4〜9 + 可変部で 100〜300 バイト）、snap が全件、log が全件の1%の上書き。数値は目安で、端末（特にモバイル）の I/O と CPU で変わる。
+実測の条件: headless Chromium 141 の実 OPFS、`opt-level = "z"`、1レコード 200 バイトのペイロード（calendar の1レコードは 12 バイトのセル × 4〜9 + 可変部で 100〜300 バイト）、snapshot が全件、log が全件の1%の上書き。数値は目安で、端末（特にモバイル）の I/O と CPU で変わる。
 
-| レコード数 | snap のサイズ | 線形メモリの高水位 | `compact` | `discard` | `open` + replay | `save`（1レコード） |
+| レコード数 | snapshot のサイズ | 線形メモリの高水位 | `compact` | `discard` | `open` + replay | `save`（1レコード） |
 |-|-|-|-|-|-|-|
 | 1,000 | 0.2 MB | — | 5 ms | 1 ms | 4 ms | < 1 ms |
 | 10,000 | 2 MB | 18 MiB | 35–40 ms | 7 ms | 10–12 ms | < 1 ms |
@@ -135,7 +135,7 @@ pub struct OpfsHandles {
 | 50,000 | 11 MB | 66 MiB | 165–195 ms | — | — | — |
 | 100,000 | 21 MB | 129 MiB | 330–350 ms | 75 ms | 75 ms | < 1 ms |
 
-- **メモリが上限を決める**。高水位はレコード数にほぼ比例し、1レコードあたり約 1.3 KB（ペイロードの約 6 倍）。`compact` の中では index、snap と log の読み込み、`committed`、全件コピーの4つが同時に存在する。128 MiB を使い切れても約 10 万件（約 20 MB）が限界で、アプリの他の使用分を考えると、設計上の上限は **10^4〜10^5 件・数 MB〜20 MB のオーダー**。
+- **メモリが上限を決める**。高水位はレコード数にほぼ比例し、1レコードあたり約 1.3 KB（ペイロードの約 6 倍）。`compact` の中では index、snapshot と log の読み込み、`committed`、全件コピーの4つが同時に存在する。128 MiB を使い切れても約 10 万件（約 20 MB）が限界で、アプリの他の使用分を考えると、設計上の上限は **10^4〜10^5 件・数 MB〜20 MB のオーダー**。
 - **`compact` は CPU が支配的**。I/O なしの MemoryStore（ホスト、`opt-level = 3`）でも 10 万件で約 200 ms かかる。修正前のアルゴリズムとの差は 0〜20%（10 万件で、新 330–350 ms に対して旧 290–350 ms。実行ごとにばらつく）。書き込み量は2倍（10 万件で約 42 MB）になるが、OPFS の書き込みが十分速いので、時間にはほとんど出ない。
 - **`compact` は `discard` や `open` + replay の4〜5倍**（全件を読み直す1回に、書き込みが2回加わる）。log が増えるほど `open` + replay も遅くなるので、`compact` は次回の起動を速くする。
 
@@ -215,11 +215,11 @@ whatwg/fs spec によれば、`FileSystemSyncAccessHandle` 系メソッドが投
 |-|-|-|-|
 | `LogRecord::from_bytes` | checksum不一致 / op不明 / buffer不足 | `None` を返すのみ（副作用なし） | 呼び出し元（`apply_log`）が該当レコード以降を無視する。エラー原因の区別は不要（壊れている＝無視、の一択） |
 | `apply_log` / `build_memory` | （呼び出し先の `from_bytes` が `None` を返した時点で走査終了） | `memory` はそこまでの適用結果を保持（部分適用は許容される設計） | 対処不要。仕様通りの動作 |
-| `OpfsStore::open` | `WorkerGlobalScope` 取得失敗 / `getDirectory` 失敗 / `open`（snap・log）失敗 | `Err(FileStoreError)` を呼び出し元に返す。`OpfsHandles` は未生成 | caller が起動失敗として扱う以外の選択肢がない（riskyな自動リトライは行わない） |
-| `FileStore::new` | `read_all`（snap・log）失敗 | `Err(FileStoreError)` を呼び出し元に返す。ハンドルは受け取り済みで、index は未構築 | `open` と同じく、caller が起動失敗として扱う |
+| `OpfsStore::open` | `WorkerGlobalScope` 取得失敗 / `getDirectory` 失敗 / `open`（snapshot・log）失敗 | `Err(FileStoreError)` を呼び出し元に返す。`OpfsHandles` は未生成 | caller が起動失敗として扱う以外の選択肢がない（riskyな自動リトライは行わない） |
+| `FileStore::new` | `read_all`（snapshot・log）失敗 | `Err(FileStoreError)` を呼び出し元に返す。ハンドルは受け取り済みで、index は未構築 | `open` と同じく、caller が起動失敗として扱う |
 | `FileStore::save` | `size` 失敗 / 修復 `truncate` 失敗 / `append`（write 失敗 / flush 失敗）/ 物理サイズ < `log_end`（単一 writer 前提の破れ） | `unsaved` / `deleted` は **clear されず**、`log_end` も進まない。log の `log_end` 以降に torn バイトが残りうるが、そこは確定領域外で、次回 save の修復で切除される（open 時の replay も無視する） | `Err` を受けた caller は原因（`InvalidState` / `QuotaExceeded` / `UnsupportedOp` / `Unknown`）を見て、再度 `save()` を呼び直せる（冪等）。torn 残留の後ろに追記して確定データが読めなくなる事故は、`log_end` への修復により構造的に起きない |
-| `FileStore::discard` | `read_all`（snap・log）失敗 / 物理サイズ < `log_end` | `memory` / `unsaved` / `deleted` は失敗前のまま（途中で `memory` への代入をしない）。ディスクには書かないので、ディスクの状態にも影響しない | 原因を見て、再度 `discard()` を呼び直せる |
-| `FileStore::compact` | `read_all`（snap・log）失敗 / 物理サイズ < `log_end` / 未確認の尾の切除・全件コピーの append・`snap.truncate`・snap への append・`log.truncate`・`log.flush` のいずれかの失敗 | RAM と未保存の差分は変わらない。ディスクは、どの手順で止まっても確定状態を保つ（手順ごとの状態は Specification の表） | `compact()` を呼び直せる（再試行は冪等）。全件コピーが先に log にあるので、`discard` や reopen も確定状態を返す |
+| `FileStore::discard` | `read_all`（snapshot・log）失敗 / 物理サイズ < `log_end` | `memory` / `unsaved` / `deleted` は失敗前のまま（途中で `memory` への代入をしない）。ディスクには書かないので、ディスクの状態にも影響しない | 原因を見て、再度 `discard()` を呼び直せる |
+| `FileStore::compact` | `read_all`（snapshot・log）失敗 / 物理サイズ < `log_end` / 未確認の尾の切除・全件コピーの append・`snapshot.truncate`・snapshot への append・`log.truncate`・`log.flush` のいずれかの失敗 | RAM と未保存の差分は変わらない。ディスクは、どの手順で止まっても確定状態を保つ（手順ごとの状態は Specification の表） | `compact()` を呼び直せる（再試行は冪等）。全件コピーが先に log にあるので、`discard` や reopen も確定状態を返す |
 | `read_all`（helper） | `size` 失敗 / `read_at` 失敗 / `size` に届く前に EOF（`r == 0`）に到達 | `Err(FileStoreError)` を返す。呼び出し側（`new` / `compact` / `discard`）に `?` で伝播 | spec 上 `r == 0` は EOF を意味する正常な戻り値だが、`size` 分読み切る前に発生するのは「呼び出し中にファイルが外部で縮んだ」想定外事態なので、`Unknown` として打ち切る（無限ループ回避） |
 | `append`（helper） | `write_at` 失敗 / `flush` 失敗 / write が進捗ゼロ（`w == 0`）で継続 | `Err(FileStoreError)` を返す。呼び出し側（`save` / `compact`）が結果を見て `unsaved` / `deleted` / `log_end` の更新可否を判断 | `classify()` により `InvalidState` / `QuotaExceeded` / `UnsupportedOp` / `Unknown` に分類される。`w == 0` は通常想定されないが、保険として `Unknown` で打ち切る（無限ループ回避） |
 | `open`（helper） | `getFileHandleWithOptions` 失敗（不正なファイル名で`TypeError`、または`NotAllowedError`/`NotFoundError`/`TypeMismatchError`） / `createSyncAccessHandle` 失敗（`NotAllowedError`/`InvalidStateError`/`NotFoundError`/`NoModificationAllowedError`、既に他ハンドルが排他ロック中など） | `Err(FileStoreError)` として`classify()`/`classify_get_file_handle()`済みの詳細メッセージ付きで返る | `OpfsStore::open` がそのまま `?` で伝播。`getFileHandle`は`classify_get_file_handle()`経由で`TypeError`を`InvalidName`に分類、`createSyncAccessHandle`は`TypeError`を投げないため`classify()`の一般分類で問題ない |
@@ -252,7 +252,7 @@ whatwg/fs spec によれば、`FileSystemSyncAccessHandle` 系メソッドが投
 | 2 | メソッド本体（save / discard / compact のロジック） | **共通済み（trait のデフォルト実装）** | ディスク接点は `size` / `read_at` / `write_at` / `flush` / `truncate` / `close` の6つに集約し、`FileStore` の必須メソッドにした。ロジックは1箇所で、`OpfsStore` と `MemoryStore` が共有する |
 | 2 | I/O ヘルパー（`read_all` / `append`） | ループごと共通可 | short read/write・EOF==0 の意味論が vfs の `(p)read` / `(p)write` と同型（Opfs implement の対応表の通り） |
 | 2 | `open` の実体 | **共通化しない** | async 性・排他ロック（内蔵 vs `flock`）・親 dir fsync・パス解決が本質的な差。platform 別コンストラクタとして分離するのが素直 |
-| - | compact の snap 置換 | 共通化可 | 「全件コピーを log に置いてから snap を書き直す」順序の論証は、`FileStore` のデフォルト実装と `FaultInjector` による全探索で OPFS / Memory に対して確認済みで、POSIX でもそのまま成立する。POSIX のみ write→fsync→rename→dir fsync の原子置換にも強化できるが、実装が分岐し論証も別になる。共通化優先なら現行方式に揃える |
+| - | compact の snapshot 置換 | 共通化可 | 「全件コピーを log に置いてから snapshot を書き直す」順序の論証は、`FileStore` のデフォルト実装と `FaultInjector` による全探索で OPFS / Memory に対して確認済みで、POSIX でもそのまま成立する。POSIX のみ write→fsync→rename→dir fsync の原子置換にも強化できるが、実装が分岐し論証も別になる。共通化優先なら現行方式に揃える |
 
 - `FileStore` の必須メソッド（ディスク接点）と、バックエンドごとの実体:
 
@@ -287,7 +287,7 @@ whatwg/fs spec によれば、`FileSystemSyncAccessHandle` 系メソッドが投
 | | `to_bytes` | `&self` | `Vec<u8>` | レコードをバイト列にシリアライズする |
 | | `from_bytes` | `buffer: &[u8]` | `Option<(Self, usize)>` | バッファ先頭から1レコードを読み、(record, consumed_bytes) を返す |
 | - | `apply_log` | `memory: &mut BTreeMap<u32, Vec<u8>>, log: &[u8]` | `usize` | log を走査し memory に set/delete を適用し、消費バイト数（有効 prefix 長）を返す |
-| - | `build_memory` | `snap: &[u8], log: &[u8]` | `(BTreeMap<u32, Vec<u8>>, usize)` | snap → log の順で重ね合わせて memory を構築し、log の有効 prefix 長を併せて返す |
+| - | `build_memory` | `snapshot: &[u8], log: &[u8]` | `(BTreeMap<u32, Vec<u8>>, usize)` | snapshot → log の順で重ね合わせて memory を構築し、log の有効 prefix 長を併せて返す |
 | - | `options_at` | `shift: u32` | `FileSystemReadWriteOptions` | 指定オフセットの read/write options を構築する（OPFS 実装のみ） |
 | - | `read_all` | `store: &impl FileStore, file: File` | `Result<Vec<u8>, FileStoreError>` | ファイルの内容を全読み込みする（short read のループ） |
 | - | `append` | `store: &impl FileStore, file: File, base: u32, data: &[u8]` | `Result<(), FileStoreError>` | 呼び出し側が検証した末尾 `base` にデータを書き flush する（short write のループ） |
@@ -306,7 +306,7 @@ seed 固定の疑似乱数（`testing::Rng`）で、同じ seed は常に同じ�
     `open`/`new`/`close`/`compact` は単体例が無意味なため個別 DocTest を持たず、
     `OpfsStore` struct のライフサイクル例（open → new → issue_id → set → save →
     get → compact → close）でカバーする。
-- **MemoryStore**（`cfg(test)`。`Backend` は `cfg(test)` では `FaultInjector<MemoryStore>`）: `FileStore` の実装の1つ。ディスクの代わりに `Vec<u8>` の snap / log を持ち、trait のデフォルト実装をそのまま使う。`open(id)` は `StoreId` ごとのディスクを共有するので、reopen も再現できる。calendar の `Handler` テストでも `OpfsStore` の代わりに使う。故障注入は `FaultInjector` が trait の層で行うので、MemoryStore に専用のスイッチは持たない。
+- **MemoryStore**（`cfg(test)`。`Backend` は `cfg(test)` では `FaultInjector<MemoryStore>`）: `FileStore` の実装の1つ。ディスクの代わりに `Vec<u8>` の snapshot / log を持ち、trait のデフォルト実装をそのまま使う。`open(id)` は `StoreId` ごとのディスクを共有するので、reopen も再現できる。calendar の `Handler` テストでも `OpfsStore` の代わりに使う。故障注入は `FaultInjector` が trait の層で行うので、MemoryStore に専用のスイッチは持たない。
 - **Host unit test**（`cargo test`）: MemoryStore と純関数。OPFS には触れない。
 - **Opfs integration test**（[CONTRIBUTING.md](../CONTRIBUTING.md) の Headless browser test）: 実 OPFS +
     Dedicated Worker 上で、host と同じシナリオテスト本体を `OpfsStore` で実行する（seed は少数）。
@@ -334,7 +334,7 @@ seed 固定の疑似乱数（`testing::Rng`）で、同じ seed は常に同じ�
 | `issue_id` / `get` / `range` / `set` / `delete` | 空欄（RAM のみ。個別テストは持たない） | 対象外（I/O なし） | ○ | |
 | `save` | 空欄（全探索とシナリオで足りる） | ○ `save` への sweep | ○（log の write / flush 失敗） | |
 | `discard` | 空欄（全探索とシナリオで足りる） | ○ `discard` への sweep | ○ | |
-| `compact` | 空欄 | ○ `compact` への sweep | ○（snap の write 失敗を含む） | compact が触れていない snap を書き直すこと（pin） |
+| `compact` | 空欄 | ○ `compact` への sweep | ○（snapshot の write 失敗を含む） | compact が触れていない snapshot を書き直すこと（pin） |
 | `close` | 閉じた handle の操作と、再オープンした store への差分の引き継ぎ（OPFS） | 空欄（use-after-close を全メソッドで確認していない） | | |
 
 空欄は未検査であることを意味する。埋めるかどうかは、そのメソッドが disk を変えるかで決める。
@@ -375,14 +375,14 @@ seed 固定の疑似乱数（`testing::Rng`）で、同じ seed は常に同じ�
 | `trace` | 呼び出しを記録して実行する（`FaultInjector`） |
 | `forge` | 注入するエラーを作る |
 | `derive` | 名前と番号から store の id を作る |
-| `separate` | snap と log を重ねず別々に読む |
+| `separate` | snapshot と log を重ねず別々に読む |
 | `count` | 確定済み / 未保存のレコード数を数える |
 
 #### 全探索
 
 `cases::sweep` は、`FaultInjector<S>`（`FileStore` を包み、`size` / `read_at` / `write_at` / `flush` / `truncate` の全呼び出しを記録する）で次を行う。
 
-1. 状態を用意する: snap `{1, 2}`、log `{3, 4}`、その上に未保存の差分（snap にだけある id の削除、log にだけある id の上書き、新規 id）。
+1. 状態を用意する: snapshot `{1, 2}`、log `{3, 4}`、その上に未保存の差分（snapshot にだけある id の削除、log にだけある id の上書き、新規 id）。
 2. 故障なしで1回実行し、呼び出し列（どのファイルへの何の呼び出しか）を得る。
 3. 呼び出しごとに、前（効果なしで失敗）・後（効果ありで失敗）、write はさらに先頭 n バイトだけ書けて失敗、を注入する。
 4. 注入のたびに、次の3通りの続きを確認する。
@@ -414,7 +414,7 @@ seed 固定の疑似乱数（`testing::Rng`）で、同じ seed は常に同じ�
 | `match_known_checksums` | 空入力 → 0、偶数長（`abcdef`）→ `0x56502D2A`、奇数長（`abcde`）→ `0xF04FC729`。ディスク上の checksum を固定する |
 | `match_wire_layout` | `to_bytes` が `[op][id][len][data][checksum]` の仕様どおりのバイト列になる（テストが独立に組み立てたバイト列と一致） |
 | `reject_unassigned_ops` | op 0 と 3 以上は、checksum が正しくても `None`（op 0 を欠番にする根拠: ゼロ埋め領域がレコードとして読めてしまう） |
-| `replay_damaged_log` | ランダムな set / delete 列を snap と log として組み、log のあらゆる切り詰め位置と、ランダムな1バイト破損で、`build_memory` の結果と消費バイト数が「完全なレコードの接頭辞」を適用した oracle と一致する |
+| `replay_damaged_log` | ランダムな set / delete 列を snapshot と log として組み、log のあらゆる切り詰め位置と、ランダムな1バイト破損で、`build_memory` の結果と消費バイト数が「完全なレコードの接頭辞」を適用した oracle と一致する |
 | `open_missing` | `create = false` で存在しない store は `NotFound` で、作られもしない |
 | `separate_versions` | 同名で version が違う store は別ファイル |
 | `replay_pending_diff` | 再オープンした store に未保存の差分を `replay` すると、元の現在値と未保存の差分が一致する |
@@ -424,8 +424,8 @@ seed 固定の疑似乱数（`testing::Rng`）で、同じ seed は常に同じ�
 | `sweep_save` | 上記「全探索」を `save` に対して実行 |
 | `sweep_discard` | 同上を `discard` に対して実行 |
 | `sweep_compact` | 同上を `compact` に対して実行（未確認の尾がある場合も） |
-| `walk_faults` | ランダムな操作列（set / delete / issue_id / save / discard / compact / close → reopen、torn 注入、`FaultInjector` による log の write 失敗・flush 失敗、compact 中の snap の write 失敗）を、独立したモデル（現在値、確定値、next_id、flush 失敗が残す未確認バッチ）と1操作ごとに照合する |
-| `pin_compact_rewrite` | 現状の挙動の記録（要件ではない）: snap に 1〜100、log に 101,102 だけの状態で compact すると、誰も触れていない snap も `truncate(0)` され全件（102件）書き直される。`truncate` / `write_at` を記録する `FaultInjector<S>` で観測し、truncate が `[snap 0, log 0]` で、snap への書き込み量が snap のサイズに等しいことを照合する |
+| `walk_faults` | ランダムな操作列（set / delete / issue_id / save / discard / compact / close → reopen、torn 注入、`FaultInjector` による log の write 失敗・flush 失敗、compact 中の snapshot の write 失敗）を、独立したモデル（現在値、確定値、next_id、flush 失敗が残す未確認バッチ）と1操作ごとに照合する |
+| `pin_compact_rewrite` | 現状の挙動の記録（要件ではない）: snapshot に 1〜100、log に 101,102 だけの状態で compact すると、誰も触れていない snapshot も `truncate(0)` され全件（102件）書き直される。`truncate` / `write_at` を記録する `FaultInjector<S>` で観測し、truncate が `[snapshot 0, log 0]` で、snapshot への書き込み量が snapshot のサイズに等しいことを照合する |
 
 モデルが採用している仕様（これに沿わない実装は上のテストで落ちる）:
 
