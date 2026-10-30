@@ -154,6 +154,10 @@ impl App {
         self.run(event);
     }
 
+    #[cfg_attr(
+        not(any(test, all(target_arch = "wasm32", target_feature = "atomics"))),
+        expect(dead_code, reason = "only the worker loop in arena.rs drives the reopen flow")
+    )]
     pub(crate) fn opened(&mut self, opened: Opened<Store>) {
         let (events, commands) = self.handler.process_opened(opened);
         self.commands.extend(commands);
@@ -162,6 +166,10 @@ impl App {
         }
     }
 
+    #[cfg_attr(
+        not(any(test, all(target_arch = "wasm32", target_feature = "atomics"))),
+        expect(dead_code, reason = "only the worker loop in arena.rs drives the reopen flow")
+    )]
     pub(crate) fn reopen_wanted(&mut self) -> Option<StoreId> {
         self.reopen.take()
     }
@@ -218,14 +226,14 @@ mod tests {
     use std::fs;
 
     use super::*;
-    #[cfg(feature = "calendar")]
-    use crate::calendar::data::appointment;
     use crate::{
         Output, Rng, block_on,
         event::{FetchChunk, gesture::Gesture},
-        file_store::{FileStore, MemoryHandles},
+        file_store::FileStore,
         host::{EVENT_CANVAS, EVENT_FETCH, dom},
     };
+    #[cfg(feature = "calendar")]
+    use crate::{calendar::data::appointment, file_store::MemoryHandles};
 
     const POINTER_DOWN: u8 = 16;
     const POINTER_UP: u8 = 18;

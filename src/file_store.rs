@@ -1036,7 +1036,10 @@ impl Index {
 }
 
 #[cfg(test)]
-#[allow(dead_code)] // the host and wasm suites use different subsets of these helpers
+#[cfg_attr(
+    target_arch = "wasm32",
+    expect(dead_code, reason = "the host and wasm suites use different subsets of these helpers")
+)]
 pub mod cases {
     //! Backend-independent scenarios, written once over `S: FileStore` and
     //! run on `MemoryStore` (host) and `OpfsStore` (browser) by the thin

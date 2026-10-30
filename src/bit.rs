@@ -118,7 +118,6 @@ macro_rules! composite {
         #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
         $vis struct $name([u8; $crate::bit::bytes(0 $(+ $crate::bit::width::<$field>())+)]);
 
-        #[allow(dead_code)]
         impl $name {
             pub const BITS: u32 = 0 $(+ $crate::bit::width::<$field>())+;
             pub const BYTES: usize = $crate::bit::bytes(Self::BITS);
