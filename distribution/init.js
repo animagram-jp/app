@@ -30,7 +30,7 @@ const EVENT_SCROLL = 3;
 const EVENT_VISIBILITY = 4;
 const EVENT_FETCH = 5;
 const EVENT_FULLSCREEN = 6;
-const EVENT_SHUTDOWN = 8;
+const EVENT_PAGEHIDE = 8;
 
 const RELOAD_LOG_KEY = "app:reload-log";
 const RELOAD_WINDOW_IN_MS = 60000;
@@ -374,10 +374,10 @@ function send(e) {
     if (!root && !(e.type.startsWith("key") && [document.body, document.documentElement].includes(e.target))) return;
     if (e.type === "submit") e.preventDefault();
 
-    const x = e.clientX ?? 0;
-    const y = e.clientY ?? 0;
+    const client_x = e.clientX ?? 0;
+    const client_y = e.clientY ?? 0;
     const rect = e.clientX === undefined ? null : root.getBoundingClientRect();
-    write_event(encode_canvas_event(S.event_frame, e, x, y, rect ? x - rect.left : 0, rect ? y - rect.top : 0));
+    write_event(encode_canvas_event(S.event_frame, e, client_x, client_y, rect ? client_x - rect.left : 0, rect ? client_y - rect.top : 0));
 }
 
 function send_key(e) {
@@ -433,59 +433,59 @@ function event_value(e) {
     return e.target.value ?? "";
 }
 
-function encode_canvas_event(frame, e, x, y, local_x, local_y) {
-    let offset = put_u8(frame, 0, EVENT_CANVAS);
-    offset = put_u8(frame, offset, Math.max(EVENT_TYPES.indexOf(e.type), 0));
-    offset = put_id(frame, offset, e.target.id ?? "");
-    offset = put_u8(frame, offset, key_index(e));
-    offset = put_u8(frame, offset, key_flags(e));
-    offset = put_str(frame, offset, event_value(e));
-    offset = put_f32(frame, offset, x);
-    offset = put_f32(frame, offset, y);
-    offset = put_f32(frame, offset, local_x);
-    offset = put_f32(frame, offset, local_y);
-    offset = put_f64(frame, offset, e.timeStamp ?? 0);
-    offset = put_u32(frame, offset, e.pointerId ?? 0);
+function encode_canvas_event(frame, e, client_x, client_y, local_x, local_y) {
+    let offset = set_u8(frame, 0, EVENT_CANVAS);
+    offset = set_u8(frame, offset, Math.max(EVENT_TYPES.indexOf(e.type), 0));
+    offset = set_id(frame, offset, e.target.id ?? "");
+    offset = set_u8(frame, offset, key_index(e));
+    offset = set_u8(frame, offset, key_flags(e));
+    offset = set_str(frame, offset, event_value(e));
+    offset = set_f32(frame, offset, client_x);
+    offset = set_f32(frame, offset, client_y);
+    offset = set_f32(frame, offset, local_x);
+    offset = set_f32(frame, offset, local_y);
+    offset = set_f64(frame, offset, e.timeStamp ?? 0);
+    offset = set_u32(frame, offset, e.pointerId ?? 0);
     return frame.subarray(0, offset);
 }
 
 function encode_resize_event(frame, width, height) {
-    let offset = put_u8(frame, 0, EVENT_RESIZE);
-    offset = put_f32(frame, offset, width);
-    offset = put_f32(frame, offset, height);
+    let offset = set_u8(frame, 0, EVENT_RESIZE);
+    offset = set_f32(frame, offset, width);
+    offset = set_f32(frame, offset, height);
     return frame.subarray(0, offset);
 }
 
 function encode_scroll_event(frame, x, y) {
-    let offset = put_u8(frame, 0, EVENT_SCROLL);
-    offset = put_f32(frame, offset, x);
-    offset = put_f32(frame, offset, y);
+    let offset = set_u8(frame, 0, EVENT_SCROLL);
+    offset = set_f32(frame, offset, x);
+    offset = set_f32(frame, offset, y);
     return frame.subarray(0, offset);
 }
 
 function encode_visibility_event(frame, state) {
-    let offset = put_u8(frame, 0, EVENT_VISIBILITY);
-    offset = put_u8(frame, offset, Math.max(VISIBILITY_STATES.indexOf(state), 0));
+    let offset = set_u8(frame, 0, EVENT_VISIBILITY);
+    offset = set_u8(frame, offset, Math.max(VISIBILITY_STATES.indexOf(state), 0));
     return frame.subarray(0, offset);
 }
 
 function encode_fullscreen_event(frame, type) {
-    let offset = put_u8(frame, 0, EVENT_FULLSCREEN);
-    offset = put_u8(frame, offset, Math.max(FULLSCREEN_EVENTS.indexOf(type), 0));
+    let offset = set_u8(frame, 0, EVENT_FULLSCREEN);
+    offset = set_u8(frame, offset, Math.max(FULLSCREEN_EVENTS.indexOf(type), 0));
     return frame.subarray(0, offset);
 }
 
 function encode_fetch_event(frame, request, status, last, bytes) {
-    let offset = put_u8(frame, 0, EVENT_FETCH);
-    offset = put_u32(frame, offset, request);
-    offset = put_u16(frame, offset, status);
-    offset = put_u8(frame, offset, last ? 1 : 0);
-    offset = put_bytes(frame, offset, bytes);
+    let offset = set_u8(frame, 0, EVENT_FETCH);
+    offset = set_u32(frame, offset, request);
+    offset = set_u16(frame, offset, status);
+    offset = set_u8(frame, offset, last ? 1 : 0);
+    offset = set_bytes(frame, offset, bytes);
     return frame.subarray(0, offset);
 }
 
-function encode_shutdown_event(frame) {
-    const offset = put_u8(frame, 0, EVENT_SHUTDOWN);
+function encode_pagehide_event(frame) {
+    const offset = set_u8(frame, 0, EVENT_PAGEHIDE);
     return frame.subarray(0, offset);
 }
 
@@ -536,7 +536,7 @@ function bind() {
 
     window.addEventListener("pagehide", (e) => {
         if (e.persisted) return;
-        write_event(encode_shutdown_event(S.event_frame));
+        write_event(encode_pagehide_event(S.event_frame));
     });
 
     for (const type of FULLSCREEN_EVENTS.slice(1)) {
@@ -608,6 +608,7 @@ const EVENT_TYPES = [
  */
 const KEY_NAMES = [
     null,
+    "a",
     "Alt",
     "AltGraph",
     "&",
@@ -617,37 +618,36 @@ const KEY_NAMES = [
     "ArrowRight",
     "ArrowUp",
     "*",
-    "@",
-    "\\",
+    "b",
     "Backspace",
-    "`",
+    "c",
     "CapsLock",
     "^",
-    "}",
-    "]",
-    ")",
     ":",
     ",",
+    "@",
     "ContextMenu",
     "Control",
+    "d",
     "Delete",
-    "0",
-    "1",
-    "2",
-    "3",
-    "4",
-    "5",
-    "6",
-    "7",
     "8",
+    "5",
+    "4",
     "9",
+    "1",
+    "7",
+    "6",
+    "3",
+    "2",
+    "0",
     "$",
-    "\"",
+    "e",
     "End",
     "Enter",
     "=",
     "Escape",
     "!",
+    "f",
     "F1",
     "F2",
     "F3",
@@ -660,56 +660,56 @@ const KEY_NAMES = [
     "F10",
     "F11",
     "F12",
-    ">",
-    "#",
-    "Home",
-    "Insert",
-    "a",
-    "b",
-    "c",
-    "d",
-    "e",
-    "f",
+    ".",
     "g",
+    "`",
+    ">",
     "h",
+    "Home",
+    "-",
     "i",
+    "Insert",
     "j",
     "k",
     "l",
+    "{",
+    "(",
+    "[",
+    "<",
+    "_",
     "m",
+    "Meta",
     "n",
+    "#",
     "o",
     "p",
-    "q",
-    "r",
-    "s",
-    "t",
-    "u",
-    "v",
-    "w",
-    "x",
-    "y",
-    "z",
-    "<",
-    "Meta",
-    "-",
-    "{",
-    "[",
-    "(",
     "PageDown",
     "PageUp",
     "%",
-    ".",
-    "|",
     "+",
+    "q",
     "?",
+    "\"",
+    "r",
+    "\\",
+    "}",
+    ")",
+    "]",
+    "s",
     ";",
     "Shift",
     "/",
     " ",
+    "t",
     "Tab",
     "~",
-    "_",
+    "u",
+    "v",
+    "|",
+    "w",
+    "x",
+    "y",
+    "z",
 ];
 
 /**
@@ -946,57 +946,57 @@ function reserve(frame, offset, count) {
     }
 }
 
-function put_u8(frame, offset, value) {
+function set_u8(frame, offset, value) {
     reserve(frame, offset, 1);
     frame[offset] = value;
     return offset + 1;
 }
 
-function put_u16(frame, offset, value) {
+function set_u16(frame, offset, value) {
     reserve(frame, offset, 2);
     view_of(frame).setUint16(offset, value, true);
     return offset + 2;
 }
 
-function put_u32(frame, offset, value) {
+function set_u32(frame, offset, value) {
     reserve(frame, offset, 4);
     view_of(frame).setUint32(offset, value, true);
     return offset + 4;
 }
 
-function put_f32(frame, offset, value) {
+function set_f32(frame, offset, value) {
     reserve(frame, offset, 4);
     view_of(frame).setFloat32(offset, value, true);
     return offset + 4;
 }
 
-function put_f64(frame, offset, value) {
+function set_f64(frame, offset, value) {
     reserve(frame, offset, 8);
     view_of(frame).setFloat64(offset, value, true);
     return offset + 8;
 }
 
-function put_bytes(frame, offset, bytes) {
+function set_bytes(frame, offset, bytes) {
     reserve(frame, offset, 4 + bytes.length);
-    offset = put_u32(frame, offset, bytes.length);
+    offset = set_u32(frame, offset, bytes.length);
     frame.set(bytes, offset);
     return offset + bytes.length;
 }
 
-function put_str(frame, offset, value) {
-    return put_bytes(frame, offset, TEXT_ENCODER.encode(value));
+function set_str(frame, offset, value) {
+    return set_bytes(frame, offset, TEXT_ENCODER.encode(value));
 }
 
-function put_id(frame, offset, value) {
-    if (!value) return put_u8(frame, offset, 0);
+function set_id(frame, offset, value) {
+    if (!value) return set_u8(frame, offset, 0);
     const segments = value.split("_");
-    offset = put_u8(frame, offset, segments.length);
+    offset = set_u8(frame, offset, segments.length);
     for (const segment of segments) {
         const dash = segment.lastIndexOf("-");
         const number = dash < 0 ? NaN : Number(segment.slice(dash + 1));
         const tag = Number.isInteger(number) ? segment.slice(0, dash) : segment;
-        offset = put_u8(frame, offset, Math.max(0, TAGS.indexOf(tag)));
-        offset = put_u32(frame, offset, Number.isInteger(number) ? number : 0xFFFFFFFF);
+        offset = set_u8(frame, offset, Math.max(0, TAGS.indexOf(tag)));
+        offset = set_u32(frame, offset, Number.isInteger(number) ? number : 0xFFFFFFFF);
     }
     return offset;
 }

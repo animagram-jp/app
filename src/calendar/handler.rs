@@ -237,9 +237,9 @@ impl<S: FileStore> Handler<S> {
         let Some(Target::Card(n) | Target::CardPart(n, _)) = target else {
             if target == Some(Target::Surface) {
                 self.set_origin(event.root_origin());
-                self.pending_tap = Some([event.x, event.y]);
+                self.pending_tap = Some([event.client_x, event.client_y]);
                 self.create = self
-                    .unit_at([event.x, event.y])
+                    .unit_at([event.client_x, event.client_y])
                     .filter(|_| !self.month())
                     .filter(|[column, row]| {
                         (0..self.columns() as i32).contains(column)
@@ -253,7 +253,7 @@ impl<S: FileStore> Handler<S> {
             return vec![];
         };
         self.set_origin(event.root_origin());
-        let pointer = [Px::new(event.x), Px::new(event.y)];
+        let pointer = [Px::new(event.client_x), Px::new(event.client_y)];
         let offset =
             self.rectgrid.offset(pointer, [Px::new(placed.base[0]), Px::new(placed.base[1])]);
         let corner = if self.month() { None } else { self.handle_at(&placed, pointer) };
@@ -276,7 +276,7 @@ impl<S: FileStore> Handler<S> {
             key: placed.key,
             cell: placed.cell,
             offset: [offset[0].get(), offset[1].get()],
-            pointer: [event.x, event.y],
+            pointer: [event.client_x, event.client_y],
             moved: false,
             kind,
         });
@@ -712,7 +712,7 @@ impl<S: FileStore> Handler<S> {
         self.editing = None;
         let mut commands = Vec::new();
         commands.extend(self.mark_dirty());
-        commands.push(Command::CloseModal { id: Target::Modal.to_dom() });
+        commands.push(Command::Close { id: Target::Modal.to_dom() });
         commands.extend(self.card_commands());
         commands
     }
@@ -744,7 +744,7 @@ impl<S: FileStore> Handler<S> {
                 self.persist(entry);
                 let mut commands = Vec::new();
                 commands.extend(self.mark_dirty());
-                commands.push(Command::CloseModal { id: Target::Modal.to_dom() });
+                commands.push(Command::Close { id: Target::Modal.to_dom() });
                 commands.extend(self.loaded_commands());
                 commands
             }
@@ -998,7 +998,7 @@ impl<S: FileStore> Handler<S> {
             }
             Target::Modal => {
                 self.editing = None;
-                (vec![], vec![Command::CloseModal { id: Target::Modal.to_dom() }])
+                (vec![], vec![Command::Close { id: Target::Modal.to_dom() }])
             }
             Target::Delete => (vec![], self.delete_commands()),
             Target::Save => self.save_commands(),
@@ -1697,7 +1697,7 @@ impl<S: FileStore> event::Handler for Handler<S> {
             }
             EventType::Scroll => {
                 if target == Some(Target::Surface) {
-                    self.scroll_x_in_px = event.x;
+                    self.scroll_x_in_px = event.client_x;
                 }
                 (vec![], vec![])
             }
@@ -1948,11 +1948,11 @@ mod tests {
             key: KeyName::Other,
             flags: Flags::ZERO,
             value: String::new(),
-            x,
-            y,
+            client_x: x,
+            client_y: y,
             local_x: x - ROOT.0,
             local_y: y - ROOT.1,
-            time: 0.0,
+            time_stamp: 0.0,
             pointer_id: 0,
         }
     }
@@ -3670,7 +3670,7 @@ mod tests {
             "a new record is created now"
         );
         assert!(handler.dirty());
-        assert!(commands.iter().any(|c| matches!(c, Command::CloseModal { .. })));
+        assert!(commands.iter().any(|c| matches!(c, Command::Close { .. })));
         assert!(pending(&handler) == 1);
         assert!(handler.editing.is_none());
         let key = data::key(added);
@@ -3706,7 +3706,7 @@ mod tests {
         let (mut handler, _) = drag_fixture();
         tap_empty(&mut handler, 0.0, 0.0);
         let commands = press(&mut handler, Target::Modal.to_dom());
-        assert!(matches!(commands.as_slice(), [Command::CloseModal { .. }]));
+        assert!(matches!(commands.as_slice(), [Command::Close { .. }]));
         assert!(handler.editing.is_none());
     }
 
@@ -4294,7 +4294,7 @@ mod tests {
         let before = appointments(&handler).len();
         let (key, _) = open_first_card(&mut handler);
         let commands = press(&mut handler, Target::Delete.to_dom());
-        assert!(commands.iter().any(|c| matches!(c, Command::CloseModal { .. })));
+        assert!(commands.iter().any(|c| matches!(c, Command::Close { .. })));
         assert_eq!(save_disabled(&commands), [false]);
         assert!(handler.editing.is_none());
         assert!(handler.dirty());
@@ -4377,7 +4377,7 @@ mod tests {
             "11:00",
         );
         let commands = submit(&mut handler, &query);
-        assert!(commands.iter().any(|c| matches!(c, Command::CloseModal { .. })));
+        assert!(commands.iter().any(|c| matches!(c, Command::Close { .. })));
         let cells = appointment::Places::read(&appointment_of(&handler, 1));
         assert_eq!(cells, [Place { day: today(), resource: 103 }]);
     }

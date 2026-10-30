@@ -87,9 +87,9 @@ impl App {
                 match pointer.track(
                     &canvas_event.event_type,
                     canvas_event.pointer_id,
-                    canvas_event.x,
-                    canvas_event.y,
-                    canvas_event.time,
+                    canvas_event.client_x,
+                    canvas_event.client_y,
+                    canvas_event.time_stamp,
                     thresholds,
                 ) {
                     Some(gesture) => (vec![Event::Gesture(gesture)], vec![]),
@@ -125,7 +125,7 @@ impl App {
                 self.reopen = Some(id);
                 handler.process_lost()
             }
-            Event::Window(WindowEvent::Shutdown) => {
+            Event::Window(WindowEvent::PageHide) => {
                 unsafe { RUNNING = false };
                 (vec![], self.handler.close())
             }

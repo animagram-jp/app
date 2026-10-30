@@ -174,9 +174,9 @@ fn apply_log(memory: &mut BTreeMap<u32, Vec<u8>>, log: &[u8]) -> usize {
 
 /// Rebuild the RAM index: replay the snapshot, then the log on top. Returns
 /// the index together with the log's validated length (see `apply_log`).
-fn build_memory(snap: &[u8], log: &[u8]) -> (BTreeMap<u32, Vec<u8>>, usize) {
+fn build_memory(snapshot: &[u8], log: &[u8]) -> (BTreeMap<u32, Vec<u8>>, usize) {
     let mut memory = BTreeMap::new();
-    apply_log(&mut memory, snap);
+    apply_log(&mut memory, snapshot);
     let log_end = apply_log(&mut memory, log);
     (memory, log_end)
 }
@@ -200,14 +200,14 @@ pub enum FileStoreError {
     /// `QuotaExceededError`: storage quota exhausted.
     QuotaExceeded(String),
     /// `TypeError` on read/write/truncate: positioned I/O or set_len unsupported.
-    UnsupportedOp(String),
+    Unsupported(String),
     /// `TypeError` on getFileHandle: not a valid file name.
     InvalidName(String),
     /// Unrecognized `DOMException` name or unclassifiable value (debug string kept).
     Unknown(String),
     /// `NotFoundError` on `getFileHandle` without `create`: no entry with that name.
     NotFound(String),
-    Locked(String),
+    NoModificationAllowed(String),
 }
 
 impl Display for FileStoreError {
@@ -221,11 +221,11 @@ impl WireError for FileStoreError {
         path.push(match self {
             FileStoreError::InvalidState(_) => 1,
             FileStoreError::QuotaExceeded(_) => 2,
-            FileStoreError::UnsupportedOp(_) => 3,
+            FileStoreError::Unsupported(_) => 3,
             FileStoreError::InvalidName(_) => 4,
             FileStoreError::Unknown(_) => 5,
             FileStoreError::NotFound(_) => 6,
-            FileStoreError::Locked(_) => 7,
+            FileStoreError::NoModificationAllowed(_) => 7,
         });
     }
 
@@ -233,18 +233,18 @@ impl WireError for FileStoreError {
         match self {
             FileStoreError::InvalidState(message)
             | FileStoreError::QuotaExceeded(message)
-            | FileStoreError::UnsupportedOp(message)
+            | FileStoreError::Unsupported(message)
             | FileStoreError::InvalidName(message)
             | FileStoreError::Unknown(message)
             | FileStoreError::NotFound(message)
-            | FileStoreError::Locked(message) => message.clone(),
+            | FileStoreError::NoModificationAllowed(message) => message.clone(),
         }
     }
 }
 
 #[derive(Clone, Copy)]
 pub enum File {
-    Snap,
+    Snapshot,
     Log,
 }
 
@@ -418,12 +418,12 @@ pub trait FileStore: Sized {
     /// store ids should be never held as independent external references
     fn new(handle: Self::Handle) -> Result<Self, FileStoreError> {
         let mut store = Self::from_handle(handle);
-        let snap_bytes = read_all(&store, File::Snap)?;
+        let snapshot_bytes = read_all(&store, File::Snapshot)?;
         let log_bytes = read_all(&store, File::Log)?;
         // The validated prefix length is the best available truth for the
         // committed extent after a crash; a torn tail beyond it stays in
         // place until the first save() cuts it off.
-        let (memory, log_end) = build_memory(&snap_bytes, &log_bytes);
+        let (memory, log_end) = build_memory(&snapshot_bytes, &log_bytes);
         let next_id = memory.keys().copied().max().unwrap_or(0);
         *store.index_mut() = Index {
             memory,
@@ -618,9 +618,9 @@ pub trait FileStore: Sized {
     /// # Ok(()) }
     /// ```
     fn discard(&mut self) -> Result<(), FileStoreError> {
-        let snap_bytes = read_all(&*self, File::Snap)?;
+        let snapshot_bytes = read_all(&*self, File::Snapshot)?;
         let log_bytes = read_all(&*self, File::Log)?;
-        let (memory, _) = build_memory(&snap_bytes, self.index().confirmed(&log_bytes)?);
+        let (memory, _) = build_memory(&snapshot_bytes, self.index().confirmed(&log_bytes)?);
         let index = self.index_mut();
         index.memory = memory;
         index.unsaved.clear();
@@ -666,10 +666,10 @@ pub trait FileStore: Sized {
     /// to 0 *before* the truncate in step 3, because a failed truncate may
     /// or may not have taken effect and the snap no longer needs the log.
     fn compact(&mut self) -> Result<(), FileStoreError> {
-        let snap_bytes = read_all(&*self, File::Snap)?;
+        let snapshot_bytes = read_all(&*self, File::Snapshot)?;
         let log_bytes = read_all(&*self, File::Log)?;
         let log_end = self.index().log_end;
-        let (committed, _) = build_memory(&snap_bytes, self.index().confirmed(&log_bytes)?);
+        let (committed, _) = build_memory(&snapshot_bytes, self.index().confirmed(&log_bytes)?);
 
         let image: Vec<u8> = committed
             .iter()
@@ -684,8 +684,8 @@ pub trait FileStore: Sized {
         append(&*self, File::Log, log_end, &image)?;
         self.index_mut().log_end = log_end + image.len() as u32;
         // 2. Only now is the old snap expendable.
-        self.truncate(File::Snap, 0)?;
-        append(&*self, File::Snap, 0, &image)?;
+        self.truncate(File::Snapshot, 0)?;
+        append(&*self, File::Snapshot, 0, &image)?;
         // 3. The snap alone now holds the committed state, so nothing in the
         //    log is committed truth any more: reset `log_end` first. A failed
         //    truncate has an unknown effect (it may have emptied the file);
@@ -702,9 +702,7 @@ pub trait FileStore: Sized {
 /// a `FileStoreError`. `context` names the failing operation and is used in
 /// messages only, never for classification.
 ///
-/// The `TypeError` fallback maps to `UnsupportedOp` because on the
-/// read/write/truncate paths the spec reserves `TypeError` for unsupported
-/// positioned I/O. Paths where `TypeError` means something else must use a
+/// Paths where `TypeError` means something else must use a
 /// dedicated classifier (see `classify_get_file_handle`).
 #[cfg(feature = "file_store")]
 fn classify(context: &str, error: JsValue) -> FileStoreError {
@@ -713,12 +711,12 @@ fn classify(context: &str, error: JsValue) -> FileStoreError {
         return match exception.name().as_str() {
             "InvalidStateError" => FileStoreError::InvalidState(message),
             "QuotaExceededError" => FileStoreError::QuotaExceeded(message),
-            "NoModificationAllowedError" => FileStoreError::Locked(message),
+            "NoModificationAllowedError" => FileStoreError::NoModificationAllowed(message),
             _ => FileStoreError::Unknown(message),
         };
     }
     // TypeError is not a DOMException, so it has no name() to match on.
-    FileStoreError::UnsupportedOp(format!("{}: {:?}", context, error))
+    FileStoreError::Unsupported(format!("{}: {:?}", context, error))
 }
 
 /// Classifier dedicated to `getFileHandle`: there, `TypeError` means "name
@@ -771,8 +769,8 @@ async fn open(
 
 #[cfg(feature = "file_store")]
 pub struct OpfsHandles {
-    snap: FileSystemSyncAccessHandle,
-    log:  FileSystemSyncAccessHandle,
+    snapshot: FileSystemSyncAccessHandle,
+    log:      FileSystemSyncAccessHandle,
 }
 
 /// OPFS-backed store: sync access handles to the snap/log pair plus the RAM
@@ -800,16 +798,16 @@ pub struct OpfsHandles {
 /// ```
 #[cfg(feature = "file_store")]
 pub struct OpfsStore {
-    snap:  FileSystemSyncAccessHandle,
-    log:   FileSystemSyncAccessHandle,
-    index: Index,
+    snapshot: FileSystemSyncAccessHandle,
+    log:      FileSystemSyncAccessHandle,
+    index:    Index,
 }
 
 #[cfg(feature = "file_store")]
 impl OpfsStore {
     fn file(&self, file: File) -> &FileSystemSyncAccessHandle {
         match file {
-            File::Snap => &self.snap,
+            File::Snapshot => &self.snapshot,
             File::Log => &self.log,
         }
     }
@@ -832,19 +830,19 @@ impl FileStore for OpfsStore {
         let options = FileSystemGetFileOptions::new();
         options.set_create(create);
 
-        let snap = open(dir, &id.file("snap"), &options, create).await?;
+        let snapshot = open(dir, &id.file("snap"), &options, create).await?;
         let log = match open(dir, &id.file("log"), &options, create).await {
             Ok(log) => log,
             Err(error) => {
-                snap.close();
+                snapshot.close();
                 return Err(error);
             }
         };
-        Ok(OpfsHandles { snap, log })
+        Ok(OpfsHandles { snapshot, log })
     }
 
     fn from_handle(handle: OpfsHandles) -> Self {
-        Self { snap: handle.snap, log: handle.log, index: Index::new() }
+        Self { snapshot: handle.snapshot, log: handle.log, index: Index::new() }
     }
 
     fn index(&self) -> &Index {
@@ -882,7 +880,7 @@ impl FileStore for OpfsStore {
     }
 
     fn close(&self) {
-        self.snap.close();
+        self.snapshot.close();
         self.log.close();
     }
 }
@@ -907,13 +905,13 @@ impl Clone for MemoryFile {
 
 #[derive(Clone)]
 pub struct MemoryHandles {
-    snap: MemoryFile,
-    log:  MemoryFile,
+    snapshot: MemoryFile,
+    log:      MemoryFile,
 }
 
 impl MemoryHandles {
     pub fn new() -> Self {
-        Self { snap: MemoryFile::new(), log: MemoryFile::new() }
+        Self { snapshot: MemoryFile::new(), log: MemoryFile::new() }
     }
 }
 
@@ -923,15 +921,15 @@ thread_local! {
 }
 
 pub struct MemoryStore {
-    snap:  MemoryFile,
-    log:   MemoryFile,
-    index: Index,
+    snapshot: MemoryFile,
+    log:      MemoryFile,
+    index:    Index,
 }
 
 impl MemoryStore {
     fn select(&self, file: File) -> &MemoryFile {
         match file {
-            File::Snap => &self.snap,
+            File::Snapshot => &self.snapshot,
             File::Log => &self.log,
         }
     }
@@ -967,7 +965,7 @@ impl FileStore for MemoryStore {
     }
 
     fn from_handle(handle: MemoryHandles) -> Self {
-        Self { snap: handle.snap, log: handle.log, index: Index::new() }
+        Self { snapshot: handle.snapshot, log: handle.log, index: Index::new() }
     }
 
     fn index(&self) -> &Index {
@@ -1014,7 +1012,7 @@ impl FileStore for MemoryStore {
     }
 
     fn close(&self) {
-        self.snap.1.set(true);
+        self.snapshot.1.set(true);
         self.log.1.set(true);
     }
 }
@@ -1022,9 +1020,9 @@ impl FileStore for MemoryStore {
 #[cfg(test)]
 impl MemoryHandles {
     pub fn count_committed(&self) -> usize {
-        let snap = self.snap.0.borrow();
+        let snapshot = self.snapshot.0.borrow();
         let log = self.log.0.borrow();
-        build_memory(&snap.bytes, &log.bytes).0.len()
+        build_memory(&snapshot.bytes, &log.bytes).0.len()
     }
 }
 
@@ -1173,7 +1171,7 @@ pub mod cases {
 
     fn display(file: File) -> &'static str {
         match file {
-            File::Snap => "snap",
+            File::Snapshot => "snap",
             File::Log => "log",
         }
     }
@@ -1299,10 +1297,10 @@ pub mod cases {
 
     /// What the snap and the log hold on their own, not overlaid.
     fn separate(store: &impl FileStore) -> (BTreeMap<u32, Vec<u8>>, BTreeMap<u32, Vec<u8>>) {
-        let (mut snap, mut log) = (BTreeMap::new(), BTreeMap::new());
-        apply_log(&mut snap, &read_all(store, File::Snap).unwrap());
+        let (mut snapshot, mut log) = (BTreeMap::new(), BTreeMap::new());
+        apply_log(&mut snapshot, &read_all(store, File::Snapshot).unwrap());
         apply_log(&mut log, &read_all(store, File::Log).unwrap());
-        (snap, log)
+        (snapshot, log)
     }
 
     // === i/o helpers and the single-writer premise ===
@@ -1353,7 +1351,7 @@ pub mod cases {
         let log_end = store.index().log_end;
         assert!(log_end > 0);
         store.truncate(File::Log, log_end - 1).unwrap();
-        let sizes = (store.size(File::Snap).unwrap(), store.size(File::Log).unwrap());
+        let sizes = (store.size(File::Snapshot).unwrap(), store.size(File::Log).unwrap());
 
         for method in [Method::Save, Method::Discard, Method::Compact] {
             match invoke(method, &mut store) {
@@ -1365,7 +1363,7 @@ pub mod cases {
         }
         assert_eq!(snapshot(&store), layout.current);
         assert_eq!(store.index().count_pending(), layout.batch.len());
-        assert_eq!((store.size(File::Snap).unwrap(), store.size(File::Log).unwrap()), sizes);
+        assert_eq!((store.size(File::Snapshot).unwrap(), store.size(File::Log).unwrap()), sizes);
         store.close();
     }
 
@@ -1556,18 +1554,21 @@ pub mod cases {
     /// this ordering is invisible to the sweep and is checked on the
     /// call log instead.
     fn assert_flush_before_truncate(calls: &[(&'static str, Io)]) {
-        let (mut snap_dirty, mut log_dirty) = (false, false);
+        let (mut snapshot_dirty, mut log_dirty) = (false, false);
         for (index, (file, io)) in calls.iter().enumerate() {
             match (*file, *io) {
-                ("snap", Io::Write(_)) => snap_dirty = true,
+                ("snap", Io::Write(_)) => snapshot_dirty = true,
                 ("log", Io::Write(_)) => log_dirty = true,
-                ("snap", Io::Flush) => snap_dirty = false,
+                ("snap", Io::Flush) => snapshot_dirty = false,
                 ("log", Io::Flush) => log_dirty = false,
                 ("snap", Io::Truncate(_)) => {
                     assert!(!log_dirty, "call {index}: snap truncated with unflushed log writes")
                 }
                 ("log", Io::Truncate(_)) => {
-                    assert!(!snap_dirty, "call {index}: log truncated with unflushed snap writes")
+                    assert!(
+                        !snapshot_dirty,
+                        "call {index}: log truncated with unflushed snap writes"
+                    )
                 }
                 _ => {}
             }
@@ -1784,8 +1785,11 @@ pub mod cases {
         }
         store.save().unwrap();
         store.compact().unwrap();
-        let (snap, log) = separate(&store);
-        assert_eq!(snap.keys().copied().collect::<Vec<_>>(), (1..=100).collect::<Vec<_>>());
+        let (snapshot_entries, log) = separate(&store);
+        assert_eq!(
+            snapshot_entries.keys().copied().collect::<Vec<_>>(),
+            (1..=100).collect::<Vec<_>>()
+        );
         assert!(log.is_empty());
         assert_eq!(store.size(File::Log).unwrap(), 0);
 
@@ -1793,8 +1797,8 @@ pub mod cases {
         store.set(101, b"a".to_vec());
         store.set(102, b"b".to_vec());
         store.save().unwrap();
-        let (snap, log) = separate(&store);
-        assert_eq!(snap.len(), 100);
+        let (snapshot_entries, log) = separate(&store);
+        assert_eq!(snapshot_entries.len(), 100);
         assert_eq!(log.keys().copied().collect::<Vec<_>>(), [101, 102]);
 
         // 3. the next compact truncates the snap anyway and writes all 102 back.
@@ -1809,17 +1813,17 @@ pub mod cases {
             })
             .collect();
         assert_eq!(truncates, [("snap", 0), ("log", 0)]);
-        let snap_written: u32 = calls
+        let snapshot_written: u32 = calls
             .iter()
             .filter_map(|call| match call.1 {
                 Io::Write(length) if call.0 == "snap" => Some(length),
                 _ => None,
             })
             .sum();
-        assert_eq!(snap_written, store.size(File::Snap).unwrap());
+        assert_eq!(snapshot_written, store.size(File::Snapshot).unwrap());
 
-        let (snap, log) = separate(&store);
-        assert_eq!(snap.len(), 102);
+        let (snapshot_entries, log) = separate(&store);
+        assert_eq!(snapshot_entries.len(), 102);
         assert!(log.is_empty());
         store.close();
 
@@ -1899,9 +1903,9 @@ mod memory_tests {
     fn replay_damaged_log() {
         for seed in 0..300 {
             let mut rng = Rng::new(seed);
-            let snap_records = fuzz_records(&mut rng);
+            let snapshot_records = fuzz_records(&mut rng);
             let log_records = fuzz_records(&mut rng);
-            let snap = encode(&snap_records);
+            let snapshot_bytes = encode(&snapshot_records);
             let log = encode(&log_records);
             let mut ends = Vec::new();
             let mut end = 0;
@@ -1910,15 +1914,19 @@ mod memory_tests {
                 ends.push(end);
             }
             let expect = |complete: usize| {
-                let all = concat(&snap_records, &log_records[..complete]);
+                let all = concat(&snapshot_records, &log_records[..complete]);
                 (oracle(&all), if complete == 0 { 0 } else { ends[complete - 1] })
             };
 
-            assert_eq!(build_memory(&snap, &log), expect(log_records.len()), "seed {seed}");
+            assert_eq!(
+                build_memory(&snapshot_bytes, &log),
+                expect(log_records.len()),
+                "seed {seed}"
+            );
             for cut in 0..=log.len() {
                 let complete = ends.iter().filter(|&&end| end <= cut).count();
                 assert_eq!(
-                    build_memory(&snap, &log[..cut]),
+                    build_memory(&snapshot_bytes, &log[..cut]),
                     expect(complete),
                     "seed {seed} cut {cut}"
                 );
@@ -1932,7 +1940,7 @@ mod memory_tests {
                 corrupt[position] ^= 1 + rng.below(255) as u8;
                 let intact = ends.iter().take_while(|&&end| end <= position).count();
                 assert_eq!(
-                    build_memory(&snap, &corrupt),
+                    build_memory(&snapshot_bytes, &corrupt),
                     expect(intact),
                     "seed {seed} flip at {position}"
                 );

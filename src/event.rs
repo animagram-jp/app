@@ -65,7 +65,7 @@ pub struct Response {
 pub enum WindowEvent {
     Resize { width_in_px: f64, height_in_px: f64 },
     Scroll { x_in_px: f64, y_in_px: f64 },
-    Shutdown,
+    PageHide,
     Visibility { state: VisibilityState },
     Fullscreen(FullscreenEvent),
 }

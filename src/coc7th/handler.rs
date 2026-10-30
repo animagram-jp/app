@@ -246,11 +246,11 @@ mod toggle_tests {
             key: KeyName::Other,
             flags: Flags::ZERO,
             value: String::new(),
-            x: 0.0,
-            y: 0.0,
+            client_x: 0.0,
+            client_y: 0.0,
             local_x: 0.0,
             local_y: 0.0,
-            time: 0.0,
+            time_stamp: 0.0,
             pointer_id: 0,
         };
         handler.process_canvas(&event, &Pointer::NONE).1

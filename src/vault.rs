@@ -32,7 +32,7 @@ const RECORD_INFO: &[u8] = b"animagram/vault/1/record";
 pub enum VaultError {
     Random(getrandom::Error),
     Length(usize),
-    Open,
+    Operation,
 }
 
 impl Display for VaultError {
@@ -46,7 +46,7 @@ impl WireError for VaultError {
         path.push(match self {
             VaultError::Random(_) => 1,
             VaultError::Length(_) => 2,
-            VaultError::Open => 3,
+            VaultError::Operation => 3,
         });
     }
 
@@ -59,28 +59,28 @@ fn cipher(key: &Key) -> XChaCha20Poly1305 {
     XChaCha20Poly1305::new(key.into())
 }
 
-fn seal(key: &Key, aad: &[u8], plaintext: &[u8]) -> Result<Vec<u8>, VaultError> {
+fn encrypt(key: &Key, aad: &[u8], plaintext: &[u8]) -> Result<Vec<u8>, VaultError> {
     let mut nonce = [0u8; NONCE_LENGTH];
     getrandom::fill(&mut nonce).map_err(VaultError::Random)?;
-    let sealed = cipher(key)
+    let ciphertext = cipher(key)
         .encrypt(&XNonce::from(nonce), Payload { msg: plaintext, aad })
-        .map_err(|_| VaultError::Open)?;
-    let mut out = Vec::with_capacity(NONCE_LENGTH + sealed.len());
+        .map_err(|_| VaultError::Operation)?;
+    let mut out = Vec::with_capacity(NONCE_LENGTH + ciphertext.len());
     out.extend_from_slice(&nonce);
-    out.extend_from_slice(&sealed);
+    out.extend_from_slice(&ciphertext);
     Ok(out)
 }
 
-fn open(key: &Key, aad: &[u8], envelope: &[u8]) -> Result<Vec<u8>, VaultError> {
+fn decrypt(key: &Key, aad: &[u8], envelope: &[u8]) -> Result<Vec<u8>, VaultError> {
     if envelope.len() < NONCE_LENGTH + TAG_LENGTH {
         return Err(VaultError::Length(envelope.len()));
     }
-    let (nonce, sealed) = envelope.split_at(NONCE_LENGTH);
+    let (nonce, ciphertext) = envelope.split_at(NONCE_LENGTH);
     let nonce: [u8; NONCE_LENGTH] =
         nonce.try_into().map_err(|_| VaultError::Length(envelope.len()))?;
     cipher(key)
-        .decrypt(&XNonce::from(nonce), Payload { msg: sealed, aad })
-        .map_err(|_| VaultError::Open)
+        .decrypt(&XNonce::from(nonce), Payload { msg: ciphertext, aad })
+        .map_err(|_| VaultError::Operation)
 }
 
 pub fn generate_root() -> Result<Key, VaultError> {
@@ -90,14 +90,14 @@ pub fn generate_root() -> Result<Key, VaultError> {
 }
 
 pub fn wrap_root(wrap_key: &Key, root: &Key) -> Result<Vec<u8>, VaultError> {
-    seal(wrap_key, ROOT_INFO, root)
+    encrypt(wrap_key, ROOT_INFO, root)
 }
 
 pub fn unwrap_root(wrap_key: &Key, wrapped: &[u8]) -> Result<Key, VaultError> {
     if wrapped.len() != WRAPPED_ROOT_LENGTH {
         return Err(VaultError::Length(wrapped.len()));
     }
-    let root = open(wrap_key, ROOT_INFO, wrapped)?;
+    let root = decrypt(wrap_key, ROOT_INFO, wrapped)?;
     root.as_slice().try_into().map_err(|_| VaultError::Length(root.len()))
 }
 
@@ -119,12 +119,16 @@ fn record_aad(key: &[u8]) -> Vec<u8> {
     aad
 }
 
-pub fn seal_record(store_key: &Key, key: &[u8], plaintext: &[u8]) -> Result<Vec<u8>, VaultError> {
-    seal(store_key, &record_aad(key), plaintext)
+pub fn encrypt_record(
+    store_key: &Key,
+    key: &[u8],
+    plaintext: &[u8],
+) -> Result<Vec<u8>, VaultError> {
+    encrypt(store_key, &record_aad(key), plaintext)
 }
 
-pub fn open_record(store_key: &Key, key: &[u8], envelope: &[u8]) -> Result<Vec<u8>, VaultError> {
-    open(store_key, &record_aad(key), envelope)
+pub fn decrypt_record(store_key: &Key, key: &[u8], envelope: &[u8]) -> Result<Vec<u8>, VaultError> {
+    decrypt(store_key, &record_aad(key), envelope)
 }
 
 #[cfg(test)]
@@ -140,14 +144,17 @@ mod tests {
         let wrapped = wrap_root(&wrap, &root).unwrap();
         assert_eq!(wrapped.len(), WRAPPED_ROOT_LENGTH);
         assert_eq!(unwrap_root(&wrap, &wrapped), Ok(root));
-        assert_eq!(unwrap_root(&credential::auth_key(&stretch), &wrapped), Err(VaultError::Open));
+        assert_eq!(
+            unwrap_root(&credential::auth_key(&stretch), &wrapped),
+            Err(VaultError::Operation)
+        );
         assert_eq!(
             unwrap_root(&wrap, &wrapped[1..]),
             Err(VaultError::Length(WRAPPED_ROOT_LENGTH - 1))
         );
         let mut tampered = wrapped.clone();
         tampered[NONCE_LENGTH + 3] ^= 1;
-        assert_eq!(unwrap_root(&wrap, &tampered), Err(VaultError::Open));
+        assert_eq!(unwrap_root(&wrap, &tampered), Err(VaultError::Operation));
 
         let new_wrap = credential::wrap_key(&[6u8; KEY_LENGTH]);
         let rewrapped = wrap_root(&new_wrap, &root).unwrap();
@@ -168,21 +175,21 @@ mod tests {
     fn record_bound_to_key() {
         let store = store_key(&[3u8; KEY_LENGTH], "calendar");
         let key = [9u8; 16];
-        let sealed = seal_record(&store, &key, b"plain").unwrap();
-        assert_eq!(sealed.len(), NONCE_LENGTH + 5 + TAG_LENGTH);
-        assert_eq!(open_record(&store, &key, &sealed), Ok(b"plain".to_vec()));
-        assert_eq!(open_record(&store, &[8u8; 16], &sealed), Err(VaultError::Open));
+        let envelope = encrypt_record(&store, &key, b"plain").unwrap();
+        assert_eq!(envelope.len(), NONCE_LENGTH + 5 + TAG_LENGTH);
+        assert_eq!(decrypt_record(&store, &key, &envelope), Ok(b"plain".to_vec()));
+        assert_eq!(decrypt_record(&store, &[8u8; 16], &envelope), Err(VaultError::Operation));
         assert_eq!(
-            open_record(&store_key(&[3u8; KEY_LENGTH], "memo"), &key, &sealed),
-            Err(VaultError::Open)
+            decrypt_record(&store_key(&[3u8; KEY_LENGTH], "memo"), &key, &envelope),
+            Err(VaultError::Operation)
         );
         assert_eq!(
-            open_record(&store, &key, &sealed[..NONCE_LENGTH + TAG_LENGTH - 1]),
+            decrypt_record(&store, &key, &envelope[..NONCE_LENGTH + TAG_LENGTH - 1]),
             Err(VaultError::Length(39))
         );
-        let empty = seal_record(&store, &key, b"").unwrap();
-        assert_eq!(open_record(&store, &key, &empty), Ok(Vec::new()));
-        let again = seal_record(&store, &key, b"plain").unwrap();
-        assert_ne!(again, sealed);
+        let empty = encrypt_record(&store, &key, b"").unwrap();
+        assert_eq!(decrypt_record(&store, &key, &empty), Ok(Vec::new()));
+        let again = encrypt_record(&store, &key, b"plain").unwrap();
+        assert_ne!(again, envelope);
     }
 }

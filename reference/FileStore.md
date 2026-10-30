@@ -27,14 +27,14 @@
 | `compact` | `&mut self` | `Result<(), FileStoreError>` | snap/log（`log[..log_end]`）を読み直した一時的な状態（memory は参照しない）の全件を、まず log の末尾に追記し、そのあと snap を再構築し、log を空にする。デフォルト実装 |
 | close   | &self | | snap/log を閉じる。実装ごとに書く |
 
-バックエンドに依存する部分は、`open` / `from_handle`（実装の構築）/ `index` / `index_mut`（`Index` への accessor）と、ファイル操作のプリミティブ6つ（`size` / `read_at` / `write_at` / `flush` / `truncate` / `close`。どちらのファイルかは `File::Snap` / `File::Log` で指定する）だけである。ロジック（`new` / `save` / `discard` / `compact` ほか）は trait のデフォルト実装として1箇所にだけ書き、`OpfsStore` と `MemoryStore` が共有する。short read / short write のループ（`read_all` / `append`）もプリミティブの上に1つだけある。
+バックエンドに依存する部分は、`open` / `from_handle`（実装の構築）/ `index` / `index_mut`（`Index` への accessor）と、ファイル操作のプリミティブ6つ（`size` / `read_at` / `write_at` / `flush` / `truncate` / `close`。どちらのファイルかは `File::Snapshot` / `File::Log` で指定する）だけである。ロジック（`new` / `save` / `discard` / `compact` ほか）は trait のデフォルト実装として1箇所にだけ書き、`OpfsStore` と `MemoryStore` が共有する。short read / short write のループ（`read_all` / `append`）もプリミティブの上に1つだけある。
 
 ```rust
 /// ストアの識別。ファイル名にバージョンをフラットに含める（`<name>.<version>.snap` / `.log`）。
 /// レイアウトを変えるときは version を上げ、旧 version のストアを読んで移す。
 pub struct StoreId { pub name: &'static str, pub version: &'static str }
 
-pub enum File { Snap, Log }
+pub enum File { Snapshot, Log }
 
 pub struct Index {
     memory:  BTreeMap<u32, Vec<u8>>,
@@ -71,15 +71,15 @@ pub trait FileStore: Sized {
 
 /// OPFS実装
 pub struct OpfsStore {
-    snap:  FileSystemSyncAccessHandle,
-    log:   FileSystemSyncAccessHandle,
-    index: Index,
+    snapshot: FileSystemSyncAccessHandle,
+    log:      FileSystemSyncAccessHandle,
+    index:    Index,
 }
 
 /// `OpfsStore::open` の戻り値。`OpfsStore::new` が受け取る
 pub struct OpfsHandles {
-    snap: FileSystemSyncAccessHandle,
-    log:  FileSystemSyncAccessHandle,
+    snapshot: FileSystemSyncAccessHandle,
+    log:      FileSystemSyncAccessHandle,
 }
 ```
 
@@ -200,10 +200,10 @@ whatwg/fs spec によれば、`FileSystemSyncAccessHandle` 系メソッドが投
 |-|-|-|
 | `InvalidState` | `InvalidStateError`（close済み、または変更処理そのものの原因不明な失敗の両方を含む） | 既に close 済みの fd を操作 / 原因不明の書込・変更失敗 |
 | `QuotaExceeded` | `QuotaExceededError` | `ENOSPC` / `EDQUOT` |
-| `UnsupportedOp` | `TypeError`（`read`/`write`/`truncate` の文脈。`DomException` にキャストできないもの） | オフセット指定 read/write や `set_len` 非対応 |
+| `Unsupported` | `TypeError`（`read`/`write`/`truncate` の文脈。`DomException` にキャストできないもの） | オフセット指定 read/write や `set_len` 非対応 |
 | `InvalidName` | `TypeError`（`getFileHandle` の文脈のみ） | 不正なファイル名（POSIX的には invalid path component） |
 | `NotFound` | `NotFoundError`（`create: false` の `getFileHandle` の文脈のみ） | その名前のエントリがない。`createSyncAccessHandle` の `NotFoundError`（取得後にファイルが消えた競合）は「ない」とは違うので `Unknown` のまま |
-| `Locked` | `NoModificationAllowedError`（`createSyncAccessHandle` が他の handle の排他ロックに阻まれた） | `flock(LOCK_EX\|LOCK_NB)` の `EWOULDBLOCK` |
+| `NoModificationAllowed` | `NoModificationAllowedError`（`createSyncAccessHandle` が他の handle の排他ロックに阻まれた） | `flock(LOCK_EX\|LOCK_NB)` の `EWOULDBLOCK` |
 | `Unknown` | 上記以外の `DOMException` 名、または分類不能 | 未分類（`JsValue` の Debug 文字列を保持） |
 
 **`open` 系での `TypeError` の意味**: `getFileHandle()` と `createSyncAccessHandle()` は例外の性質が異なる。

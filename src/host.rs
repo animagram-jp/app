@@ -27,7 +27,7 @@ pub const OPERATION_REMOVE_CLASS: u8 = 6;
 pub const OPERATION_SET_STYLE: u8 = 7;
 pub const OPERATION_REMOVE_STYLE: u8 = 8;
 pub const OPERATION_SHOW_MODAL: u8 = 9;
-pub const OPERATION_CLOSE_MODAL: u8 = 10;
+pub const OPERATION_CLOSE: u8 = 10;
 pub const OPERATION_FOCUS: u8 = 11;
 pub const OPERATION_JS_FN: u8 = 12;
 pub const OPERATION_ERROR: u8 = 13;
@@ -44,7 +44,7 @@ pub enum Command {
     SetStyle { id: dom::Id, property: StyleProperty, value: StyleValue },
     RemoveStyle { id: dom::Id, property: StyleProperty },
     ShowModal { id: dom::Id },
-    CloseModal { id: dom::Id },
+    Close { id: dom::Id },
     Focus { id: dom::Id },
     JsFn { id: dom::Id, name: FnName },
     Fetch { request: u32, method: Method, path: String, body: Vec<u8> },
@@ -107,8 +107,8 @@ impl Output for Command {
                 frame.push(OPERATION_SHOW_MODAL);
                 id.encode(frame);
             }
-            Command::CloseModal { ref id } => {
-                frame.push(OPERATION_CLOSE_MODAL);
+            Command::Close { ref id } => {
+                frame.push(OPERATION_CLOSE);
                 id.encode(frame);
             }
             Command::Focus { ref id } => {
@@ -208,11 +208,11 @@ pub struct CanvasEvent {
     pub key:        KeyName,
     pub flags:      Flags,
     pub value:      String,
-    pub x:          f64,
-    pub y:          f64,
+    pub client_x:   f64,
+    pub client_y:   f64,
     pub local_x:    f64,
     pub local_y:    f64,
-    pub time:       f64,
+    pub time_stamp: f64,
     pub pointer_id: u32,
 }
 
@@ -236,7 +236,7 @@ impl Input<'_> for Flags {
 
 impl CanvasEvent {
     pub fn root_origin(&self) -> (f64, f64) {
-        (self.x - self.local_x, self.y - self.local_y)
+        (self.client_x - self.local_x, self.client_y - self.local_y)
     }
 
     pub fn alt(&self) -> bool {
@@ -349,7 +349,7 @@ pub enum StyleProperty {
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Unit {
     Em = 1,
-    Percent,
+    Percentage,
     Px,
     Rem,
     Vh,
@@ -482,7 +482,8 @@ impl EventType {
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum KeyName {
-    Alt = 1,
+    A = 1,
+    Alt,
     AltGraph,
     Ampersand,
     Apostrophe,
@@ -491,37 +492,36 @@ pub enum KeyName {
     ArrowRight,
     ArrowUp,
     Asterisk,
-    At,
-    Backslash,
+    B,
     Backspace,
-    Backtick,
+    C,
     CapsLock,
-    Caret,
-    CloseBrace,
-    CloseBracket,
-    CloseParen,
+    CircumflexAccent,
     Colon,
     Comma,
+    CommercialAt,
     ContextMenu,
     Control,
+    D,
     Delete,
-    Digit0,
-    Digit1,
-    Digit2,
-    Digit3,
-    Digit4,
-    Digit5,
-    Digit6,
-    Digit7,
-    Digit8,
-    Digit9,
-    Dollar,
-    DoubleQuote,
+    DigitEight,
+    DigitFive,
+    DigitFour,
+    DigitNine,
+    DigitOne,
+    DigitSeven,
+    DigitSix,
+    DigitThree,
+    DigitTwo,
+    DigitZero,
+    DollarSign,
+    E,
     End,
     Enter,
-    Equal,
+    EqualsSign,
     Escape,
-    Exclamation,
+    ExclamationMark,
+    F,
     F1,
     F2,
     F3,
@@ -534,107 +534,107 @@ pub enum KeyName {
     F10,
     F11,
     F12,
-    Greater,
-    Hash,
+    FullStop,
+    G,
+    GraveAccent,
+    GreaterThanSign,
+    H,
     Home,
+    HyphenMinus,
+    I,
     Insert,
-    KeyA,
-    KeyB,
-    KeyC,
-    KeyD,
-    KeyE,
-    KeyF,
-    KeyG,
-    KeyH,
-    KeyI,
-    KeyJ,
-    KeyK,
-    KeyL,
-    KeyM,
-    KeyN,
-    KeyO,
-    KeyP,
-    KeyQ,
-    KeyR,
-    KeyS,
-    KeyT,
-    KeyU,
-    KeyV,
-    KeyW,
-    KeyX,
-    KeyY,
-    KeyZ,
-    Less,
+    J,
+    K,
+    L,
+    LeftCurlyBracket,
+    LeftParenthesis,
+    LeftSquareBracket,
+    LessThanSign,
+    LowLine,
+    M,
     Meta,
-    Minus,
-    OpenBrace,
-    OpenBracket,
-    OpenParen,
+    N,
+    NumberSign,
+    O,
+    P,
     PageDown,
     PageUp,
-    Percent,
-    Period,
-    Pipe,
-    Plus,
-    Question,
+    PercentSign,
+    PlusSign,
+    Q,
+    QuestionMark,
+    QuotationMark,
+    R,
+    ReverseSolidus,
+    RightCurlyBracket,
+    RightParenthesis,
+    RightSquareBracket,
+    S,
     Semicolon,
     Shift,
-    Slash,
+    Solidus,
     Space,
+    T,
     Tab,
     Tilde,
-    Underscore,
+    U,
+    V,
+    VerticalLine,
+    W,
+    X,
+    Y,
+    Z,
     Other = 0,
 }
 
 impl KeyName {
     /// ```
     /// # use app::host::KeyName;
-    /// assert_eq!(KeyName::from_u8(37), KeyName::Enter);
+    /// assert_eq!(KeyName::from_u8(36), KeyName::Enter);
     /// assert_eq!(KeyName::from_u8(200), KeyName::Other);
     /// ```
     pub fn from_u8(value: u8) -> Self {
         match value {
-            1 => Self::Alt,
-            2 => Self::AltGraph,
-            3 => Self::Ampersand,
-            4 => Self::Apostrophe,
-            5 => Self::ArrowDown,
-            6 => Self::ArrowLeft,
-            7 => Self::ArrowRight,
-            8 => Self::ArrowUp,
-            9 => Self::Asterisk,
-            10 => Self::At,
-            11 => Self::Backslash,
+            1 => Self::A,
+            2 => Self::Alt,
+            3 => Self::AltGraph,
+            4 => Self::Ampersand,
+            5 => Self::Apostrophe,
+            6 => Self::ArrowDown,
+            7 => Self::ArrowLeft,
+            8 => Self::ArrowRight,
+            9 => Self::ArrowUp,
+            10 => Self::Asterisk,
+            11 => Self::B,
             12 => Self::Backspace,
-            13 => Self::Backtick,
+            13 => Self::C,
             14 => Self::CapsLock,
-            15 => Self::Caret,
-            16 => Self::CloseBrace,
-            17 => Self::CloseBracket,
-            18 => Self::CloseParen,
-            19 => Self::Colon,
-            20 => Self::Comma,
-            21 => Self::ContextMenu,
-            22 => Self::Control,
-            23 => Self::Delete,
-            24 => Self::Digit0,
-            25 => Self::Digit1,
-            26 => Self::Digit2,
-            27 => Self::Digit3,
-            28 => Self::Digit4,
-            29 => Self::Digit5,
-            30 => Self::Digit6,
-            31 => Self::Digit7,
-            32 => Self::Digit8,
-            33 => Self::Digit9,
-            34 => Self::Dollar,
-            35 => Self::DoubleQuote,
-            36 => Self::End,
-            37 => Self::Enter,
-            38 => Self::Equal,
-            39 => Self::Escape,
-            40 => Self::Exclamation,
+            15 => Self::CircumflexAccent,
+            16 => Self::Colon,
+            17 => Self::Comma,
+            18 => Self::CommercialAt,
+            19 => Self::ContextMenu,
+            20 => Self::Control,
+            21 => Self::D,
+            22 => Self::Delete,
+            23 => Self::DigitEight,
+            24 => Self::DigitFive,
+            25 => Self::DigitFour,
+            26 => Self::DigitNine,
+            27 => Self::DigitOne,
+            28 => Self::DigitSeven,
+            29 => Self::DigitSix,
+            30 => Self::DigitThree,
+            31 => Self::DigitTwo,
+            32 => Self::DigitZero,
+            33 => Self::DollarSign,
+            34 => Self::E,
+            35 => Self::End,
+            36 => Self::Enter,
+            37 => Self::EqualsSign,
+            38 => Self::Escape,
+            39 => Self::ExclamationMark,
+            40 => Self::F,
             41 => Self::F1,
             42 => Self::F2,
             43 => Self::F3,
@@ -647,56 +647,56 @@ impl KeyName {
             50 => Self::F10,
             51 => Self::F11,
             52 => Self::F12,
-            53 => Self::Greater,
-            54 => Self::Hash,
-            55 => Self::Home,
-            56 => Self::Insert,
-            57 => Self::KeyA,
-            58 => Self::KeyB,
-            59 => Self::KeyC,
-            60 => Self::KeyD,
-            61 => Self::KeyE,
-            62 => Self::KeyF,
-            63 => Self::KeyG,
-            64 => Self::KeyH,
-            65 => Self::KeyI,
-            66 => Self::KeyJ,
-            67 => Self::KeyK,
-            68 => Self::KeyL,
-            69 => Self::KeyM,
-            70 => Self::KeyN,
-            71 => Self::KeyO,
-            72 => Self::KeyP,
-            73 => Self::KeyQ,
-            74 => Self::KeyR,
-            75 => Self::KeyS,
-            76 => Self::KeyT,
-            77 => Self::KeyU,
-            78 => Self::KeyV,
-            79 => Self::KeyW,
-            80 => Self::KeyX,
-            81 => Self::KeyY,
-            82 => Self::KeyZ,
-            83 => Self::Less,
-            84 => Self::Meta,
-            85 => Self::Minus,
-            86 => Self::OpenBrace,
-            87 => Self::OpenBracket,
-            88 => Self::OpenParen,
-            89 => Self::PageDown,
-            90 => Self::PageUp,
-            91 => Self::Percent,
-            92 => Self::Period,
-            93 => Self::Pipe,
-            94 => Self::Plus,
-            95 => Self::Question,
-            96 => Self::Semicolon,
-            97 => Self::Shift,
-            98 => Self::Slash,
-            99 => Self::Space,
-            100 => Self::Tab,
-            101 => Self::Tilde,
-            102 => Self::Underscore,
+            53 => Self::FullStop,
+            54 => Self::G,
+            55 => Self::GraveAccent,
+            56 => Self::GreaterThanSign,
+            57 => Self::H,
+            58 => Self::Home,
+            59 => Self::HyphenMinus,
+            60 => Self::I,
+            61 => Self::Insert,
+            62 => Self::J,
+            63 => Self::K,
+            64 => Self::L,
+            65 => Self::LeftCurlyBracket,
+            66 => Self::LeftParenthesis,
+            67 => Self::LeftSquareBracket,
+            68 => Self::LessThanSign,
+            69 => Self::LowLine,
+            70 => Self::M,
+            71 => Self::Meta,
+            72 => Self::N,
+            73 => Self::NumberSign,
+            74 => Self::O,
+            75 => Self::P,
+            76 => Self::PageDown,
+            77 => Self::PageUp,
+            78 => Self::PercentSign,
+            79 => Self::PlusSign,
+            80 => Self::Q,
+            81 => Self::QuestionMark,
+            82 => Self::QuotationMark,
+            83 => Self::R,
+            84 => Self::ReverseSolidus,
+            85 => Self::RightCurlyBracket,
+            86 => Self::RightParenthesis,
+            87 => Self::RightSquareBracket,
+            88 => Self::S,
+            89 => Self::Semicolon,
+            90 => Self::Shift,
+            91 => Self::Solidus,
+            92 => Self::Space,
+            93 => Self::T,
+            94 => Self::Tab,
+            95 => Self::Tilde,
+            96 => Self::U,
+            97 => Self::V,
+            98 => Self::VerticalLine,
+            99 => Self::W,
+            100 => Self::X,
+            101 => Self::Y,
+            102 => Self::Z,
             _ => Self::Other,
         }
     }
@@ -757,11 +757,11 @@ pub const EVENT_SCROLL: u8 = 3;
 pub const EVENT_VISIBILITY: u8 = 4;
 pub const EVENT_FETCH: u8 = 5;
 pub const EVENT_FULLSCREEN: u8 = 6;
-pub const EVENT_SHUTDOWN: u8 = 8;
+pub const EVENT_PAGEHIDE: u8 = 8;
 
 /// ```
-/// # use app::{Input, event::{Event, WindowEvent}, host::EVENT_SHUTDOWN};
-/// assert!(matches!(Event::decode(&mut &[EVENT_SHUTDOWN][..]), Some(Event::Window(WindowEvent::Shutdown))));
+/// # use app::{Input, event::{Event, WindowEvent}, host::EVENT_PAGEHIDE};
+/// assert!(matches!(Event::decode(&mut &[EVENT_PAGEHIDE][..]), Some(Event::Window(WindowEvent::PageHide))));
 /// assert!(Event::decode(&mut &[200][..]).is_none());
 /// assert!(Event::decode(&mut &[][..]).is_none());
 /// ```
@@ -776,11 +776,11 @@ impl Input<'_> for Event {
                 key:        KeyName::from_u8(u8::decode(&mut input)?),
                 flags:      Input::decode(&mut input)?,
                 value:      Input::decode(&mut input)?,
-                x:          f32::decode(&mut input)? as f64,
-                y:          f32::decode(&mut input)? as f64,
+                client_x:   f32::decode(&mut input)? as f64,
+                client_y:   f32::decode(&mut input)? as f64,
                 local_x:    f32::decode(&mut input)? as f64,
                 local_y:    f32::decode(&mut input)? as f64,
-                time:       Input::decode(&mut input)?,
+                time_stamp: Input::decode(&mut input)?,
                 pointer_id: Input::decode(&mut input)?,
             }),
             EVENT_RESIZE => Event::Window(WindowEvent::Resize {
@@ -803,7 +803,7 @@ impl Input<'_> for Event {
             EVENT_FULLSCREEN => Event::Window(WindowEvent::Fullscreen(FullscreenEvent::from_u8(
                 u8::decode(&mut input)?,
             ))),
-            EVENT_SHUTDOWN => Event::Window(WindowEvent::Shutdown),
+            EVENT_PAGEHIDE => Event::Window(WindowEvent::PageHide),
             _ => return None,
         };
         *source = input;
@@ -842,7 +842,7 @@ mod event_frame_tests {
         assert_eq!(js_constant("EVENT_VISIBILITY"), EVENT_VISIBILITY);
         assert_eq!(js_constant("EVENT_FETCH"), EVENT_FETCH);
         assert_eq!(js_constant("EVENT_FULLSCREEN"), EVENT_FULLSCREEN);
-        assert_eq!(js_constant("EVENT_SHUTDOWN"), EVENT_SHUTDOWN);
+        assert_eq!(js_constant("EVENT_PAGEHIDE"), EVENT_PAGEHIDE);
     }
 
     type Part<'a> = dyn Fn(&mut Vec<u8>) + 'a;
@@ -876,7 +876,7 @@ mod event_frame_tests {
             EVENT_VISIBILITY,
             EVENT_FETCH,
             EVENT_FULLSCREEN,
-            EVENT_SHUTDOWN,
+            EVENT_PAGEHIDE,
         ];
         for seed in 0..500 {
             let mut rng = Rng::new(seed);
@@ -915,10 +915,14 @@ mod event_frame_tests {
                     );
                     let [x, y, local_x, local_y] = coordinates.map(f64::from);
                     assert_eq!(
-                        (event.x, event.y, event.local_x, event.local_y),
+                        (event.client_x, event.client_y, event.local_x, event.local_y),
                         (x, y, local_x, local_y)
                     );
-                    assert_eq!((event.time, event.pointer_id), (time, pointer), "seed {seed}");
+                    assert_eq!(
+                        (event.time_stamp, event.pointer_id),
+                        (time, pointer),
+                        "seed {seed}"
+                    );
                     assert_eq!(event.root_origin(), (x - local_x, y - local_y), "seed {seed}");
                 }
                 kind @ (EVENT_RESIZE | EVENT_SCROLL) => {
@@ -983,8 +987,8 @@ mod event_frame_tests {
                     );
                 }
                 _ => assert!(matches!(
-                    decode_event(&[EVENT_SHUTDOWN]),
-                    Some(Event::Window(WindowEvent::Shutdown))
+                    decode_event(&[EVENT_PAGEHIDE]),
+                    Some(Event::Window(WindowEvent::PageHide))
                 )),
             }
         }
@@ -999,7 +1003,7 @@ mod event_frame_tests {
             EVENT_VISIBILITY,
             EVENT_FETCH,
             EVENT_FULLSCREEN,
-            EVENT_SHUTDOWN,
+            EVENT_PAGEHIDE,
         ];
         for seed in 0..2000 {
             let mut rng = Rng::new(seed);
@@ -1195,39 +1199,49 @@ mod wire_tests {
 
     const INIT_JS: &str = include_str!("../distribution/init.js");
 
-    const SYMBOLS: [(&str, &str); 32] = [
+    const SYMBOLS: [(&str, &str); 42] = [
         ("Ampersand", "&"),
         ("Apostrophe", "'"),
         ("Asterisk", "*"),
-        ("At", "@"),
-        ("Backslash", "\\"),
-        ("Backtick", "`"),
-        ("Caret", "^"),
-        ("CloseBrace", "}"),
-        ("CloseBracket", "]"),
-        ("CloseParen", ")"),
+        ("CircumflexAccent", "^"),
         ("Colon", ":"),
         ("Comma", ","),
-        ("Dollar", "$"),
-        ("DoubleQuote", "\""),
-        ("Equal", "="),
-        ("Exclamation", "!"),
-        ("Greater", ">"),
-        ("Hash", "#"),
-        ("Less", "<"),
-        ("Minus", "-"),
-        ("OpenBrace", "{"),
-        ("OpenBracket", "["),
-        ("OpenParen", "("),
-        ("Percent", "%"),
-        ("Period", "."),
-        ("Pipe", "|"),
-        ("Plus", "+"),
-        ("Question", "?"),
+        ("CommercialAt", "@"),
+        ("DigitEight", "8"),
+        ("DigitFive", "5"),
+        ("DigitFour", "4"),
+        ("DigitNine", "9"),
+        ("DigitOne", "1"),
+        ("DigitSeven", "7"),
+        ("DigitSix", "6"),
+        ("DigitThree", "3"),
+        ("DigitTwo", "2"),
+        ("DigitZero", "0"),
+        ("DollarSign", "$"),
+        ("EqualsSign", "="),
+        ("ExclamationMark", "!"),
+        ("FullStop", "."),
+        ("GraveAccent", "`"),
+        ("GreaterThanSign", ">"),
+        ("HyphenMinus", "-"),
+        ("LeftCurlyBracket", "{"),
+        ("LeftParenthesis", "("),
+        ("LeftSquareBracket", "["),
+        ("LessThanSign", "<"),
+        ("LowLine", "_"),
+        ("NumberSign", "#"),
+        ("PercentSign", "%"),
+        ("PlusSign", "+"),
+        ("QuestionMark", "?"),
+        ("QuotationMark", "\""),
+        ("ReverseSolidus", "\\"),
+        ("RightCurlyBracket", "}"),
+        ("RightParenthesis", ")"),
+        ("RightSquareBracket", "]"),
         ("Semicolon", ";"),
-        ("Slash", "/"),
+        ("Solidus", "/"),
         ("Tilde", "~"),
-        ("Underscore", "_"),
+        ("VerticalLine", "|"),
     ];
 
     fn unquote(entry: &str) -> String {
@@ -1277,11 +1291,8 @@ mod wire_tests {
         if name == "Space" {
             return String::from(" ");
         }
-        if let Some(digit) = name.strip_prefix("Digit") {
-            return String::from(digit);
-        }
-        if let Some(letter) = name.strip_prefix("Key") {
-            return letter.to_lowercase();
+        if name.len() == 1 {
+            return name.to_lowercase();
         }
         match SYMBOLS.iter().find(|(variant, _)| *variant == name) {
             Some((_, key)) => String::from(*key),
@@ -1448,7 +1459,7 @@ mod wire_tests {
                 "STYLE_UNITS",
                 vec![
                     (Unit::Em as u16, "em"),
-                    (Unit::Percent as u16, "%"),
+                    (Unit::Percentage as u16, "%"),
                     (Unit::Px as u16, "px"),
                     (Unit::Rem as u16, "rem"),
                     (Unit::Vh as u16, "vh"),
@@ -1486,7 +1497,7 @@ mod wire_tests {
             (OPERATION_SET_STYLE, 7),
             (OPERATION_REMOVE_STYLE, 8),
             (OPERATION_SHOW_MODAL, 9),
-            (OPERATION_CLOSE_MODAL, 10),
+            (OPERATION_CLOSE, 10),
             (OPERATION_FOCUS, 11),
             (OPERATION_JS_FN, 12),
         ];
@@ -1539,11 +1550,11 @@ mod wire_tests {
             key:        KeyName::Enter,
             flags:      Flags::from_le_bytes([flags]),
             value:      String::new(),
-            x:          0.0,
-            y:          0.0,
+            client_x:   0.0,
+            client_y:   0.0,
             local_x:    0.0,
             local_y:    0.0,
-            time:       0.0,
+            time_stamp: 0.0,
             pointer_id: 0,
         };
         let positions = [

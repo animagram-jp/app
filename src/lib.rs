@@ -476,11 +476,11 @@ mod error_tests {
         cases.extend([
             (Error::FileStore(FileStoreError::InvalidState(message())), vec![4, 1], "m"),
             (Error::FileStore(FileStoreError::QuotaExceeded(message())), vec![4, 2], "m"),
-            (Error::FileStore(FileStoreError::UnsupportedOp(message())), vec![4, 3], "m"),
+            (Error::FileStore(FileStoreError::Unsupported(message())), vec![4, 3], "m"),
             (Error::FileStore(FileStoreError::InvalidName(message())), vec![4, 4], "m"),
             (Error::FileStore(FileStoreError::Unknown(message())), vec![4, 5], "m"),
             (Error::FileStore(FileStoreError::NotFound(message())), vec![4, 6], "m"),
-            (Error::FileStore(FileStoreError::Locked(message())), vec![4, 7], "m"),
+            (Error::FileStore(FileStoreError::NoModificationAllowed(message())), vec![4, 7], "m"),
         ]);
         #[cfg(feature = "calendar")]
         cases.extend([
@@ -497,7 +497,7 @@ mod error_tests {
         #[cfg(feature = "vault")]
         cases.extend([
             (Error::Vault(VaultError::Length(1)), vec![13, 2], "Length(1)"),
-            (Error::Vault(VaultError::Open), vec![13, 3], "Open"),
+            (Error::Vault(VaultError::Operation), vec![13, 3], "Operation"),
         ]);
         for (error, path, detail) in cases {
             let mut actual = Vec::new();
