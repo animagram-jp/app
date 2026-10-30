@@ -321,11 +321,11 @@ const js_fn = {
             console.warn("clipboard write failed:", err);
         });
     },
-    enter_fullscreen: () => {
-        document.documentElement.requestFullscreen?.()?.catch(() => {});
-    },
     exit_fullscreen: () => {
         if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    },
+    request_fullscreen: (el) => {
+        el.requestFullscreen?.()?.catch(() => {});
     },
     show_toast: (el) => {
         cancel_toast_cycle(el);
@@ -831,9 +831,9 @@ const STYLE_UNITS = [
 const FN_NAMES = [
     null,
     "copy_text",
-    "enter_fullscreen",
     "exit_fullscreen",
     "hide_toast",
+    "request_fullscreen",
     "show_toast",
 ];
 

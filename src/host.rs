@@ -406,9 +406,9 @@ impl Output for StyleValue {
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum FnName {
     CopyText = 1,
-    EnterFullscreen,
     ExitFullscreen,
     HideToast,
+    RequestFullscreen,
     ShowToast,
 }
 
@@ -1386,9 +1386,9 @@ mod wire_tests {
                 "FN_NAMES",
                 vec![
                     (FnName::CopyText as u16, format!("{:?}", FnName::CopyText)),
-                    (FnName::EnterFullscreen as u16, format!("{:?}", FnName::EnterFullscreen)),
                     (FnName::ExitFullscreen as u16, format!("{:?}", FnName::ExitFullscreen)),
                     (FnName::HideToast as u16, format!("{:?}", FnName::HideToast)),
+                    (FnName::RequestFullscreen as u16, format!("{:?}", FnName::RequestFullscreen)),
                     (FnName::ShowToast as u16, format!("{:?}", FnName::ShowToast)),
                 ],
             ),
