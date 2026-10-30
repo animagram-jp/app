@@ -1851,13 +1851,6 @@ impl FightingCustom {
         Self::LIST_ID
     }
 
-    fn numeric_id(&self) -> u32 {
-        Self::LIST_ID + self.0 as u32 * 2 - 1
-    }
-    fn name_id(&self) -> u32 {
-        Self::LIST_ID + self.0 as u32 * 2
-    }
-
     // -> occupation_points, interest_points, change, modifier, name
     pub fn read(&self, character: &DataStruct) -> (u16, u16, u16, i16, i16, String) {
         let [numeric_id, name_id] = read_ids(character, Self::LIST_ID, self.0 as usize);
@@ -2069,13 +2062,6 @@ impl FirearmsCustom {
         Self::LIST_ID
     }
 
-    fn numeric_id(&self) -> u32 {
-        Self::LIST_ID + self.0 as u32 * 2 - 1
-    }
-    fn name_id(&self) -> u32 {
-        Self::LIST_ID + self.0 as u32 * 2
-    }
-
     // -> occupation_points, interest_points, change, modifier, name
     pub fn read(&self, character: &DataStruct) -> (u16, u16, u16, i16, i16, String) {
         let [numeric_id, name_id] = read_ids(character, Self::LIST_ID, self.0 as usize);
@@ -2150,13 +2136,6 @@ impl LanguageOther {
         Self::LIST_ID
     }
     const BASE_PERCENT: u16 = 1;
-
-    fn numeric_id(&self) -> u32 {
-        Self::LIST_ID + self.0 as u32 * 2 - 1
-    }
-    fn name_id(&self) -> u32 {
-        Self::LIST_ID + self.0 as u32 * 2
-    }
 
     // -> occupation_points, interest_points, change, modifier, name
     pub fn read(&self, character: &DataStruct) -> (u16, u16, i16, i16, String) {
