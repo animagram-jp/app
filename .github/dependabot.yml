@@ -5,13 +5,15 @@ updates:
     directory: "/" # .github/workflows/*.yml
     schedule:
       interval: "weekly"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
   - package-ecosystem: "cargo"
     directory: "/" # ./
     schedule:
       interval: "weekly"
     groups:
-      wasm-bindgen:
+      cargo:
         patterns:
-          - "wasm-bindgen*"
-          - "js-sys"
-          - "web-sys"
+          - "*"
