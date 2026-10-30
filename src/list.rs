@@ -2,11 +2,12 @@ use alloc::{collections::BTreeMap, vec, vec::Vec};
 use core::{
     clone::Clone,
     cmp::PartialEq,
-    default::Default,
     marker::Copy,
     option::Option::{None, Some},
     result::Result::{self, Err, Ok},
 };
+
+use crate::bit::Zero;
 
 const WORD: usize = 4;
 
@@ -58,19 +59,19 @@ pub enum VariableListError {
 /// assert!(matches!(r, SetOutcome::Created(1)));
 /// ```
 #[derive(Clone)]
-pub struct List<T: Copy + Default + PartialEq> {
+pub struct List<T: Copy + Zero + PartialEq> {
     pub data: Vec<T>,
 }
 
-impl<T: Copy + Default + PartialEq> List<T> {
+impl<T: Copy + Zero + PartialEq> List<T> {
     pub fn new() -> Self {
-        Self { data: vec![T::default()] } // [0] = vacant sentinel (0-value)
+        Self { data: vec![T::ZERO] } // [0] = vacant sentinel (0-value)
     }
 
     pub fn get(&self, identity: &u32) -> Result<&T, ListError> {
         let i = *identity as usize;
         let v = self.data.get(i).ok_or(ListError::OutOfBounds)?;
-        if *v == T::default() {
+        if *v == T::ZERO {
             return Err(ListError::NotExist);
         } // 0-value = vacant
         Ok(v)
@@ -91,9 +92,9 @@ impl<T: Copy + Default + PartialEq> List<T> {
                 if !allow_sparse {
                     return Err(ListError::OutOfBounds);
                 }
-                self.data.resize(i + 1, T::default()); // fill gaps with 0-value (vacant)
+                self.data.resize(i + 1, T::ZERO); // fill gaps with 0-value (vacant)
             }
-            let is_new = self.data[i] == T::default(); // 0-value = vacant
+            let is_new = self.data[i] == T::ZERO; // 0-value = vacant
             self.data[i] = value;
             if is_new {
                 Ok(SetOutcome::Created(*identity))
@@ -102,7 +103,7 @@ impl<T: Copy + Default + PartialEq> List<T> {
             }
         } else {
             let vacant = if reuse_vacant {
-                (1..self.data.len()).find(|&i| self.data[i] == T::default()) // 0-value = vacant
+                (1..self.data.len()).find(|&i| self.data[i] == T::ZERO) // 0-value = vacant
             } else {
                 None
             };
@@ -128,7 +129,7 @@ impl<T: Copy + Default + PartialEq> List<T> {
         if i >= self.data.len() {
             return Err(ListError::OutOfBounds);
         }
-        self.data[i] = T::default(); // 0-value = vacant
+        self.data[i] = T::ZERO; // 0-value = vacant
         Ok(())
     }
 }

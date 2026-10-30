@@ -194,7 +194,6 @@ pub mod gesture {
     use core::{
         clone::Clone,
         cmp::{Eq, PartialEq},
-        default::Default,
         fmt::Debug,
         marker::Copy,
         mem::take,
@@ -260,12 +259,6 @@ pub mod gesture {
         }
     }
 
-    impl Default for Thresholds {
-        fn default() -> Self {
-            Self::MOUSE
-        }
-    }
-
     #[derive(Debug, Clone, Copy, PartialEq)]
     pub enum Gesture {
         Tap,
@@ -288,7 +281,7 @@ pub mod gesture {
         use super::*;
 
         fn run(events: &[(EventType, f64, f64, f64)], th: &Thresholds) -> Vec<Gesture> {
-            let mut pointer = Pointer::default();
+            let mut pointer = Pointer::NONE;
             let mut out = Vec::new();
             for (event_type, x, y, time) in events {
                 pointer.update(event_type, *x, *y, *time);
@@ -511,9 +504,8 @@ pub mod gesture {
         }
     }
 
-    #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     enum TwoFingerMode {
-        #[default]
         Undetermined,
         Pan,
         Pinch,
@@ -530,7 +522,7 @@ pub mod gesture {
         None,
     }
 
-    #[derive(Debug, Clone, Copy, Default)]
+    #[derive(Debug, Clone, Copy)]
     struct TwoFingerState {
         primary:   Option<TouchPoint>,
         secondary: Option<TouchPoint>,
@@ -538,6 +530,9 @@ pub mod gesture {
     }
 
     impl TwoFingerState {
+        const NONE: Self =
+            Self { primary: None, secondary: None, mode: TwoFingerMode::Undetermined };
+
         #[must_use]
         fn add_touch(self, id: u32, x: f64, y: f64) -> Self {
             match (self.primary, self.secondary) {
@@ -658,7 +653,7 @@ pub mod gesture {
         libm::sqrt(dx * dx + dy * dy)
     }
 
-    #[derive(Debug, Default)]
+    #[derive(Debug)]
     pub struct Pointer {
         is_down:          bool,
         start_x:          f64,
@@ -677,6 +672,23 @@ pub mod gesture {
     }
 
     impl Pointer {
+        pub const NONE: Self = Self {
+            is_down:          false,
+            start_x:          0.0,
+            start_y:          0.0,
+            current_x:        0.0,
+            current_y:        0.0,
+            start_time:       0.0,
+            last_move_x:      0.0,
+            last_move_y:      0.0,
+            last_move_time:   0.0,
+            is_dragging:      false,
+            long_press_fired: false,
+            cancelled:        false,
+            two_fingers:      TwoFingerState::NONE,
+            panning:          false,
+        };
+
         #[must_use]
         pub fn track(
             &mut self,
@@ -752,8 +764,7 @@ pub mod gesture {
         }
 
         fn clear(&mut self) {
-            *self =
-                Self { two_fingers: self.two_fingers, panning: self.panning, ..Self::default() };
+            *self = Self { two_fingers: self.two_fingers, panning: self.panning, ..Self::NONE };
         }
 
         fn detect(
@@ -985,7 +996,7 @@ pub mod gesture {
         #[test]
         fn symmetric_pinch_out_increases_scale() {
             let mut state =
-                TwoFingerState::default().add_touch(1, 140.0, 100.0).add_touch(2, 160.0, 100.0);
+                TwoFingerState::NONE.add_touch(1, 140.0, 100.0).add_touch(2, 160.0, 100.0);
             state = state.move_touch(1, 100.0, 100.0).move_touch(2, 200.0, 100.0);
             match state.fold() {
                 FoldedInput::Pinch { scale, .. } => assert!(scale > 1.0, "scale = {scale}"),
@@ -996,7 +1007,7 @@ pub mod gesture {
         #[test]
         fn mode_latches_after_commit() {
             let mut state =
-                TwoFingerState::default().add_touch(1, 100.0, 100.0).add_touch(2, 200.0, 100.0);
+                TwoFingerState::NONE.add_touch(1, 100.0, 100.0).add_touch(2, 200.0, 100.0);
             state = state.move_touch(1, 140.0, 100.0).move_touch(2, 160.0, 100.0);
             assert!(matches!(state.fold(), FoldedInput::Pinch { .. }));
 
@@ -1007,7 +1018,7 @@ pub mod gesture {
         #[test]
         fn new_session_reclassifies_independently() {
             let mut state =
-                TwoFingerState::default().add_touch(1, 100.0, 100.0).add_touch(2, 200.0, 100.0);
+                TwoFingerState::NONE.add_touch(1, 100.0, 100.0).add_touch(2, 200.0, 100.0);
             state = state.move_touch(1, 140.0, 100.0).move_touch(2, 160.0, 100.0);
             assert!(matches!(state.fold(), FoldedInput::Pinch { .. }));
 
@@ -1029,7 +1040,7 @@ pub mod gesture {
             events: &[(EventType, u32, f64, f64, f64)],
             th: &Thresholds,
         ) -> Vec<Option<Gesture>> {
-            let mut pointer = Pointer::default();
+            let mut pointer = Pointer::NONE;
             events
                 .iter()
                 .map(|(event_type, id, x, y, time)| {

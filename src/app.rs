@@ -4,7 +4,6 @@ use alloc::{
     vec::Vec,
 };
 use core::{
-    default::Default,
     iter::Extend,
     option::Option::{None, Some},
     primitive::{bool, f64, i32, u8, u64},
@@ -61,7 +60,7 @@ pub struct App {
 impl App {
     pub(crate) fn new(pointer_coarse: bool, handler: Handler<Store>) -> Self {
         Self {
-            pointer: Pointer::default(),
+            pointer: Pointer::NONE,
             thresholds: Thresholds::for_device(detect_device(pointer_coarse)),
             events: VecDeque::new(),
             handler,
@@ -224,7 +223,7 @@ mod tests {
     use crate::{
         Output, Rng, block_on,
         event::{FetchChunk, gesture::Gesture},
-        file_store::FileStore,
+        file_store::{FileStore, MemoryHandles},
         host::{EVENT_CANVAS, EVENT_FETCH, dom},
     };
 
@@ -392,7 +391,7 @@ mod tests {
         ))
         .unwrap();
         let mut app = new_app();
-        app.handler.attach(Store::new(Default::default()).unwrap());
+        app.handler.attach(Store::new(MemoryHandles::new()).unwrap());
 
         let chunks: Vec<&[u8]> = body.chunks(4000).collect();
         let last = chunks.len() - 1;

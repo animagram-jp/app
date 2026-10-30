@@ -1279,8 +1279,8 @@ impl From<SkillValueWithPercent> for (u9, u9, i10, i10, u7) {
     }
 }
 
-fn read_value<T: for<'a> Input<'a> + Default>(character: &DataStruct, id: u32) -> T {
-    character.get(id).ok().and_then(parse::<T>).unwrap_or_default()
+fn read_value<T: for<'a> Input<'a> + bit::Zero>(character: &DataStruct, id: u32) -> T {
+    character.get(id).ok().and_then(parse::<T>).unwrap_or(T::ZERO)
 }
 
 fn write_value<T: Output>(character: &mut DataStruct, id: u32, value: T) {
@@ -1476,7 +1476,7 @@ impl LanguageOwn {
     }
 
     // -> skill_name, name
-    pub fn as_editable_string<'a>(name: &'a str, language: Language) -> (&'static str, &'a str) {
+    pub fn as_editable_string(name: &str, language: Language) -> (&'static str, &str) {
         (Skill::LanguageOwn.display(language), name)
     }
 
@@ -1689,7 +1689,7 @@ impl ArtAndCraftCustom {
     }
 
     // -> skill_name, specialization_name
-    pub fn as_editable_string<'a>(name: &'a str, language: Language) -> (&'static str, &'a str) {
+    pub fn as_editable_string(name: &str, language: Language) -> (&'static str, &str) {
         (Skill::ArtAndCraft.display(language), name)
     }
 
@@ -1915,7 +1915,7 @@ impl FightingCustom {
     }
 
     // -> skill_name, specialization_name
-    pub fn as_editable_string<'a>(name: &'a str, language: Language) -> (&'static str, &'a str) {
+    pub fn as_editable_string(name: &str, language: Language) -> (&'static str, &str) {
         (Skill::Fighting.display(language), name)
     }
 
@@ -2133,7 +2133,7 @@ impl FirearmsCustom {
     }
 
     // -> skill_name, specialization_name
-    pub fn as_editable_string<'a>(name: &'a str, language: Language) -> (&'static str, &'a str) {
+    pub fn as_editable_string(name: &str, language: Language) -> (&'static str, &str) {
         (Skill::Firearms.display(language), name)
     }
 
@@ -2205,7 +2205,7 @@ impl LanguageOther {
     }
 
     // -> skill_name, language_name
-    pub fn as_editable_string<'a>(name: &'a str, language: Language) -> (&'static str, &'a str) {
+    pub fn as_editable_string(name: &str, language: Language) -> (&'static str, &str) {
         (Skill::LanguageOther.display(language), name)
     }
 
@@ -2415,7 +2415,7 @@ impl PilotCustom {
     }
 
     // -> skill_name, specialization_name
-    pub fn as_editable_string<'a>(name: &'a str, language: Language) -> (&'static str, &'a str) {
+    pub fn as_editable_string(name: &str, language: Language) -> (&'static str, &str) {
         (Skill::Pilot.display(language), name)
     }
 
@@ -2651,7 +2651,7 @@ impl ScienceCustom {
     }
 
     // -> skill_name, specialization_name
-    pub fn as_editable_string<'a>(name: &'a str, language: Language) -> (&'static str, &'a str) {
+    pub fn as_editable_string(name: &str, language: Language) -> (&'static str, &str) {
         (Skill::Science.display(language), name)
     }
 
@@ -2817,7 +2817,7 @@ impl SurvivalCustom {
     }
 
     // -> skill_name, specialization_name
-    pub fn as_editable_string<'a>(name: &'a str, language: Language) -> (&'static str, &'a str) {
+    pub fn as_editable_string(name: &str, language: Language) -> (&'static str, &str) {
         (Skill::Survival.display(language), name)
     }
 

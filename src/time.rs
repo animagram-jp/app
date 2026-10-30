@@ -2,7 +2,6 @@ use alloc::{format, string::String, vec, vec::Vec};
 use core::{
     clone::Clone,
     cmp::{Ordering, PartialEq},
-    default::Default,
     fmt::Debug,
     marker::Copy,
     option::Option::{self, None, Some},
@@ -519,7 +518,7 @@ impl Zone {
     /// ```
     /// use app::time::Zone;
     ///
-    /// assert_eq!(Zone::index("Etc/UTC"), Some(Zone::default()));
+    /// assert_eq!(Zone::index("Etc/UTC"), Some(Zone::ZERO));
     /// assert_eq!(Zone::index("Asia/Tokyo").map(|zone| Zone::LIST[zone.0.value() as usize]), Some("Asia/Tokyo"));
     /// assert_eq!(Zone::index("Asia/Calcutta"), None);
     /// ```
@@ -595,7 +594,7 @@ pub enum Unit {
 /// assert_eq!(length.get(Unit::Day), 2);
 /// assert_eq!(length.get(Unit::Hour), 3);
 /// assert_eq!(length.get(Unit::Minute), 0);
-/// assert_eq!(Length::default(), Length::new(Unit::Day, 0));
+/// assert_eq!(Length::ZERO, Length::new(Unit::Day, 0));
 ///
 /// let hours = Length::new(Unit::Hour, 9).with(Unit::Minute, 30);
 /// assert_eq!(hours.total(Unit::Minute), 570);
@@ -604,12 +603,14 @@ pub enum Unit {
 /// assert!(hours < Length::new(Unit::Minute, 571));
 /// assert!(Length::new(Unit::Month, 1) > Length::new(Unit::Day, 31));
 /// ```
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy)]
 pub struct Length([u64; 7]);
 
 impl Length {
+    pub const ZERO: Self = Self([0; 7]);
+
     pub const fn new(unit: Unit, value: u64) -> Self {
-        Self([0; 7]).with(unit, value)
+        Self::ZERO.with(unit, value)
     }
 
     pub const fn with(self, unit: Unit, value: u64) -> Self {
@@ -1033,7 +1034,7 @@ pub fn pack(
     stamp
 }
 
-#[derive(Default, Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Range {
     pub start:  Stamp,
     pub length: Length,
@@ -1084,7 +1085,7 @@ impl Recurrence {
     /// ```
     pub fn occurrences(&self, start: Stamp, end: Stamp) -> Vec<Range> {
         let start = self.range.start.max(start);
-        let until = if self.range.start == Stamp::ZERO || self.range.length == Length::default() {
+        let until = if self.range.start == Stamp::ZERO || self.range.length == Length::ZERO {
             Stamp::ZERO
         } else {
             add(self.range.start, self.range.length)
@@ -1099,10 +1100,10 @@ impl Recurrence {
         }
 
         let date = |mut stamp: Stamp| {
-            stamp.set(Hour::default());
-            stamp.set(Minute::default());
-            stamp.set(Second::default());
-            stamp.set(Centisecond::default());
+            stamp.set(Hour::ZERO);
+            stamp.set(Minute::ZERO);
+            stamp.set(Second::ZERO);
+            stamp.set(Centisecond::ZERO);
             stamp
         };
         let day = Length::new(Unit::Day, 1);
@@ -1158,7 +1159,7 @@ mod tests {
         assert_eq!(add(at(9, 30), minutes(60)), at(10, 30));
         assert_eq!(add(at(9, 30), minutes(45)), at(10, 15));
         assert_eq!(sub(at(10, 15), minutes(45)), at(9, 30));
-        assert_eq!(add(at(9, 30), Length::default()), at(9, 30));
+        assert_eq!(add(at(9, 30), Length::ZERO), at(9, 30));
         let hour = 60 * 60 * 100;
         assert_eq!(diff(at(9, 30), at(10, 30), Unit::Centisecond), hour);
         assert_eq!(diff(at(10, 30), at(9, 30), Unit::Centisecond), -hour);

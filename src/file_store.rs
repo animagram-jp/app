@@ -248,7 +248,6 @@ pub enum File {
     Log,
 }
 
-#[derive(Default)]
 pub struct Index {
     /// Whole current state, including unsaved mutations.
     memory:  BTreeMap<u32, Vec<u8>>,
@@ -264,10 +263,9 @@ pub struct Index {
     deleted: IdSet,
 }
 
-#[derive(Default)]
 struct IdSet(Vec<u32>);
 impl IdSet {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self(Vec::new())
     }
     fn insert(&mut self, id: u32) -> bool {
@@ -301,6 +299,16 @@ impl IdSet {
 }
 
 impl Index {
+    const fn new() -> Self {
+        Self {
+            memory:  BTreeMap::new(),
+            next_id: 0,
+            log_end: 0,
+            unsaved: IdSet::new(),
+            deleted: IdSet::new(),
+        }
+    }
+
     /// Committed slice of freshly read log bytes: everything up to the
     /// flush-confirmed `log_end`. A physical size below `log_end` means the
     /// single-writer premise is broken and is reported as an error.
@@ -836,7 +844,7 @@ impl FileStore for OpfsStore {
     }
 
     fn from_handle(handle: OpfsHandles) -> Self {
-        Self { snap: handle.snap, log: handle.log, index: Index::default() }
+        Self { snap: handle.snap, log: handle.log, index: Index::new() }
     }
 
     fn index(&self) -> &Index {
@@ -879,13 +887,17 @@ impl FileStore for OpfsStore {
     }
 }
 
-#[derive(Default)]
 struct MemoryFileState {
     bytes: Vec<u8>,
 }
 
-#[derive(Default)]
 pub struct MemoryFile(Rc<RefCell<MemoryFileState>>, Cell<bool>);
+
+impl MemoryFile {
+    fn new() -> Self {
+        Self(Rc::new(RefCell::new(MemoryFileState { bytes: Vec::new() })), Cell::new(false))
+    }
+}
 
 impl Clone for MemoryFile {
     fn clone(&self) -> Self {
@@ -893,10 +905,16 @@ impl Clone for MemoryFile {
     }
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct MemoryHandles {
     snap: MemoryFile,
     log:  MemoryFile,
+}
+
+impl MemoryHandles {
+    pub fn new() -> Self {
+        Self { snap: MemoryFile::new(), log: MemoryFile::new() }
+    }
 }
 
 #[cfg(test)]
@@ -940,16 +958,16 @@ impl FileStore for MemoryStore {
             if !create && !disks.contains_key(&key) {
                 return Err(FileStoreError::NotFound(key));
             }
-            Ok(disks.entry(key).or_default().clone())
+            Ok(disks.entry(key).or_insert_with(MemoryHandles::new).clone())
         });
         #[cfg(not(test))]
         let handles =
-            if create { Ok(MemoryHandles::default()) } else { Err(FileStoreError::NotFound(key)) };
+            if create { Ok(MemoryHandles::new()) } else { Err(FileStoreError::NotFound(key)) };
         ready(handles)
     }
 
     fn from_handle(handle: MemoryHandles) -> Self {
-        Self { snap: handle.snap, log: handle.log, index: Index::default() }
+        Self { snap: handle.snap, log: handle.log, index: Index::new() }
     }
 
     fn index(&self) -> &Index {
@@ -998,12 +1016,6 @@ impl FileStore for MemoryStore {
     fn close(&self) {
         self.snap.1.set(true);
         self.log.1.set(true);
-    }
-}
-
-impl Default for MemoryStore {
-    fn default() -> Self {
-        Self::new(MemoryHandles::default()).unwrap()
     }
 }
 
@@ -1960,7 +1972,7 @@ mod memory_tests {
     fn replay_pending_diff() {
         for seed in 0..500 {
             let mut rng = Rng::new(seed);
-            let disk = MemoryHandles::default();
+            let disk = MemoryHandles::new();
             let mut store = MemoryStore::new(disk.clone()).unwrap();
             for _ in 0..rng.below(4) {
                 apply(&mut store, &fuzz_records(&mut rng));
