@@ -10,6 +10,14 @@ pub trait Composite<F: Field> {
     fn set(&mut self, field: F);
 }
 
+pub trait Zero {
+    const ZERO: Self;
+}
+
+impl Zero for u32 {
+    const ZERO: Self = 0;
+}
+
 pub const fn width<F: Field>() -> u32 {
     <F::Value as Integer>::BITS as u32
 }
@@ -54,11 +62,19 @@ pub fn write<F: Field>(bytes: &mut [u8], position: u32, field: F) {
 macro_rules! field {
     ($($(#[$meta:meta])* $vis:vis $name:ident($value:ty)),+ $(,)?) => {$(
         $(#[$meta])*
-        #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Default)]
+        #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
         $vis struct $name(pub $value);
+
+        impl $name {
+            pub const ZERO: Self = Self(<$value as ::arbitrary_int::traits::Integer>::ZERO);
+        }
 
         impl $crate::bit::Field for $name {
             type Value = $value;
+        }
+
+        impl $crate::bit::Zero for $name {
+            const ZERO: Self = Self::ZERO;
         }
 
         impl From<$value> for $name {
@@ -102,7 +118,6 @@ macro_rules! composite {
         #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
         $vis struct $name([u8; $crate::bit::bytes(0 $(+ $crate::bit::width::<$field>())+)]);
 
-        #[allow(dead_code)]
         impl $name {
             pub const BITS: u32 = 0 $(+ $crate::bit::width::<$field>())+;
             pub const BYTES: usize = $crate::bit::bytes(Self::BITS);
@@ -141,10 +156,8 @@ macro_rules! composite {
             }
         }
 
-        impl Default for $name {
-            fn default() -> Self {
-                Self::ZERO
-            }
+        impl $crate::bit::Zero for $name {
+            const ZERO: Self = Self::ZERO;
         }
 
         impl PartialOrd for $name {

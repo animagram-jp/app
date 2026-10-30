@@ -1,2 +1,5 @@
 accept-comment-above-attributes = false
 accept-comment-above-statement  = false
+disallowed-types   = [{ path = "core::default::Default", reason = "use a hardcoded value such as ZERO or NONE" }]
+disallowed-methods = [{ path = "core::default::Default::default", reason = "use a hardcoded value such as ZERO or NONE" }]
+disallowed-macros  = [{ path = "core::default::Default", reason = "use a hardcoded value such as ZERO or NONE" }]

@@ -249,7 +249,7 @@ impl<'a> Instance<'a> {
 }
 
 pub(crate) fn encode_time(now_in_ms: u64) -> [u8; 8] {
-    time::from_unix_timestamp_in_ms(now_in_ms as i64, time::Zone::default()).to_le_bytes()
+    time::from_unix_timestamp_in_ms(now_in_ms as i64, time::Zone::ZERO).to_le_bytes()
 }
 
 #[cfg(test)]

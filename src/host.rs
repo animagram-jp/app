@@ -845,7 +845,9 @@ mod event_frame_tests {
         assert_eq!(js_constant("EVENT_SHUTDOWN"), EVENT_SHUTDOWN);
     }
 
-    fn pack(kind: u8, parts: &[&dyn Fn(&mut Vec<u8>)]) -> Vec<u8> {
+    type Part<'a> = dyn Fn(&mut Vec<u8>) + 'a;
+
+    fn pack(kind: u8, parts: &[&Part<'_>]) -> Vec<u8> {
         let mut frame = Vec::new();
         frame.push(kind);
         for part in parts {

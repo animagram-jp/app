@@ -557,7 +557,7 @@ pub fn parse_uid(text: &str) -> Result<u128, DataError> {
 /// # use app::time::{Length, Unit};
 /// assert_eq!(parse_time("09:30").unwrap(), Length::new(Unit::Minute, 570));
 /// assert_eq!(parse_time("24:00").unwrap(), Length::new(Unit::Hour, 24));
-/// assert_eq!(parse_time("00:00").unwrap(), Length::default());
+/// assert_eq!(parse_time("00:00").unwrap(), Length::ZERO);
 /// assert!(parse_time("9").is_err());
 /// ```
 pub fn parse_time(text: &str) -> Result<Length, DataError> {
@@ -627,7 +627,7 @@ mod tests {
     }
 
     fn imported() -> MemoryStore {
-        let mut store = MemoryStore::default();
+        let mut store = MemoryStore::new(MemoryHandles::new()).unwrap();
         import(&mut store, &sample()).unwrap();
         store
     }
@@ -637,7 +637,7 @@ mod tests {
     }
 
     fn rejected(text: &str) -> bool {
-        let mut store = MemoryStore::default();
+        let mut store = MemoryStore::new(MemoryHandles::new()).unwrap();
         let result = import(&mut store, text.as_bytes());
         assert!(!loaded(&store), "a rejected document left records behind");
         result.is_err()
@@ -669,8 +669,8 @@ mod tests {
             store.set(1, bytes);
             assert!(matches!(check(&store, &appointment::KINDS), Err(DataError::Format(_))));
         }
-        assert!(!loaded(&MemoryStore::default()));
-        assert!(check(&MemoryStore::default(), &[]).is_ok());
+        assert!(!loaded(&MemoryStore::new(MemoryHandles::new()).unwrap()));
+        assert!(check(&MemoryStore::new(MemoryHandles::new()).unwrap(), &[]).is_ok());
     }
 
     #[test]
@@ -748,7 +748,7 @@ mod tests {
             }
         }
         assert!(seen.iter().all(|&s| s));
-        assert_eq!(Range::get_from_bytes(&[]), (Length::default(), Length::default()));
+        assert_eq!(Range::get_from_bytes(&[]), (Length::ZERO, Length::ZERO));
     }
 
     #[test]
@@ -759,15 +759,21 @@ mod tests {
             "\"resource_uid\": \"1",
             1,
         );
-        let mut store = MemoryStore::default();
+        let mut store = MemoryStore::new(MemoryHandles::new()).unwrap();
         import(&mut store, bad.as_bytes()).unwrap();
         assert_eq!(value(&export(&store).unwrap()), value(bad.as_bytes()));
     }
 
     #[test]
     fn import_rejects_malformed_documents() {
-        assert!(matches!(import(&mut MemoryStore::default(), b"{"), Err(DataError::Parse(_))));
-        assert!(matches!(import(&mut MemoryStore::default(), b"{}"), Err(DataError::Parse(_))));
+        assert!(matches!(
+            import(&mut MemoryStore::new(MemoryHandles::new()).unwrap(), b"{"),
+            Err(DataError::Parse(_))
+        ));
+        assert!(matches!(
+            import(&mut MemoryStore::new(MemoryHandles::new()).unwrap(), b"{}"),
+            Err(DataError::Parse(_))
+        ));
         let text = String::from_utf8(sample()).unwrap();
         assert!(rejected(&text.replacen("\"start\": \"", "\"start\": \"x", 1)));
         assert!(rejected(&text.replacen("\"uid\": \"", "\"uid\": \"0x", 1)));
@@ -776,7 +782,9 @@ mod tests {
         assert!(rejected(&text.replacen(uids[1], uids[0], 1)));
         assert!(rejected(&text.replacen("\"code\": \"checked_in\"", "\"code\": \"scheduled\"", 1)));
         let shared = text.replacen("\"code\": \"follow_up\"", "\"code\": \"scheduled\"", 1);
-        assert!(import(&mut MemoryStore::default(), shared.as_bytes()).is_ok());
+        assert!(
+            import(&mut MemoryStore::new(MemoryHandles::new()).unwrap(), shared.as_bytes()).is_ok()
+        );
         let start = text.find("\"places\": [").unwrap();
         let end = start + text[start..].find("],").unwrap() + 1;
         let empty = format!("{}\"places\": []{}", &text[..start], &text[end..]);
@@ -796,7 +804,7 @@ mod tests {
 
     #[test]
     fn a_reissued_store_id_does_not_revive_a_reference() {
-        let disk = MemoryHandles::default();
+        let disk = MemoryHandles::new();
         let mut store = MemoryStore::new(disk.clone()).unwrap();
         let (booked, gone) = (store.issue_id(), store.issue_id());
         let mut booking = appointment::new(

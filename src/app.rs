@@ -4,7 +4,6 @@ use alloc::{
     vec::Vec,
 };
 use core::{
-    default::Default,
     iter::Extend,
     option::Option::{None, Some},
     primitive::{bool, f64, i32, u8, u64},
@@ -61,7 +60,7 @@ pub struct App {
 impl App {
     pub(crate) fn new(pointer_coarse: bool, handler: Handler<Store>) -> Self {
         Self {
-            pointer: Pointer::default(),
+            pointer: Pointer::NONE,
             thresholds: Thresholds::for_device(detect_device(pointer_coarse)),
             events: VecDeque::new(),
             handler,
@@ -155,6 +154,10 @@ impl App {
         self.run(event);
     }
 
+    #[cfg_attr(
+        not(any(test, all(target_arch = "wasm32", target_feature = "atomics"))),
+        expect(dead_code, reason = "only the worker loop in arena.rs drives the reopen flow")
+    )]
     pub(crate) fn opened(&mut self, opened: Opened<Store>) {
         let (events, commands) = self.handler.process_opened(opened);
         self.commands.extend(commands);
@@ -163,6 +166,10 @@ impl App {
         }
     }
 
+    #[cfg_attr(
+        not(any(test, all(target_arch = "wasm32", target_feature = "atomics"))),
+        expect(dead_code, reason = "only the worker loop in arena.rs drives the reopen flow")
+    )]
     pub(crate) fn reopen_wanted(&mut self) -> Option<StoreId> {
         self.reopen.take()
     }
@@ -219,14 +226,14 @@ mod tests {
     use std::fs;
 
     use super::*;
-    #[cfg(feature = "calendar")]
-    use crate::calendar::data::appointment;
     use crate::{
         Output, Rng, block_on,
         event::{FetchChunk, gesture::Gesture},
         file_store::FileStore,
         host::{EVENT_CANVAS, EVENT_FETCH, dom},
     };
+    #[cfg(feature = "calendar")]
+    use crate::{calendar::data::appointment, file_store::MemoryHandles};
 
     const POINTER_DOWN: u8 = 16;
     const POINTER_UP: u8 = 18;
@@ -392,7 +399,7 @@ mod tests {
         ))
         .unwrap();
         let mut app = new_app();
-        app.handler.attach(Store::new(Default::default()).unwrap());
+        app.handler.attach(Store::new(MemoryHandles::new()).unwrap());
 
         let chunks: Vec<&[u8]> = body.chunks(4000).collect();
         let last = chunks.len() - 1;
@@ -404,12 +411,19 @@ mod tests {
         assert!(app.responses.is_empty());
     }
 
+    struct Queue {
+        request: u32,
+        status:  u16,
+        chunks:  Vec<Vec<u8>>,
+        body:    Vec<u8>,
+    }
+
     #[test]
     fn random_chunked_responses_arrive_whole_and_exactly_once() {
         for seed in 0..1000 {
             let mut rng = Rng::new(seed);
             let mut app = new_app();
-            let mut queues: Vec<(u32, u16, Vec<Vec<u8>>, Vec<u8>)> = Vec::new();
+            let mut queues: Vec<Queue> = Vec::new();
             for request in 1..=1 + rng.below(3) as u32 {
                 let length = rng.below(50);
                 let body = rng.bytes(length);
@@ -422,12 +436,12 @@ mod tests {
                 }
                 chunks.push(Vec::new());
                 let status = if seed % 2 == 0 { 200 } else { 200 + request as u16 };
-                queues.push((request, status, chunks, body));
+                queues.push(Queue { request, status, chunks, body });
             }
             let mut delivered: Vec<(u32, u16, Vec<u8>)> = Vec::new();
-            while queues.iter().any(|(_, _, chunks, _)| !chunks.is_empty()) {
+            while queues.iter().any(|queue| !queue.chunks.is_empty()) {
                 let pick = rng.below(queues.len());
-                let (request, status, chunks, _) = &mut queues[pick];
+                let Queue { request, status, chunks, .. } = &mut queues[pick];
                 if chunks.is_empty() {
                     continue;
                 }
@@ -444,10 +458,8 @@ mod tests {
                 }
             }
             delivered.sort_by_key(|(request, ..)| *request);
-            let expected: Vec<_> = queues
-                .into_iter()
-                .map(|(request, status, _, body)| (request, status, body))
-                .collect();
+            let expected: Vec<_> =
+                queues.into_iter().map(|queue| (queue.request, queue.status, queue.body)).collect();
             assert_eq!(delivered, expected, "seed {seed}");
             assert!(app.responses.is_empty(), "seed {seed}");
         }

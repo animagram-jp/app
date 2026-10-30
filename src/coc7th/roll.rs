@@ -5,11 +5,14 @@ use core::{
 
 use crate::{Language, coc7th::character::dice};
 
+/// # Safety
+/// `T` must be a `#[repr(u8)]` enum whose discriminants are exactly `1..=N`.
 const unsafe fn all_variants<T: Copy, const N: usize>(first: T) -> [T; N] {
     assert!(size_of::<T>() == 1 && N == variant_count::<T>());
     let mut all = [first; N];
     let mut i = 0;
     while i < N {
+        // SAFETY: the caller guarantees that `T` is a `#[repr(u8)]` enum with discriminants `1..=N`.
         all[i] = unsafe { transmute_copy::<u8, T>(&(i as u8 + 1)) };
         i += 1;
     }
@@ -40,6 +43,7 @@ pub enum Roll {
 
 impl Roll {
     pub fn list() -> &'static [Self] {
+        // SAFETY: `Roll` is `#[repr(u8)]` with discriminants `1..=variant_count`.
         const ALL: [Roll; variant_count::<Roll>()] = unsafe { all_variants(Roll::DiceRoll) };
         &ALL
     }
@@ -77,6 +81,7 @@ pub enum BoutOfMadness {
 impl BoutOfMadness {
     pub fn list() -> &'static [Self] {
         const ALL: [BoutOfMadness; variant_count::<BoutOfMadness>()] =
+            // SAFETY: `BoutOfMadness` is `#[repr(u8)]` with discriminants `1..=variant_count`.
             unsafe { all_variants(BoutOfMadness::RealTime) };
         &ALL
     }
@@ -98,6 +103,7 @@ pub enum PhobiaAndMania {
 impl PhobiaAndMania {
     pub fn list() -> &'static [Self] {
         const ALL: [PhobiaAndMania; variant_count::<PhobiaAndMania>()] =
+            // SAFETY: `PhobiaAndMania` is `#[repr(u8)]` with discriminants `1..=variant_count`.
             unsafe { all_variants(PhobiaAndMania::Phobia) };
         &ALL
     }
@@ -119,6 +125,7 @@ pub enum FailedCasting {
 impl FailedCasting {
     pub fn list() -> &'static [Self] {
         const ALL: [FailedCasting; variant_count::<FailedCasting>()] =
+            // SAFETY: `FailedCasting` is `#[repr(u8)]` with discriminants `1..=variant_count`.
             unsafe { all_variants(FailedCasting::Minor) };
         &ALL
     }
@@ -533,6 +540,7 @@ pub enum Phobia {
 impl Phobia {
     pub fn list() -> &'static [Self] {
         const ALL: [Phobia; variant_count::<Phobia>()] =
+            // SAFETY: `Phobia` is `#[repr(u8)]` with discriminants `1..=variant_count`.
             unsafe { all_variants(Phobia::Ablutophobia) };
         &ALL
     }
@@ -855,6 +863,7 @@ pub enum Mania {
 
 impl Mania {
     pub fn list() -> &'static [Self] {
+        // SAFETY: `Mania` is `#[repr(u8)]` with discriminants `1..=variant_count`.
         const ALL: [Mania; variant_count::<Mania>()] = unsafe { all_variants(Mania::Ablutomania) };
         &ALL
     }
@@ -1079,6 +1088,7 @@ mod variant_tests {
     use crate::En;
 
     fn discriminants<T: Copy>(list: &[T]) -> Vec<u8> {
+        // SAFETY: every list passed here is built by `all_variants`, so `T` is a one-byte `#[repr(u8)]` enum.
         list.iter().map(|v| unsafe { transmute_copy::<T, u8>(v) }).collect()
     }
 

@@ -253,7 +253,7 @@ mod toggle_tests {
             time: 0.0,
             pointer_id: 0,
         };
-        handler.process_canvas(&event, &Pointer::default()).1
+        handler.process_canvas(&event, &Pointer::NONE).1
     }
 
     fn toggle_button() -> dom::Id {
