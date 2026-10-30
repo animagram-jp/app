@@ -8,7 +8,7 @@
 
 | 関数 | 引数 | 戻り値 | 意味 |
 |-|-|-|-|
-| open   | id: StoreId, create: bool | `impl Future<Output = Result<Self::Handle, FileStoreError>>` | 永続化先から snapshot/log のハンドルを取得する（非同期。OPFS の取得は Promise）。`create: false` で無ければ `Err(NotFound)`（古いバージョンを探すとき、空のファイルを作らずに済む）。snapshot だけ開けて log が失敗したときは、snapshot を閉じてから返す。ファイル名は `<name>.<version>.snapshot` / `<name>.<version>.log`（`StoreId::file`）。実装ごとに書く |
+| open   | id: StoreId, create: bool | `impl Future<Output = Result<Self::Handle, FileStoreError>>` | 永続化先から snapshot/log のハンドルを取得する（非同期。OPFS の取得は Promise）。`create: false` で無ければ `Err(NotFound)`（古いバージョンを探すとき、空のファイルを作らずに済む）。snapshot だけ開けて log が失敗したときは、snapshot を閉じてから返す。ファイル名は `<name>.<version>.snap` / `<name>.<version>.log`（`StoreId::file`）。実装ごとに書く |
 | new    | handle: Self::Handle | `Result<Self, FileStoreError>` | ハンドルから snapshot/log を読み、RAM index（`Index`）を復元する（同期）。デフォルト実装 |
 | issue_id | &mut self | `u32` | 新規 id を発行する。デフォルト実装 |
 | pending | &self | `Vec<(u32, Option<Vec<u8>>)>` | 未保存の差分（`Some` は set、`None` は delete）を取り出す。ハンドルの失効で開き直すとき、旧ストアから差分を持ち出すために使う。デフォルト実装 |
@@ -30,7 +30,7 @@
 バックエンドに依存する部分は、`open` / `from_handle`（実装の構築）/ `index` / `index_mut`（`Index` への accessor）と、ファイル操作のプリミティブ6つ（`size` / `read_at` / `write_at` / `flush` / `truncate` / `close`。どちらのファイルかは `File::Snapshot` / `File::Log` で指定する）だけである。ロジック（`new` / `save` / `discard` / `compact` ほか）は trait のデフォルト実装として1箇所にだけ書き、`OpfsStore` と `MemoryStore` が共有する。short read / short write のループ（`read_all` / `append`）もプリミティブの上に1つだけある。
 
 ```rust
-/// ストアの識別。ファイル名にバージョンをフラットに含める（`<name>.<version>.snapshot` / `.log`）。
+/// ストアの識別。ファイル名にバージョンをフラットに含める（`<name>.<version>.snap` / `.log`）。
 /// レイアウトを変えるときは version を上げ、旧 version のストアを読んで移す。
 pub struct StoreId { pub name: &'static str, pub version: &'static str }
 

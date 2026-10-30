@@ -3,7 +3,7 @@
 //! The instance is the single writer; transaction boundaries belong to the caller.
 //!
 //! On-disk layout is a snapshot/log pair per store name and version:
-//! - `<name>.<version>.snapshot` — clean snapshot, rewritten only by `compact`
+//! - `<name>.<version>.snap` — clean snapshot, rewritten only by `compact`
 //! - `<name>.<version>.log`  — append-only diffs accumulated since the last compact
 //!
 //! Log record wire format (variable length, all integers little-endian):
@@ -830,7 +830,7 @@ impl FileStore for OpfsStore {
         let options = FileSystemGetFileOptions::new();
         options.set_create(create);
 
-        let snapshot = open(dir, &id.file("snapshot"), &options, create).await?;
+        let snapshot = open(dir, &id.file("snap"), &options, create).await?;
         let log = match open(dir, &id.file("log"), &options, create).await {
             Ok(log) => log,
             Err(error) => {
@@ -1970,7 +1970,7 @@ mod memory_tests {
     fn separate_versions() {
         let first = StoreId { name: "versions", version: "0.0" };
         let second = StoreId { name: "versions", version: "0.1" };
-        assert_eq!(second.file("snapshot"), "versions.0.1.snapshot");
+        assert_eq!(second.file("snap"), "versions.0.1.snap");
         assert_eq!(first.file("log"), "versions.0.0.log");
 
         let mut store = block_on(cases::mount::<MemoryStore>(first));
