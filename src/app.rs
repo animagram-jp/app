@@ -403,12 +403,19 @@ mod tests {
         assert!(app.responses.is_empty());
     }
 
+    struct Queue {
+        request: u32,
+        status:  u16,
+        chunks:  Vec<Vec<u8>>,
+        body:    Vec<u8>,
+    }
+
     #[test]
     fn random_chunked_responses_arrive_whole_and_exactly_once() {
         for seed in 0..1000 {
             let mut rng = Rng::new(seed);
             let mut app = new_app();
-            let mut queues: Vec<(u32, u16, Vec<Vec<u8>>, Vec<u8>)> = Vec::new();
+            let mut queues: Vec<Queue> = Vec::new();
             for request in 1..=1 + rng.below(3) as u32 {
                 let length = rng.below(50);
                 let body = rng.bytes(length);
@@ -421,12 +428,12 @@ mod tests {
                 }
                 chunks.push(Vec::new());
                 let status = if seed % 2 == 0 { 200 } else { 200 + request as u16 };
-                queues.push((request, status, chunks, body));
+                queues.push(Queue { request, status, chunks, body });
             }
             let mut delivered: Vec<(u32, u16, Vec<u8>)> = Vec::new();
-            while queues.iter().any(|(_, _, chunks, _)| !chunks.is_empty()) {
+            while queues.iter().any(|queue| !queue.chunks.is_empty()) {
                 let pick = rng.below(queues.len());
-                let (request, status, chunks, _) = &mut queues[pick];
+                let Queue { request, status, chunks, .. } = &mut queues[pick];
                 if chunks.is_empty() {
                     continue;
                 }
@@ -443,10 +450,8 @@ mod tests {
                 }
             }
             delivered.sort_by_key(|(request, ..)| *request);
-            let expected: Vec<_> = queues
-                .into_iter()
-                .map(|(request, status, _, body)| (request, status, body))
-                .collect();
+            let expected: Vec<_> =
+                queues.into_iter().map(|queue| (queue.request, queue.status, queue.body)).collect();
             assert_eq!(delivered, expected, "seed {seed}");
             assert!(app.responses.is_empty(), "seed {seed}");
         }

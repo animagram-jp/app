@@ -2435,7 +2435,7 @@ mod tests {
         let (_, commands) = handler.process_fetched(&sample_response(1, 200));
         let expected = appointments(&handler)
             .iter()
-            .flat_map(|a| appointment::Places::read(&a))
+            .flat_map(appointment::Places::read)
             .filter(|cell| (0..7).contains(&diff(today(), cell.day, TimeUnit::Day)))
             .count();
         assert!(expected > 0);
@@ -2610,9 +2610,9 @@ mod tests {
         drag_to(&mut handler, pointer_x, pointer_y);
         let commands = end(&mut handler);
         let moved = &appointments(&handler)[0];
-        assert_eq!(appointment::Places::read(&moved)[0].day, after(base, 2));
-        assert_eq!(appointment::Places::read(&moved)[0].resource, 103);
-        assert_eq!(appointment::Range::read(&moved), (at(540 + 150), at(540 + 210)));
+        assert_eq!(appointment::Places::read(moved)[0].day, after(base, 2));
+        assert_eq!(appointment::Places::read(moved)[0].resource, 103);
+        assert_eq!(appointment::Range::read(moved), (at(540 + 150), at(540 + 210)));
         assert_eq!(shown_count(&commands), 2);
         assert!(matches!(
             commands.first(),
@@ -2631,7 +2631,7 @@ mod tests {
             end(&mut handler);
             let moved = &appointments(&handler)[0];
             assert_eq!(
-                appointment::Range::read(&moved).0,
+                appointment::Range::read(moved).0,
                 at(540 + expected_slot * 15),
                 "extra {extra}"
             );
@@ -2654,7 +2654,7 @@ mod tests {
         drag_to(&mut handler, ox + 5.0, oy + 43.2 * SLOT_PX + grab_y);
         end(&mut handler);
         let moved = &appointments(&handler)[0];
-        assert_eq!(appointment::Range::read(&moved), (at(20 * 60 - 60), at(20 * 60)));
+        assert_eq!(appointment::Range::read(moved), (at(20 * 60 - 60), at(20 * 60)));
     }
 
     #[test]
@@ -2670,9 +2670,9 @@ mod tests {
             let unchanged = &appointments(&handler)[0];
             assert_eq!(
                 (
-                    appointment::Places::read(&unchanged)[0].day,
-                    appointment::Places::read(&unchanged)[0].resource,
-                    appointment::Range::read(&unchanged).0
+                    appointment::Places::read(unchanged)[0].day,
+                    appointment::Places::read(unchanged)[0].resource,
+                    appointment::Range::read(unchanged).0
                 ),
                 (base, 101, at(600))
             );
@@ -2691,7 +2691,7 @@ mod tests {
         assert_eq!(translate_of(&commands, 1), Some((0.0, 112.0)));
         let unchanged = &appointments(&handler)[0];
         assert_eq!(
-            (appointment::Places::read(&unchanged)[0].day, appointment::Range::read(&unchanged).0),
+            (appointment::Places::read(unchanged)[0].day, appointment::Range::read(unchanged).0),
             (base, at(600))
         );
     }
@@ -2722,10 +2722,7 @@ mod tests {
         end(&mut handler);
         let moved = &appointments(&handler)[0];
         assert_eq!(
-            (
-                appointment::Places::read(&moved)[0].day,
-                appointment::Places::read(&moved)[0].resource
-            ),
+            (appointment::Places::read(moved)[0].day, appointment::Places::read(moved)[0].resource),
             (base, 104)
         );
     }
@@ -2754,16 +2751,16 @@ mod tests {
                 let moved = &appointments(&handler)[0];
                 let cell = axis.cell(unit).unwrap();
                 assert_eq!(
-                    appointment::Places::read(&moved)[0].day,
+                    appointment::Places::read(moved)[0].day,
                     after(base, i64::from(cell.day)),
                     "view {days} unit {unit}"
                 );
                 assert_eq!(
-                    appointment::Places::read(&moved)[0].resource,
+                    appointment::Places::read(moved)[0].resource,
                     101 + u128::from(cell.resource),
                     "view {days} unit {unit}"
                 );
-                assert_eq!(appointment::Range::read(&moved).0, at(600));
+                assert_eq!(appointment::Range::read(moved).0, at(600));
             }
         }
     }
@@ -2812,7 +2809,7 @@ mod tests {
     }
 
     fn places<S: FileStore>(handler: &Handler<S>) -> Vec<(Stamp, u128)> {
-        appointment::Places::read(&appointments(&handler)[0])
+        appointment::Places::read(&appointments(handler)[0])
             .iter()
             .map(|place| (place.day, place.resource))
             .collect()
@@ -3282,7 +3279,7 @@ mod tests {
             let placed = handler.placed.borrow();
             (placed[0].key, placed[0].base)
         };
-        let before = appointment::Range::read(&appointment_of(&handler, index)).0;
+        let before = appointment::Range::read(&appointment_of(handler, index)).0;
         let (ox, oy) = grid_origin();
         handler.process_canvas(
             &pointer_down(
@@ -3538,8 +3535,8 @@ mod tests {
         submit(&mut handler, &query);
         let all = appointments(&handler);
         let added = all.last().unwrap();
-        assert_eq!(appointment::Places::read(&added).len(), 4);
-        assert_eq!(appointment::Range::read(&added), (at(750), at(870)));
+        assert_eq!(appointment::Places::read(added).len(), 4);
+        assert_eq!(appointment::Range::read(added), (at(750), at(870)));
     }
 
     #[test]
@@ -3654,19 +3651,19 @@ mod tests {
         assert_eq!(
             (
                 appointment::Title::read(added).as_str(),
-                appointment::Range::read(&added).0,
-                appointment::Range::read(&added).1
+                appointment::Range::read(added).0,
+                appointment::Range::read(added).1
             ),
             ("Neo", open, close)
         );
         assert_eq!(
-            (appointment::Category::read(&added), appointment::Status::read(&added)),
+            (appointment::Category::read(added), appointment::Status::read(added)),
             (
                 tag::Code::read(&handler.tags(appointment::CATEGORY)[0]),
                 tag::Code::read(&handler.tags(appointment::STATUS)[0])
             )
         );
-        assert_ne!(appointment::Uid::read(&added), 0);
+        assert_ne!(appointment::Uid::read(added), 0);
         assert_eq!(
             added.get(ID_CREATED_AT).unwrap(),
             encode_time(handler.now_in_ms),
@@ -3676,7 +3673,7 @@ mod tests {
         assert!(commands.iter().any(|c| matches!(c, Command::CloseModal { .. })));
         assert!(pending(&handler) == 1);
         assert!(handler.editing.is_none());
-        let key = data::key(&added);
+        let key = data::key(added);
         let saved =
             DataStruct::from_bytes(handler.store.as_ref().unwrap().get(key).unwrap(), SCHEMA_SIZE)
                 .unwrap();

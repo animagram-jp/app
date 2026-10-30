@@ -1036,10 +1036,9 @@ pub mod gesture {
         use super::*;
         use crate::Rng;
 
-        fn run(
-            events: &[(EventType, u32, f64, f64, f64)],
-            th: &Thresholds,
-        ) -> Vec<Option<Gesture>> {
+        type PressEvent = (EventType, u32, f64, f64, f64);
+
+        fn run(events: &[PressEvent], th: &Thresholds) -> Vec<Option<Gesture>> {
             let mut pointer = Pointer::NONE;
             events
                 .iter()
@@ -1053,7 +1052,7 @@ pub mod gesture {
             rng: &mut Rng,
             pointers: u32,
             steps: usize,
-        ) -> (Vec<(EventType, u32, f64, f64, f64)>, Vec<u32>) {
+        ) -> (Vec<PressEvent>, Vec<u32>) {
             let mut events = Vec::new();
             let mut down: Vec<u32> = Vec::new();
             let mut time = 0.0;
