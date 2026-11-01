@@ -847,7 +847,7 @@ pub mod gesture {
         }
 
         #[test]
-        fn swipe_without_move_event() {
+        fn a_swipe_fires_without_any_move_event() {
             let th = Thresholds::MOUSE;
             let got = gestures_of(
                 &[
@@ -998,7 +998,7 @@ pub mod gesture {
         }
 
         #[test]
-        fn long_press_suppressed_while_dragging() {
+        fn long_press_is_suppressed_while_dragging() {
             let th = Thresholds::MOUSE;
             let got = gestures_of(
                 &[
@@ -1234,7 +1234,7 @@ pub mod gesture {
         }
 
         #[test]
-        fn pinch_end_on_secondary_release() {
+        fn pinch_end_fires_on_secondary_release() {
             let th = Thresholds::MOUSE;
             let got = trace(
                 &[
@@ -1396,7 +1396,7 @@ pub mod gesture {
         }
 
         #[test]
-        fn two_pointers_held_and_released_together_long_press() {
+        fn two_pointers_held_and_released_together_make_a_long_press() {
             let th = Thresholds::MOUSE;
             let got = trace(
                 &[

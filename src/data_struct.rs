@@ -289,7 +289,7 @@ mod tests {
     }
 
     #[test]
-    fn get_from_bytes_error_kinds() {
+    fn get_from_bytes_reports_not_found_and_out_of_bounds_distinctly() {
         let ds = sample();
         let bytes = ds.to_bytes();
         assert!(matches!(
@@ -318,7 +318,7 @@ mod tests {
     }
 
     #[test]
-    fn data_struct_follows_a_map_model_through_random_edits_and_byte_round_trips() {
+    fn a_struct_follows_a_map_model_through_random_edits_and_byte_round_trips() {
         const SIZE: u32 = 10;
         const LIST: u32 = 9;
         for seed in 0..800 {

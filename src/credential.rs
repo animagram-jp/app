@@ -159,7 +159,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn normalize_email() {
+    fn normalize_yields_a_trimmed_lowercase_address_or_an_email_error() {
         assert_eq!(normalize("  Alice@Example.JP "), Ok("alice@example.jp".to_string()));
         assert_eq!(normalize("alice"), Err(CredentialError::Email));
         assert_eq!(normalize("@example.jp"), Err(CredentialError::Email));
@@ -168,20 +168,20 @@ mod tests {
     }
 
     #[test]
-    fn salt_deterministic_and_distinct() {
+    fn the_salt_depends_only_on_the_address() {
         assert_eq!(salt("alice@example.jp"), salt("alice@example.jp"));
         assert_ne!(salt("alice@example.jp"), salt("bob@example.jp"));
     }
 
     #[test]
-    fn keys_separated() {
+    fn auth_and_wrap_keys_differ_for_the_same_stretch() {
         let stretch = [7u8; KEY_LENGTH];
         assert_ne!(auth_key(&stretch), wrap_key(&stretch));
         assert_eq!(auth_key(&stretch), auth_key(&stretch));
     }
 
     #[test]
-    fn verifier_pepper_bound() {
+    fn the_verifier_matches_only_its_own_pepper_and_auth_key() {
         let auth = [1u8; KEY_LENGTH];
         let stored = verifier(b"pepper", &auth);
         assert!(verify(b"pepper", &auth, &stored));
@@ -190,7 +190,7 @@ mod tests {
     }
 
     #[test]
-    fn hex_roundtrip() {
+    fn unhex_inverts_hex_only_for_well_formed_text() {
         let bytes = [0u8, 15, 16, 255];
         assert_eq!(hex(&bytes), "000f10ff");
         assert_eq!(unhex("000f10ff"), Some(bytes.to_vec()));
@@ -200,7 +200,7 @@ mod tests {
 
     #[cfg(feature = "vault")]
     #[test]
-    fn stretch_bounds_and_determinism() {
+    fn stretch_is_a_function_of_address_and_password_above_the_minimum_length() {
         assert_eq!(stretch("alice@example.jp", "short"), Err(CredentialError::Password));
         let first = stretch("alice@example.jp", "correct horse battery").unwrap();
         let second = stretch("alice@example.jp", "correct horse battery").unwrap();

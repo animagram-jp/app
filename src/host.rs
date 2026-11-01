@@ -1674,7 +1674,7 @@ mod wire_tests {
     }
 
     #[test]
-    fn command_layouts() {
+    fn commands_encode_to_their_documented_layouts() {
         let id = header_button_3();
         let with_id = |operation: u8, tail: &[u8]| {
             let mut frame = vec![operation];

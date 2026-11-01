@@ -344,7 +344,7 @@ mod tests {
     use crate::Rng;
 
     #[test]
-    fn list_set_update_existing() {
+    fn set_on_an_existing_id_reports_updated() {
         let mut list: List<u32> = List::new();
         list.set(&0, 1u32, false, false).unwrap();
         let r = list.set(&1, 3u32, false, false).unwrap();
@@ -353,7 +353,7 @@ mod tests {
     }
 
     #[test]
-    fn list_set_after_delete_returns_created() {
+    fn set_after_delete_reports_created() {
         let mut list: List<u32> = List::new();
         list.set(&0, 1u32, false, false).unwrap();
         list.delete(&1).unwrap();
@@ -363,14 +363,14 @@ mod tests {
     }
 
     #[test]
-    fn list_set_update_out_of_bounds() {
+    fn set_beyond_the_end_is_out_of_bounds() {
         let mut list: List<u32> = List::new();
         let err = list.set(&99, 1u32, false, false).unwrap_err();
         assert!(matches!(err, ListError::OutOfBounds));
     }
 
     #[test]
-    fn list_set_allow_sparse_extends_and_creates() {
+    fn set_with_allow_sparse_extends_the_list_up_to_the_id() {
         let mut list: List<u32> = List::new();
         let r = list.set(&5, 42u32, false, true).unwrap();
         assert!(matches!(r, SetOutcome::Created(5)));
@@ -379,14 +379,14 @@ mod tests {
     }
 
     #[test]
-    fn list_get_sentinel_returns_not_exist() {
+    fn get_of_the_sentinel_is_not_found() {
         let list: List<u32> = List::new();
         let err = list.get(&0).unwrap_err();
         assert!(matches!(err, ListError::NotFound));
     }
 
     #[test]
-    fn read_u32_bounds() {
+    fn read_u32_is_none_past_the_end() {
         let b = [1u8, 0, 0, 0, 2, 0, 0, 0];
         assert_eq!(read_u32(&b, 0), Some(1));
         assert_eq!(read_u32(&b, 4), Some(2));

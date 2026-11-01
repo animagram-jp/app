@@ -1864,14 +1864,14 @@ mod memory_tests {
     // === wire format ===
 
     #[test]
-    fn match_known_checksums() {
+    fn fletcher32_matches_known_checksums() {
         assert_eq!(fletcher32(&[]), 0);
         assert_eq!(fletcher32(b"abcdef"), 0x56502D2A);
         assert_eq!(fletcher32(b"abcde"), 0xF04FC729);
     }
 
     #[test]
-    fn match_wire_layout() {
+    fn records_match_the_handcrafted_wire_layout() {
         assert_eq!(
             LogRecord::set(42, b"hello".to_vec()).to_bytes(),
             handcraft_record(1, 42, b"hello")
@@ -1880,7 +1880,7 @@ mod memory_tests {
     }
 
     #[test]
-    fn reject_unassigned_ops() {
+    fn records_with_unassigned_ops_are_rejected() {
         for op in [0u8, 3, 4, 0x80, 0xFF] {
             assert!(LogRecord::from_bytes(&handcraft_record(op, 0, b"")).is_none(), "op {op}");
             assert!(LogRecord::from_bytes(&handcraft_record(op, 9, b"xyz")).is_none(), "op {op}");
@@ -1889,7 +1889,7 @@ mod memory_tests {
     }
 
     #[test]
-    fn reject_oversized_lengths() {
+    fn records_with_oversized_lengths_are_rejected() {
         for length in [u32::MAX, u32::MAX - 12, u32::MAX - 13, 1 << 31] {
             for op in [1u8, 2] {
                 let mut record = vec![op, 0, 0, 0, 0];
@@ -1903,7 +1903,7 @@ mod memory_tests {
     // === replay ===
 
     #[test]
-    fn replay_damaged_log() {
+    fn replay_keeps_every_record_before_the_first_damage() {
         for seed in 0..300 {
             let mut rng = Rng::new(seed);
             let snapshot_records = fuzz_records(&mut rng);
@@ -1954,7 +1954,7 @@ mod memory_tests {
     // === open ===
 
     #[test]
-    fn open_missing() {
+    fn open_creates_a_missing_store_only_when_asked() {
         let id = StoreId { name: "absent", version: "7" };
         for _ in 0..2 {
             assert!(matches!(
@@ -1967,7 +1967,7 @@ mod memory_tests {
     }
 
     #[test]
-    fn separate_versions() {
+    fn versions_of_a_store_do_not_share_data() {
         let first = StoreId { name: "versions", version: "0.0" };
         let second = StoreId { name: "versions", version: "0.1" };
         assert_eq!(second.file("snap"), "versions.0.1.snap");
@@ -1983,7 +1983,7 @@ mod memory_tests {
     // === new / pending diff ===
 
     #[test]
-    fn replay_pending_diff() {
+    fn a_reopened_store_replays_the_pending_diff_exactly() {
         for seed in 0..500 {
             let mut rng = Rng::new(seed);
             let disk = MemoryHandles::new();
@@ -2004,52 +2004,52 @@ mod memory_tests {
     // === i/o helpers and the single-writer premise ===
 
     #[test]
-    fn trickle_io() {
+    fn short_reads_and_writes_are_looped_to_completion() {
         block_on(cases::trickle_io::<MemoryStore>("short_io"));
     }
 
     #[test]
-    fn stall_io() {
+    fn stalled_io_fails_as_unknown_instead_of_looping() {
         block_on(cases::stall_io::<MemoryStore>("stalled_io"));
     }
 
     #[test]
-    fn shrink_log() {
+    fn every_method_refuses_a_shrunken_log() {
         block_on(cases::shrink_log::<MemoryStore>("shrunken_log"));
     }
 
     // === save ===
 
     #[test]
-    fn sweep_save() {
+    fn save_survives_a_fault_at_every_step() {
         block_on(cases::sweep::<MemoryStore>("save_sweep", Method::Save));
     }
 
     // === discard ===
 
     #[test]
-    fn sweep_discard() {
+    fn discard_survives_a_fault_at_every_step() {
         block_on(cases::sweep::<MemoryStore>("discard_sweep", Method::Discard));
     }
 
     // === compact ===
 
     #[test]
-    fn sweep_compact() {
+    fn compact_survives_a_fault_at_every_step() {
         block_on(cases::sweep::<MemoryStore>("compact_sweep", Method::Compact));
     }
 
     // === scenario ===
 
     #[test]
-    fn walk_faults() {
+    fn a_random_walk_with_faults_matches_the_model() {
         block_on(cases::walk::<MemoryStore>("model", 300, 80, tear_log));
     }
 
     // === recorded behavior ===
 
     #[test]
-    fn pin_compact_rewrite() {
+    fn compact_rewrites_an_untouched_snapshot_in_full() {
         block_on(cases::pin_compact_rewrite::<MemoryStore>("untouched"));
     }
 }
@@ -2083,7 +2083,7 @@ mod opfs_tests {
     // === open ===
 
     #[wasm_bindgen_test]
-    async fn open_missing() {
+    async fn open_creates_a_missing_store_only_when_asked() {
         let id = StoreId { name: "opfs_never_created", version: "9" };
         assert!(matches!(OpfsStore::open(id, false).await, Err(FileStoreError::NotFound(_))));
     }
@@ -2091,45 +2091,45 @@ mod opfs_tests {
     // === i/o helpers and the single-writer premise ===
 
     #[wasm_bindgen_test]
-    async fn trickle_io() {
+    async fn short_reads_and_writes_are_looped_to_completion() {
         cases::trickle_io::<OpfsStore>("opfs_short_io").await;
     }
 
     #[wasm_bindgen_test]
-    async fn stall_io() {
+    async fn stalled_io_fails_as_unknown_instead_of_looping() {
         cases::stall_io::<OpfsStore>("opfs_stalled_io").await;
     }
 
     #[wasm_bindgen_test]
-    async fn shrink_log() {
+    async fn every_method_refuses_a_shrunken_log() {
         cases::shrink_log::<OpfsStore>("opfs_shrunken_log").await;
     }
 
     // === save ===
 
     #[wasm_bindgen_test]
-    async fn sweep_save() {
+    async fn save_survives_a_fault_at_every_step() {
         cases::sweep::<OpfsStore>("opfs_save_sweep", Method::Save).await;
     }
 
     // === discard ===
 
     #[wasm_bindgen_test]
-    async fn sweep_discard() {
+    async fn discard_survives_a_fault_at_every_step() {
         cases::sweep::<OpfsStore>("opfs_discard_sweep", Method::Discard).await;
     }
 
     // === compact ===
 
     #[wasm_bindgen_test]
-    async fn sweep_compact() {
+    async fn compact_survives_a_fault_at_every_step() {
         cases::sweep::<OpfsStore>("opfs_compact_sweep", Method::Compact).await;
     }
 
     // === close ===
 
     #[wasm_bindgen_test]
-    async fn hand_over_pending_diff() {
+    async fn a_reopened_store_inherits_the_pending_diff_of_a_closed_one() {
         let id = StoreId { name: "opfs_lost", version: VERSION };
         let kept = format!("kept {}", js_sys::Date::now());
         let mut store = mount::<OpfsStore>(id).await;
@@ -2153,14 +2153,14 @@ mod opfs_tests {
     // === scenario ===
 
     #[wasm_bindgen_test]
-    async fn walk_faults() {
+    async fn a_random_walk_with_faults_matches_the_model() {
         cases::walk::<OpfsStore>("opfs_model", 6, 40, tear_log).await;
     }
 
     // === recorded behavior ===
 
     #[wasm_bindgen_test]
-    async fn pin_compact_rewrite() {
+    async fn compact_rewrites_an_untouched_snapshot_in_full() {
         cases::pin_compact_rewrite::<OpfsStore>("opfs_untouched").await;
     }
 }

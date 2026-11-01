@@ -137,7 +137,7 @@ mod tests {
     use crate::credential;
 
     #[test]
-    fn root_roundtrip_and_rewrap() {
+    fn unwrap_root_inverts_wrap_root_only_with_the_same_key() {
         let stretch = [5u8; KEY_LENGTH];
         let wrap = credential::wrap_key(&stretch);
         let root = generate_root().unwrap();
@@ -163,7 +163,7 @@ mod tests {
     }
 
     #[test]
-    fn store_keys_separated() {
+    fn store_keys_depend_on_both_the_root_and_the_name() {
         let root = [1u8; KEY_LENGTH];
         assert_eq!(store_key(&root, "calendar"), store_key(&root, "calendar"));
         assert_ne!(store_key(&root, "calendar"), store_key(&root, "memo"));
@@ -172,7 +172,7 @@ mod tests {
     }
 
     #[test]
-    fn record_bound_to_key() {
+    fn a_record_decrypts_only_with_its_own_store_and_key() {
         let store = store_key(&[3u8; KEY_LENGTH], "calendar");
         let key = [9u8; 16];
         let envelope = encrypt_record(&store, &key, b"plain").unwrap();

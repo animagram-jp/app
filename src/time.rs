@@ -1167,7 +1167,7 @@ mod tests {
     }
 
     #[test]
-    fn layout_positions() {
+    fn each_field_starts_at_its_declared_bit() {
         assert_eq!(integer(pack(0, 0, 0, 0, 0, 0, 1, 0, 0)), 1 << 33);
         assert_eq!(integer(pack(0, 0, 0, 0, 0, 1, 0, 0, 0)), 1 << 29);
         assert_eq!(integer(pack(0, 0, 0, 0, 1, 0, 0, 0, 0)), 1 << 24);
@@ -1287,7 +1287,7 @@ mod tests {
     }
 
     #[test]
-    fn display_format() {
+    fn display_renders_each_range_and_format_per_language() {
         use Unit::*;
 
         let stamp = pack(10, 9, 8, 7, 6, 5, 2026, 1, 0);

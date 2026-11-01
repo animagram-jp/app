@@ -169,7 +169,7 @@ use web_sys::FileSystemSyncAccessHandle;
 
 未使用の別形（`truncate_with_f64`、`read_with_buffer_source` / `write_with_buffer_source` など）は、u32 を超えるファイルが必要になったときの選択肢。
 
-**short read / short write**: `read_all` / `append` が、返り値（実際に読み書きしたバイト数）を見て、足りなければオフセットを進めて続きを読み書きする（VFS の `(p)read` / `(p)write` と同じ性質）。進捗が 0 のまま続く場合は、無限ループを避けるため `Unknown` で打ち切る。テスト: `trickle_io`（1回を3バイトまでに制限）、`stall_io`（進捗 0）。
+**short read / short write**: `read_all` / `append` が、返り値（実際に読み書きしたバイト数）を見て、足りなければオフセットを進めて続きを読み書きする（VFS の `(p)read` / `(p)write` と同じ性質）。進捗が 0 のまま続く場合は、無限ループを避けるため `Unknown` で打ち切る。テスト: `short_reads_and_writes_are_looped_to_completion`（1回を3バイトまでに制限）、`stalled_io_fails_as_unknown_instead_of_looping`（進捗 0）。
 
 実 OPFS（Chromium 141）で確かめた挙動:
 
@@ -194,7 +194,7 @@ whatwg/fs spec によれば、`FileSystemSyncAccessHandle` 系メソッドが投
 
 - `close()` は「Worker 終了直前に一度だけ呼ぶ」契約。守っている限り、`close()` 後に `save` / `compact` / `discard` が呼ばれることはなく、稼働中の `InvalidState` は「変更処理が原因不明で失敗した」ケース。
 - したがって caller は `InvalidState` を基本的に一時的な変更失敗として扱い、`save()` 等を再試行してよい（`unsaved` / `deleted` は失敗時も維持される。`compact` の再試行も冪等）。
-- `InvalidState` が繰り返す、または `close()` 後の経路で発生する場合は、close 済み handle への誤操作というプログラムバグを疑う（テスト: `hand_over_pending_diff`）。
+- `InvalidState` が繰り返す、または `close()` 後の経路で発生する場合は、close 済み handle への誤操作というプログラムバグを疑う（テスト: `a_reopened_store_inherits_the_pending_diff_of_a_closed_one`）。
 
 | `FileStoreError` バリアント | 対応する DOMException / 例外 | vfs 移植時の対応候補 |
 |-|-|-|
@@ -339,22 +339,16 @@ seed 固定の疑似乱数（`testing::Rng`）で、同じ seed は常に同じ�
 
 空欄は未検査であることを意味する。埋めるかどうかは、そのメソッドが disk を変えるかで決める。
 
-関数名は `{動詞}_{形容詞}_{対象}` で、namespace（`file_store`、`cases`、`memory_tests`、`opfs_tests`）と引数に現れる語は含めない。構成語彙は次のとおり。
+テスト関数名は [CONTRIBUTING.md](../CONTRIBUTING.md) の規則に従う平叙文とする。`cases` の補助関数は `{動詞}_{形容詞}_{対象}` で、namespace（`file_store`、`cases`）と引数に現れる語は含めない。構成語彙は次のとおり。
 
 | 語 | 意味 | 種類 |
 |-|-|-|
-| `sweep` | 呼び出し1回の I/O ごとに故障を差し込み、続きを確認する。`_save` / `_discard` / `_compact` は対象のメソッド | 全探索 |
-| `walk` | ランダムな操作列を独立したモデルと1操作ごとに照合する。`_faults` は故障・reopen・torn 注入を含むこと | シナリオ |
+| `sweep` | 呼び出し1回の I/O ごとに故障を差し込み、続きを確認する。対象のメソッドは `Method` 引数 | 全探索 |
+| `walk` | ランダムな操作列を独立したモデルと1操作ごとに照合する。故障・reopen・torn 注入を含む | シナリオ |
 | `pin` | 現状の挙動を固定する。`_compact_rewrite` は compact の全件書き直し | 記録 |
 | `trickle` | read / write を3バイトずつの細切れで返させる | 事後条件 |
 | `stall` | read / write が進捗 0 を返し続けるようにする | 事後条件 |
 | `shrink` | log を `log_end` より縮める | 事後条件 |
-| `match` | 期待する値（既知の checksum、仕様のレイアウト）と一致する | 事後条件 |
-| `reject` | 不正な入力を受け付けない | 事後条件 |
-| `replay` | log や未保存の差分を積み直す。`_damaged_log` は切り詰めと破損を加えたもの、`_pending_diff` は未保存の差分 | 事後条件 |
-| `open_missing` | 存在しない store を開く | 事後条件 |
-| `separate` | 分ける。`_versions` は version 違いの store | 事後条件 |
-| `hand_over` | 閉じた handle の store から、再オープンした store へ引き継ぐ | 事後条件 |
 
 テスト用ヘルパーの動詞も同じ流儀で選ぶ。
 
@@ -411,21 +405,21 @@ seed 固定の疑似乱数（`testing::Rng`）で、同じ seed は常に同じ�
 
 | Test | Target |
 |-|-|
-| `match_known_checksums` | 空入力 → 0、偶数長（`abcdef`）→ `0x56502D2A`、奇数長（`abcde`）→ `0xF04FC729`。ディスク上の checksum を固定する |
-| `match_wire_layout` | `to_bytes` が `[op][id][len][data][checksum]` の仕様どおりのバイト列になる（テストが独立に組み立てたバイト列と一致） |
-| `reject_unassigned_ops` | op 0 と 3 以上は、checksum が正しくても `None`（op 0 を欠番にする根拠: ゼロ埋め領域がレコードとして読めてしまう） |
-| `replay_damaged_log` | ランダムな set / delete 列を snapshot と log として組み、log のあらゆる切り詰め位置と、ランダムな1バイト破損で、`build_memory` の結果と消費バイト数が「完全なレコードの接頭辞」を適用した oracle と一致する |
-| `open_missing` | `create = false` で存在しない store は `NotFound` で、作られもしない |
-| `separate_versions` | 同名で version が違う store は別ファイル |
-| `replay_pending_diff` | 再オープンした store に未保存の差分を `replay` すると、元の現在値と未保存の差分が一致する |
-| `trickle_io` | `read_all` / `append` のループ。1回の read / write を3バイトまでに制限しても、`save` / `compact` / `discard` と reopen の結果が変わらない |
-| `stall_io` | 進捗 0 を返し続ける read / write で、`save` / `discard` / `compact` が `Unknown` で失敗し（ループしない）、RAM と未保存の差分が変わらない |
-| `shrink_log` | log を `log_end` より縮めると、`save` / `discard` / `compact` が `Unknown`（"shrank"）で失敗し、ファイルのサイズも RAM も変わらない |
-| `sweep_save` | 上記「全探索」を `save` に対して実行 |
-| `sweep_discard` | 同上を `discard` に対して実行 |
-| `sweep_compact` | 同上を `compact` に対して実行（未確認の尾がある場合も） |
-| `walk_faults` | ランダムな操作列（set / delete / issue_id / save / discard / compact / close → reopen、torn 注入、`FaultInjector` による log の write 失敗・flush 失敗、compact 中の snapshot の write 失敗）を、独立したモデル（現在値、確定値、next_id、flush 失敗が残す未確認バッチ）と1操作ごとに照合する |
-| `pin_compact_rewrite` | 現状の挙動の記録（要件ではない）: snapshot に 1〜100、log に 101,102 だけの状態で compact すると、誰も触れていない snapshot も `truncate(0)` され全件（102件）書き直される。`truncate` / `write_at` を記録する `FaultInjector<S>` で観測し、truncate が `[snapshot 0, log 0]` で、snapshot への書き込み量が snapshot のサイズに等しいことを照合する |
+| `fletcher32_matches_known_checksums` | 空入力 → 0、偶数長（`abcdef`）→ `0x56502D2A`、奇数長（`abcde`）→ `0xF04FC729`。ディスク上の checksum を固定する |
+| `records_match_the_handcrafted_wire_layout` | `to_bytes` が `[op][id][len][data][checksum]` の仕様どおりのバイト列になる（テストが独立に組み立てたバイト列と一致） |
+| `records_with_unassigned_ops_are_rejected` | op 0 と 3 以上は、checksum が正しくても `None`（op 0 を欠番にする根拠: ゼロ埋め領域がレコードとして読めてしまう） |
+| `replay_keeps_every_record_before_the_first_damage` | ランダムな set / delete 列を snapshot と log として組み、log のあらゆる切り詰め位置と、ランダムな1バイト破損で、`build_memory` の結果と消費バイト数が「完全なレコードの接頭辞」を適用した oracle と一致する |
+| `open_creates_a_missing_store_only_when_asked` | `create = false` で存在しない store は `NotFound` で、作られもしない |
+| `versions_of_a_store_do_not_share_data` | 同名で version が違う store は別ファイル |
+| `a_reopened_store_replays_the_pending_diff_exactly` | 再オープンした store に未保存の差分を `replay` すると、元の現在値と未保存の差分が一致する |
+| `short_reads_and_writes_are_looped_to_completion` | `read_all` / `append` のループ。1回の read / write を3バイトまでに制限しても、`save` / `compact` / `discard` と reopen の結果が変わらない |
+| `stalled_io_fails_as_unknown_instead_of_looping` | 進捗 0 を返し続ける read / write で、`save` / `discard` / `compact` が `Unknown` で失敗し（ループしない）、RAM と未保存の差分が変わらない |
+| `every_method_refuses_a_shrunken_log` | log を `log_end` より縮めると、`save` / `discard` / `compact` が `Unknown`（"shrank"）で失敗し、ファイルのサイズも RAM も変わらない |
+| `save_survives_a_fault_at_every_step` | 上記「全探索」を `save` に対して実行 |
+| `discard_survives_a_fault_at_every_step` | 同上を `discard` に対して実行 |
+| `compact_survives_a_fault_at_every_step` | 同上を `compact` に対して実行（未確認の尾がある場合も） |
+| `a_random_walk_with_faults_matches_the_model` | ランダムな操作列（set / delete / issue_id / save / discard / compact / close → reopen、torn 注入、`FaultInjector` による log の write 失敗・flush 失敗、compact 中の snapshot の write 失敗）を、独立したモデル（現在値、確定値、next_id、flush 失敗が残す未確認バッチ）と1操作ごとに照合する |
+| `compact_rewrites_an_untouched_snapshot_in_full` | 現状の挙動の記録（要件ではない）: snapshot に 1〜100、log に 101,102 だけの状態で compact すると、誰も触れていない snapshot も `truncate(0)` され全件（102件）書き直される。`truncate` / `write_at` を記録する `FaultInjector<S>` で観測し、truncate が `[snapshot 0, log 0]` で、snapshot への書き込み量が snapshot のサイズに等しいことを照合する |
 
 モデルが採用している仕様（これに沿わない実装は上のテストで落ちる）:
 
@@ -435,12 +429,12 @@ seed 固定の疑似乱数（`testing::Rng`）で、同じ seed は常に同じ�
 
 ### Opfs integration tests
 
-`cases` の本体を `OpfsStore` で実行する。`opfs_tests` の関数は `memory_tests` と同じ名前で、同じ本体を呼ぶ（`walk_faults`、`sweep_*`、`pin_compact_rewrite`、`trickle_io`、`stall_io`、`shrink_log`）。故障注入は `FaultInjector` が trait の層で行うので、全探索もシナリオも実 OPFS で行える。torn 断片は、store を close した上でテストが raw SyncAccessHandle を開いて log 末尾に注入する。OPFS だけのテストは次の2つ。
+`cases` の本体を `OpfsStore` で実行する。`opfs_tests` の関数は `memory_tests` と同じ名前で、`cases` の同じ本体（`walk`、`sweep`、`pin_compact_rewrite`、`trickle_io`、`stall_io`、`shrink_log`）を呼ぶ。故障注入は `FaultInjector` が trait の層で行うので、全探索もシナリオも実 OPFS で行える。torn 断片は、store を close した上でテストが raw SyncAccessHandle を開いて log 末尾に注入する。OPFS だけのテストは次の2つ。
 
 | Test | Target |
 |-|-|
-| `open_missing` | `create = false` で存在しない store は `NotFound` |
-| `hand_over_pending_diff` | close 済みの store は `InvalidState` で失敗し、再オープンした store が未保存の差分を引き継いで save できる |
+| `open_creates_a_missing_store_only_when_asked` | `create = false` で存在しない store は `NotFound` |
+| `a_reopened_store_inherits_the_pending_diff_of_a_closed_one` | close 済みの store は `InvalidState` で失敗し、再オープンした store が未保存の差分を引き継いで save できる |
 
 ## Store
 
