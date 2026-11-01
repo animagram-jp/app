@@ -7,6 +7,7 @@ use core::{
     iter::Extend,
     option::Option::{None, Some},
     primitive::{bool, f64, i32, u8, u64},
+    sync::atomic::Ordering,
 };
 
 #[cfg(target_arch = "wasm32")]
@@ -126,7 +127,7 @@ impl App {
                 handler.process_lost()
             }
             Event::Window(WindowEvent::PageHide) => {
-                unsafe { RUNNING = false };
+                RUNNING.store(false, Ordering::Relaxed);
                 (vec![], self.handler.close())
             }
         }
@@ -212,10 +213,10 @@ impl App {
             emit(&frame);
         }
 
-        #[allow(clippy::deref_addrof)]
-        unsafe {
-            *(&raw mut APP) = Some(app)
-        };
+        let slot: *mut Option<App> = &raw mut APP;
+        // SAFETY: `init` runs once on the single app thread before `process_event` /
+        // `serve_event` start reading `APP`, so no other reference exists.
+        unsafe { *slot = Some(app) };
     }
 }
 

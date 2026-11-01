@@ -28,8 +28,8 @@ pub enum Axis {
 impl Axis {
     pub const fn days(self) -> u32 {
         match self {
-            Self::Day(day) => day.len(),
-            Self::Month => Day::Week.len(),
+            Self::Day(day) => day.days(),
+            Self::Month => Day::Week.days(),
         }
     }
 
@@ -55,7 +55,7 @@ pub enum Day {
 }
 
 impl Day {
-    pub const fn len(self) -> u32 {
+    pub const fn days(self) -> u32 {
         match self {
             Self::Day => 1,
             Self::ThreeDays => 3,
@@ -71,7 +71,7 @@ impl Month {
     pub const ROWS: u32 = 3;
 
     pub const fn days() -> u32 {
-        Self::WEEKS * Day::Week.len()
+        Self::WEEKS * Day::Week.days()
     }
 
     pub const fn count() -> u32 {
@@ -91,7 +91,7 @@ impl Month {
         if day >= Self::days() || row.is_some_and(|row| row >= Self::ROWS) {
             return None;
         }
-        let week = Day::Week.len();
+        let week = Day::Week.days();
         let top = day / week * (Self::ROWS + 1) + row.map_or(0, |row| row + 1);
         Some(BBox::new(
             [Unit::new((day % week) as f64), Unit::new(top as f64)],
@@ -107,7 +107,7 @@ impl Month {
     /// assert_eq!(Month::locate([0, 20]), None);
     /// ```
     pub fn locate(unit: [i32; 2]) -> Option<(u32, Option<u32>)> {
-        let week = Day::Week.len();
+        let week = Day::Week.days();
         let column = u32::try_from(unit[0]).ok().filter(|column| *column < week)?;
         let row = u32::try_from(unit[1]).ok().filter(|row| *row < Self::count())?;
         let (week_index, rest) = (row / (Self::ROWS + 1), row % (Self::ROWS + 1));

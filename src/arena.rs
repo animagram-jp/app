@@ -11,7 +11,7 @@ use core::{
     option::Option::{self, None, Some},
     primitive::{bool, u8, u32, usize},
     ptr, slice,
-    sync::atomic::{AtomicU32, Ordering},
+    sync::atomic::{AtomicBool, AtomicU32, Ordering},
 };
 
 #[cfg(target_arch = "wasm32")]
@@ -77,15 +77,23 @@ pub struct Arena {
     bytes: UnsafeCell<[u8; ARENA_SIZE]>,
 }
 
+// SAFETY: the app runs on exactly one thread (main thread or dedicated worker, see
+// CONTRIBUTING.md). The only other party is JS, which touches the arena through
+// `Atomics` on the counters and the ring protocol below, never concurrently with Rust
+// on the same bytes.
 unsafe impl Sync for Arena {}
 
 pub static ARENA: Arena = Arena { bytes: UnsafeCell::new([0; ARENA_SIZE]) };
 pub static mut APP: Option<App> = None;
-pub static mut RUNNING: bool = true;
+pub static RUNNING: AtomicBool = AtomicBool::new(true);
 
 impl Arena {
     #[inline]
     fn counter_at(&self, start: usize, counter_offset: usize) -> &AtomicU32 {
+        // SAFETY: `bytes` is `align(64)` and every `start` / `counter_offset` is a multiple
+        // of 64 inside `ARENA_SIZE` (const asserts above), so the pointer is in bounds and
+        // 4-aligned. Counters are only ever accessed atomically, by Rust here and by JS
+        // through `Atomics`, and the reference lives as long as `ARENA`.
         unsafe {
             AtomicU32::from_ptr((self.bytes.get() as usize + start + counter_offset) as *mut u32)
         }
@@ -96,6 +104,9 @@ impl Arena {
             return None;
         }
         let pointer = (self.bytes.get() as *const u8).wrapping_add(start);
+        // SAFETY: `start <= end <= ARENA_SIZE` was checked, the static is zero-initialized,
+        // and the ring protocol keeps the writer past the write counter while the reader
+        // holds `[read, write)`, so the slice is not mutated during its lifetime.
         Some(unsafe { slice::from_raw_parts(pointer, end - start) })
     }
 
@@ -112,6 +123,9 @@ impl Arena {
             return false;
         }
         let pointer = (self.bytes.get() as *mut u8).wrapping_add(start);
+        // SAFETY: `start + bytes.len() <= ARENA_SIZE` was checked, `bytes` is a Rust slice
+        // outside the arena, and the ring protocol gives the writer exclusive use of
+        // `[write, read)` until the write counter is published.
         unsafe { ptr::copy_nonoverlapping(bytes.as_ptr(), pointer, bytes.len()) };
         true
     }
@@ -218,13 +232,16 @@ pub fn arena_offset() -> u32 {
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 pub fn initialize() {
     ARENA.initialize();
-    unsafe { RUNNING = true };
+    RUNNING.store(true, Ordering::Relaxed);
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 pub fn process_event() {
-    #[allow(clippy::deref_addrof)]
-    let Some(app) = (unsafe { (*(&raw mut APP)).as_mut() }) else {
+    let slot: *mut Option<App> = &raw mut APP;
+    // SAFETY: `APP` is only touched from the single app thread, and the JS event loop
+    // calls the exported functions one at a time, so no other reference exists while
+    // this one is alive.
+    let Some(app) = (unsafe { (*slot).as_mut() }) else {
         return;
     };
     let Some(frame) = ARENA.read_ring(EVENT_RING) else {
@@ -251,15 +268,17 @@ fn flush(app: &App) {
 #[cfg(all(target_arch = "wasm32", target_feature = "atomics"))]
 #[wasm_bindgen]
 pub async fn serve_event() {
-    while unsafe { RUNNING } {
+    while RUNNING.load(Ordering::Relaxed) {
         process_event();
         {
-            #[allow(clippy::deref_addrof)]
-            let wanted = unsafe { (*(&raw mut APP)).as_mut() }.and_then(App::reopen_wanted);
+            let slot: *mut Option<App> = &raw mut APP;
+            // SAFETY: same as `process_event`; the reference is dropped before the `await`
+            // and taken again after it.
+            let wanted = unsafe { (*slot).as_mut() }.and_then(App::reopen_wanted);
             if let Some(id) = wanted {
                 let opened = Store::open(id, true).await;
-                #[allow(clippy::deref_addrof)]
-                if let Some(app) = unsafe { (*(&raw mut APP)).as_mut() } {
+                // SAFETY: same as above; nothing else borrows `APP` across the `await`.
+                if let Some(app) = unsafe { (*slot).as_mut() } {
                     app.clear();
                     app.opened(opened);
                     flush(app);
@@ -269,6 +288,9 @@ pub async fn serve_event() {
         }
         let write = ARENA.get_write_count(EVENT_RING);
         if ARENA.get_read_count(EVENT_RING) == write {
+            // SAFETY: the counter pointer is 4-aligned shared memory (see `counter_at`), and
+            // `serve_event` only runs on the dedicated worker, where `memory.atomic.wait32`
+            // is permitted (the main thread would trap).
             unsafe {
                 let pointer =
                     ARENA.counter_at(EVENT_RING.start, COUNTER_WRITE_OFFSET).as_ptr() as *mut i32;
@@ -288,6 +310,8 @@ pub fn emit(frame: &[u8]) -> bool {
     let written = ARENA.write_ring(COMMAND_RING, frame);
 
     #[cfg(all(target_arch = "wasm32", target_feature = "atomics"))]
+    // SAFETY: the counter pointer is 4-aligned shared memory (see `counter_at`);
+    // `memory.atomic.notify` has no thread restriction.
     unsafe {
         let pointer =
             ARENA.counter_at(COMMAND_RING.start, COUNTER_WRITE_OFFSET).as_ptr() as *mut i32;

@@ -147,7 +147,7 @@ impl Character {
 #[derive(Clone, Copy)]
 pub enum Profile {
     Name,
-    Birthpalce,
+    Birthplace,
     Pronoun,
     Occupation,
     Residence,
@@ -160,8 +160,8 @@ impl SubjectTrait for Profile {
     fn ids(&self) -> &'static [u32] {
         const BASE: u32 = Character::Profile.base_id();
         match self {
-            Self::Name => &[BASE + 0, BASE + 1],
-            Self::Birthpalce => &[BASE + 2],
+            Self::Name => &[BASE, BASE + 1],
+            Self::Birthplace => &[BASE + 2],
             Self::Pronoun => &[BASE + 3],
             Self::Occupation => &[BASE + 4, BASE + 5, BASE + 6],
             Self::Residence => &[BASE + 7],
@@ -173,8 +173,8 @@ impl SubjectTrait for Profile {
         match (self, language) {
             (Self::Name, Language::En(_)) => "Name",
             (Self::Name, Language::Ja) => "名前",
-            (Self::Birthpalce, Language::En(_)) => "Birthplace",
-            (Self::Birthpalce, Language::Ja) => "出身",
+            (Self::Birthplace, Language::En(_)) => "Birthplace",
+            (Self::Birthplace, Language::Ja) => "出身",
             (Self::Pronoun, Language::En(_)) => "Pronoun",
             (Self::Pronoun, Language::Ja) => "性別",
             (Self::Occupation, Language::En(_)) => "Occupation",
@@ -187,7 +187,7 @@ impl SubjectTrait for Profile {
     }
 
     fn list() -> &'static [Self] {
-        &[Self::Name, Self::Birthpalce, Self::Pronoun, Self::Occupation, Self::Residence, Self::Age]
+        &[Self::Name, Self::Birthplace, Self::Pronoun, Self::Occupation, Self::Residence, Self::Age]
     }
 }
 
@@ -428,7 +428,7 @@ pub struct Birthplace; // Birthplace: str
 impl Predicate<1> for Birthplace {
     type Parsed = String;
     type Subject = Profile;
-    const VARIANT: Profile = Profile::Birthpalce;
+    const VARIANT: Profile = Profile::Birthplace;
 
     fn parse(bytes: [Option<&[u8]>; 1]) -> Self::Parsed {
         bytes[0].map(|b| String::from_utf8_lossy(b).into_owned()).unwrap_or_default()

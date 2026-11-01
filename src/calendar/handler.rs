@@ -643,7 +643,7 @@ impl<S: FileStore> Handler<S> {
                 self.base = day;
                 return self.change_axis(Axis::Day(Day::Day));
             }
-            let Some((day, _)) = self.unit_at(pointer).and_then(|unit| Month::locate(unit)) else {
+            let Some((day, _)) = self.unit_at(pointer).and_then(Month::locate) else {
                 return vec![];
             };
             let Some(resource) = resources.first() else {
@@ -903,7 +903,7 @@ impl<S: FileStore> Handler<S> {
 
     fn move_in_month(&self, drag: &Drag) -> Option<DataStruct> {
         let first = self.first_day();
-        let (target, _) = self.unit_at(drag.pointer).and_then(|unit| Month::locate(unit))?;
+        let (target, _) = self.unit_at(drag.pointer).and_then(Month::locate)?;
         let mut entry = self.appointment(drag.key)?;
         let cells = appointment::Places::read(&entry);
         let pressed = cells.get(drag.cell)?;
@@ -1009,7 +1009,7 @@ impl<S: FileStore> Handler<S> {
 
     fn step_days(&self, n: u32) -> i64 {
         let (unit, page) = if self.month() {
-            (i64::from(Day::Week.len()), i64::from(Month::days()))
+            (i64::from(Day::Week.days()), i64::from(Month::days()))
         } else {
             (1, i64::from(self.axis.days()))
         };
@@ -1456,7 +1456,7 @@ impl<S: FileStore> Handler<S> {
     }
 
     fn heading(&self) -> Grid {
-        Grid::new(Day::Week.len(), self.resources, self.clock)
+        Grid::new(Day::Week.days(), self.resources, self.clock)
     }
 
     fn count_resources(&self) -> u32 {
@@ -1468,7 +1468,7 @@ impl<S: FileStore> Handler<S> {
     }
 
     fn columns(&self) -> u32 {
-        if self.month() { Day::Week.len() } else { self.grid().columns() }
+        if self.month() { Day::Week.days() } else { self.grid().columns() }
     }
 
     fn month(&self) -> bool {
@@ -3873,7 +3873,7 @@ mod tests {
         let bx = Month::bbox(day, row).unwrap();
         let (ox, oy) = grid_origin();
         (
-            ox + (bx.base()[0].get() + 0.5) * column_in_px(VIEWPORT, Day::Week.len(), REM),
+            ox + (bx.base()[0].get() + 0.5) * column_in_px(VIEWPORT, Day::Week.days(), REM),
             oy + (bx.base()[1].get() + 0.5) * SLOT_IN_REM * REM,
         )
     }
@@ -4034,7 +4034,7 @@ mod tests {
         assert_eq!((after.1, after.3), (before.1 / SLOT_IN_REM as f32 * 3.0, 3.0 * REM as f32));
         let bx = Month::bbox(10, Some(2)).unwrap();
         let (ox, oy) = grid_origin();
-        let x = ox + (bx.base()[0].get() + 0.5) * column_in_px(VIEWPORT, Day::Week.len(), REM);
+        let x = ox + (bx.base()[0].get() + 0.5) * column_in_px(VIEWPORT, Day::Week.days(), REM);
         let y = oy + (bx.base()[1].get() + 0.5) * 3.0 * REM;
         handler.process_canvas(&pointer_down(Target::Surface.to_dom(), x, y), &pointer());
         let commands = handler.process_gesture(&Gesture::Tap, &pointer(), None).1;
