@@ -141,10 +141,10 @@ async function start() {
             serving = true;
 
             for (;;) {
-                drain();
                 view();
                 const index = (S.arena_offset + COMMAND_RING.start) >> 2;
                 const write = Atomics.load(S.int32, index);
+                drain();
                 const result = Atomics.waitAsync(S.int32, index, write);
                 if (result.async) await result.value;
             }
@@ -931,7 +931,6 @@ function copy_and_advance_ring(ring, destination) {
 
         const size = LENGTH_PREFIX + Math.ceil(length / ALIGNMENT) * ALIGNMENT;
         Atomics.store(S.int32, read_index, ((read + size) >>> 0) | 0);
-        Atomics.notify(S.int32, read_index);
         return length;
     }
 }
