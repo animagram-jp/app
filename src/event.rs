@@ -213,41 +213,45 @@ pub mod gesture {
         if pointer_coarse { Device::Touch } else { Device::Mouse }
     }
 
-    // === gesture: tap, long press, swipe (up,down,left,right), drag (See Gesture.md) ===
-
     #[derive(Debug, Clone, Copy)]
     pub struct Thresholds {
-        pub long_press_in_ms:      f64,
-        pub long_press_slop_in_px: f64,
-        pub drag_start_in_px:      f64,
-        pub swipe_min_in_px:       f64,
-        pub swipe_min_velocity:    f64,
-        pub swipe_max_in_ms:       f64,
-        pub tap_max_in_ms:         f64,
-        pub tap_slop_in_px:        f64,
+        pub long_press_in_ms:         f64,
+        pub long_press_slop_in_px:    f64,
+        pub drag_start_in_px:         f64,
+        pub swipe_min_in_px:          f64,
+        pub swipe_min_velocity:       f64,
+        pub swipe_max_in_ms:          f64,
+        pub tap_max_in_ms:            f64,
+        pub tap_slop_in_px:           f64,
+        pub two_pointer_commit_in_px: f64,
+        pub pinch_dot_max:            f64,
     }
 
     impl Thresholds {
         pub const MOUSE: Self = Self {
-            long_press_in_ms:      251.0,
-            long_press_slop_in_px: 9.0,
-            drag_start_in_px:      10.0,
-            swipe_min_in_px:       50.0,
-            swipe_min_velocity:    0.5,
-            swipe_max_in_ms:       250.0,
-            tap_max_in_ms:         250.0,
-            tap_slop_in_px:        9.0,
+            long_press_in_ms:         251.0,
+            long_press_slop_in_px:    9.0,
+            drag_start_in_px:         10.0,
+            swipe_min_in_px:          50.0,
+            swipe_min_velocity:       0.5,
+            swipe_max_in_ms:          250.0,
+            tap_max_in_ms:            250.0,
+            tap_slop_in_px:           9.0,
+            two_pointer_commit_in_px: 8.0,
+            pinch_dot_max:            0.0,
         };
 
         pub const TOUCH: Self = Self {
-            long_press_in_ms:      500.0,
-            long_press_slop_in_px: 16.0,
-            drag_start_in_px:      16.0,
-            swipe_min_in_px:       50.0,
-            swipe_min_velocity:    0.5,
-            swipe_max_in_ms:       300.0,
-            tap_max_in_ms:         300.0,
-            tap_slop_in_px:        16.0,
+            long_press_in_ms:         500.0,
+            long_press_slop_in_px:    16.0,
+            drag_start_in_px:         16.0,
+            swipe_min_in_px:          50.0,
+            swipe_min_velocity:       0.5,
+            swipe_max_in_ms:          300.0,
+            tap_max_in_ms:            300.0,
+            tap_slop_in_px:           16.0,
+            two_pointer_commit_in_px: 8.0,
+            pinch_dot_max:            0.0,
         };
 
         #[must_use]
@@ -274,272 +278,66 @@ pub mod gesture {
         PinchEnd,
     }
 
-    #[cfg(test)]
-    mod gesture_tests {
-        use alloc::vec::Vec;
-
-        use super::*;
-
-        fn run(events: &[(EventType, f64, f64, f64)], th: &Thresholds) -> Vec<Gesture> {
-            let mut pointer = Pointer::NONE;
-            let mut out = Vec::new();
-            for (event_type, x, y, time) in events {
-                pointer.update(event_type, *x, *y, *time);
-                if let Some(g) = pointer.detect(event_type, *time, th) {
-                    out.push(g);
-                }
-            }
-            out
-        }
-
-        #[test]
-        fn swipe_right_fires() {
-            let th = Thresholds::MOUSE;
-            let got = run(
-                &[
-                    (EventType::PointerDown, 100.0, 100.0, 0.0),
-                    (EventType::PointerMove, 200.0, 100.0, 50.0),
-                    (EventType::PointerUp, 260.0, 100.0, 100.0),
-                ],
-                &th,
-            );
-            assert_eq!(got, [Gesture::SwipeRight]);
-        }
-
-        #[test]
-        fn swipe_without_move_event() {
-            let th = Thresholds::MOUSE;
-            let got = run(
-                &[
-                    (EventType::PointerDown, 100.0, 100.0, 0.0),
-                    (EventType::PointerUp, 260.0, 100.0, 100.0),
-                ],
-                &th,
-            );
-            assert_eq!(got, [Gesture::SwipeRight]);
-        }
-
-        #[test]
-        fn swipe_fires_when_motion_continues_to_release() {
-            let th = Thresholds::MOUSE;
-            let got = run(
-                &[
-                    (EventType::PointerDown, 0.0, 0.0, 0.0),
-                    (EventType::PointerMove, 100.0, 0.0, 50.0),
-                    (EventType::PointerMove, 200.0, 0.0, 100.0),
-                    (EventType::PointerUp, 260.0, 0.0, 120.0),
-                ],
-                &th,
-            );
-            assert_eq!(got, [Gesture::SwipeRight]);
-        }
-
-        #[test]
-        fn swipe_does_not_fire_after_stopping_before_release() {
-            let th = Thresholds::MOUSE;
-            let got = run(
-                &[
-                    (EventType::PointerDown, 0.0, 0.0, 0.0),
-                    (EventType::PointerMove, 150.0, 0.0, 20.0),
-                    (EventType::PointerUp, 150.0, 0.0, 249.0),
-                ],
-                &th,
-            );
-            assert_eq!(got, []);
-        }
-
-        // --- drag ---
-
-        #[test]
-        fn slow_move_is_drag() {
-            let th = Thresholds::MOUSE;
-            let got = run(
-                &[
-                    (EventType::PointerDown, 100.0, 100.0, 0.0),
-                    (EventType::PointerMove, 150.0, 100.0, 400.0),
-                    (EventType::PointerMove, 200.0, 100.0, 800.0),
-                    (EventType::PointerUp, 200.0, 100.0, 900.0),
-                ],
-                &th,
-            );
-            assert_eq!(
-                got,
-                [
-                    Gesture::Drag { x: 150.0, y: 100.0 },
-                    Gesture::Drag { x: 200.0, y: 100.0 },
-                    Gesture::DragEnd,
-                ]
-            );
-        }
-
-        #[test]
-        fn cancel_is_distinct_from_end() {
-            let th = Thresholds::MOUSE;
-            let got = run(
-                &[
-                    (EventType::PointerDown, 100.0, 100.0, 0.0),
-                    (EventType::PointerMove, 150.0, 100.0, 400.0),
-                    (EventType::PointerCancel, 150.0, 100.0, 500.0),
-                ],
-                &th,
-            );
-            assert_eq!(got, [Gesture::Drag { x: 150.0, y: 100.0 }, Gesture::DragCancel]);
-        }
-
-        // --- tap ---
-
-        #[test]
-        fn quick_press_is_tap() {
-            let th = Thresholds::MOUSE;
-            let got = run(
-                &[
-                    (EventType::PointerDown, 100.0, 100.0, 0.0),
-                    (EventType::PointerUp, 101.0, 100.0, 50.0),
-                ],
-                &th,
-            );
-            assert_eq!(got, [Gesture::Tap]);
-        }
-
-        // --- long press ---
-
-        #[test]
-        fn long_press_fires_on_release() {
-            let th = Thresholds::MOUSE;
-            let got = run(
-                &[
-                    (EventType::PointerDown, 10.0, 10.0, 0.0),
-                    (EventType::PointerUp, 10.0, 10.0, 400.0),
-                ],
-                &th,
-            );
-            assert_eq!(got, [Gesture::LongPress]);
-        }
-
-        #[test]
-        fn long_press_fires_on_move_after_hold() {
-            let th = Thresholds::MOUSE;
-            let got = run(
-                &[
-                    (EventType::PointerDown, 10.0, 10.0, 0.0),
-                    (EventType::PointerMove, 11.0, 10.0, 300.0),
-                ],
-                &th,
-            );
-            assert_eq!(got, [Gesture::LongPress]);
-        }
-
-        #[test]
-        fn long_press_does_not_repeat() {
-            let th = Thresholds::MOUSE;
-            let got = run(
-                &[
-                    (EventType::PointerDown, 10.0, 10.0, 0.0),
-                    (EventType::PointerMove, 11.0, 10.0, 300.0),
-                    (EventType::PointerMove, 11.0, 10.0, 400.0),
-                    (EventType::PointerUp, 11.0, 10.0, 500.0),
-                ],
-                &th,
-            );
-            assert_eq!(got, [Gesture::LongPress]);
-        }
-
-        #[test]
-        fn long_press_suppressed_while_dragging() {
-            let th = Thresholds::MOUSE;
-            let got = run(
-                &[
-                    (EventType::PointerDown, 10.0, 10.0, 0.0),
-                    (EventType::PointerMove, 40.0, 10.0, 100.0),
-                    (EventType::PointerMove, 40.0, 10.0, 400.0),
-                ],
-                &th,
-            );
-            assert_eq!(
-                got,
-                [Gesture::Drag { x: 40.0, y: 10.0 }, Gesture::Drag { x: 40.0, y: 10.0 }]
-            );
-        }
-
-        #[test]
-        fn touch_thresholds_are_looser() {
-            let mouse = Thresholds::for_device(Device::Mouse);
-            let touch = Thresholds::for_device(Device::Touch);
-            assert!(touch.long_press_in_ms > mouse.long_press_in_ms);
-            assert!(touch.long_press_slop_in_px > mouse.long_press_slop_in_px);
-            assert!(touch.drag_start_in_px > mouse.drag_start_in_px);
-        }
-
-        #[test]
-        fn same_input_differs_by_device() {
-            let events = [
-                (EventType::PointerDown, 10.0, 10.0, 0.0),
-                (EventType::PointerUp, 10.0, 10.0, 300.0),
-            ];
-            assert_eq!(run(&events, &Thresholds::MOUSE), [Gesture::LongPress]);
-            assert_eq!(run(&events, &Thresholds::TOUCH), []);
-        }
+    fn measure_distance(x0: f64, y0: f64, x1: f64, y1: f64) -> f64 {
+        let dx = x1 - x0;
+        let dy = y1 - y0;
+        libm::sqrt(dx * dx + dy * dy)
     }
-
-    // === gesture: two-finger (pinch / pan) ===
-    //
-    //
 
     #[derive(Debug, Clone, Copy)]
-    struct TouchPoint {
-        id:        u32,
-        start_x:   f64,
-        start_y:   f64,
-        current_x: f64,
-        current_y: f64,
+    struct TrackedPointer {
+        id:         u32,
+        start_x:    f64,
+        start_y:    f64,
+        start_time: f64,
+        current_x:  f64,
+        current_y:  f64,
     }
 
-    impl TouchPoint {
-        const fn new(id: u32, x: f64, y: f64) -> Self {
-            Self { id, start_x: x, start_y: y, current_x: x, current_y: y }
+    impl TrackedPointer {
+        const fn new(id: u32, x: f64, y: f64, time: f64) -> Self {
+            Self { id, start_x: x, start_y: y, start_time: time, current_x: x, current_y: y }
         }
 
         fn displacement(&self) -> (f64, f64) {
             (self.current_x - self.start_x, self.current_y - self.start_y)
         }
+
+        fn travelled(&self) -> f64 {
+            measure_distance(self.start_x, self.start_y, self.current_x, self.current_y)
+        }
     }
 
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    enum TwoFingerMode {
-        Undetermined,
+    enum TwoPointerMode {
         Pan,
         Pinch,
     }
 
-    const TWO_FINGER_COMMIT_IN_PX: f64 = 8.0;
-
-    const PINCH_DOT_THRESHOLD: f64 = 0.0;
-
     #[derive(Debug, Clone, Copy, PartialEq)]
     enum FoldedInput {
-        AsSinglePoint { x: f64, y: f64 },
+        Pan { x: f64, y: f64 },
         Pinch { scale: f64, center_x: f64, center_y: f64 },
         None,
     }
 
     #[derive(Debug, Clone, Copy)]
-    struct TwoFingerState {
-        primary:   Option<TouchPoint>,
-        secondary: Option<TouchPoint>,
-        mode:      TwoFingerMode,
+    struct TwoPointerState {
+        primary:   Option<TrackedPointer>,
+        secondary: Option<TrackedPointer>,
+        mode:      Option<TwoPointerMode>,
     }
 
-    impl TwoFingerState {
-        const NONE: Self =
-            Self { primary: None, secondary: None, mode: TwoFingerMode::Undetermined };
+    impl TwoPointerState {
+        const NONE: Self = Self { primary: None, secondary: None, mode: None };
 
         #[must_use]
-        fn add_touch(self, id: u32, x: f64, y: f64) -> Self {
+        fn add(self, id: u32, x: f64, y: f64, time: f64) -> Self {
             match (self.primary, self.secondary) {
-                (None, _) => Self { primary: Some(TouchPoint::new(id, x, y)), ..self },
+                (None, _) => Self { primary: Some(TrackedPointer::new(id, x, y, time)), ..self },
                 (Some(_), None) => Self {
-                    secondary: Some(TouchPoint::new(id, x, y)),
-                    mode: TwoFingerMode::Undetermined,
+                    secondary: Some(TrackedPointer::new(id, x, y, time)),
+                    mode: None,
                     ..self
                 },
                 (Some(_), Some(_)) => self,
@@ -547,42 +345,25 @@ pub mod gesture {
         }
 
         #[must_use]
-        fn move_touch(self, id: u32, x: f64, y: f64) -> Self {
+        fn move_to(self, id: u32, x: f64, y: f64) -> Self {
+            let moved = |p: TrackedPointer| TrackedPointer { current_x: x, current_y: y, ..p };
             if self.primary.is_some_and(|p| p.id == id) {
-                Self {
-                    primary: self.primary.map(|p| TouchPoint { current_x: x, current_y: y, ..p }),
-                    ..self
-                }
+                Self { primary: self.primary.map(moved), ..self }
             } else if self.secondary.is_some_and(|s| s.id == id) {
-                Self {
-                    secondary: self.secondary.map(|s| TouchPoint {
-                        current_x: x,
-                        current_y: y,
-                        ..s
-                    }),
-                    ..self
-                }
+                Self { secondary: self.secondary.map(moved), ..self }
             } else {
                 self
             }
         }
 
         #[must_use]
-        fn remove_touch(self, id: u32) -> (Self, TwoFingerMode) {
-            let ended_mode = self.mode;
+        fn remove(self, id: u32) -> (Self, Option<TwoPointerMode>) {
             if self.primary.is_some_and(|p| p.id == id) {
-                (
-                    Self {
-                        primary:   self.secondary,
-                        secondary: None,
-                        mode:      TwoFingerMode::Undetermined,
-                    },
-                    ended_mode,
-                )
+                (Self { primary: self.secondary, secondary: None, mode: None }, self.mode)
             } else if self.secondary.is_some_and(|s| s.id == id) {
-                (Self { secondary: None, mode: TwoFingerMode::Undetermined, ..self }, ended_mode)
+                (Self { secondary: None, mode: None, ..self }, self.mode)
             } else {
-                (self, TwoFingerMode::Undetermined)
+                (self, None)
             }
         }
 
@@ -602,34 +383,46 @@ pub mod gesture {
         }
 
         #[must_use]
-        fn fold(&mut self) -> FoldedInput {
+        fn primary_start_time(&self) -> Option<f64> {
+            self.primary.map(|p| p.start_time)
+        }
+
+        #[must_use]
+        fn primary_start(&self) -> Option<(f64, f64)> {
+            self.primary.map(|p| (p.start_x, p.start_y))
+        }
+
+        #[must_use]
+        fn fold(&mut self, thresholds: &Thresholds) -> FoldedInput {
             let (Some(p), Some(s)) = (self.primary, self.secondary) else {
                 return FoldedInput::None;
             };
 
-            if self.mode == TwoFingerMode::Undetermined {
-                let d1 = p.displacement();
-                let d2 = s.displacement();
-                let moved1 = libm::sqrt(d1.0 * d1.0 + d1.1 * d1.1) > TWO_FINGER_COMMIT_IN_PX;
-                let moved2 = libm::sqrt(d2.0 * d2.0 + d2.1 * d2.1) > TWO_FINGER_COMMIT_IN_PX;
-                if !(moved1 && moved2) {
-                    return FoldedInput::None;
+            let mode = match self.mode {
+                Some(mode) => mode,
+                None => {
+                    let commit = thresholds.two_pointer_commit_in_px;
+                    if !(p.travelled() > commit && s.travelled() > commit) {
+                        return FoldedInput::None;
+                    }
+                    let d1 = p.displacement();
+                    let d2 = s.displacement();
+                    let dot = d1.0 * d2.0 + d1.1 * d2.1;
+                    let mode = if dot < thresholds.pinch_dot_max {
+                        TwoPointerMode::Pinch
+                    } else {
+                        TwoPointerMode::Pan
+                    };
+                    self.mode = Some(mode);
+                    mode
                 }
-                let dot = d1.0 * d2.0 + d1.1 * d2.1;
-                self.mode = if dot < PINCH_DOT_THRESHOLD {
-                    TwoFingerMode::Pinch
-                } else {
-                    TwoFingerMode::Pan
-                };
-            }
+            };
 
-            match self.mode {
-                TwoFingerMode::Undetermined => FoldedInput::None,
-                TwoFingerMode::Pan => FoldedInput::AsSinglePoint {
-                    x: (p.current_x + s.current_x) / 2.0,
-                    y: (p.current_y + s.current_y) / 2.0,
-                },
-                TwoFingerMode::Pinch => {
+            let center_x = (p.current_x + s.current_x) / 2.0;
+            let center_y = (p.current_y + s.current_y) / 2.0;
+            match mode {
+                TwoPointerMode::Pan => FoldedInput::Pan { x: center_x, y: center_y },
+                TwoPointerMode::Pinch => {
                     let start_distance =
                         measure_distance(p.start_x, p.start_y, s.start_x, s.start_y);
                     if start_distance <= 0.0 {
@@ -638,19 +431,13 @@ pub mod gesture {
                     let current_distance =
                         measure_distance(p.current_x, p.current_y, s.current_x, s.current_y);
                     FoldedInput::Pinch {
-                        scale:    current_distance / start_distance,
-                        center_x: (p.current_x + s.current_x) / 2.0,
-                        center_y: (p.current_y + s.current_y) / 2.0,
+                        scale: current_distance / start_distance,
+                        center_x,
+                        center_y,
                     }
                 }
             }
         }
-    }
-
-    fn measure_distance(x0: f64, y0: f64, x1: f64, y1: f64) -> f64 {
-        let dx = x1 - x0;
-        let dy = y1 - y0;
-        libm::sqrt(dx * dx + dy * dy)
     }
 
     #[derive(Debug)]
@@ -667,7 +454,7 @@ pub mod gesture {
         is_dragging:      bool,
         long_press_fired: bool,
         cancelled:        bool,
-        two_fingers:      TwoFingerState,
+        two_pointers:     TwoPointerState,
         panning:          bool,
     }
 
@@ -685,7 +472,7 @@ pub mod gesture {
             is_dragging:      false,
             long_press_fired: false,
             cancelled:        false,
-            two_fingers:      TwoFingerState::NONE,
+            two_pointers:     TwoPointerState::NONE,
             panning:          false,
         };
 
@@ -700,10 +487,7 @@ pub mod gesture {
             thresholds: &Thresholds,
         ) -> Option<Gesture> {
             match event_type {
-                EventType::PointerDown => {
-                    self.track_down(pointer_id, x, y, time);
-                    None
-                }
+                EventType::PointerDown => self.track_down(pointer_id, x, y, time),
                 EventType::PointerMove => self.track_move(pointer_id, x, y, time, thresholds),
                 EventType::PointerUp | EventType::PointerCancel => {
                     self.track_up(event_type, pointer_id, x, y, time, thresholds)
@@ -726,26 +510,163 @@ pub mod gesture {
             measure_distance(self.start_x, self.start_y, self.current_x, self.current_y)
         }
 
+        fn resynced(&self) -> bool {
+            self.two_pointers
+                .primary_start()
+                .is_some_and(|(x, y)| x != self.start_x || y != self.start_y)
+        }
+
+        fn track_down(&mut self, id: u32, x: f64, y: f64, time: f64) -> Option<Gesture> {
+            if self.two_pointers.primary_id() == Some(id)
+                || self.two_pointers.secondary_id() == Some(id)
+            {
+                self.two_pointers = self.two_pointers.move_to(id, x, y);
+                return None;
+            }
+            if self.two_pointers.primary_id().is_none() {
+                self.start(x, y, time);
+            }
+            let second = self.two_pointers.secondary_id().is_none();
+            self.two_pointers = self.two_pointers.add(id, x, y, time);
+            if second && take(&mut self.is_dragging) { Some(Gesture::DragCancel) } else { None }
+        }
+
+        fn track_move(
+            &mut self,
+            id: u32,
+            x: f64,
+            y: f64,
+            time: f64,
+            thresholds: &Thresholds,
+        ) -> Option<Gesture> {
+            let is_primary = self.two_pointers.primary_id() == Some(id);
+            let is_secondary = self.two_pointers.secondary_id() == Some(id);
+            if !is_primary && !is_secondary {
+                return None;
+            }
+            self.two_pointers = self.two_pointers.move_to(id, x, y);
+
+            if self.two_pointers.secondary_id().is_some() {
+                return self.track_fold(time, thresholds);
+            }
+
+            self.update(&EventType::PointerMove, x, y, time);
+            self.detect(&EventType::PointerMove, time, thresholds)
+        }
+
+        fn track_up(
+            &mut self,
+            event_type: &EventType,
+            id: u32,
+            x: f64,
+            y: f64,
+            time: f64,
+            thresholds: &Thresholds,
+        ) -> Option<Gesture> {
+            let is_primary = self.two_pointers.primary_id() == Some(id);
+            let is_secondary = self.two_pointers.secondary_id() == Some(id);
+            let had_secondary = self.two_pointers.secondary_id().is_some();
+
+            if is_secondary || (is_primary && had_secondary) {
+                let (next, ended) = self.two_pointers.remove(id);
+                self.two_pointers = next;
+                let gesture = self.end(event_type, ended, time, thresholds);
+                self.resync_primary(is_primary);
+                gesture
+            } else if is_primary {
+                self.update(event_type, x, y, time);
+                let gesture = self.detect(event_type, time, thresholds);
+                self.two_pointers = self.two_pointers.remove(id).0;
+                gesture
+            } else {
+                None
+            }
+        }
+
+        fn track_fold(&mut self, time: f64, thresholds: &Thresholds) -> Option<Gesture> {
+            match self.two_pointers.fold(thresholds) {
+                FoldedInput::None => None,
+                FoldedInput::Pinch { scale, center_x, center_y } => {
+                    Some(Gesture::Pinch { scale, center_x, center_y })
+                }
+                FoldedInput::Pan { x, y } => {
+                    if !self.panning {
+                        self.panning = true;
+                        self.relocate(x, y);
+                        return None;
+                    }
+                    self.update(&EventType::PointerMove, x, y, time);
+                    self.detect(&EventType::PointerMove, time, thresholds)
+                }
+            }
+        }
+
+        fn end(
+            &mut self,
+            event_type: &EventType,
+            ended: Option<TwoPointerMode>,
+            time: f64,
+            thresholds: &Thresholds,
+        ) -> Option<Gesture> {
+            match ended {
+                None => None,
+                Some(TwoPointerMode::Pinch) => Some(Gesture::PinchEnd),
+                Some(TwoPointerMode::Pan) => {
+                    if !take(&mut self.panning) {
+                        return None;
+                    }
+                    let (cx, cy) = self.current();
+                    self.update(event_type, cx, cy, time);
+                    self.detect(event_type, time, thresholds)
+                }
+            }
+        }
+
+        fn resync_primary(&mut self, promoted: bool) {
+            let Some((x, y)) = self.two_pointers.primary_position() else {
+                return self.clear();
+            };
+            self.relocate(x, y);
+            if promoted {
+                let time = self.two_pointers.primary_start_time().unwrap_or(self.start_time);
+                self.start_time = time;
+                self.last_move_time = time;
+                self.long_press_fired = false;
+            }
+        }
+
+        fn start(&mut self, x: f64, y: f64, time: f64) {
+            *self = Self {
+                is_down:          true,
+                start_x:          x,
+                start_y:          y,
+                current_x:        x,
+                current_y:        y,
+                start_time:       time,
+                last_move_x:      x,
+                last_move_y:      y,
+                last_move_time:   time,
+                is_dragging:      false,
+                long_press_fired: false,
+                cancelled:        false,
+                two_pointers:     self.two_pointers,
+                panning:          self.panning,
+            };
+        }
+
+        fn relocate(&mut self, x: f64, y: f64) {
+            self.start_x = x;
+            self.start_y = y;
+            self.current_x = x;
+            self.current_y = y;
+            self.last_move_x = x;
+            self.last_move_y = y;
+            self.is_dragging = false;
+            self.cancelled = false;
+        }
+
         fn update(&mut self, event_type: &EventType, x: f64, y: f64, time: f64) {
             match event_type {
-                EventType::PointerDown => {
-                    *self = Self {
-                        is_down:          true,
-                        start_x:          x,
-                        start_y:          y,
-                        current_x:        x,
-                        current_y:        y,
-                        start_time:       time,
-                        last_move_x:      x,
-                        last_move_y:      y,
-                        last_move_time:   time,
-                        is_dragging:      false,
-                        long_press_fired: false,
-                        cancelled:        false,
-                        two_fingers:      self.two_fingers,
-                        panning:          self.panning,
-                    };
-                }
                 EventType::PointerMove => {
                     self.current_x = x;
                     self.current_y = y;
@@ -764,7 +685,7 @@ pub mod gesture {
         }
 
         fn clear(&mut self) {
-            *self = Self { two_fingers: self.two_fingers, panning: self.panning, ..Self::NONE };
+            *self = Self { two_pointers: self.two_pointers, panning: self.panning, ..Self::NONE };
         }
 
         fn detect(
@@ -792,7 +713,7 @@ pub mod gesture {
                 return Some(if self.cancelled { Gesture::DragCancel } else { Gesture::DragEnd });
             }
 
-            if self.cancelled {
+            if self.cancelled || self.resynced() {
                 return None;
             }
 
@@ -804,9 +725,8 @@ pub mod gesture {
 
             let move_dt = current_time - self.last_move_time;
             let velocity = if move_dt > 0.0 {
-                let mdx = self.current_x - self.last_move_x;
-                let mdy = self.current_y - self.last_move_y;
-                libm::sqrt(mdx * mdx + mdy * mdy) / move_dt
+                measure_distance(self.last_move_x, self.last_move_y, self.current_x, self.current_y)
+                    / move_dt
             } else {
                 0.0
             };
@@ -849,6 +769,7 @@ pub mod gesture {
 
             if !self.long_press_fired
                 && !self.is_dragging
+                && !self.resynced()
                 && distance < thresholds.long_press_slop_in_px
                 && current_time - self.start_time > thresholds.long_press_in_ms
             {
@@ -876,129 +797,254 @@ pub mod gesture {
             self.is_dragging = true;
             Some(Gesture::Drag { x: self.current_x, y: self.current_y })
         }
+    }
 
-        fn track_down(&mut self, id: u32, x: f64, y: f64, time: f64) {
-            if self.two_fingers.primary_id() == Some(id)
-                || self.two_fingers.secondary_id() == Some(id)
-            {
-                self.two_fingers = self.two_fingers.move_touch(id, x, y);
-                return;
-            }
-            if self.two_fingers.primary_id().is_none() {
-                self.update(&EventType::PointerDown, x, y, time);
-            }
-            self.two_fingers = self.two_fingers.add_touch(id, x, y);
+    #[cfg(test)]
+    mod gesture_tests {
+        use alloc::vec::Vec;
+
+        use super::*;
+
+        fn gestures_of(events: &[(EventType, f64, f64, f64)], th: &Thresholds) -> Vec<Gesture> {
+            let mut pointer = Pointer::NONE;
+            events
+                .iter()
+                .filter_map(|(event_type, x, y, time)| {
+                    pointer.track(event_type, 1, *x, *y, *time, th)
+                })
+                .collect()
         }
 
-        fn track_move(
-            &mut self,
-            id: u32,
-            x: f64,
-            y: f64,
-            time: f64,
-            thresholds: &Thresholds,
-        ) -> Option<Gesture> {
-            let is_primary = self.two_fingers.primary_id() == Some(id);
-            let is_secondary = self.two_fingers.secondary_id() == Some(id);
-            if !is_primary && !is_secondary {
-                return None;
-            }
-            self.two_fingers = self.two_fingers.move_touch(id, x, y);
-
-            if self.two_fingers.secondary_id().is_some() {
-                return self.track_fold(time, thresholds);
-            }
-
-            self.update(&EventType::PointerMove, x, y, time);
-            self.detect(&EventType::PointerMove, time, thresholds)
+        #[test]
+        fn swipe_right_fires() {
+            let th = Thresholds::MOUSE;
+            let got = gestures_of(
+                &[
+                    (EventType::PointerDown, 100.0, 100.0, 0.0),
+                    (EventType::PointerMove, 200.0, 100.0, 50.0),
+                    (EventType::PointerUp, 260.0, 100.0, 100.0),
+                ],
+                &th,
+            );
+            assert_eq!(got, [Gesture::SwipeRight]);
         }
 
-        fn track_up(
-            &mut self,
-            event_type: &EventType,
-            id: u32,
-            x: f64,
-            y: f64,
-            time: f64,
-            thresholds: &Thresholds,
-        ) -> Option<Gesture> {
-            let is_primary = self.two_fingers.primary_id() == Some(id);
-            let is_secondary = self.two_fingers.secondary_id() == Some(id);
-            let had_secondary = self.two_fingers.secondary_id().is_some();
-
-            if is_secondary || (is_primary && had_secondary) {
-                let (next, ended_mode) = self.two_fingers.remove_touch(id);
-                self.two_fingers = next;
-                let gesture = self.end_session(event_type, ended_mode, time, thresholds);
-                self.resync_primary(time);
-                gesture
-            } else if is_primary {
-                self.update(event_type, x, y, time);
-                let gesture = self.detect(event_type, time, thresholds);
-                self.two_fingers = self.two_fingers.remove_touch(id).0;
-                gesture
-            } else {
-                None
-            }
+        #[test]
+        fn swipe_direction_follows_the_dominant_axis() {
+            let th = Thresholds::MOUSE;
+            let release = |x: f64, y: f64| {
+                gestures_of(
+                    &[
+                        (EventType::PointerDown, 100.0, 100.0, 0.0),
+                        (EventType::PointerUp, x, y, 100.0),
+                    ],
+                    &th,
+                )
+            };
+            assert_eq!(release(0.0, 110.0), [Gesture::SwipeLeft]);
+            assert_eq!(release(90.0, 0.0), [Gesture::SwipeUp]);
+            assert_eq!(release(110.0, 200.0), [Gesture::SwipeDown]);
         }
 
-        fn end_session(
-            &mut self,
-            event_type: &EventType,
-            ended_mode: TwoFingerMode,
-            time: f64,
-            thresholds: &Thresholds,
-        ) -> Option<Gesture> {
-            match ended_mode {
-                TwoFingerMode::Undetermined => None,
-                TwoFingerMode::Pinch => Some(Gesture::PinchEnd),
-                TwoFingerMode::Pan => {
-                    if !take(&mut self.panning) {
-                        return None;
-                    }
-                    let (cx, cy) = self.current();
-                    self.update(event_type, cx, cy, time);
-                    self.detect(event_type, time, thresholds)
-                }
-            }
+        #[test]
+        fn swipe_without_move_event() {
+            let th = Thresholds::MOUSE;
+            let got = gestures_of(
+                &[
+                    (EventType::PointerDown, 100.0, 100.0, 0.0),
+                    (EventType::PointerUp, 260.0, 100.0, 100.0),
+                ],
+                &th,
+            );
+            assert_eq!(got, [Gesture::SwipeRight]);
         }
 
-        fn resync_primary(&mut self, time: f64) {
-            match self.two_fingers.primary_position() {
-                Some((x, y)) => self.update(&EventType::PointerDown, x, y, time),
-                None => self.clear(),
-            }
+        #[test]
+        fn swipe_fires_when_motion_continues_to_release() {
+            let th = Thresholds::MOUSE;
+            let got = gestures_of(
+                &[
+                    (EventType::PointerDown, 0.0, 0.0, 0.0),
+                    (EventType::PointerMove, 100.0, 0.0, 50.0),
+                    (EventType::PointerMove, 200.0, 0.0, 100.0),
+                    (EventType::PointerUp, 260.0, 0.0, 120.0),
+                ],
+                &th,
+            );
+            assert_eq!(got, [Gesture::SwipeRight]);
         }
 
-        fn track_fold(&mut self, time: f64, thresholds: &Thresholds) -> Option<Gesture> {
-            match self.two_fingers.fold() {
-                FoldedInput::None => None,
-                FoldedInput::Pinch { scale, center_x, center_y } => {
-                    Some(Gesture::Pinch { scale, center_x, center_y })
-                }
-                FoldedInput::AsSinglePoint { x, y } => {
-                    if !self.panning {
-                        self.panning = true;
-                        self.update(&EventType::PointerDown, x, y, time);
-                        return None;
-                    }
-                    self.update(&EventType::PointerMove, x, y, time);
-                    self.detect(&EventType::PointerMove, time, thresholds)
-                }
-            }
+        #[test]
+        fn swipe_does_not_fire_after_stopping_before_release() {
+            let th = Thresholds::MOUSE;
+            let got = gestures_of(
+                &[
+                    (EventType::PointerDown, 0.0, 0.0, 0.0),
+                    (EventType::PointerMove, 150.0, 0.0, 20.0),
+                    (EventType::PointerUp, 150.0, 0.0, 249.0),
+                ],
+                &th,
+            );
+            assert_eq!(got, []);
+        }
+
+        // --- drag ---
+
+        #[test]
+        fn slow_move_is_drag() {
+            let th = Thresholds::MOUSE;
+            let got = gestures_of(
+                &[
+                    (EventType::PointerDown, 100.0, 100.0, 0.0),
+                    (EventType::PointerMove, 150.0, 100.0, 400.0),
+                    (EventType::PointerMove, 200.0, 100.0, 800.0),
+                    (EventType::PointerUp, 200.0, 100.0, 900.0),
+                ],
+                &th,
+            );
+            assert_eq!(
+                got,
+                [
+                    Gesture::Drag { x: 150.0, y: 100.0 },
+                    Gesture::Drag { x: 200.0, y: 100.0 },
+                    Gesture::DragEnd,
+                ]
+            );
+        }
+
+        #[test]
+        fn cancel_is_distinct_from_end() {
+            let th = Thresholds::MOUSE;
+            let got = gestures_of(
+                &[
+                    (EventType::PointerDown, 100.0, 100.0, 0.0),
+                    (EventType::PointerMove, 150.0, 100.0, 400.0),
+                    (EventType::PointerCancel, 150.0, 100.0, 500.0),
+                ],
+                &th,
+            );
+            assert_eq!(got, [Gesture::Drag { x: 150.0, y: 100.0 }, Gesture::DragCancel]);
+        }
+
+        #[test]
+        fn cancel_without_drag_is_silent() {
+            let th = Thresholds::MOUSE;
+            let got = gestures_of(
+                &[
+                    (EventType::PointerDown, 100.0, 100.0, 0.0),
+                    (EventType::PointerCancel, 100.0, 100.0, 50.0),
+                ],
+                &th,
+            );
+            assert_eq!(got, []);
+        }
+
+        // --- tap ---
+
+        #[test]
+        fn quick_press_is_tap() {
+            let th = Thresholds::MOUSE;
+            let got = gestures_of(
+                &[
+                    (EventType::PointerDown, 100.0, 100.0, 0.0),
+                    (EventType::PointerUp, 101.0, 100.0, 50.0),
+                ],
+                &th,
+            );
+            assert_eq!(got, [Gesture::Tap]);
+        }
+
+        // --- long press ---
+
+        #[test]
+        fn long_press_fires_on_release() {
+            let th = Thresholds::MOUSE;
+            let got = gestures_of(
+                &[
+                    (EventType::PointerDown, 10.0, 10.0, 0.0),
+                    (EventType::PointerUp, 10.0, 10.0, 400.0),
+                ],
+                &th,
+            );
+            assert_eq!(got, [Gesture::LongPress]);
+        }
+
+        #[test]
+        fn long_press_fires_on_move_after_hold() {
+            let th = Thresholds::MOUSE;
+            let got = gestures_of(
+                &[
+                    (EventType::PointerDown, 10.0, 10.0, 0.0),
+                    (EventType::PointerMove, 11.0, 10.0, 300.0),
+                ],
+                &th,
+            );
+            assert_eq!(got, [Gesture::LongPress]);
+        }
+
+        #[test]
+        fn long_press_does_not_repeat() {
+            let th = Thresholds::MOUSE;
+            let got = gestures_of(
+                &[
+                    (EventType::PointerDown, 10.0, 10.0, 0.0),
+                    (EventType::PointerMove, 11.0, 10.0, 300.0),
+                    (EventType::PointerMove, 11.0, 10.0, 400.0),
+                    (EventType::PointerUp, 11.0, 10.0, 500.0),
+                ],
+                &th,
+            );
+            assert_eq!(got, [Gesture::LongPress]);
+        }
+
+        #[test]
+        fn long_press_suppressed_while_dragging() {
+            let th = Thresholds::MOUSE;
+            let got = gestures_of(
+                &[
+                    (EventType::PointerDown, 10.0, 10.0, 0.0),
+                    (EventType::PointerMove, 40.0, 10.0, 100.0),
+                    (EventType::PointerMove, 40.0, 10.0, 400.0),
+                ],
+                &th,
+            );
+            assert_eq!(
+                got,
+                [Gesture::Drag { x: 40.0, y: 10.0 }, Gesture::Drag { x: 40.0, y: 10.0 }]
+            );
+        }
+
+        #[test]
+        fn touch_thresholds_are_looser() {
+            let mouse = Thresholds::for_device(Device::Mouse);
+            let touch = Thresholds::for_device(Device::Touch);
+            assert!(touch.long_press_in_ms > mouse.long_press_in_ms);
+            assert!(touch.long_press_slop_in_px > mouse.long_press_slop_in_px);
+            assert!(touch.drag_start_in_px > mouse.drag_start_in_px);
+        }
+
+        #[test]
+        fn same_input_differs_by_device() {
+            let events = [
+                (EventType::PointerDown, 10.0, 10.0, 0.0),
+                (EventType::PointerUp, 10.0, 10.0, 300.0),
+            ];
+            assert_eq!(gestures_of(&events, &Thresholds::MOUSE), [Gesture::LongPress]);
+            assert_eq!(gestures_of(&events, &Thresholds::TOUCH), []);
         }
     }
 
     #[cfg(test)]
-    mod two_finger_tests {
+    mod two_pointer_tests {
         use super::*;
 
         #[test]
         fn symmetric_pinch_out_increases_scale() {
+            let th = Thresholds::MOUSE;
             let mut state =
-                TwoFingerState::NONE.add_touch(1, 140.0, 100.0).add_touch(2, 160.0, 100.0);
-            state = state.move_touch(1, 100.0, 100.0).move_touch(2, 200.0, 100.0);
-            match state.fold() {
+                TwoPointerState::NONE.add(1, 140.0, 100.0, 0.0).add(2, 160.0, 100.0, 0.0);
+            state = state.move_to(1, 100.0, 100.0).move_to(2, 200.0, 100.0);
+            match state.fold(&th) {
                 FoldedInput::Pinch { scale, .. } => assert!(scale > 1.0, "scale = {scale}"),
                 other => panic!("expected Pinch, got {other:?}"),
             }
@@ -1006,26 +1052,28 @@ pub mod gesture {
 
         #[test]
         fn mode_latches_after_commit() {
+            let th = Thresholds::MOUSE;
             let mut state =
-                TwoFingerState::NONE.add_touch(1, 100.0, 100.0).add_touch(2, 200.0, 100.0);
-            state = state.move_touch(1, 140.0, 100.0).move_touch(2, 160.0, 100.0);
-            assert!(matches!(state.fold(), FoldedInput::Pinch { .. }));
+                TwoPointerState::NONE.add(1, 100.0, 100.0, 0.0).add(2, 200.0, 100.0, 0.0);
+            state = state.move_to(1, 140.0, 100.0).move_to(2, 160.0, 100.0);
+            assert!(matches!(state.fold(&th), FoldedInput::Pinch { .. }));
 
-            state = state.move_touch(1, 140.0, 100.0).move_touch(2, 140.0, 100.0);
-            assert!(matches!(state.fold(), FoldedInput::Pinch { .. }));
+            state = state.move_to(1, 140.0, 100.0).move_to(2, 140.0, 100.0);
+            assert!(matches!(state.fold(&th), FoldedInput::Pinch { .. }));
         }
 
         #[test]
-        fn new_session_reclassifies_independently() {
+        fn new_pair_reclassifies_independently() {
+            let th = Thresholds::MOUSE;
             let mut state =
-                TwoFingerState::NONE.add_touch(1, 100.0, 100.0).add_touch(2, 200.0, 100.0);
-            state = state.move_touch(1, 140.0, 100.0).move_touch(2, 160.0, 100.0);
-            assert!(matches!(state.fold(), FoldedInput::Pinch { .. }));
+                TwoPointerState::NONE.add(1, 100.0, 100.0, 0.0).add(2, 200.0, 100.0, 0.0);
+            state = state.move_to(1, 140.0, 100.0).move_to(2, 160.0, 100.0);
+            assert!(matches!(state.fold(&th), FoldedInput::Pinch { .. }));
 
-            state = state.remove_touch(2).0.remove_touch(1).0;
-            state = state.add_touch(3, 0.0, 0.0).add_touch(4, 50.0, 0.0);
-            state = state.move_touch(3, 0.0, 50.0).move_touch(4, 50.0, 50.0);
-            assert_eq!(state.fold(), FoldedInput::AsSinglePoint { x: 25.0, y: 50.0 });
+            state = state.remove(2).0.remove(1).0;
+            state = state.add(3, 0.0, 0.0, 0.0).add(4, 50.0, 0.0, 0.0);
+            state = state.move_to(3, 0.0, 50.0).move_to(4, 50.0, 50.0);
+            assert_eq!(state.fold(&th), FoldedInput::Pan { x: 25.0, y: 50.0 });
         }
     }
 
@@ -1038,7 +1086,7 @@ pub mod gesture {
 
         type PressEvent = (EventType, u32, f64, f64, f64);
 
-        fn run(events: &[PressEvent], th: &Thresholds) -> Vec<Option<Gesture>> {
+        fn trace(events: &[PressEvent], th: &Thresholds) -> Vec<Option<Gesture>> {
             let mut pointer = Pointer::NONE;
             events
                 .iter()
@@ -1081,14 +1129,13 @@ pub mod gesture {
             (events, down)
         }
 
-        #[test]
-        fn a_single_pointer_never_breaks_the_drag_grammar() {
+        fn assert_drag_grammar(pointers: u32) {
             for seed in 0..3000 {
                 let mut rng = Rng::new(seed);
                 let th = if rng.chance(50) { Thresholds::MOUSE } else { Thresholds::TOUCH };
-                let (events, _) = random_press_events(&mut rng, 1, 40);
+                let (events, _) = random_press_events(&mut rng, pointers, 40);
                 let mut dragging = false;
-                for (index, got) in run(&events, &th).into_iter().enumerate() {
+                for (index, got) in trace(&events, &th).into_iter().enumerate() {
                     let Some(gesture) = got else { continue };
                     match gesture {
                         Gesture::Drag { .. } => dragging = true,
@@ -1111,6 +1158,16 @@ pub mod gesture {
         }
 
         #[test]
+        fn a_single_pointer_never_breaks_the_drag_grammar() {
+            assert_drag_grammar(1);
+        }
+
+        #[test]
+        fn several_pointers_never_break_the_drag_grammar() {
+            assert_drag_grammar(3);
+        }
+
+        #[test]
         fn any_pointer_traffic_ends_idle_once_every_pointer_is_released() {
             for seed in 0..5000 {
                 let mut rng = Rng::new(seed);
@@ -1124,7 +1181,7 @@ pub mod gesture {
                 time += 5000.0;
                 events.push((EventType::PointerDown, 1, 100.0, 100.0, time));
                 events.push((EventType::PointerUp, 1, 100.0, 100.0, time + 50.0));
-                assert_eq!(run(&events, &th).last(), Some(&Some(Gesture::Tap)), "seed {seed}");
+                assert_eq!(trace(&events, &th).last(), Some(&Some(Gesture::Tap)), "seed {seed}");
             }
         }
 
@@ -1149,14 +1206,14 @@ pub mod gesture {
                         )
                     })
                     .collect();
-                let _ = run(&events, &Thresholds::TOUCH);
+                let _ = trace(&events, &Thresholds::TOUCH);
             }
         }
 
         #[test]
-        fn second_finger_freezes_primary_until_pinch_commits() {
+        fn second_pointer_freezes_primary_until_pinch_commits() {
             let th = Thresholds::MOUSE;
-            let got = run(
+            let got = trace(
                 &[
                     (EventType::PointerDown, 1, 100.0, 100.0, 0.0),
                     (EventType::PointerDown, 2, 200.0, 100.0, 0.0),
@@ -1179,7 +1236,7 @@ pub mod gesture {
         #[test]
         fn pinch_end_on_secondary_release() {
             let th = Thresholds::MOUSE;
-            let got = run(
+            let got = trace(
                 &[
                     (EventType::PointerDown, 1, 100.0, 100.0, 0.0),
                     (EventType::PointerDown, 2, 200.0, 100.0, 0.0),
@@ -1193,48 +1250,9 @@ pub mod gesture {
         }
 
         #[test]
-        fn a_second_two_finger_pan_behaves_like_the_first() {
+        fn primary_release_ends_the_pinch_without_a_tap() {
             let th = Thresholds::MOUSE;
-            let pan = |offset: f64| {
-                [
-                    (EventType::PointerDown, 1, 0.0, 0.0, offset),
-                    (EventType::PointerDown, 2, 100.0, 0.0, offset),
-                    (EventType::PointerMove, 1, 30.0, 0.0, offset + 50.0),
-                    (EventType::PointerMove, 2, 130.0, 0.0, offset + 60.0),
-                    (EventType::PointerMove, 1, 60.0, 0.0, offset + 120.0),
-                    (EventType::PointerUp, 2, 130.0, 0.0, offset + 200.0),
-                    (EventType::PointerUp, 1, 60.0, 0.0, offset + 210.0),
-                ]
-            };
-            let events = [pan(0.0), pan(1000.0)].concat();
-            let got = run(&events, &th);
-            assert_eq!(got[0..7], got[7..14]);
-            assert_eq!(got[4], Some(Gesture::Drag { x: 95.0, y: 0.0 }));
-        }
-
-        #[test]
-        fn two_finger_pan_emits_drag_then_drag_end() {
-            let th = Thresholds::MOUSE;
-            let got = run(
-                &[
-                    (EventType::PointerDown, 1, 0.0, 0.0, 0.0),
-                    (EventType::PointerDown, 2, 100.0, 0.0, 0.0),
-                    (EventType::PointerMove, 1, 30.0, 0.0, 50.0),
-                    (EventType::PointerMove, 2, 130.0, 0.0, 60.0),
-                    (EventType::PointerMove, 1, 60.0, 0.0, 120.0),
-                    (EventType::PointerUp, 2, 130.0, 0.0, 200.0),
-                ],
-                &th,
-            );
-            assert_eq!(got[0..4], [None, None, None, None]);
-            assert_eq!(got[4], Some(Gesture::Drag { x: 95.0, y: 0.0 }));
-            assert_eq!(got[5], Some(Gesture::DragEnd));
-        }
-
-        #[test]
-        fn primary_release_promotes_and_resyncs_single_finger_tracking() {
-            let th = Thresholds::MOUSE;
-            let got = run(
+            let got = trace(
                 &[
                     (EventType::PointerDown, 1, 100.0, 100.0, 0.0),
                     (EventType::PointerDown, 2, 200.0, 100.0, 0.0),
@@ -1251,14 +1269,181 @@ pub mod gesture {
                 Some(Gesture::Pinch { scale: 0.2, center_x: 150.0, center_y: 100.0 })
             );
             assert_eq!(got[4], Some(Gesture::PinchEnd));
-            assert_eq!(got[5], None);
-            assert_eq!(got[6], Some(Gesture::Tap));
+            assert_eq!(got[5..], [None, None]);
         }
 
         #[test]
-        fn third_finger_does_not_interfere() {
+        fn two_pointer_pan_emits_drag_then_drag_end() {
             let th = Thresholds::MOUSE;
-            let got = run(
+            let got = trace(
+                &[
+                    (EventType::PointerDown, 1, 0.0, 0.0, 0.0),
+                    (EventType::PointerDown, 2, 100.0, 0.0, 0.0),
+                    (EventType::PointerMove, 1, 30.0, 0.0, 50.0),
+                    (EventType::PointerMove, 2, 130.0, 0.0, 60.0),
+                    (EventType::PointerMove, 1, 60.0, 0.0, 120.0),
+                    (EventType::PointerUp, 2, 130.0, 0.0, 200.0),
+                ],
+                &th,
+            );
+            assert_eq!(got[0..4], [None, None, None, None]);
+            assert_eq!(got[4], Some(Gesture::Drag { x: 95.0, y: 0.0 }));
+            assert_eq!(got[5], Some(Gesture::DragEnd));
+        }
+
+        #[test]
+        fn a_second_two_pointer_pan_behaves_like_the_first() {
+            let th = Thresholds::MOUSE;
+            let pan = |offset: f64| {
+                [
+                    (EventType::PointerDown, 1, 0.0, 0.0, offset),
+                    (EventType::PointerDown, 2, 100.0, 0.0, offset),
+                    (EventType::PointerMove, 1, 30.0, 0.0, offset + 50.0),
+                    (EventType::PointerMove, 2, 130.0, 0.0, offset + 60.0),
+                    (EventType::PointerMove, 1, 60.0, 0.0, offset + 120.0),
+                    (EventType::PointerUp, 2, 130.0, 0.0, offset + 200.0),
+                    (EventType::PointerUp, 1, 60.0, 0.0, offset + 210.0),
+                ]
+            };
+            let events = [pan(0.0), pan(1000.0)].concat();
+            let got = trace(&events, &th);
+            assert_eq!(got[0..7], got[7..14]);
+            assert_eq!(got[4], Some(Gesture::Drag { x: 95.0, y: 0.0 }));
+        }
+
+        #[test]
+        fn a_short_two_pointer_pan_is_not_a_tap() {
+            let th = Thresholds::MOUSE;
+            let got = trace(
+                &[
+                    (EventType::PointerDown, 1, 0.0, 0.0, 0.0),
+                    (EventType::PointerDown, 2, 100.0, 0.0, 0.0),
+                    (EventType::PointerMove, 1, 10.0, 0.0, 50.0),
+                    (EventType::PointerMove, 2, 110.0, 0.0, 60.0),
+                    (EventType::PointerMove, 1, 12.0, 0.0, 80.0),
+                    (EventType::PointerUp, 2, 110.0, 0.0, 100.0),
+                ],
+                &th,
+            );
+            assert_eq!(got[5], None);
+        }
+
+        const PINCH_THEN_PRIMARY_UP: [PressEvent; 5] = [
+            (EventType::PointerDown, 1, 100.0, 100.0, 0.0),
+            (EventType::PointerDown, 2, 200.0, 100.0, 0.0),
+            (EventType::PointerMove, 1, 140.0, 100.0, 50.0),
+            (EventType::PointerMove, 2, 160.0, 100.0, 60.0),
+            (EventType::PointerUp, 1, 140.0, 100.0, 70.0),
+        ];
+
+        #[test]
+        fn a_second_pointer_during_a_drag_cancels_the_drag() {
+            let th = Thresholds::MOUSE;
+            let got = trace(
+                &[
+                    (EventType::PointerDown, 1, 100.0, 100.0, 0.0),
+                    (EventType::PointerMove, 1, 150.0, 100.0, 400.0),
+                    (EventType::PointerDown, 2, 300.0, 100.0, 500.0),
+                    (EventType::PointerMove, 1, 200.0, 100.0, 600.0),
+                    (EventType::PointerMove, 2, 250.0, 100.0, 700.0),
+                ],
+                &th,
+            );
+            assert_eq!(got[1], Some(Gesture::Drag { x: 150.0, y: 100.0 }));
+            assert_eq!(got[2], Some(Gesture::DragCancel));
+            assert!(matches!(got[4], Some(Gesture::Pinch { .. })));
+        }
+
+        #[test]
+        fn a_pointer_left_over_from_a_pinch_can_still_drag() {
+            let th = Thresholds::MOUSE;
+            let events = [
+                PINCH_THEN_PRIMARY_UP.as_slice(),
+                &[
+                    (EventType::PointerMove, 2, 200.0, 100.0, 500.0),
+                    (EventType::PointerUp, 2, 200.0, 100.0, 600.0),
+                ],
+            ]
+            .concat();
+            let got = trace(&events, &th);
+            assert_eq!(got[5], Some(Gesture::Drag { x: 200.0, y: 100.0 }));
+            assert_eq!(got[6], Some(Gesture::DragEnd));
+        }
+
+        #[test]
+        fn a_pointer_left_over_from_a_pinch_does_not_long_press() {
+            let th = Thresholds::MOUSE;
+            let events = [
+                PINCH_THEN_PRIMARY_UP.as_slice(),
+                &[(EventType::PointerUp, 2, 160.0, 100.0, 1000.0)],
+            ]
+            .concat();
+            assert_eq!(trace(&events, &th)[5], None);
+        }
+
+        #[test]
+        fn a_pointer_left_over_from_a_pinch_does_not_swipe() {
+            let th = Thresholds::MOUSE;
+            let events = [
+                PINCH_THEN_PRIMARY_UP.as_slice(),
+                &[
+                    (EventType::PointerMove, 2, 220.0, 100.0, 100.0),
+                    (EventType::PointerUp, 2, 260.0, 100.0, 130.0),
+                ],
+            ]
+            .concat();
+            assert_eq!(trace(&events, &th)[5..], [None, None]);
+        }
+
+        #[test]
+        fn two_pointers_held_and_released_together_long_press() {
+            let th = Thresholds::MOUSE;
+            let got = trace(
+                &[
+                    (EventType::PointerDown, 1, 100.0, 100.0, 0.0),
+                    (EventType::PointerDown, 2, 200.0, 100.0, 0.0),
+                    (EventType::PointerUp, 2, 200.0, 100.0, 1000.0),
+                    (EventType::PointerUp, 1, 100.0, 100.0, 1010.0),
+                ],
+                &th,
+            );
+            assert_eq!(got[2..], [None, Some(Gesture::LongPress)]);
+        }
+
+        #[test]
+        fn a_second_pointer_touching_and_leaving_keeps_the_hold_time() {
+            let th = Thresholds::MOUSE;
+            let got = trace(
+                &[
+                    (EventType::PointerDown, 1, 100.0, 100.0, 0.0),
+                    (EventType::PointerDown, 2, 200.0, 100.0, 400.0),
+                    (EventType::PointerUp, 2, 200.0, 100.0, 500.0),
+                    (EventType::PointerUp, 1, 100.0, 100.0, 600.0),
+                ],
+                &th,
+            );
+            assert_eq!(got[3], Some(Gesture::LongPress));
+        }
+
+        #[test]
+        fn a_promoted_pointer_is_timed_from_its_own_contact() {
+            let th = Thresholds::MOUSE;
+            let got = trace(
+                &[
+                    (EventType::PointerDown, 1, 100.0, 100.0, 0.0),
+                    (EventType::PointerDown, 2, 200.0, 100.0, 900.0),
+                    (EventType::PointerUp, 1, 100.0, 100.0, 1000.0),
+                    (EventType::PointerUp, 2, 200.0, 100.0, 1100.0),
+                ],
+                &th,
+            );
+            assert_eq!(got[3], Some(Gesture::Tap));
+        }
+
+        #[test]
+        fn third_pointer_does_not_interfere() {
+            let th = Thresholds::MOUSE;
+            let got = trace(
                 &[
                     (EventType::PointerDown, 1, 100.0, 100.0, 0.0),
                     (EventType::PointerDown, 2, 200.0, 100.0, 0.0),
@@ -1280,7 +1465,7 @@ pub mod gesture {
         #[test]
         fn duplicate_pointer_down_does_not_reset_primary_state() {
             let th = Thresholds::MOUSE;
-            let got = run(
+            let got = trace(
                 &[
                     (EventType::PointerDown, 1, 100.0, 100.0, 0.0),
                     (EventType::PointerDown, 1, 105.0, 100.0, 10.0),
@@ -1295,9 +1480,9 @@ pub mod gesture {
         }
 
         #[test]
-        fn duplicate_pointer_down_does_not_block_genuine_second_finger() {
+        fn duplicate_pointer_down_does_not_block_genuine_second_pointer() {
             let th = Thresholds::MOUSE;
-            let got = run(
+            let got = trace(
                 &[
                     (EventType::PointerDown, 1, 100.0, 100.0, 0.0),
                     (EventType::PointerDown, 1, 100.0, 100.0, 5.0),
