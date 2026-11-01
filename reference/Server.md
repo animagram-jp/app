@@ -22,7 +22,7 @@ app の feature `server` で組まれる、サーバー側アプリケーショ�
 
 | feature | 既定 | 内容 |
 |-|-|-|
-| `sync` | off | 同期レコードのワイヤ(`sync::Record` / `Entry` / `Status` / `Outcome` と encode / decode)。端末側とサーバー側が共有する。無くても app は成立する。 |
+| `sync` | off | 同期レコードのワイヤ(`sync::Record` / `Entry` / `Status` / `Outcome` と encode / decode)。端末側とサーバー側が共有する。`coc7th` と `calendar` が含む。 |
 | `meet` | off | シグナリングのワイヤ(`meet::Kind` / `Signal` と encode / decode)。同上。 |
 | `server` | off | `sync`、`meet`、`credential` を含む。`account` / `session` / `http` / `handler` / `host` と、`sync::Collection`、`meet::Board`。wasm32 では常にコンパイル対象外。bin `server` はこの feature を要求する。 |
 

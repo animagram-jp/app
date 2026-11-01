@@ -47,8 +47,10 @@ jobs:
                   cargo test --lib --locked
                   cargo test --lib --locked --features calendar
                   cargo test --lib --locked --no-default-features --features coc7th
+                  cargo test --lib --locked --features server
+                  cargo build --locked --features server --bin server
 
-            - name: "build both sites"
+            - name: "build"
               run: reference/build.sh
 
             - name: "upload app"
@@ -56,12 +58,6 @@ jobs:
               with:
                   name: "app"
                   path: "target/cloudflare/app"
-
-            - name: "upload calendar"
-              uses: actions/upload-artifact@v7
-              with:
-                  name: "calendar"
-                  path: "target/cloudflare/calendar"
 
     deploy-app:
         needs: build
@@ -83,27 +79,6 @@ jobs:
                   apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
                   accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
                   command: deploy --config reference/app/wrangler.toml
-
-    deploy-calendar:
-        needs: deploy-app
-        if: github.event_name == 'push' || inputs.cloudflare
-        runs-on: ubuntu-latest
-        steps:
-            - name: "git checkout"
-              uses: actions/checkout@v7
-
-            - name: "download calendar"
-              uses: actions/download-artifact@v8
-              with:
-                  name: "calendar"
-                  path: "target/cloudflare/calendar"
-
-            - name: "wrangler deploy"
-              uses: cloudflare/wrangler-action@v4
-              with:
-                  apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-                  accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-                  command: deploy --config reference/calendar/wrangler.toml
 
     deploy-github:
         needs: build

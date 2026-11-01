@@ -9,6 +9,7 @@ const PADDING_MARK = 0xFFFFFFFF;
 const FETCH_HEADER = 1 + 4 + 2 + 1 + LENGTH_PREFIX;
 const API_BASE = document.querySelector("meta[name='api-base']")?.content ?? "./api/{version}";
 const SW_URL = document.querySelector("meta[name='sw-url']")?.content ?? "./sw.js";
+const APP_DIRECTORY = new URL("./app/", document.baseURI);
 
 const EVENT_RING = {
     start: 0,
@@ -83,12 +84,12 @@ async function start() {
     const rem_in_px = parseFloat(getComputedStyle(document.documentElement).fontSize);
     const now_in_ms = Date.now();
     const timezone_offset_minutes = -new Date().getTimezoneOffset();
-    const module = await WebAssembly.compileStreaming(fetch("./app/app_bg.wasm?v={version}"));
+    const module = await WebAssembly.compileStreaming(fetch(new URL("app_bg.wasm?v={version}", APP_DIRECTORY)));
 
     if (!WebAssembly.Module.imports(module).some((i) => i.kind === "memory")) {
         (async () => {
             const { default: init, App, arena_offset, initialize, process_event } =
-                await import("./app/app.js?v={version}");
+                await import(new URL("app.js?v={version}", APP_DIRECTORY).href);
             const wasm = await init({ module_or_path: module });
 
             S.memory = wasm.memory;
@@ -128,7 +129,7 @@ async function start() {
     let serving = false;
 
     const spawn = () => {
-        const w = new Worker("./worker.js?v={version}", { type: "module" });
+        const w = new Worker(new URL("./worker.js?v={version}", import.meta.url), { type: "module" });
 
         w.addEventListener("message", async (e) => {
             if (e.data.type === "done") {
@@ -168,6 +169,7 @@ async function start() {
                 now_in_ms: BigInt(Date.now()),
                 timezone_offset_minutes,
                 data_url: params.get("data") ?? "",
+                app_url: new URL("app.js?v={version}", APP_DIRECTORY).href,
             },
         });
     };

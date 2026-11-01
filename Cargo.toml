@@ -53,11 +53,11 @@ spinning_top  = { version = "0.3", default-features = false }
 talc          = { version = "5.1", default-features = false }
 
 [features]
-default = ["coc7th", "file_store", "vault"]
-coc7th     = ["dep:rand", "dep:serde_json"]
+default = ["coc7th", "file_store"]
+coc7th     = ["vault", "sync", "meet", "dep:rand", "dep:serde_json"]
 credential = ["dep:hmac", "dep:sha2", "dep:hkdf"]
 file_store = ["dep:web-sys"]
-calendar = ["file_store", "dep:serde_json", "dep:rectgrid"]
+calendar = ["file_store", "vault", "sync", "meet", "dep:serde_json", "dep:rectgrid"]
 vault    = ["credential", "dep:argon2", "dep:chacha20poly1305"]
 sync     = []
 meet     = []

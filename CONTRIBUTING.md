@@ -98,8 +98,8 @@ With feature `file_store`, `createSyncAccessHandle` is provided only to a dedica
 An app without `file_store` runs on the main thread.
 Its store is `MemoryStore`, which is not persisted.
 `calendar` enables `file_store`.
-Either `calendar` or `coc7th` (default on) is required. `vault` enables `credential`.
-`sync` adds the sync wire and `meet` adds the signaling wire; both are optional. `server` enables `sync`, `meet` and `credential`, builds the `server` binary, and is compiled out on wasm32. See [Server.md](./reference/Server.md).
+Either `calendar` or `coc7th` (default on) is required. Both enable `vault`, `sync` and `meet`. `vault` enables `credential`.
+`sync` is the sync wire and `meet` is the signaling wire. `server` enables `sync`, `meet` and `credential`, builds the `server` binary, and is compiled out on wasm32. See [Server.md](./reference/Server.md).
 
 当プロジェクトでは、 wasm32-unknown-unknown コンパイルをブラウザホスト環境向けに利用している。
 この環境でのアプリケーションプロセスの記憶域は、メインスレッドまたはWebワーカーに位置する。

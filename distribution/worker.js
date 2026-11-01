@@ -3,7 +3,7 @@ self.addEventListener("message", async (e) => {
     if (type !== "init") return;
 
     const { default: init, App, arena_offset, initialize, serve_event } =
-        await import("./app/app.js?v={version}");
+        await import(payload.app_url);
     const wasm = await init({ module_or_path: payload.module, memory: payload.memory });
 
     initialize();

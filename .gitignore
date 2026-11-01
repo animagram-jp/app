@@ -11,9 +11,6 @@ target/
 distribution/app/
 
 /distribution/calendar/app/
-/distribution/calendar/init.js
-/distribution/calendar/worker.js
-/distribution/calendar/css/library/
 
 /distribution/investigator/
 

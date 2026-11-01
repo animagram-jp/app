@@ -43,10 +43,6 @@ body > * {
 #header_button-1 { anchor-name: --header_button-1; }
 #header_div-1 { position-anchor: --header_button-1; }
 
-#header_input {
-    --color-emphasis-ink: rgb(var(--rgb-accent-green));
-}
-
 #header_button-4 { anchor-name: --header_button-4; }
 #header_div-3 { position-anchor: --header_button-4; }
 
