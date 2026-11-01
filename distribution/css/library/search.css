@@ -54,8 +54,6 @@
     label:has(> input[type="search"])::after {
         color:          var(--color-ink-mix);
         content:        "";
-        inset-block:    0;
-        margin-block:   auto;
         pointer-events: none;
         position:       absolute;
         z-index:        2;
@@ -84,11 +82,13 @@
         block-size:         calc(var(--xs-box-height) / 4);
         border-width:       var(--xs-border-width);
         inline-size:        calc(var(--xs-box-height) / 4);
+        inset-block-start:  calc(var(--xs-box-height) * 3 / 8);
         inset-inline-start: calc(var(--xs-box-height) / 4);
     }
     label:has(> input[type="search"][data-size="xs"])::after {
         block-size:         calc(var(--xs-box-height) / 6);
         inline-size:        var(--xs-border-width);
+        inset-block-start:  calc(var(--xs-box-height) * 5 / 12);
         inset-inline-start: calc(var(--xs-box-height) * 0.375 + var(--xs-box-height) / 8 * 0.707 - var(--xs-border-width) / 2);
         transform:          translateY(calc(var(--xs-box-height) / 8 * 0.707 + var(--xs-box-height) / 12)) rotate(-45deg);
     }
@@ -96,11 +96,13 @@
         block-size:         calc(var(--sm-box-height) / 4);
         border-width:       var(--sm-border-width);
         inline-size:        calc(var(--sm-box-height) / 4);
+        inset-block-start:  calc(var(--sm-box-height) * 3 / 8);
         inset-inline-start: calc(var(--sm-box-height) / 4);
     }
     label:has(> input[type="search"][data-size="sm"])::after {
         block-size:         calc(var(--sm-box-height) / 6);
         inline-size:        var(--sm-border-width);
+        inset-block-start:  calc(var(--sm-box-height) * 5 / 12);
         inset-inline-start: calc(var(--sm-box-height) * 0.375 + var(--sm-box-height) / 8 * 0.707 - var(--sm-border-width) / 2);
         transform:          translateY(calc(var(--sm-box-height) / 8 * 0.707 + var(--sm-box-height) / 12)) rotate(-45deg);
     }
@@ -111,6 +113,7 @@
         block-size:         calc(var(--md-box-height) / 4);
         border-width:       var(--md-border-width);
         inline-size:        calc(var(--md-box-height) / 4);
+        inset-block-start:  calc(var(--md-box-height) * 3 / 8);
         inset-inline-start: calc(var(--md-box-height) / 4);
     }
     label:has(> input[type="search"]:where(
@@ -119,6 +122,7 @@
     ))::after {
         block-size:         calc(var(--md-box-height) / 6);
         inline-size:        var(--md-border-width);
+        inset-block-start:  calc(var(--md-box-height) * 5 / 12);
         inset-inline-start: calc(var(--md-box-height) * 0.375 + var(--md-box-height) / 8 * 0.707 - var(--md-border-width) / 2);
         transform:          translateY(calc(var(--md-box-height) / 8 * 0.707 + var(--md-box-height) / 12)) rotate(-45deg);
     }
@@ -126,11 +130,13 @@
         block-size:         calc(var(--lg-box-height) / 4);
         border-width:       var(--lg-border-width);
         inline-size:        calc(var(--lg-box-height) / 4);
+        inset-block-start:  calc(var(--lg-box-height) * 3 / 8);
         inset-inline-start: calc(var(--lg-box-height) / 4);
     }
     label:has(> input[type="search"][data-size="lg"])::after {
         block-size:         calc(var(--lg-box-height) / 6);
         inline-size:        var(--lg-border-width);
+        inset-block-start:  calc(var(--lg-box-height) * 5 / 12);
         inset-inline-start: calc(var(--lg-box-height) * 0.375 + var(--lg-box-height) / 8 * 0.707 - var(--lg-border-width) / 2);
         transform:          translateY(calc(var(--lg-box-height) / 8 * 0.707 + var(--lg-box-height) / 12)) rotate(-45deg);
     }
@@ -138,11 +144,13 @@
         block-size:         calc(var(--xl-box-height) / 4);
         border-width:       var(--xl-border-width);
         inline-size:        calc(var(--xl-box-height) / 4);
+        inset-block-start:  calc(var(--xl-box-height) * 3 / 8);
         inset-inline-start: calc(var(--xl-box-height) / 4);
     }
     label:has(> input[type="search"][data-size="xl"])::after {
         block-size:         calc(var(--xl-box-height) / 6);
         inline-size:        var(--xl-border-width);
+        inset-block-start:  calc(var(--xl-box-height) * 5 / 12);
         inset-inline-start: calc(var(--xl-box-height) * 0.375 + var(--xl-box-height) / 8 * 0.707 - var(--xl-border-width) / 2);
         transform:          translateY(calc(var(--xl-box-height) / 8 * 0.707 + var(--xl-box-height) / 12)) rotate(-45deg);
     }
@@ -150,11 +158,13 @@
         block-size:         calc(var(--2xl-box-height) / 4);
         border-width:       var(--2xl-border-width);
         inline-size:        calc(var(--2xl-box-height) / 4);
+        inset-block-start:  calc(var(--2xl-box-height) * 3 / 8);
         inset-inline-start: calc(var(--2xl-box-height) / 4);
     }
     label:has(> input[type="search"][data-size="2xl"])::after {
         block-size:         calc(var(--2xl-box-height) / 6);
         inline-size:        var(--2xl-border-width);
+        inset-block-start:  calc(var(--2xl-box-height) * 5 / 12);
         inset-inline-start: calc(var(--2xl-box-height) * 0.375 + var(--2xl-box-height) / 8 * 0.707 - var(--2xl-border-width) / 2);
         transform:          translateY(calc(var(--2xl-box-height) / 8 * 0.707 + var(--2xl-box-height) / 12)) rotate(-45deg);
     }

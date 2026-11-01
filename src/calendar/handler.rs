@@ -29,7 +29,7 @@ use crate::{
         gesture::{Gesture, Pointer},
         store,
     },
-    file_store::{FileStore, StoreId},
+    file_store::{FileStore, Mount, StoreId},
     host::{
         Attribute, CanvasEvent, Command, EventType, Keyword, Method, StyleProperty, StyleValue,
         Unit, dom::Id, parse_url_search_params,
@@ -1594,7 +1594,7 @@ impl<S: FileStore> Handler<S> {
     }
 }
 
-impl<S: FileStore> event::Handler for Handler<S> {
+impl<S: Mount> event::Handler for Handler<S> {
     type Store = S;
 
     async fn ready(
@@ -1603,6 +1603,7 @@ impl<S: FileStore> event::Handler for Handler<S> {
         rem_in_px: f64,
         now_in_ms: u64,
         timezone_offset_minutes: i32,
+        _data_url: String,
     ) -> Self {
         let utc = from_unix_timestamp_in_ms(now_in_ms as i64, Zone::ZERO);
         let offset =
@@ -1742,16 +1743,13 @@ impl<S: FileStore> event::Handler for Handler<S> {
     }
 }
 
-fn language_commands(language: Language) -> [Command; 2] {
-    let (tag, label) = language.display();
-    [
-        Command::SetAttribute {
-            id:        Target::Html.to_dom(),
-            attribute: Attribute::Lang,
-            value:     tag.into(),
-        },
-        Command::SetText { id: Target::Language.to_dom(), value: label.into() },
-    ]
+fn language_commands(language: Language) -> [Command; 1] {
+    let (tag, _) = language.display();
+    [Command::SetAttribute {
+        id:        Target::Html.to_dom(),
+        attribute: Attribute::Lang,
+        value:     tag.into(),
+    }]
 }
 
 fn option_commands(language: Language) -> [Command; 2] {
@@ -1934,7 +1932,14 @@ mod tests {
             (new_millennium + 899 * 60_000, 540, (2000, 1, 1)),
             (new_millennium + 900 * 60_000, 540, (2000, 1, 2)),
         ] {
-            let handler = block_on(Handler::<MemoryStore>::ready(VIEWPORT, 0.0, REM, now, offset));
+            let handler = block_on(Handler::<MemoryStore>::ready(
+                VIEWPORT,
+                0.0,
+                REM,
+                now,
+                offset,
+                String::new(),
+            ));
             let (year, month, day) = expected;
             assert_eq!(handler.base(), pack(0, 0, 0, 0, day, month, year, 0, 0), "{now} {offset}");
         }
@@ -2109,7 +2114,7 @@ mod tests {
         })
     }
 
-    fn choose<S: FileStore>(handler: &mut Handler<S>, view: Axis) -> Vec<Command> {
+    fn choose<S: Mount>(handler: &mut Handler<S>, view: Axis) -> Vec<Command> {
         let event = CanvasEvent {
             event_type: EventType::Change,
             ..click(Target::Axis(view).to_dom(), 10.0, 10.0)
@@ -2117,7 +2122,7 @@ mod tests {
         handler.process_canvas(&event, &pointer()).1
     }
 
-    fn press<S: FileStore>(handler: &mut Handler<S>, id: Id) -> Vec<Command> {
+    fn press<S: Mount>(handler: &mut Handler<S>, id: Id) -> Vec<Command> {
         handler.process_canvas(&click(id, 10.0, 10.0), &pointer()).1
     }
 
@@ -2131,10 +2136,13 @@ mod tests {
     }
 
     #[test]
-    fn initial_draw_labels_the_language_button() {
+    fn initial_draw_tags_the_language() {
         let mut handler = Handler::<MemoryStore>::new(VIEWPORT, today(), REM);
         let (_, commands) = handler.initial_draw();
-        assert_eq!(text_of(&commands, &Target::Language.to_dom()).unwrap(), "日本語");
+        assert_eq!(
+            text_of(&commands, &Target::LanguageOption(Language::Ja).to_dom()).is_some(),
+            true
+        );
         assert_eq!(lang_of(&commands, &Target::Html.to_dom()).unwrap(), "ja");
         assert_eq!(
             lang_of(&commands, &Target::LanguageOption(Language::list()[0]).to_dom()).unwrap(),
@@ -2168,11 +2176,11 @@ mod tests {
     }
 
     #[test]
-    fn choosing_a_language_relabels_the_button_and_redraws_the_dates() {
+    fn choosing_a_language_tags_the_document_and_redraws_the_dates() {
         let mut handler = Handler::<MemoryStore>::new(VIEWPORT, today(), REM);
         let english = Language::En(En::Gb);
         let commands = press(&mut handler, Target::LanguageOption(english).to_dom());
-        assert_eq!(text_of(&commands, &Target::Language.to_dom()).unwrap(), "English");
+        assert!(text_of(&commands, &Target::LanguageOption(english).to_dom()).is_none());
         assert_eq!(lang_of(&commands, &Target::Html.to_dom()).unwrap(), "en-GB");
         assert_eq!(text_of(&commands, &Target::DayTitle(1).to_dom()).unwrap(), "Fri 2 Oct");
         let commands = press(&mut handler, Target::LanguageOption(Language::Ja).to_dom());
@@ -2287,7 +2295,7 @@ mod tests {
     const STATUS_CODE: &str = "done";
     const CATEGORY_CODE: &str = "c";
 
-    fn appointments<S: FileStore>(handler: &Handler<S>) -> Vec<DataStruct> {
+    fn appointments<S: Mount>(handler: &Handler<S>) -> Vec<DataStruct> {
         handler.read(appointment::KIND)
     }
 
@@ -2539,7 +2547,7 @@ mod tests {
         (handler, base)
     }
 
-    fn grab<S: FileStore>(handler: &mut Handler<S>, n: u32) -> (f64, f64) {
+    fn grab<S: Mount>(handler: &mut Handler<S>, n: u32) -> (f64, f64) {
         let (ox, oy) = grid_origin();
         let (x, y) = (ox + GRAB_X, oy + 4.0 * SLOT_PX + GRAB_Y);
         handler.process_canvas(
@@ -2549,11 +2557,11 @@ mod tests {
         (x, y)
     }
 
-    fn drag_to<S: FileStore>(handler: &mut Handler<S>, x: f64, y: f64) -> Vec<Command> {
+    fn drag_to<S: Mount>(handler: &mut Handler<S>, x: f64, y: f64) -> Vec<Command> {
         handler.process_gesture(&Gesture::Drag { x, y }, &pointer(), None).1
     }
 
-    fn end<S: FileStore>(handler: &mut Handler<S>) -> Vec<Command> {
+    fn end<S: Mount>(handler: &mut Handler<S>) -> Vec<Command> {
         handler.process_gesture(&Gesture::DragEnd, &pointer(), None).1
     }
 
@@ -2792,7 +2800,7 @@ mod tests {
         (handler, base)
     }
 
-    fn drag_piece<S: FileStore>(handler: &mut Handler<S>, n: u32, from_unit: u32, to_unit: u32) {
+    fn drag_piece<S: Mount>(handler: &mut Handler<S>, n: u32, from_unit: u32, to_unit: u32) {
         let column_in_px = column_in_px(VIEWPORT, handler.columns(), REM);
         let (ox, oy) = grid_origin();
         let y = oy + 4.0 * SLOT_PX + GRAB_Y;
@@ -2808,7 +2816,7 @@ mod tests {
         end(handler);
     }
 
-    fn places<S: FileStore>(handler: &Handler<S>) -> Vec<(Stamp, u128)> {
+    fn places<S: Mount>(handler: &Handler<S>) -> Vec<(Stamp, u128)> {
         appointment::Places::read(&appointments(handler)[0])
             .iter()
             .map(|place| (place.day, place.resource))
@@ -2883,7 +2891,7 @@ mod tests {
         handler
     }
 
-    fn press_local<S: FileStore>(handler: &mut Handler<S>, n: u32, x: f64, y: f64) -> Vec<Command> {
+    fn press_local<S: Mount>(handler: &mut Handler<S>, n: u32, x: f64, y: f64) -> Vec<Command> {
         let (ox, oy) = grid_origin();
         handler
             .process_canvas(
@@ -2893,14 +2901,14 @@ mod tests {
             .1
     }
 
-    fn resize_corner<S: FileStore>(handler: &Handler<S>) -> Option<Corner> {
+    fn resize_corner<S: Mount>(handler: &Handler<S>) -> Option<Corner> {
         match &handler.drag.as_ref()?.kind {
             DragKind::Resize { corner, .. } => Some(*corner),
             DragKind::Move => None,
         }
     }
 
-    fn drag_by<S: FileStore>(handler: &mut Handler<S>, dx: f64, dy: f64) -> Vec<Command> {
+    fn drag_by<S: Mount>(handler: &mut Handler<S>, dx: f64, dy: f64) -> Vec<Command> {
         let [x, y] = handler.drag.as_ref().unwrap().pointer;
         drag_to(handler, x + dx, y + dy)
     }
@@ -2920,7 +2928,7 @@ mod tests {
         time.total(TimeUnit::Minute) as u32
     }
 
-    fn times<S: FileStore>(handler: &Handler<S>) -> (u32, u32) {
+    fn times<S: Mount>(handler: &Handler<S>) -> (u32, u32) {
         let (start, end) = appointment::Range::read(&appointments(handler)[0]);
         (minutes(start), minutes(end))
     }
@@ -3269,11 +3277,11 @@ mod tests {
         handler
     }
 
-    fn pending<S: FileStore>(handler: &Handler<S>) -> usize {
+    fn pending<S: Mount>(handler: &Handler<S>) -> usize {
         handler.store.as_ref().unwrap().index().count_pending()
     }
 
-    fn drag_first_card_by<S: FileStore>(handler: &mut Handler<S>, dy: f64) -> (u32, Length) {
+    fn drag_first_card_by<S: Mount>(handler: &mut Handler<S>, dy: f64) -> (u32, Length) {
         handler.card_commands();
         let (index, base) = {
             let placed = handler.placed.borrow();
@@ -3311,7 +3319,7 @@ mod tests {
         data::entry(&MemoryStore::new(disk.clone()).unwrap(), key, appointment::KIND).unwrap()
     }
 
-    fn appointment_of<S: FileStore>(handler: &Handler<S>, key: u32) -> DataStruct {
+    fn appointment_of<S: Mount>(handler: &Handler<S>, key: u32) -> DataStruct {
         handler.appointment(key).unwrap()
     }
 
@@ -3420,7 +3428,7 @@ mod tests {
         assert!(!handler.dirty());
     }
 
-    fn tap_empty<S: FileStore>(handler: &mut Handler<S>, column: f64, slot: f64) -> Vec<Command> {
+    fn tap_empty<S: Mount>(handler: &mut Handler<S>, column: f64, slot: f64) -> Vec<Command> {
         let (ox, oy) = grid_origin();
         let (x, y) = (
             ox + (column + 0.5) * column_in_px(VIEWPORT, handler.columns(), REM),
@@ -3434,7 +3442,7 @@ mod tests {
         format!("1={title}&2=1&3=1&4={date}&5={resource}&6={start}&7={end}&8=n")
     }
 
-    fn submit<S: FileStore>(handler: &mut Handler<S>, query: &str) -> Vec<Command> {
+    fn submit<S: Mount>(handler: &mut Handler<S>, query: &str) -> Vec<Command> {
         let event = CanvasEvent {
             event_type: EventType::Submit,
             value: String::from(query),
@@ -3710,7 +3718,7 @@ mod tests {
         assert!(handler.editing.is_none());
     }
 
-    fn modal_closed<S: FileStore>(handler: &mut Handler<S>) -> Vec<Command> {
+    fn modal_closed<S: Mount>(handler: &mut Handler<S>) -> Vec<Command> {
         let event =
             CanvasEvent { event_type: EventType::Close, ..click(Target::Modal.to_dom(), 0.0, 0.0) };
         handler.process_canvas(&event, &pointer()).1
@@ -3795,7 +3803,7 @@ mod tests {
         ));
     }
 
-    fn save_pressed<S: FileStore>(handler: &mut Handler<S>) -> (Vec<Event>, Vec<Command>) {
+    fn save_pressed<S: Mount>(handler: &mut Handler<S>) -> (Vec<Event>, Vec<Command>) {
         handler.process_canvas(&click(Target::Save.to_dom(), 10.0, 10.0), &pointer())
     }
 
@@ -3878,7 +3886,7 @@ mod tests {
         )
     }
 
-    fn placed_ids<S: FileStore>(handler: &Handler<S>) -> Vec<(u32, [f64; 2])> {
+    fn placed_ids<S: Mount>(handler: &Handler<S>) -> Vec<(u32, [f64; 2])> {
         handler
             .placed
             .borrow()
@@ -4248,7 +4256,7 @@ mod tests {
         })
     }
 
-    fn open_first_card<S: FileStore>(handler: &mut Handler<S>) -> (u32, Vec<Command>) {
+    fn open_first_card<S: Mount>(handler: &mut Handler<S>) -> (u32, Vec<Command>) {
         handler.card_commands();
         let (key, base) = {
             let placed = handler.placed.borrow();

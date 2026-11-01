@@ -7,8 +7,8 @@
 //! - `<name>.<version>.log`  — append-only diffs accumulated since the last compact
 //!
 //! Log record wire format (variable length, all integers little-endian):
-//! `[op: 1][id: 4][len: 4][data: len][checksum: 4]`
-//! - `op`: 1 = set, 2 = delete (a delete carries no data, `len == 0`).
+//! `[operation: 1][id: 4][len: 4][data: len][checksum: 4]`
+//! - `operation`: 1 = set, 2 = delete (a delete carries no data, `len == 0`).
 //!   0 is deliberately unassigned: `fletcher32` of an all-zero span is 0, so
 //!   zero-filled regions would otherwise decode as valid records.
 //! - `checksum`: `fletcher32(header).wrapping_add(fletcher32(data))`
@@ -41,6 +41,15 @@ use core::{
 };
 #[cfg(test)]
 use std::thread_local;
+#[cfg(all(test, unix))]
+use std::{env, process};
+#[cfg(unix)]
+use std::{
+    fs::{self, File as OsFile, OpenOptions},
+    io::{self, ErrorKind},
+    os::unix::fs::FileExt,
+    path::{Path, PathBuf},
+};
 
 #[cfg(feature = "file_store")]
 use js_sys;
@@ -69,9 +78,9 @@ fn fletcher32(data: &[u8]) -> u32 {
         sum1 = (sum1 + word) % 65535;
         sum2 = (sum2 + sum1) % 65535;
     }
-    let rem = chunks.remainder();
-    if !rem.is_empty() {
-        sum1 = (sum1 + rem[0] as u32) % 65535;
+    let remainder = chunks.remainder();
+    if !remainder.is_empty() {
+        sum1 = (sum1 + remainder[0] as u32) % 65535;
         sum2 = (sum2 + sum1) % 65535;
     }
     (sum2 << 16) | sum1
@@ -110,16 +119,16 @@ impl LogRecord {
         header[1..5].copy_from_slice(&self.id.to_le_bytes());
         header[5..9].copy_from_slice(&length.to_le_bytes());
         let checksum = fletcher32(&header).wrapping_add(fletcher32(&self.data));
-        let mut out = Vec::with_capacity(9 + self.data.len() + 4);
-        out.extend_from_slice(&header);
-        out.extend_from_slice(&self.data);
-        out.extend_from_slice(&checksum.to_le_bytes());
-        out
+        let mut output = Vec::with_capacity(9 + self.data.len() + 4);
+        output.extend_from_slice(&header);
+        output.extend_from_slice(&self.data);
+        output.extend_from_slice(&checksum.to_le_bytes());
+        output
     }
 
     /// Decode one record from the head of `buffer`, returning it together
     /// with the number of bytes consumed. Returns `None` on a truncated
-    /// buffer, an unknown op byte, or a checksum mismatch — every case means
+    /// buffer, an unknown operation byte, or a checksum mismatch — every case means
     /// the same thing to the caller: the valid log ends here.
     fn from_bytes(buffer: &[u8]) -> Option<(Self, usize)> {
         if buffer.len() < 9 {
@@ -340,15 +349,15 @@ fn read_all(store: &impl FileStore, file: File) -> Result<Vec<u8>, FileStoreErro
     // the offset until the buffer is full.
     let mut read = 0usize;
     while read < size {
-        let r = store.read_at(file, &mut buffer[read..], read as u32)?;
-        if r == 0 {
+        let count = store.read_at(file, &mut buffer[read..], read as u32)?;
+        if count == 0 {
             return Err(FileStoreError::Unknown(format!(
                 "read: reached EOF at offset {} before filling requested size {} \
                  (file shrank since get_size?)",
                 read, size
             )));
         }
-        read += r;
+        read += count;
     }
     Ok(buffer)
 }
@@ -369,15 +378,15 @@ fn append(
 ) -> Result<(), FileStoreError> {
     let mut written = 0usize;
     while written < data.len() {
-        let w = store.write_at(file, &data[written..], base + written as u32)?;
-        if w == 0 {
+        let count = store.write_at(file, &data[written..], base + written as u32)?;
+        if count == 0 {
             return Err(FileStoreError::Unknown(format!(
                 "write: no progress at offset {} (requested {}, got 0)",
                 written,
                 data.len() - written
             )));
         }
-        written += w;
+        written += count;
     }
 
     store.flush(file)?;
@@ -399,10 +408,6 @@ impl StoreId {
 pub trait FileStore: Sized {
     type Handle;
 
-    fn open(
-        id: StoreId,
-        create: bool,
-    ) -> impl Future<Output = Result<Self::Handle, FileStoreError>>;
     fn from_handle(handle: Self::Handle) -> Self;
     fn index(&self) -> &Index;
     fn index_mut(&mut self) -> &mut Index;
@@ -441,7 +446,7 @@ pub trait FileStore: Sized {
     ///
     /// ```no_run
     /// # async fn example() -> Result<(), app::file_store::FileStoreError> {
-    /// # use app::file_store::{FileStore, OpfsStore, StoreId};
+    /// # use app::file_store::{FileStore, Mount, OpfsStore, StoreId};
     /// # let mut store = OpfsStore::open(StoreId { name: "tenant", version: "0.0" }, true).await.and_then(OpfsStore::new)?;
     /// let first  = store.issue_id();
     /// let second = store.issue_id();
@@ -475,13 +480,13 @@ pub trait FileStore: Sized {
     ///
     /// ```no_run
     /// # async fn example() -> Result<(), app::file_store::FileStoreError> {
-    /// # use app::file_store::{FileStore, OpfsStore, StoreId};
+    /// # use app::file_store::{FileStore, Mount, OpfsStore, StoreId};
     /// # let store = OpfsStore::open(StoreId { name: "tenant", version: "0.0" }, true).await.and_then(OpfsStore::new)?;
     /// assert_eq!(store.get(9999), None); // absent id
     /// # Ok(()) }
     /// ```
     fn get(&self, id: u32) -> Option<&[u8]> {
-        self.index().memory.get(&id).map(|v| v.as_slice())
+        self.index().memory.get(&id).map(|bytes| bytes.as_slice())
     }
 
     /// Current records with `from <= id < to`, in id order.
@@ -494,7 +499,7 @@ pub trait FileStore: Sized {
     ///
     /// ```no_run
     /// # async fn example() -> Result<(), app::file_store::FileStoreError> {
-    /// # use app::file_store::{FileStore, OpfsStore, StoreId};
+    /// # use app::file_store::{FileStore, Mount, OpfsStore, StoreId};
     /// # let mut store = OpfsStore::open(StoreId { name: "tenant", version: "0.0" }, true).await.and_then(OpfsStore::new)?;
     /// store.set(1, b"v".to_vec());
     /// assert_eq!(store.get(1), Some(&b"v"[..])); // visible before any save
@@ -513,7 +518,7 @@ pub trait FileStore: Sized {
     ///
     /// ```no_run
     /// # async fn example() -> Result<(), app::file_store::FileStoreError> {
-    /// # use app::file_store::{FileStore, OpfsStore, StoreId};
+    /// # use app::file_store::{FileStore, Mount, OpfsStore, StoreId};
     /// # let mut store = OpfsStore::open(StoreId { name: "tenant", version: "0.0" }, true).await.and_then(OpfsStore::new)?;
     /// store.set(1, b"v".to_vec());
     /// store.delete(1);
@@ -541,7 +546,7 @@ pub trait FileStore: Sized {
     ///
     /// ```no_run
     /// # async fn example() -> Result<(), app::file_store::FileStoreError> {
-    /// # use app::file_store::{FileStore, OpfsStore, StoreId};
+    /// # use app::file_store::{FileStore, Mount, OpfsStore, StoreId};
     /// # let mut store = OpfsStore::open(StoreId { name: "tenant", version: "0.0" }, true).await.and_then(OpfsStore::new)?;
     /// store.set(1, b"v".to_vec());
     /// if store.save().is_err() {
@@ -610,7 +615,7 @@ pub trait FileStore: Sized {
     ///
     /// ```no_run
     /// # async fn example() -> Result<(), app::file_store::FileStoreError> {
-    /// # use app::file_store::{FileStore, OpfsStore, StoreId};
+    /// # use app::file_store::{FileStore, Mount, OpfsStore, StoreId};
     /// # let mut store = OpfsStore::open(StoreId { name: "tenant", version: "0.0" }, true).await.and_then(OpfsStore::new)?;
     /// store.set(1, b"draft".to_vec());
     /// store.discard()?;               // unsaved set is rolled back
@@ -704,6 +709,13 @@ pub trait FileStore: Sized {
 ///
 /// Paths where `TypeError` means something else must use a
 /// dedicated classifier (see `classify_get_file_handle`).
+pub trait Mount: FileStore {
+    fn open(
+        id: StoreId,
+        create: bool,
+    ) -> impl Future<Output = Result<Self::Handle, FileStoreError>>;
+}
+
 #[cfg(feature = "file_store")]
 fn classify(context: &str, error: JsValue) -> FileStoreError {
     if let Some(exception) = error.dyn_ref::<DomException>() {
@@ -785,7 +797,7 @@ pub struct OpfsHandles {
 ///
 /// ```no_run
 /// # async fn example() -> Result<(), app::file_store::FileStoreError> {
-/// use app::file_store::{FileStore, OpfsStore, StoreId};
+/// use app::file_store::{FileStore, Mount, OpfsStore, StoreId};
 ///
 /// let mut store = OpfsStore::open(StoreId { name: "tenant", version: "0.0" }, true).await.and_then(OpfsStore::new)?;
 /// let id = store.issue_id();
@@ -816,30 +828,6 @@ impl OpfsStore {
 #[cfg(feature = "file_store")]
 impl FileStore for OpfsStore {
     type Handle = OpfsHandles;
-
-    async fn open(id: StoreId, create: bool) -> Result<OpfsHandles, FileStoreError> {
-        let worker: WorkerGlobalScope = js_sys::global()
-            .dyn_into()
-            .map_err(|_| FileStoreError::Unknown("not in WorkerGlobalScope".to_string()))?;
-
-        let root = JsFuture::from(worker.navigator().storage().get_directory())
-            .await
-            .map_err(|e| classify("getDirectory", e))?;
-
-        let dir = root.unchecked_ref::<FileSystemDirectoryHandle>();
-        let options = FileSystemGetFileOptions::new();
-        options.set_create(create);
-
-        let snapshot = open(dir, &id.file("snap"), &options, create).await?;
-        let log = match open(dir, &id.file("log"), &options, create).await {
-            Ok(log) => log,
-            Err(error) => {
-                snapshot.close();
-                return Err(error);
-            }
-        };
-        Ok(OpfsHandles { snapshot, log })
-    }
 
     fn from_handle(handle: OpfsHandles) -> Self {
         Self { snapshot: handle.snapshot, log: handle.log, index: Index::new() }
@@ -885,6 +873,33 @@ impl FileStore for OpfsStore {
     }
 }
 
+#[cfg(feature = "file_store")]
+impl Mount for OpfsStore {
+    async fn open(id: StoreId, create: bool) -> Result<OpfsHandles, FileStoreError> {
+        let worker: WorkerGlobalScope = js_sys::global()
+            .dyn_into()
+            .map_err(|_| FileStoreError::Unknown("not in WorkerGlobalScope".to_string()))?;
+
+        let root = JsFuture::from(worker.navigator().storage().get_directory())
+            .await
+            .map_err(|e| classify("getDirectory", e))?;
+
+        let dir = root.unchecked_ref::<FileSystemDirectoryHandle>();
+        let options = FileSystemGetFileOptions::new();
+        options.set_create(create);
+
+        let snapshot = open(dir, &id.file("snap"), &options, create).await?;
+        let log = match open(dir, &id.file("log"), &options, create).await {
+            Ok(log) => log,
+            Err(error) => {
+                snapshot.close();
+                return Err(error);
+            }
+        };
+        Ok(OpfsHandles { snapshot, log })
+    }
+}
+
 struct MemoryFileState {
     bytes: Vec<u8>,
 }
@@ -912,6 +927,136 @@ pub struct MemoryHandles {
 impl MemoryHandles {
     pub fn new() -> Self {
         Self { snapshot: MemoryFile::new(), log: MemoryFile::new() }
+    }
+}
+
+#[cfg(unix)]
+fn classify_io(context: &str, error: io::Error) -> FileStoreError {
+    let message = format!("{}: {}", context, error);
+    match error.kind() {
+        ErrorKind::NotFound => FileStoreError::NotFound(message),
+        ErrorKind::StorageFull | ErrorKind::QuotaExceeded => FileStoreError::QuotaExceeded(message),
+        ErrorKind::PermissionDenied | ErrorKind::ResourceBusy => {
+            FileStoreError::NoModificationAllowed(message)
+        }
+        ErrorKind::Unsupported => FileStoreError::Unsupported(message),
+        ErrorKind::InvalidInput => FileStoreError::InvalidName(message),
+        _ => FileStoreError::Unknown(message),
+    }
+}
+
+#[cfg(unix)]
+fn locate(root: &Path, id: StoreId, extension: &str) -> Result<PathBuf, FileStoreError> {
+    let name = id.name;
+    let valid = !name.is_empty()
+        && !name.starts_with('/')
+        && name.split('/').all(|segment| {
+            !segment.is_empty()
+                && segment != "."
+                && segment != ".."
+                && segment
+                    .bytes()
+                    .all(|byte| byte.is_ascii_alphanumeric() || byte == b'_' || byte == b'-')
+        });
+    if !valid {
+        return Err(FileStoreError::InvalidName(format!("store name: {name}")));
+    }
+    Ok(root.join(id.file(extension)))
+}
+
+#[cfg(unix)]
+pub struct FsHandles {
+    snapshot: OsFile,
+    log:      OsFile,
+}
+
+#[cfg(unix)]
+pub struct FsStore {
+    snapshot: OsFile,
+    log:      OsFile,
+    index:    Index,
+}
+
+#[cfg(unix)]
+impl FsStore {
+    pub fn open(root: &Path, id: StoreId, create: bool) -> Result<FsHandles, FileStoreError> {
+        let snapshot = Self::open_file(&locate(root, id, "snap")?, create)?;
+        let log = Self::open_file(&locate(root, id, "log")?, create)?;
+        Ok(FsHandles { snapshot, log })
+    }
+
+    fn select(&self, file: File) -> &OsFile {
+        match file {
+            File::Snapshot => &self.snapshot,
+            File::Log => &self.log,
+        }
+    }
+
+    fn open_file(path: &Path, create: bool) -> Result<OsFile, FileStoreError> {
+        if create {
+            if let Some(parent) = path.parent() {
+                fs::create_dir_all(parent).map_err(|e| classify_io("create_dir_all", e))?;
+            }
+        }
+        OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(create)
+            .open(path)
+            .map_err(|e| classify_io(&format!("open {}", path.display()), e))
+    }
+}
+
+#[cfg(unix)]
+impl FileStore for FsStore {
+    type Handle = FsHandles;
+
+    fn from_handle(handle: FsHandles) -> Self {
+        Self { snapshot: handle.snapshot, log: handle.log, index: Index::new() }
+    }
+
+    fn index(&self) -> &Index {
+        &self.index
+    }
+
+    fn index_mut(&mut self) -> &mut Index {
+        &mut self.index
+    }
+
+    fn size(&self, file: File) -> Result<u32, FileStoreError> {
+        let length = self.select(file).metadata().map_err(|e| classify_io("metadata", e))?.len();
+        u32::try_from(length)
+            .map_err(|_| FileStoreError::Unknown(format!("size {length} exceeds u32")))
+    }
+
+    fn read_at(&self, file: File, buffer: &mut [u8], at: u32) -> Result<usize, FileStoreError> {
+        self.select(file).read_at(buffer, at as u64).map_err(|e| classify_io("read_at", e))
+    }
+
+    fn write_at(&self, file: File, data: &[u8], at: u32) -> Result<usize, FileStoreError> {
+        self.select(file).write_at(data, at as u64).map_err(|e| classify_io("write_at", e))
+    }
+
+    fn flush(&self, file: File) -> Result<(), FileStoreError> {
+        self.select(file).sync_data().map_err(|e| classify_io("sync_data", e))
+    }
+
+    fn truncate(&self, file: File, size: u32) -> Result<(), FileStoreError> {
+        self.select(file).set_len(size as u64).map_err(|e| classify_io("set_len", e))
+    }
+
+    fn close(&self) {}
+}
+
+#[cfg(all(test, unix))]
+thread_local! {
+    static ROOT: RefCell<Option<PathBuf>> = const { RefCell::new(None) };
+}
+
+#[cfg(all(test, unix))]
+impl Mount for FsStore {
+    fn open(id: StoreId, create: bool) -> impl Future<Output = Result<FsHandles, FileStoreError>> {
+        ready(ROOT.with(|root| Self::open(root.borrow().as_ref().unwrap(), id, create)))
     }
 }
 
@@ -944,25 +1089,6 @@ impl MemoryStore {
 
 impl FileStore for MemoryStore {
     type Handle = MemoryHandles;
-
-    fn open(
-        id: StoreId,
-        create: bool,
-    ) -> impl Future<Output = Result<MemoryHandles, FileStoreError>> {
-        let key = id.file("mem");
-        #[cfg(test)]
-        let handles = DISKS.with(|disks| {
-            let mut disks = disks.borrow_mut();
-            if !create && !disks.contains_key(&key) {
-                return Err(FileStoreError::NotFound(key));
-            }
-            Ok(disks.entry(key).or_insert_with(MemoryHandles::new).clone())
-        });
-        #[cfg(not(test))]
-        let handles =
-            if create { Ok(MemoryHandles::new()) } else { Err(FileStoreError::NotFound(key)) };
-        ready(handles)
-    }
 
     fn from_handle(handle: MemoryHandles) -> Self {
         Self { snapshot: handle.snapshot, log: handle.log, index: Index::new() }
@@ -1014,6 +1140,27 @@ impl FileStore for MemoryStore {
     fn close(&self) {
         self.snapshot.1.set(true);
         self.log.1.set(true);
+    }
+}
+
+impl Mount for MemoryStore {
+    fn open(
+        id: StoreId,
+        create: bool,
+    ) -> impl Future<Output = Result<MemoryHandles, FileStoreError>> {
+        let key = id.file("mem");
+        #[cfg(test)]
+        let handles = DISKS.with(|disks| {
+            let mut disks = disks.borrow_mut();
+            if !create && !disks.contains_key(&key) {
+                return Err(FileStoreError::NotFound(key));
+            }
+            Ok(disks.entry(key).or_insert_with(MemoryHandles::new).clone())
+        });
+        #[cfg(not(test))]
+        let handles =
+            if create { Ok(MemoryHandles::new()) } else { Err(FileStoreError::NotFound(key)) };
+        ready(handles)
     }
 }
 
@@ -1097,7 +1244,7 @@ pub mod cases {
         }
     }
 
-    pub(super) fn concat(first: &[LogRecord], second: &[LogRecord]) -> Vec<LogRecord> {
+    pub(super) fn chain(first: &[LogRecord], second: &[LogRecord]) -> Vec<LogRecord> {
         first
             .iter()
             .chain(second)
@@ -1118,7 +1265,7 @@ pub mod cases {
 
     pub const VERSION: &str = "0.0";
 
-    pub async fn mount<S: FileStore>(id: StoreId) -> S {
+    pub async fn mount<S: Mount>(id: StoreId) -> S {
         S::open(id, true).await.and_then(S::new).unwrap()
     }
 
@@ -1132,7 +1279,7 @@ pub mod cases {
     /// One I/O call as the algorithm issues it; `Write` carries the byte
     /// length, `Truncate` the new size.
     #[derive(Clone, Copy, PartialEq, Debug)]
-    pub enum Io {
+    pub enum Access {
         Size,
         Read,
         Write(u32),
@@ -1156,7 +1303,7 @@ pub mod cases {
     pub struct FaultInjector<S: FileStore> {
         inner:               S,
         /// Every I/O call since the last clear, in order.
-        pub calls:           RefCell<Vec<(&'static str, Io)>>,
+        pub calls:           RefCell<Vec<(&'static str, Access)>>,
         /// `(index into calls, where)`: the one call to break.
         pub at:              Cell<Option<(usize, Hit)>>,
         /// Fail every write to this file (`"snapshot"` / `"log"`) before it lands.
@@ -1184,11 +1331,11 @@ pub mod cases {
         fn trace<T>(
             &self,
             file: File,
-            io: Io,
+            access: Access,
             run: impl FnOnce() -> Result<T, FileStoreError>,
         ) -> Result<T, FileStoreError> {
             let index = self.calls.borrow().len();
-            self.calls.borrow_mut().push((display(file), io));
+            self.calls.borrow_mut().push((display(file), access));
             match self.at.get() {
                 Some((at, Hit::Before)) if at == index => Err(forge_error()),
                 Some((at, Hit::After)) if at == index => run().and(Err(forge_error())),
@@ -1197,15 +1344,17 @@ pub mod cases {
         }
     }
 
-    impl<S: FileStore> FileStore for FaultInjector<S> {
-        type Handle = S::Handle;
-
+    impl<S: Mount> Mount for FaultInjector<S> {
         fn open(
             id: StoreId,
             create: bool,
         ) -> impl Future<Output = Result<S::Handle, FileStoreError>> {
             S::open(id, create)
         }
+    }
+
+    impl<S: FileStore> FileStore for FaultInjector<S> {
+        type Handle = S::Handle;
 
         fn from_handle(handle: S::Handle) -> Self {
             Self {
@@ -1228,49 +1377,49 @@ pub mod cases {
         }
 
         fn size(&self, file: File) -> Result<u32, FileStoreError> {
-            self.trace(file, Io::Size, || self.inner.size(file))
+            self.trace(file, Access::Size, || self.inner.size(file))
         }
 
         fn read_at(&self, file: File, buffer: &mut [u8], at: u32) -> Result<usize, FileStoreError> {
             if self.stall.get() {
-                self.calls.borrow_mut().push((display(file), Io::Read));
+                self.calls.borrow_mut().push((display(file), Access::Read));
                 return Ok(0);
             }
             let limit = self.chunk.get().map_or(buffer.len(), |chunk| chunk.min(buffer.len()));
-            self.trace(file, Io::Read, || self.inner.read_at(file, &mut buffer[..limit], at))
+            self.trace(file, Access::Read, || self.inner.read_at(file, &mut buffer[..limit], at))
         }
 
         fn write_at(&self, file: File, data: &[u8], at: u32) -> Result<usize, FileStoreError> {
             let data = &data[..self.chunk.get().map_or(data.len(), |chunk| chunk.min(data.len()))];
-            let io = Io::Write(data.len() as u32);
+            let access = Access::Write(data.len() as u32);
             if self.stall.get() {
-                self.calls.borrow_mut().push((display(file), io));
+                self.calls.borrow_mut().push((display(file), access));
                 return Ok(0);
             }
             if let Some((index, Hit::Partial(n))) = self.at.get() {
                 if index == self.calls.borrow().len() {
-                    self.calls.borrow_mut().push((display(file), io));
+                    self.calls.borrow_mut().push((display(file), access));
                     self.inner.write_at(file, &data[..n as usize], at)?;
                     return Err(forge_error());
                 }
             }
             if self.fail_writes_to.get() == Some(display(file)) {
-                self.calls.borrow_mut().push((display(file), io));
+                self.calls.borrow_mut().push((display(file), access));
                 return Err(forge_error());
             }
-            self.trace(file, io, || self.inner.write_at(file, data, at))
+            self.trace(file, access, || self.inner.write_at(file, data, at))
         }
 
         fn flush(&self, file: File) -> Result<(), FileStoreError> {
             if self.fail_flushes_of.get() == Some(display(file)) {
-                self.calls.borrow_mut().push((display(file), Io::Flush));
+                self.calls.borrow_mut().push((display(file), Access::Flush));
                 return Err(forge_error());
             }
-            self.trace(file, Io::Flush, || self.inner.flush(file))
+            self.trace(file, Access::Flush, || self.inner.flush(file))
         }
 
         fn truncate(&self, file: File, size: u32) -> Result<(), FileStoreError> {
-            self.trace(file, Io::Truncate(size), || self.inner.truncate(file, size))
+            self.trace(file, Access::Truncate(size), || self.inner.truncate(file, size))
         }
 
         fn close(&self) {
@@ -1278,12 +1427,15 @@ pub mod cases {
         }
     }
 
-    pub async fn instrument<S: FileStore>(id: StoreId) -> FaultInjector<S> {
+    pub async fn instrument<S: Mount>(id: StoreId) -> FaultInjector<S> {
         S::open(id, true).await.and_then(FaultInjector::<S>::new).unwrap()
     }
 
-    fn derive_id(name: &str, n: usize) -> StoreId {
-        StoreId { name: Box::leak(format!("{name}_{n}").into_boxed_str()), version: VERSION }
+    fn derive_id(name: &str, number: usize) -> StoreId {
+        StoreId {
+            name:    Box::leak(format!("{name}_{number}").into_boxed_str()),
+            version: VERSION,
+        }
     }
 
     fn replay(state: &mut BTreeMap<u32, Vec<u8>>, records: &[LogRecord]) {
@@ -1306,7 +1458,7 @@ pub mod cases {
     // === i/o helpers and the single-writer premise ===
 
     /// `read_all` / `append` must loop on short reads and writes.
-    pub async fn trickle_io<S: FileStore>(name: &str) {
+    pub async fn trickle_io<S: Mount>(name: &str) {
         let id = derive_id(name, 0);
         let (mut store, layout) = arrange::<S>(id, false).await;
         store.chunk.set(Some(3));
@@ -1324,7 +1476,7 @@ pub mod cases {
 
     /// A read or write that reports no progress ends in `Unknown`, never in
     /// a loop, and leaves RAM and the pending diff alone.
-    pub async fn stall_io<S: FileStore>(name: &str) {
+    pub async fn stall_io<S: Mount>(name: &str) {
         let id = derive_id(name, 0);
         let (mut store, layout) = arrange::<S>(id, false).await;
         store.stall.set(true);
@@ -1346,7 +1498,7 @@ pub mod cases {
     /// A log shorter than `log_end` means someone else wrote to it. Every
     /// method reports that and none of them repairs it by extending the file
     /// (which would zero-fill) or by writing anything else.
-    pub async fn shrink_log<S: FileStore>(name: &str) {
+    pub async fn shrink_log<S: Mount>(name: &str) {
         let (mut store, layout) = arrange::<S>(derive_id(name, 0), false).await;
         let log_end = store.index().log_end;
         assert!(log_end > 0);
@@ -1434,7 +1586,7 @@ pub mod cases {
         }
     }
 
-    async fn arrange<S: FileStore>(id: StoreId, ghost: bool) -> (FaultInjector<S>, Layout) {
+    async fn arrange<S: Mount>(id: StoreId, ghost: bool) -> (FaultInjector<S>, Layout) {
         let mut store = instrument::<S>(id).await;
         apply(&mut store, &[LogRecord::set(1, b"s1".to_vec()), LogRecord::set(2, b"s2".to_vec())]);
         store.save().unwrap();
@@ -1482,14 +1634,14 @@ pub mod cases {
     }
 
     /// Every `(call, hit)` worth breaking, derived from the calls a clean run made.
-    fn enumerate_sites(calls: &[(&'static str, Io)]) -> Vec<(usize, Hit)> {
+    fn enumerate_sites(calls: &[(&'static str, Access)]) -> Vec<(usize, Hit)> {
         let mut sites = Vec::new();
-        for (index, (_, io)) in calls.iter().enumerate() {
+        for (index, (_, access)) in calls.iter().enumerate() {
             sites.push((index, Hit::Before));
-            match *io {
-                Io::Size | Io::Read => {}
-                Io::Flush | Io::Truncate(_) => sites.push((index, Hit::After)),
-                Io::Write(length) => {
+            match *access {
+                Access::Size | Access::Read => {}
+                Access::Flush | Access::Truncate(_) => sites.push((index, Hit::After)),
+                Access::Write(length) => {
                     sites.push((index, Hit::After));
                     sites.extend((1..length).map(|n| (index, Hit::Partial(n))));
                 }
@@ -1498,7 +1650,7 @@ pub mod cases {
         sites
     }
 
-    async fn verify<S: FileStore>(
+    async fn verify<S: Mount>(
         id: StoreId,
         method: Method,
         site: (usize, Hit),
@@ -1553,21 +1705,21 @@ pub mod cases {
     /// other copy must already be durable. Memory's `flush` does nothing, so
     /// this ordering is invisible to the sweep and is checked on the
     /// call log instead.
-    fn assert_flush_before_truncate(calls: &[(&'static str, Io)]) {
+    fn assert_flush_before_truncate(calls: &[(&'static str, Access)]) {
         let (mut snapshot_dirty, mut log_dirty) = (false, false);
-        for (index, (file, io)) in calls.iter().enumerate() {
-            match (*file, *io) {
-                ("snapshot", Io::Write(_)) => snapshot_dirty = true,
-                ("log", Io::Write(_)) => log_dirty = true,
-                ("snapshot", Io::Flush) => snapshot_dirty = false,
-                ("log", Io::Flush) => log_dirty = false,
-                ("snapshot", Io::Truncate(_)) => {
+        for (index, (file, access)) in calls.iter().enumerate() {
+            match (*file, *access) {
+                ("snapshot", Access::Write(_)) => snapshot_dirty = true,
+                ("log", Access::Write(_)) => log_dirty = true,
+                ("snapshot", Access::Flush) => snapshot_dirty = false,
+                ("log", Access::Flush) => log_dirty = false,
+                ("snapshot", Access::Truncate(_)) => {
                     assert!(
                         !log_dirty,
                         "call {index}: snapshot truncated with unflushed log writes"
                     )
                 }
-                ("log", Io::Truncate(_)) => {
+                ("log", Access::Truncate(_)) => {
                     assert!(
                         !snapshot_dirty,
                         "call {index}: log truncated with unflushed snapshot writes"
@@ -1585,13 +1737,13 @@ pub mod cases {
     ///
     /// `save` and `compact` run twice: once from a clean log, once with an
     /// unconfirmed batch lying past `log_end`, which they must cut off.
-    pub async fn sweep<S: FileStore>(name: &str, method: Method) {
+    pub async fn sweep<S: Mount>(name: &str, method: Method) {
         let ghosts: &[bool] =
             if matches!(method, Method::Discard) { &[false] } else { &[false, true] };
-        let mut n = 0;
+        let mut number = 0;
         for &ghost in ghosts {
-            n += 1;
-            let (mut dry, _) = arrange::<S>(derive_id(name, n), ghost).await;
+            number += 1;
+            let (mut dry, _) = arrange::<S>(derive_id(name, number), ghost).await;
             dry.calls.borrow_mut().clear();
             invoke(method, &mut dry).unwrap();
             let calls = dry.calls.take();
@@ -1603,8 +1755,8 @@ pub mod cases {
                     if matches!((method, afterwards), (Method::Discard, Afterwards::Discard)) {
                         continue;
                     }
-                    n += 1;
-                    verify::<S>(derive_id(name, n), method, site, afterwards, ghost).await;
+                    number += 1;
+                    verify::<S>(derive_id(name, number), method, site, afterwards, ghost).await;
                 }
             }
         }
@@ -1656,12 +1808,7 @@ pub mod cases {
         }
     }
 
-    pub async fn walk<S: FileStore>(
-        name: &str,
-        seeds: u64,
-        steps: usize,
-        tear: impl AsyncFn(StoreId),
-    ) {
+    pub async fn walk<S: Mount>(name: &str, seeds: u64, steps: usize, tear: impl AsyncFn(StoreId)) {
         for seed in 0..seeds {
             let mut rng = Rng::new(seed);
             let id = StoreId {
@@ -1777,7 +1924,7 @@ pub mod cases {
 
     /// `compact` has no delta path, so a snapshot nobody touched is still
     /// truncated and rewritten in full.
-    pub async fn pin_compact_rewrite<S: FileStore>(name: &'static str) {
+    pub async fn pin_compact_rewrite<S: Mount>(name: &'static str) {
         let id = derive_id(name, 0);
         let mut store = instrument::<S>(id).await;
 
@@ -1811,7 +1958,7 @@ pub mod cases {
         let truncates: Vec<_> = calls
             .iter()
             .filter_map(|call| match call.1 {
-                Io::Truncate(size) => Some((call.0, size)),
+                Access::Truncate(size) => Some((call.0, size)),
                 _ => None,
             })
             .collect();
@@ -1819,7 +1966,7 @@ pub mod cases {
         let snapshot_written: u32 = calls
             .iter()
             .filter_map(|call| match call.1 {
-                Io::Write(length) if call.0 == "snapshot" => Some(length),
+                Access::Write(length) if call.0 == "snapshot" => Some(length),
                 _ => None,
             })
             .sum();
@@ -1841,9 +1988,9 @@ mod memory_tests {
     use super::{cases::*, *};
     use crate::{Rng, block_on};
 
-    fn handcraft_record(op: u8, id: u32, data: &[u8]) -> Vec<u8> {
+    fn handcraft_record(operation: u8, id: u32, data: &[u8]) -> Vec<u8> {
         let mut record = Vec::new();
-        record.push(op);
+        record.push(operation);
         record.extend_from_slice(&id.to_le_bytes());
         record.extend_from_slice(&(data.len() as u32).to_le_bytes());
         let checksum = fletcher32(&record).wrapping_add(fletcher32(data));
@@ -1880,10 +2027,16 @@ mod memory_tests {
     }
 
     #[test]
-    fn records_with_unassigned_ops_are_rejected() {
-        for op in [0u8, 3, 4, 0x80, 0xFF] {
-            assert!(LogRecord::from_bytes(&handcraft_record(op, 0, b"")).is_none(), "op {op}");
-            assert!(LogRecord::from_bytes(&handcraft_record(op, 9, b"xyz")).is_none(), "op {op}");
+    fn records_with_unassigned_operations_are_rejected() {
+        for operation in [0u8, 3, 4, 0x80, 0xFF] {
+            assert!(
+                LogRecord::from_bytes(&handcraft_record(operation, 0, b"")).is_none(),
+                "operation {operation}"
+            );
+            assert!(
+                LogRecord::from_bytes(&handcraft_record(operation, 9, b"xyz")).is_none(),
+                "operation {operation}"
+            );
         }
         assert!(LogRecord::from_bytes(&[0u8; 13]).is_none());
     }
@@ -1891,11 +2044,14 @@ mod memory_tests {
     #[test]
     fn records_with_oversized_lengths_are_rejected() {
         for length in [u32::MAX, u32::MAX - 12, u32::MAX - 13, 1 << 31] {
-            for op in [1u8, 2] {
-                let mut record = vec![op, 0, 0, 0, 0];
+            for operation in [1u8, 2] {
+                let mut record = vec![operation, 0, 0, 0, 0];
                 record.extend_from_slice(&length.to_le_bytes());
                 record.extend_from_slice(&[0; 4]);
-                assert!(LogRecord::from_bytes(&record).is_none(), "op {op} length {length}");
+                assert!(
+                    LogRecord::from_bytes(&record).is_none(),
+                    "operation {operation} length {length}"
+                );
             }
         }
     }
@@ -1917,7 +2073,7 @@ mod memory_tests {
                 ends.push(end);
             }
             let expect = |complete: usize| {
-                let all = concat(&snapshot_records, &log_records[..complete]);
+                let all = chain(&snapshot_records, &log_records[..complete]);
                 (oracle(&all), if complete == 0 { 0 } else { ends[complete - 1] })
             };
 
@@ -2162,5 +2318,145 @@ mod opfs_tests {
     #[wasm_bindgen_test]
     async fn compact_rewrites_an_untouched_snapshot_in_full() {
         cases::pin_compact_rewrite::<OpfsStore>("opfs_untouched").await;
+    }
+}
+
+#[cfg(all(test, unix))]
+mod fs_tests {
+    use super::{cases::*, *};
+    use crate::block_on;
+
+    struct Root(PathBuf);
+
+    impl Root {
+        fn new(name: &str) -> Self {
+            let path = env::temp_dir().join(format!("app_store_{}_{name}", process::id()));
+            let _ = fs::remove_dir_all(&path);
+            fs::create_dir_all(&path).unwrap();
+            ROOT.with(|root| *root.borrow_mut() = Some(path.clone()));
+            Self(path)
+        }
+    }
+
+    impl Drop for Root {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.0);
+        }
+    }
+
+    async fn tear_log(id: StoreId) {
+        let path =
+            locate(ROOT.with(|root| root.borrow().clone()).unwrap().as_path(), id, "log").unwrap();
+        let file = OpenOptions::new().append(true).open(path).unwrap();
+        let size = file.metadata().unwrap().len();
+        file.write_at(&sever_record(), size).unwrap();
+        file.sync_data().unwrap();
+    }
+
+    #[test]
+    fn open_creates_a_missing_store_only_when_asked() {
+        let root = Root::new("missing");
+        let id = StoreId { name: "never_created", version: "9" };
+        assert!(matches!(FsStore::open(&root.0, id, false), Err(FileStoreError::NotFound(_))));
+        assert!(FsStore::open(&root.0, id, true).is_ok());
+        assert!(FsStore::open(&root.0, id, false).is_ok());
+        assert!(root.0.join("never_created.9.snap").is_file());
+        assert!(root.0.join("never_created.9.log").is_file());
+    }
+
+    #[test]
+    fn open_accepts_nested_names_and_rejects_invalid_ones() {
+        let root = Root::new("names");
+        let nested = StoreId { name: "user/42/calendar", version: "1" };
+        let mut store = block_on(mount::<FsStore>(nested));
+        store.set(1, b"n".to_vec());
+        store.save().unwrap();
+        assert!(root.0.join("user/42/calendar.1.log").is_file());
+        assert_eq!(block_on(mount::<FsStore>(nested)).get(1), Some(&b"n"[..]));
+
+        for name in ["", "/etc", "a/../b", "./a", "a//b", "a b", "a.b", "日本"] {
+            let id = StoreId { name, version: "1" };
+            assert!(
+                matches!(FsStore::open(&root.0, id, true), Err(FileStoreError::InvalidName(_))),
+                "{name:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_reopened_store_replays_the_log_and_cuts_a_torn_tail() {
+        let _root = Root::new("reopen");
+        let id = StoreId { name: "tenant", version: VERSION };
+        let mut store = block_on(mount::<FsStore>(id));
+        let first = store.issue_id();
+        store.set(first, b"payload".to_vec());
+        store.save().unwrap();
+        store.compact().unwrap();
+        store.set(first + 1, b"second".to_vec());
+        store.save().unwrap();
+        store.close();
+        drop(store);
+
+        block_on(tear_log(id));
+        let mut reopened = block_on(mount::<FsStore>(id));
+        assert_eq!(reopened.get(first), Some(&b"payload"[..]));
+        assert_eq!(reopened.get(first + 1), Some(&b"second"[..]));
+        let torn = reopened.size(File::Log).unwrap();
+        reopened.set(first + 2, b"third".to_vec());
+        reopened.save().unwrap();
+        let record = LogRecord::set(first + 2, b"third".to_vec()).to_bytes().len() as u32;
+        assert_eq!(reopened.size(File::Log).unwrap(), torn - sever_record().len() as u32 + record);
+        drop(reopened);
+
+        let again = block_on(mount::<FsStore>(id));
+        assert_eq!(snapshot(&again).len(), 3);
+    }
+
+    #[test]
+    fn short_reads_and_writes_are_looped_to_completion() {
+        let _root = Root::new("short_io");
+        block_on(cases::trickle_io::<FsStore>("fs_short_io"));
+    }
+
+    #[test]
+    fn stalled_io_fails_as_unknown_instead_of_looping() {
+        let _root = Root::new("stalled_io");
+        block_on(cases::stall_io::<FsStore>("fs_stalled_io"));
+    }
+
+    #[test]
+    fn every_method_refuses_a_shrunken_log() {
+        let _root = Root::new("shrunken_log");
+        block_on(cases::shrink_log::<FsStore>("fs_shrunken_log"));
+    }
+
+    #[test]
+    fn save_survives_a_fault_at_every_step() {
+        let _root = Root::new("save_sweep");
+        block_on(cases::sweep::<FsStore>("fs_save_sweep", Method::Save));
+    }
+
+    #[test]
+    fn discard_survives_a_fault_at_every_step() {
+        let _root = Root::new("discard_sweep");
+        block_on(cases::sweep::<FsStore>("fs_discard_sweep", Method::Discard));
+    }
+
+    #[test]
+    fn compact_survives_a_fault_at_every_step() {
+        let _root = Root::new("compact_sweep");
+        block_on(cases::sweep::<FsStore>("fs_compact_sweep", Method::Compact));
+    }
+
+    #[test]
+    fn a_random_walk_with_faults_matches_the_model() {
+        let _root = Root::new("model");
+        block_on(cases::walk::<FsStore>("fs_model", 6, 40, tear_log));
+    }
+
+    #[test]
+    fn compact_rewrites_an_untouched_snapshot_in_full() {
+        let _root = Root::new("untouched");
+        block_on(cases::pin_compact_rewrite::<FsStore>("fs_untouched"));
     }
 }

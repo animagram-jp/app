@@ -27,7 +27,7 @@
 | `compact` | `&mut self` | `Result<(), FileStoreError>` | snapshot/log（`log[..log_end]`）を読み直した一時的な状態（memory は参照しない）の全件を、まず log の末尾に追記し、そのあと snapshot を再構築し、log を空にする。デフォルト実装 |
 | close   | &self | | snapshot/log を閉じる。実装ごとに書く |
 
-バックエンドに依存する部分は、`open` / `from_handle`（実装の構築）/ `index` / `index_mut`（`Index` への accessor）と、ファイル操作のプリミティブ6つ（`size` / `read_at` / `write_at` / `flush` / `truncate` / `close`。どちらのファイルかは `File::Snapshot` / `File::Log` で指定する）だけである。ロジック（`new` / `save` / `discard` / `compact` ほか）は trait のデフォルト実装として1箇所にだけ書き、`OpfsStore` と `MemoryStore` が共有する。short read / short write のループ（`read_all` / `append`）もプリミティブの上に1つだけある。
+バックエンドに依存する部分は、`Mount::open` / `from_handle`（実装の構築）/ `index` / `index_mut`（`Index` への accessor）と、ファイル操作のプリミティブ6つ（`size` / `read_at` / `write_at` / `flush` / `truncate` / `close`。どちらのファイルかは `File::Snapshot` / `File::Log` で指定する）だけである。ロジック（`new` / `save` / `discard` / `compact` ほか）は trait のデフォルト実装として1箇所にだけ書き、`OpfsStore` と `MemoryStore` が共有する。short read / short write のループ（`read_all` / `append`）もプリミティブの上に1つだけある。
 
 ```rust
 /// ストアの識別。ファイル名にバージョンをフラットに含める（`<name>.<version>.snap` / `.log`）。
@@ -47,7 +47,6 @@ pub struct Index {
 pub trait FileStore: Sized {
     type Handle;
 
-    fn open(id: StoreId, create: bool) -> impl Future<Output = Result<Self::Handle, FileStoreError>>;
     fn from_handle(handle: Self::Handle) -> Self;
     fn index(&self) -> &Index;
     fn index_mut(&mut self) -> &mut Index;
@@ -69,6 +68,10 @@ pub trait FileStore: Sized {
     fn compact(&mut self) -> Result<(), FileStoreError> { /* 同上 */ }
 }
 
+pub trait Mount: FileStore {
+    fn open(id: StoreId, create: bool) -> impl Future<Output = Result<Self::Handle, FileStoreError>>;
+}
+
 /// OPFS実装
 pub struct OpfsStore {
     snapshot: FileSystemSyncAccessHandle,
@@ -83,7 +86,7 @@ pub struct OpfsHandles {
 }
 ```
 
-`open` は非同期、`new` は同期である。`Handler::ready` が `open(..).await` のあと `new(..)` を呼ぶ。`Handle` は実装ごとに決まる、`open` の出力と `new` の入力を結ぶ関連型で、`OpfsStore` では snapshot と log の2つのハンドルを束ねた `OpfsHandles` になる。トレイトは静的ディスパッチ（`dyn` は使わない）で使い、本番とテストの切り替えは `cfg` で行う。
+`Mount::open` は非同期、`new` は同期である。`Handler::ready` が `open(..).await` のあと `new(..)` を呼ぶ。`std::fs` 実装の `FsStore` は `Mount` を実装せず、同期の固有メソッド `FsStore::open(root, id, create)` で `FsHandles` を返す。`Handle` は実装ごとに決まる、`open` の出力と `new` の入力を結ぶ関連型で、`OpfsStore` では snapshot と log の2つのハンドルを束ねた `OpfsHandles` になる。トレイトは静的ディスパッチ（`dyn` は使わない）で使い、本番とテストの切り替えは `cfg` で行う。
 
 ---
 

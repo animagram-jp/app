@@ -32,8 +32,8 @@ pub trait Predicate<const N: usize> {
 
     fn encode(value: &Self::Parsed) -> [Option<Vec<u8>>; N];
 
-    fn read(character: &DataStruct) -> Self::Parsed {
-        Self::parse(character.get_many(Self::ids()))
+    fn read(investigator: &DataStruct) -> Self::Parsed {
+        Self::parse(investigator.get_many(Self::ids()))
     }
 
     fn get_from_bytes(instance: &[u8]) -> Self::Parsed {
@@ -42,13 +42,13 @@ pub trait Predicate<const N: usize> {
     }
 
     fn write(
-        character: &mut DataStruct,
+        investigator: &mut DataStruct,
         value: &Self::Parsed,
         now_in_ms: Option<u64>,
     ) -> Result<(), ListError> {
         let ids = Self::ids();
         let encoded = Self::encode(value);
         let entries: [(u32, Option<&[u8]>); N] = from_fn(|i| (ids[i], encoded[i].as_deref()));
-        character.set_many(entries, now_in_ms)
+        investigator.set_many(entries, now_in_ms)
     }
 }

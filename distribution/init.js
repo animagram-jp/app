@@ -105,6 +105,7 @@ async function start() {
                 rem_in_px,
                 BigInt(now_in_ms),
                 timezone_offset_minutes,
+                params.get("data") ?? "",
             );
             bind();
             S.call_app();
@@ -166,6 +167,7 @@ async function start() {
                 rem_in_px,
                 now_in_ms: BigInt(Date.now()),
                 timezone_offset_minutes,
+                data_url: params.get("data") ?? "",
             },
         });
     };

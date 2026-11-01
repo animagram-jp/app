@@ -28,17 +28,6 @@
         position: relative;
     }
 
-    /* --- label holding both a sign-bearing control and its own text --- */
-
-    label:has(> :where([data-facet], select, input[type="search"])):has(> span) {
-        inline-size: fit-content;
-    }
-
-    label:has(> :where([data-facet], select, input[type="search"])):has(> span) > span {
-        contain: inline-size;
-        display: block flow;
-    }
-
     /* --- min inline size, min block size --- */
 
     :where(
@@ -267,9 +256,9 @@
         rotate:        45deg;
     }
 
-    input[data-sign="check"]:not(:checked):where([data-inline-align="start"])::before,
-    input[data-sign="check"]:not(:checked):not([data-inline-align="start"])::after,
-    input[type="checkbox"]:not([role="switch"]):not([data-sign]):not([data-facet]):not(:checked)::after {
+    input[data-sign="check"]:not(:checked, [type="checkbox"]:indeterminate):where([data-inline-align="start"])::before,
+    input[data-sign="check"]:not(:checked, [type="checkbox"]:indeterminate):not([data-inline-align="start"])::after,
+    input[type="checkbox"]:not([role="switch"]):not([data-sign]):not([data-facet]):not(:checked, :indeterminate)::after {
         border-width: 0;
     }
 
@@ -734,8 +723,8 @@
         border-bottom-width: var(--xs-border-width);
         border-right-width:  var(--xs-border-width);
         inline-size:         calc(var(--xs-font-size) * 0.75 * 1.06);
-        inset-block-end:     calc((var(--xs-box-height) - var(--xs-font-size) * 0.75 * 1.06) / 2);
-        inset-block-start:   auto;
+        inset-block-end:     auto;
+        inset-block-start:   calc((var(--xs-box-height) - var(--xs-font-size) * 0.75 * 1.06) / 2);
         inset-inline-end:    var(--xs-border-radius);
         margin-block:        0;
         transform:           translateY(-0.125rem) rotate(45deg);
@@ -750,8 +739,8 @@
         border-bottom-width: var(--sm-border-width);
         border-right-width:  var(--sm-border-width);
         inline-size:         calc(var(--sm-font-size) * 0.75 * 1.06);
-        inset-block-end:     calc((var(--sm-box-height) - var(--sm-font-size) * 0.75 * 1.06) / 2);
-        inset-block-start:   auto;
+        inset-block-end:     auto;
+        inset-block-start:   calc((var(--sm-box-height) - var(--sm-font-size) * 0.75 * 1.06) / 2);
         inset-inline-end:    var(--sm-border-radius);
         margin-block:        0;
         transform:           translateY(-0.125rem) rotate(45deg);
@@ -766,8 +755,8 @@
         border-bottom-width: var(--md-border-width);
         border-right-width:  var(--md-border-width);
         inline-size:         calc(var(--md-font-size) * 0.75 * 1.06);
-        inset-block-end:     calc((var(--md-box-height) - var(--md-font-size) * 0.75 * 1.06) / 2);
-        inset-block-start:   auto;
+        inset-block-end:     auto;
+        inset-block-start:   calc((var(--md-box-height) - var(--md-font-size) * 0.75 * 1.06) / 2);
         inset-inline-end:    var(--md-border-radius);
         margin-block:        0;
         transform:           translateY(-0.1875rem) rotate(45deg);
@@ -782,8 +771,8 @@
         border-bottom-width: var(--lg-border-width);
         border-right-width:  var(--lg-border-width);
         inline-size:         calc(var(--lg-font-size) * 0.6 * 1.06);
-        inset-block-end:     calc((var(--lg-box-height) - var(--lg-font-size) * 0.6 * 1.06) / 2);
-        inset-block-start:   auto;
+        inset-block-end:     auto;
+        inset-block-start:   calc((var(--lg-box-height) - var(--lg-font-size) * 0.6 * 1.06) / 2);
         inset-inline-end:    var(--lg-border-radius);
         margin-block:        0;
         transform:           translateY(-0.125rem) rotate(45deg);
@@ -798,8 +787,8 @@
         border-bottom-width: var(--xl-border-width);
         border-right-width:  var(--xl-border-width);
         inline-size:         calc(var(--xl-font-size) * 0.6 * 1.06);
-        inset-block-end:     calc((var(--xl-box-height) - var(--xl-font-size) * 0.6 * 1.06) / 2);
-        inset-block-start:   auto;
+        inset-block-end:     auto;
+        inset-block-start:   calc((var(--xl-box-height) - var(--xl-font-size) * 0.6 * 1.06) / 2);
         inset-inline-end:    var(--xl-border-radius);
         margin-block:        0;
         transform:           translateY(-0.1875rem) rotate(45deg);
@@ -814,8 +803,8 @@
         border-bottom-width: var(--2xl-border-width);
         border-right-width:  var(--2xl-border-width);
         inline-size:         calc(var(--2xl-font-size) * 0.6 * 1.06);
-        inset-block-end:     calc((var(--2xl-box-height) - var(--2xl-font-size) * 0.6 * 1.06) / 2);
-        inset-block-start:   auto;
+        inset-block-end:     auto;
+        inset-block-start:   calc((var(--2xl-box-height) - var(--2xl-font-size) * 0.6 * 1.06) / 2);
         inset-inline-end:    var(--2xl-border-radius);
         margin-block:        0;
         transform:           translateY(-0.25rem) rotate(45deg);

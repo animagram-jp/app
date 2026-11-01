@@ -16,20 +16,19 @@
         color: var(--color-paper);
     }
 
-    input[type="checkbox"]:not([role="switch"]):is(:not([data-sign]):not([data-facet]), [data-sign="check"])::before {
-        border-color: var(--color-paper);
-    }
-
     /* --- indeterminate --- */
 
-    input[type="checkbox"]:not([role="switch"]):is(:not([data-sign]):not([data-facet]), [data-sign="check"]):indeterminate::before {
+    input[type="checkbox"]:not([role="switch"]):is(:not([data-sign]):not([data-facet]), [data-sign="check"]:not([data-inline-align="start"])):indeterminate::after,
+    input[type="checkbox"]:not([role="switch"])[data-sign="check"][data-inline-align="start"]:indeterminate::before {
+        block-size:   0;
         border-width: 0 0 0.1875rem 0;
+        inline-size:  calc(var(--box-height) / 2);
         rotate:       0deg;
-        translate:    0 -0.09375rem;
+        translate:    0;
     }
 
     @media (forced-colors: active) {
-        input[type="checkbox"]:not([role="switch"]):is(:not([data-sign]):not([data-facet]), [data-sign="check"])::before {
+        input[type="checkbox"]:not([role="switch"]):not([data-sign]):not([data-facet])::after {
             border-color: Canvas;
         }
     }
@@ -41,10 +40,5 @@
         border-width:  var(--border-width);
         block-size:    var(--box-height);
         inline-size:   var(--box-height);
-
-        &:indeterminate::before {
-            block-size:  0;
-            inline-size: calc(var(--box-height) / 2);
-        }
     }
 }

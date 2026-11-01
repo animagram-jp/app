@@ -18,8 +18,27 @@
 
 @layer css.data_group {
 
-    label:has(> *) {
-        display: inline flow-root;
+    :where(
+        label:has(> *),
+        [data-group="inline"],
+        search,
+        form[role="search"]
+    ) {
+        align-items: start;
+        display:     inline flex;
+
+        & > :not(span) {
+            flex-shrink: 0;
+        }
+
+        & > span,
+        & > legend > span {
+            align-self: center;
+        }
+    }
+
+    :where(label:has(> *):not([data-group])) {
+        gap: var(--md-border-radius);
     }
 
     label:not([data-surround="fill"]):has(> :where(
@@ -30,9 +49,6 @@
     }
 
     :where(
-        [data-group="inline"],
-        form[role="search"],
-        search,
         button,
         input:not([type=hidden]),
         meter,
@@ -46,16 +62,9 @@
 
     :where(
         [data-group="inline"],
-        :is(
-            search,
-            form[role="search"],
-            label:has(input[type="password"])
-        ):not([data-group])
+        search,
+        form[role="search"]
     ) {
-        font-size:   0;
-        white-space: nowrap;
-        width:       fit-content;
-
         & > span:first-child,
         & > legend > span {
             padding-inline-end: var(--md-border-radius);

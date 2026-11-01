@@ -3,7 +3,7 @@ use core::{
     primitive::{i8, u8},
 };
 
-use crate::{Language, coc7th::character::dice};
+use crate::{Language, coc7th::investigator::dice};
 
 /// # Safety
 /// `T` must be a `#[repr(u8)]` enum whose discriminants are exactly `1..=N`.

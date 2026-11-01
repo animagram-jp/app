@@ -90,7 +90,7 @@
 
     /* === common for elements whether inline flow or not, focusable or not. === */
 
-    :where([data-size], :not([data-size] *)) {
+    :where([data-size], :not(html, [data-size] *)) {
         font-size:      var(--font-size);
         letter-spacing: var(--letter-spacing);
         line-height:    var(--line-height);
@@ -100,7 +100,8 @@
 
     :where(
         [data-surround="transparent"],
-        :where([role="menu"], [role="listbox"]) > *
+        :where([role="menu"], [role="listbox"]) > *,
+        :where(dl, dl > div) > :where(dt, dd)
     ) {
         min-height:     var(--box-height);
         padding-block:  calc((var(--box-height) - var(--line-height)) / 2);

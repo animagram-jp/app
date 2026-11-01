@@ -47,7 +47,7 @@
 */
 
 @layer css.radio {
-    fieldset:has(> label > input[type="radio"]) {
+    fieldset:has(> label > input[type="radio"]):not([data-group="inline"]) {
         display: grid;
         border:  none;
         gap:     0.5rem;
@@ -157,10 +157,6 @@
     }
 
     /* === data-group="inline" === */
-
-    fieldset[data-group="inline"]:has(> label > input[type="radio"]) {
-        display: inline flow-root;
-    }
 
     fieldset[data-group="inline"]:has(> label > input[type="radio"]) > label {
         display:     inline flow-root;

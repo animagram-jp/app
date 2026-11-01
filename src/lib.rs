@@ -21,14 +21,13 @@ compile_error!("either feature `calendar` or `coc7th` is required");
 #[cfg(any(test, not(target_arch = "wasm32")))]
 extern crate std;
 
-use alloc::{string::String, vec::Vec};
+use alloc::{format, string::String, vec::Vec};
+use core::fmt::{self, Display, Formatter};
 #[cfg(test)]
 use core::future::Future;
 #[cfg(all(target_arch = "wasm32", not(test)))]
 use core::panic::PanicInfo;
 
-#[cfg(feature = "calendar")]
-use crate::calendar::data::DataError;
 #[cfg(feature = "credential")]
 use crate::credential::CredentialError;
 #[cfg(feature = "vault")]
@@ -37,6 +36,7 @@ use crate::{
     arena::{ArenaError, PanicError},
     event::EventError,
     file_store::FileStoreError,
+    list::ListError,
 };
 
 pub mod app;
@@ -95,13 +95,48 @@ macro_rules! wire_error {
     };
 }
 
+#[derive(Debug)]
+pub enum DataError {
+    Status(u16),
+    Parse(String),
+    Format(String),
+}
+
+impl From<ListError> for DataError {
+    fn from(error: ListError) -> Self {
+        DataError::Format(format!("record layout: {error:?}"))
+    }
+}
+
+impl Display for DataError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+impl WireError for DataError {
+    fn identifiers(&self, path: &mut Vec<u16>) {
+        match self {
+            DataError::Status(_) => path.push(1),
+            DataError::Parse(_) => path.push(2),
+            DataError::Format(_) => path.push(3),
+        }
+    }
+
+    fn detail(&self) -> String {
+        match self {
+            DataError::Status(status) => format!("{status}"),
+            DataError::Parse(message) | DataError::Format(message) => message.clone(),
+        }
+    }
+}
+
 wire_error! {
     Error {
         Arena(ArenaError) = 1,
         Event(EventError) = 2,
         Panic(PanicError) = 3,
         FileStore(FileStoreError) = 4,
-        #[cfg(feature = "calendar")]
         Data(DataError) = 5,
         #[cfg(feature = "credential")]
         Credential(CredentialError) = 8,
@@ -482,7 +517,6 @@ mod error_tests {
             (Error::FileStore(FileStoreError::NotFound(message())), vec![4, 6], "m"),
             (Error::FileStore(FileStoreError::NoModificationAllowed(message())), vec![4, 7], "m"),
         ]);
-        #[cfg(feature = "calendar")]
         cases.extend([
             (Error::Data(DataError::Status(404)), vec![5, 1], "404"),
             (Error::Data(DataError::Parse(message())), vec![5, 2], "m"),

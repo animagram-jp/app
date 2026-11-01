@@ -21,6 +21,11 @@
         vertical-align:   middle;
     }
 
+    label > input[type="range"] {
+        flex-grow:   1;
+        inline-size: auto;
+    }
+
     input[type="range"]:not(:is(
         :disabled,
         [aria-disabled="true"]

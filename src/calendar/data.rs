@@ -1,6 +1,5 @@
 use alloc::{format, string::String, vec::Vec};
 use core::{
-    fmt::{self, Debug, Display, Formatter},
     iter::Iterator,
     option::Option::{self, None, Some},
     primitive::{bool, i64, str, u8, u16, u32, u64, u128},
@@ -10,10 +9,8 @@ use core::{
 use arbitrary_int::{traits::Integer, u4, u5, u13};
 
 use crate::{
-    WireError,
     data_struct::{DataStruct, ID_CREATED_AT, ID_IDENTITY, ID_MODIFIED_AT, encode_time},
     file_store::FileStore,
-    list::ListError,
     object::Predicate,
     parse,
     time::{Day, Length, Month, Stamp, Unit, Year, days_in_month},
@@ -25,41 +22,7 @@ pub const SCHEMA_SIZE: u32 = 12;
 const FIELD_KIND: u32 = 4;
 const CREATED_IN_MS: u64 = 0;
 
-#[derive(Debug)]
-pub enum DataError {
-    Status(u16),
-    Parse(String),
-    Format(String),
-}
-
-impl From<ListError> for DataError {
-    fn from(error: ListError) -> Self {
-        DataError::Format(format!("record layout: {error:?}"))
-    }
-}
-
-impl Display for DataError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self)
-    }
-}
-
-impl WireError for DataError {
-    fn identifiers(&self, path: &mut Vec<u16>) {
-        match self {
-            DataError::Status(_) => path.push(1),
-            DataError::Parse(_) => path.push(2),
-            DataError::Format(_) => path.push(3),
-        }
-    }
-
-    fn detail(&self) -> String {
-        match self {
-            DataError::Status(status) => format!("{status}"),
-            DataError::Parse(message) | DataError::Format(message) => message.clone(),
-        }
-    }
-}
+pub use crate::DataError;
 
 // --- entry ---
 

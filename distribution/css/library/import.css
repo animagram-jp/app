@@ -1,0 +1,49 @@
+/*
+ * SPDX-FileCopyrightText: 2026 Andyou <andyou@animagram.jp>
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+@layer
+    css.reset,
+    css.base,
+    css.data_style,
+    css.data_size,
+    css.data_sign,
+    css.data_group,
+
+    css.input,
+    css.button,
+    css.checkbox,
+    css.toggle, /* dependency: input */
+    css.radio,
+    css.heading,
+    css.list,
+    css.search, /* dependency: input, group */
+    css.table,
+    css.slider,
+    css.step,
+    css.popup, /* dependency: radio */
+    css.error,
+    css.toast;
+
+@import url("reset.css");
+@import url("base.css");
+@import url("data_style.css");
+@import url("data_size.css");
+@import url("data_sign.css");
+@import url("data_group.css");
+
+@import url("input.css");
+@import url("button.css");
+@import url("checkbox.css");
+@import url("toggle.css");
+@import url("radio.css");
+@import url("heading.css");
+@import url("list.css");
+@import url("search.css");
+@import url("table.css");
+@import url("slider.css");
+@import url("step.css");
+@import url("popup.css");
+@import url("error.css");
+@import url("toast.css");

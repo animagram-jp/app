@@ -3,29 +3,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-@layer
-    css.reset,
-    css.base,
-    css.data_style,
-    css.data_size,
-    css.data_sign,
-    css.data_group,
-    
-    css.input,
-    css.button,
-    css.checkbox,
-    css.toggle, /* dependency: input */
-    css.radio,
-    css.heading,
-    css.list,
-    css.search, /* dependency: input, group */
-    css.table,
-    css.slider,
-    css.step,
-    css.popup, /* dependency: radio */
-    css.error,
-    css.toast;
-
 @layer css.base {
 
     /* --- color properties --- */

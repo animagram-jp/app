@@ -128,7 +128,7 @@ sh reference/build.sh
 | host.rs | ホストとの境界。Command, Eventのフレーム形式(operation番号 / event種別)、DOM語彙(dom::Id、Attribute、StyleProperty など)。 |
 | list.rs | 可変長論理バイト列の宣言と、固定長要素列操作Listと可変長(バイト倍数)要素列操作VariabeList。バイト列読み取り関数new_from_bytesとget_from_bytesも含む。 |
 | field.rs | ビットフィールド(position, mask)の汎用get/set。timestampやobjectのビット配置の定義に使う。 |
-| file_store.rs | [トランザクションストア](./reference/FileStore.md)。`FileStore` trait(open / new、ファイル操作のプリミティブ、save / discard / compact などのデフォルト実装)と、OPFS実装`OpfsStore`(feature `file_store`)、メモリ実装`MemoryStore`。 |
+| file_store.rs | [トランザクションストア](./reference/FileStore.md)。`FileStore` trait(new、ファイル操作のプリミティブ、save / discard / compact などのデフォルト実装)、非同期に開く`Mount` trait(open)と、OPFS実装`OpfsStore`(feature `file_store`)、`std::fs`実装`FsStore`(unix。`Mount`は持たず同期の`open`を固有メソッドで提供)、メモリ実装`MemoryStore`。 |
 | time.rs | タイムゾーンとセンチ秒、カレンダー加減算に対応した、u64 timestampモジュール。 |
 | data_struct.rs | データモデル固有のフィールド数(schema_size)固定Listと可変部VariableListによるデータインスタンス操作モジュール。フィールド1にid(u32), 2にcreated_at(timestamp), 3にmodified_at(timestamp)を確定し、4~を開放。 |
 | object.rs | オブジェクト定義の共通部。`SubjectTrait`(schema_size, ids, 表示)、`Predicate`(ids / parse / encode / read / write)。 |

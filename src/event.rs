@@ -80,6 +80,7 @@ pub trait Handler: Sized {
         rem_in_px: f64,
         now_in_ms: u64,
         timezone_offset_minutes: i32,
+        data_url: String,
     ) -> impl Future<Output = Self>;
     fn initial_draw(&mut self) -> (Vec<Event>, Vec<Command>);
     fn close(&self) -> Vec<Command>;
@@ -141,11 +142,11 @@ pub mod store {
     use crate::{
         Error,
         event::{Event, Opened},
-        file_store::{FileStore, FileStoreError, StoreId},
+        file_store::{FileStore, FileStoreError, Mount, StoreId},
         host::Command,
     };
 
-    pub async fn open<S: FileStore>(id: StoreId) -> Result<S, FileStoreError> {
+    pub async fn open<S: Mount>(id: StoreId) -> Result<S, FileStoreError> {
         S::open(id, true).await.and_then(S::new)
     }
 

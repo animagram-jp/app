@@ -90,7 +90,11 @@ impl DataStruct {
     }
 
     pub fn delete(&mut self, schema_id: u32) -> Result<(), ListError> {
-        let variable_id = *self.index.get(&schema_id)?;
+        let variable_id = match self.index.get(&schema_id) {
+            Ok(variable_id) => *variable_id,
+            Err(ListError::OutOfBounds) => return Err(ListError::NotFound),
+            Err(error) => return Err(error),
+        };
         self.index.delete(&schema_id)?;
         self.values.delete(&variable_id)
     }

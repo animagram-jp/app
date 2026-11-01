@@ -49,7 +49,7 @@ talc          = { version = "5.1", default-features = false }
 
 [features]
 default = ["coc7th", "file_store", "vault"]
-coc7th     = ["dep:rand"]
+coc7th     = ["dep:rand", "dep:serde_json"]
 credential = ["dep:hmac", "dep:sha2", "dep:hkdf"]
 file_store = ["dep:web-sys"]
 calendar = ["file_store", "dep:serde_json", "dep:rectgrid"]

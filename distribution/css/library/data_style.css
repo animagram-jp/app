@@ -159,6 +159,7 @@
     :where(
         [data-surround="transparent"],
         :where([role="menu"], [role="listbox"]) > *,
+        :where(dl, dl > div) > :where(dt, dd),
         [popovertarget]:not([data-surround])
     ) {
         background-color: transparent;

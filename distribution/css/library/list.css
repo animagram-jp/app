@@ -9,12 +9,17 @@
         <dt></dt>
         <dd></dd>
         <dd></dd></dl>
-
-    <ul>
-        <li></li></ul>
+    <dl>
+        <div>
+            <dt></dt>
+            <dd></dd>
+            <dd></dd></div></dl>
 
     <ol>
         <li></li></ol>
+
+    <ul>
+        <li></li></ul>
  */
 
 @layer css.list {
@@ -22,32 +27,33 @@
     /* === description list (dl) === */
 
     :where(dl) {
-        column-gap:            0.5rem;
         display:               grid;
         grid-template-columns: auto 1fr;
-        row-gap:               0.5rem;
     }
 
-    :where(dl) > dt {
+    :where(dl) > div {
+        display:               grid;
+        grid-column:           1 / -1;
+        grid-template-columns: subgrid;
+    }
+
+    :where(dl, dl > div) > dt {
         grid-column: 1;
     }
 
-    :where(dl) > dd {
+    :where(dl, dl > div) > dd {
         grid-column: 2;
     }
 
-    /* === marker list (ul, ol) === */
+    /* === marker list (ol, ul) === */
 
-    :where(ul, ol) {
-        padding-inline-start: 2rem;
-    }
-    :where(ul) {
-        list-style-type: disc;
+    :where(ol, ul) {
+        padding-inline-start: calc(var(--font-size) * 2);
     }
     :where(ol) {
         list-style-type: decimal;
     }
-    :where(ul, ol) :where(ul, ol) {
-        padding-inline-start: 2rem;
+    :where(ul) {
+        list-style-type: disc;
     }
 }

@@ -27,8 +27,6 @@ const FIELDS: [EditField; 8] = [
 const RELOAD_BUTTON: u32 = 1;
 const SAVE_BUTTON: u32 = 2;
 pub const STEP_TODAY: u32 = 3;
-const LANGUAGE_BUTTON: u32 = 4;
-const LANGUAGE_SPAN: u32 = 2;
 const LANGUAGE_LIST: u32 = 3;
 const DELETE_BUTTON: u32 = 2;
 
@@ -75,7 +73,6 @@ pub enum Target {
     Zoom,
     Reload,
     Save,
-    Language,
     LanguageOption(Language),
     TimeAxis,
     AxisLabel(u32, u32),
@@ -144,10 +141,6 @@ impl Target {
             Self::Zoom => join(header(), &[(Tag::Input, None)]),
             Self::Reload => join(header(), &[(Tag::Button, Some(RELOAD_BUTTON))]),
             Self::Save => join(header(), &[(Tag::Button, Some(SAVE_BUTTON))]),
-            Self::Language => join(
-                header(),
-                &[(Tag::Button, Some(LANGUAGE_BUTTON)), (Tag::Span, Some(LANGUAGE_SPAN))],
-            ),
             Self::LanguageOption(l) => {
                 join(header(), &[(Tag::Div, Some(LANGUAGE_LIST)), (Tag::Button, Some(l.number()))])
             }
@@ -277,11 +270,6 @@ impl Target {
                 }
                 _ => return None,
             },
-            [
-                (Tag::Header, None),
-                (Tag::Button, Some(LANGUAGE_BUTTON)),
-                (Tag::Span, Some(LANGUAGE_SPAN)),
-            ] => Self::Language,
             [(Tag::Header, None), (Tag::Div, Some(LANGUAGE_LIST)), (Tag::Button, Some(n))] => {
                 Self::LanguageOption(*Language::list().iter().find(|l| l.number() == *n)?)
             }
@@ -306,7 +294,6 @@ mod tests {
             Target::Zoom,
             Target::Reload,
             Target::Save,
-            Target::Language,
             Target::LanguageOption(Language::En(En::Gb)),
             Target::LanguageOption(Language::Ja),
             Target::Surface,

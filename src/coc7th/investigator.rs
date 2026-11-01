@@ -16,12 +16,14 @@ use arbitrary_int::{i10, traits::Integer, u7, u9};
 
 use crate::{
     Input, Language, Output, bit,
-    data_struct::DataStruct,
+    data_struct::{DataStruct, ID_CREATED_AT, ID_IDENTITY, ID_MODIFIED_AT},
+    host::dom::{Id, Tag},
     object::{Predicate, SubjectTrait},
     parse, take,
 };
 
 pub const SCHEMA_SIZE: u32 = 256;
+pub const CUSTOM_ID_BASE: u32 = 200;
 
 pub type Dice = (i8, u8, i8); // (count, sides, modifier)
 
@@ -85,9 +87,8 @@ pub mod dice {
     }
 }
 
-// === Character::{Profile, Characteristic, Secondary Attribute, Skill, Posession, Backstory, Memo} ===
-
-pub enum Character {
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Investigator {
     Profile,
     Characteristic,
     SecondaryAttribute,
@@ -97,16 +98,16 @@ pub enum Character {
     Memo,
 }
 
-impl Character {
+impl Investigator {
     pub const fn base_id(&self) -> u32 {
         match self {
             Self::Profile => 10,
             Self::Characteristic => 20,
             Self::SecondaryAttribute => 30,
             Self::Skill => 40,
-            Self::Possession => 90,
-            Self::Backstory => 100,
-            Self::Memo => 110,
+            Self::Possession => 150,
+            Self::Backstory => 160,
+            Self::Memo => 170,
         }
     }
 
@@ -129,7 +130,7 @@ impl Character {
         }
     }
 
-    pub fn list() -> &'static [Character] {
+    pub fn list() -> &'static [Investigator] {
         &[
             Self::Profile,
             Self::Characteristic,
@@ -142,9 +143,7 @@ impl Character {
     }
 }
 
-// === Profile::{Name, Birthppalce, Pronoun, Occupation, Residence, Age} ===
-
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Profile {
     Name,
     Birthplace,
@@ -158,7 +157,7 @@ impl SubjectTrait for Profile {
     const SCHEMA_SIZE: u32 = SCHEMA_SIZE;
 
     fn ids(&self) -> &'static [u32] {
-        const BASE: u32 = Character::Profile.base_id();
+        const BASE: u32 = Investigator::Profile.base_id();
         match self {
             Self::Name => &[BASE, BASE + 1],
             Self::Birthplace => &[BASE + 2],
@@ -487,8 +486,6 @@ impl Predicate<1> for Age {
     }
 }
 
-// === Characteristics (Strength, Constitution, Size, Dexterity, Appearance, Intelligence, Power, Education) ===
-
 #[derive(Clone, Copy)]
 pub enum Characteristic {
     // Characteristic {initial: u16, change: i16, modifier: i16} // p.28
@@ -517,11 +514,11 @@ impl Characteristic {
     }
 
     pub const fn id(&self) -> u32 {
-        Character::Characteristic.base_id() + *self as u32
+        Investigator::Characteristic.base_id() + *self as u32
     }
 
     pub fn from_id(id: u8) -> Option<Self> {
-        let offset = id as u32 - Character::Characteristic.base_id();
+        let offset = id as u32 - Investigator::Characteristic.base_id();
         match offset {
             1 => Some(Self::Strength),
             2 => Some(Self::Constitution),
@@ -535,8 +532,8 @@ impl Characteristic {
         }
     }
 
-    pub fn read(&self, character: &DataStruct) -> (u16, i16, i16) {
-        character
+    pub fn read(&self, investigator: &DataStruct) -> (u16, i16, i16) {
+        investigator
             .get(self.id())
             .ok()
             .map(|b| {
@@ -562,24 +559,24 @@ impl Characteristic {
 
     pub fn write<'a>(
         &self,
-        character: &'a mut DataStruct,
+        investigator: &'a mut DataStruct,
         value: (u16, i16, i16),
     ) -> &'a mut DataStruct {
         let mut b = Vec::with_capacity(6);
         b.extend_from_slice(&value.0.to_le_bytes());
         b.extend_from_slice(&value.1.to_le_bytes());
         b.extend_from_slice(&value.2.to_le_bytes());
-        let _ = character.set(self.id(), &b, None);
-        character
+        let _ = investigator.set(self.id(), &b, None);
+        investigator
     }
 
-    pub fn sum(&self, character: &DataStruct) -> i32 {
-        let (initial, change, modifier) = self.read(character);
+    pub fn sum(&self, investigator: &DataStruct) -> i32 {
+        let (initial, change, modifier) = self.read(investigator);
         (initial as i32 + change as i32 + modifier as i32).max(1)
     }
 
-    pub fn target(&self, character: &DataStruct) -> (i32, i32, i32) {
-        let sum = self.sum(character);
+    pub fn target(&self, investigator: &DataStruct) -> (i32, i32, i32) {
+        let sum = self.sum(investigator);
         (sum, (sum as f64 * 0.5) as i32, (sum as f64 * 0.2) as i32)
     }
 
@@ -608,7 +605,7 @@ impl Characteristic {
 
 // === Secondary Attributes ===
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum SecondaryAttribute {
     HitPoints = 1,         // CON, SIZ -> u8
     MagicPoints,           // POW -> u8
@@ -623,7 +620,7 @@ pub enum SecondaryAttribute {
 
 impl SecondaryAttribute {
     pub const fn base_id(&self) -> u32 {
-        Character::SecondaryAttribute.base_id() + *self as u32
+        Investigator::SecondaryAttribute.base_id() + *self as u32
     }
 
     pub fn display(&self, language: Language) -> &'static str {
@@ -655,18 +652,18 @@ impl HitPoints {
         SecondaryAttribute::HitPoints.base_id()
     }
 
-    pub fn read(character: &DataStruct) -> u8 {
-        character.get(Self::id()).ok().and_then(|b| b.first().copied()).unwrap_or(0)
+    pub fn read(investigator: &DataStruct) -> u8 {
+        investigator.get(Self::id()).ok().and_then(|b| b.first().copied()).unwrap_or(0)
     }
 
-    pub fn write(character: &mut DataStruct, value: u8) -> &mut DataStruct {
-        let _ = character.set(Self::id(), &[value], None);
-        character
+    pub fn write(investigator: &mut DataStruct, value: u8) -> &mut DataStruct {
+        let _ = investigator.set(Self::id(), &[value], None);
+        investigator
     }
 
-    pub fn derive(character: &DataStruct) -> u8 {
-        let constitution = Characteristic::Constitution.sum(character);
-        let size = Characteristic::Size.sum(character);
+    pub fn derive(investigator: &DataStruct) -> u8 {
+        let constitution = Characteristic::Constitution.sum(investigator);
+        let size = Characteristic::Size.sum(investigator);
         ((constitution + size) / 10) as u8
     }
 }
@@ -678,34 +675,34 @@ impl MagicPoints {
         SecondaryAttribute::MagicPoints.base_id()
     }
 
-    pub fn read(character: &DataStruct) -> u8 {
-        character.get(Self::id()).ok().and_then(|b| b.first().copied()).unwrap_or(0)
+    pub fn read(investigator: &DataStruct) -> u8 {
+        investigator.get(Self::id()).ok().and_then(|b| b.first().copied()).unwrap_or(0)
     }
 
-    pub fn write(character: &mut DataStruct, value: u8) -> &mut DataStruct {
-        let _ = character.set(Self::id(), &[value], None);
-        character
+    pub fn write(investigator: &mut DataStruct, value: u8) -> &mut DataStruct {
+        let _ = investigator.set(Self::id(), &[value], None);
+        investigator
     }
 
-    pub fn derive(character: &DataStruct) -> u8 {
-        (Characteristic::Power.sum(character) / 5) as u8
+    pub fn derive(investigator: &DataStruct) -> u8 {
+        (Characteristic::Power.sum(investigator) / 5) as u8
     }
 }
 
 pub struct Luck; // Luck: u8 | -> u8
 
 impl Luck {
-    pub fn read(character: &DataStruct) -> u8 {
-        character
+    pub fn read(investigator: &DataStruct) -> u8 {
+        investigator
             .get(SecondaryAttribute::Luck.base_id())
             .ok()
             .and_then(|b| b.first().copied())
             .unwrap_or(0)
     }
 
-    pub fn write(character: &mut DataStruct, value: u8) -> &mut DataStruct {
-        let _ = character.set(SecondaryAttribute::Luck.base_id(), &[value], None);
-        character
+    pub fn write(investigator: &mut DataStruct, value: u8) -> &mut DataStruct {
+        let _ = investigator.set(SecondaryAttribute::Luck.base_id(), &[value], None);
+        investigator
     }
 
     pub fn roll() -> u8 {
@@ -716,29 +713,29 @@ impl Luck {
 pub struct Sanity; // Sanity: u8 | POW -> u8
 
 impl Sanity {
-    pub fn read(character: &DataStruct) -> u8 {
-        character
+    pub fn read(investigator: &DataStruct) -> u8 {
+        investigator
             .get(SecondaryAttribute::Sanity.base_id())
             .ok()
             .and_then(|b| b.first().copied())
             .unwrap_or(0)
     }
 
-    pub fn write(character: &mut DataStruct, value: u8) -> &mut DataStruct {
-        let _ = character.set(SecondaryAttribute::Sanity.base_id(), &[value], None);
-        character
+    pub fn write(investigator: &mut DataStruct, value: u8) -> &mut DataStruct {
+        let _ = investigator.set(SecondaryAttribute::Sanity.base_id(), &[value], None);
+        investigator
     }
 
-    pub fn derive(character: &DataStruct) -> u8 {
-        Characteristic::Power.read(character).0 as u8
+    pub fn derive(investigator: &DataStruct) -> u8 {
+        Characteristic::Power.read(investigator).0 as u8
     }
 }
 
 pub struct Build; // Build: i8 | STR, SIZ -> i8
 
 impl Build {
-    pub fn read(character: &DataStruct) -> i8 {
-        character
+    pub fn read(investigator: &DataStruct) -> i8 {
+        investigator
             .get(SecondaryAttribute::Build.base_id())
             .ok()
             .and_then(|b| b.first().copied())
@@ -746,14 +743,14 @@ impl Build {
             .unwrap_or(0)
     }
 
-    pub fn write(character: &mut DataStruct, value: i8) -> &mut DataStruct {
-        let _ = character.set(SecondaryAttribute::Build.base_id(), &[value as u8], None);
-        character
+    pub fn write(investigator: &mut DataStruct, value: i8) -> &mut DataStruct {
+        let _ = investigator.set(SecondaryAttribute::Build.base_id(), &[value as u8], None);
+        investigator
     }
 
-    pub fn derive(character: &DataStruct) -> i8 {
-        let strength = Characteristic::Strength.sum(character);
-        let size = Characteristic::Size.sum(character);
+    pub fn derive(investigator: &DataStruct) -> i8 {
+        let strength = Characteristic::Strength.sum(investigator);
+        let size = Characteristic::Size.sum(investigator);
         match strength + size {
             2..=64 => -2,
             65..=84 => -1,
@@ -772,16 +769,16 @@ impl Build {
 pub struct DamageBonus; // DamageBonus: Dice | Build -> Dice
 
 impl DamageBonus {
-    pub fn read(character: &DataStruct) -> Dice {
-        Self::derive(character)
+    pub fn read(investigator: &DataStruct) -> Dice {
+        Self::derive(investigator)
     }
 
-    pub fn display(character: &DataStruct) -> String {
-        dice::display(&[Self::read(character)])
+    pub fn display(investigator: &DataStruct) -> String {
+        dice::display(&[Self::read(investigator)])
     }
 
-    pub fn derive(character: &DataStruct) -> Dice {
-        match Build::read(character) {
+    pub fn derive(investigator: &DataStruct) -> Dice {
+        match Build::read(investigator) {
             i8::MIN..=-2 => (0, 0, -2),
             -1 => (0, 0, -1),
             0 => (0, 0, 0),
@@ -799,23 +796,23 @@ impl DamageBonus {
 pub struct MoveRate; // MoveRate: u8 | STR, DEX, SIZ, Age -> u8
 
 impl MoveRate {
-    pub fn read(character: &DataStruct) -> u8 {
-        character
+    pub fn read(investigator: &DataStruct) -> u8 {
+        investigator
             .get(SecondaryAttribute::MoveRate.base_id())
             .ok()
             .and_then(|b| b.first().copied())
             .unwrap_or(0)
     }
 
-    pub fn write(character: &mut DataStruct, value: u8) -> &mut DataStruct {
-        let _ = character.set(SecondaryAttribute::MoveRate.base_id(), &[value], None);
-        character
+    pub fn write(investigator: &mut DataStruct, value: u8) -> &mut DataStruct {
+        let _ = investigator.set(SecondaryAttribute::MoveRate.base_id(), &[value], None);
+        investigator
     }
 
-    pub fn derive(character: &DataStruct) -> u8 {
-        let str = Characteristic::Strength.sum(character);
-        let dex = Characteristic::Dexterity.sum(character);
-        let siz = Characteristic::Size.sum(character);
+    pub fn derive(investigator: &DataStruct) -> u8 {
+        let str = Characteristic::Strength.sum(investigator);
+        let dex = Characteristic::Dexterity.sum(investigator);
+        let siz = Characteristic::Size.sum(investigator);
         let base: i32 = if str > siz && dex > siz {
             9
         } else if str < siz && dex < siz {
@@ -823,7 +820,7 @@ impl MoveRate {
         } else {
             8
         };
-        let age_penalty: i32 = match Age::read(character) {
+        let age_penalty: i32 = match Age::read(investigator) {
             40..=49 => 1,
             50..=59 => 2,
             60..=69 => 3,
@@ -838,30 +835,30 @@ impl MoveRate {
 pub struct OccupationSkillPoints; // OccupationSkillPoints: (Characteristic, Characteristic) | (Characteristic, Characteristic), Profile -> (u16, u16)
 
 impl OccupationSkillPoints {
-    pub fn read(character: &DataStruct) -> Option<(Characteristic, Characteristic)> {
-        let b = character.get(SecondaryAttribute::OccupationSkillPoints.base_id()).ok()?;
+    pub fn read(investigator: &DataStruct) -> Option<(Characteristic, Characteristic)> {
+        let b = investigator.get(SecondaryAttribute::OccupationSkillPoints.base_id()).ok()?;
         let c1 = Characteristic::from_id(*b.first()?)?;
         let c2 = Characteristic::from_id(*b.get(1)?)?;
         Some((c1, c2))
     }
 
     pub fn write(
-        character: &mut DataStruct,
+        investigator: &mut DataStruct,
         value: (Characteristic, Characteristic),
     ) -> &mut DataStruct {
-        let _ = character.set(
+        let _ = investigator.set(
             SecondaryAttribute::OccupationSkillPoints.base_id(),
             &[value.0.id() as u8, value.1.id() as u8],
             None,
         );
-        character
+        investigator
     }
 
     pub fn display(
-        characteristic_tuple: Option<(Characteristic, Characteristic)>,
+        investigatoristic_tuple: Option<(Characteristic, Characteristic)>,
         language: Language,
     ) -> String {
-        let Some((c1, c2)) = characteristic_tuple else {
+        let Some((c1, c2)) = investigatoristic_tuple else {
             return String::new();
         };
         if c1.id() == c2.id() {
@@ -871,13 +868,13 @@ impl OccupationSkillPoints {
         }
     }
 
-    pub fn derive(character: &DataStruct) -> (u16, u16) {
-        let Some((c1, c2)) = Self::read(character) else {
+    pub fn derive(investigator: &DataStruct) -> (u16, u16) {
+        let Some((c1, c2)) = Self::read(investigator) else {
             return (0, 0);
         };
         let used = 0u16;
-        let (c1_initial, _, c1_modifier) = c1.read(character);
-        let (c2_initial, _, c2_modifier) = c2.read(character);
+        let (c1_initial, _, c1_modifier) = c1.read(investigator);
+        let (c2_initial, _, c2_modifier) = c2.read(investigator);
         let total =
             (c1_initial as i32 + c1_modifier as i32 + c2_initial as i32 + c2_modifier as i32) * 2;
         (used, total.max(0) as u16)
@@ -887,9 +884,9 @@ impl OccupationSkillPoints {
 pub struct InterestSkillPoints; // InterestSkillPoints: u16 | INT -> (u16, u16)
 
 impl InterestSkillPoints {
-    pub fn derive(character: &DataStruct) -> (u16, u16) {
+    pub fn derive(investigator: &DataStruct) -> (u16, u16) {
         let used = 0u16;
-        let (initial, _, modifier) = Characteristic::Intelligence.read(character);
+        let (initial, _, modifier) = Characteristic::Intelligence.read(investigator);
         let total = ((initial as i32 + modifier as i32) * 2).max(0) as u16;
         (used, total)
     }
@@ -897,7 +894,7 @@ impl InterestSkillPoints {
 
 // === Skill, ArtAndCraft, Fighting, Firearms, LanguageOther, Survival p.54 ===
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub enum Skill {
     Accounting,
     Anthropology,
@@ -1002,7 +999,7 @@ impl Skill {
     }
 
     pub const fn base_id(&self) -> u32 {
-        const BASE: u32 = Character::Skill.base_id();
+        const BASE: u32 = Investigator::Skill.base_id();
         match self {
             Self::Accounting => BASE + 1, // 1 slot (minimum)
             Self::Anthropology => BASE + 2,
@@ -1279,26 +1276,43 @@ impl From<SkillValueWithPercent> for (u9, u9, i10, i10, u7) {
     }
 }
 
-fn read_value<T: for<'a> Input<'a> + bit::Zero>(character: &DataStruct, id: u32) -> T {
-    character.get(id).ok().and_then(parse::<T>).unwrap_or(T::ZERO)
+fn read_value<T: for<'a> Input<'a> + bit::Zero>(investigator: &DataStruct, id: u32) -> T {
+    investigator.get(id).ok().and_then(parse::<T>).unwrap_or(T::ZERO)
 }
 
-fn write_value<T: Output>(character: &mut DataStruct, id: u32, value: T) {
+fn write_value<T: Output>(investigator: &mut DataStruct, id: u32, value: T) {
     let mut bytes = Vec::new();
     value.encode(&mut bytes);
-    let _ = character.set(id, &bytes, None);
+    let _ = investigator.set(id, &bytes, None);
 }
 
-fn read_text(character: &DataStruct, id: u32) -> String {
-    character.get(id).ok().map(|b| String::from_utf8_lossy(b).into_owned()).unwrap_or_default()
+pub fn write_skill(
+    investigator: &mut DataStruct,
+    id: u32,
+    occupation_points: u16,
+    interest_points: u16,
+    change: i16,
+    modifier: i16,
+) {
+    let value = SkillValue::from((
+        u9::masked_new(occupation_points),
+        u9::masked_new(interest_points),
+        i10::masked_new(change),
+        i10::masked_new(modifier),
+    ));
+    write_value(investigator, id, value);
 }
 
-fn read_ids(character: &DataStruct, list_id: u32, index: usize) -> [u32; 2] {
-    character.get_indirect::<1, 2>(list_id, [index])[0].unwrap_or([0, 0])
+fn read_text(investigator: &DataStruct, id: u32) -> String {
+    investigator.get(id).ok().map(|b| String::from_utf8_lossy(b).into_owned()).unwrap_or_default()
 }
 
-fn write_ids(character: &mut DataStruct, list_id: u32, index: usize, ids: [u32; 2]) {
-    let _ = character.set_indirect(list_id, [(index, ids)]);
+fn read_ids(investigator: &DataStruct, list_id: u32, index: usize) -> [u32; 2] {
+    investigator.get_indirect::<1, 2>(list_id, [index])[0].unwrap_or([0, 0])
+}
+
+fn write_ids(investigator: &mut DataStruct, list_id: u32, index: usize, ids: [u32; 2]) {
+    let _ = investigator.set_indirect(list_id, [(index, ids)]);
 }
 
 pub trait SkillTrait<const S: Skill> {
@@ -1307,24 +1321,24 @@ pub trait SkillTrait<const S: Skill> {
     const BASE_PERCENT: u16 = S.base_percent();
 
     // -> occupation_points, interest_points, change, modifier
-    fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
-        read_value::<SkillValue>(character, Self::BASE_ID).into()
+    fn read(&self, investigator: &DataStruct) -> (u9, u9, i10, i10) {
+        read_value::<SkillValue>(investigator, Self::BASE_ID).into()
     }
 
     fn write<'a>(
         &self,
-        character: &'a mut DataStruct,
+        investigator: &'a mut DataStruct,
         occupation_points: u9,
         interest_points: u9,
         change: i10,
         modifier: i10,
     ) -> &'a mut DataStruct {
         write_value(
-            character,
+            investigator,
             Self::BASE_ID,
             SkillValue::from((occupation_points, interest_points, change, modifier)),
         );
-        character
+        investigator
     }
 
     // -> skill_name, specialization_name
@@ -1433,16 +1447,16 @@ impl LanguageOwn {
     const BASE_ID: u32 = Skill::LanguageOwn.base_id();
 
     // -> occupation_points, interest_points, change, modifier, name
-    pub fn read(&self, character: &DataStruct) -> (u16, u16, i16, i16, String) {
+    pub fn read(&self, investigator: &DataStruct) -> (u16, u16, i16, i16, String) {
         let (occupation_points, interest_points, change, modifier) =
-            read_value::<SkillValue>(character, Self::BASE_ID).into();
-        let name = read_text(character, Self::BASE_ID + 1);
+            read_value::<SkillValue>(investigator, Self::BASE_ID).into();
+        let name = read_text(investigator, Self::BASE_ID + 1);
         (occupation_points.value(), interest_points.value(), change.value(), modifier.value(), name)
     }
 
     pub fn write<'a>(
         &self,
-        character: &'a mut DataStruct,
+        investigator: &'a mut DataStruct,
         occupation_points: u16,
         interest_points: u16,
         change: i16,
@@ -1455,9 +1469,9 @@ impl LanguageOwn {
             i10::masked_new(change),
             i10::masked_new(modifier),
         ));
-        write_value(character, Self::BASE_ID, value);
-        let _ = character.set(Self::BASE_ID + 1, name.as_bytes(), None);
-        character
+        write_value(investigator, Self::BASE_ID, value);
+        let _ = investigator.set(Self::BASE_ID + 1, name.as_bytes(), None);
+        investigator
     }
 
     pub fn as_editable_numeric(
@@ -1567,24 +1581,24 @@ pub trait ArtAndCraftTrait<const A: ArtAndCraft> {
     const BASE_PERCENT: u16 = Skill::ArtAndCraft.base_percent();
 
     // -> occupation_points, interest_points, change, modifier
-    fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
-        read_value::<SkillValue>(character, Self::BASE_ID).into()
+    fn read(&self, investigator: &DataStruct) -> (u9, u9, i10, i10) {
+        read_value::<SkillValue>(investigator, Self::BASE_ID).into()
     }
 
     fn write<'a>(
         &self,
-        character: &'a mut DataStruct,
+        investigator: &'a mut DataStruct,
         occupation_points: u9,
         interest_points: u9,
         change: i10,
         modifier: i10,
     ) -> &'a mut DataStruct {
         write_value(
-            character,
+            investigator,
             Self::BASE_ID,
             SkillValue::from((occupation_points, interest_points, change, modifier)),
         );
-        character
+        investigator
     }
 
     // -> skill_name, specialization_name
@@ -1643,17 +1657,17 @@ impl ArtAndCraftCustom {
     }
 
     // -> occupation_points, interest_points, change, modifier, name
-    pub fn read(&self, character: &DataStruct) -> (u16, u16, i16, i16, String) {
-        let [numeric_id, name_id] = read_ids(character, Self::LIST_ID, self.0 as usize);
+    pub fn read(&self, investigator: &DataStruct) -> (u16, u16, i16, i16, String) {
+        let [numeric_id, name_id] = read_ids(investigator, Self::LIST_ID, self.0 as usize);
         let (occupation_points, interest_points, change, modifier) =
-            read_value::<SkillValue>(character, numeric_id).into();
-        let name = read_text(character, name_id);
+            read_value::<SkillValue>(investigator, numeric_id).into();
+        let name = read_text(investigator, name_id);
         (occupation_points.value(), interest_points.value(), change.value(), modifier.value(), name)
     }
 
     pub fn write<'a>(
         &self,
-        character: &'a mut DataStruct,
+        investigator: &'a mut DataStruct,
         ids: [u32; 2],
         occupation_points: u16,
         interest_points: u16,
@@ -1667,10 +1681,10 @@ impl ArtAndCraftCustom {
             i10::masked_new(change),
             i10::masked_new(modifier),
         ));
-        write_ids(character, Self::LIST_ID, self.0 as usize, ids);
-        write_value(character, ids[0], value);
-        let _ = character.set(ids[1], name.as_bytes(), None);
-        character
+        write_ids(investigator, Self::LIST_ID, self.0 as usize, ids);
+        write_value(investigator, ids[0], value);
+        let _ = investigator.set(ids[1], name.as_bytes(), None);
+        investigator
     }
 
     pub fn as_editable_numeric(
@@ -1777,24 +1791,24 @@ pub trait FightingTrait<const F: Fighting> {
     const BASE_PERCENT: u16 = F.base_percent();
 
     // -> occupation_points, interest_points, change, modifier
-    fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
-        read_value::<SkillValue>(character, Self::BASE_ID).into()
+    fn read(&self, investigator: &DataStruct) -> (u9, u9, i10, i10) {
+        read_value::<SkillValue>(investigator, Self::BASE_ID).into()
     }
 
     fn write<'a>(
         &self,
-        character: &'a mut DataStruct,
+        investigator: &'a mut DataStruct,
         occupation_points: u9,
         interest_points: u9,
         change: i10,
         modifier: i10,
     ) -> &'a mut DataStruct {
         write_value(
-            character,
+            investigator,
             Self::BASE_ID,
             SkillValue::from((occupation_points, interest_points, change, modifier)),
         );
-        character
+        investigator
     }
 
     // -> skill_name, specialization_name
@@ -1852,11 +1866,11 @@ impl FightingCustom {
     }
 
     // -> occupation_points, interest_points, change, modifier, name
-    pub fn read(&self, character: &DataStruct) -> (u16, u16, u16, i16, i16, String) {
-        let [numeric_id, name_id] = read_ids(character, Self::LIST_ID, self.0 as usize);
+    pub fn read(&self, investigator: &DataStruct) -> (u16, u16, u16, i16, i16, String) {
+        let [numeric_id, name_id] = read_ids(investigator, Self::LIST_ID, self.0 as usize);
         let (occupation_points, interest_points, change, modifier, percent) =
-            read_value::<SkillValueWithPercent>(character, numeric_id).into();
-        let name = read_text(character, name_id);
+            read_value::<SkillValueWithPercent>(investigator, numeric_id).into();
+        let name = read_text(investigator, name_id);
         (
             u16::from(percent.value()),
             occupation_points.value(),
@@ -1869,7 +1883,7 @@ impl FightingCustom {
 
     pub fn write<'a>(
         &self,
-        character: &'a mut DataStruct,
+        investigator: &'a mut DataStruct,
         ids: [u32; 2],
         base_percent: u16,
         occupation_points: u16,
@@ -1885,10 +1899,10 @@ impl FightingCustom {
             i10::masked_new(modifier),
             u7::masked_new(base_percent),
         ));
-        write_ids(character, Self::LIST_ID, self.0 as usize, ids);
-        write_value(character, ids[0], value);
-        let _ = character.set(ids[1], name.as_bytes(), None);
-        character
+        write_ids(investigator, Self::LIST_ID, self.0 as usize, ids);
+        write_value(investigator, ids[0], value);
+        let _ = investigator.set(ids[1], name.as_bytes(), None);
+        investigator
     }
 
     // -> base_percent, occupation_points, interest_points, change, modifier, sum
@@ -1990,24 +2004,24 @@ pub trait FirearmsTrait<const F: Firearms> {
     const BASE_ID: u32 = F.id(Skill::Firearms.base_id());
     const BASE_PERCENT: u16 = F.base_percent();
 
-    fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
-        read_value::<SkillValue>(character, Self::BASE_ID).into()
+    fn read(&self, investigator: &DataStruct) -> (u9, u9, i10, i10) {
+        read_value::<SkillValue>(investigator, Self::BASE_ID).into()
     }
 
     fn write<'a>(
         &self,
-        character: &'a mut DataStruct,
+        investigator: &'a mut DataStruct,
         occupation_points: u9,
         interest_points: u9,
         change: i10,
         modifier: i10,
     ) -> &'a mut DataStruct {
         write_value(
-            character,
+            investigator,
             Self::BASE_ID,
             SkillValue::from((occupation_points, interest_points, change, modifier)),
         );
-        character
+        investigator
     }
 
     // -> skill_name, specialization_label
@@ -2063,11 +2077,11 @@ impl FirearmsCustom {
     }
 
     // -> occupation_points, interest_points, change, modifier, name
-    pub fn read(&self, character: &DataStruct) -> (u16, u16, u16, i16, i16, String) {
-        let [numeric_id, name_id] = read_ids(character, Self::LIST_ID, self.0 as usize);
+    pub fn read(&self, investigator: &DataStruct) -> (u16, u16, u16, i16, i16, String) {
+        let [numeric_id, name_id] = read_ids(investigator, Self::LIST_ID, self.0 as usize);
         let (occupation_points, interest_points, change, modifier, percent) =
-            read_value::<SkillValueWithPercent>(character, numeric_id).into();
-        let name = read_text(character, name_id);
+            read_value::<SkillValueWithPercent>(investigator, numeric_id).into();
+        let name = read_text(investigator, name_id);
         (
             u16::from(percent.value()),
             occupation_points.value(),
@@ -2080,7 +2094,7 @@ impl FirearmsCustom {
 
     pub fn write<'a>(
         &self,
-        character: &'a mut DataStruct,
+        investigator: &'a mut DataStruct,
         ids: [u32; 2],
         base_percent: u16,
         occupation_points: u16,
@@ -2096,10 +2110,10 @@ impl FirearmsCustom {
             i10::masked_new(modifier),
             u7::masked_new(base_percent),
         ));
-        write_ids(character, Self::LIST_ID, self.0 as usize, ids);
-        write_value(character, ids[0], value);
-        let _ = character.set(ids[1], name.as_bytes(), None);
-        character
+        write_ids(investigator, Self::LIST_ID, self.0 as usize, ids);
+        write_value(investigator, ids[0], value);
+        let _ = investigator.set(ids[1], name.as_bytes(), None);
+        investigator
     }
 
     // -> base_percent, occupation_points, interest_points, change, modifier, sum
@@ -2138,17 +2152,17 @@ impl LanguageOther {
     const BASE_PERCENT: u16 = 1;
 
     // -> occupation_points, interest_points, change, modifier, name
-    pub fn read(&self, character: &DataStruct) -> (u16, u16, i16, i16, String) {
-        let [numeric_id, name_id] = read_ids(character, Self::LIST_ID, self.0 as usize);
+    pub fn read(&self, investigator: &DataStruct) -> (u16, u16, i16, i16, String) {
+        let [numeric_id, name_id] = read_ids(investigator, Self::LIST_ID, self.0 as usize);
         let (occupation_points, interest_points, change, modifier) =
-            read_value::<SkillValue>(character, numeric_id).into();
-        let name = read_text(character, name_id);
+            read_value::<SkillValue>(investigator, numeric_id).into();
+        let name = read_text(investigator, name_id);
         (occupation_points.value(), interest_points.value(), change.value(), modifier.value(), name)
     }
 
     pub fn write<'a>(
         &self,
-        character: &'a mut DataStruct,
+        investigator: &'a mut DataStruct,
         ids: [u32; 2],
         occupation_points: u16,
         interest_points: u16,
@@ -2162,10 +2176,10 @@ impl LanguageOther {
             i10::masked_new(change),
             i10::masked_new(modifier),
         ));
-        write_ids(character, Self::LIST_ID, self.0 as usize, ids);
-        write_value(character, ids[0], value);
-        let _ = character.set(ids[1], name.as_bytes(), None);
-        character
+        write_ids(investigator, Self::LIST_ID, self.0 as usize, ids);
+        write_value(investigator, ids[0], value);
+        let _ = investigator.set(ids[1], name.as_bytes(), None);
+        investigator
     }
 
     pub fn as_editable_numeric(
@@ -2267,24 +2281,24 @@ pub trait PilotTrait<const P: Pilot> {
     const BASE_ID: u32 = P.id(Skill::Pilot.base_id());
     const BASE_PERCENT: u16 = 1;
 
-    fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
-        read_value::<SkillValue>(character, Self::BASE_ID).into()
+    fn read(&self, investigator: &DataStruct) -> (u9, u9, i10, i10) {
+        read_value::<SkillValue>(investigator, Self::BASE_ID).into()
     }
 
     fn write<'a>(
         &self,
-        character: &'a mut DataStruct,
+        investigator: &'a mut DataStruct,
         occupation_points: u9,
         interest_points: u9,
         change: i10,
         modifier: i10,
     ) -> &'a mut DataStruct {
         write_value(
-            character,
+            investigator,
             Self::BASE_ID,
             SkillValue::from((occupation_points, interest_points, change, modifier)),
         );
-        character
+        investigator
     }
 
     fn as_editable_string(&self, language: Language) -> (&'static str, &'static str) {
@@ -2351,16 +2365,16 @@ impl PilotCustom {
     }
 
     // -> occupation_points, interest_points, change, modifier, name
-    pub fn read(&self, character: &DataStruct) -> (u16, u16, i16, i16, String) {
+    pub fn read(&self, investigator: &DataStruct) -> (u16, u16, i16, i16, String) {
         let (occupation_points, interest_points, change, modifier) =
-            read_value::<SkillValue>(character, self.numeric_id()).into();
-        let name = read_text(character, self.name_id());
+            read_value::<SkillValue>(investigator, self.numeric_id()).into();
+        let name = read_text(investigator, self.name_id());
         (occupation_points.value(), interest_points.value(), change.value(), modifier.value(), name)
     }
 
     pub fn write<'a>(
         &self,
-        character: &'a mut DataStruct,
+        investigator: &'a mut DataStruct,
         occupation_points: u16,
         interest_points: u16,
         change: i16,
@@ -2373,9 +2387,9 @@ impl PilotCustom {
             i10::masked_new(change),
             i10::masked_new(modifier),
         ));
-        write_value(character, self.numeric_id(), value);
-        let _ = character.set(self.name_id(), name.as_bytes(), None);
-        character
+        write_value(investigator, self.numeric_id(), value);
+        let _ = investigator.set(self.name_id(), name.as_bytes(), None);
+        investigator
     }
 
     pub fn as_editable_numeric(
@@ -2497,24 +2511,24 @@ pub trait ScienceTrait<const S: Science> {
     const BASE_ID: u32 = S.id(Skill::Science.base_id());
     const BASE_PERCENT: u16 = 1;
 
-    fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
-        read_value::<SkillValue>(character, Self::BASE_ID).into()
+    fn read(&self, investigator: &DataStruct) -> (u9, u9, i10, i10) {
+        read_value::<SkillValue>(investigator, Self::BASE_ID).into()
     }
 
     fn write<'a>(
         &self,
-        character: &'a mut DataStruct,
+        investigator: &'a mut DataStruct,
         occupation_points: u9,
         interest_points: u9,
         change: i10,
         modifier: i10,
     ) -> &'a mut DataStruct {
         write_value(
-            character,
+            investigator,
             Self::BASE_ID,
             SkillValue::from((occupation_points, interest_points, change, modifier)),
         );
-        character
+        investigator
     }
 
     fn as_editable_string(&self, language: Language) -> (&'static str, Option<&'static str>) {
@@ -2587,16 +2601,16 @@ impl ScienceCustom {
     }
 
     // -> occupation_points, interest_points, change, modifier, name
-    pub fn read(&self, character: &DataStruct) -> (u16, u16, i16, i16, String) {
+    pub fn read(&self, investigator: &DataStruct) -> (u16, u16, i16, i16, String) {
         let (occupation_points, interest_points, change, modifier) =
-            read_value::<SkillValue>(character, self.numeric_id()).into();
-        let name = read_text(character, self.name_id());
+            read_value::<SkillValue>(investigator, self.numeric_id()).into();
+        let name = read_text(investigator, self.name_id());
         (occupation_points.value(), interest_points.value(), change.value(), modifier.value(), name)
     }
 
     pub fn write<'a>(
         &self,
-        character: &'a mut DataStruct,
+        investigator: &'a mut DataStruct,
         occupation_points: u16,
         interest_points: u16,
         change: i16,
@@ -2609,9 +2623,9 @@ impl ScienceCustom {
             i10::masked_new(change),
             i10::masked_new(modifier),
         ));
-        write_value(character, self.numeric_id(), value);
-        let _ = character.set(self.name_id(), name.as_bytes(), None);
-        character
+        write_value(investigator, self.numeric_id(), value);
+        let _ = investigator.set(self.name_id(), name.as_bytes(), None);
+        investigator
     }
 
     pub fn as_editable_numeric(
@@ -2683,24 +2697,24 @@ pub trait SurvivalTrait<const S: Survival> {
     const BASE_ID: u32 = S.id(Skill::Survival.base_id());
     const BASE_PERCENT: u16 = 10;
 
-    fn read(&self, character: &DataStruct) -> (u9, u9, i10, i10) {
-        read_value::<SkillValue>(character, Self::BASE_ID).into()
+    fn read(&self, investigator: &DataStruct) -> (u9, u9, i10, i10) {
+        read_value::<SkillValue>(investigator, Self::BASE_ID).into()
     }
 
     fn write<'a>(
         &self,
-        character: &'a mut DataStruct,
+        investigator: &'a mut DataStruct,
         occupation_points: u9,
         interest_points: u9,
         change: i10,
         modifier: i10,
     ) -> &'a mut DataStruct {
         write_value(
-            character,
+            investigator,
             Self::BASE_ID,
             SkillValue::from((occupation_points, interest_points, change, modifier)),
         );
-        character
+        investigator
     }
 
     fn as_editable_string(&self, language: Language) -> (&'static str, &'static str) {
@@ -2753,16 +2767,16 @@ impl SurvivalCustom {
     }
 
     // -> occupation_points, interest_points, change, modifier, name
-    pub fn read(&self, character: &DataStruct) -> (u16, u16, i16, i16, String) {
+    pub fn read(&self, investigator: &DataStruct) -> (u16, u16, i16, i16, String) {
         let (occupation_points, interest_points, change, modifier) =
-            read_value::<SkillValue>(character, self.numeric_id()).into();
-        let name = read_text(character, self.name_id());
+            read_value::<SkillValue>(investigator, self.numeric_id()).into();
+        let name = read_text(investigator, self.name_id());
         (occupation_points.value(), interest_points.value(), change.value(), modifier.value(), name)
     }
 
     pub fn write<'a>(
         &self,
-        character: &'a mut DataStruct,
+        investigator: &'a mut DataStruct,
         occupation_points: u16,
         interest_points: u16,
         change: i16,
@@ -2775,9 +2789,9 @@ impl SurvivalCustom {
             i10::masked_new(change),
             i10::masked_new(modifier),
         ));
-        write_value(character, self.numeric_id(), value);
-        let _ = character.set(self.name_id(), name.as_bytes(), None);
-        character
+        write_value(investigator, self.numeric_id(), value);
+        let _ = investigator.set(self.name_id(), name.as_bytes(), None);
+        investigator
     }
 
     pub fn as_editable_numeric(
@@ -2807,7 +2821,7 @@ impl SurvivalCustom {
 
 // === Possession p.44 ===
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Possession {
     Weapon = 1,
     Armor,
@@ -2817,7 +2831,7 @@ pub enum Possession {
 
 impl Possession {
     pub fn id(&self) -> u32 {
-        Character::Possession.base_id() + *self as u32
+        Investigator::Possession.base_id() + *self as u32
     }
 
     pub fn display(&self, language: Language) -> &'static str {
@@ -3263,6 +3277,7 @@ pub struct Wealth {
     pub assets:         String,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum WealthField {
     SpendingLevel,
     Cash,
@@ -3282,6 +3297,7 @@ impl WealthField {
     }
 }
 
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub enum Backstory {
     KeyConnection(Box<Backstory>),
     PersonalDescription,
@@ -3298,7 +3314,7 @@ pub enum Backstory {
 
 impl Backstory {
     pub fn id(&self) -> u32 {
-        Character::Backstory.base_id()
+        Investigator::Backstory.base_id()
             + match self {
                 Self::KeyConnection(_) => 0,
                 Self::PersonalDescription => 1,
@@ -3358,7 +3374,7 @@ impl Memo {
     }
 
     pub fn id(&self) -> u32 {
-        Character::Memo.base_id() + self.slot as u32
+        Investigator::Memo.base_id() + self.slot as u32
     }
 
     /// [title_len: u32 LE][title: utf-8][body: utf-8]
@@ -3394,6 +3410,538 @@ impl Memo {
     }
 }
 
+// === dom ===
+
+const MANAGEMENT_SECTION: u32 = 1;
+const SHEET_SECTION: u32 = 1;
+const WEAPON_ROWS: u32 = 4;
+const WEAPON_COLUMNS: u32 = 8;
+const ARMOR_ROWS: u32 = 2;
+const ARMOR_COLUMNS: u32 = 4;
+const EQUIPMENT_ROWS: u32 = 12;
+const EQUIPMENT_DETAILS: u32 = 3;
+const EQUIPMENT_LIST: u32 = 1;
+const WEALTH_LIST: u32 = 2;
+
+fn sheet(part: u32) -> Vec<(Tag, Option<u32>)> {
+    Vec::from([(Tag::Main, None), (Tag::Section, Some(SHEET_SECTION)), (Tag::Section, Some(part))])
+}
+
+fn join(mut path: Vec<(Tag, Option<u32>)>, tail: &[(Tag, Option<u32>)]) -> Id {
+    path.extend_from_slice(tail);
+    Id::new(&path)
+}
+
+fn dd(part: u32, id: u32, tail: &[(Tag, Option<u32>)]) -> Id {
+    let mut path = sheet(part);
+    path.extend([(Tag::Dl, None), (Tag::Dd, Some(id))]);
+    join(path, tail)
+}
+
+pub fn read_skill(investigator: &DataStruct, id: u32) -> (u16, u16, i16, i16) {
+    let (occupation_points, interest_points, change, modifier) =
+        read_value::<SkillValue>(investigator, id).into();
+    (occupation_points.value(), interest_points.value(), change.value(), modifier.value())
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Management {
+    Identity,
+    CreatedAt,
+    ModifiedAt,
+}
+
+impl Management {
+    pub const fn id(&self) -> u32 {
+        match self {
+            Self::Identity => ID_IDENTITY,
+            Self::CreatedAt => ID_CREATED_AT,
+            Self::ModifiedAt => ID_MODIFIED_AT,
+        }
+    }
+
+    pub fn from_id(id: u32) -> Option<Self> {
+        Self::list().iter().find(|m| m.id() == id).copied()
+    }
+
+    pub fn list() -> &'static [Self] {
+        &[Self::Identity, Self::CreatedAt, Self::ModifiedAt]
+    }
+
+    pub fn dom(&self) -> Id {
+        dd(MANAGEMENT_SECTION, self.id(), &[])
+    }
+}
+
+impl Investigator {
+    pub fn from_id(id: u32) -> Option<Self> {
+        Self::list().iter().find(|part| part.base_id() == id).copied()
+    }
+
+    pub fn dom(&self) -> Id {
+        Id::new(&sheet(self.base_id()))
+    }
+
+    pub fn heading(&self) -> Id {
+        join(sheet(self.base_id()), &[(Tag::H3, None)])
+    }
+
+    pub fn management() -> Id {
+        Id::new(&sheet(MANAGEMENT_SECTION))
+    }
+
+    pub fn management_heading() -> Id {
+        join(sheet(MANAGEMENT_SECTION), &[(Tag::H3, None)])
+    }
+}
+
+impl Profile {
+    pub fn id(&self) -> u32 {
+        self.ids()[0]
+    }
+
+    pub fn from_id(id: u32) -> Option<Self> {
+        Self::list().iter().find(|field| field.ids().contains(&id)).copied()
+    }
+
+    pub fn dom(&self) -> Vec<Id> {
+        const PART: u32 = Investigator::Profile.base_id();
+        let input = |id| dd(PART, id, &[(Tag::Input, None)]);
+        let ids = self.ids();
+        match self {
+            Self::Name => Vec::from([input(ids[0]), input(ids[1])]),
+            Self::Occupation => Vec::from([input(ids[0]), input(ids[2])]),
+            Self::Age => Vec::from([
+                input(ids[0]),
+                dd(PART, ids[0], &[(Tag::Button, Some(1))]),
+                dd(PART, ids[0], &[(Tag::Button, Some(2))]),
+            ]),
+            _ => Vec::from([input(ids[0])]),
+        }
+    }
+}
+
+pub struct CharacteristicCells {
+    pub initial:  Id,
+    pub change:   Id,
+    pub modifier: Id,
+    pub sum:      Id,
+}
+
+impl Characteristic {
+    pub fn dom(&self) -> CharacteristicCells {
+        let mut path = sheet(Investigator::Characteristic.base_id());
+        path.extend([(Tag::Table, None), (Tag::Tbody, None), (Tag::Tr, Some(self.id()))]);
+        let cell = |column, input: bool| {
+            let mut tail = Vec::from([(Tag::Td, Some(column))]);
+            if input {
+                tail.push((Tag::Input, None));
+            }
+            join(path.clone(), &tail)
+        };
+        CharacteristicCells {
+            initial:  cell(1, true),
+            change:   cell(2, true),
+            modifier: cell(3, true),
+            sum:      cell(4, false),
+        }
+    }
+}
+
+impl SecondaryAttribute {
+    pub fn from_id(id: u32) -> Option<Self> {
+        Self::list().iter().find(|attribute| attribute.base_id() == id).copied()
+    }
+
+    pub fn list() -> &'static [Self] {
+        &[
+            Self::HitPoints,
+            Self::MagicPoints,
+            Self::Luck,
+            Self::Sanity,
+            Self::Build,
+            Self::DamageBonus,
+            Self::MoveRate,
+            Self::OccupationSkillPoints,
+            Self::InterestSkillPoints,
+        ]
+    }
+
+    pub fn editable(&self) -> bool {
+        matches!(self, Self::Luck | Self::Sanity)
+    }
+
+    pub fn dom(&self) -> Id {
+        let tail: &[(Tag, Option<u32>)] = if self.editable() { &[(Tag::Input, None)] } else { &[] };
+        dd(Investigator::SecondaryAttribute.base_id(), self.base_id(), tail)
+    }
+}
+
+pub struct SkillCells {
+    pub name:           Id,
+    pub specialization: Id,
+    pub base:           Id,
+    pub occupation:     Id,
+    pub interest:       Id,
+    pub change:         Id,
+    pub modifier:       Id,
+    pub sum:            Id,
+}
+
+impl Skill {
+    pub fn free_row(&self) -> Option<u32> {
+        match self {
+            Self::ArtAndCraft => Some(ArtAndCraftCustom::list_id()),
+            Self::Fighting => Some(FightingCustom::list_id()),
+            Self::Firearms => Some(FirearmsCustom::list_id()),
+            Self::LanguageOther => Some(Self::LanguageOther.base_id() + 1),
+            Self::Pilot => Some(PilotCustom::list_id()),
+            Self::Science => Some(ScienceCustom::list_id()),
+            Self::Survival => Some(SurvivalCustom::list_id()),
+            _ => None,
+        }
+    }
+
+    pub fn rows(&self) -> Vec<u32> {
+        let mut rows = Vec::from([self.base_id()]);
+        rows.extend(self.free_row());
+        rows
+    }
+
+    pub fn from_row(row: u32) -> Option<(Self, bool)> {
+        Self::list().iter().find_map(|skill| {
+            if skill.base_id() == row {
+                Some((skill.clone(), false))
+            } else if skill.free_row() == Some(row) {
+                Some((skill.clone(), true))
+            } else {
+                None
+            }
+        })
+    }
+
+    fn row_path(row: u32) -> Vec<(Tag, Option<u32>)> {
+        let mut path = sheet(Investigator::Skill.base_id());
+        path.extend([(Tag::Table, None), (Tag::Tbody, None), (Tag::Tr, Some(row))]);
+        path
+    }
+
+    pub fn cells(row: u32) -> SkillCells {
+        let path = Self::row_path(row);
+        let listbox =
+            matches!(Self::from_row(row), Some((skill, false)) if skill.free_row().is_some());
+        let cell = |column, input: bool| {
+            let mut tail = Vec::from([(Tag::Td, Some(column))]);
+            if input {
+                tail.push((Tag::Input, None));
+            }
+            join(path.clone(), &tail)
+        };
+        let specialization = if listbox {
+            join(path.clone(), &[(Tag::Td, Some(1)), (Tag::Label, None), (Tag::Input, None)])
+        } else {
+            cell(1, true)
+        };
+        SkillCells {
+            name: join(path.clone(), &[(Tag::Th, None)]),
+            specialization,
+            base: cell(2, false),
+            occupation: cell(3, true),
+            interest: cell(4, true),
+            change: cell(5, true),
+            modifier: cell(6, true),
+            sum: cell(7, false),
+        }
+    }
+
+    pub fn option(row: u32, n: u32) -> Id {
+        join(Self::row_path(row), &[(Tag::Td, Some(1)), (Tag::Div, None), (Tag::Button, Some(n))])
+    }
+}
+
+impl Possession {
+    pub fn from_id(id: u32) -> Option<Self> {
+        Self::list().iter().find(|possession| possession.id() == id).copied()
+    }
+
+    pub fn list() -> &'static [Self] {
+        &[Self::Weapon, Self::Armor, Self::Equipment, Self::Wealth]
+    }
+
+    pub fn dom(&self) -> Id {
+        let tail: &[(Tag, Option<u32>)] = match self {
+            Self::Weapon => &[(Tag::Table, Some(1))],
+            Self::Armor => &[(Tag::Table, Some(2))],
+            Self::Equipment => &[(Tag::Dl, Some(EQUIPMENT_LIST))],
+            Self::Wealth => &[(Tag::Dl, Some(WEALTH_LIST))],
+        };
+        join(sheet(Investigator::Possession.base_id()), tail)
+    }
+
+    pub fn cells(&self) -> Vec<Id> {
+        let (rows, columns) = match self {
+            Self::Weapon => (WEAPON_ROWS, WEAPON_COLUMNS),
+            Self::Armor => (ARMOR_ROWS, ARMOR_COLUMNS),
+            Self::Equipment => {
+                let list = self.dom();
+                return (1..=EQUIPMENT_ROWS)
+                    .flat_map(|row| {
+                        let list = list.clone();
+                        let mut path: Vec<_> = list.0.iter().map(|s| (s.tag, s.n)).collect();
+                        path.push((Tag::Dt, Some(row)));
+                        let name = join(path, &[(Tag::Input, None)]);
+                        core::iter::once(name).chain((1..=EQUIPMENT_DETAILS).map(move |detail| {
+                            let mut path: Vec<_> = list.0.iter().map(|s| (s.tag, s.n)).collect();
+                            path.push((Tag::Dd, Some((row - 1) * EQUIPMENT_DETAILS + detail)));
+                            join(path, &[(Tag::Input, None)])
+                        }))
+                    })
+                    .collect();
+            }
+            Self::Wealth => return WealthField::list().iter().map(WealthField::dom).collect(),
+        };
+        let table = self.dom();
+        (1..=rows)
+            .flat_map(|row| {
+                let table = table.clone();
+                (1..=columns).map(move |column| {
+                    let mut path: Vec<_> = table.0.iter().map(|s| (s.tag, s.n)).collect();
+                    path.extend([
+                        (Tag::Tbody, None),
+                        (Tag::Tr, Some(row)),
+                        (Tag::Td, Some(column)),
+                        (Tag::Input, None),
+                    ]);
+                    Id::new(&path)
+                })
+            })
+            .collect()
+    }
+}
+
+impl WealthField {
+    pub const fn id(&self) -> u32 {
+        match self {
+            Self::SpendingLevel => 1,
+            Self::Cash => 2,
+            Self::Assets => 3,
+        }
+    }
+
+    pub fn from_id(id: u32) -> Option<Self> {
+        Self::list().iter().find(|field| field.id() == id).copied()
+    }
+
+    pub fn list() -> &'static [Self] {
+        &[Self::SpendingLevel, Self::Cash, Self::Assets]
+    }
+
+    pub fn dom(&self) -> Id {
+        let mut path = sheet(Investigator::Possession.base_id());
+        path.extend([(Tag::Dl, Some(WEALTH_LIST)), (Tag::Dd, Some(self.id()))]);
+        join(path, &[(Tag::Input, None)])
+    }
+}
+
+impl Backstory {
+    pub fn from_id(id: u32) -> Option<Self> {
+        Self::list().into_iter().find(|entry| entry.id() == id)
+    }
+
+    pub fn list() -> [Self; 10] {
+        [
+            Self::PersonalDescription,
+            Self::IdeologyAndBeliefs,
+            Self::SignificantPeople,
+            Self::MeaningfulLocation,
+            Self::TreasuredPossession,
+            Self::Trait,
+            Self::InjuresAndScars,
+            Self::PhobiasAndManias,
+            Self::ArcaneTomesAndSpells,
+            Self::EncountersWithStrangeEntities,
+        ]
+    }
+
+    pub fn dom(&self) -> Id {
+        const PART: u32 = Investigator::Backstory.base_id();
+        match self {
+            Self::KeyConnection(target) => {
+                let mut path = sheet(PART);
+                path.extend([(Tag::Dl, None), (Tag::Dt, Some(target.id())), (Tag::Input, None)]);
+                Id::new(&path)
+            }
+            entry => dd(PART, entry.id(), &[(Tag::Textarea, None)]),
+        }
+    }
+}
+
+impl Memo {
+    pub fn from_id(id: u32) -> Option<Self> {
+        let slot = id.checked_sub(Investigator::Memo.base_id())? as usize;
+        (slot < MAX_MEMO_SLOTS).then_some(Memo { slot })
+    }
+
+    pub fn dom(&self) -> [Id; 2] {
+        const PART: u32 = Investigator::Memo.base_id();
+        let mut title = sheet(PART);
+        title.extend([(Tag::Dl, None), (Tag::Dt, Some(self.id())), (Tag::Input, None)]);
+        [Id::new(&title), dd(PART, self.id(), &[(Tag::Textarea, None)])]
+    }
+}
+
+pub fn every_dom() -> Vec<Id> {
+    let mut ids = Vec::from([Investigator::management(), Investigator::management_heading()]);
+    ids.extend(Management::list().iter().map(Management::dom));
+    for part in Investigator::list() {
+        ids.push(part.dom());
+        ids.push(part.heading());
+    }
+    ids.extend(Profile::list().iter().flat_map(Profile::dom));
+    for characteristic in Characteristic::list() {
+        let cells = characteristic.dom();
+        ids.extend([cells.initial, cells.change, cells.modifier, cells.sum]);
+    }
+    ids.extend(SecondaryAttribute::list().iter().map(SecondaryAttribute::dom));
+    for skill in Skill::list() {
+        for row in skill.rows() {
+            let cells = Skill::cells(row);
+            ids.extend([
+                cells.name,
+                cells.specialization,
+                cells.base,
+                cells.occupation,
+                cells.interest,
+                cells.change,
+                cells.modifier,
+                cells.sum,
+            ]);
+        }
+    }
+    ids.extend(ArtAndCraft::list().iter().filter(|a| **a != ArtAndCraft::Custom).map(|a| {
+        Skill::option(Skill::ArtAndCraft.base_id(), a.base_id() - Skill::ArtAndCraft.base_id())
+    }));
+    ids.extend(
+        Fighting::list()
+            .iter()
+            .filter(|f| **f != Fighting::Custom)
+            .map(|f| Skill::option(Skill::Fighting.base_id(), f.id(0))),
+    );
+    ids.extend(
+        Firearms::list()
+            .iter()
+            .filter(|f| **f != Firearms::Custom)
+            .map(|f| Skill::option(Skill::Firearms.base_id(), f.id(0))),
+    );
+    ids.extend(
+        Pilot::list()
+            .iter()
+            .filter(|p| **p != Pilot::Custom)
+            .map(|p| Skill::option(Skill::Pilot.base_id(), p.id(0))),
+    );
+    ids.extend(
+        Science::list()
+            .iter()
+            .filter(|s| **s != Science::Custom)
+            .map(|s| Skill::option(Skill::Science.base_id(), s.id(0))),
+    );
+    ids.extend(
+        Survival::list()
+            .iter()
+            .filter(|s| **s != Survival::Custom)
+            .map(|s| Skill::option(Skill::Survival.base_id(), s.id(0))),
+    );
+    for possession in Possession::list() {
+        ids.push(possession.dom());
+        ids.extend(possession.cells());
+    }
+    for entry in Backstory::list() {
+        ids.push(Backstory::KeyConnection(Box::new(Backstory::from_id(entry.id()).unwrap())).dom());
+        ids.push(entry.dom());
+    }
+    ids.extend(Memo::list().iter().flat_map(Memo::dom));
+    ids
+}
+
+#[cfg(test)]
+mod dom_tests {
+    use alloc::{format, string::String, vec::Vec};
+    use std::fs;
+
+    use super::*;
+
+    fn html_id(id: &Id) -> String {
+        let mut parts = Vec::new();
+        for segment in &id.0 {
+            let name = format!("{:?}", segment.tag).to_lowercase();
+            parts.push(match segment.n {
+                Some(n) => format!("{name}-{n}"),
+                None => name,
+            });
+        }
+        parts.join("_")
+    }
+
+    #[test]
+    fn every_item_has_a_home_in_the_html() {
+        let html =
+            fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/distribution/index.html"))
+                .unwrap();
+        for id in every_dom() {
+            let id = html_id(&id);
+            assert!(html.contains(&format!("id=\"{id}\"")), "{id}");
+        }
+    }
+
+    #[test]
+    fn every_item_has_a_distinct_home() {
+        let ids = every_dom();
+        for (i, a) in ids.iter().enumerate() {
+            for b in &ids[i + 1..] {
+                assert_ne!(a, b, "{a:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn ids_round_trip_through_from_id() {
+        for field in Profile::list() {
+            assert_eq!(Profile::from_id(field.id()).map(|f| f.id()), Some(field.id()));
+        }
+        for attribute in SecondaryAttribute::list() {
+            assert_eq!(
+                SecondaryAttribute::from_id(attribute.base_id()).map(|a| a.base_id()),
+                Some(attribute.base_id())
+            );
+        }
+        for skill in Skill::list() {
+            let rows = skill.rows();
+            assert_eq!(Skill::from_row(rows[0]), Some((skill.clone(), false)));
+            if let Some(free) = rows.get(1) {
+                assert_eq!(Skill::from_row(*free), Some((skill.clone(), true)));
+            }
+        }
+        for entry in Backstory::list() {
+            assert_eq!(Backstory::from_id(entry.id()).map(|e| e.id()), Some(entry.id()));
+        }
+        for memo in Memo::list() {
+            assert_eq!(Memo::from_id(memo.id()).map(|m| m.id()), Some(memo.id()));
+        }
+        assert_eq!(Management::from_id(ID_CREATED_AT), Some(Management::CreatedAt));
+        assert_eq!(Investigator::from_id(40).map(|p| p.base_id()), Some(40));
+        assert_eq!(WealthField::from_id(2), Some(WealthField::Cash));
+    }
+
+    #[test]
+    fn skill_rows_do_not_collide() {
+        let rows: Vec<u32> = Skill::list().iter().flat_map(Skill::rows).collect();
+        for (i, a) in rows.iter().enumerate() {
+            assert!(!rows[i + 1..].contains(a), "{a}");
+        }
+        assert_eq!(rows.len(), 54);
+    }
+}
+
 #[cfg(test)]
 mod skill_storage_tests {
     use alloc::{string::ToString, vec::Vec};
@@ -3403,52 +3951,95 @@ mod skill_storage_tests {
     use super::*;
     use crate::Rng;
 
-    fn character() -> DataStruct {
+    fn investigator() -> DataStruct {
         DataStruct::new(1, 0, SCHEMA_SIZE)
     }
 
     #[test]
     fn language_own_round_trips_with_name() {
-        let mut c = character();
+        let mut c = investigator();
         LanguageOwn.write(&mut c, 400, 300, -400, 400, "Japanese");
         assert_eq!(LanguageOwn.read(&c), (400, 300, -400, 400, "Japanese".to_string()));
     }
 
     #[test]
     fn art_and_craft_custom_round_trips_via_indirect_ids() {
-        let mut c = character();
-        ArtAndCraftCustom(0).write(&mut c, [1000, 1001], 400, 1, -1, 400, "Origami");
-        ArtAndCraftCustom(1).write(&mut c, [1002, 1003], 2, 300, 5, -400, "Ikebana");
+        let mut c = investigator();
+        ArtAndCraftCustom(0).write(
+            &mut c,
+            [CUSTOM_ID_BASE, CUSTOM_ID_BASE + 1],
+            400,
+            1,
+            -1,
+            400,
+            "Origami",
+        );
+        ArtAndCraftCustom(1).write(
+            &mut c,
+            [CUSTOM_ID_BASE + 2, CUSTOM_ID_BASE + 3],
+            2,
+            300,
+            5,
+            -400,
+            "Ikebana",
+        );
         assert_eq!(ArtAndCraftCustom(0).read(&c), (400, 1, -1, 400, "Origami".to_string()));
         assert_eq!(ArtAndCraftCustom(1).read(&c), (2, 300, 5, -400, "Ikebana".to_string()));
     }
 
     #[test]
     fn art_and_craft_custom_unwritten_index_reads_empty() {
-        let mut c = character();
-        ArtAndCraftCustom(0).write(&mut c, [1000, 1001], 1, 1, 1, 1, "x");
+        let mut c = investigator();
+        ArtAndCraftCustom(0).write(&mut c, [CUSTOM_ID_BASE, CUSTOM_ID_BASE + 1], 1, 1, 1, 1, "x");
         assert_eq!(ArtAndCraftCustom(5).read(&c), (0, 0, 0, 0, String::new()));
     }
 
     #[test]
     fn fighting_custom_keeps_base_percent() {
-        let mut c = character();
-        FightingCustom(0).write(&mut c, [1000, 1001], 127, 400, 300, -400, 400, "Kendo");
+        let mut c = investigator();
+        FightingCustom(0).write(
+            &mut c,
+            [CUSTOM_ID_BASE, CUSTOM_ID_BASE + 1],
+            127,
+            400,
+            300,
+            -400,
+            400,
+            "Kendo",
+        );
         assert_eq!(FightingCustom(0).read(&c), (127, 400, 300, -400, 400, "Kendo".to_string()));
     }
 
     #[test]
     fn firearms_custom_keeps_base_percent() {
-        let mut c = character();
-        FirearmsCustom(0).write(&mut c, [1000, 1001], 99, 400, 0, 0, 0, "Crossbow");
+        let mut c = investigator();
+        FirearmsCustom(0).write(
+            &mut c,
+            [CUSTOM_ID_BASE, CUSTOM_ID_BASE + 1],
+            99,
+            400,
+            0,
+            0,
+            0,
+            "Crossbow",
+        );
         assert_eq!(FirearmsCustom(0).read(&c), (99, 400, 0, 0, 0, "Crossbow".to_string()));
-        FirearmsCustom(1).write(&mut c, [1002, 1003], 100, 0, 0, -400, -1, "x");
+        FirearmsCustom(1).write(
+            &mut c,
+            [CUSTOM_ID_BASE + 2, CUSTOM_ID_BASE + 3],
+            100,
+            0,
+            0,
+            -400,
+            -1,
+            "x",
+        );
         assert_eq!(FirearmsCustom(1).read(&c), (100, 0, 0, -400, -1, "x".to_string()));
     }
 
     #[test]
     fn pilot_custom_uses_numeric_and_name_ids() {
-        let mut c = character();
+        let mut c = investigator();
         PilotCustom(1).write(&mut c, 400, 7, -7, 400, "Rocket");
         assert_eq!(PilotCustom(1).read(&c), (400, 7, -7, 400, "Rocket".to_string()));
     }
@@ -3487,7 +4078,7 @@ mod skill_storage_tests {
         let skills = [Skill::Accounting, Skill::Anthropology, Skill::Appraise, Skill::Archaeology];
         for seed in 0..2000 {
             let mut rng = Rng::new(seed);
-            let mut c = character();
+            let mut c = investigator();
             let mut model = [[0i32; 4]; 4];
             for step in 0..12 {
                 let index = rng.below(skills.len());
@@ -3532,7 +4123,7 @@ mod skill_storage_tests {
 
     #[test]
     fn a_skill_value_shorter_than_its_layout_reads_as_zero() {
-        let mut c = character();
+        let mut c = investigator();
         for length in 0..SkillValue::BYTES {
             let _ = c.set(Skill::Accounting.base_id(), &[0xff; 8][..length], None);
             let (occupation, interest, change, modifier) = Accounting.read(&c);

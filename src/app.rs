@@ -1,5 +1,6 @@
 use alloc::{
     collections::{BTreeMap, VecDeque},
+    string::String,
     vec,
     vec::Vec,
 };
@@ -193,6 +194,7 @@ impl App {
         rem_in_px: f64,
         now_in_ms: u64,
         timezone_offset_minutes: i32,
+        data_url: String,
     ) {
         let mut app = App::new(
             pointer_coarse,
@@ -202,6 +204,7 @@ impl App {
                 rem_in_px,
                 now_in_ms,
                 timezone_offset_minutes,
+                data_url,
             )
             .await,
         );
@@ -230,17 +233,20 @@ mod tests {
     use crate::{
         Output, Rng, block_on,
         event::{FetchChunk, gesture::Gesture},
-        file_store::FileStore,
+        file_store::Mount,
         host::{EVENT_CANVAS, EVENT_FETCH, dom},
     };
     #[cfg(feature = "calendar")]
-    use crate::{calendar::data::appointment, file_store::MemoryHandles};
+    use crate::{
+        calendar::data::appointment,
+        file_store::{FileStore, MemoryHandles},
+    };
 
     const POINTER_DOWN: u8 = 16;
     const POINTER_UP: u8 = 18;
 
     fn new_app() -> App {
-        App::new(false, block_on(Handler::<Store>::ready(0.0, 0.0, 16.0, 0, 0)))
+        App::new(false, block_on(Handler::<Store>::ready(0.0, 0.0, 16.0, 0, 0, String::new())))
     }
 
     fn section(n: u32) -> dom::Id {
@@ -346,33 +352,29 @@ mod tests {
     #[cfg(all(feature = "coc7th", not(feature = "calendar")))]
     #[test]
     fn commands_accumulate_across_frames_and_a_bad_frame_does_not_break_the_queue() {
-        use crate::coc7th::target::{SHEET_PARTS, Sheet, Target};
+        use crate::{En, Language, coc7th::page::Page};
 
         const CLICK: u8 = 3;
-        let toggle = Target::Edit.to_dom();
+        let english = Page::LanguageOption(Language::En(En::Gb)).to_dom();
+        let japanese = Page::LanguageOption(Language::Ja).to_dom();
         let mut app = new_app();
 
-        app.process(&pointer_frame(CLICK, &toggle, 0.0, 0, 0.0));
-        let parts = SHEET_PARTS as usize;
-        assert_eq!(app.commands().len(), parts * 2);
-        assert!(
-            app.commands()[..parts].iter().all(|c| matches!(c, Command::RemoveAttribute { .. }))
-        );
-        assert!(app.commands()[parts..].iter().all(|c| matches!(c, Command::SetAttribute { .. })));
+        app.process(&pointer_frame(CLICK, &english, 0.0, 0, 0.0));
+        let [Command::SetAttribute { id: tagged, .. }, ..] = app.commands() else {
+            panic!("not tagged");
+        };
+        assert_eq!(*tagged, Page::Html.to_dom());
+        let redrawn = app.commands().len();
 
         app.process(&[]);
         assert!(matches!(
             app.commands(),
             [.., Command::Error { error: Error::Event(EventError::Decode) }]
         ));
-        assert_eq!(app.commands().len(), parts * 2 + 1);
+        assert_eq!(app.commands().len(), redrawn + 1);
 
-        app.process(&pointer_frame(CLICK, &toggle, 0.0, 0, 0.0));
-        let [.., Command::SetAttribute { id: hidden, .. }] = app.commands() else {
-            panic!("not toggled back");
-        };
-        assert_eq!(*hidden, Target::Sheet(Sheet::Editable, SHEET_PARTS).to_dom());
-        assert_eq!(app.commands().len(), parts * 4 + 1);
+        app.process(&pointer_frame(CLICK, &japanese, 0.0, 0, 0.0));
+        assert_eq!(app.commands().len(), redrawn * 2 + 1);
         assert!(app.events.is_empty());
 
         app.clear();

@@ -101,7 +101,7 @@
     }
 
     label:has(> input[aria-controls]) > input[type="checkbox"] {
-        inset-block-end:  0;
+        inset-block-start: 0;
         inset-inline-end: 0;
         position:         absolute;
     }
