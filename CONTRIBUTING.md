@@ -66,6 +66,14 @@ cargo test --doc # docTest
 cargo test --lib # unit test
 cargo test --features calendar --lib # calendar feature
 cargo test --no-default-features --features coc7th --lib # unit test (no file_store feature)
+cargo test --features server --lib # server feature (sync, meet, account, session, http, handler, host)
+```
+
+### Server
+
+```bash
+set -a; . ./.env; . ./.secrets; set +a
+cargo run --features server --bin server
 ```
 
 ### Headless browser test
@@ -91,6 +99,7 @@ An app without `file_store` runs on the main thread.
 Its store is `MemoryStore`, which is not persisted.
 `calendar` enables `file_store`.
 Either `calendar` or `coc7th` (default on) is required. `vault` enables `credential`.
+`sync` adds the sync wire and `meet` adds the signaling wire; both are optional. `server` enables `sync`, `meet` and `credential`, builds the `server` binary, and is compiled out on wasm32. See [Server.md](./reference/Server.md).
 
 当プロジェクトでは、 wasm32-unknown-unknown コンパイルをブラウザホスト環境向けに利用している。
 この環境でのアプリケーションプロセスの記憶域は、メインスレッドまたはWebワーカーに位置する。
@@ -137,6 +146,15 @@ sh reference/build.sh
 | calendar/ | カレンダーアプリ(feature `calendar`)。data(レコード定義と、JSONの`import` / `export`。全レコードが同じschema_sizeのDataStructで、種別はフィールド4(kind)、FileStoreのidはissue_idで採番する。このidは他のレコードに書かず、参照はJSONと同じ`uid`(資源)と`code`(状態・カテゴリ)で持つ。削除は参照元を書き換えず、参照先が無いことを「削除済み」として読む側が扱う)、grid / target(座標・レーン・DOM対応)、handler(`Calendar`のような集約を持たず、`FileStore`を走査して読み書きする。編集も削除もモーダルではメモリ操作で、save / discardの判断はhandler)。 |
 | credential.rs | 認証プロトコル。email の正規化、`salt` / `authentication_key` / `wrap_key` の HKDF 導出、`stretch`(Argon2id、feature `vault`)、`verifier` / `verify`(HMAC + 定数時間比較)、`digest`、`hex`。server と共有する。 |
 | vault.rs | `root_key` の生成と `wrap_key` による包み込み、store 名ごとの `store_key`、レコードの AEAD(XChaCha20-Poly1305、`key` を AAD に束ねる)。 |
+| server.rs | サーバー側の root。`sync` / `meet`(ワイヤ。feature ごと)と、feature `server` の `account` / `session` / `http` / `handler` / `host`、認可の `Principal` / `Action` / `Resource` / `authorize`。[Server.md](./reference/Server.md)。 |
+| server/sync.rs | feature `sync`。同期レコードのワイヤ(`Record` / `Entry` / `Flags` / `Status` / `Outcome` と pull / push の encode / decode)。feature `server` ではサーバー側の `Collection<S>`(`identifier` と `version` の索引、`pull` の分割、`push` の版照合)を含む。[Server.md](./reference/Server.md)。 |
+| server/meet.rs | feature `meet`。P2P シグナリングのワイヤ(`Kind` / `Signal` と poll / signal の encode / decode)。feature `server` ではサーバー側の `Board`(`target` ごとの待ち行列、寿命、在席)を含む。[Meet.md](./reference/Meet.md)、[Server.md](./reference/Server.md)。 |
+| server/http.rs | feature `server`。HTTP/1.1 の厳格な部分集合。`parse`(不完全なら `None`、上限超過と不正は `HttpError`)と `Response::to_bytes`。 |
+| server/account.rs | feature `server`。`Record`(`protocol`, `email`, `verifier`, `wrapped_root`, `last_device`)と `Account<S>`(有効化、ログイン、パスワード変更)。`parse_allowlist`。 |
+| server/session.rs | feature `server`。`Record`(`digest`, `user`, `device`, `peer`, `created`, `seen`)と `Session<S>`(発行、認証、失効、purge)。Cookie の組み立てと解析。 |
+| server/handler.rs | feature `server`。`Handler<S: Open>`(pepper、allowlist、origins、各ストア、`Board`)と `process_request`(パス分岐、認証、`Origin` 検証、同期)。`failure` / `reject` がエラー応答を組む。 |
+| server/host.rs | feature `server`。`std` 実装。`now`、`serve`(accept スレッド、keep-alive、タイムアウト、60 秒ごとの `maintain`)。 |
+| bin/server.rs | bin `server`(feature `server` を要求)。環境変数を読んで `Handler<FsStore>` を開き、`serve` する。 |
 
 ---
 

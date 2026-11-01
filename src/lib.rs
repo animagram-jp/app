@@ -21,7 +21,11 @@ compile_error!("either feature `calendar` or `coc7th` is required");
 #[cfg(any(test, not(target_arch = "wasm32")))]
 extern crate std;
 
-use alloc::{format, string::String, vec::Vec};
+use alloc::{
+    format,
+    string::{String, ToString},
+    vec::Vec,
+};
 use core::fmt::{self, Display, Formatter};
 #[cfg(test)]
 use core::future::Future;
@@ -30,6 +34,12 @@ use core::panic::PanicInfo;
 
 #[cfg(feature = "credential")]
 use crate::credential::CredentialError;
+#[cfg(feature = "meet")]
+use crate::server::meet::MeetError;
+#[cfg(feature = "sync")]
+use crate::server::sync::SyncError;
+#[cfg(all(feature = "server", not(target_arch = "wasm32")))]
+use crate::server::{account::AccountError, http::HttpError, session::SessionError};
 #[cfg(feature = "vault")]
 use crate::vault::VaultError;
 use crate::{
@@ -54,6 +64,7 @@ pub mod file_store;
 pub mod host;
 pub mod list;
 pub mod object;
+pub mod server;
 pub mod time;
 #[cfg(feature = "vault")]
 pub mod vault;
@@ -61,6 +72,10 @@ pub mod vault;
 pub trait WireError {
     fn identifiers(&self, path: &mut Vec<u16>);
     fn detail(&self) -> String;
+
+    fn status(&self) -> u16 {
+        400
+    }
 }
 
 macro_rules! wire_error {
@@ -89,6 +104,12 @@ macro_rules! wire_error {
             fn detail(&self) -> ::alloc::string::String {
                 match self {
                     $($(#[$meta])* $name::$variant(error) => $crate::WireError::detail(error)),+
+                }
+            }
+
+            fn status(&self) -> u16 {
+                match self {
+                    $($(#[$meta])* $name::$variant(error) => $crate::WireError::status(error)),+
                 }
             }
         }
@@ -131,6 +152,29 @@ impl WireError for DataError {
     }
 }
 
+#[derive(Debug, PartialEq)]
+pub enum FrameError {
+    Decode,
+}
+
+impl Display for FrameError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+impl WireError for FrameError {
+    fn identifiers(&self, path: &mut Vec<u16>) {
+        path.push(match self {
+            FrameError::Decode => 1,
+        });
+    }
+
+    fn detail(&self) -> String {
+        self.to_string()
+    }
+}
+
 wire_error! {
     Error {
         Arena(ArenaError) = 1,
@@ -138,8 +182,19 @@ wire_error! {
         Panic(PanicError) = 3,
         FileStore(FileStoreError) = 4,
         Data(DataError) = 5,
+        Frame(FrameError) = 6,
+        #[cfg(all(feature = "server", not(target_arch = "wasm32")))]
+        Http(HttpError) = 7,
         #[cfg(feature = "credential")]
         Credential(CredentialError) = 8,
+        #[cfg(all(feature = "server", not(target_arch = "wasm32")))]
+        Session(SessionError) = 9,
+        #[cfg(all(feature = "server", not(target_arch = "wasm32")))]
+        Account(AccountError) = 10,
+        #[cfg(feature = "meet")]
+        Meet(MeetError) = 11,
+        #[cfg(feature = "sync")]
+        Sync(SyncError) = 12,
         #[cfg(feature = "vault")]
         Vault(VaultError) = 13,
     }
@@ -147,10 +202,20 @@ wire_error! {
 
 pub trait Input<'a>: Sized {
     fn decode(input: &mut &'a [u8]) -> Option<Self>;
+
+    fn from_bytes(bytes: &'a [u8]) -> Result<Self, FrameError> {
+        parse(bytes).ok_or(FrameError::Decode)
+    }
 }
 
 pub trait Output {
     fn encode(&self, output: &mut Vec<u8>);
+
+    fn to_bytes(&self) -> Vec<u8> {
+        let mut output = Vec::new();
+        self.encode(&mut output);
+        output
+    }
 }
 
 fn take<'a>(input: &mut &'a [u8], count: usize) -> Option<&'a [u8]> {
@@ -198,6 +263,31 @@ impl<'a, T: Input<'a>> Input<'a> for Vec<T> {
 impl Input<'_> for String {
     fn decode(input: &mut &[u8]) -> Option<Self> {
         String::from_utf8(Vec::<u8>::decode(input)?).ok()
+    }
+}
+
+impl<'a> Input<'a> for &'a [u8] {
+    fn decode(input: &mut &'a [u8]) -> Option<Self> {
+        let count = u32::decode(input)? as usize;
+        take(input, count)
+    }
+}
+
+impl<'a> Input<'a> for &'a str {
+    fn decode(input: &mut &'a [u8]) -> Option<Self> {
+        core::str::from_utf8(<&[u8]>::decode(input)?).ok()
+    }
+}
+
+impl<const N: usize> Input<'_> for [u8; N] {
+    fn decode(input: &mut &[u8]) -> Option<Self> {
+        take(input, N)?.try_into().ok()
+    }
+}
+
+impl<const N: usize> Output for [u8; N] {
+    fn encode(&self, output: &mut Vec<u8>) {
+        output.extend_from_slice(self);
     }
 }
 
@@ -521,6 +611,33 @@ mod error_tests {
             (Error::Data(DataError::Status(404)), vec![5, 1], "404"),
             (Error::Data(DataError::Parse(message())), vec![5, 2], "m"),
             (Error::Data(DataError::Format(message())), vec![5, 3], "m"),
+            (Error::Frame(FrameError::Decode), vec![6, 1], "Decode"),
+        ]);
+        #[cfg(all(feature = "server", not(target_arch = "wasm32")))]
+        cases.extend([
+            (Error::Http(HttpError::Target), vec![7, 3], "Target"),
+            (Error::Http(HttpError::HeaderTooLarge), vec![7, 6], "HeaderTooLarge"),
+            (Error::Session(SessionError::Frame(FrameError::Decode)), vec![9, 2, 1], "Decode"),
+            (Error::Session(SessionError::Record(4)), vec![9, 4], "session record 4"),
+            (Error::Account(AccountError::Email(CredentialError::Email)), vec![10, 1, 1], "Email"),
+            (Error::Account(AccountError::AlreadyRegistered), vec![10, 5], "AlreadyRegistered"),
+            (Error::Account(AccountError::Record(3)), vec![10, 7], "account record 3"),
+        ]);
+        #[cfg(feature = "meet")]
+        cases.extend([
+            (Error::Meet(MeetError::Kind(9)), vec![11, 1], "Kind(9)"),
+            (Error::Meet(MeetError::Payload(1)), vec![11, 2], "Payload(1)"),
+            (Error::Meet(MeetError::SelfAddressed), vec![11, 3], "SelfAddressed"),
+            (Error::Meet(MeetError::Full(2)), vec![11, 4], "Full(2)"),
+            (Error::Meet(MeetError::Frame(FrameError::Decode)), vec![11, 5, 1], "Decode"),
+        ]);
+        #[cfg(feature = "sync")]
+        cases.extend([
+            (Error::Sync(SyncError::Frame(FrameError::Decode)), vec![12, 1, 1], "Decode"),
+            (Error::Sync(SyncError::Store(message())), vec![12, 2], "m"),
+            (Error::Sync(SyncError::Record(9)), vec![12, 3], "sync record 9"),
+            (Error::Sync(SyncError::Ciphertext(1)), vec![12, 4], "Ciphertext(1)"),
+            (Error::Sync(SyncError::PushCount(1)), vec![12, 6], "PushCount(1)"),
         ]);
         #[cfg(feature = "credential")]
         cases.extend([

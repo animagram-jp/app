@@ -49,7 +49,7 @@ const HANDLE_IN_REM: f64 = 0.5;
 const HANDLE_MAX: f64 = 0.35;
 const STORE: StoreId = StoreId { name: "calendar", version: "0.3" };
 const NEW_UNITS: f64 = 4.0;
-const SLOT_IN_REM: f64 = 1.75;
+const ROW_IN_REM: f64 = 1.75;
 const ZOOM_MIN: f64 = 1.0;
 const ZOOM_MAX: f64 = 3.0;
 const COLUMN_MIN_IN_REM: f64 = 5.0;
@@ -60,9 +60,9 @@ const LOAD_REQUEST: u32 = 1;
 const LOAD_PATH: &str = "data/calendar.json";
 const STATUS_OK: u16 = 200;
 
-struct RowRem(f64);
+struct RowInRem(f64);
 
-impl Decimal for RowRem {
+impl Decimal for RowInRem {
     fn from_f64(value: f64) -> Self {
         Self(value)
     }
@@ -144,7 +144,7 @@ pub struct Handler<S: FileStore> {
     editing:              Option<Editing>,
     pending_tap:          Option<[f64; 2]>,
     create:               Option<CreateDrag>,
-    slot_in_rem:          f64,
+    row_in_rem:           f64,
     drag:                 Option<Drag>,
     dirty:                bool,
     store:                Option<S>,
@@ -198,7 +198,7 @@ impl<S: FileStore> Handler<S> {
             editing: None,
             pending_tap: None,
             create: None,
-            slot_in_rem: SLOT_IN_REM,
+            row_in_rem: ROW_IN_REM,
             drag: None,
             dirty: false,
             store: None,
@@ -212,7 +212,7 @@ impl<S: FileStore> Handler<S> {
                 [Px::new(0.0), Px::new(0.0)],
                 [
                     IncrementFunction::Scale(column_in_px),
-                    IncrementFunction::Scale(SLOT_IN_REM * rem_in_px),
+                    IncrementFunction::Scale(ROW_IN_REM * rem_in_px),
                 ],
             )
             .unwrap(),
@@ -409,7 +409,7 @@ impl<S: FileStore> Handler<S> {
         };
         let unit_in_px = [
             column_in_px(self.viewport_width_in_px, self.columns(), self.rem_in_px),
-            self.slot_in_rem * self.rem_in_px,
+            self.row_in_rem * self.rem_in_px,
         ];
         let extent =
             [self.columns() as f64 * unit_in_px[0], self.clock.count() as f64 * unit_in_px[1]];
@@ -508,14 +508,14 @@ impl<S: FileStore> Handler<S> {
     }
 
     fn zoom(&mut self, value: &str) -> Vec<Command> {
-        let Some(RowRem(slot_in_rem)) = parse(value.as_bytes()) else {
+        let Some(RowInRem(row_in_rem)) = parse(value.as_bytes()) else {
             return vec![];
         };
-        let slot_in_rem = slot_in_rem.clamp(ZOOM_MIN, ZOOM_MAX);
-        if slot_in_rem == self.slot_in_rem {
+        let row_in_rem = row_in_rem.clamp(ZOOM_MIN, ZOOM_MAX);
+        if row_in_rem == self.row_in_rem {
             return vec![];
         }
-        self.slot_in_rem = slot_in_rem;
+        self.row_in_rem = row_in_rem;
         self.fit_rectgrid();
         let mut commands = self.row_commands();
         commands.extend(self.band_commands());
@@ -1494,7 +1494,7 @@ impl<S: FileStore> Handler<S> {
         );
         let _ = self
             .rectgrid
-            .set_definition(IncrementFunction::Scale(self.slot_in_rem * self.rem_in_px), 1);
+            .set_definition(IncrementFunction::Scale(self.row_in_rem * self.rem_in_px), 1);
     }
 
     fn change_axis(&mut self, axis: Axis) -> Vec<Command> {
@@ -1507,10 +1507,19 @@ impl<S: FileStore> Handler<S> {
     }
 
     fn row_commands(&self) -> Vec<Command> {
-        let rem = stringify(&RowRem(self.slot_in_rem));
+        let rem = stringify(&RowInRem(self.row_in_rem));
         let count = if self.month() { Month::count() } else { self.clock.count() };
+        let rows_per_rule = if self.month() { 1 } else { self.clock.units_per_hour() };
+        let rule = stringify(&RowInRem(self.row_in_rem * rows_per_rule as f64));
         let axis = format!("var(--head-height) repeat({count}, {rem}rem)");
         vec![
+            style(
+                Target::BandList.to_dom(),
+                StyleProperty::Background,
+                StyleValue::Text(format!(
+                    "repeating-linear-gradient(to bottom, rgb(from var(--color-paper-mix) r g b) 0, rgb(from var(--color-paper-mix) r g b) 1px, transparent 1px, transparent {rule}rem)"
+                )),
+            ),
             style(
                 Target::TimeAxis.to_dom(),
                 StyleProperty::GridTemplateRows,
@@ -1906,7 +1915,7 @@ mod tests {
     const AXIS_PX: f64 = AXIS_IN_REM * REM;
     const HEAD_PX: f64 = HEAD_IN_REM * REM;
     const COLUMN_MIN_PX: f64 = COLUMN_MIN_IN_REM * REM;
-    const SLOT_PX: f64 = SLOT_IN_REM * REM;
+    const ROW_PX: f64 = ROW_IN_REM * REM;
     const GRAB_X: f64 = 40.0;
     const GRAB_Y: f64 = 40.0;
 
@@ -2061,7 +2070,7 @@ mod tests {
         let mut handler = Handler::<MemoryStore>::new(VIEWPORT, today(), REM);
         load(&mut handler, vec![]);
         let x = AXIS_PX + COLUMN_MIN_PX * 5.0 + 1.0;
-        let y = ROOT.1 + HEAD_PX + SLOT_PX * 3.0 + 1.0;
+        let y = ROOT.1 + HEAD_PX + ROW_PX * 3.0 + 1.0;
         assert_eq!(handler.cell_at(ROOT, x, y), Some((1, 1, 3)));
 
         handler.change_axis(Axis::Day(Day::Day));
@@ -2075,7 +2084,7 @@ mod tests {
         let mut handler = Handler::<MemoryStore>::new(VIEWPORT, today(), REM);
         assert_eq!(handler.cell_at(ROOT, AXIS_PX - 1.0, ROOT.1 + HEAD_PX + 1.0), None);
         assert_eq!(handler.cell_at(ROOT, AXIS_PX + 1.0, ROOT.1 + HEAD_PX - 1.0), None);
-        let below = ROOT.1 + HEAD_PX + SLOT_PX * CLOCK.count() as f64 + 1.0;
+        let below = ROOT.1 + HEAD_PX + ROW_PX * CLOCK.count() as f64 + 1.0;
         assert_eq!(handler.cell_at(ROOT, AXIS_PX + 1.0, below), None);
     }
 
@@ -2503,12 +2512,12 @@ mod tests {
         let css = include_str!("../../distribution/calendar/css/style.css");
         assert!(
             html.contains(&format!(
-                "var(--head-height) repeat({}, {SLOT_IN_REM}rem)",
+                "var(--head-height) repeat({}, {ROW_IN_REM}rem)",
                 CLOCK.count()
             ))
         );
         assert!(html.contains(&format!(
-            "var(--head-title) var(--head-resource) calc({SLOT_IN_REM}rem * {})",
+            "var(--head-title) var(--head-resource) calc({ROW_IN_REM}rem * {})",
             CLOCK.count()
         )));
         assert!(css.contains(&format!("--column-width:  {COLUMN_MIN_IN_REM}rem")));
@@ -2528,7 +2537,7 @@ mod tests {
             Command::SetStyle { property: StyleProperty::Height, value, .. } => Some(value.clone()),
             _ => None,
         });
-        assert_eq!(height, Some(StyleValue::Length(4.0 * SLOT_IN_REM as f32, Unit::Rem)));
+        assert_eq!(height, Some(StyleValue::Length(4.0 * ROW_IN_REM as f32, Unit::Rem)));
     }
 
     fn pointer_down(id: Id, x: f64, y: f64) -> CanvasEvent {
@@ -2549,7 +2558,7 @@ mod tests {
 
     fn grab<S: Mount>(handler: &mut Handler<S>, n: u32) -> (f64, f64) {
         let (ox, oy) = grid_origin();
-        let (x, y) = (ox + GRAB_X, oy + 4.0 * SLOT_PX + GRAB_Y);
+        let (x, y) = (ox + GRAB_X, oy + 4.0 * ROW_PX + GRAB_Y);
         handler.process_canvas(
             &pointer_down(Target::CardPart(n, CardPart::Title).to_dom(), x, y),
             &pointer(),
@@ -2614,7 +2623,7 @@ mod tests {
         grab(&mut handler, 1);
         let column = 4 * 2 + 2;
         let pointer_x = grid_origin().0 + column as f64 * COLUMN_MIN_PX + 10.0;
-        let pointer_y = oy + 10.0 * SLOT_PX + GRAB_Y + 5.0;
+        let pointer_y = oy + 10.0 * ROW_PX + GRAB_Y + 5.0;
         drag_to(&mut handler, pointer_x, pointer_y);
         let commands = end(&mut handler);
         let moved = &appointments(&handler)[0];
@@ -2634,7 +2643,7 @@ mod tests {
             let (mut handler, _) = drag_fixture();
             let (_, oy) = grid_origin();
             grab(&mut handler, 1);
-            let pointer_y = oy + (10.0 + extra) * SLOT_PX + GRAB_Y;
+            let pointer_y = oy + (10.0 + extra) * ROW_PX + GRAB_Y;
             drag_to(&mut handler, grid_origin().0 + 5.0, pointer_y);
             end(&mut handler);
             let moved = &appointments(&handler)[0];
@@ -2655,11 +2664,11 @@ mod tests {
             &pointer_down(
                 Target::CardPart(1, CardPart::Title).to_dom(),
                 ox + GRAB_X,
-                oy + 4.0 * SLOT_PX + grab_y,
+                oy + 4.0 * ROW_PX + grab_y,
             ),
             &pointer(),
         );
-        drag_to(&mut handler, ox + 5.0, oy + 43.2 * SLOT_PX + grab_y);
+        drag_to(&mut handler, ox + 5.0, oy + 43.2 * ROW_PX + grab_y);
         end(&mut handler);
         let moved = &appointments(&handler)[0];
         assert_eq!(appointment::Range::read(moved), (at(20 * 60 - 60), at(20 * 60)));
@@ -2671,7 +2680,7 @@ mod tests {
         let (ox, oy) = grid_origin();
         grab(&mut handler, 1);
         for (x, y) in
-            [(ox - 30.0, oy + 100.0), (ox + 30.0, oy - 20.0), (ox + 30.0, oy + 45.0 * SLOT_PX)]
+            [(ox - 30.0, oy + 100.0), (ox + 30.0, oy - 20.0), (ox + 30.0, oy + 45.0 * ROW_PX)]
         {
             drag_to(&mut handler, x, y);
             let commands = end(&mut handler);
@@ -2722,11 +2731,11 @@ mod tests {
             &pointer_down(
                 Target::CardPart(1, CardPart::Title).to_dom(),
                 ox + GRAB_X,
-                oy + 4.0 * SLOT_PX + GRAB_Y,
+                oy + 4.0 * ROW_PX + GRAB_Y,
             ),
             &pointer(),
         );
-        drag_to(&mut handler, ox + column_in_px * 3.0 + 5.0, oy + 4.0 * SLOT_PX + GRAB_Y);
+        drag_to(&mut handler, ox + column_in_px * 3.0 + 5.0, oy + 4.0 * ROW_PX + GRAB_Y);
         end(&mut handler);
         let moved = &appointments(&handler)[0];
         assert_eq!(
@@ -2749,7 +2758,7 @@ mod tests {
             let (ox, oy) = grid_origin();
             for unit in 0..axis.columns() {
                 handler.card_commands();
-                let (grab_x, grab_y) = (ox + GRAB_X, oy + 4.0 * SLOT_PX + GRAB_Y);
+                let (grab_x, grab_y) = (ox + GRAB_X, oy + 4.0 * ROW_PX + GRAB_Y);
                 handler.process_canvas(
                     &pointer_down(Target::CardPart(1, CardPart::Title).to_dom(), grab_x, grab_y),
                     &pointer(),
@@ -2803,7 +2812,7 @@ mod tests {
     fn drag_piece<S: Mount>(handler: &mut Handler<S>, n: u32, from_unit: u32, to_unit: u32) {
         let column_in_px = column_in_px(VIEWPORT, handler.columns(), REM);
         let (ox, oy) = grid_origin();
-        let y = oy + 4.0 * SLOT_PX + GRAB_Y;
+        let y = oy + 4.0 * ROW_PX + GRAB_Y;
         handler.process_canvas(
             &pointer_down(
                 Target::CardPart(n, CardPart::Title).to_dom(),
@@ -2957,7 +2966,7 @@ mod tests {
     fn dragging_the_bottom_edge_moves_the_end_in_whole_slots() {
         let mut handler = lone(102);
         press_local(&mut handler, 1, 120.0, 221.0);
-        drag_by(&mut handler, 0.0, 2.0 * SLOT_PX);
+        drag_by(&mut handler, 0.0, 2.0 * ROW_PX);
         end(&mut handler);
         assert_eq!(times(&handler), (600, 690));
         assert_eq!(places(&handler), [(today(), 102)]);
@@ -2979,8 +2988,7 @@ mod tests {
 
     #[test]
     fn half_a_slot_rounds_to_the_nearest_boundary() {
-        for (dy, end_minutes) in [(0.4 * SLOT_PX, 660), (0.6 * SLOT_PX, 675), (-0.6 * SLOT_PX, 645)]
-        {
+        for (dy, end_minutes) in [(0.4 * ROW_PX, 660), (0.6 * ROW_PX, 675), (-0.6 * ROW_PX, 645)] {
             let mut handler = lone(102);
             press_local(&mut handler, 1, 120.0, 221.0);
             drag_by(&mut handler, 0.0, dy);
@@ -2993,7 +3001,7 @@ mod tests {
     fn dragging_the_top_edge_moves_the_start() {
         let mut handler = lone(102);
         press_local(&mut handler, 1, 120.0, 115.0);
-        drag_by(&mut handler, 0.0, -2.0 * SLOT_PX);
+        drag_by(&mut handler, 0.0, -2.0 * ROW_PX);
         end(&mut handler);
         assert_eq!(times(&handler), (570, 660));
     }
@@ -3002,12 +3010,12 @@ mod tests {
     fn the_size_never_drops_below_one_slot() {
         let mut handler = lone(102);
         press_local(&mut handler, 1, 120.0, 221.0);
-        drag_by(&mut handler, 0.0, -20.0 * SLOT_PX);
+        drag_by(&mut handler, 0.0, -20.0 * ROW_PX);
         end(&mut handler);
         assert_eq!(times(&handler), (600, 615));
         let mut handler = lone(102);
         press_local(&mut handler, 1, 120.0, 115.0);
-        drag_by(&mut handler, 0.0, 20.0 * SLOT_PX);
+        drag_by(&mut handler, 0.0, 20.0 * ROW_PX);
         end(&mut handler);
         assert_eq!(times(&handler), (645, 660));
     }
@@ -3016,12 +3024,12 @@ mod tests {
     fn the_edges_stop_at_the_ends_of_the_day() {
         let mut handler = lone(102);
         press_local(&mut handler, 1, 120.0, 221.0);
-        drag_by(&mut handler, 0.0, 100.0 * SLOT_PX);
+        drag_by(&mut handler, 0.0, 100.0 * ROW_PX);
         end(&mut handler);
         assert_eq!(times(&handler), (600, 1200));
         let mut handler = lone(102);
         press_local(&mut handler, 1, 120.0, 115.0);
-        drag_by(&mut handler, 0.0, -100.0 * SLOT_PX);
+        drag_by(&mut handler, 0.0, -100.0 * ROW_PX);
         end(&mut handler);
         assert_eq!(times(&handler), (540, 660));
     }
@@ -3076,7 +3084,7 @@ mod tests {
         let base = today();
         let mut handler = lone(102);
         press_local(&mut handler, 1, 157.0, 221.0);
-        drag_by(&mut handler, COLUMN_MIN_PX, 2.0 * SLOT_PX);
+        drag_by(&mut handler, COLUMN_MIN_PX, 2.0 * ROW_PX);
         end(&mut handler);
         assert_eq!(places(&handler), [(base, 102), (base, 103)]);
         assert_eq!(times(&handler), (600, 690));
@@ -3128,7 +3136,7 @@ mod tests {
         let column_in_px = (VIEWPORT - 2.0 * AXIS_PX) / 4.0;
         let mut handler = make();
         press_local(&mut handler, 1, 3.0 * column_in_px + 100.0, 221.0);
-        drag_by(&mut handler, 0.0, SLOT_PX);
+        drag_by(&mut handler, 0.0, ROW_PX);
         end(&mut handler);
         assert_eq!(places(&handler), [(base, 104), (after(base, 1), 101)]);
         assert_eq!(times(&handler), (600, 675));
@@ -3148,7 +3156,7 @@ mod tests {
     fn the_resize_preview_spans_the_whole_box_and_the_end_clears_the_handle_styles() {
         let mut handler = lone(102);
         press_local(&mut handler, 1, 157.0, 221.0);
-        let commands = drag_by(&mut handler, 2.0 * COLUMN_MIN_PX, SLOT_PX);
+        let commands = drag_by(&mut handler, 2.0 * COLUMN_MIN_PX, ROW_PX);
         let width = commands.iter().find_map(|command| match command {
             Command::SetStyle { property: StyleProperty::Width, value, .. } => Some(value.clone()),
             _ => None,
@@ -3158,7 +3166,7 @@ mod tests {
             _ => None,
         });
         assert_eq!(width, Some(StyleValue::Length(3.0 * COLUMN_MIN_IN_REM as f32, Unit::Rem)));
-        assert_eq!(height, Some(StyleValue::Length(5.0 * SLOT_IN_REM as f32, Unit::Rem)));
+        assert_eq!(height, Some(StyleValue::Length(5.0 * ROW_IN_REM as f32, Unit::Rem)));
         assert!(matches!(
             commands.first(),
             Some(Command::SetStyle { property: StyleProperty::ZIndex, .. })
@@ -3178,7 +3186,7 @@ mod tests {
     fn cancelling_a_resize_keeps_the_data() {
         let mut handler = lone(102);
         press_local(&mut handler, 1, 157.0, 221.0);
-        drag_by(&mut handler, COLUMN_MIN_PX, 3.0 * SLOT_PX);
+        drag_by(&mut handler, COLUMN_MIN_PX, 3.0 * ROW_PX);
         let commands = handler.process_gesture(&Gesture::DragCancel, &pointer(), None).1;
         assert_eq!(times(&handler), (600, 660));
         assert_eq!(places(&handler), [(today(), 102)]);
@@ -3228,7 +3236,7 @@ mod tests {
         let mut handler = lone(102);
         assert!(!handler.dirty());
         press_local(&mut handler, 1, 120.0, 221.0);
-        drag_by(&mut handler, 0.0, 2.0 * SLOT_PX);
+        drag_by(&mut handler, 0.0, 2.0 * ROW_PX);
         let commands = end(&mut handler);
         assert!(handler.dirty());
         assert_eq!(save_disabled(&commands), [false]);
@@ -3353,7 +3361,7 @@ mod tests {
     fn an_edit_is_pending_until_save_and_survives_a_reload_only_after_it() {
         let (mut handler, disk) = with_store();
         handler.process_fetched(&sample_response(1, 200));
-        let (index, before) = drag_first_card_by(&mut handler, 2.0 * SLOT_PX);
+        let (index, before) = drag_first_card_by(&mut handler, 2.0 * ROW_PX);
         let after = appointment::Range::read(&appointment_of(&handler, index)).0;
         assert_eq!(minutes(after), minutes(before) + 30);
         assert!(handler.dirty());
@@ -3374,7 +3382,7 @@ mod tests {
     fn an_unsaved_edit_is_gone_after_a_reload() {
         let (mut handler, disk) = with_store();
         handler.process_fetched(&sample_response(1, 200));
-        let (index, before) = drag_first_card_by(&mut handler, 2.0 * SLOT_PX);
+        let (index, before) = drag_first_card_by(&mut handler, 2.0 * ROW_PX);
         let mut reloaded = Handler::<MemoryStore>::new(VIEWPORT, today(), REM);
         reloaded.attach(MemoryStore::new(disk).unwrap());
         assert_eq!(appointment::Range::read(&appointment_of(&reloaded, index)).0, before);
@@ -3384,7 +3392,7 @@ mod tests {
     fn discard_restores_the_saved_state_and_redraws() {
         let (mut handler, _) = with_store();
         handler.process_fetched(&sample_response(1, 200));
-        let (index, before) = drag_first_card_by(&mut handler, 2.0 * SLOT_PX);
+        let (index, before) = drag_first_card_by(&mut handler, 2.0 * ROW_PX);
         let commands = handler.discard_commands().1;
         assert_eq!(appointment::Range::read(&appointment_of(&handler, index)).0, before);
         assert!(!handler.dirty());
@@ -3432,7 +3440,7 @@ mod tests {
         let (ox, oy) = grid_origin();
         let (x, y) = (
             ox + (column + 0.5) * column_in_px(VIEWPORT, handler.columns(), REM),
-            oy + (slot + 0.5) * SLOT_PX,
+            oy + (slot + 0.5) * ROW_PX,
         );
         handler.process_canvas(&pointer_down(Target::Surface.to_dom(), x, y), &pointer());
         handler.process_gesture(&Gesture::Tap, &pointer(), None).1
@@ -3485,7 +3493,7 @@ mod tests {
     ) -> Vec<Command> {
         let (ox, oy) = grid_origin();
         let column = column_in_px(VIEWPORT, handler.columns(), REM);
-        let at = |(c, s): (f64, f64)| (ox + (c + 0.5) * column, oy + (s + 0.5) * SLOT_PX);
+        let at = |(c, s): (f64, f64)| (ox + (c + 0.5) * column, oy + (s + 0.5) * ROW_PX);
         let (x, y) = at(from);
         handler.process_canvas(&pointer_down(Target::Surface.to_dom(), x, y), &pointer());
         let (x, y) = at(to);
@@ -3565,7 +3573,7 @@ mod tests {
             &pointer_down(Target::Surface.to_dom(), ox + 10.0, oy + 10.0),
             &pointer(),
         );
-        drag_to(&mut handler, ox + 10.0, oy + 3.0 * SLOT_PX);
+        drag_to(&mut handler, ox + 10.0, oy + 3.0 * ROW_PX);
         let (_, commands) = handler.process_gesture(&Gesture::DragCancel, &pointer(), None);
         assert!(commands.iter().any(|c| matches!(c,
             Command::SetAttribute { id, attribute: Attribute::Hidden, .. } if *id == Target::Preview.to_dom())));
@@ -3596,12 +3604,12 @@ mod tests {
             ]
         );
         let after = handler.placed.borrow()[0].base[1];
-        assert_eq!(after, before / SLOT_IN_REM * 3.0);
+        assert_eq!(after, before / ROW_IN_REM * 3.0);
         assert!(
             handler.process_canvas(&input(Target::Zoom.to_dom(), "3"), &pointer()).1.is_empty()
         );
         handler.process_canvas(&input(Target::Zoom.to_dom(), "9"), &pointer());
-        assert_eq!(handler.slot_in_rem, ZOOM_MAX);
+        assert_eq!(handler.row_in_rem, ZOOM_MAX);
     }
 
     #[test]
@@ -3747,7 +3755,7 @@ mod tests {
     fn reload_button_discards_pending_edits() {
         let (mut handler, _) = with_store();
         handler.process_fetched(&sample_response(1, 200));
-        let (index, before) = drag_first_card_by(&mut handler, 2.0 * SLOT_PX);
+        let (index, before) = drag_first_card_by(&mut handler, 2.0 * ROW_PX);
         let commands = press(&mut handler, Target::Reload.to_dom());
         assert_eq!(appointment::Range::read(&appointment_of(&handler, index)).0, before);
         assert_eq!(pending(&handler), 0);
@@ -3758,7 +3766,7 @@ mod tests {
     fn a_failed_save_reports_the_error_and_stays_dirty() {
         let mut handler = with_faulty_store();
         handler.process_fetched(&sample_response(1, 200));
-        drag_first_card_by(&mut handler, 2.0 * SLOT_PX);
+        drag_first_card_by(&mut handler, 2.0 * ROW_PX);
         handler.store.as_ref().unwrap().fail_writes_to.set(Some("log"));
         let commands = press(&mut handler, Target::Save.to_dom());
         assert!(matches!(
@@ -3775,7 +3783,7 @@ mod tests {
     fn closing_the_handler_releases_the_store() {
         let (mut handler, _) = with_store();
         handler.process_fetched(&sample_response(1, 200));
-        drag_first_card_by(&mut handler, 2.0 * SLOT_PX);
+        drag_first_card_by(&mut handler, 2.0 * ROW_PX);
         assert!(handler.close().is_empty());
         let (events, commands) = save_pressed(&mut handler);
         assert!(matches!(events.as_slice(), [Event::StoreLost(_)]));
@@ -3811,7 +3819,7 @@ mod tests {
     fn a_lost_store_is_replaced_and_the_pending_edit_survives() {
         let (mut handler, disk) = with_store();
         handler.process_fetched(&sample_response(1, 200));
-        let (index, _) = drag_first_card_by(&mut handler, 2.0 * SLOT_PX);
+        let (index, _) = drag_first_card_by(&mut handler, 2.0 * ROW_PX);
         let after = appointment::Range::read(&appointment_of(&handler, index)).0;
 
         handler.close();
@@ -3882,7 +3890,7 @@ mod tests {
         let (ox, oy) = grid_origin();
         (
             ox + (bx.base()[0].get() + 0.5) * column_in_px(VIEWPORT, Day::Week.days(), REM),
-            oy + (bx.base()[1].get() + 0.5) * SLOT_IN_REM * REM,
+            oy + (bx.base()[1].get() + 0.5) * ROW_IN_REM * REM,
         )
     }
 
@@ -3904,6 +3912,30 @@ mod tests {
         appointment::new(id, &places, at(600), at(660), "m", CATEGORY_CODE, STATUS_CODE, "")
     }
 
+    fn rule_of(commands: &[Command]) -> Option<String> {
+        commands.iter().find_map(|command| match command {
+            Command::SetStyle {
+                id,
+                property: StyleProperty::Background,
+                value: StyleValue::Text(text),
+            } if *id == Target::BandList.to_dom() => Some(text.clone()),
+            _ => None,
+        })
+    }
+
+    #[test]
+    fn row_rules_follow_the_hour_in_day_views_and_the_day_in_the_month_view() {
+        let mut handler = Handler::<MemoryStore>::new(VIEWPORT, today(), REM);
+        load(&mut handler, vec![]);
+        let (_, commands) = handler.initial_draw();
+        let hour = ROW_IN_REM * CLOCK.units_per_hour() as f64;
+        assert!(rule_of(&commands).unwrap().ends_with(&format!("transparent {hour}rem)")));
+        let commands = choose(&mut handler, Axis::Month);
+        assert!(rule_of(&commands).unwrap().ends_with(&format!("transparent {ROW_IN_REM}rem)")));
+        let commands = handler.zoom("3");
+        assert!(rule_of(&commands).unwrap().ends_with("transparent 3rem)"));
+    }
+
     #[test]
     fn month_button_lays_out_weeks_inside_the_shared_frame() {
         let mut handler = Handler::<MemoryStore>::new(VIEWPORT, today(), REM);
@@ -3912,7 +3944,7 @@ mod tests {
         assert_eq!(handler.axis(), Axis::Month);
         assert_eq!(grid_columns(&commands), week_grid(7, 7));
         let count = Month::count();
-        let axis = format!("var(--head-height) repeat({count}, {SLOT_IN_REM}rem)");
+        let axis = format!("var(--head-height) repeat({count}, {ROW_IN_REM}rem)");
         assert_eq!(
             grid_rows(&commands),
             [
@@ -3920,7 +3952,7 @@ mod tests {
                 (
                     Target::Surface.to_dom(),
                     format!(
-                        "var(--head-title) var(--head-resource) calc({SLOT_IN_REM}rem * {count})"
+                        "var(--head-title) var(--head-resource) calc({ROW_IN_REM}rem * {count})"
                     )
                 ),
             ]
@@ -4039,7 +4071,7 @@ mod tests {
         );
         let after = card_box(&commands, 1).unwrap();
         assert_eq!((after.0, after.2), (before.0, before.2));
-        assert_eq!((after.1, after.3), (before.1 / SLOT_IN_REM as f32 * 3.0, 3.0 * REM as f32));
+        assert_eq!((after.1, after.3), (before.1 / ROW_IN_REM as f32 * 3.0, 3.0 * REM as f32));
         let bx = Month::bbox(10, Some(2)).unwrap();
         let (ox, oy) = grid_origin();
         let x = ox + (bx.base()[0].get() + 0.5) * column_in_px(VIEWPORT, Day::Week.days(), REM);
@@ -4165,7 +4197,7 @@ mod tests {
                         let at = |rng: &mut Rng| {
                             (
                                 ox + (rng.below(7) as f64 + 0.5) * column,
-                                oy + (rng.below(40) as f64 + 0.5) * SLOT_PX,
+                                oy + (rng.below(40) as f64 + 0.5) * ROW_PX,
                             )
                         };
                         let (x, y) = at(&mut rng);

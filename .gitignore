@@ -16,3 +16,8 @@ distribution/app/
 /distribution/calendar/css/library/
 
 /distribution/investigator/
+
+/.env
+/.secrets
+/.pepper
+/data/

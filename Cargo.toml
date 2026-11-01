@@ -12,6 +12,11 @@ include = ["/src/**", "/Cargo.toml", "/README.md", "/LICENSE", "/NOTICE"]
 [lib]
 crate-type = ["cdylib", "rlib"]
 
+[[bin]]
+name = "server"
+path = "src/bin/server.rs"
+required-features = ["server"]
+
 [dependencies]
 arbitrary-int    = "2"
 argon2           = { version = "0.6", default-features = false, features = ["alloc"], optional = true }
@@ -54,6 +59,9 @@ credential = ["dep:hmac", "dep:sha2", "dep:hkdf"]
 file_store = ["dep:web-sys"]
 calendar = ["file_store", "dep:serde_json", "dep:rectgrid"]
 vault    = ["credential", "dep:argon2", "dep:chacha20poly1305"]
+sync     = []
+meet     = []
+server   = ["credential", "sync", "meet"]
 
 [profile.release]
 panic         = "abort"

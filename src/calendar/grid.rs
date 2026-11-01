@@ -151,6 +151,14 @@ impl Clock {
 
     /// ```
     /// # use app::calendar::grid::CLOCK;
+    /// assert_eq!(CLOCK.units_per_hour(), 4);
+    /// ```
+    pub fn units_per_hour(&self) -> u32 {
+        (minutes_of(Length::new(time::Unit::Hour, 1)) / minutes_of(self.unit)).max(1) as u32
+    }
+
+    /// ```
+    /// # use app::calendar::grid::CLOCK;
     /// assert!(CLOCK.contains(0.0));
     /// assert!(CLOCK.contains(43.9));
     /// assert!(!CLOCK.contains(-0.1));

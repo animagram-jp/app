@@ -63,7 +63,7 @@ use web_sys::{
     FileSystemReadWriteOptions, FileSystemSyncAccessHandle, WorkerGlobalScope,
 };
 
-use crate::WireError;
+use crate::{Input, WireError};
 
 // === wire format & replay ===
 
@@ -487,6 +487,10 @@ pub trait FileStore: Sized {
     /// ```
     fn get(&self, id: u32) -> Option<&[u8]> {
         self.index().memory.get(&id).map(|bytes| bytes.as_slice())
+    }
+
+    fn decode<'a, T: Input<'a>>(&'a self, id: u32) -> Option<T> {
+        T::from_bytes(self.get(id)?).ok()
     }
 
     /// Current records with `from <= id < to`, in id order.
@@ -1143,11 +1147,8 @@ impl FileStore for MemoryStore {
     }
 }
 
-impl Mount for MemoryStore {
-    fn open(
-        id: StoreId,
-        create: bool,
-    ) -> impl Future<Output = Result<MemoryHandles, FileStoreError>> {
+impl MemoryStore {
+    pub fn handles(id: StoreId, create: bool) -> Result<MemoryHandles, FileStoreError> {
         let key = id.file("mem");
         #[cfg(test)]
         let handles = DISKS.with(|disks| {
@@ -1160,7 +1161,16 @@ impl Mount for MemoryStore {
         #[cfg(not(test))]
         let handles =
             if create { Ok(MemoryHandles::new()) } else { Err(FileStoreError::NotFound(key)) };
-        ready(handles)
+        handles
+    }
+}
+
+impl Mount for MemoryStore {
+    fn open(
+        id: StoreId,
+        create: bool,
+    ) -> impl Future<Output = Result<MemoryHandles, FileStoreError>> {
+        ready(Self::handles(id, create))
     }
 }
 
