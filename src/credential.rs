@@ -27,14 +27,14 @@ pub const STRETCH_TIME: u32 = 2;
 pub const STRETCH_LANES: u32 = 1;
 
 const SALT_INFO: &[u8] = b"animagram/credential/1/salt";
-const AUTH_INFO: &[u8] = b"animagram/credential/1/auth";
+const AUTHENTICATION_INFO: &[u8] = b"animagram/credential/1/auth";
 const WRAP_INFO: &[u8] = b"animagram/credential/1/wrap";
 
 #[derive(Debug, PartialEq)]
 pub enum CredentialError {
     Email,
     Password,
-    Stretch,
+    Parameters,
 }
 
 impl Display for CredentialError {
@@ -48,7 +48,7 @@ impl WireError for CredentialError {
         path.push(match self {
             CredentialError::Email => 1,
             CredentialError::Password => 2,
-            CredentialError::Stretch => 3,
+            CredentialError::Parameters => 3,
         });
     }
 
@@ -74,16 +74,16 @@ pub fn normalize(email: &str) -> Result<String, CredentialError> {
     Ok(trimmed.to_ascii_lowercase())
 }
 
-fn expand(ikm: &[u8], salt: &[u8], info: &[u8], out: &mut [u8]) {
-    Hkdf::<Sha256>::new(Some(salt), ikm)
-        .expand(info, out)
+fn derive(material: &[u8], salt: &[u8], info: &[u8], output: &mut [u8]) {
+    Hkdf::<Sha256>::new(Some(salt), material)
+        .expand(info, output)
         .expect("output length within hkdf bound");
 }
 
 pub fn salt(email: &str) -> [u8; SALT_LENGTH] {
-    let mut out = [0u8; SALT_LENGTH];
-    expand(email.as_bytes(), &[], SALT_INFO, &mut out);
-    out
+    let mut output = [0u8; SALT_LENGTH];
+    derive(email.as_bytes(), &[], SALT_INFO, &mut output);
+    output
 }
 
 #[cfg(feature = "vault")]
@@ -92,37 +92,37 @@ pub fn stretch(email: &str, password: &str) -> Result<Key, CredentialError> {
     if !(PASSWORD_MIN..=PASSWORD_MAX).contains(&length) {
         return Err(CredentialError::Password);
     }
-    let params = Params::new(STRETCH_MEMORY, STRETCH_TIME, STRETCH_LANES, Some(KEY_LENGTH))
-        .map_err(|_| CredentialError::Stretch)?;
-    let argon = Argon2::new(Algorithm::Argon2id, Version::V0x13, params);
-    let mut out = [0u8; KEY_LENGTH];
+    let parameters = Params::new(STRETCH_MEMORY, STRETCH_TIME, STRETCH_LANES, Some(KEY_LENGTH))
+        .map_err(|_| CredentialError::Parameters)?;
+    let argon = Argon2::new(Algorithm::Argon2id, Version::V0x13, parameters);
+    let mut output = [0u8; KEY_LENGTH];
     argon
-        .hash_password_into(password.as_bytes(), &salt(email), &mut out)
-        .map_err(|_| CredentialError::Stretch)?;
-    Ok(out)
+        .hash_password_into(password.as_bytes(), &salt(email), &mut output)
+        .map_err(|_| CredentialError::Parameters)?;
+    Ok(output)
 }
 
-pub fn auth_key(stretch: &Key) -> Key {
-    let mut out = [0u8; KEY_LENGTH];
-    expand(stretch, &[], AUTH_INFO, &mut out);
-    out
+pub fn authentication_key(stretch: &Key) -> Key {
+    let mut output = [0u8; KEY_LENGTH];
+    derive(stretch, &[], AUTHENTICATION_INFO, &mut output);
+    output
 }
 
 pub fn wrap_key(stretch: &Key) -> Key {
-    let mut out = [0u8; KEY_LENGTH];
-    expand(stretch, &[], WRAP_INFO, &mut out);
-    out
+    let mut output = [0u8; KEY_LENGTH];
+    derive(stretch, &[], WRAP_INFO, &mut output);
+    output
 }
 
-pub fn verifier(pepper: &[u8], auth_key: &Key) -> Key {
+pub fn verifier(pepper: &[u8], authentication_key: &Key) -> Key {
     let mut mac = Hmac::<Sha256>::new_from_slice(pepper).expect("hmac accepts any key length");
-    mac.update(auth_key);
+    mac.update(authentication_key);
     mac.finalize().into_bytes().into()
 }
 
-pub fn verify(pepper: &[u8], auth_key: &Key, stored: &Key) -> bool {
+pub fn verify(pepper: &[u8], authentication_key: &Key, stored: &Key) -> bool {
     let mut mac = Hmac::<Sha256>::new_from_slice(pepper).expect("hmac accepts any key length");
-    mac.update(auth_key);
+    mac.update(authentication_key);
     mac.verify_slice(stored).is_ok()
 }
 
@@ -130,17 +130,17 @@ pub fn digest(token: &[u8]) -> Key {
     Sha256::digest(token).into()
 }
 
-pub fn hex(bytes: &[u8]) -> String {
+pub fn to_hexadecimal(bytes: &[u8]) -> String {
     const DIGITS: &[u8; 16] = b"0123456789abcdef";
-    let mut out = String::with_capacity(bytes.len() * 2);
+    let mut output = String::with_capacity(bytes.len() * 2);
     for byte in bytes {
-        out.push(DIGITS[(byte >> 4) as usize] as char);
-        out.push(DIGITS[(byte & 0x0f) as usize] as char);
+        output.push(DIGITS[(byte >> 4) as usize] as char);
+        output.push(DIGITS[(byte & 0x0f) as usize] as char);
     }
-    out
+    output
 }
 
-pub fn unhex(text: &str) -> Option<Vec<u8>> {
+pub fn from_hexadecimal(text: &str) -> Option<Vec<u8>> {
     if text.len() % 2 != 0 {
         return None;
     }
@@ -174,28 +174,28 @@ mod tests {
     }
 
     #[test]
-    fn auth_and_wrap_keys_differ_for_the_same_stretch() {
+    fn authentication_and_wrap_keys_differ_for_the_same_stretch() {
         let stretch = [7u8; KEY_LENGTH];
-        assert_ne!(auth_key(&stretch), wrap_key(&stretch));
-        assert_eq!(auth_key(&stretch), auth_key(&stretch));
+        assert_ne!(authentication_key(&stretch), wrap_key(&stretch));
+        assert_eq!(authentication_key(&stretch), authentication_key(&stretch));
     }
 
     #[test]
-    fn the_verifier_matches_only_its_own_pepper_and_auth_key() {
-        let auth = [1u8; KEY_LENGTH];
-        let stored = verifier(b"pepper", &auth);
-        assert!(verify(b"pepper", &auth, &stored));
-        assert!(!verify(b"other", &auth, &stored));
+    fn the_verifier_matches_only_its_own_pepper_and_authentication_key() {
+        let key = [1u8; KEY_LENGTH];
+        let stored = verifier(b"pepper", &key);
+        assert!(verify(b"pepper", &key, &stored));
+        assert!(!verify(b"other", &key, &stored));
         assert!(!verify(b"pepper", &[2u8; KEY_LENGTH], &stored));
     }
 
     #[test]
-    fn unhex_inverts_hex_only_for_well_formed_text() {
+    fn from_hexadecimal_inverts_to_hexadecimal_only_for_well_formed_text() {
         let bytes = [0u8, 15, 16, 255];
-        assert_eq!(hex(&bytes), "000f10ff");
-        assert_eq!(unhex("000f10ff"), Some(bytes.to_vec()));
-        assert_eq!(unhex("0"), None);
-        assert_eq!(unhex("zz"), None);
+        assert_eq!(to_hexadecimal(&bytes), "000f10ff");
+        assert_eq!(from_hexadecimal("000f10ff"), Some(bytes.to_vec()));
+        assert_eq!(from_hexadecimal("0"), None);
+        assert_eq!(from_hexadecimal("zz"), None);
     }
 
     #[cfg(feature = "vault")]

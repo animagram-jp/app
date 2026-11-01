@@ -526,7 +526,7 @@ mod error_tests {
         cases.extend([
             (Error::Credential(CredentialError::Email), vec![8, 1], "Email"),
             (Error::Credential(CredentialError::Password), vec![8, 2], "Password"),
-            (Error::Credential(CredentialError::Stretch), vec![8, 3], "Stretch"),
+            (Error::Credential(CredentialError::Parameters), vec![8, 3], "Parameters"),
         ]);
         #[cfg(feature = "vault")]
         cases.extend([

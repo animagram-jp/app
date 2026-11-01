@@ -145,7 +145,7 @@ mod tests {
         assert_eq!(wrapped.len(), WRAPPED_ROOT_LENGTH);
         assert_eq!(unwrap_root(&wrap, &wrapped), Ok(root));
         assert_eq!(
-            unwrap_root(&credential::auth_key(&stretch), &wrapped),
+            unwrap_root(&credential::authentication_key(&stretch), &wrapped),
             Err(VaultError::Operation)
         );
         assert_eq!(
