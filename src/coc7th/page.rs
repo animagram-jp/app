@@ -1,4 +1,4 @@
-use alloc::vec::Vec;
+use alloc::{vec, vec::Vec};
 use core::{
     clone::Clone,
     cmp::PartialEq,
@@ -10,7 +10,9 @@ use core::{
 
 use crate::{
     Language,
+    coc7th::investigator::{Investigator, Possession, Profile, join, sheet},
     host::dom::{Id, Tag},
+    object::SubjectTrait as _,
 };
 
 const INVESTIGATOR_BUTTON: u32 = 1;
@@ -23,12 +25,129 @@ const CHAT_LOG_SECTION: u32 = 2;
 const CHAT_BOX_SECTION: u32 = 3;
 pub const INVESTIGATOR_OPTIONS: u32 = 4;
 
-pub struct InvestigatorSheet;
+const CHARACTERISTIC_HEADS: u32 = 5;
+const SKILL_HEADS: u32 = 8;
 
-impl InvestigatorSheet {
-    pub fn display() -> &'static str {
-        "Modern Investigator"
+fn heading(section: u32, tag: Tag) -> Id {
+    Id::new(&[(Tag::Main, None), (Tag::Section, Some(section)), (tag, None)])
+}
+
+fn head(part: u32, table: Option<u32>, column: u32) -> Id {
+    let mut path = sheet(part);
+    path.extend([
+        (Tag::Table, table),
+        (Tag::Thead, None),
+        (Tag::Tr, None),
+        (Tag::Th, Some(column)),
+    ]);
+    Id::new(&path)
+}
+
+fn characteristic_head(column: u32) -> Id {
+    head(Investigator::Characteristic.base_id(), None, column)
+}
+
+fn skill_head(column: u32) -> Id {
+    head(Investigator::Skill.base_id(), None, column)
+}
+
+fn weapon_head(column: u32) -> Id {
+    head(Investigator::Possession.base_id(), Some(1), column)
+}
+
+fn armor_head(column: u32) -> Id {
+    head(Investigator::Possession.base_id(), Some(2), column)
+}
+
+fn profile_label(id: u32) -> Id {
+    let mut path = sheet(Investigator::Profile.base_id());
+    path.extend([(Tag::Dl, None), (Tag::Dt, Some(id))]);
+    Id::new(&path)
+}
+
+macro_rules! label {
+    ($name:ident, $en:literal, $ja:literal, $dom:expr) => {
+        pub struct $name;
+
+        impl $name {
+            pub fn display(language: Language) -> &'static str {
+                match language {
+                    Language::En(_) => $en,
+                    Language::Ja => $ja,
+                }
+            }
+
+            pub fn dom() -> Vec<Id> {
+                $dom
+            }
+        }
+    };
+}
+
+label!(
+    InvestigatorSheet,
+    "Modern Investigator",
+    "キャラクターシート",
+    vec![heading(SHEET_SECTION, Tag::H2)]
+);
+label!(ManagementData, "Management Data", "管理データ", vec![join(sheet(1), &[(Tag::H3, None)])]);
+label!(ChatLog, "Chat Log", "チャットログ", vec![heading(CHAT_LOG_SECTION, Tag::H2)]);
+label!(ChatBox, "Chat Box", "チャットボックス", vec![heading(CHAT_BOX_SECTION, Tag::H2)]);
+label!(Pronunciation, "Pronunciation", "読み", vec![profile_label(Profile::Name.ids()[1])]);
+label!(Title, "Title", "肩書", vec![profile_label(Profile::Occupation.ids()[2])]);
+label!(Initial, "Initial", "初期値", vec![characteristic_head(2)]);
+label!(Change, "Change", "変動値", vec![characteristic_head(3), skill_head(6)]);
+label!(Modifier, "Modifier", "修正値", vec![characteristic_head(4), skill_head(7)]);
+label!(Sum, "Sum", "合計", vec![characteristic_head(5), skill_head(8)]);
+label!(Specialization, "Specialization", "専門分野", vec![skill_head(2)]);
+label!(BasePercent, "Base", "基本値", vec![skill_head(3)]);
+label!(OccupationPoints, "Occupation", "職業PT", vec![skill_head(4)]);
+label!(InterestPoints, "Interest", "興味PT", vec![skill_head(5)]);
+label!(Name, "Name", "名称", vec![weapon_head(1), armor_head(1)]);
+label!(Damage, "Damage", "ダメージ", vec![weapon_head(4)]);
+label!(UsesPerRound, "Uses per Round", "回数", vec![weapon_head(5)]);
+label!(Range, "Range", "射程", vec![weapon_head(6)]);
+label!(Ammunition, "Ammo", "装弾数", vec![weapon_head(7)]);
+label!(Malfunction, "Malf.", "故障", vec![weapon_head(8)]);
+label!(ArmorPoints, "Armor Points", "装甲値", vec![armor_head(3)]);
+label!(Notes, "Notes", "備考", vec![armor_head(4)]);
+
+pub fn every_label(language: Language) -> Vec<(Id, &'static str)> {
+    let mut labels = Vec::new();
+    macro_rules! collect {
+        ($($name:ident),+ $(,)?) => {
+            $(labels.extend($name::dom().into_iter().map(|id| (id, $name::display(language))));)+
+        };
     }
+    collect!(
+        InvestigatorSheet,
+        ManagementData,
+        ChatLog,
+        ChatBox,
+        Pronunciation,
+        Title,
+        Initial,
+        Change,
+        Modifier,
+        Sum,
+        Specialization,
+        BasePercent,
+        OccupationPoints,
+        InterestPoints,
+        Name,
+        Damage,
+        UsesPerRound,
+        Range,
+        Ammunition,
+        Malfunction,
+        ArmorPoints,
+        Notes,
+    );
+    labels.push((skill_head(1), Investigator::Skill.display(language)));
+    labels.push((weapon_head(2), Possession::Weapon.display(language)));
+    labels.push((weapon_head(3), Investigator::Skill.display(language)));
+    labels.push((armor_head(2), Possession::Armor.display(language)));
+    labels
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -180,6 +299,22 @@ mod tests {
         for page in Page::every() {
             let id = html_id(&page.to_dom());
             assert!(html.contains(&format!("id=\"{id}\"")), "{page:?} -> {id}");
+        }
+    }
+
+    #[test]
+    fn every_label_has_a_home_in_the_html() {
+        let html =
+            fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/distribution/index.html"))
+                .unwrap();
+        let labels = every_label(Language::Ja);
+        assert_eq!(
+            labels.len(),
+            4 + 2 + (CHARACTERISTIC_HEADS as usize - 1) + (SKILL_HEADS as usize - 1) + 6 + 3 + 4
+        );
+        for (id, _) in labels {
+            let id = html_id(&id);
+            assert!(html.contains(&format!("id=\"{id}\"")), "{id}");
         }
     }
 

@@ -3414,27 +3414,27 @@ impl Memo {
 
 const MANAGEMENT_SECTION: u32 = 1;
 const SHEET_SECTION: u32 = 1;
-const WEAPON_ROWS: u32 = 4;
-const WEAPON_COLUMNS: u32 = 8;
-const ARMOR_ROWS: u32 = 2;
-const ARMOR_COLUMNS: u32 = 4;
-const EQUIPMENT_ROWS: u32 = 12;
-const EQUIPMENT_DETAILS: u32 = 3;
+pub const WEAPON_ROWS: u32 = 4;
+pub const WEAPON_COLUMNS: u32 = 8;
+pub const ARMOR_ROWS: u32 = 2;
+pub const ARMOR_COLUMNS: u32 = 4;
+pub const EQUIPMENT_ROWS: u32 = 12;
+pub const EQUIPMENT_DETAILS: u32 = 3;
 const EQUIPMENT_LIST: u32 = 1;
 const WEALTH_LIST: u32 = 2;
 
-fn sheet(part: u32) -> Vec<(Tag, Option<u32>)> {
+pub fn sheet(part: u32) -> Vec<(Tag, Option<u32>)> {
     Vec::from([(Tag::Main, None), (Tag::Section, Some(SHEET_SECTION)), (Tag::Section, Some(part))])
 }
 
-fn join(mut path: Vec<(Tag, Option<u32>)>, tail: &[(Tag, Option<u32>)]) -> Id {
+pub fn join(mut path: Vec<(Tag, Option<u32>)>, tail: &[(Tag, Option<u32>)]) -> Id {
     path.extend_from_slice(tail);
     Id::new(&path)
 }
 
-fn dd(part: u32, id: u32, tail: &[(Tag, Option<u32>)]) -> Id {
+fn entry(part: u32, tag: Tag, id: u32, tail: &[(Tag, Option<u32>)]) -> Id {
     let mut path = sheet(part);
-    path.extend([(Tag::Dl, None), (Tag::Dd, Some(id))]);
+    path.extend([(Tag::Dl, None), (tag, Some(id))]);
     join(path, tail)
 }
 
@@ -3468,8 +3468,25 @@ impl Management {
         &[Self::Identity, Self::CreatedAt, Self::ModifiedAt]
     }
 
-    pub fn dom(&self) -> Id {
-        dd(MANAGEMENT_SECTION, self.id(), &[])
+    pub fn display(&self, language: Language) -> &'static str {
+        match (self, language) {
+            (Self::Identity, _) => "ID",
+            (Self::CreatedAt, Language::En(_)) => "Created",
+            (Self::CreatedAt, Language::Ja) => "作成日",
+            (Self::ModifiedAt, Language::En(_)) => "Modified",
+            (Self::ModifiedAt, Language::Ja) => "更新日",
+        }
+    }
+
+    pub fn section() -> Id {
+        Id::new(&sheet(MANAGEMENT_SECTION))
+    }
+
+    pub fn dom(&self) -> [Id; 2] {
+        [
+            entry(MANAGEMENT_SECTION, Tag::Dt, self.id(), &[]),
+            entry(MANAGEMENT_SECTION, Tag::Dd, self.id(), &[]),
+        ]
     }
 }
 
@@ -3478,20 +3495,8 @@ impl Investigator {
         Self::list().iter().find(|part| part.base_id() == id).copied()
     }
 
-    pub fn dom(&self) -> Id {
-        Id::new(&sheet(self.base_id()))
-    }
-
-    pub fn heading(&self) -> Id {
-        join(sheet(self.base_id()), &[(Tag::H3, None)])
-    }
-
-    pub fn management() -> Id {
-        Id::new(&sheet(MANAGEMENT_SECTION))
-    }
-
-    pub fn management_heading() -> Id {
-        join(sheet(MANAGEMENT_SECTION), &[(Tag::H3, None)])
+    pub fn dom(&self) -> [Id; 2] {
+        [join(sheet(self.base_id()), &[(Tag::H3, None)]), Id::new(&sheet(self.base_id()))]
     }
 }
 
@@ -3506,30 +3511,25 @@ impl Profile {
 
     pub fn dom(&self) -> Vec<Id> {
         const PART: u32 = Investigator::Profile.base_id();
-        let input = |id| dd(PART, id, &[(Tag::Input, None)]);
+        let input = |id| entry(PART, Tag::Dd, id, &[(Tag::Input, None)]);
         let ids = self.ids();
+        let mut dom = Vec::from([entry(PART, Tag::Dt, ids[0], &[])]);
         match self {
-            Self::Name => Vec::from([input(ids[0]), input(ids[1])]),
-            Self::Occupation => Vec::from([input(ids[0]), input(ids[2])]),
-            Self::Age => Vec::from([
+            Self::Name => dom.extend([input(ids[0]), input(ids[1])]),
+            Self::Occupation => dom.extend([input(ids[0]), input(ids[2])]),
+            Self::Age => dom.extend([
                 input(ids[0]),
-                dd(PART, ids[0], &[(Tag::Button, Some(1))]),
-                dd(PART, ids[0], &[(Tag::Button, Some(2))]),
+                entry(PART, Tag::Dd, ids[0], &[(Tag::Button, Some(1))]),
+                entry(PART, Tag::Dd, ids[0], &[(Tag::Button, Some(2))]),
             ]),
-            _ => Vec::from([input(ids[0])]),
+            _ => dom.push(input(ids[0])),
         }
+        dom
     }
 }
 
-pub struct CharacteristicCells {
-    pub initial:  Id,
-    pub change:   Id,
-    pub modifier: Id,
-    pub sum:      Id,
-}
-
 impl Characteristic {
-    pub fn dom(&self) -> CharacteristicCells {
+    pub fn dom(&self) -> [Id; 5] {
         let mut path = sheet(Investigator::Characteristic.base_id());
         path.extend([(Tag::Table, None), (Tag::Tbody, None), (Tag::Tr, Some(self.id()))]);
         let cell = |column, input: bool| {
@@ -3539,12 +3539,13 @@ impl Characteristic {
             }
             join(path.clone(), &tail)
         };
-        CharacteristicCells {
-            initial:  cell(1, true),
-            change:   cell(2, true),
-            modifier: cell(3, true),
-            sum:      cell(4, false),
-        }
+        [
+            join(path.clone(), &[(Tag::Th, None)]),
+            cell(1, true),
+            cell(2, true),
+            cell(3, true),
+            cell(4, false),
+        ]
     }
 }
 
@@ -3571,9 +3572,10 @@ impl SecondaryAttribute {
         matches!(self, Self::Luck | Self::Sanity)
     }
 
-    pub fn dom(&self) -> Id {
+    pub fn dom(&self) -> [Id; 2] {
+        const PART: u32 = Investigator::SecondaryAttribute.base_id();
         let tail: &[(Tag, Option<u32>)] = if self.editable() { &[(Tag::Input, None)] } else { &[] };
-        dd(Investigator::SecondaryAttribute.base_id(), self.base_id(), tail)
+        [entry(PART, Tag::Dt, self.base_id(), &[]), entry(PART, Tag::Dd, self.base_id(), tail)]
     }
 }
 
@@ -3657,6 +3659,44 @@ impl Skill {
     pub fn option(row: u32, n: u32) -> Id {
         join(Self::row_path(row), &[(Tag::Td, Some(1)), (Tag::Div, None), (Tag::Button, Some(n))])
     }
+
+    pub fn options(&self, language: Language) -> Vec<(Id, String)> {
+        let row = self.base_id();
+        let named = |n: u32, name: &str| (Self::option(row, n), String::from(name));
+        match self {
+            Self::ArtAndCraft => ArtAndCraft::list()
+                .iter()
+                .filter(|a| **a != ArtAndCraft::Custom)
+                .map(|a| named(a.base_id() - row, a.display(language)))
+                .collect(),
+            Self::Fighting => Fighting::list()
+                .iter()
+                .filter(|f| **f != Fighting::Custom)
+                .map(|f| named(f.id(0), f.display(language)))
+                .collect(),
+            Self::Firearms => Firearms::list()
+                .iter()
+                .filter(|f| **f != Firearms::Custom)
+                .map(|f| named(f.id(0), f.display(language)))
+                .collect(),
+            Self::Pilot => Pilot::list()
+                .iter()
+                .filter(|p| **p != Pilot::Custom)
+                .map(|p| named(p.id(0), p.display(language)))
+                .collect(),
+            Self::Science => Science::list()
+                .iter()
+                .filter(|s| **s != Science::Custom)
+                .map(|s| named(s.id(0), s.display(language).unwrap_or("")))
+                .collect(),
+            Self::Survival => Survival::list()
+                .iter()
+                .filter(|s| **s != Survival::Custom)
+                .map(|s| named(s.id(0), s.display(language)))
+                .collect(),
+            _ => Vec::new(),
+        }
+    }
 }
 
 impl Possession {
@@ -3668,14 +3708,15 @@ impl Possession {
         &[Self::Weapon, Self::Armor, Self::Equipment, Self::Wealth]
     }
 
-    pub fn dom(&self) -> Id {
+    pub fn dom(&self) -> [Id; 2] {
+        const PART: u32 = Investigator::Possession.base_id();
         let tail: &[(Tag, Option<u32>)] = match self {
             Self::Weapon => &[(Tag::Table, Some(1))],
             Self::Armor => &[(Tag::Table, Some(2))],
             Self::Equipment => &[(Tag::Dl, Some(EQUIPMENT_LIST))],
             Self::Wealth => &[(Tag::Dl, Some(WEALTH_LIST))],
         };
-        join(sheet(Investigator::Possession.base_id()), tail)
+        [join(sheet(PART), &[(Tag::P, Some(self.id()))]), join(sheet(PART), tail)]
     }
 
     pub fn cells(&self) -> Vec<Id> {
@@ -3683,7 +3724,7 @@ impl Possession {
             Self::Weapon => (WEAPON_ROWS, WEAPON_COLUMNS),
             Self::Armor => (ARMOR_ROWS, ARMOR_COLUMNS),
             Self::Equipment => {
-                let list = self.dom();
+                let [_, list] = self.dom();
                 return (1..=EQUIPMENT_ROWS)
                     .flat_map(|row| {
                         let list = list.clone();
@@ -3698,9 +3739,11 @@ impl Possession {
                     })
                     .collect();
             }
-            Self::Wealth => return WealthField::list().iter().map(WealthField::dom).collect(),
+            Self::Wealth => {
+                return WealthField::list().iter().flat_map(WealthField::dom).collect();
+            }
         };
-        let table = self.dom();
+        let [_, table] = self.dom();
         (1..=rows)
             .flat_map(|row| {
                 let table = table.clone();
@@ -3714,6 +3757,22 @@ impl Possession {
                     ]);
                     Id::new(&path)
                 })
+            })
+            .collect()
+    }
+
+    pub fn heads(&self) -> Vec<Id> {
+        let columns = match self {
+            Self::Weapon => WEAPON_COLUMNS,
+            Self::Armor => ARMOR_COLUMNS,
+            _ => return Vec::new(),
+        };
+        let [_, table] = self.dom();
+        (1..=columns)
+            .map(|column| {
+                let mut path: Vec<_> = table.0.iter().map(|s| (s.tag, s.n)).collect();
+                path.extend([(Tag::Thead, None), (Tag::Tr, None), (Tag::Th, Some(column))]);
+                Id::new(&path)
             })
             .collect()
     }
@@ -3736,10 +3795,13 @@ impl WealthField {
         &[Self::SpendingLevel, Self::Cash, Self::Assets]
     }
 
-    pub fn dom(&self) -> Id {
+    pub fn dom(&self) -> [Id; 2] {
         let mut path = sheet(Investigator::Possession.base_id());
-        path.extend([(Tag::Dl, Some(WEALTH_LIST)), (Tag::Dd, Some(self.id()))]);
-        join(path, &[(Tag::Input, None)])
+        path.push((Tag::Dl, Some(WEALTH_LIST)));
+        [
+            join(path.clone(), &[(Tag::Dt, Some(self.id()))]),
+            join(path, &[(Tag::Dd, Some(self.id())), (Tag::Input, None)]),
+        ]
     }
 }
 
@@ -3763,15 +3825,16 @@ impl Backstory {
         ]
     }
 
-    pub fn dom(&self) -> Id {
+    pub fn dom(&self) -> Vec<Id> {
         const PART: u32 = Investigator::Backstory.base_id();
         match self {
             Self::KeyConnection(target) => {
-                let mut path = sheet(PART);
-                path.extend([(Tag::Dl, None), (Tag::Dt, Some(target.id())), (Tag::Input, None)]);
-                Id::new(&path)
+                Vec::from([entry(PART, Tag::Dt, target.id(), &[(Tag::Input, None)])])
             }
-            entry => dd(PART, entry.id(), &[(Tag::Textarea, None)]),
+            entry_ => Vec::from([
+                entry(PART, Tag::Dt, entry_.id(), &[(Tag::Label, None)]),
+                entry(PART, Tag::Dd, entry_.id(), &[(Tag::Textarea, None)]),
+            ]),
         }
     }
 }
@@ -3784,25 +3847,20 @@ impl Memo {
 
     pub fn dom(&self) -> [Id; 2] {
         const PART: u32 = Investigator::Memo.base_id();
-        let mut title = sheet(PART);
-        title.extend([(Tag::Dl, None), (Tag::Dt, Some(self.id())), (Tag::Input, None)]);
-        [Id::new(&title), dd(PART, self.id(), &[(Tag::Textarea, None)])]
+        [
+            entry(PART, Tag::Dt, self.id(), &[(Tag::Input, None)]),
+            entry(PART, Tag::Dd, self.id(), &[(Tag::Textarea, None)]),
+        ]
     }
 }
 
 pub fn every_dom() -> Vec<Id> {
-    let mut ids = Vec::from([Investigator::management(), Investigator::management_heading()]);
-    ids.extend(Management::list().iter().map(Management::dom));
-    for part in Investigator::list() {
-        ids.push(part.dom());
-        ids.push(part.heading());
-    }
+    let mut ids = Vec::from([Management::section()]);
+    ids.extend(Management::list().iter().flat_map(Management::dom));
+    ids.extend(Investigator::list().iter().flat_map(Investigator::dom));
     ids.extend(Profile::list().iter().flat_map(Profile::dom));
-    for characteristic in Characteristic::list() {
-        let cells = characteristic.dom();
-        ids.extend([cells.initial, cells.change, cells.modifier, cells.sum]);
-    }
-    ids.extend(SecondaryAttribute::list().iter().map(SecondaryAttribute::dom));
+    ids.extend(Characteristic::list().iter().flat_map(Characteristic::dom));
+    ids.extend(SecondaryAttribute::list().iter().flat_map(SecondaryAttribute::dom));
     for skill in Skill::list() {
         for row in skill.rows() {
             let cells = Skill::cells(row);
@@ -3817,47 +3875,16 @@ pub fn every_dom() -> Vec<Id> {
                 cells.sum,
             ]);
         }
+        ids.extend(skill.options(Language::Ja).into_iter().map(|(id, _)| id));
     }
-    ids.extend(ArtAndCraft::list().iter().filter(|a| **a != ArtAndCraft::Custom).map(|a| {
-        Skill::option(Skill::ArtAndCraft.base_id(), a.base_id() - Skill::ArtAndCraft.base_id())
-    }));
-    ids.extend(
-        Fighting::list()
-            .iter()
-            .filter(|f| **f != Fighting::Custom)
-            .map(|f| Skill::option(Skill::Fighting.base_id(), f.id(0))),
-    );
-    ids.extend(
-        Firearms::list()
-            .iter()
-            .filter(|f| **f != Firearms::Custom)
-            .map(|f| Skill::option(Skill::Firearms.base_id(), f.id(0))),
-    );
-    ids.extend(
-        Pilot::list()
-            .iter()
-            .filter(|p| **p != Pilot::Custom)
-            .map(|p| Skill::option(Skill::Pilot.base_id(), p.id(0))),
-    );
-    ids.extend(
-        Science::list()
-            .iter()
-            .filter(|s| **s != Science::Custom)
-            .map(|s| Skill::option(Skill::Science.base_id(), s.id(0))),
-    );
-    ids.extend(
-        Survival::list()
-            .iter()
-            .filter(|s| **s != Survival::Custom)
-            .map(|s| Skill::option(Skill::Survival.base_id(), s.id(0))),
-    );
     for possession in Possession::list() {
-        ids.push(possession.dom());
+        ids.extend(possession.dom());
+        ids.extend(possession.heads());
         ids.extend(possession.cells());
     }
     for entry in Backstory::list() {
-        ids.push(Backstory::KeyConnection(Box::new(Backstory::from_id(entry.id()).unwrap())).dom());
-        ids.push(entry.dom());
+        ids.extend(Backstory::KeyConnection(Box::new(entry.clone())).dom());
+        ids.extend(entry.dom());
     }
     ids.extend(Memo::list().iter().flat_map(Memo::dom));
     ids

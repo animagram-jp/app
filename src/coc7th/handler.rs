@@ -14,18 +14,19 @@ use crate::{
         investigator::{
             Age, ArtAndCraft, ArtAndCraftCustom, Backstory, Birthplace, Build, Characteristic,
             DamageBonus, Fighting, FightingCustom, Firearms, FirearmsCustom, HitPoints,
-            InterestSkillPoints, LanguageOther, LanguageOwn, Luck, MagicPoints, Management, Memo,
-            MoveRate, Name, Occupation, OccupationSkillPoints, Pilot, PilotCustom, Pronoun,
-            Residence, SCHEMA_SIZE, Sanity, Science, ScienceCustom, SecondaryAttribute, Skill,
-            Survival, SurvivalCustom, read_skill,
+            InterestSkillPoints, Investigator, LanguageOther, LanguageOwn, Luck, MagicPoints,
+            Management, Memo, MoveRate, Name, Occupation, OccupationSkillPoints, Pilot,
+            PilotCustom, Possession, Profile, Pronoun, Residence, SCHEMA_SIZE, Sanity, Science,
+            ScienceCustom, SecondaryAttribute, Skill, Survival, SurvivalCustom, WealthField,
+            read_skill,
         },
-        page::Page,
+        page::{self, Page},
     },
     data_struct::{DataStruct, ID_IDENTITY},
     event::{self, Event, Opened, Response, gesture::Pointer, store},
     file_store::{FileStore, Mount, StoreId},
     host::{Attribute, CanvasEvent, Command, EventType, Method, dom::Id},
-    object::Predicate as _,
+    object::{Predicate as _, SubjectTrait as _},
 };
 
 pub enum Dialog {
@@ -123,6 +124,7 @@ impl<S: Mount> event::Handler for Handler<S> {
         commands.extend(self.startup.drain(..).map(|error| Command::Error { error }));
         commands.extend(language_commands(self.language));
         commands.extend(Language::list().iter().flat_map(|&l| option_commands(l)));
+        commands.extend(label_commands(self.language));
         if !self.data_url.is_empty() {
             commands.push(Command::Fetch {
                 request: LOAD_REQUEST,
@@ -173,6 +175,7 @@ impl<S: Mount> event::Handler for Handler<S> {
             Some(Page::LanguageOption(l)) => {
                 self.language = l;
                 let mut commands = Vec::from(language_commands(l));
+                commands.extend(label_commands(l));
                 commands.extend(sheet_commands(&self.investigator, l));
                 (vec![], commands)
             }
@@ -310,7 +313,6 @@ fn skill_commands(investigator: &DataStruct, language: Language) -> Vec<Command>
         }
         for (row, name, points) in rows_values {
             let cells = Skill::cells(row);
-            commands.push(text(cells.name, skill.display(language)));
             commands.push(value(cells.specialization, name));
             commands.push(text(cells.base, format!("{base}")));
             commands.push(value(cells.occupation, format!("{}", points.0)));
@@ -320,6 +322,41 @@ fn skill_commands(investigator: &DataStruct, language: Language) -> Vec<Command>
             commands.push(text(cells.sum, format!("{}", skill_sum(base, points))));
         }
     }
+    commands
+}
+
+fn label_commands(language: Language) -> Vec<Command> {
+    let mut commands: Vec<Command> =
+        page::every_label(language).into_iter().map(|(id, label)| text(id, label)).collect();
+    commands
+        .extend(Management::list().iter().map(|m| text(m.dom()[0].clone(), m.display(language))));
+    commands.extend(
+        Investigator::list().iter().map(|part| text(part.dom()[0].clone(), part.display(language))),
+    );
+    commands.extend(
+        Profile::list().iter().map(|field| text(field.dom()[0].clone(), field.display(language))),
+    );
+    commands.extend(
+        Characteristic::list().iter().map(|c| text(c.dom()[0].clone(), c.display(language))),
+    );
+    commands.extend(
+        SecondaryAttribute::list().iter().map(|a| text(a.dom()[0].clone(), a.display(language))),
+    );
+    for skill in Skill::list() {
+        for row in skill.rows() {
+            commands.push(text(Skill::cells(row).name, skill.display(language)));
+        }
+        commands.extend(skill.options(language).into_iter().map(|(id, name)| text(id, name)));
+    }
+    commands
+        .extend(Possession::list().iter().map(|p| text(p.dom()[0].clone(), p.display(language))));
+    commands
+        .extend(WealthField::list().iter().map(|f| text(f.dom()[0].clone(), f.display(language))));
+    commands.extend(
+        Backstory::list()
+            .iter()
+            .map(|entry| text(entry.dom().swap_remove(0), entry.display(language))),
+    );
     commands
 }
 
@@ -333,34 +370,31 @@ fn sheet_commands(investigator: &DataStruct, language: Language) -> Vec<Command>
         .and_then(|b| b.get(0..4)?.try_into().ok())
         .map(u32::from_le_bytes)
         .unwrap_or(0);
-    commands.push(text(Management::Identity.dom(), format!("{identity}")));
+    let [_, identity_dom] = Management::Identity.dom();
+    commands.push(text(identity_dom, format!("{identity}")));
 
-    let name_dom = crate::coc7th::investigator::Profile::Name.dom();
-    commands.push(value(name_dom[0].clone(), name));
-    commands.push(value(name_dom[1].clone(), complement.unwrap_or_default()));
+    let name_dom = Profile::Name.dom();
+    commands.push(value(name_dom[1].clone(), name));
+    commands.push(value(name_dom[2].clone(), complement.unwrap_or_default()));
     let (kind, custom, title) = Occupation::read(investigator);
-    let occupation_dom = crate::coc7th::investigator::Profile::Occupation.dom();
+    let occupation_dom = Profile::Occupation.dom();
     commands.push(value(
-        occupation_dom[0].clone(),
+        occupation_dom[1].clone(),
         Occupation::display(&kind, custom.as_deref(), None, language),
     ));
-    commands.push(value(occupation_dom[1].clone(), title.unwrap_or_default()));
-    let plain = crate::coc7th::investigator::Profile::Birthplace;
-    commands.push(value(plain.dom()[0].clone(), Birthplace::read(investigator)));
-    let plain = crate::coc7th::investigator::Profile::Pronoun;
-    commands.push(value(plain.dom()[0].clone(), Pronoun::read(investigator)));
-    let plain = crate::coc7th::investigator::Profile::Residence;
-    commands.push(value(plain.dom()[0].clone(), Residence::read(investigator)));
-    let age = crate::coc7th::investigator::Profile::Age;
-    commands.push(value(age.dom()[0].clone(), format!("{}", Age::read(investigator))));
+    commands.push(value(occupation_dom[2].clone(), title.unwrap_or_default()));
+    commands.push(value(Profile::Birthplace.dom()[1].clone(), Birthplace::read(investigator)));
+    commands.push(value(Profile::Pronoun.dom()[1].clone(), Pronoun::read(investigator)));
+    commands.push(value(Profile::Residence.dom()[1].clone(), Residence::read(investigator)));
+    commands.push(value(Profile::Age.dom()[1].clone(), format!("{}", Age::read(investigator))));
 
     for characteristic in Characteristic::list() {
         let (initial, change, modifier) = characteristic.read(investigator);
-        let cells = characteristic.dom();
-        commands.push(value(cells.initial, format!("{initial}")));
-        commands.push(value(cells.change, format!("{change}")));
-        commands.push(value(cells.modifier, format!("{modifier}")));
-        commands.push(text(cells.sum, format!("{}", characteristic.sum(investigator))));
+        let [_, initial_dom, change_dom, modifier_dom, sum_dom] = characteristic.dom();
+        commands.push(value(initial_dom, format!("{initial}")));
+        commands.push(value(change_dom, format!("{change}")));
+        commands.push(value(modifier_dom, format!("{modifier}")));
+        commands.push(text(sum_dom, format!("{}", characteristic.sum(investigator))));
     }
 
     for attribute in SecondaryAttribute::list() {
@@ -379,11 +413,8 @@ fn sheet_commands(investigator: &DataStruct, language: Language) -> Vec<Command>
                 format!("{}", InterestSkillPoints::derive(investigator).1)
             }
         };
-        commands.push(if attribute.editable() {
-            value(attribute.dom(), shown)
-        } else {
-            text(attribute.dom(), shown)
-        });
+        let [_, slot] = attribute.dom();
+        commands.push(if attribute.editable() { value(slot, shown) } else { text(slot, shown) });
     }
 
     commands.extend(skill_commands(investigator, language));
@@ -391,8 +422,10 @@ fn sheet_commands(investigator: &DataStruct, language: Language) -> Vec<Command>
     let key_connection = Backstory::KeyConnection(alloc::boxed::Box::new(Backstory::Trait)).id();
     let connected = investigator.get(key_connection).ok().and_then(|b| b.first().copied());
     for entry in Backstory::list() {
-        commands.push(value(entry.dom(), stored_text(investigator, entry.id())));
-        let checkbox = Backstory::KeyConnection(alloc::boxed::Box::new(entry.clone())).dom();
+        let textarea = entry.dom().swap_remove(1);
+        commands.push(value(textarea, stored_text(investigator, entry.id())));
+        let checkbox =
+            Backstory::KeyConnection(alloc::boxed::Box::new(entry.clone())).dom().swap_remove(0);
         commands.push(if connected == Some(entry.id() as u8) {
             Command::SetAttribute {
                 id:        checkbox,
@@ -560,7 +593,14 @@ mod handler_tests {
             .into_iter()
             .chain(Language::list().iter().flat_map(|&l| labelled(Page::LanguageOption(l), l)))
             .collect();
-        assert_eq!(texts.iter().map(written).collect::<Vec<_>>(), expected);
+        assert_eq!(texts[..expected.len()].iter().map(written).collect::<Vec<_>>(), expected);
+        let labels = &texts[expected.len()..];
+        assert_eq!(labels.len(), label_commands(Language::Ja).len());
+        assert!(labels.iter().all(|command| matches!(command, Command::SetText { .. })));
+        assert!(labels.iter().any(|command| matches!(
+            command,
+            Command::SetText { value, .. } if value == Investigator::Skill.display(Language::Ja)
+        )));
         assert_eq!(
             reveal.iter().map(hidden_change).collect::<Vec<_>>(),
             [(false, Page::Body.to_dom())]
@@ -648,7 +688,7 @@ mod handler_tests {
                 _ => None,
             })
             .collect();
-        let name_input = crate::coc7th::investigator::Profile::Name.dom()[0].clone();
+        let name_input = Profile::Name.dom()[1].clone();
         assert!(written.contains(&(name_input, String::from("鏖"))));
         assert_eq!(handler.investigators.as_ref().unwrap().get(1), None);
 

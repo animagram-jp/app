@@ -531,7 +531,7 @@ mod error_tests {
         #[cfg(feature = "vault")]
         cases.extend([
             (Error::Vault(VaultError::Length(1)), vec![13, 2], "Length(1)"),
-            (Error::Vault(VaultError::Operation), vec![13, 3], "Operation"),
+            (Error::Vault(VaultError::Integrity), vec![13, 3], "Integrity"),
         ]);
         for (error, path, detail) in cases {
             let mut actual = Vec::new();
