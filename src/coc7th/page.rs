@@ -11,6 +11,7 @@ use core::{
 use crate::{
     Language,
     coc7th::investigator::{Investigator, Possession, Profile, join, sheet},
+    credential::Field,
     host::dom::{Id, Tag},
     object::SubjectTrait as _,
 };
@@ -23,6 +24,8 @@ const LANGUAGE_LIST: u32 = 3;
 const SHEET_SECTION: u32 = 1;
 const CHAT_LOG_SECTION: u32 = 2;
 const CHAT_BOX_SECTION: u32 = 3;
+const CREATE_LABEL: u32 = 1;
+const NUMBER_LABEL: u32 = 2;
 pub const INVESTIGATOR_OPTIONS: u32 = 4;
 
 const CHARACTERISTIC_HEADS: u32 = 5;
@@ -111,6 +114,23 @@ label!(Ammunition, "Ammo", "装弾数", vec![weapon_head(7)]);
 label!(Malfunction, "Malf.", "故障", vec![weapon_head(8)]);
 label!(ArmorPoints, "Armor Points", "装甲値", vec![armor_head(3)]);
 label!(Notes, "Notes", "備考", vec![armor_head(4)]);
+label!(
+    Login,
+    "Login",
+    "ログイン",
+    vec![Id::new(&[(Tag::Header, None), (Tag::Label, None), (Tag::Span, None)])]
+);
+label!(
+    Create,
+    "Create",
+    "作成",
+    vec![Id::new(&[
+        (Tag::Main, None),
+        (Tag::Dialog, None),
+        (Tag::Label, Some(CREATE_LABEL)),
+        (Tag::Span, None),
+    ])]
+);
 
 pub fn every_label(language: Language) -> Vec<(Id, &'static str)> {
     let mut labels = Vec::new();
@@ -142,6 +162,8 @@ pub fn every_label(language: Language) -> Vec<(Id, &'static str)> {
         Malfunction,
         ArmorPoints,
         Notes,
+        Login,
+        Create,
     );
     labels.push((skill_head(1), Investigator::Skill.display(language)));
     labels.push((weapon_head(2), Possession::Weapon.display(language)));
@@ -160,11 +182,20 @@ pub enum Page {
     Save,
     Appearance,
     LanguageOption(Language),
+    Unlock,
     Sheet,
     ChatLog,
     ChatInput,
     ChatSend,
     Dialog,
+    Credential(Field),
+    DialogHeading,
+    DialogOptions,
+    DialogNumber,
+    DialogNumberInput,
+    DialogForm,
+    Create,
+    CreateInput,
 }
 
 impl Page {
@@ -192,6 +223,7 @@ impl Page {
             Self::LanguageOption(l) => {
                 header(&[(Tag::Div, Some(LANGUAGE_LIST)), (Tag::Button, Some(l.number()))])
             }
+            Self::Unlock => header(&[(Tag::Label, None), (Tag::Input, None)]),
             Self::Sheet => main(&[(Tag::Section, Some(SHEET_SECTION))]),
             Self::ChatLog => main(&[(Tag::Section, Some(CHAT_LOG_SECTION))]),
             Self::ChatInput => {
@@ -199,6 +231,20 @@ impl Page {
             }
             Self::ChatSend => main(&[(Tag::Section, Some(CHAT_BOX_SECTION)), (Tag::Button, None)]),
             Self::Dialog => main(&[(Tag::Dialog, None)]),
+            Self::Credential(field) => {
+                main(&[(Tag::Dialog, None), (Tag::Input, Some(field.number()))])
+            }
+            Self::DialogHeading => main(&[(Tag::Dialog, None), (Tag::H3, None)]),
+            Self::DialogOptions => main(&[(Tag::Dialog, None), (Tag::Div, None)]),
+            Self::DialogNumber => main(&[(Tag::Dialog, None), (Tag::Label, Some(NUMBER_LABEL))]),
+            Self::DialogNumberInput => {
+                main(&[(Tag::Dialog, None), (Tag::Label, Some(NUMBER_LABEL)), (Tag::Input, None)])
+            }
+            Self::Create => main(&[(Tag::Dialog, None), (Tag::Label, Some(CREATE_LABEL))]),
+            Self::CreateInput => {
+                main(&[(Tag::Dialog, None), (Tag::Label, Some(CREATE_LABEL)), (Tag::Input, None)])
+            }
+            Self::DialogForm => main(&[(Tag::Form, None)]),
         }
     }
 
@@ -214,6 +260,7 @@ impl Page {
                 _ => return None,
             },
             [(Tag::Header, None), (Tag::Input, None)] => Self::Save,
+            [(Tag::Header, None), (Tag::Label, None), (Tag::Input, None)] => Self::Unlock,
             [(Tag::Header, None), (Tag::Div, Some(INVESTIGATOR_LIST)), (Tag::Button, Some(n))]
                 if (1..=INVESTIGATOR_OPTIONS).contains(n) =>
             {
@@ -230,7 +277,25 @@ impl Page {
             [(Tag::Main, None), (Tag::Section, Some(CHAT_BOX_SECTION)), (Tag::Button, None)] => {
                 Self::ChatSend
             }
+            [(Tag::Main, None), (Tag::Dialog, None), (Tag::Input, Some(n))] => {
+                Self::Credential(*Field::LIST.get(n.checked_sub(1)? as usize)?)
+            }
+            [(Tag::Main, None), (Tag::Dialog, None), (Tag::H3, None)] => Self::DialogHeading,
+            [(Tag::Main, None), (Tag::Dialog, None), (Tag::Div, None)] => Self::DialogOptions,
+            [(Tag::Main, None), (Tag::Dialog, None), (Tag::Label, Some(n))] => match *n {
+                CREATE_LABEL => Self::Create,
+                NUMBER_LABEL => Self::DialogNumber,
+                _ => Self::Dialog,
+            },
+            [(Tag::Main, None), (Tag::Dialog, None), (Tag::Label, Some(n)), (Tag::Input, None)] => {
+                match *n {
+                    CREATE_LABEL => Self::CreateInput,
+                    NUMBER_LABEL => Self::DialogNumberInput,
+                    _ => Self::Dialog,
+                }
+            }
             [(Tag::Main, None), (Tag::Dialog, None), ..] => Self::Dialog,
+            [(Tag::Main, None), (Tag::Form, None)] => Self::DialogForm,
             _ => return None,
         })
     }
@@ -243,12 +308,21 @@ impl Page {
             Self::Dice,
             Self::Save,
             Self::Appearance,
+            Self::Unlock,
             Self::Sheet,
             Self::ChatLog,
             Self::ChatInput,
             Self::ChatSend,
             Self::Dialog,
+            Self::DialogHeading,
+            Self::DialogOptions,
+            Self::DialogNumber,
+            Self::DialogNumberInput,
+            Self::DialogForm,
+            Self::Create,
+            Self::CreateInput,
         ]);
+        pages.extend(Field::LIST.map(Self::Credential));
         pages.extend((1..=INVESTIGATOR_OPTIONS).map(Self::InvestigatorOption));
         pages.extend(Language::list().iter().map(|&l| Self::LanguageOption(l)));
         pages
@@ -293,9 +367,11 @@ mod tests {
 
     #[test]
     fn every_page_exists_in_the_html() {
-        let html =
-            fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/distribution/index.html"))
-                .unwrap();
+        let html = fs::read_to_string(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/distribution/coc7th/index.html"
+        ))
+        .unwrap();
         for page in Page::every() {
             let id = html_id(&page.to_dom());
             assert!(html.contains(&format!("id=\"{id}\"")), "{page:?} -> {id}");
@@ -304,13 +380,21 @@ mod tests {
 
     #[test]
     fn every_label_has_a_home_in_the_html() {
-        let html =
-            fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/distribution/index.html"))
-                .unwrap();
+        let html = fs::read_to_string(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/distribution/coc7th/index.html"
+        ))
+        .unwrap();
         let labels = every_label(Language::Ja);
         assert_eq!(
             labels.len(),
-            4 + 2 + (CHARACTERISTIC_HEADS as usize - 1) + (SKILL_HEADS as usize - 1) + 6 + 3 + 4
+            4 + 2
+                + (CHARACTERISTIC_HEADS as usize - 1)
+                + (SKILL_HEADS as usize - 1)
+                + 6
+                + 3
+                + 4
+                + 2
         );
         for (id, _) in labels {
             let id = html_id(&id);

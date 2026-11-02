@@ -5,23 +5,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="Calendar application.">
-    <meta name="api-base" content="./">
+    <meta name="api-base" content="">
     <meta name="sw-url" content="../sw.js">
     <title>Calendar</title>
     <link rel="icon" href="data:,">
     <link rel="icon" type="image/png" sizes="512x512" href="../image/animagram.png?v={version}">
-    <link rel="stylesheet" href="../css/library/reset.css?v={version}">
-    <link rel="stylesheet" href="../css/library/base.css?v={version}">
-    <link rel="stylesheet" href="../css/library/data_style.css?v={version}">
-    <link rel="stylesheet" href="../css/library/data_size.css?v={version}">
-    <link rel="stylesheet" href="../css/library/data_sign.css?v={version}">
-    <link rel="stylesheet" href="../css/library/data_group.css?v={version}">
-    <link rel="stylesheet" href="../css/library/button.css?v={version}">
-    <link rel="stylesheet" href="../css/library/heading.css?v={version}">
-    <link rel="stylesheet" href="../css/library/radio.css?v={version}">
-    <link rel="stylesheet" href="../css/library/popup.css?v={version}">
-    <link rel="stylesheet" href="../css/library/slider.css?v={version}">
-    <link rel="stylesheet" href="./css/style.css?v={version}">
+    <link rel="stylesheet" href="../css/import.css?v={version}">
+    <link rel="stylesheet" href="../css/style.css?v={version}">
+    <link rel="stylesheet" href="./calendar.css?v={version}">
     <script type="module" src="../init.js?v={version}"></script></head>
 
 <body id="body" hidden>
@@ -76,7 +67,10 @@
         <div id="header_div-3" popover="auto" role="listbox" aria-labelledby="header_button-4">
             <span role="presentation">Select Language</span>
             <button id="header_div-3_button-1" role="option" value="1"></button>
-            <button id="header_div-3_button-2" role="option" value="2"></button></div></header>
+            <button id="header_div-3_button-2" role="option" value="2"></button></div>
+        <label id="header_label">
+            <span id="header_label_span"></span>
+            <input id="header_label_input" type="checkbox"></label></header>
 
     <main id="main">
         <ol id="main_ol" aria-hidden="true" style="grid-template-rows: var(--head-height) repeat(44, 1.75rem)">
@@ -3021,6 +3015,11 @@
             <ol id="main_section_ol-5">
                 <li id="main_section_ol-5_li" hidden data-surround="outline"></li></ol></section></main>
     <dialog id="dialog">
+        <input id="dialog_input-1" name="email" type="email" autocomplete="username" required maxlength="254" placeholder="email" aria-label="email" form="dialog_form" data-size="sm" hidden disabled>
+        <input id="dialog_input-2" name="password" type="password" autocomplete="current-password" required minlength="8" maxlength="128" placeholder="password" aria-label="password" form="dialog_form" data-size="sm" hidden disabled>
+        <label id="dialog_label" hidden>
+            <span id="dialog_label_span"></span>
+            <input id="dialog_label_input" name="create" type="checkbox" form="dialog_form" disabled></label>
         <form id="dialog_form" method="dialog">
             <header id="dialog_form_header">
                 <h3 id="dialog_form_header_h3"></h3></header>
@@ -3062,7 +3061,7 @@
                 <dd id="dialog_form_dl_dd-8">
                     <textarea id="dialog_form_dl_dd-8_textarea" name="8" maxlength="1000" aria-label="メモ" data-size="sm"></textarea></dd></dl>
             <output id="dialog_form_output"></output>
-            <button id="dialog_form_button-1" type="submit" data-surround="outline" data-size="sm">Save</button>
+            <button id="dialog_form_button-1" type="submit" data-surround="outline" data-size="sm"></button>
             <button id="dialog_form_button-2" type="button" hidden data-surround="outline" data-size="sm">削除</button></form></dialog>
 
 </body></html>

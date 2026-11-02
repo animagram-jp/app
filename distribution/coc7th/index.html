@@ -1,0 +1,1421 @@
+<!DOCTYPE html>
+<html id="html" lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Call of Cthulhu 7th edition playing tool.">
+    <meta name="api-base" content="">
+    <meta name="sw-url" content="../sw.js">
+    <title>CoC7th Playing Engine</title>
+    <link rel="icon" href="data:,">
+    <link rel="icon" type="image/png" sizes="512x512" href="../image/animagram.png?v={version}">
+    <link rel="stylesheet" href="../css/import.css?v={version}">
+    <link rel="stylesheet" href="../css/style.css?v={version}">
+    <link rel="stylesheet" href="./coc7th.css?v={version}">
+    <link rel="manifest" href="../manifest.json">
+    <script type="module" src="../init.js?v={version}"></script></head>
+
+<body id="body" hidden>
+    <header id="header">
+        <span data-sign="pentagon-eye"></span>
+        <hgroup id="header_hgroup" data-axis="inline" hidden>
+            <h1>CoC7th</h1>
+            <p>Call of Cthulhu 7th edition playing tool</p></hgroup>
+        <button id="header_button-1" type="button" popovertarget="header_div-1" aria-haspopup="listbox" aria-expanded="false" aria-controls="header_div-1" data-surround="outline"></button>
+        <div id="header_div-1" popover="auto" role="listbox" aria-labelledby="header_button-1">
+            <span role="presentation">Select Character</span>
+            <button id="header_div-1_button-1" role="option" value="1"></button>
+            <button id="header_div-1_button-2" role="option" value="2" hidden></button>
+            <button id="header_div-1_button-3" role="option" value="3" hidden></button>
+            <button id="header_div-1_button-4" role="option" value="4" hidden></button></div>
+        <button id="header_button-2" type="button" data-surround="outline">🎲</button>
+        <input id="header_input" type="checkbox" form="form" aria-label="save" data-facet="sync">
+        <button id="header_button-3" type="button" popovertarget="header_div-2" aria-haspopup="listbox" aria-expanded="false" aria-controls="header_div-2" aria-label="Appearance" data-surround="outline">🎨</button>
+        <div id="header_div-2" popover="auto" role="listbox" aria-labelledby="header_button-3">
+            <span role="presentation">Appearance</span>
+            <label id="header_div-2_label-1">
+                <input name="color-scheme" role="option" type="radio" value="light-less-contrast" data-sign="check" data-sign-style="inline">
+                <span>Light (less contrast)</span></label>
+            <label id="header_div-2_label-2">
+                <input name="color-scheme" role="option" type="radio" value="light" data-sign="check" data-sign-style="inline">
+                <span>Light</span></label>
+            <label id="header_div-2_label-3">
+                <input name="color-scheme" role="option" type="radio" value="light-more-contrast" data-sign="check" data-sign-style="inline">
+                <span>Light (more contrast)</span></label>
+            <label id="header_div-2_label-4">
+                <input name="color-scheme" role="option" type="radio" value="dark-less-contrast" data-sign="check" data-sign-style="inline">
+                <span>Dark (less contrast)</span></label>
+            <label id="header_div-2_label-5">
+                <input name="color-scheme" role="option" type="radio" value="dark" data-sign="check" data-sign-style="inline">
+                <span>Dark</span></label>
+            <label id="header_div-2_label-6">
+                <input name="color-scheme" role="option" type="radio" value="dark-more-contrast" data-sign="check" data-sign-style="inline">
+                <span>Dark (more contrast)</span></label></div>
+        <button id="header_button-4" type="button" popovertarget="header_div-3" aria-haspopup="listbox" aria-expanded="false" aria-controls="header_div-3" data-surround="outline">
+            <span>🌐</span></button>
+        <div id="header_div-3" popover="auto" role="listbox" aria-labelledby="header_button-4">
+            <span role="presentation">Select Language</span>
+            <button id="header_div-3_button-1" role="option" value="1"></button>
+            <button id="header_div-3_button-2" role="option" value="2"></button></div>
+        <label id="header_label">
+            <span id="header_label_span"></span>
+            <input id="header_label_input" type="checkbox"></label></header>
+
+
+    <main id="main">
+        <section id="main_section-1" aria-label="Character Sheet">
+            <h2 id="main_section-1_h2"></h2>
+            <section id="main_section-1_section-1" aria-label="Management Data">
+                <h3 id="main_section-1_section-1_h3"></h3>
+                <dl id="main_section-1_section-1_dl">
+                    <dt id="main_section-1_section-1_dl_dt-1"></dt>
+                    <dd id="main_section-1_section-1_dl_dd-1"></dd>
+                    <dt id="main_section-1_section-1_dl_dt-2"></dt>
+                    <dd id="main_section-1_section-1_dl_dd-2"></dd>
+                    <dt id="main_section-1_section-1_dl_dt-3"></dt>
+                    <dd id="main_section-1_section-1_dl_dd-3"></dd></dl></section>
+
+            <section id="main_section-1_section-10" aria-label="Profile">
+                <h3 id="main_section-1_section-10_h3"></h3>
+                <dl id="main_section-1_section-10_dl">
+                    <dt id="main_section-1_section-10_dl_dt-10"></dt>
+                    <dd id="main_section-1_section-10_dl_dd-10">
+                        <input id="main_section-1_section-10_dl_dd-10_input" type="text" maxlength="100" name="main_section-1_section-10_dl_dd-10_input" aria-labelledby="main_section-1_section-10_dl_dt-10"></dd>
+                    <dt id="main_section-1_section-10_dl_dt-11"></dt>
+                    <dd id="main_section-1_section-10_dl_dd-11">
+                        <input id="main_section-1_section-10_dl_dd-11_input" type="text" maxlength="100" name="main_section-1_section-10_dl_dd-11_input" aria-labelledby="main_section-1_section-10_dl_dt-11"></dd>
+                    <dt id="main_section-1_section-10_dl_dt-12"></dt>
+                    <dd id="main_section-1_section-10_dl_dd-12">
+                        <input id="main_section-1_section-10_dl_dd-12_input" type="text" maxlength="100" name="main_section-1_section-10_dl_dd-12_input" aria-labelledby="main_section-1_section-10_dl_dt-12"></dd>
+                    <dt id="main_section-1_section-10_dl_dt-13"></dt>
+                    <dd id="main_section-1_section-10_dl_dd-13">
+                        <input id="main_section-1_section-10_dl_dd-13_input" type="text" maxlength="100" name="main_section-1_section-10_dl_dd-13_input" aria-labelledby="main_section-1_section-10_dl_dt-13"></dd>
+                    <dt id="main_section-1_section-10_dl_dt-14"></dt>
+                    <dd id="main_section-1_section-10_dl_dd-14">
+                        <input id="main_section-1_section-10_dl_dd-14_input" type="text" maxlength="100" name="main_section-1_section-10_dl_dd-14_input" aria-labelledby="main_section-1_section-10_dl_dt-14"></dd>
+                    <dt id="main_section-1_section-10_dl_dt-16"></dt>
+                    <dd id="main_section-1_section-10_dl_dd-16">
+                        <input id="main_section-1_section-10_dl_dd-16_input" type="text" maxlength="100" name="main_section-1_section-10_dl_dd-16_input" aria-labelledby="main_section-1_section-10_dl_dt-16"></dd>
+                    <dt id="main_section-1_section-10_dl_dt-17"></dt>
+                    <dd id="main_section-1_section-10_dl_dd-17">
+                        <input id="main_section-1_section-10_dl_dd-17_input" type="text" maxlength="100" name="main_section-1_section-10_dl_dd-17_input" aria-labelledby="main_section-1_section-10_dl_dt-17"></dd>
+                    <dt id="main_section-1_section-10_dl_dt-18"></dt>
+                    <dd id="main_section-1_section-10_dl_dd-18" data-group="inline">
+                        <button id="main_section-1_section-10_dl_dd-18_button-1" type="button" data-sign="minus" tabindex="-1" aria-label="decrement"></button>
+                        <input id="main_section-1_section-10_dl_dd-18_input" type="text" inputmode="numeric" pattern="[0-9]*" role="spinbutton" name="main_section-1_section-10_dl_dd-18_input" placeholder="0" aria-labelledby="main_section-1_section-10_dl_dt-18">
+                        <button id="main_section-1_section-10_dl_dd-18_button-2" type="button" data-sign="plus" tabindex="-1" aria-label="increment"></button></dd></dl></section>
+
+            <section id="main_section-1_section-20" aria-label="Characteristics">
+                <h3 id="main_section-1_section-20_h3"></h3>
+                <table id="main_section-1_section-20_table" data-size="sm" data-stripe>
+                    <thead>
+                        <tr>
+                            <th id="main_section-1_section-20_table_thead_tr_th-1" scope="col"></th>
+                            <th id="main_section-1_section-20_table_thead_tr_th-2" scope="col"></th>
+                            <th id="main_section-1_section-20_table_thead_tr_th-3" scope="col"></th>
+                            <th id="main_section-1_section-20_table_thead_tr_th-4" scope="col"></th>
+                            <th id="main_section-1_section-20_table_thead_tr_th-5" scope="col"></th></tr></thead>
+                    <tbody>
+                        <tr id="main_section-1_section-20_table_tbody_tr-21">
+                            <th id="main_section-1_section-20_table_tbody_tr-21_th" scope="row"></th>
+                            <td id="main_section-1_section-20_table_tbody_tr-21_td-1">
+                                <input id="main_section-1_section-20_table_tbody_tr-21_td-1_input" type="text" inputmode="numeric" pattern="^(1000|[1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
+                            <td id="main_section-1_section-20_table_tbody_tr-21_td-2">
+                                <input id="main_section-1_section-20_table_tbody_tr-21_td-2_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
+                            <td id="main_section-1_section-20_table_tbody_tr-21_td-3">
+                                <input id="main_section-1_section-20_table_tbody_tr-21_td-3_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
+                            <td id="main_section-1_section-20_table_tbody_tr-21_td-4"></td></tr>
+                        <tr id="main_section-1_section-20_table_tbody_tr-22">
+                            <th id="main_section-1_section-20_table_tbody_tr-22_th" scope="row"></th>
+                            <td id="main_section-1_section-20_table_tbody_tr-22_td-1">
+                                <input id="main_section-1_section-20_table_tbody_tr-22_td-1_input" type="text" inputmode="numeric" pattern="^(1000|[1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
+                            <td id="main_section-1_section-20_table_tbody_tr-22_td-2">
+                                <input id="main_section-1_section-20_table_tbody_tr-22_td-2_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
+                            <td id="main_section-1_section-20_table_tbody_tr-22_td-3">
+                                <input id="main_section-1_section-20_table_tbody_tr-22_td-3_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
+                            <td id="main_section-1_section-20_table_tbody_tr-22_td-4"></td></tr>
+                        <tr id="main_section-1_section-20_table_tbody_tr-23">
+                            <th id="main_section-1_section-20_table_tbody_tr-23_th" scope="row"></th>
+                            <td id="main_section-1_section-20_table_tbody_tr-23_td-1">
+                                <input id="main_section-1_section-20_table_tbody_tr-23_td-1_input" type="text" inputmode="numeric" pattern="^(1000|[1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
+                            <td id="main_section-1_section-20_table_tbody_tr-23_td-2">
+                                <input id="main_section-1_section-20_table_tbody_tr-23_td-2_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
+                            <td id="main_section-1_section-20_table_tbody_tr-23_td-3">
+                                <input id="main_section-1_section-20_table_tbody_tr-23_td-3_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
+                            <td id="main_section-1_section-20_table_tbody_tr-23_td-4"></td></tr>
+                        <tr id="main_section-1_section-20_table_tbody_tr-24">
+                            <th id="main_section-1_section-20_table_tbody_tr-24_th" scope="row"></th>
+                            <td id="main_section-1_section-20_table_tbody_tr-24_td-1">
+                                <input id="main_section-1_section-20_table_tbody_tr-24_td-1_input" type="text" inputmode="numeric" pattern="^(1000|[1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
+                            <td id="main_section-1_section-20_table_tbody_tr-24_td-2">
+                                <input id="main_section-1_section-20_table_tbody_tr-24_td-2_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
+                            <td id="main_section-1_section-20_table_tbody_tr-24_td-3">
+                                <input id="main_section-1_section-20_table_tbody_tr-24_td-3_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
+                            <td id="main_section-1_section-20_table_tbody_tr-24_td-4"></td></tr>
+                        <tr id="main_section-1_section-20_table_tbody_tr-25">
+                            <th id="main_section-1_section-20_table_tbody_tr-25_th" scope="row"></th>
+                            <td id="main_section-1_section-20_table_tbody_tr-25_td-1">
+                                <input id="main_section-1_section-20_table_tbody_tr-25_td-1_input" type="text" inputmode="numeric" pattern="^(1000|[1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
+                            <td id="main_section-1_section-20_table_tbody_tr-25_td-2">
+                                <input id="main_section-1_section-20_table_tbody_tr-25_td-2_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
+                            <td id="main_section-1_section-20_table_tbody_tr-25_td-3">
+                                <input id="main_section-1_section-20_table_tbody_tr-25_td-3_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
+                            <td id="main_section-1_section-20_table_tbody_tr-25_td-4"></td></tr>
+                        <tr id="main_section-1_section-20_table_tbody_tr-26">
+                            <th id="main_section-1_section-20_table_tbody_tr-26_th" scope="row"></th>
+                            <td id="main_section-1_section-20_table_tbody_tr-26_td-1">
+                                <input id="main_section-1_section-20_table_tbody_tr-26_td-1_input" type="text" inputmode="numeric" pattern="^(1000|[1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
+                            <td id="main_section-1_section-20_table_tbody_tr-26_td-2">
+                                <input id="main_section-1_section-20_table_tbody_tr-26_td-2_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
+                            <td id="main_section-1_section-20_table_tbody_tr-26_td-3">
+                                <input id="main_section-1_section-20_table_tbody_tr-26_td-3_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
+                            <td id="main_section-1_section-20_table_tbody_tr-26_td-4"></td></tr>
+                        <tr id="main_section-1_section-20_table_tbody_tr-27">
+                            <th id="main_section-1_section-20_table_tbody_tr-27_th" scope="row"></th>
+                            <td id="main_section-1_section-20_table_tbody_tr-27_td-1">
+                                <input id="main_section-1_section-20_table_tbody_tr-27_td-1_input" type="text" inputmode="numeric" pattern="^(1000|[1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
+                            <td id="main_section-1_section-20_table_tbody_tr-27_td-2">
+                                <input id="main_section-1_section-20_table_tbody_tr-27_td-2_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
+                            <td id="main_section-1_section-20_table_tbody_tr-27_td-3">
+                                <input id="main_section-1_section-20_table_tbody_tr-27_td-3_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
+                            <td id="main_section-1_section-20_table_tbody_tr-27_td-4"></td></tr>
+                        <tr id="main_section-1_section-20_table_tbody_tr-28">
+                            <th id="main_section-1_section-20_table_tbody_tr-28_th" scope="row"></th>
+                            <td id="main_section-1_section-20_table_tbody_tr-28_td-1">
+                                <input id="main_section-1_section-20_table_tbody_tr-28_td-1_input" type="text" inputmode="numeric" pattern="^(1000|[1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
+                            <td id="main_section-1_section-20_table_tbody_tr-28_td-2">
+                                <input id="main_section-1_section-20_table_tbody_tr-28_td-2_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
+                            <td id="main_section-1_section-20_table_tbody_tr-28_td-3">
+                                <input id="main_section-1_section-20_table_tbody_tr-28_td-3_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4"></td>
+                            <td id="main_section-1_section-20_table_tbody_tr-28_td-4"></td></tr></tbody></table></section>
+
+            <section id="main_section-1_section-30" aria-label="Secondary Attributes">
+                <h3 id="main_section-1_section-30_h3"></h3>
+                <dl id="main_section-1_section-30_dl">
+                    <dt id="main_section-1_section-30_dl_dt-31"></dt>
+                    <dd id="main_section-1_section-30_dl_dd-31"></dd>
+                    <dt id="main_section-1_section-30_dl_dt-32"></dt>
+                    <dd id="main_section-1_section-30_dl_dd-32"></dd>
+                    <dt id="main_section-1_section-30_dl_dt-33"></dt>
+                    <dd id="main_section-1_section-30_dl_dd-33">
+                        <input id="main_section-1_section-30_dl_dd-33_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" name="main_section-1_section-30_dl_dd-33_input" aria-labelledby="main_section-1_section-30_dl_dt-33"></dd>
+                    <dt id="main_section-1_section-30_dl_dt-34"></dt>
+                    <dd id="main_section-1_section-30_dl_dd-34">
+                        <input id="main_section-1_section-30_dl_dd-34_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" name="main_section-1_section-30_dl_dd-34_input" aria-labelledby="main_section-1_section-30_dl_dt-34"></dd>
+                    <dt id="main_section-1_section-30_dl_dt-35"></dt>
+                    <dd id="main_section-1_section-30_dl_dd-35"></dd>
+                    <dt id="main_section-1_section-30_dl_dt-36"></dt>
+                    <dd id="main_section-1_section-30_dl_dd-36"></dd>
+                    <dt id="main_section-1_section-30_dl_dt-37"></dt>
+                    <dd id="main_section-1_section-30_dl_dd-37"></dd>
+                    <dt id="main_section-1_section-30_dl_dt-38"></dt>
+                    <dd id="main_section-1_section-30_dl_dd-38"></dd>
+                    <dt id="main_section-1_section-30_dl_dt-39"></dt>
+                    <dd id="main_section-1_section-30_dl_dd-39"></dd></dl></section>
+
+            <section id="main_section-1_section-40" aria-label="Skills">
+                <h3 id="main_section-1_section-40_h3"></h3>
+                <table id="main_section-1_section-40_table" data-size="sm" data-stripe>
+                    <thead>
+                        <tr>
+                            <th id="main_section-1_section-40_table_thead_tr_th-1" scope="col"></th>
+                            <th id="main_section-1_section-40_table_thead_tr_th-2" scope="col"></th>
+                            <th id="main_section-1_section-40_table_thead_tr_th-3" scope="col"></th>
+                            <th id="main_section-1_section-40_table_thead_tr_th-4" scope="col"></th>
+                            <th id="main_section-1_section-40_table_thead_tr_th-5" scope="col"></th>
+                            <th id="main_section-1_section-40_table_thead_tr_th-6" scope="col"></th>
+                            <th id="main_section-1_section-40_table_thead_tr_th-7" scope="col"></th>
+                            <th id="main_section-1_section-40_table_thead_tr_th-8" scope="col"></th></tr></thead>
+                    <tbody>
+                        <tr id="main_section-1_section-40_table_tbody_tr-41">
+                            <th id="main_section-1_section-40_table_tbody_tr-41_th" scope="row"></th>
+                            <td id="main_section-1_section-40_table_tbody_tr-41_td-1">
+                                <input id="main_section-1_section-40_table_tbody_tr-41_td-1_input" type="text" maxlength="100" data-size="sm" disabled></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-41_td-2"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-41_td-3">
+                                <input id="main_section-1_section-40_table_tbody_tr-41_td-3_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-41_td-4">
+                                <input id="main_section-1_section-40_table_tbody_tr-41_td-4_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-41_td-5">
+                                <input id="main_section-1_section-40_table_tbody_tr-41_td-5_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-41_td-6">
+                                <input id="main_section-1_section-40_table_tbody_tr-41_td-6_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-41_td-7"></td></tr>
+                        <tr id="main_section-1_section-40_table_tbody_tr-42">
+                            <th id="main_section-1_section-40_table_tbody_tr-42_th" scope="row"></th>
+                            <td id="main_section-1_section-40_table_tbody_tr-42_td-1">
+                                <input id="main_section-1_section-40_table_tbody_tr-42_td-1_input" type="text" maxlength="100" data-size="sm" disabled></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-42_td-2"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-42_td-3">
+                                <input id="main_section-1_section-40_table_tbody_tr-42_td-3_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-42_td-4">
+                                <input id="main_section-1_section-40_table_tbody_tr-42_td-4_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-42_td-5">
+                                <input id="main_section-1_section-40_table_tbody_tr-42_td-5_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-42_td-6">
+                                <input id="main_section-1_section-40_table_tbody_tr-42_td-6_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-42_td-7"></td></tr>
+                        <tr id="main_section-1_section-40_table_tbody_tr-43">
+                            <th id="main_section-1_section-40_table_tbody_tr-43_th" scope="row"></th>
+                            <td id="main_section-1_section-40_table_tbody_tr-43_td-1">
+                                <input id="main_section-1_section-40_table_tbody_tr-43_td-1_input" type="text" maxlength="100" data-size="sm" disabled></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-43_td-2"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-43_td-3">
+                                <input id="main_section-1_section-40_table_tbody_tr-43_td-3_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-43_td-4">
+                                <input id="main_section-1_section-40_table_tbody_tr-43_td-4_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-43_td-5">
+                                <input id="main_section-1_section-40_table_tbody_tr-43_td-5_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-43_td-6">
+                                <input id="main_section-1_section-40_table_tbody_tr-43_td-6_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-43_td-7"></td></tr>
+                        <tr id="main_section-1_section-40_table_tbody_tr-44">
+                            <th id="main_section-1_section-40_table_tbody_tr-44_th" scope="row"></th>
+                            <td id="main_section-1_section-40_table_tbody_tr-44_td-1">
+                                <input id="main_section-1_section-40_table_tbody_tr-44_td-1_input" type="text" maxlength="100" data-size="sm" disabled></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-44_td-2"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-44_td-3">
+                                <input id="main_section-1_section-40_table_tbody_tr-44_td-3_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-44_td-4">
+                                <input id="main_section-1_section-40_table_tbody_tr-44_td-4_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-44_td-5">
+                                <input id="main_section-1_section-40_table_tbody_tr-44_td-5_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-44_td-6">
+                                <input id="main_section-1_section-40_table_tbody_tr-44_td-6_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-44_td-7"></td></tr>
+                        <tr id="main_section-1_section-40_table_tbody_tr-45">
+                            <th id="main_section-1_section-40_table_tbody_tr-45_th" scope="row"></th>
+                            <td id="main_section-1_section-40_table_tbody_tr-45_td-1">
+                                <label data-group="inline">
+                                    <input id="main_section-1_section-40_table_tbody_tr-45_td-1_label_input" type="text" maxlength="100" data-size="sm">
+                                    <button id="main_section-1_section-40_table_tbody_tr-45_td-1_label_button" type="button" popovertarget="main_section-1_section-40_table_tbody_tr-45_td-1_div" aria-haspopup="listbox" aria-expanded="false" aria-controls="main_section-1_section-40_table_tbody_tr-45_td-1_div" aria-label="choose specialization" data-size="sm"></button></label>
+                                <div id="main_section-1_section-40_table_tbody_tr-45_td-1_div" popover="auto" role="listbox" aria-labelledby="main_section-1_section-40_table_tbody_tr-45_td-1_label_button">
+                                    <button id="main_section-1_section-40_table_tbody_tr-45_td-1_div_button-1" role="option"></button>
+                                    <button id="main_section-1_section-40_table_tbody_tr-45_td-1_div_button-2" role="option"></button>
+                                    <button id="main_section-1_section-40_table_tbody_tr-45_td-1_div_button-3" role="option"></button>
+                                    <button id="main_section-1_section-40_table_tbody_tr-45_td-1_div_button-4" role="option"></button>
+                                    <button id="main_section-1_section-40_table_tbody_tr-45_td-1_div_button-5" role="option"></button>
+                                    <button id="main_section-1_section-40_table_tbody_tr-45_td-1_div_button-6" role="option"></button>
+                                    <button id="main_section-1_section-40_table_tbody_tr-45_td-1_div_button-7" role="option"></button>
+                                    <button id="main_section-1_section-40_table_tbody_tr-45_td-1_div_button-8" role="option"></button>
+                                    <button id="main_section-1_section-40_table_tbody_tr-45_td-1_div_button-9" role="option"></button>
+                                    <button id="main_section-1_section-40_table_tbody_tr-45_td-1_div_button-10" role="option"></button>
+                                    <button id="main_section-1_section-40_table_tbody_tr-45_td-1_div_button-11" role="option"></button>
+                                    <button id="main_section-1_section-40_table_tbody_tr-45_td-1_div_button-12" role="option"></button></div></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-45_td-2"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-45_td-3">
+                                <input id="main_section-1_section-40_table_tbody_tr-45_td-3_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-45_td-4">
+                                <input id="main_section-1_section-40_table_tbody_tr-45_td-4_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-45_td-5">
+                                <input id="main_section-1_section-40_table_tbody_tr-45_td-5_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-45_td-6">
+                                <input id="main_section-1_section-40_table_tbody_tr-45_td-6_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-45_td-7"></td></tr>
+                        <tr id="main_section-1_section-40_table_tbody_tr-58">
+                            <th id="main_section-1_section-40_table_tbody_tr-58_th" scope="row"></th>
+                            <td id="main_section-1_section-40_table_tbody_tr-58_td-1">
+                                <input id="main_section-1_section-40_table_tbody_tr-58_td-1_input" type="text" maxlength="100" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-58_td-2"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-58_td-3">
+                                <input id="main_section-1_section-40_table_tbody_tr-58_td-3_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-58_td-4">
+                                <input id="main_section-1_section-40_table_tbody_tr-58_td-4_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-58_td-5">
+                                <input id="main_section-1_section-40_table_tbody_tr-58_td-5_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-58_td-6">
+                                <input id="main_section-1_section-40_table_tbody_tr-58_td-6_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-58_td-7"></td></tr>
+                        <tr id="main_section-1_section-40_table_tbody_tr-59">
+                            <th id="main_section-1_section-40_table_tbody_tr-59_th" scope="row"></th>
+                            <td id="main_section-1_section-40_table_tbody_tr-59_td-1">
+                                <input id="main_section-1_section-40_table_tbody_tr-59_td-1_input" type="text" maxlength="100" data-size="sm" disabled></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-59_td-2"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-59_td-3">
+                                <input id="main_section-1_section-40_table_tbody_tr-59_td-3_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-59_td-4">
+                                <input id="main_section-1_section-40_table_tbody_tr-59_td-4_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-59_td-5">
+                                <input id="main_section-1_section-40_table_tbody_tr-59_td-5_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-59_td-6">
+                                <input id="main_section-1_section-40_table_tbody_tr-59_td-6_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-59_td-7"></td></tr>
+                        <tr id="main_section-1_section-40_table_tbody_tr-60">
+                            <th id="main_section-1_section-40_table_tbody_tr-60_th" scope="row"></th>
+                            <td id="main_section-1_section-40_table_tbody_tr-60_td-1">
+                                <input id="main_section-1_section-40_table_tbody_tr-60_td-1_input" type="text" maxlength="100" data-size="sm" disabled></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-60_td-2"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-60_td-3">
+                                <input id="main_section-1_section-40_table_tbody_tr-60_td-3_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-60_td-4">
+                                <input id="main_section-1_section-40_table_tbody_tr-60_td-4_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-60_td-5">
+                                <input id="main_section-1_section-40_table_tbody_tr-60_td-5_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-60_td-6">
+                                <input id="main_section-1_section-40_table_tbody_tr-60_td-6_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-60_td-7"></td></tr>
+                        <tr id="main_section-1_section-40_table_tbody_tr-61">
+                            <th id="main_section-1_section-40_table_tbody_tr-61_th" scope="row"></th>
+                            <td id="main_section-1_section-40_table_tbody_tr-61_td-1">
+                                <input id="main_section-1_section-40_table_tbody_tr-61_td-1_input" type="text" maxlength="100" data-size="sm" disabled></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-61_td-2"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-61_td-3">
+                                <input id="main_section-1_section-40_table_tbody_tr-61_td-3_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-61_td-4">
+                                <input id="main_section-1_section-40_table_tbody_tr-61_td-4_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-61_td-5">
+                                <input id="main_section-1_section-40_table_tbody_tr-61_td-5_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-61_td-6">
+                                <input id="main_section-1_section-40_table_tbody_tr-61_td-6_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-61_td-7"></td></tr>
+                        <tr id="main_section-1_section-40_table_tbody_tr-62">
+                            <th id="main_section-1_section-40_table_tbody_tr-62_th" scope="row"></th>
+                            <td id="main_section-1_section-40_table_tbody_tr-62_td-1">
+                                <input id="main_section-1_section-40_table_tbody_tr-62_td-1_input" type="text" maxlength="100" data-size="sm" disabled></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-62_td-2"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-62_td-3">
+                                <input id="main_section-1_section-40_table_tbody_tr-62_td-3_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-62_td-4">
+                                <input id="main_section-1_section-40_table_tbody_tr-62_td-4_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-62_td-5">
+                                <input id="main_section-1_section-40_table_tbody_tr-62_td-5_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-62_td-6">
+                                <input id="main_section-1_section-40_table_tbody_tr-62_td-6_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-62_td-7"></td></tr>
+                        <tr id="main_section-1_section-40_table_tbody_tr-63">
+                            <th id="main_section-1_section-40_table_tbody_tr-63_th" scope="row"></th>
+                            <td id="main_section-1_section-40_table_tbody_tr-63_td-1">
+                                <input id="main_section-1_section-40_table_tbody_tr-63_td-1_input" type="text" maxlength="100" data-size="sm" disabled></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-63_td-2"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-63_td-3">
+                                <input id="main_section-1_section-40_table_tbody_tr-63_td-3_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-63_td-4">
+                                <input id="main_section-1_section-40_table_tbody_tr-63_td-4_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-63_td-5">
+                                <input id="main_section-1_section-40_table_tbody_tr-63_td-5_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-63_td-6">
+                                <input id="main_section-1_section-40_table_tbody_tr-63_td-6_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-63_td-7"></td></tr>
+                        <tr id="main_section-1_section-40_table_tbody_tr-64">
+                            <th id="main_section-1_section-40_table_tbody_tr-64_th" scope="row"></th>
+                            <td id="main_section-1_section-40_table_tbody_tr-64_td-1">
+                                <input id="main_section-1_section-40_table_tbody_tr-64_td-1_input" type="text" maxlength="100" data-size="sm" disabled></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-64_td-2"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-64_td-3">
+                                <input id="main_section-1_section-40_table_tbody_tr-64_td-3_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-64_td-4">
+                                <input id="main_section-1_section-40_table_tbody_tr-64_td-4_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-64_td-5">
+                                <input id="main_section-1_section-40_table_tbody_tr-64_td-5_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-64_td-6">
+                                <input id="main_section-1_section-40_table_tbody_tr-64_td-6_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-64_td-7"></td></tr>
+                        <tr id="main_section-1_section-40_table_tbody_tr-65">
+                            <th id="main_section-1_section-40_table_tbody_tr-65_th" scope="row"></th>
+                            <td id="main_section-1_section-40_table_tbody_tr-65_td-1">
+                                <input id="main_section-1_section-40_table_tbody_tr-65_td-1_input" type="text" maxlength="100" data-size="sm" disabled></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-65_td-2"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-65_td-3">
+                                <input id="main_section-1_section-40_table_tbody_tr-65_td-3_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-65_td-4">
+                                <input id="main_section-1_section-40_table_tbody_tr-65_td-4_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-65_td-5">
+                                <input id="main_section-1_section-40_table_tbody_tr-65_td-5_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-65_td-6">
+                                <input id="main_section-1_section-40_table_tbody_tr-65_td-6_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-65_td-7"></td></tr>
+                        <tr id="main_section-1_section-40_table_tbody_tr-66">
+                            <th id="main_section-1_section-40_table_tbody_tr-66_th" scope="row"></th>
+                            <td id="main_section-1_section-40_table_tbody_tr-66_td-1">
+                                <input id="main_section-1_section-40_table_tbody_tr-66_td-1_input" type="text" maxlength="100" data-size="sm" disabled></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-66_td-2"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-66_td-3">
+                                <input id="main_section-1_section-40_table_tbody_tr-66_td-3_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-66_td-4">
+                                <input id="main_section-1_section-40_table_tbody_tr-66_td-4_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-66_td-5">
+                                <input id="main_section-1_section-40_table_tbody_tr-66_td-5_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-66_td-6">
+                                <input id="main_section-1_section-40_table_tbody_tr-66_td-6_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-66_td-7"></td></tr>
+                        <tr id="main_section-1_section-40_table_tbody_tr-67">
+                            <th id="main_section-1_section-40_table_tbody_tr-67_th" scope="row"></th>
+                            <td id="main_section-1_section-40_table_tbody_tr-67_td-1">
+                                <input id="main_section-1_section-40_table_tbody_tr-67_td-1_input" type="text" maxlength="100" data-size="sm" disabled></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-67_td-2"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-67_td-3">
+                                <input id="main_section-1_section-40_table_tbody_tr-67_td-3_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-67_td-4">
+                                <input id="main_section-1_section-40_table_tbody_tr-67_td-4_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-67_td-5">
+                                <input id="main_section-1_section-40_table_tbody_tr-67_td-5_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-67_td-6">
+                                <input id="main_section-1_section-40_table_tbody_tr-67_td-6_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-67_td-7"></td></tr>
+                        <tr id="main_section-1_section-40_table_tbody_tr-68">
+                            <th id="main_section-1_section-40_table_tbody_tr-68_th" scope="row"></th>
+                            <td id="main_section-1_section-40_table_tbody_tr-68_td-1">
+                                <input id="main_section-1_section-40_table_tbody_tr-68_td-1_input" type="text" maxlength="100" data-size="sm" disabled></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-68_td-2"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-68_td-3">
+                                <input id="main_section-1_section-40_table_tbody_tr-68_td-3_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-68_td-4">
+                                <input id="main_section-1_section-40_table_tbody_tr-68_td-4_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-68_td-5">
+                                <input id="main_section-1_section-40_table_tbody_tr-68_td-5_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-68_td-6">
+                                <input id="main_section-1_section-40_table_tbody_tr-68_td-6_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-68_td-7"></td></tr>
+                        <tr id="main_section-1_section-40_table_tbody_tr-69">
+                            <th id="main_section-1_section-40_table_tbody_tr-69_th" scope="row"></th>
+                            <td id="main_section-1_section-40_table_tbody_tr-69_td-1">
+                                <input id="main_section-1_section-40_table_tbody_tr-69_td-1_input" type="text" maxlength="100" data-size="sm" disabled></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-69_td-2"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-69_td-3">
+                                <input id="main_section-1_section-40_table_tbody_tr-69_td-3_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-69_td-4">
+                                <input id="main_section-1_section-40_table_tbody_tr-69_td-4_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-69_td-5">
+                                <input id="main_section-1_section-40_table_tbody_tr-69_td-5_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-69_td-6">
+                                <input id="main_section-1_section-40_table_tbody_tr-69_td-6_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-69_td-7"></td></tr>
+                        <tr id="main_section-1_section-40_table_tbody_tr-70">
+                            <th id="main_section-1_section-40_table_tbody_tr-70_th" scope="row"></th>
+                            <td id="main_section-1_section-40_table_tbody_tr-70_td-1">
+                                <label data-group="inline">
+                                    <input id="main_section-1_section-40_table_tbody_tr-70_td-1_label_input" type="text" maxlength="100" data-size="sm">
+                                    <button id="main_section-1_section-40_table_tbody_tr-70_td-1_label_button" type="button" popovertarget="main_section-1_section-40_table_tbody_tr-70_td-1_div" aria-haspopup="listbox" aria-expanded="false" aria-controls="main_section-1_section-40_table_tbody_tr-70_td-1_div" aria-label="choose specialization" data-size="sm"></button></label>
+                                <div id="main_section-1_section-40_table_tbody_tr-70_td-1_div" popover="auto" role="listbox" aria-labelledby="main_section-1_section-40_table_tbody_tr-70_td-1_label_button">
+                                    <button id="main_section-1_section-40_table_tbody_tr-70_td-1_div_button-1" role="option"></button>
+                                    <button id="main_section-1_section-40_table_tbody_tr-70_td-1_div_button-2" role="option"></button>
+                                    <button id="main_section-1_section-40_table_tbody_tr-70_td-1_div_button-3" role="option"></button>
+                                    <button id="main_section-1_section-40_table_tbody_tr-70_td-1_div_button-4" role="option"></button>
+                                    <button id="main_section-1_section-40_table_tbody_tr-70_td-1_div_button-5" role="option"></button>
+                                    <button id="main_section-1_section-40_table_tbody_tr-70_td-1_div_button-6" role="option"></button>
+                                    <button id="main_section-1_section-40_table_tbody_tr-70_td-1_div_button-7" role="option"></button>
+                                    <button id="main_section-1_section-40_table_tbody_tr-70_td-1_div_button-8" role="option"></button></div></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-70_td-2"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-70_td-3">
+                                <input id="main_section-1_section-40_table_tbody_tr-70_td-3_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-70_td-4">
+                                <input id="main_section-1_section-40_table_tbody_tr-70_td-4_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-70_td-5">
+                                <input id="main_section-1_section-40_table_tbody_tr-70_td-5_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-70_td-6">
+                                <input id="main_section-1_section-40_table_tbody_tr-70_td-6_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-70_td-7"></td></tr>
+                        <tr id="main_section-1_section-40_table_tbody_tr-79">
+                            <th id="main_section-1_section-40_table_tbody_tr-79_th" scope="row"></th>
+                            <td id="main_section-1_section-40_table_tbody_tr-79_td-1">
+                                <input id="main_section-1_section-40_table_tbody_tr-79_td-1_input" type="text" maxlength="100" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-79_td-2"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-79_td-3">
+                                <input id="main_section-1_section-40_table_tbody_tr-79_td-3_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-79_td-4">
+                                <input id="main_section-1_section-40_table_tbody_tr-79_td-4_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-79_td-5">
+                                <input id="main_section-1_section-40_table_tbody_tr-79_td-5_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-79_td-6">
+                                <input id="main_section-1_section-40_table_tbody_tr-79_td-6_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-79_td-7"></td></tr>
+                        <tr id="main_section-1_section-40_table_tbody_tr-80">
+                            <th id="main_section-1_section-40_table_tbody_tr-80_th" scope="row"></th>
+                            <td id="main_section-1_section-40_table_tbody_tr-80_td-1">
+                                <label data-group="inline">
+                                    <input id="main_section-1_section-40_table_tbody_tr-80_td-1_label_input" type="text" maxlength="100" data-size="sm">
+                                    <button id="main_section-1_section-40_table_tbody_tr-80_td-1_label_button" type="button" popovertarget="main_section-1_section-40_table_tbody_tr-80_td-1_div" aria-haspopup="listbox" aria-expanded="false" aria-controls="main_section-1_section-40_table_tbody_tr-80_td-1_div" aria-label="choose specialization" data-size="sm"></button></label>
+                                <div id="main_section-1_section-40_table_tbody_tr-80_td-1_div" popover="auto" role="listbox" aria-labelledby="main_section-1_section-40_table_tbody_tr-80_td-1_label_button">
+                                    <button id="main_section-1_section-40_table_tbody_tr-80_td-1_div_button-1" role="option"></button>
+                                    <button id="main_section-1_section-40_table_tbody_tr-80_td-1_div_button-2" role="option"></button>
+                                    <button id="main_section-1_section-40_table_tbody_tr-80_td-1_div_button-3" role="option"></button>
+                                    <button id="main_section-1_section-40_table_tbody_tr-80_td-1_div_button-4" role="option"></button>
+                                    <button id="main_section-1_section-40_table_tbody_tr-80_td-1_div_button-5" role="option"></button>
+                                    <button id="main_section-1_section-40_table_tbody_tr-80_td-1_div_button-6" role="option"></button>
+                                    <button id="main_section-1_section-40_table_tbody_tr-80_td-1_div_button-7" role="option"></button></div></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-80_td-2"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-80_td-3">
+                                <input id="main_section-1_section-40_table_tbody_tr-80_td-3_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-80_td-4">
+                                <input id="main_section-1_section-40_table_tbody_tr-80_td-4_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-80_td-5">
+                                <input id="main_section-1_section-40_table_tbody_tr-80_td-5_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-80_td-6">
+                                <input id="main_section-1_section-40_table_tbody_tr-80_td-6_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-80_td-7"></td></tr>
+                        <tr id="main_section-1_section-40_table_tbody_tr-88">
+                            <th id="main_section-1_section-40_table_tbody_tr-88_th" scope="row"></th>
+                            <td id="main_section-1_section-40_table_tbody_tr-88_td-1">
+                                <input id="main_section-1_section-40_table_tbody_tr-88_td-1_input" type="text" maxlength="100" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-88_td-2"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-88_td-3">
+                                <input id="main_section-1_section-40_table_tbody_tr-88_td-3_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-88_td-4">
+                                <input id="main_section-1_section-40_table_tbody_tr-88_td-4_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-88_td-5">
+                                <input id="main_section-1_section-40_table_tbody_tr-88_td-5_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-88_td-6">
+                                <input id="main_section-1_section-40_table_tbody_tr-88_td-6_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-88_td-7"></td></tr>
+                        <tr id="main_section-1_section-40_table_tbody_tr-89">
+                            <th id="main_section-1_section-40_table_tbody_tr-89_th" scope="row"></th>
+                            <td id="main_section-1_section-40_table_tbody_tr-89_td-1">
+                                <input id="main_section-1_section-40_table_tbody_tr-89_td-1_input" type="text" maxlength="100" data-size="sm" disabled></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-89_td-2"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-89_td-3">
+                                <input id="main_section-1_section-40_table_tbody_tr-89_td-3_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-89_td-4">
+                                <input id="main_section-1_section-40_table_tbody_tr-89_td-4_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-89_td-5">
+                                <input id="main_section-1_section-40_table_tbody_tr-89_td-5_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-89_td-6">
+                                <input id="main_section-1_section-40_table_tbody_tr-89_td-6_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-89_td-7"></td></tr>
+                        <tr id="main_section-1_section-40_table_tbody_tr-90">
+                            <th id="main_section-1_section-40_table_tbody_tr-90_th" scope="row"></th>
+                            <td id="main_section-1_section-40_table_tbody_tr-90_td-1">
+                                <input id="main_section-1_section-40_table_tbody_tr-90_td-1_input" type="text" maxlength="100" data-size="sm" disabled></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-90_td-2"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-90_td-3">
+                                <input id="main_section-1_section-40_table_tbody_tr-90_td-3_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-90_td-4">
+                                <input id="main_section-1_section-40_table_tbody_tr-90_td-4_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-90_td-5">
+                                <input id="main_section-1_section-40_table_tbody_tr-90_td-5_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-90_td-6">
+                                <input id="main_section-1_section-40_table_tbody_tr-90_td-6_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-90_td-7"></td></tr>
+                        <tr id="main_section-1_section-40_table_tbody_tr-91">
+                            <th id="main_section-1_section-40_table_tbody_tr-91_th" scope="row"></th>
+                            <td id="main_section-1_section-40_table_tbody_tr-91_td-1">
+                                <input id="main_section-1_section-40_table_tbody_tr-91_td-1_input" type="text" maxlength="100" data-size="sm" disabled></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-91_td-2"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-91_td-3">
+                                <input id="main_section-1_section-40_table_tbody_tr-91_td-3_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-91_td-4">
+                                <input id="main_section-1_section-40_table_tbody_tr-91_td-4_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-91_td-5">
+                                <input id="main_section-1_section-40_table_tbody_tr-91_td-5_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-91_td-6">
+                                <input id="main_section-1_section-40_table_tbody_tr-91_td-6_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-91_td-7"></td></tr>
+                        <tr id="main_section-1_section-40_table_tbody_tr-92">
+                            <th id="main_section-1_section-40_table_tbody_tr-92_th" scope="row"></th>
+                            <td id="main_section-1_section-40_table_tbody_tr-92_td-1">
+                                <input id="main_section-1_section-40_table_tbody_tr-92_td-1_input" type="text" maxlength="100" data-size="sm" disabled></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-92_td-2"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-92_td-3">
+                                <input id="main_section-1_section-40_table_tbody_tr-92_td-3_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-92_td-4">
+                                <input id="main_section-1_section-40_table_tbody_tr-92_td-4_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-92_td-5">
+                                <input id="main_section-1_section-40_table_tbody_tr-92_td-5_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-92_td-6">
+                                <input id="main_section-1_section-40_table_tbody_tr-92_td-6_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-92_td-7"></td></tr>
+                        <tr id="main_section-1_section-40_table_tbody_tr-93">
+                            <th id="main_section-1_section-40_table_tbody_tr-93_th" scope="row"></th>
+                            <td id="main_section-1_section-40_table_tbody_tr-93_td-1">
+                                <label>
+                                    <input id="main_section-1_section-40_table_tbody_tr-93_td-1_label_input" type="text" maxlength="100" data-size="sm"></label></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-93_td-2"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-93_td-3">
+                                <input id="main_section-1_section-40_table_tbody_tr-93_td-3_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-93_td-4">
+                                <input id="main_section-1_section-40_table_tbody_tr-93_td-4_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-93_td-5">
+                                <input id="main_section-1_section-40_table_tbody_tr-93_td-5_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-93_td-6">
+                                <input id="main_section-1_section-40_table_tbody_tr-93_td-6_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-93_td-7"></td></tr>
+                        <tr id="main_section-1_section-40_table_tbody_tr-94">
+                            <th id="main_section-1_section-40_table_tbody_tr-94_th" scope="row"></th>
+                            <td id="main_section-1_section-40_table_tbody_tr-94_td-1">
+                                <input id="main_section-1_section-40_table_tbody_tr-94_td-1_input" type="text" maxlength="100" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-94_td-2"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-94_td-3">
+                                <input id="main_section-1_section-40_table_tbody_tr-94_td-3_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-94_td-4">
+                                <input id="main_section-1_section-40_table_tbody_tr-94_td-4_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-94_td-5">
+                                <input id="main_section-1_section-40_table_tbody_tr-94_td-5_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-94_td-6">
+                                <input id="main_section-1_section-40_table_tbody_tr-94_td-6_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-94_td-7"></td></tr>
+                        <tr id="main_section-1_section-40_table_tbody_tr-95">
+                            <th id="main_section-1_section-40_table_tbody_tr-95_th" scope="row"></th>
+                            <td id="main_section-1_section-40_table_tbody_tr-95_td-1">
+                                <input id="main_section-1_section-40_table_tbody_tr-95_td-1_input" type="text" maxlength="100" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-95_td-2"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-95_td-3">
+                                <input id="main_section-1_section-40_table_tbody_tr-95_td-3_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-95_td-4">
+                                <input id="main_section-1_section-40_table_tbody_tr-95_td-4_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-95_td-5">
+                                <input id="main_section-1_section-40_table_tbody_tr-95_td-5_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-95_td-6">
+                                <input id="main_section-1_section-40_table_tbody_tr-95_td-6_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-95_td-7"></td></tr>
+                        <tr id="main_section-1_section-40_table_tbody_tr-97">
+                            <th id="main_section-1_section-40_table_tbody_tr-97_th" scope="row"></th>
+                            <td id="main_section-1_section-40_table_tbody_tr-97_td-1">
+                                <input id="main_section-1_section-40_table_tbody_tr-97_td-1_input" type="text" maxlength="100" data-size="sm" disabled></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-97_td-2"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-97_td-3">
+                                <input id="main_section-1_section-40_table_tbody_tr-97_td-3_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-97_td-4">
+                                <input id="main_section-1_section-40_table_tbody_tr-97_td-4_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-97_td-5">
+                                <input id="main_section-1_section-40_table_tbody_tr-97_td-5_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-97_td-6">
+                                <input id="main_section-1_section-40_table_tbody_tr-97_td-6_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-97_td-7"></td></tr>
+                        <tr id="main_section-1_section-40_table_tbody_tr-98">
+                            <th id="main_section-1_section-40_table_tbody_tr-98_th" scope="row"></th>
+                            <td id="main_section-1_section-40_table_tbody_tr-98_td-1">
+                                <input id="main_section-1_section-40_table_tbody_tr-98_td-1_input" type="text" maxlength="100" data-size="sm" disabled></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-98_td-2"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-98_td-3">
+                                <input id="main_section-1_section-40_table_tbody_tr-98_td-3_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-98_td-4">
+                                <input id="main_section-1_section-40_table_tbody_tr-98_td-4_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-98_td-5">
+                                <input id="main_section-1_section-40_table_tbody_tr-98_td-5_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-98_td-6">
+                                <input id="main_section-1_section-40_table_tbody_tr-98_td-6_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-98_td-7"></td></tr>
+                        <tr id="main_section-1_section-40_table_tbody_tr-99">
+                            <th id="main_section-1_section-40_table_tbody_tr-99_th" scope="row"></th>
+                            <td id="main_section-1_section-40_table_tbody_tr-99_td-1">
+                                <input id="main_section-1_section-40_table_tbody_tr-99_td-1_input" type="text" maxlength="100" data-size="sm" disabled></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-99_td-2"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-99_td-3">
+                                <input id="main_section-1_section-40_table_tbody_tr-99_td-3_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-99_td-4">
+                                <input id="main_section-1_section-40_table_tbody_tr-99_td-4_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-99_td-5">
+                                <input id="main_section-1_section-40_table_tbody_tr-99_td-5_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-99_td-6">
+                                <input id="main_section-1_section-40_table_tbody_tr-99_td-6_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-99_td-7"></td></tr>
+                        <tr id="main_section-1_section-40_table_tbody_tr-100">
+                            <th id="main_section-1_section-40_table_tbody_tr-100_th" scope="row"></th>
+                            <td id="main_section-1_section-40_table_tbody_tr-100_td-1">
+                                <input id="main_section-1_section-40_table_tbody_tr-100_td-1_input" type="text" maxlength="100" data-size="sm" disabled></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-100_td-2"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-100_td-3">
+                                <input id="main_section-1_section-40_table_tbody_tr-100_td-3_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-100_td-4">
+                                <input id="main_section-1_section-40_table_tbody_tr-100_td-4_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-100_td-5">
+                                <input id="main_section-1_section-40_table_tbody_tr-100_td-5_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-100_td-6">
+                                <input id="main_section-1_section-40_table_tbody_tr-100_td-6_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-100_td-7"></td></tr>
+                        <tr id="main_section-1_section-40_table_tbody_tr-101">
+                            <th id="main_section-1_section-40_table_tbody_tr-101_th" scope="row"></th>
+                            <td id="main_section-1_section-40_table_tbody_tr-101_td-1">
+                                <input id="main_section-1_section-40_table_tbody_tr-101_td-1_input" type="text" maxlength="100" data-size="sm" disabled></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-101_td-2"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-101_td-3">
+                                <input id="main_section-1_section-40_table_tbody_tr-101_td-3_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-101_td-4">
+                                <input id="main_section-1_section-40_table_tbody_tr-101_td-4_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-101_td-5">
+                                <input id="main_section-1_section-40_table_tbody_tr-101_td-5_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-101_td-6">
+                                <input id="main_section-1_section-40_table_tbody_tr-101_td-6_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-101_td-7"></td></tr>
+                        <tr id="main_section-1_section-40_table_tbody_tr-102">
+                            <th id="main_section-1_section-40_table_tbody_tr-102_th" scope="row"></th>
+                            <td id="main_section-1_section-40_table_tbody_tr-102_td-1">
+                                <input id="main_section-1_section-40_table_tbody_tr-102_td-1_input" type="text" maxlength="100" data-size="sm" disabled></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-102_td-2"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-102_td-3">
+                                <input id="main_section-1_section-40_table_tbody_tr-102_td-3_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-102_td-4">
+                                <input id="main_section-1_section-40_table_tbody_tr-102_td-4_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-102_td-5">
+                                <input id="main_section-1_section-40_table_tbody_tr-102_td-5_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-102_td-6">
+                                <input id="main_section-1_section-40_table_tbody_tr-102_td-6_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-102_td-7"></td></tr>
+                        <tr id="main_section-1_section-40_table_tbody_tr-103">
+                            <th id="main_section-1_section-40_table_tbody_tr-103_th" scope="row"></th>
+                            <td id="main_section-1_section-40_table_tbody_tr-103_td-1">
+                                <input id="main_section-1_section-40_table_tbody_tr-103_td-1_input" type="text" maxlength="100" data-size="sm" disabled></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-103_td-2"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-103_td-3">
+                                <input id="main_section-1_section-40_table_tbody_tr-103_td-3_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-103_td-4">
+                                <input id="main_section-1_section-40_table_tbody_tr-103_td-4_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-103_td-5">
+                                <input id="main_section-1_section-40_table_tbody_tr-103_td-5_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-103_td-6">
+                                <input id="main_section-1_section-40_table_tbody_tr-103_td-6_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-103_td-7"></td></tr>
+                        <tr id="main_section-1_section-40_table_tbody_tr-104">
+                            <th id="main_section-1_section-40_table_tbody_tr-104_th" scope="row"></th>
+                            <td id="main_section-1_section-40_table_tbody_tr-104_td-1">
+                                <input id="main_section-1_section-40_table_tbody_tr-104_td-1_input" type="text" maxlength="100" data-size="sm" disabled></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-104_td-2"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-104_td-3">
+                                <input id="main_section-1_section-40_table_tbody_tr-104_td-3_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-104_td-4">
+                                <input id="main_section-1_section-40_table_tbody_tr-104_td-4_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-104_td-5">
+                                <input id="main_section-1_section-40_table_tbody_tr-104_td-5_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-104_td-6">
+                                <input id="main_section-1_section-40_table_tbody_tr-104_td-6_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-104_td-7"></td></tr>
+                        <tr id="main_section-1_section-40_table_tbody_tr-105">
+                            <th id="main_section-1_section-40_table_tbody_tr-105_th" scope="row"></th>
+                            <td id="main_section-1_section-40_table_tbody_tr-105_td-1">
+                                <input id="main_section-1_section-40_table_tbody_tr-105_td-1_input" type="text" maxlength="100" data-size="sm" disabled></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-105_td-2"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-105_td-3">
+                                <input id="main_section-1_section-40_table_tbody_tr-105_td-3_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-105_td-4">
+                                <input id="main_section-1_section-40_table_tbody_tr-105_td-4_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-105_td-5">
+                                <input id="main_section-1_section-40_table_tbody_tr-105_td-5_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-105_td-6">
+                                <input id="main_section-1_section-40_table_tbody_tr-105_td-6_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-105_td-7"></td></tr>
+                        <tr id="main_section-1_section-40_table_tbody_tr-106">
+                            <th id="main_section-1_section-40_table_tbody_tr-106_th" scope="row"></th>
+                            <td id="main_section-1_section-40_table_tbody_tr-106_td-1">
+                                <input id="main_section-1_section-40_table_tbody_tr-106_td-1_input" type="text" maxlength="100" data-size="sm" disabled></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-106_td-2"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-106_td-3">
+                                <input id="main_section-1_section-40_table_tbody_tr-106_td-3_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-106_td-4">
+                                <input id="main_section-1_section-40_table_tbody_tr-106_td-4_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-106_td-5">
+                                <input id="main_section-1_section-40_table_tbody_tr-106_td-5_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-106_td-6">
+                                <input id="main_section-1_section-40_table_tbody_tr-106_td-6_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-106_td-7"></td></tr>
+                        <tr id="main_section-1_section-40_table_tbody_tr-107">
+                            <th id="main_section-1_section-40_table_tbody_tr-107_th" scope="row"></th>
+                            <td id="main_section-1_section-40_table_tbody_tr-107_td-1">
+                                <label data-group="inline">
+                                    <input id="main_section-1_section-40_table_tbody_tr-107_td-1_label_input" type="text" maxlength="100" data-size="sm">
+                                    <button id="main_section-1_section-40_table_tbody_tr-107_td-1_label_button" type="button" popovertarget="main_section-1_section-40_table_tbody_tr-107_td-1_div" aria-haspopup="listbox" aria-expanded="false" aria-controls="main_section-1_section-40_table_tbody_tr-107_td-1_div" aria-label="choose specialization" data-size="sm"></button></label>
+                                <div id="main_section-1_section-40_table_tbody_tr-107_td-1_div" popover="auto" role="listbox" aria-labelledby="main_section-1_section-40_table_tbody_tr-107_td-1_label_button">
+                                    <button id="main_section-1_section-40_table_tbody_tr-107_td-1_div_button-1" role="option"></button>
+                                    <button id="main_section-1_section-40_table_tbody_tr-107_td-1_div_button-2" role="option"></button>
+                                    <button id="main_section-1_section-40_table_tbody_tr-107_td-1_div_button-3" role="option"></button>
+                                    <button id="main_section-1_section-40_table_tbody_tr-107_td-1_div_button-4" role="option"></button>
+                                    <button id="main_section-1_section-40_table_tbody_tr-107_td-1_div_button-5" role="option"></button>
+                                    <button id="main_section-1_section-40_table_tbody_tr-107_td-1_div_button-6" role="option"></button>
+                                    <button id="main_section-1_section-40_table_tbody_tr-107_td-1_div_button-7" role="option"></button>
+                                    <button id="main_section-1_section-40_table_tbody_tr-107_td-1_div_button-8" role="option"></button>
+                                    <button id="main_section-1_section-40_table_tbody_tr-107_td-1_div_button-9" role="option"></button>
+                                    <button id="main_section-1_section-40_table_tbody_tr-107_td-1_div_button-10" role="option"></button></div></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-107_td-2"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-107_td-3">
+                                <input id="main_section-1_section-40_table_tbody_tr-107_td-3_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-107_td-4">
+                                <input id="main_section-1_section-40_table_tbody_tr-107_td-4_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-107_td-5">
+                                <input id="main_section-1_section-40_table_tbody_tr-107_td-5_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-107_td-6">
+                                <input id="main_section-1_section-40_table_tbody_tr-107_td-6_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-107_td-7"></td></tr>
+                        <tr id="main_section-1_section-40_table_tbody_tr-118">
+                            <th id="main_section-1_section-40_table_tbody_tr-118_th" scope="row"></th>
+                            <td id="main_section-1_section-40_table_tbody_tr-118_td-1">
+                                <input id="main_section-1_section-40_table_tbody_tr-118_td-1_input" type="text" maxlength="100" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-118_td-2"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-118_td-3">
+                                <input id="main_section-1_section-40_table_tbody_tr-118_td-3_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-118_td-4">
+                                <input id="main_section-1_section-40_table_tbody_tr-118_td-4_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-118_td-5">
+                                <input id="main_section-1_section-40_table_tbody_tr-118_td-5_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-118_td-6">
+                                <input id="main_section-1_section-40_table_tbody_tr-118_td-6_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-118_td-7"></td></tr>
+                        <tr id="main_section-1_section-40_table_tbody_tr-119">
+                            <th id="main_section-1_section-40_table_tbody_tr-119_th" scope="row"></th>
+                            <td id="main_section-1_section-40_table_tbody_tr-119_td-1">
+                                <input id="main_section-1_section-40_table_tbody_tr-119_td-1_input" type="text" maxlength="100" data-size="sm" disabled></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-119_td-2"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-119_td-3">
+                                <input id="main_section-1_section-40_table_tbody_tr-119_td-3_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-119_td-4">
+                                <input id="main_section-1_section-40_table_tbody_tr-119_td-4_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-119_td-5">
+                                <input id="main_section-1_section-40_table_tbody_tr-119_td-5_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-119_td-6">
+                                <input id="main_section-1_section-40_table_tbody_tr-119_td-6_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-119_td-7"></td></tr>
+                        <tr id="main_section-1_section-40_table_tbody_tr-120">
+                            <th id="main_section-1_section-40_table_tbody_tr-120_th" scope="row"></th>
+                            <td id="main_section-1_section-40_table_tbody_tr-120_td-1">
+                                <input id="main_section-1_section-40_table_tbody_tr-120_td-1_input" type="text" maxlength="100" data-size="sm" disabled></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-120_td-2"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-120_td-3">
+                                <input id="main_section-1_section-40_table_tbody_tr-120_td-3_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-120_td-4">
+                                <input id="main_section-1_section-40_table_tbody_tr-120_td-4_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-120_td-5">
+                                <input id="main_section-1_section-40_table_tbody_tr-120_td-5_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-120_td-6">
+                                <input id="main_section-1_section-40_table_tbody_tr-120_td-6_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-120_td-7"></td></tr>
+                        <tr id="main_section-1_section-40_table_tbody_tr-121">
+                            <th id="main_section-1_section-40_table_tbody_tr-121_th" scope="row"></th>
+                            <td id="main_section-1_section-40_table_tbody_tr-121_td-1">
+                                <input id="main_section-1_section-40_table_tbody_tr-121_td-1_input" type="text" maxlength="100" data-size="sm" disabled></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-121_td-2"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-121_td-3">
+                                <input id="main_section-1_section-40_table_tbody_tr-121_td-3_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-121_td-4">
+                                <input id="main_section-1_section-40_table_tbody_tr-121_td-4_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-121_td-5">
+                                <input id="main_section-1_section-40_table_tbody_tr-121_td-5_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-121_td-6">
+                                <input id="main_section-1_section-40_table_tbody_tr-121_td-6_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-121_td-7"></td></tr>
+                        <tr id="main_section-1_section-40_table_tbody_tr-122">
+                            <th id="main_section-1_section-40_table_tbody_tr-122_th" scope="row"></th>
+                            <td id="main_section-1_section-40_table_tbody_tr-122_td-1">
+                                <label data-group="inline">
+                                    <input id="main_section-1_section-40_table_tbody_tr-122_td-1_label_input" type="text" maxlength="100" data-size="sm">
+                                    <button id="main_section-1_section-40_table_tbody_tr-122_td-1_label_button" type="button" popovertarget="main_section-1_section-40_table_tbody_tr-122_td-1_div" aria-haspopup="listbox" aria-expanded="false" aria-controls="main_section-1_section-40_table_tbody_tr-122_td-1_div" aria-label="choose specialization" data-size="sm"></button></label>
+                                <div id="main_section-1_section-40_table_tbody_tr-122_td-1_div" popover="auto" role="listbox" aria-labelledby="main_section-1_section-40_table_tbody_tr-122_td-1_label_button">
+                                    <button id="main_section-1_section-40_table_tbody_tr-122_td-1_div_button-1" role="option"></button>
+                                    <button id="main_section-1_section-40_table_tbody_tr-122_td-1_div_button-2" role="option"></button>
+                                    <button id="main_section-1_section-40_table_tbody_tr-122_td-1_div_button-3" role="option"></button>
+                                    <button id="main_section-1_section-40_table_tbody_tr-122_td-1_div_button-4" role="option"></button>
+                                    <button id="main_section-1_section-40_table_tbody_tr-122_td-1_div_button-5" role="option"></button>
+                                    <button id="main_section-1_section-40_table_tbody_tr-122_td-1_div_button-6" role="option"></button>
+                                    <button id="main_section-1_section-40_table_tbody_tr-122_td-1_div_button-7" role="option"></button>
+                                    <button id="main_section-1_section-40_table_tbody_tr-122_td-1_div_button-8" role="option"></button>
+                                    <button id="main_section-1_section-40_table_tbody_tr-122_td-1_div_button-9" role="option"></button>
+                                    <button id="main_section-1_section-40_table_tbody_tr-122_td-1_div_button-10" role="option"></button>
+                                    <button id="main_section-1_section-40_table_tbody_tr-122_td-1_div_button-11" role="option"></button>
+                                    <button id="main_section-1_section-40_table_tbody_tr-122_td-1_div_button-12" role="option"></button>
+                                    <button id="main_section-1_section-40_table_tbody_tr-122_td-1_div_button-13" role="option"></button>
+                                    <button id="main_section-1_section-40_table_tbody_tr-122_td-1_div_button-14" role="option"></button></div></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-122_td-2"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-122_td-3">
+                                <input id="main_section-1_section-40_table_tbody_tr-122_td-3_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-122_td-4">
+                                <input id="main_section-1_section-40_table_tbody_tr-122_td-4_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-122_td-5">
+                                <input id="main_section-1_section-40_table_tbody_tr-122_td-5_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-122_td-6">
+                                <input id="main_section-1_section-40_table_tbody_tr-122_td-6_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-122_td-7"></td></tr>
+                        <tr id="main_section-1_section-40_table_tbody_tr-136">
+                            <th id="main_section-1_section-40_table_tbody_tr-136_th" scope="row"></th>
+                            <td id="main_section-1_section-40_table_tbody_tr-136_td-1">
+                                <input id="main_section-1_section-40_table_tbody_tr-136_td-1_input" type="text" maxlength="100" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-136_td-2"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-136_td-3">
+                                <input id="main_section-1_section-40_table_tbody_tr-136_td-3_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-136_td-4">
+                                <input id="main_section-1_section-40_table_tbody_tr-136_td-4_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-136_td-5">
+                                <input id="main_section-1_section-40_table_tbody_tr-136_td-5_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-136_td-6">
+                                <input id="main_section-1_section-40_table_tbody_tr-136_td-6_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-136_td-7"></td></tr>
+                        <tr id="main_section-1_section-40_table_tbody_tr-137">
+                            <th id="main_section-1_section-40_table_tbody_tr-137_th" scope="row"></th>
+                            <td id="main_section-1_section-40_table_tbody_tr-137_td-1">
+                                <input id="main_section-1_section-40_table_tbody_tr-137_td-1_input" type="text" maxlength="100" data-size="sm" disabled></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-137_td-2"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-137_td-3">
+                                <input id="main_section-1_section-40_table_tbody_tr-137_td-3_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-137_td-4">
+                                <input id="main_section-1_section-40_table_tbody_tr-137_td-4_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-137_td-5">
+                                <input id="main_section-1_section-40_table_tbody_tr-137_td-5_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-137_td-6">
+                                <input id="main_section-1_section-40_table_tbody_tr-137_td-6_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-137_td-7"></td></tr>
+                        <tr id="main_section-1_section-40_table_tbody_tr-138">
+                            <th id="main_section-1_section-40_table_tbody_tr-138_th" scope="row"></th>
+                            <td id="main_section-1_section-40_table_tbody_tr-138_td-1">
+                                <input id="main_section-1_section-40_table_tbody_tr-138_td-1_input" type="text" maxlength="100" data-size="sm" disabled></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-138_td-2"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-138_td-3">
+                                <input id="main_section-1_section-40_table_tbody_tr-138_td-3_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-138_td-4">
+                                <input id="main_section-1_section-40_table_tbody_tr-138_td-4_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-138_td-5">
+                                <input id="main_section-1_section-40_table_tbody_tr-138_td-5_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-138_td-6">
+                                <input id="main_section-1_section-40_table_tbody_tr-138_td-6_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-138_td-7"></td></tr>
+                        <tr id="main_section-1_section-40_table_tbody_tr-139">
+                            <th id="main_section-1_section-40_table_tbody_tr-139_th" scope="row"></th>
+                            <td id="main_section-1_section-40_table_tbody_tr-139_td-1">
+                                <input id="main_section-1_section-40_table_tbody_tr-139_td-1_input" type="text" maxlength="100" data-size="sm" disabled></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-139_td-2"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-139_td-3">
+                                <input id="main_section-1_section-40_table_tbody_tr-139_td-3_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-139_td-4">
+                                <input id="main_section-1_section-40_table_tbody_tr-139_td-4_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-139_td-5">
+                                <input id="main_section-1_section-40_table_tbody_tr-139_td-5_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-139_td-6">
+                                <input id="main_section-1_section-40_table_tbody_tr-139_td-6_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-139_td-7"></td></tr>
+                        <tr id="main_section-1_section-40_table_tbody_tr-140">
+                            <th id="main_section-1_section-40_table_tbody_tr-140_th" scope="row"></th>
+                            <td id="main_section-1_section-40_table_tbody_tr-140_td-1">
+                                <label data-group="inline">
+                                    <input id="main_section-1_section-40_table_tbody_tr-140_td-1_label_input" type="text" maxlength="100" data-size="sm">
+                                    <button id="main_section-1_section-40_table_tbody_tr-140_td-1_label_button" type="button" popovertarget="main_section-1_section-40_table_tbody_tr-140_td-1_div" aria-haspopup="listbox" aria-expanded="false" aria-controls="main_section-1_section-40_table_tbody_tr-140_td-1_div" aria-label="choose specialization" data-size="sm"></button></label>
+                                <div id="main_section-1_section-40_table_tbody_tr-140_td-1_div" popover="auto" role="listbox" aria-labelledby="main_section-1_section-40_table_tbody_tr-140_td-1_label_button">
+                                    <button id="main_section-1_section-40_table_tbody_tr-140_td-1_div_button-1" role="option"></button>
+                                    <button id="main_section-1_section-40_table_tbody_tr-140_td-1_div_button-2" role="option"></button>
+                                    <button id="main_section-1_section-40_table_tbody_tr-140_td-1_div_button-3" role="option"></button></div></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-140_td-2"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-140_td-3">
+                                <input id="main_section-1_section-40_table_tbody_tr-140_td-3_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-140_td-4">
+                                <input id="main_section-1_section-40_table_tbody_tr-140_td-4_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-140_td-5">
+                                <input id="main_section-1_section-40_table_tbody_tr-140_td-5_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-140_td-6">
+                                <input id="main_section-1_section-40_table_tbody_tr-140_td-6_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-140_td-7"></td></tr>
+                        <tr id="main_section-1_section-40_table_tbody_tr-144">
+                            <th id="main_section-1_section-40_table_tbody_tr-144_th" scope="row"></th>
+                            <td id="main_section-1_section-40_table_tbody_tr-144_td-1">
+                                <input id="main_section-1_section-40_table_tbody_tr-144_td-1_input" type="text" maxlength="100" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-144_td-2"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-144_td-3">
+                                <input id="main_section-1_section-40_table_tbody_tr-144_td-3_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-144_td-4">
+                                <input id="main_section-1_section-40_table_tbody_tr-144_td-4_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-144_td-5">
+                                <input id="main_section-1_section-40_table_tbody_tr-144_td-5_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-144_td-6">
+                                <input id="main_section-1_section-40_table_tbody_tr-144_td-6_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-144_td-7"></td></tr>
+                        <tr id="main_section-1_section-40_table_tbody_tr-145">
+                            <th id="main_section-1_section-40_table_tbody_tr-145_th" scope="row"></th>
+                            <td id="main_section-1_section-40_table_tbody_tr-145_td-1">
+                                <input id="main_section-1_section-40_table_tbody_tr-145_td-1_input" type="text" maxlength="100" data-size="sm" disabled></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-145_td-2"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-145_td-3">
+                                <input id="main_section-1_section-40_table_tbody_tr-145_td-3_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-145_td-4">
+                                <input id="main_section-1_section-40_table_tbody_tr-145_td-4_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-145_td-5">
+                                <input id="main_section-1_section-40_table_tbody_tr-145_td-5_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-145_td-6">
+                                <input id="main_section-1_section-40_table_tbody_tr-145_td-6_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-145_td-7"></td></tr>
+                        <tr id="main_section-1_section-40_table_tbody_tr-146">
+                            <th id="main_section-1_section-40_table_tbody_tr-146_th" scope="row"></th>
+                            <td id="main_section-1_section-40_table_tbody_tr-146_td-1">
+                                <input id="main_section-1_section-40_table_tbody_tr-146_td-1_input" type="text" maxlength="100" data-size="sm" disabled></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-146_td-2"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-146_td-3">
+                                <input id="main_section-1_section-40_table_tbody_tr-146_td-3_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-146_td-4">
+                                <input id="main_section-1_section-40_table_tbody_tr-146_td-4_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-146_td-5">
+                                <input id="main_section-1_section-40_table_tbody_tr-146_td-5_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-146_td-6">
+                                <input id="main_section-1_section-40_table_tbody_tr-146_td-6_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-146_td-7"></td></tr>
+                        <tr id="main_section-1_section-40_table_tbody_tr-147">
+                            <th id="main_section-1_section-40_table_tbody_tr-147_th" scope="row"></th>
+                            <td id="main_section-1_section-40_table_tbody_tr-147_td-1">
+                                <input id="main_section-1_section-40_table_tbody_tr-147_td-1_input" type="text" maxlength="100" data-size="sm" disabled></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-147_td-2"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-147_td-3">
+                                <input id="main_section-1_section-40_table_tbody_tr-147_td-3_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-147_td-4">
+                                <input id="main_section-1_section-40_table_tbody_tr-147_td-4_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-147_td-5">
+                                <input id="main_section-1_section-40_table_tbody_tr-147_td-5_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-147_td-6">
+                                <input id="main_section-1_section-40_table_tbody_tr-147_td-6_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-147_td-7"></td></tr>
+                        <tr id="main_section-1_section-40_table_tbody_tr-148">
+                            <th id="main_section-1_section-40_table_tbody_tr-148_th" scope="row">
+                                <input type="text" maxlength="100" data-size="sm"></th>
+                            <td id="main_section-1_section-40_table_tbody_tr-148_td-1">
+                                <input id="main_section-1_section-40_table_tbody_tr-148_td-1_input" type="text" maxlength="100" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-148_td-2"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-148_td-3">
+                                <input id="main_section-1_section-40_table_tbody_tr-148_td-3_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-148_td-4">
+                                <input id="main_section-1_section-40_table_tbody_tr-148_td-4_input" type="text" inputmode="numeric" pattern="^([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="3" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-148_td-5">
+                                <input id="main_section-1_section-40_table_tbody_tr-148_td-5_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-148_td-6">
+                                <input id="main_section-1_section-40_table_tbody_tr-148_td-6_input" type="text" inputmode="numeric" pattern="^-?([1-9][0-9]{0,2}|0)$" placeholder="0" maxlength="4" data-size="sm"></td>
+                            <td id="main_section-1_section-40_table_tbody_tr-148_td-7"></td></tr></tbody></table></section>
+
+            <section id="main_section-1_section-150" aria-label="Gear and Possessions">
+                <h3 id="main_section-1_section-150_h3"></h3>
+                <p id="main_section-1_section-150_p-151"></p>
+                <table id="main_section-1_section-150_table-1" aria-label="Weapon" data-size="sm" data-stripe>
+                    <thead>
+                        <tr>
+                            <th id="main_section-1_section-150_table-1_thead_tr_th-1" scope="col"></th>
+                            <th id="main_section-1_section-150_table-1_thead_tr_th-2" scope="col"></th>
+                            <th id="main_section-1_section-150_table-1_thead_tr_th-3" scope="col"></th>
+                            <th id="main_section-1_section-150_table-1_thead_tr_th-4" scope="col"></th>
+                            <th id="main_section-1_section-150_table-1_thead_tr_th-5" scope="col"></th>
+                            <th id="main_section-1_section-150_table-1_thead_tr_th-6" scope="col"></th>
+                            <th id="main_section-1_section-150_table-1_thead_tr_th-7" scope="col"></th>
+                            <th id="main_section-1_section-150_table-1_thead_tr_th-8" scope="col"></th></tr></thead>
+                    <tbody>
+                        <tr id="main_section-1_section-150_table-1_tbody_tr-1">
+                            <td id="main_section-1_section-150_table-1_tbody_tr-1_td-1">
+                                <input id="main_section-1_section-150_table-1_tbody_tr-1_td-1_input" type="text" maxlength="100" data-size="sm"></td>
+                            <td id="main_section-1_section-150_table-1_tbody_tr-1_td-2">
+                                <input id="main_section-1_section-150_table-1_tbody_tr-1_td-2_input" type="text" maxlength="100" data-size="sm"></td>
+                            <td id="main_section-1_section-150_table-1_tbody_tr-1_td-3">
+                                <input id="main_section-1_section-150_table-1_tbody_tr-1_td-3_input" type="text" maxlength="100" data-size="sm"></td>
+                            <td id="main_section-1_section-150_table-1_tbody_tr-1_td-4">
+                                <input id="main_section-1_section-150_table-1_tbody_tr-1_td-4_input" type="text" maxlength="100" data-size="sm"></td>
+                            <td id="main_section-1_section-150_table-1_tbody_tr-1_td-5">
+                                <input id="main_section-1_section-150_table-1_tbody_tr-1_td-5_input" type="text" maxlength="100" data-size="sm"></td>
+                            <td id="main_section-1_section-150_table-1_tbody_tr-1_td-6">
+                                <input id="main_section-1_section-150_table-1_tbody_tr-1_td-6_input" type="text" maxlength="100" data-size="sm"></td>
+                            <td id="main_section-1_section-150_table-1_tbody_tr-1_td-7">
+                                <input id="main_section-1_section-150_table-1_tbody_tr-1_td-7_input" type="text" maxlength="100" data-size="sm"></td>
+                            <td id="main_section-1_section-150_table-1_tbody_tr-1_td-8">
+                                <input id="main_section-1_section-150_table-1_tbody_tr-1_td-8_input" type="text" maxlength="100" data-size="sm"></td></tr>
+                        <tr id="main_section-1_section-150_table-1_tbody_tr-2">
+                            <td id="main_section-1_section-150_table-1_tbody_tr-2_td-1">
+                                <input id="main_section-1_section-150_table-1_tbody_tr-2_td-1_input" type="text" maxlength="100" data-size="sm"></td>
+                            <td id="main_section-1_section-150_table-1_tbody_tr-2_td-2">
+                                <input id="main_section-1_section-150_table-1_tbody_tr-2_td-2_input" type="text" maxlength="100" data-size="sm"></td>
+                            <td id="main_section-1_section-150_table-1_tbody_tr-2_td-3">
+                                <input id="main_section-1_section-150_table-1_tbody_tr-2_td-3_input" type="text" maxlength="100" data-size="sm"></td>
+                            <td id="main_section-1_section-150_table-1_tbody_tr-2_td-4">
+                                <input id="main_section-1_section-150_table-1_tbody_tr-2_td-4_input" type="text" maxlength="100" data-size="sm"></td>
+                            <td id="main_section-1_section-150_table-1_tbody_tr-2_td-5">
+                                <input id="main_section-1_section-150_table-1_tbody_tr-2_td-5_input" type="text" maxlength="100" data-size="sm"></td>
+                            <td id="main_section-1_section-150_table-1_tbody_tr-2_td-6">
+                                <input id="main_section-1_section-150_table-1_tbody_tr-2_td-6_input" type="text" maxlength="100" data-size="sm"></td>
+                            <td id="main_section-1_section-150_table-1_tbody_tr-2_td-7">
+                                <input id="main_section-1_section-150_table-1_tbody_tr-2_td-7_input" type="text" maxlength="100" data-size="sm"></td>
+                            <td id="main_section-1_section-150_table-1_tbody_tr-2_td-8">
+                                <input id="main_section-1_section-150_table-1_tbody_tr-2_td-8_input" type="text" maxlength="100" data-size="sm"></td></tr>
+                        <tr id="main_section-1_section-150_table-1_tbody_tr-3">
+                            <td id="main_section-1_section-150_table-1_tbody_tr-3_td-1">
+                                <input id="main_section-1_section-150_table-1_tbody_tr-3_td-1_input" type="text" maxlength="100" data-size="sm"></td>
+                            <td id="main_section-1_section-150_table-1_tbody_tr-3_td-2">
+                                <input id="main_section-1_section-150_table-1_tbody_tr-3_td-2_input" type="text" maxlength="100" data-size="sm"></td>
+                            <td id="main_section-1_section-150_table-1_tbody_tr-3_td-3">
+                                <input id="main_section-1_section-150_table-1_tbody_tr-3_td-3_input" type="text" maxlength="100" data-size="sm"></td>
+                            <td id="main_section-1_section-150_table-1_tbody_tr-3_td-4">
+                                <input id="main_section-1_section-150_table-1_tbody_tr-3_td-4_input" type="text" maxlength="100" data-size="sm"></td>
+                            <td id="main_section-1_section-150_table-1_tbody_tr-3_td-5">
+                                <input id="main_section-1_section-150_table-1_tbody_tr-3_td-5_input" type="text" maxlength="100" data-size="sm"></td>
+                            <td id="main_section-1_section-150_table-1_tbody_tr-3_td-6">
+                                <input id="main_section-1_section-150_table-1_tbody_tr-3_td-6_input" type="text" maxlength="100" data-size="sm"></td>
+                            <td id="main_section-1_section-150_table-1_tbody_tr-3_td-7">
+                                <input id="main_section-1_section-150_table-1_tbody_tr-3_td-7_input" type="text" maxlength="100" data-size="sm"></td>
+                            <td id="main_section-1_section-150_table-1_tbody_tr-3_td-8">
+                                <input id="main_section-1_section-150_table-1_tbody_tr-3_td-8_input" type="text" maxlength="100" data-size="sm"></td></tr>
+                        <tr id="main_section-1_section-150_table-1_tbody_tr-4">
+                            <td id="main_section-1_section-150_table-1_tbody_tr-4_td-1">
+                                <input id="main_section-1_section-150_table-1_tbody_tr-4_td-1_input" type="text" maxlength="100" data-size="sm"></td>
+                            <td id="main_section-1_section-150_table-1_tbody_tr-4_td-2">
+                                <input id="main_section-1_section-150_table-1_tbody_tr-4_td-2_input" type="text" maxlength="100" data-size="sm"></td>
+                            <td id="main_section-1_section-150_table-1_tbody_tr-4_td-3">
+                                <input id="main_section-1_section-150_table-1_tbody_tr-4_td-3_input" type="text" maxlength="100" data-size="sm"></td>
+                            <td id="main_section-1_section-150_table-1_tbody_tr-4_td-4">
+                                <input id="main_section-1_section-150_table-1_tbody_tr-4_td-4_input" type="text" maxlength="100" data-size="sm"></td>
+                            <td id="main_section-1_section-150_table-1_tbody_tr-4_td-5">
+                                <input id="main_section-1_section-150_table-1_tbody_tr-4_td-5_input" type="text" maxlength="100" data-size="sm"></td>
+                            <td id="main_section-1_section-150_table-1_tbody_tr-4_td-6">
+                                <input id="main_section-1_section-150_table-1_tbody_tr-4_td-6_input" type="text" maxlength="100" data-size="sm"></td>
+                            <td id="main_section-1_section-150_table-1_tbody_tr-4_td-7">
+                                <input id="main_section-1_section-150_table-1_tbody_tr-4_td-7_input" type="text" maxlength="100" data-size="sm"></td>
+                            <td id="main_section-1_section-150_table-1_tbody_tr-4_td-8">
+                                <input id="main_section-1_section-150_table-1_tbody_tr-4_td-8_input" type="text" maxlength="100" data-size="sm"></td></tr></tbody></table>
+                <p id="main_section-1_section-150_p-152"></p>
+                <table id="main_section-1_section-150_table-2" aria-label="Armor" data-size="sm" data-stripe>
+                    <thead>
+                        <tr>
+                            <th id="main_section-1_section-150_table-2_thead_tr_th-1" scope="col"></th>
+                            <th id="main_section-1_section-150_table-2_thead_tr_th-2" scope="col"></th>
+                            <th id="main_section-1_section-150_table-2_thead_tr_th-3" scope="col"></th>
+                            <th id="main_section-1_section-150_table-2_thead_tr_th-4" scope="col"></th></tr></thead>
+                    <tbody>
+                        <tr id="main_section-1_section-150_table-2_tbody_tr-1">
+                            <td id="main_section-1_section-150_table-2_tbody_tr-1_td-1">
+                                <input id="main_section-1_section-150_table-2_tbody_tr-1_td-1_input" type="text" maxlength="100" data-size="sm"></td>
+                            <td id="main_section-1_section-150_table-2_tbody_tr-1_td-2">
+                                <input id="main_section-1_section-150_table-2_tbody_tr-1_td-2_input" type="text" maxlength="100" data-size="sm"></td>
+                            <td id="main_section-1_section-150_table-2_tbody_tr-1_td-3">
+                                <input id="main_section-1_section-150_table-2_tbody_tr-1_td-3_input" type="text" maxlength="100" data-size="sm"></td>
+                            <td id="main_section-1_section-150_table-2_tbody_tr-1_td-4">
+                                <input id="main_section-1_section-150_table-2_tbody_tr-1_td-4_input" type="text" maxlength="100" data-size="sm"></td></tr>
+                        <tr id="main_section-1_section-150_table-2_tbody_tr-2">
+                            <td id="main_section-1_section-150_table-2_tbody_tr-2_td-1">
+                                <input id="main_section-1_section-150_table-2_tbody_tr-2_td-1_input" type="text" maxlength="100" data-size="sm"></td>
+                            <td id="main_section-1_section-150_table-2_tbody_tr-2_td-2">
+                                <input id="main_section-1_section-150_table-2_tbody_tr-2_td-2_input" type="text" maxlength="100" data-size="sm"></td>
+                            <td id="main_section-1_section-150_table-2_tbody_tr-2_td-3">
+                                <input id="main_section-1_section-150_table-2_tbody_tr-2_td-3_input" type="text" maxlength="100" data-size="sm"></td>
+                            <td id="main_section-1_section-150_table-2_tbody_tr-2_td-4">
+                                <input id="main_section-1_section-150_table-2_tbody_tr-2_td-4_input" type="text" maxlength="100" data-size="sm"></td></tr></tbody></table>
+                <p id="main_section-1_section-150_p-153"></p>
+                <dl id="main_section-1_section-150_dl-1" aria-label="Equipment">
+                    <dt id="main_section-1_section-150_dl-1_dt-1">
+                        <input id="main_section-1_section-150_dl-1_dt-1_input" type="text" maxlength="100" placeholder="名称" data-size="sm"></dt>
+                    <dd id="main_section-1_section-150_dl-1_dd-1">
+                        <input id="main_section-1_section-150_dl-1_dd-1_input" type="text" maxlength="100" placeholder="数量" data-size="sm"></dd>
+                    <dd id="main_section-1_section-150_dl-1_dd-2">
+                        <input id="main_section-1_section-150_dl-1_dd-2_input" type="text" maxlength="100" placeholder="単位" data-size="sm"></dd>
+                    <dd id="main_section-1_section-150_dl-1_dd-3">
+                        <input id="main_section-1_section-150_dl-1_dd-3_input" type="text" maxlength="100" placeholder="備考" data-size="sm"></dd>
+                    <dt id="main_section-1_section-150_dl-1_dt-2">
+                        <input id="main_section-1_section-150_dl-1_dt-2_input" type="text" maxlength="100" placeholder="名称" data-size="sm"></dt>
+                    <dd id="main_section-1_section-150_dl-1_dd-4">
+                        <input id="main_section-1_section-150_dl-1_dd-4_input" type="text" maxlength="100" placeholder="数量" data-size="sm"></dd>
+                    <dd id="main_section-1_section-150_dl-1_dd-5">
+                        <input id="main_section-1_section-150_dl-1_dd-5_input" type="text" maxlength="100" placeholder="単位" data-size="sm"></dd>
+                    <dd id="main_section-1_section-150_dl-1_dd-6">
+                        <input id="main_section-1_section-150_dl-1_dd-6_input" type="text" maxlength="100" placeholder="備考" data-size="sm"></dd>
+                    <dt id="main_section-1_section-150_dl-1_dt-3">
+                        <input id="main_section-1_section-150_dl-1_dt-3_input" type="text" maxlength="100" placeholder="名称" data-size="sm"></dt>
+                    <dd id="main_section-1_section-150_dl-1_dd-7">
+                        <input id="main_section-1_section-150_dl-1_dd-7_input" type="text" maxlength="100" placeholder="数量" data-size="sm"></dd>
+                    <dd id="main_section-1_section-150_dl-1_dd-8">
+                        <input id="main_section-1_section-150_dl-1_dd-8_input" type="text" maxlength="100" placeholder="単位" data-size="sm"></dd>
+                    <dd id="main_section-1_section-150_dl-1_dd-9">
+                        <input id="main_section-1_section-150_dl-1_dd-9_input" type="text" maxlength="100" placeholder="備考" data-size="sm"></dd>
+                    <dt id="main_section-1_section-150_dl-1_dt-4">
+                        <input id="main_section-1_section-150_dl-1_dt-4_input" type="text" maxlength="100" placeholder="名称" data-size="sm"></dt>
+                    <dd id="main_section-1_section-150_dl-1_dd-10">
+                        <input id="main_section-1_section-150_dl-1_dd-10_input" type="text" maxlength="100" placeholder="数量" data-size="sm"></dd>
+                    <dd id="main_section-1_section-150_dl-1_dd-11">
+                        <input id="main_section-1_section-150_dl-1_dd-11_input" type="text" maxlength="100" placeholder="単位" data-size="sm"></dd>
+                    <dd id="main_section-1_section-150_dl-1_dd-12">
+                        <input id="main_section-1_section-150_dl-1_dd-12_input" type="text" maxlength="100" placeholder="備考" data-size="sm"></dd>
+                    <dt id="main_section-1_section-150_dl-1_dt-5">
+                        <input id="main_section-1_section-150_dl-1_dt-5_input" type="text" maxlength="100" placeholder="名称" data-size="sm"></dt>
+                    <dd id="main_section-1_section-150_dl-1_dd-13">
+                        <input id="main_section-1_section-150_dl-1_dd-13_input" type="text" maxlength="100" placeholder="数量" data-size="sm"></dd>
+                    <dd id="main_section-1_section-150_dl-1_dd-14">
+                        <input id="main_section-1_section-150_dl-1_dd-14_input" type="text" maxlength="100" placeholder="単位" data-size="sm"></dd>
+                    <dd id="main_section-1_section-150_dl-1_dd-15">
+                        <input id="main_section-1_section-150_dl-1_dd-15_input" type="text" maxlength="100" placeholder="備考" data-size="sm"></dd>
+                    <dt id="main_section-1_section-150_dl-1_dt-6">
+                        <input id="main_section-1_section-150_dl-1_dt-6_input" type="text" maxlength="100" placeholder="名称" data-size="sm"></dt>
+                    <dd id="main_section-1_section-150_dl-1_dd-16">
+                        <input id="main_section-1_section-150_dl-1_dd-16_input" type="text" maxlength="100" placeholder="数量" data-size="sm"></dd>
+                    <dd id="main_section-1_section-150_dl-1_dd-17">
+                        <input id="main_section-1_section-150_dl-1_dd-17_input" type="text" maxlength="100" placeholder="単位" data-size="sm"></dd>
+                    <dd id="main_section-1_section-150_dl-1_dd-18">
+                        <input id="main_section-1_section-150_dl-1_dd-18_input" type="text" maxlength="100" placeholder="備考" data-size="sm"></dd>
+                    <dt id="main_section-1_section-150_dl-1_dt-7">
+                        <input id="main_section-1_section-150_dl-1_dt-7_input" type="text" maxlength="100" placeholder="名称" data-size="sm"></dt>
+                    <dd id="main_section-1_section-150_dl-1_dd-19">
+                        <input id="main_section-1_section-150_dl-1_dd-19_input" type="text" maxlength="100" placeholder="数量" data-size="sm"></dd>
+                    <dd id="main_section-1_section-150_dl-1_dd-20">
+                        <input id="main_section-1_section-150_dl-1_dd-20_input" type="text" maxlength="100" placeholder="単位" data-size="sm"></dd>
+                    <dd id="main_section-1_section-150_dl-1_dd-21">
+                        <input id="main_section-1_section-150_dl-1_dd-21_input" type="text" maxlength="100" placeholder="備考" data-size="sm"></dd>
+                    <dt id="main_section-1_section-150_dl-1_dt-8">
+                        <input id="main_section-1_section-150_dl-1_dt-8_input" type="text" maxlength="100" placeholder="名称" data-size="sm"></dt>
+                    <dd id="main_section-1_section-150_dl-1_dd-22">
+                        <input id="main_section-1_section-150_dl-1_dd-22_input" type="text" maxlength="100" placeholder="数量" data-size="sm"></dd>
+                    <dd id="main_section-1_section-150_dl-1_dd-23">
+                        <input id="main_section-1_section-150_dl-1_dd-23_input" type="text" maxlength="100" placeholder="単位" data-size="sm"></dd>
+                    <dd id="main_section-1_section-150_dl-1_dd-24">
+                        <input id="main_section-1_section-150_dl-1_dd-24_input" type="text" maxlength="100" placeholder="備考" data-size="sm"></dd>
+                    <dt id="main_section-1_section-150_dl-1_dt-9">
+                        <input id="main_section-1_section-150_dl-1_dt-9_input" type="text" maxlength="100" placeholder="名称" data-size="sm"></dt>
+                    <dd id="main_section-1_section-150_dl-1_dd-25">
+                        <input id="main_section-1_section-150_dl-1_dd-25_input" type="text" maxlength="100" placeholder="数量" data-size="sm"></dd>
+                    <dd id="main_section-1_section-150_dl-1_dd-26">
+                        <input id="main_section-1_section-150_dl-1_dd-26_input" type="text" maxlength="100" placeholder="単位" data-size="sm"></dd>
+                    <dd id="main_section-1_section-150_dl-1_dd-27">
+                        <input id="main_section-1_section-150_dl-1_dd-27_input" type="text" maxlength="100" placeholder="備考" data-size="sm"></dd>
+                    <dt id="main_section-1_section-150_dl-1_dt-10">
+                        <input id="main_section-1_section-150_dl-1_dt-10_input" type="text" maxlength="100" placeholder="名称" data-size="sm"></dt>
+                    <dd id="main_section-1_section-150_dl-1_dd-28">
+                        <input id="main_section-1_section-150_dl-1_dd-28_input" type="text" maxlength="100" placeholder="数量" data-size="sm"></dd>
+                    <dd id="main_section-1_section-150_dl-1_dd-29">
+                        <input id="main_section-1_section-150_dl-1_dd-29_input" type="text" maxlength="100" placeholder="単位" data-size="sm"></dd>
+                    <dd id="main_section-1_section-150_dl-1_dd-30">
+                        <input id="main_section-1_section-150_dl-1_dd-30_input" type="text" maxlength="100" placeholder="備考" data-size="sm"></dd>
+                    <dt id="main_section-1_section-150_dl-1_dt-11">
+                        <input id="main_section-1_section-150_dl-1_dt-11_input" type="text" maxlength="100" placeholder="名称" data-size="sm"></dt>
+                    <dd id="main_section-1_section-150_dl-1_dd-31">
+                        <input id="main_section-1_section-150_dl-1_dd-31_input" type="text" maxlength="100" placeholder="数量" data-size="sm"></dd>
+                    <dd id="main_section-1_section-150_dl-1_dd-32">
+                        <input id="main_section-1_section-150_dl-1_dd-32_input" type="text" maxlength="100" placeholder="単位" data-size="sm"></dd>
+                    <dd id="main_section-1_section-150_dl-1_dd-33">
+                        <input id="main_section-1_section-150_dl-1_dd-33_input" type="text" maxlength="100" placeholder="備考" data-size="sm"></dd>
+                    <dt id="main_section-1_section-150_dl-1_dt-12">
+                        <input id="main_section-1_section-150_dl-1_dt-12_input" type="text" maxlength="100" placeholder="名称" data-size="sm"></dt>
+                    <dd id="main_section-1_section-150_dl-1_dd-34">
+                        <input id="main_section-1_section-150_dl-1_dd-34_input" type="text" maxlength="100" placeholder="数量" data-size="sm"></dd>
+                    <dd id="main_section-1_section-150_dl-1_dd-35">
+                        <input id="main_section-1_section-150_dl-1_dd-35_input" type="text" maxlength="100" placeholder="単位" data-size="sm"></dd>
+                    <dd id="main_section-1_section-150_dl-1_dd-36">
+                        <input id="main_section-1_section-150_dl-1_dd-36_input" type="text" maxlength="100" placeholder="備考" data-size="sm"></dd></dl>
+                <p id="main_section-1_section-150_p-154"></p>
+                <dl id="main_section-1_section-150_dl-2" aria-label="Wealth">
+                    <dt id="main_section-1_section-150_dl-2_dt-1"></dt>
+                    <dd id="main_section-1_section-150_dl-2_dd-1">
+                        <input id="main_section-1_section-150_dl-2_dd-1_input" type="text" maxlength="100" name="main_section-1_section-150_dl-2_dd-1_input" aria-labelledby="main_section-1_section-150_dl-2_dt-1"></dd>
+                    <dt id="main_section-1_section-150_dl-2_dt-2"></dt>
+                    <dd id="main_section-1_section-150_dl-2_dd-2">
+                        <input id="main_section-1_section-150_dl-2_dd-2_input" type="text" maxlength="100" name="main_section-1_section-150_dl-2_dd-2_input" aria-labelledby="main_section-1_section-150_dl-2_dt-2"></dd>
+                    <dt id="main_section-1_section-150_dl-2_dt-3"></dt>
+                    <dd id="main_section-1_section-150_dl-2_dd-3">
+                        <input id="main_section-1_section-150_dl-2_dd-3_input" type="text" maxlength="100" name="main_section-1_section-150_dl-2_dd-3_input" aria-labelledby="main_section-1_section-150_dl-2_dt-3"></dd></dl></section>
+
+            <section id="main_section-1_section-160" aria-label="Backstory">
+                <h3 id="main_section-1_section-160_h3"></h3>
+                <dl id="main_section-1_section-160_dl">
+                    <dt id="main_section-1_section-160_dl_dt-161">
+                        <input id="main_section-1_section-160_dl_dt-161_input" type="checkbox" name="key-connection" value="161" aria-label="key connection" data-size="xs">
+                        <label id="main_section-1_section-160_dl_dt-161_label" for="main_section-1_section-160_dl_dd-161_textarea"></label></dt>
+                    <dd id="main_section-1_section-160_dl_dd-161">
+                        <textarea id="main_section-1_section-160_dl_dd-161_textarea" name="main_section-1_section-160_dl_dd-161_textarea" maxlength="1000"></textarea></dd>
+                    <dt id="main_section-1_section-160_dl_dt-162">
+                        <input id="main_section-1_section-160_dl_dt-162_input" type="checkbox" name="key-connection" value="162" aria-label="key connection" data-size="xs">
+                        <label id="main_section-1_section-160_dl_dt-162_label" for="main_section-1_section-160_dl_dd-162_textarea"></label></dt>
+                    <dd id="main_section-1_section-160_dl_dd-162">
+                        <textarea id="main_section-1_section-160_dl_dd-162_textarea" name="main_section-1_section-160_dl_dd-162_textarea" maxlength="1000"></textarea></dd>
+                    <dt id="main_section-1_section-160_dl_dt-163">
+                        <input id="main_section-1_section-160_dl_dt-163_input" type="checkbox" name="key-connection" value="163" aria-label="key connection" data-size="xs">
+                        <label id="main_section-1_section-160_dl_dt-163_label" for="main_section-1_section-160_dl_dd-163_textarea"></label></dt>
+                    <dd id="main_section-1_section-160_dl_dd-163">
+                        <textarea id="main_section-1_section-160_dl_dd-163_textarea" name="main_section-1_section-160_dl_dd-163_textarea" maxlength="1000"></textarea></dd>
+                    <dt id="main_section-1_section-160_dl_dt-164">
+                        <input id="main_section-1_section-160_dl_dt-164_input" type="checkbox" name="key-connection" value="164" aria-label="key connection" data-size="xs">
+                        <label id="main_section-1_section-160_dl_dt-164_label" for="main_section-1_section-160_dl_dd-164_textarea"></label></dt>
+                    <dd id="main_section-1_section-160_dl_dd-164">
+                        <textarea id="main_section-1_section-160_dl_dd-164_textarea" name="main_section-1_section-160_dl_dd-164_textarea" maxlength="1000"></textarea></dd>
+                    <dt id="main_section-1_section-160_dl_dt-165">
+                        <input id="main_section-1_section-160_dl_dt-165_input" type="checkbox" name="key-connection" value="165" aria-label="key connection" data-size="xs">
+                        <label id="main_section-1_section-160_dl_dt-165_label" for="main_section-1_section-160_dl_dd-165_textarea"></label></dt>
+                    <dd id="main_section-1_section-160_dl_dd-165">
+                        <textarea id="main_section-1_section-160_dl_dd-165_textarea" name="main_section-1_section-160_dl_dd-165_textarea" maxlength="1000"></textarea></dd>
+                    <dt id="main_section-1_section-160_dl_dt-166">
+                        <input id="main_section-1_section-160_dl_dt-166_input" type="checkbox" name="key-connection" value="166" aria-label="key connection" data-size="xs">
+                        <label id="main_section-1_section-160_dl_dt-166_label" for="main_section-1_section-160_dl_dd-166_textarea"></label></dt>
+                    <dd id="main_section-1_section-160_dl_dd-166">
+                        <textarea id="main_section-1_section-160_dl_dd-166_textarea" name="main_section-1_section-160_dl_dd-166_textarea" maxlength="1000"></textarea></dd>
+                    <dt id="main_section-1_section-160_dl_dt-167">
+                        <input id="main_section-1_section-160_dl_dt-167_input" type="checkbox" name="key-connection" value="167" aria-label="key connection" data-size="xs">
+                        <label id="main_section-1_section-160_dl_dt-167_label" for="main_section-1_section-160_dl_dd-167_textarea"></label></dt>
+                    <dd id="main_section-1_section-160_dl_dd-167">
+                        <textarea id="main_section-1_section-160_dl_dd-167_textarea" name="main_section-1_section-160_dl_dd-167_textarea" maxlength="1000"></textarea></dd>
+                    <dt id="main_section-1_section-160_dl_dt-168">
+                        <input id="main_section-1_section-160_dl_dt-168_input" type="checkbox" name="key-connection" value="168" aria-label="key connection" data-size="xs">
+                        <label id="main_section-1_section-160_dl_dt-168_label" for="main_section-1_section-160_dl_dd-168_textarea"></label></dt>
+                    <dd id="main_section-1_section-160_dl_dd-168">
+                        <textarea id="main_section-1_section-160_dl_dd-168_textarea" name="main_section-1_section-160_dl_dd-168_textarea" maxlength="1000"></textarea></dd>
+                    <dt id="main_section-1_section-160_dl_dt-169">
+                        <input id="main_section-1_section-160_dl_dt-169_input" type="checkbox" name="key-connection" value="169" aria-label="key connection" data-size="xs">
+                        <label id="main_section-1_section-160_dl_dt-169_label" for="main_section-1_section-160_dl_dd-169_textarea"></label></dt>
+                    <dd id="main_section-1_section-160_dl_dd-169">
+                        <textarea id="main_section-1_section-160_dl_dd-169_textarea" name="main_section-1_section-160_dl_dd-169_textarea" maxlength="1000"></textarea></dd>
+                    <dt id="main_section-1_section-160_dl_dt-170">
+                        <input id="main_section-1_section-160_dl_dt-170_input" type="checkbox" name="key-connection" value="170" aria-label="key connection" data-size="xs">
+                        <label id="main_section-1_section-160_dl_dt-170_label" for="main_section-1_section-160_dl_dd-170_textarea"></label></dt>
+                    <dd id="main_section-1_section-160_dl_dd-170">
+                        <textarea id="main_section-1_section-160_dl_dd-170_textarea" name="main_section-1_section-160_dl_dd-170_textarea" maxlength="1000"></textarea></dd></dl></section>
+
+            <section id="main_section-1_section-170" aria-label="Memo">
+                <h3 id="main_section-1_section-170_h3"></h3>
+                <dl id="main_section-1_section-170_dl">
+                    <dt id="main_section-1_section-170_dl_dt-170">
+                        <input id="main_section-1_section-170_dl_dt-170_input" type="text" maxlength="100" name="main_section-1_section-170_dl_dt-170_input" placeholder="title"></dt>
+                    <dd id="main_section-1_section-170_dl_dd-170">
+                        <textarea id="main_section-1_section-170_dl_dd-170_textarea" name="main_section-1_section-170_dl_dd-170_textarea" maxlength="1000"></textarea></dd>
+                    <dt id="main_section-1_section-170_dl_dt-171">
+                        <input id="main_section-1_section-170_dl_dt-171_input" type="text" maxlength="100" name="main_section-1_section-170_dl_dt-171_input" placeholder="title"></dt>
+                    <dd id="main_section-1_section-170_dl_dd-171">
+                        <textarea id="main_section-1_section-170_dl_dd-171_textarea" name="main_section-1_section-170_dl_dd-171_textarea" maxlength="1000"></textarea></dd>
+                    <dt id="main_section-1_section-170_dl_dt-172">
+                        <input id="main_section-1_section-170_dl_dt-172_input" type="text" maxlength="100" name="main_section-1_section-170_dl_dt-172_input" placeholder="title"></dt>
+                    <dd id="main_section-1_section-170_dl_dd-172">
+                        <textarea id="main_section-1_section-170_dl_dd-172_textarea" name="main_section-1_section-170_dl_dd-172_textarea" maxlength="1000"></textarea></dd>
+                    <dt id="main_section-1_section-170_dl_dt-173">
+                        <input id="main_section-1_section-170_dl_dt-173_input" type="text" maxlength="100" name="main_section-1_section-170_dl_dt-173_input" placeholder="title"></dt>
+                    <dd id="main_section-1_section-170_dl_dd-173">
+                        <textarea id="main_section-1_section-170_dl_dd-173_textarea" name="main_section-1_section-170_dl_dd-173_textarea" maxlength="1000"></textarea></dd>
+                    <dt id="main_section-1_section-170_dl_dt-174">
+                        <input id="main_section-1_section-170_dl_dt-174_input" type="text" maxlength="100" name="main_section-1_section-170_dl_dt-174_input" placeholder="title"></dt>
+                    <dd id="main_section-1_section-170_dl_dd-174">
+                        <textarea id="main_section-1_section-170_dl_dd-174_textarea" name="main_section-1_section-170_dl_dd-174_textarea" maxlength="1000"></textarea></dd>
+                    <dt id="main_section-1_section-170_dl_dt-175">
+                        <input id="main_section-1_section-170_dl_dt-175_input" type="text" maxlength="100" name="main_section-1_section-170_dl_dt-175_input" placeholder="title"></dt>
+                    <dd id="main_section-1_section-170_dl_dd-175">
+                        <textarea id="main_section-1_section-170_dl_dd-175_textarea" name="main_section-1_section-170_dl_dd-175_textarea" maxlength="1000"></textarea></dd>
+                    <dt id="main_section-1_section-170_dl_dt-176">
+                        <input id="main_section-1_section-170_dl_dt-176_input" type="text" maxlength="100" name="main_section-1_section-170_dl_dt-176_input" placeholder="title"></dt>
+                    <dd id="main_section-1_section-170_dl_dd-176">
+                        <textarea id="main_section-1_section-170_dl_dd-176_textarea" name="main_section-1_section-170_dl_dd-176_textarea" maxlength="1000"></textarea></dd>
+                    <dt id="main_section-1_section-170_dl_dt-177">
+                        <input id="main_section-1_section-170_dl_dt-177_input" type="text" maxlength="100" name="main_section-1_section-170_dl_dt-177_input" placeholder="title"></dt>
+                    <dd id="main_section-1_section-170_dl_dd-177">
+                        <textarea id="main_section-1_section-170_dl_dd-177_textarea" name="main_section-1_section-170_dl_dd-177_textarea" maxlength="1000"></textarea></dd></dl></section></section>
+
+        <section id="main_section-2" aria-label="Chat Log">
+            <h2 id="main_section-2_h2"></h2>
+            <ol>
+                <li>
+                    <span>GM</span>
+                    <p>ようこそ、探索者の皆さん。</p></li>
+                <li>
+                    <span>PC</span>
+                    <p>（ふむ、状況を確認しよう）</p></li></ol></section>
+
+        <section id="main_section-3" aria-label="Input Message">
+            <h2 id="main_section-3_h2"></h2>
+            <textarea id="main_section-3_textarea" name="main_section-3_textarea" rows="2" placeholder="/" maxlength="1000"></textarea>
+            <button id="main_section-3_button" type="submit" data-surround="fill">↑</button></section>
+
+        <dialog id="main_dialog" aria-label="overlay">
+            <input id="main_dialog_input-1" name="email" type="email" autocomplete="username" required maxlength="254" placeholder="email" aria-label="email" form="main_form" hidden disabled>
+            <input id="main_dialog_input-2" name="password" type="password" autocomplete="current-password" required minlength="8" maxlength="128" placeholder="password" aria-label="password" form="main_form" hidden disabled>
+            <label id="main_dialog_label-1" hidden>
+                <span id="main_dialog_label-1_span"></span>
+                <input id="main_dialog_label-1_input" name="create" type="checkbox" form="main_form" disabled></label>
+            <h3 id="main_dialog_h3"></h3>
+            <div id="main_dialog_div" role="listbox">
+                <button role="option"></button>
+                <button role="option"></button>
+                <button role="option"></button>
+                <button role="option" hidden></button>
+                <button role="option" hidden></button>
+                <button role="option" hidden></button>
+                <button role="option" hidden></button>
+                <button role="option" hidden></button>
+                <button role="option" hidden></button>
+                <button role="option" hidden></button></div>
+            <label id="main_dialog_label-2" data-group="inline">
+                <button id="main_dialog_label-2_button-1" type="button" data-sign="minus" tabindex="-1" aria-label="decrement"></button>
+                <input id="main_dialog_label-2_input" type="text" inputmode="numeric" pattern="[0-9]*" role="spinbutton" placeholder="0" form="main_form">
+                <button id="main_dialog_label-2_button-2" type="button" data-sign="plus" tabindex="-1" aria-label="increment"></button></label>
+            <button id="main_dialog_button" type="submit" form="main_form" data-surround="transparent">→</button></dialog>
+        <form id="main_form" method="dialog"></form></main>
+
+    <form id="form" method="dialog"></form>
+    <section id="toast" data-type="toast" aria-live="polite" aria-atomic="true">
+        <button id="toast_button-1" type="button" hidden data-sign="x">
+            <span id="toast_button-1_span"></span>
+            <p id="toast_button-1_p"></p></button>
+        <button id="toast_button-2" type="button" hidden data-sign="x">
+            <span id="toast_button-2_span"></span>
+            <p id="toast_button-2_p"></p></button></section>
+
+</body></html>

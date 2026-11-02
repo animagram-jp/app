@@ -4,6 +4,11 @@ use alloc::{
     vec::Vec,
 };
 use core::{
+    clone::Clone,
+    cmp::PartialEq,
+    fmt::Debug,
+    marker::Copy,
+    option::Option,
     primitive::{str, u8, u16, u32, usize},
     result::Result::{self, Err, Ok},
 };
@@ -14,7 +19,7 @@ use hkdf::Hkdf;
 use hmac::{Hmac, KeyInit, Mac};
 use sha2::{Digest, Sha256};
 
-use crate::WireError;
+use crate::{WireError, host::parse_url_search_params};
 
 pub const PROTOCOL: u8 = 1;
 pub const KEY_LENGTH: usize = 32;
@@ -58,6 +63,53 @@ impl WireError for CredentialError {
 }
 
 pub type Key = [u8; KEY_LENGTH];
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Field {
+    Email = 1,
+    Password,
+}
+
+impl Field {
+    pub const LIST: [Self; 2] = [Self::Email, Self::Password];
+
+    /// ```
+    /// # use app::credential::Field;
+    /// assert_eq!(Field::Email.number(), 1);
+    /// assert_eq!(Field::Password.number(), 2);
+    /// ```
+    pub fn number(self) -> u32 {
+        self as u32
+    }
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Email => "email",
+            Self::Password => "password",
+        }
+    }
+}
+
+pub const CREATE: &str = "create";
+
+#[derive(Debug, PartialEq)]
+pub struct Form {
+    pub email:    String,
+    pub password: String,
+    pub create:   bool,
+}
+
+pub fn read_form(value: &str) -> Result<Form, CredentialError> {
+    let pairs = parse_url_search_params(value);
+    let [email, password] = Field::LIST.map(|field| {
+        pairs.iter().find(|(key, _)| key == field.name()).map(|(_, value)| value.clone())
+    });
+    Ok(Form {
+        email:    email.ok_or(CredentialError::Email)?,
+        password: password.ok_or(CredentialError::Password)?,
+        create:   pairs.iter().any(|(key, _)| key == CREATE),
+    })
+}
 
 pub fn normalize(email: &str) -> Result<String, CredentialError> {
     let trimmed = email.trim();
@@ -156,7 +208,10 @@ pub fn from_hexadecimal(text: &str) -> Option<Vec<u8>> {
 
 #[cfg(test)]
 mod tests {
+    use alloc::format;
+
     use super::*;
+    use crate::Rng;
 
     #[test]
     fn normalize_yields_a_trimmed_lowercase_address_or_an_email_error() {
@@ -165,6 +220,33 @@ mod tests {
         assert_eq!(normalize("@example.jp"), Err(CredentialError::Email));
         assert_eq!(normalize("a b@example.jp"), Err(CredentialError::Email));
         assert_eq!(normalize("あ@example.jp"), Err(CredentialError::Email));
+    }
+
+    #[test]
+    fn read_form_takes_only_the_expected_fields() {
+        let names = ["email", "password", "create", "1", "2", "8", "x"];
+        for seed in 0..500 {
+            let mut rng = Rng::new(seed);
+            let pairs: Vec<(&str, String)> = (0..rng.below(7))
+                .map(|_| (names[rng.below(names.len())], format!("v{}", rng.below(100))))
+                .collect();
+            let value = pairs
+                .iter()
+                .map(|(key, value)| format!("{key}={value}"))
+                .collect::<Vec<String>>()
+                .join("&");
+            let first = |name: &str| {
+                pairs.iter().find(|(key, _)| *key == name).map(|(_, value)| value.clone())
+            };
+            let expected = match (first("email"), first("password")) {
+                (None, _) => Err(CredentialError::Email),
+                (_, None) => Err(CredentialError::Password),
+                (Some(email), Some(password)) => {
+                    Ok(Form { email, password, create: first("create").is_some() })
+                }
+            };
+            assert_eq!(read_form(&value), expected, "{value}");
+        }
     }
 
     #[test]

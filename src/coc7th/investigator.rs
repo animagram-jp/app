@@ -3911,9 +3911,11 @@ mod dom_tests {
 
     #[test]
     fn every_item_has_a_home_in_the_html() {
-        let html =
-            fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/distribution/index.html"))
-                .unwrap();
+        let html = fs::read_to_string(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/distribution/coc7th/index.html"
+        ))
+        .unwrap();
         for id in every_dom() {
             let id = html_id(&id);
             assert!(html.contains(&format!("id=\"{id}\"")), "{id}");

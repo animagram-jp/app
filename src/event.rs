@@ -5,8 +5,22 @@ use core::{
     option::Option,
     primitive::{f64, i32, u8, u64},
 };
+#[cfg(feature = "vault")]
+use core::{
+    mem,
+    option::Option::{None, Some},
+    primitive::{bool, str, u16, u32},
+    result::Result::{self, Err, Ok},
+};
 
 use self::gesture::{Gesture, Pointer};
+#[cfg(feature = "vault")]
+use crate::{
+    DataError, Error, FrameError, Input, Output,
+    credential::{self, Form, Key, PROTOCOL},
+    host::Method,
+    vault,
+};
 use crate::{
     WireError,
     file_store::{FileStore, FileStoreError, StoreId},
@@ -70,6 +84,93 @@ pub enum WindowEvent {
     Fullscreen(FullscreenEvent),
 }
 
+// === unlock ===
+
+#[cfg(feature = "vault")]
+pub const LOGIN_REQUEST: u32 = u32::MAX;
+#[cfg(feature = "vault")]
+pub const LOGOUT_REQUEST: u32 = u32::MAX - 1;
+#[cfg(feature = "vault")]
+pub const REGISTER_REQUEST: u32 = u32::MAX - 2;
+#[cfg(feature = "vault")]
+const SESSION_PATH: &str = "/api/v1/session";
+#[cfg(feature = "vault")]
+const ACCOUNT_PATH: &str = "/api/v1/account";
+#[cfg(feature = "vault")]
+const STATUS_OK: u16 = 200;
+#[cfg(feature = "vault")]
+const STATUS_CREATED: u16 = 201;
+
+#[cfg(feature = "vault")]
+pub struct Unlocked {
+    email:              String,
+    authentication_key: Key,
+    wrap_key:           Key,
+}
+
+#[cfg(feature = "vault")]
+pub struct Session {
+    pub user:   u32,
+    pub device: u16,
+    pub peer:   u64,
+    root:       Key,
+}
+
+#[cfg(feature = "vault")]
+impl Session {
+    pub fn root(&self) -> &Key {
+        &self.root
+    }
+}
+
+#[cfg(feature = "vault")]
+pub struct Keyring {
+    unlocked: Option<Unlocked>,
+    session:  Option<Session>,
+}
+
+#[cfg(feature = "vault")]
+impl Keyring {
+    pub const LOCKED: Self = Self { unlocked: None, session: None };
+
+    pub fn is_unlocked(&self) -> bool {
+        self.unlocked.is_some()
+    }
+
+    pub fn session(&self) -> Option<&Session> {
+        self.session.as_ref()
+    }
+}
+
+#[cfg(feature = "vault")]
+fn read_session(body: &[u8], wrap_key: &Key) -> Result<Session, Error> {
+    let mut rest = body;
+    let decoded = (|| {
+        let decoded = (
+            u32::decode(&mut rest)?,
+            u16::decode(&mut rest)?,
+            u64::decode(&mut rest)?,
+            <&[u8]>::decode(&mut rest)?,
+        );
+        rest.is_empty().then_some(decoded)
+    })();
+    let (user, device, peer, wrapped_root) = decoded.ok_or(Error::Frame(FrameError::Decode))?;
+    let root = vault::unwrap_root(wrap_key, wrapped_root).map_err(Error::Vault)?;
+    Ok(Session { user, device, peer, root })
+}
+
+#[cfg(feature = "vault")]
+fn session_fetch(request: u32, method: Method, body: Vec<u8>) -> Command {
+    Command::Fetch { request, method, path: String::from(SESSION_PATH), body }
+}
+
+#[cfg(feature = "vault")]
+fn write_credential(unlocked: &Unlocked, body: &mut Vec<u8>) {
+    PROTOCOL.encode(body);
+    unlocked.email.as_str().encode(body);
+    unlocked.authentication_key.encode(body);
+}
+
 // === handler ===
 
 pub trait Handler: Sized {
@@ -125,6 +226,99 @@ pub trait Handler: Sized {
 
     fn process_opened(&mut self, _opened: Opened<Self::Store>) -> (Vec<Event>, Vec<Command>) {
         (vec![], vec![])
+    }
+
+    #[cfg(feature = "vault")]
+    fn keyring(&mut self) -> &mut Keyring;
+
+    #[cfg(feature = "vault")]
+    fn unlock(&mut self, form: &Form) -> Result<(), Error> {
+        let email = credential::normalize(&form.email).map_err(Error::Credential)?;
+        let stretch = credential::stretch(&email, &form.password).map_err(Error::Credential)?;
+        *self.keyring() = Keyring {
+            unlocked: Some(Unlocked {
+                email,
+                authentication_key: credential::authentication_key(&stretch),
+                wrap_key: credential::wrap_key(&stretch),
+            }),
+            session:  None,
+        };
+        Ok(())
+    }
+
+    #[cfg(feature = "vault")]
+    fn lock(&mut self) -> Vec<Command> {
+        match mem::replace(self.keyring(), Keyring::LOCKED).session {
+            Some(_) => vec![session_fetch(LOGOUT_REQUEST, Method::Delete, Vec::new())],
+            None => vec![],
+        }
+    }
+
+    #[cfg(feature = "vault")]
+    fn login(&mut self) -> Vec<Command> {
+        let Some(unlocked) = &self.keyring().unlocked else {
+            return vec![];
+        };
+        let mut body = Vec::new();
+        write_credential(unlocked, &mut body);
+        vec![session_fetch(LOGIN_REQUEST, Method::Put, body)]
+    }
+
+    #[cfg(feature = "vault")]
+    fn register(&mut self) -> Vec<Command> {
+        let Some(unlocked) = &self.keyring().unlocked else {
+            return vec![];
+        };
+        let wrapped_root = match vault::generate_root()
+            .and_then(|root| vault::wrap_root(&unlocked.wrap_key, &root))
+        {
+            Ok(wrapped_root) => wrapped_root,
+            Err(error) => return vec![Command::Error { error: Error::Vault(error) }],
+        };
+        let mut body = Vec::new();
+        write_credential(unlocked, &mut body);
+        wrapped_root.as_slice().encode(&mut body);
+        vec![Command::Fetch {
+            request: REGISTER_REQUEST,
+            method: Method::Put,
+            path: String::from(ACCOUNT_PATH),
+            body,
+        }]
+    }
+
+    #[cfg(feature = "vault")]
+    fn process_session(&mut self, response: &Response) -> (Vec<Event>, Vec<Command>) {
+        if response.request == REGISTER_REQUEST {
+            return match response.status {
+                STATUS_CREATED => (vec![], self.login()),
+                status => {
+                    (vec![], vec![Command::Error { error: Error::Data(DataError::Status(status)) }])
+                }
+            };
+        }
+        if response.request != LOGIN_REQUEST {
+            return (vec![], vec![]);
+        }
+        let keyring = self.keyring();
+        let Some(unlocked) = &keyring.unlocked else {
+            return match response.status {
+                STATUS_OK => {
+                    (vec![], vec![session_fetch(LOGOUT_REQUEST, Method::Delete, Vec::new())])
+                }
+                _ => (vec![], vec![]),
+            };
+        };
+        if response.status != STATUS_OK {
+            let error = Error::Data(DataError::Status(response.status));
+            return (vec![], vec![Command::Error { error }]);
+        }
+        match read_session(&response.body, &unlocked.wrap_key) {
+            Ok(session) => {
+                keyring.session = Some(session);
+                (vec![], vec![])
+            }
+            Err(error) => (vec![], vec![Command::Error { error }]),
+        }
     }
 }
 

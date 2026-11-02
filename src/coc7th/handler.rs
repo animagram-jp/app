@@ -1,6 +1,6 @@
 use alloc::{format, string::String, vec, vec::Vec};
 use core::{
-    matches,
+    mem,
     option::Option::{None, Some},
     primitive::{f64, i32, u8, u32, u64},
 };
@@ -22,8 +22,9 @@ use crate::{
         },
         page::{self, Page},
     },
+    credential::{self, Field},
     data_struct::{DataStruct, ID_IDENTITY},
-    event::{self, Event, Opened, Response, gesture::Pointer, store},
+    event::{self, Event, Handler as _, Keyring, Opened, Response, gesture::Pointer, store},
     file_store::{FileStore, Mount, StoreId},
     host::{Attribute, CanvasEvent, Command, EventType, Method, dom::Id},
     object::{Predicate as _, SubjectTrait as _},
@@ -34,6 +35,7 @@ pub enum Dialog {
     Drawer,
     Select { step: u8, index: u32 },
     Input { step: u8, value: u32 },
+    Unlock,
 }
 
 pub struct Log;
@@ -44,6 +46,7 @@ const STATUS_OK: u16 = 200;
 pub struct Handler<S: FileStore> {
     data_url:      String,
     dialog:        Dialog,
+    keyring:       Keyring,
     language:      Language,
     last_toast:    u2,
     investigator:  DataStruct,
@@ -73,6 +76,63 @@ impl<S: FileStore> Handler<S> {
         store.set(key, self.investigator.to_bytes());
         self.save()
     }
+
+    fn unlock_commands(&mut self) -> Vec<Command> {
+        let mut commands = vec![
+            text(Page::DialogHeading.to_dom(), page::Login::display(self.language)),
+            toggle(Page::DialogOptions.to_dom(), Attribute::Hidden, true),
+            toggle(Page::DialogNumber.to_dom(), Attribute::Hidden, true),
+            toggle(Page::DialogNumberInput.to_dom(), Attribute::Disabled, true),
+        ];
+        for field in Field::LIST {
+            commands.push(toggle(Page::Credential(field).to_dom(), Attribute::Hidden, false));
+            commands.push(toggle(Page::Credential(field).to_dom(), Attribute::Disabled, false));
+        }
+        commands.push(toggle(Page::Create.to_dom(), Attribute::Hidden, false));
+        commands.push(toggle(Page::CreateInput.to_dom(), Attribute::Disabled, false));
+        commands.push(Command::ShowModal { id: Page::Dialog.to_dom() });
+        self.dialog = Dialog::Unlock;
+        commands
+    }
+
+    fn close_dialog(&mut self) -> Vec<Command> {
+        match mem::replace(&mut self.dialog, Dialog::None) {
+            Dialog::Unlock => {
+                let mut commands = vec![
+                    value(Page::Credential(Field::Password).to_dom(), ""),
+                    toggle(Page::CreateInput.to_dom(), Attribute::Checked, false),
+                ];
+                if !self.keyring.is_unlocked() {
+                    commands.push(toggle(Page::Unlock.to_dom(), Attribute::Checked, false));
+                }
+                commands
+            }
+            _ => vec![],
+        }
+    }
+}
+
+impl<S: Mount> Handler<S> {
+    fn toggle_lock(&mut self) -> Vec<Command> {
+        if self.keyring.is_unlocked() { self.lock() } else { self.unlock_commands() }
+    }
+
+    fn submit(&mut self, value: &str) -> Vec<Command> {
+        if !matches!(self.dialog, Dialog::Unlock) {
+            return vec![];
+        }
+        let form = match credential::read_form(value) {
+            Ok(form) => form,
+            Err(error) => return vec![Command::Error { error: Error::Credential(error) }],
+        };
+        if let Err(error) = self.unlock(&form) {
+            return vec![Command::Error { error }];
+        }
+        let mut commands = vec![Command::Close { id: Page::Dialog.to_dom() }];
+        commands.extend(self.close_dialog());
+        commands.extend(if form.create { self.register() } else { self.login() });
+        commands
+    }
 }
 
 impl<S: Mount> event::Handler for Handler<S> {
@@ -89,6 +149,7 @@ impl<S: Mount> event::Handler for Handler<S> {
         let mut handler = Self {
             data_url,
             dialog: Dialog::None,
+            keyring: Keyring::LOCKED,
             language: Language::Ja,
             last_toast: u2::new(1),
             investigator: DataStruct::new(0, 0, SCHEMA_SIZE),
@@ -111,6 +172,10 @@ impl<S: Mount> event::Handler for Handler<S> {
         }
         vec![]
     }
+    fn keyring(&mut self) -> &mut Keyring {
+        &mut self.keyring
+    }
+
     fn process_lost(&mut self) -> (Vec<Event>, Vec<Command>) {
         self.lost = store::lost(&mut self.investigators);
         (vec![], vec![])
@@ -169,18 +234,18 @@ impl<S: Mount> event::Handler for Handler<S> {
         _pointer: &Pointer,
     ) -> (Vec<Event>, Vec<Command>) {
         let page = Page::from_dom(&event.id);
-        if !matches!(event.event_type, EventType::Click) {
-            return (vec![], vec![]);
-        }
-        match page {
-            Some(Page::LanguageOption(l)) => {
+        match (event.event_type, page) {
+            (EventType::Click, Some(Page::LanguageOption(l))) => {
                 self.language = l;
                 let mut commands = Vec::from(language_commands(l));
                 commands.extend(label_commands(l));
                 commands.extend(sheet_commands(&self.investigator, l));
                 (vec![], commands)
             }
-            Some(Page::Save) => self.persist(),
+            (EventType::Click, Some(Page::Save)) => self.persist(),
+            (EventType::Change, Some(Page::Unlock)) => (vec![], self.toggle_lock()),
+            (EventType::Close, Some(Page::Dialog)) => (vec![], self.close_dialog()),
+            (EventType::Submit, Some(Page::DialogForm)) => (vec![], self.submit(&event.value)),
             _ => (vec![], vec![]),
         }
     }
@@ -192,6 +257,14 @@ fn text(id: Id, value: impl Into<String>) -> Command {
 
 fn value(id: Id, value: impl Into<String>) -> Command {
     Command::SetValue { id, value: value.into() }
+}
+
+fn toggle(id: Id, attribute: Attribute, on: bool) -> Command {
+    if on {
+        Command::SetAttribute { id, attribute, value: String::new() }
+    } else {
+        Command::RemoveAttribute { id, attribute }
+    }
 }
 
 fn stored_text(investigator: &DataStruct, id: u32) -> String {
@@ -530,27 +603,15 @@ mod handler_tests {
 
     use super::*;
     use crate::{
-        En, block_on,
-        event::Handler as _,
+        En, Input, Output, Rng, block_on, credential,
+        event::{LOGIN_REQUEST, LOGOUT_REQUEST, REGISTER_REQUEST},
         file_store::{FileStoreError, MemoryStore, Mount},
-        host::{Flags, KeyName, dom},
+        host::{Flags, KeyName, Method, dom},
+        vault,
     };
 
     fn click(handler: &mut Handler<MemoryStore>, id: dom::Id) -> Vec<Command> {
-        let event = CanvasEvent {
-            event_type: EventType::Click,
-            id,
-            key: KeyName::Other,
-            flags: Flags::ZERO,
-            value: String::new(),
-            client_x: 0.0,
-            client_y: 0.0,
-            local_x: 0.0,
-            local_y: 0.0,
-            time_stamp: 0.0,
-            pointer_id: 0,
-        };
-        handler.process_canvas(&event, &Pointer::NONE).1
+        handler.process_canvas(&canvas(id), &Pointer::NONE).1
     }
 
     fn hidden_change(command: &Command) -> (bool, dom::Id) {
@@ -742,5 +803,234 @@ mod handler_tests {
         assert_eq!(handler.investigators.as_ref().unwrap().get(1), Some(&b"kept"[..]));
         assert!(handler.save().1.is_empty());
         assert_eq!(MemoryStore::new(disk).unwrap().get(1), Some(&b"kept"[..]));
+    }
+
+    fn send(
+        handler: &mut Handler<MemoryStore>,
+        event_type: EventType,
+        page: Page,
+        value: &str,
+    ) -> Vec<Command> {
+        let event = CanvasEvent { event_type, value: String::from(value), ..canvas(page.to_dom()) };
+        handler.process_canvas(&event, &Pointer::NONE).1
+    }
+
+    fn canvas(id: dom::Id) -> CanvasEvent {
+        CanvasEvent {
+            event_type: EventType::Click,
+            id,
+            key: KeyName::Other,
+            flags: Flags::ZERO,
+            value: String::new(),
+            client_x: 0.0,
+            client_y: 0.0,
+            local_x: 0.0,
+            local_y: 0.0,
+            time_stamp: 0.0,
+            pointer_id: 0,
+        }
+    }
+
+    #[test]
+    fn the_keyring_follows_the_dialog_the_form_and_the_session_responses() {
+        let (email, password) = ("a@example.jp", "passphrase");
+        let stretch = credential::stretch(email, password).unwrap();
+        let wrap_key = credential::wrap_key(&stretch);
+        let root = [7u8; credential::KEY_LENGTH];
+        let mut accepted = Vec::new();
+        3u32.encode(&mut accepted);
+        1u16.encode(&mut accepted);
+        9u64.encode(&mut accepted);
+        vault::wrap_root(&wrap_key, &root).unwrap().encode(&mut accepted);
+        let mut login = Vec::new();
+        credential::PROTOCOL.encode(&mut login);
+        email.encode(&mut login);
+        credential::authentication_key(&stretch).encode(&mut login);
+        let queries = [
+            ("email=a%40example.jp&password=passphrase", true, false),
+            ("x=1&password=passphrase&email=A%40Example.jp&email=b", true, false),
+            ("create=on&email=a%40example.jp&password=passphrase", true, true),
+            ("email=a%40example.jp&password=short&create=on", false, true),
+            ("email=nope&password=passphrase", false, false),
+            ("email=a%40example.jp", false, false),
+            ("", false, false),
+        ];
+        let responses =
+            [(200, accepted.clone(), true), (200, vec![1, 2, 3], false), (401, vec![], false)];
+        for seed in 0..8 {
+            let mut rng = Rng::new(seed);
+            let mut handler =
+                block_on(Handler::<MemoryStore>::ready(0.0, 0.0, 16.0, 0, 0, String::new()));
+            let mut dom: Vec<(dom::Id, Attribute, bool)> = Vec::new();
+            for field in Field::LIST {
+                dom.push((Page::Credential(field).to_dom(), Attribute::Hidden, true));
+                dom.push((Page::Credential(field).to_dom(), Attribute::Disabled, true));
+            }
+            let lookup = |dom: &[(dom::Id, Attribute, bool)], page: Page, attribute: Attribute| {
+                let id = page.to_dom();
+                dom.iter().rev().find(|(i, a, _)| *i == id && *a == attribute).is_some_and(|e| e.2)
+            };
+            let (mut checked, mut open, mut unlocked, mut session) = (false, false, false, false);
+            for step in 0..30 {
+                let fetches = |commands: &[Command]| -> Vec<(u32, Method, Vec<u8>)> {
+                    commands
+                        .iter()
+                        .filter_map(|c| match c {
+                            Command::Fetch { request, method, path, body } => {
+                                let expected = match *request {
+                                    REGISTER_REQUEST => "/api/v1/account",
+                                    _ => "/api/v1/session",
+                                };
+                                assert_eq!(path, expected);
+                                Some((*request, *method, body.clone()))
+                            }
+                            _ => None,
+                        })
+                        .collect()
+                };
+                let commands = match rng.below(7) {
+                    0 if !open => {
+                        checked = !checked;
+                        let commands = send(&mut handler, EventType::Change, Page::Unlock, "on");
+                        if unlocked {
+                            let expected = if session {
+                                vec![(LOGOUT_REQUEST, Method::Delete, Vec::new())]
+                            } else {
+                                vec![]
+                            };
+                            assert_eq!(fetches(&commands), expected, "{seed} {step}");
+                            (unlocked, session) = (false, false);
+                        } else {
+                            assert!(matches!(commands.last(), Some(Command::ShowModal { .. })));
+                            open = true;
+                        }
+                        commands
+                    }
+                    1 => {
+                        open = false;
+                        send(&mut handler, EventType::Close, Page::Dialog, "")
+                    }
+                    2 | 3 => {
+                        let (query, valid, create) = queries[rng.below(queries.len())];
+                        let commands =
+                            send(&mut handler, EventType::Submit, Page::DialogForm, query);
+                        match (open, valid) {
+                            (true, true) => {
+                                assert!(
+                                    commands.iter().any(|c| matches!(c, Command::Close { .. }))
+                                );
+                                let sent = fetches(&commands);
+                                if create {
+                                    let [(REGISTER_REQUEST, Method::Put, body)] = sent.as_slice()
+                                    else {
+                                        panic!("{seed} {step} {sent:?}");
+                                    };
+                                    let mut rest = body.strip_prefix(login.as_slice()).unwrap();
+                                    let wrapped = <&[u8]>::decode(&mut rest).unwrap();
+                                    assert!(rest.is_empty());
+                                    assert!(vault::unwrap_root(&wrap_key, wrapped).is_ok());
+                                } else {
+                                    assert_eq!(
+                                        sent,
+                                        vec![(LOGIN_REQUEST, Method::Put, login.clone())],
+                                        "{seed} {step}"
+                                    );
+                                }
+                                (open, unlocked, session) = (false, true, false);
+                            }
+                            (true, false) => {
+                                assert!(
+                                    matches!(commands.as_slice(), [Command::Error { .. }]),
+                                    "{seed} {step} {query}"
+                                );
+                            }
+                            _ => assert!(commands.is_empty(), "{seed} {step}"),
+                        }
+                        commands
+                    }
+                    4 => {
+                        let (status, body, valid) = responses[rng.below(responses.len())].clone();
+                        let response = Response { request: LOGIN_REQUEST, status, body };
+                        let commands = handler.process_session(&response).1;
+                        match (unlocked, status) {
+                            (false, 200) => assert_eq!(
+                                fetches(&commands),
+                                vec![(LOGOUT_REQUEST, Method::Delete, Vec::new())]
+                            ),
+                            (false, _) => assert!(commands.is_empty()),
+                            (true, _) if valid => {
+                                assert!(commands.is_empty());
+                                session = true;
+                            }
+                            (true, _) => {
+                                assert!(matches!(commands.as_slice(), [Command::Error { .. }]))
+                            }
+                        }
+                        commands
+                    }
+                    5 => {
+                        let status = [201, 403, 409][rng.below(3)];
+                        let response = Response { request: REGISTER_REQUEST, status, body: vec![] };
+                        let commands = handler.process_session(&response).1;
+                        match (status, unlocked) {
+                            (201, true) => assert_eq!(
+                                fetches(&commands),
+                                vec![(LOGIN_REQUEST, Method::Put, login.clone())]
+                            ),
+                            (201, false) => assert!(commands.is_empty()),
+                            _ => assert!(matches!(commands.as_slice(), [Command::Error { .. }])),
+                        }
+                        commands
+                    }
+                    _ => {
+                        let response =
+                            Response { request: LOGOUT_REQUEST, status: 204, body: Vec::new() };
+                        let commands = handler.process_session(&response).1;
+                        assert!(commands.is_empty());
+                        commands
+                    }
+                };
+                for command in &commands {
+                    match command {
+                        Command::RemoveAttribute { id, attribute: Attribute::Checked }
+                            if *id == Page::Unlock.to_dom() =>
+                        {
+                            checked = false;
+                        }
+                        Command::SetAttribute { id, attribute, .. } => {
+                            dom.push((id.clone(), *attribute, true))
+                        }
+                        Command::RemoveAttribute { id, attribute } => {
+                            dom.push((id.clone(), *attribute, false))
+                        }
+                        _ => {}
+                    }
+                }
+                assert_eq!(matches!(handler.dialog, Dialog::Unlock), open, "{seed} {step}");
+                assert_eq!(handler.keyring.is_unlocked(), unlocked, "{seed} {step}");
+                assert_eq!(
+                    handler.keyring.session().map(|s| (s.user, s.device, s.peer, *s.root())),
+                    session.then_some((3, 1, 9, root)),
+                    "{seed} {step}"
+                );
+                assert_eq!(checked, unlocked || open, "{seed} {step}");
+                if !open {
+                    continue;
+                }
+                for field in Field::LIST {
+                    let page = Page::Credential(field);
+                    assert!(!lookup(&dom, page, Attribute::Hidden), "{seed} {step}");
+                    assert!(!lookup(&dom, page, Attribute::Disabled), "{seed} {step}");
+                }
+                assert!(!lookup(&dom, Page::Create, Attribute::Hidden), "{seed} {step}");
+                assert!(!lookup(&dom, Page::CreateInput, Attribute::Disabled), "{seed} {step}");
+                assert!(lookup(&dom, Page::DialogOptions, Attribute::Hidden), "{seed} {step}");
+                assert!(lookup(&dom, Page::DialogNumber, Attribute::Hidden), "{seed} {step}");
+                assert!(
+                    lookup(&dom, Page::DialogNumberInput, Attribute::Disabled),
+                    "{seed} {step}"
+                );
+            }
+        }
     }
 }

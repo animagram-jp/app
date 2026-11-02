@@ -14,7 +14,7 @@
 //
 //   cargo test --no-default-features --lib color_picker
 //
-// DOM: reference/color_picker.html (ids are the dom::Id path, same as distribution/index.html)
+// DOM: reference/color_picker.html (ids are the dom::Id path, same as distribution/coc7th/index.html)
 
 use alloc::{format, string::String, vec, vec::Vec};
 use core::{

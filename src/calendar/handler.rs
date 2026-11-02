@@ -1,6 +1,7 @@
 use alloc::{collections::BTreeMap, format, string::String, vec, vec::Vec};
 use core::{
     cell::RefCell,
+    mem,
     option::Option::{self, None, Some},
     primitive::{f64, i32, i64, u32, u64, usize},
     result::Result::Ok,
@@ -21,11 +22,12 @@ use crate::{
             parse_date, parse_time, tag,
         },
         grid::{AXES, Axis, CLOCK, Cell, Clock, Day, Grid, Month, lane_box, lanes, span},
-        target::{CardPart, EditField, STEP_TODAY, Target},
+        target::{CardPart, Dialog, EditField, FIELDS, STEP_TODAY, Submit, Target},
     },
+    credential::{self, Field},
     data_struct::DataStruct,
     event::{
-        self, Event, Opened, Response,
+        self, Event, Handler as _, Keyring, Opened, Response,
         gesture::{Gesture, Pointer},
         store,
     },
@@ -141,7 +143,9 @@ pub struct Handler<S: FileStore> {
     base:                 Stamp,
     placed:               RefCell<Vec<Placed>>,
     bands:                RefCell<Vec<Band>>,
+    dialog:               Dialog,
     editing:              Option<Editing>,
+    keyring:              Keyring,
     pending_tap:          Option<[f64; 2]>,
     create:               Option<CreateDrag>,
     row_in_rem:           f64,
@@ -209,7 +213,9 @@ impl<S: FileStore> Handler<S> {
             base: today,
             placed: RefCell::new(Vec::new()),
             bands: RefCell::new(Vec::new()),
+            dialog: Dialog::None,
             editing: None,
+            keyring: Keyring::LOCKED,
             pending_tap: None,
             create: None,
             row_in_rem: ROW_IN_REM,
@@ -511,13 +517,30 @@ impl<S: FileStore> Handler<S> {
         let mut commands = vec![
             Command::SetText { id: Target::EditHeading.to_dom(), value: heading },
             Command::SetText { id: Target::EditMessage.to_dom(), value: String::new() },
+            Command::SetText {
+                id:    Target::Submit(Submit).to_dom(),
+                value: Submit.display(Dialog::Edit, self.language).into(),
+            },
         ];
         commands.extend(values.into_iter().map(|(field, value)| Command::SetValue {
             id: Target::EditField(field).to_dom(),
             value,
         }));
+        commands.push(hidden(Target::EditList.to_dom(), false));
+        commands
+            .extend(FIELDS.map(|field| {
+                toggle(Target::EditField(field).to_dom(), Attribute::Disabled, false)
+            }));
         commands.push(hidden(Target::Delete.to_dom(), matches!(editing, Editing::New(_))));
+        commands.push(toggle(Target::Delete.to_dom(), Attribute::Disabled, false));
+        for field in Field::LIST {
+            commands.push(hidden(Target::Credential(field).to_dom(), true));
+            commands.push(toggle(Target::Credential(field).to_dom(), Attribute::Disabled, true));
+        }
+        commands.push(hidden(Target::Create.to_dom(), true));
+        commands.push(toggle(Target::CreateInput.to_dom(), Attribute::Disabled, true));
         commands.push(Command::ShowModal { id: Target::Modal.to_dom() });
+        self.dialog = Dialog::Edit;
         self.editing = Some(editing);
         commands
     }
@@ -724,12 +747,60 @@ impl<S: FileStore> Handler<S> {
             return vec![];
         };
         store.delete(key);
+        self.dialog = Dialog::None;
         self.editing = None;
         let mut commands = Vec::new();
         commands.extend(self.mark_dirty());
         commands.push(Command::Close { id: Target::Modal.to_dom() });
         commands.extend(self.card_commands());
         commands
+    }
+
+    fn unlock_commands(&mut self) -> Vec<Command> {
+        let mut commands = vec![
+            Command::SetText { id: Target::EditHeading.to_dom(), value: String::new() },
+            Command::SetText { id: Target::EditMessage.to_dom(), value: String::new() },
+            Command::SetText {
+                id:    Target::Submit(Submit).to_dom(),
+                value: Submit.display(Dialog::Unlock, self.language).into(),
+            },
+            hidden(Target::EditList.to_dom(), true),
+        ];
+        commands.extend(
+            FIELDS
+                .map(|field| toggle(Target::EditField(field).to_dom(), Attribute::Disabled, true)),
+        );
+        commands.push(hidden(Target::Delete.to_dom(), true));
+        commands.push(toggle(Target::Delete.to_dom(), Attribute::Disabled, true));
+        for field in Field::LIST {
+            commands.push(hidden(Target::Credential(field).to_dom(), false));
+            commands.push(toggle(Target::Credential(field).to_dom(), Attribute::Disabled, false));
+        }
+        commands.push(hidden(Target::Create.to_dom(), false));
+        commands.push(toggle(Target::CreateInput.to_dom(), Attribute::Disabled, false));
+        commands.push(Command::ShowModal { id: Target::Modal.to_dom() });
+        self.dialog = Dialog::Unlock;
+        commands
+    }
+
+    fn close_dialog(&mut self) -> Vec<Command> {
+        self.editing = None;
+        match mem::replace(&mut self.dialog, Dialog::None) {
+            Dialog::Unlock => {
+                let mut commands = vec![
+                    Command::SetValue {
+                        id:    Target::Credential(Field::Password).to_dom(),
+                        value: String::new(),
+                    },
+                    toggle(Target::CreateInput.to_dom(), Attribute::Checked, false),
+                ];
+                if !self.keyring.is_unlocked() {
+                    commands.push(toggle(Target::Unlock.to_dom(), Attribute::Checked, false));
+                }
+                commands
+            }
+            _ => vec![],
+        }
     }
 
     fn reject(message: &str) -> Vec<Command> {
@@ -755,6 +826,7 @@ impl<S: FileStore> Handler<S> {
         };
         match self.apply_form(editing, draft) {
             Ok(entry) => {
+                self.dialog = Dialog::None;
                 self.editing = None;
                 self.persist(entry);
                 let mut commands = Vec::new();
@@ -1012,8 +1084,9 @@ impl<S: FileStore> Handler<S> {
                 (vec![], commands)
             }
             Target::Modal => {
-                self.editing = None;
-                (vec![], vec![Command::Close { id: Target::Modal.to_dom() }])
+                let mut commands = vec![Command::Close { id: Target::Modal.to_dom() }];
+                commands.extend(self.close_dialog());
+                (vec![], commands)
             }
             Target::Delete => (vec![], self.delete_commands()),
             Target::Save => self.save_commands(),
@@ -1428,14 +1501,16 @@ impl<S: FileStore> Handler<S> {
                 value: axis.display(self.language).into(),
             })
             .collect();
-        commands.extend([Target::Step(STEP_TODAY), Target::Save].into_iter().filter_map(
-            |target| {
-                Some(Command::SetText {
-                    id:    target.to_dom(),
-                    value: target.display(self.language)?.into(),
-                })
-            },
-        ));
+        commands.extend(
+            [Target::Step(STEP_TODAY), Target::Save, Target::UnlockName, Target::CreateName]
+                .into_iter()
+                .filter_map(|target| {
+                    Some(Command::SetText {
+                        id:    target.to_dom(),
+                        value: target.display(self.language)?.into(),
+                    })
+                }),
+        );
         commands
     }
 
@@ -1618,6 +1693,26 @@ impl<S: FileStore> Handler<S> {
     }
 }
 
+impl<S: Mount> Handler<S> {
+    fn toggle_lock(&mut self) -> Vec<Command> {
+        if self.keyring.is_unlocked() { self.lock() } else { self.unlock_commands() }
+    }
+
+    fn submit_unlock(&mut self, value: &str) -> Vec<Command> {
+        let form = match credential::read_form(value) {
+            Ok(form) => form,
+            Err(error) => return vec![Command::Error { error: Error::Credential(error) }],
+        };
+        if let Err(error) = self.unlock(&form) {
+            return vec![Command::Error { error }];
+        }
+        let mut commands = vec![Command::Close { id: Target::Modal.to_dom() }];
+        commands.extend(self.close_dialog());
+        commands.extend(if form.create { self.register() } else { self.login() });
+        commands
+    }
+}
+
 impl<S: Mount> event::Handler for Handler<S> {
     type Store = S;
 
@@ -1702,16 +1797,15 @@ impl<S: Mount> event::Handler for Handler<S> {
             EventType::Input if target == Some(Target::Zoom) => (vec![], self.zoom(&event.value)),
             EventType::Change => match target {
                 Some(Target::Axis(axis)) => (vec![], self.change_axis(axis)),
+                Some(Target::Unlock) => (vec![], self.toggle_lock()),
                 _ => (vec![], vec![]),
             },
             EventType::PointerDown => (vec![], self.press(event, target)),
-            EventType::Close if target == Some(Target::Modal) => {
-                self.editing = None;
-                (vec![], vec![])
-            }
-            EventType::Submit if target == Some(Target::EditForm) => {
-                (vec![], self.submit(&event.value))
-            }
+            EventType::Close if target == Some(Target::Modal) => (vec![], self.close_dialog()),
+            EventType::Submit if target == Some(Target::EditForm) => match self.dialog {
+                Dialog::Unlock => (vec![], self.submit_unlock(&event.value)),
+                _ => (vec![], self.submit(&event.value)),
+            },
             EventType::Scroll => {
                 if target == Some(Target::Surface) {
                     self.scroll_x_in_px = event.client_x;
@@ -1747,6 +1841,10 @@ impl<S: Mount> event::Handler for Handler<S> {
         let mut commands = self.band_commands();
         commands.extend(self.card_commands());
         (vec![], commands)
+    }
+
+    fn keyring(&mut self) -> &mut Keyring {
+        &mut self.keyring
     }
 
     fn process_lost(&mut self) -> (Vec<Event>, Vec<Command>) {
@@ -1919,7 +2017,6 @@ mod tests {
         En, Rng, block_on,
         calendar::data::SCHEMA_SIZE,
         data_struct::{ID_CREATED_AT, ID_MODIFIED_AT, encode_time},
-        event::Handler as _,
         file_store::{FileStoreError, MemoryHandles, MemoryStore, cases::FaultInjector},
         host::{Flags, KeyName},
         time::pack,
@@ -2521,7 +2618,7 @@ mod tests {
     #[test]
     fn rem_constants_match_the_markup() {
         let html = include_str!("../../distribution/calendar/index.html");
-        let css = include_str!("../../distribution/calendar/css/style.css");
+        let css = include_str!("../../distribution/calendar/calendar.css");
         assert!(
             html.contains(&format!(
                 "var(--head-height) repeat({}, {ROW_IN_REM}rem)",
@@ -3700,7 +3797,7 @@ mod tests {
         assert!(handler.dirty());
         assert!(commands.iter().any(|c| matches!(c, Command::Close { .. })));
         assert!(pending(&handler) == 1);
-        assert!(handler.editing.is_none());
+        assert!(matches!(handler.dialog, Dialog::None));
         let key = data::key(added);
         let saved =
             DataStruct::from_bytes(handler.store.as_ref().unwrap().get(key).unwrap(), SCHEMA_SIZE)
@@ -3726,7 +3823,7 @@ mod tests {
             "入力を読み取れません"
         );
         assert_eq!(appointments(&handler).len(), 2);
-        assert!(handler.editing.is_some());
+        assert!(matches!(handler.dialog, Dialog::Edit));
     }
 
     #[test]
@@ -3735,7 +3832,7 @@ mod tests {
         tap_empty(&mut handler, 0.0, 0.0);
         let commands = press(&mut handler, Target::Modal.to_dom());
         assert!(matches!(commands.as_slice(), [Command::Close { .. }]));
-        assert!(handler.editing.is_none());
+        assert!(matches!(handler.dialog, Dialog::None));
     }
 
     fn modal_closed<S: Mount>(handler: &mut Handler<S>) -> Vec<Command> {
@@ -3748,9 +3845,9 @@ mod tests {
     fn closing_the_dialog_natively_clears_the_editing_state() {
         let (mut handler, _) = drag_fixture();
         tap_empty(&mut handler, 0.0, 0.0);
-        assert!(handler.editing.is_some());
+        assert!(matches!(handler.dialog, Dialog::Edit));
         assert!(modal_closed(&mut handler).is_empty());
-        assert!(handler.editing.is_none());
+        assert!(matches!(handler.dialog, Dialog::None));
     }
 
     #[test]
@@ -3758,9 +3855,152 @@ mod tests {
         let (mut handler, _) = drag_fixture();
         tap_empty(&mut handler, 0.0, 0.0);
         press(&mut handler, Target::Modal.to_dom());
-        assert!(handler.editing.is_none());
+        assert!(matches!(handler.dialog, Dialog::None));
         assert!(modal_closed(&mut handler).is_empty());
-        assert!(handler.editing.is_none());
+        assert!(matches!(handler.dialog, Dialog::None));
+    }
+
+    #[test]
+    fn the_dialog_follows_its_opener_and_each_form_reads_only_its_own_fields() {
+        let credentials = Field::LIST.map(|field| Target::Credential(field).to_dom());
+        let edits: Vec<Id> = FIELDS.map(|field| Target::EditField(field).to_dom()).into();
+        let unlock_query = "email=a%40example.jp&password=passphrase&1=x&8=n";
+        for seed in 0..10 {
+            let mut rng = Rng::new(seed);
+            let (mut handler, _) = drag_fixture();
+            let mut dom: Vec<(Id, Attribute, bool)> = Vec::new();
+            for id in &credentials {
+                dom.push((id.clone(), Attribute::Hidden, true));
+                dom.push((id.clone(), Attribute::Disabled, true));
+            }
+            let lookup = |dom: &[(Id, Attribute, bool)], id: &Id, attribute: Attribute| {
+                dom.iter().rev().find(|(i, a, _)| i == id && *a == attribute).is_some_and(|e| e.2)
+            };
+            let mut checked = false;
+            let mut submit_text = String::new();
+            let mut unlocked = false;
+            let mut model = 0u8;
+            for step in 0..40 {
+                let before = pending(&handler);
+                let action = rng.below(6);
+                let commands = match (action, model) {
+                    (0, 0) => {
+                        checked = !checked;
+                        let event = CanvasEvent {
+                            event_type: EventType::Change,
+                            ..click(Target::Unlock.to_dom(), 0.0, 0.0)
+                        };
+                        let commands = handler.process_canvas(&event, &pointer()).1;
+                        let shown = matches!(commands.last(), Some(Command::ShowModal { .. }));
+                        assert_eq!(shown, !unlocked, "{seed} {step}");
+                        if unlocked {
+                            unlocked = false;
+                        } else {
+                            model = 2;
+                        }
+                        commands
+                    }
+                    (1, 0) => {
+                        model = 1;
+                        tap_empty(&mut handler, rng.below(3) as f64, rng.below(4) as f64)
+                    }
+                    (2, _) => {
+                        model = 0;
+                        press(&mut handler, Target::Modal.to_dom())
+                    }
+                    (3, _) => {
+                        model = 0;
+                        modal_closed(&mut handler)
+                    }
+                    (4, _) => {
+                        let commands = submit(&mut handler, unlock_query);
+                        match model {
+                            2 => {
+                                assert!(
+                                    commands.iter().any(|c| matches!(c, Command::Close { .. }))
+                                );
+                                model = 0;
+                                unlocked = true;
+                            }
+                            1 => {
+                                assert!(text_of(&commands, &Target::EditMessage.to_dom()).is_some())
+                            }
+                            _ => assert!(commands.is_empty()),
+                        }
+                        commands
+                    }
+                    (5, _) => {
+                        let commands = submit(&mut handler, "1=x&8=n&email=a%40example.jp");
+                        match model {
+                            2 => assert!(
+                                matches!(commands.as_slice(), [Command::Error { .. }]),
+                                "{seed} {step}"
+                            ),
+                            0 => assert!(commands.is_empty(), "{seed} {step}"),
+                            _ => {}
+                        }
+                        commands
+                    }
+                    _ => vec![],
+                };
+                assert_eq!(pending(&handler), before, "{seed} {step}");
+                for command in &commands {
+                    match command {
+                        Command::SetAttribute { id, attribute: Attribute::Checked, .. } => {
+                            assert_eq!(*id, Target::Unlock.to_dom());
+                            checked = true;
+                        }
+                        Command::RemoveAttribute { id, attribute: Attribute::Checked }
+                            if *id == Target::Unlock.to_dom() =>
+                        {
+                            checked = false;
+                        }
+                        Command::SetText { id, value }
+                            if *id == Target::Submit(Submit).to_dom() =>
+                        {
+                            submit_text = value.clone();
+                        }
+                        Command::SetAttribute { id, attribute, .. } => {
+                            dom.push((id.clone(), *attribute, true))
+                        }
+                        Command::RemoveAttribute { id, attribute } => {
+                            dom.push((id.clone(), *attribute, false))
+                        }
+                        _ => {}
+                    }
+                }
+                let state = match handler.dialog {
+                    Dialog::None => 0,
+                    Dialog::Edit => 1,
+                    Dialog::Unlock => 2,
+                };
+                assert_eq!(state, model, "{seed} {step}");
+                assert_eq!(handler.keyring.is_unlocked(), unlocked, "{seed} {step}");
+                assert_eq!(checked, model == 2 || unlocked, "{seed} {step}");
+                if model == 0 {
+                    continue;
+                }
+                let unlock = model == 2;
+                assert_eq!(submit_text, if unlock { "ログイン" } else { "保存" }, "{seed} {step}");
+                for id in &credentials {
+                    assert_eq!(lookup(&dom, id, Attribute::Hidden), !unlock, "{seed} {step}");
+                    assert_eq!(lookup(&dom, id, Attribute::Disabled), !unlock, "{seed} {step}");
+                }
+                for id in &edits {
+                    assert_eq!(lookup(&dom, id, Attribute::Disabled), unlock, "{seed} {step}");
+                }
+                let create = [Target::Create.to_dom(), Target::CreateInput.to_dom()];
+                assert_eq!(lookup(&dom, &create[0], Attribute::Hidden), !unlock, "{seed} {step}");
+                assert_eq!(lookup(&dom, &create[1], Attribute::Disabled), !unlock, "{seed} {step}");
+                let list = Target::EditList.to_dom();
+                assert_eq!(lookup(&dom, &list, Attribute::Hidden), unlock, "{seed} {step}");
+                let delete = Target::Delete.to_dom();
+                assert_eq!(lookup(&dom, &delete, Attribute::Disabled), unlock, "{seed} {step}");
+                if unlock {
+                    assert!(lookup(&dom, &delete, Attribute::Hidden), "{seed} {step}");
+                }
+            }
+        }
     }
 
     #[test]
@@ -4087,7 +4327,7 @@ mod tests {
         assert!(commands.iter().any(|command| matches!(command,
             Command::SetAttribute { id, attribute: Attribute::Hidden, .. }
                 if *id == Target::Band(4).to_dom())));
-        assert!(handler.editing.is_none());
+        assert!(matches!(handler.dialog, Dialog::None));
     }
 
     #[test]
@@ -4360,7 +4600,7 @@ mod tests {
         let commands = tap_empty(&mut handler, 0.0, 0.0);
         assert_eq!(delete_hidden(&commands), Some(true));
         assert!(press(&mut handler, Target::Delete.to_dom()).is_empty());
-        assert!(handler.editing.is_some(), "a new form has nothing to delete");
+        assert!(matches!(handler.dialog, Dialog::Edit), "a new form has nothing to delete");
         assert!(!handler.dirty());
     }
 
@@ -4373,7 +4613,7 @@ mod tests {
         let commands = press(&mut handler, Target::Delete.to_dom());
         assert!(commands.iter().any(|c| matches!(c, Command::Close { .. })));
         assert_eq!(save_disabled(&commands), [false]);
-        assert!(handler.editing.is_none());
+        assert!(matches!(handler.dialog, Dialog::None));
         assert!(handler.dirty());
         assert_eq!(appointments(&handler).len(), before - 1);
         assert!(handler.appointment(key).is_none());

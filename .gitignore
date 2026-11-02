@@ -8,11 +8,11 @@
 Cargo.lock
 !/Cargo.lock
 target/
-distribution/app/
+/distribution/coc7th/app/
 
 /distribution/calendar/app/
 
-/distribution/investigator/
+/distribution/coc7th/investigator/
 
 /.env
 /.secrets

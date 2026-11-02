@@ -18,6 +18,8 @@ use wasm_bindgen::prelude::wasm_bindgen;
 use crate::calendar::handler::Handler;
 #[cfg(all(feature = "coc7th", not(feature = "calendar")))]
 use crate::coc7th::handler::Handler;
+#[cfg(feature = "vault")]
+use crate::event::{LOGIN_REQUEST, LOGOUT_REQUEST, REGISTER_REQUEST};
 use crate::{
     Error, Input,
     arena::{APP, RUNNING, flush},
@@ -121,6 +123,15 @@ impl App {
                 let body = responses.remove(&chunk.request).unwrap_or_default();
                 let response = Response { request: chunk.request, status: chunk.status, body };
                 (vec![Event::Fetched(response)], vec![])
+            }
+            #[cfg(feature = "vault")]
+            Event::Fetched(response)
+                if matches!(
+                    response.request,
+                    LOGIN_REQUEST | LOGOUT_REQUEST | REGISTER_REQUEST
+                ) =>
+            {
+                handler.process_session(&response)
             }
             Event::Fetched(response) => handler.process_fetched(&response),
             Event::StoreLost(id) => {

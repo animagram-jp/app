@@ -57,7 +57,7 @@ reset.css incorporates parts of the following MIT-licensed works.
   - Source: https://github.com/tailwindlabs/tailwindcss
   - Copyright (c) Tailwind Labs, Inc.
 
-## Rust crates (linked into distribution/app/app_bg.wasm)
+## Rust crates (linked into distribution/coc7th/app/app_bg.wasm)
 
 Licensed under the MIT License (each is dual-licensed MIT OR Apache-2.0 or MIT-only; MIT is elected). Full texts are in each crate's repository on https://crates.io.
 

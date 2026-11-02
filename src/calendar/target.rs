@@ -11,10 +11,11 @@ use core::{
 use super::grid::{AXES, Axis};
 use crate::{
     Language,
+    credential::Field,
     host::dom::{Id, Tag},
 };
 
-const FIELDS: [EditField; 8] = [
+pub const FIELDS: [EditField; 8] = [
     EditField::Title,
     EditField::Category,
     EditField::Status,
@@ -28,6 +29,7 @@ const RELOAD_BUTTON: u32 = 1;
 const SAVE_BUTTON: u32 = 2;
 pub const STEP_TODAY: u32 = 3;
 const LANGUAGE_LIST: u32 = 3;
+const SUBMIT_BUTTON: u32 = 1;
 const DELETE_BUTTON: u32 = 2;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -54,6 +56,27 @@ impl EditField {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Dialog {
+    Edit = 1,
+    Unlock,
+    None = 0,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Submit;
+
+impl Submit {
+    pub fn display(self, dialog: Dialog, language: Language) -> &'static str {
+        match (dialog, language) {
+            (Dialog::Unlock, Language::En(_)) => "Login",
+            (Dialog::Unlock, Language::Ja) => "ログイン",
+            (_, Language::En(_)) => "Save",
+            (_, Language::Ja) => "保存",
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum CardPart {
     Status,
     Time,
@@ -74,6 +97,8 @@ pub enum Target {
     Reload,
     Save,
     LanguageOption(Language),
+    Unlock,
+    UnlockName,
     TimeAxis,
     AxisLabel(u32, u32),
     Surface,
@@ -89,13 +114,19 @@ pub enum Target {
     CardPart(u32, CardPart),
     Preview,
     Modal,
+    Credential(Field),
+    Create,
+    CreateName,
+    CreateInput,
     EditForm,
+    EditList,
     EditHeading,
     EditField(EditField),
     CategoryOption(u32),
     StatusOption(u32),
     ResourceOption(u32),
     EditMessage,
+    Submit(Submit),
     Delete,
 }
 
@@ -106,6 +137,10 @@ impl Target {
             (Self::Step(STEP_TODAY), Language::Ja) => Some("本日"),
             (Self::Save, Language::En(_)) => Some("Save"),
             (Self::Save, Language::Ja) => Some("保存"),
+            (Self::UnlockName, Language::En(_)) => Some("Login"),
+            (Self::UnlockName, Language::Ja) => Some("ログイン"),
+            (Self::CreateName, Language::En(_)) => Some("Create"),
+            (Self::CreateName, Language::Ja) => Some("作成"),
             _ => None,
         }
     }
@@ -145,6 +180,8 @@ impl Target {
             Self::LanguageOption(l) => {
                 join(header(), &[(Tag::Div, Some(LANGUAGE_LIST)), (Tag::Button, Some(l.number()))])
             }
+            Self::Unlock => join(header(), &[(Tag::Label, None), (Tag::Input, None)]),
+            Self::UnlockName => join(header(), &[(Tag::Label, None), (Tag::Span, None)]),
             Self::TimeAxis => Vec::from([(Tag::Main, None), (Tag::Ol, None)]),
             Self::AxisLabel(side, row) => Vec::from([
                 (Tag::Main, None),
@@ -174,7 +211,18 @@ impl Target {
             ),
             Self::Preview => list(5, None),
             Self::Modal => Vec::from([(Tag::Dialog, None)]),
+            Self::Credential(field) => {
+                Vec::from([(Tag::Dialog, None), (Tag::Input, Some(field.number()))])
+            }
+            Self::Create => Vec::from([(Tag::Dialog, None), (Tag::Label, None)]),
+            Self::CreateName => {
+                Vec::from([(Tag::Dialog, None), (Tag::Label, None), (Tag::Span, None)])
+            }
+            Self::CreateInput => {
+                Vec::from([(Tag::Dialog, None), (Tag::Label, None), (Tag::Input, None)])
+            }
             Self::EditForm => dialog_form(),
+            Self::EditList => join(dialog_form(), &[(Tag::Dl, None)]),
             Self::EditHeading => join(dialog_form(), &[(Tag::Header, None), (Tag::H3, None)]),
             Self::EditField(field) => {
                 let n = field.number();
@@ -189,6 +237,7 @@ impl Target {
             Self::StatusOption(n) => join(option(EditField::Status), &[(Tag::Option, Some(n))]),
             Self::ResourceOption(n) => join(option(EditField::Resource), &[(Tag::Option, Some(n))]),
             Self::EditMessage => join(dialog_form(), &[(Tag::Output, None)]),
+            Self::Submit(_) => join(dialog_form(), &[(Tag::Button, Some(SUBMIT_BUTTON))]),
             Self::Delete => join(dialog_form(), &[(Tag::Button, Some(DELETE_BUTTON))]),
         };
         Id::new(&path)
@@ -214,6 +263,8 @@ impl Target {
             ] => Self::AxisName(*AXES.get(n.checked_sub(1)? as usize)?),
             [(Tag::Header, None), (Tag::Div, Some(1)), (Tag::Button, Some(n))] => Self::Step(*n),
             [(Tag::Header, None), (Tag::Input, None)] => Self::Zoom,
+            [(Tag::Header, None), (Tag::Label, None), (Tag::Input, None)] => Self::Unlock,
+            [(Tag::Header, None), (Tag::Label, None), (Tag::Span, None)] => Self::UnlockName,
             [(Tag::Header, None), (Tag::Button, Some(n))] => match *n {
                 RELOAD_BUTTON => Self::Reload,
                 SAVE_BUTTON => Self::Save,
@@ -250,9 +301,17 @@ impl Target {
             },
             [(Tag::Dialog, None), rest @ ..] => match rest {
                 [] => Self::Modal,
+                [(Tag::Input, Some(n))] => {
+                    Self::Credential(*Field::LIST.get(n.checked_sub(1)? as usize)?)
+                }
+                [(Tag::Label, None)] => Self::Create,
+                [(Tag::Label, None), (Tag::Span, None)] => Self::CreateName,
+                [(Tag::Label, None), (Tag::Input, None)] => Self::CreateInput,
                 [(Tag::Form, None)] => Self::EditForm,
+                [(Tag::Form, None), (Tag::Dl, None)] => Self::EditList,
                 [(Tag::Form, None), (Tag::Header, None), (Tag::H3, None)] => Self::EditHeading,
                 [(Tag::Form, None), (Tag::Output, None)] => Self::EditMessage,
+                [(Tag::Form, None), (Tag::Button, Some(SUBMIT_BUTTON))] => Self::Submit(Submit),
                 [(Tag::Form, None), (Tag::Button, Some(DELETE_BUTTON))] => Self::Delete,
                 [
                     (Tag::Form, None),
@@ -297,6 +356,8 @@ mod tests {
             Target::Zoom,
             Target::Reload,
             Target::Save,
+            Target::Unlock,
+            Target::UnlockName,
             Target::LanguageOption(Language::En(En::Gb)),
             Target::LanguageOption(Language::Ja),
             Target::Surface,
@@ -305,13 +366,19 @@ mod tests {
             Target::Preview,
             Target::Modal,
             Target::EditForm,
+            Target::EditList,
+            Target::Create,
+            Target::CreateName,
+            Target::CreateInput,
             Target::EditHeading,
             Target::EditMessage,
+            Target::Submit(Submit),
             Target::Delete,
         ]);
         targets.extend(AXES.map(Target::Axis));
         targets.extend(AXES.map(Target::AxisName));
         targets.extend(FIELDS.map(Target::EditField));
+        targets.extend(Field::LIST.map(Target::Credential));
         targets.extend((1..=4).flat_map(|n| {
             [Target::CategoryOption(n), Target::StatusOption(n), Target::ResourceOption(n)]
         }));
