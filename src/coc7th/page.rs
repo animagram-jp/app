@@ -28,150 +28,311 @@ const CREATE_LABEL: u32 = 1;
 const NUMBER_LABEL: u32 = 2;
 pub const INVESTIGATOR_OPTIONS: u32 = 4;
 
-const CHARACTERISTIC_HEADS: u32 = 5;
-const SKILL_HEADS: u32 = 8;
-
-fn heading(section: u32, tag: Tag) -> Id {
-    Id::new(&[(Tag::Main, None), (Tag::Section, Some(section)), (tag, None)])
-}
-
-fn head(part: u32, table: Option<u32>, column: u32) -> Id {
-    let mut path = sheet(part);
-    path.extend([
-        (Tag::Table, table),
-        (Tag::Thead, None),
-        (Tag::Tr, None),
-        (Tag::Th, Some(column)),
-    ]);
-    Id::new(&path)
-}
-
-fn characteristic_head(column: u32) -> Id {
-    head(Investigator::Characteristic.base_id(), None, column)
-}
-
-fn skill_head(column: u32) -> Id {
-    head(Investigator::Skill.base_id(), None, column)
-}
-
-fn weapon_head(column: u32) -> Id {
-    head(Investigator::Possession.base_id(), Some(1), column)
-}
-
-fn armor_head(column: u32) -> Id {
-    head(Investigator::Possession.base_id(), Some(2), column)
-}
-
-fn profile_label(id: u32) -> Id {
-    let mut path = sheet(Investigator::Profile.base_id());
-    path.extend([(Tag::Dl, None), (Tag::Dt, Some(id))]);
-    Id::new(&path)
-}
-
-macro_rules! label {
-    ($name:ident, $en:literal, $ja:literal, $dom:expr) => {
-        pub struct $name;
-
-        impl $name {
-            pub fn display(language: Language) -> &'static str {
-                match language {
-                    Language::En(_) => $en,
-                    Language::Ja => $ja,
-                }
-            }
-
-            pub fn dom() -> Vec<Id> {
-                $dom
-            }
-        }
-    };
-}
-
-label!(
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Label {
     InvestigatorSheet,
-    "Modern Investigator",
-    "キャラクターシート",
-    vec![heading(SHEET_SECTION, Tag::H2)]
-);
-label!(ManagementData, "Management Data", "管理データ", vec![join(sheet(1), &[(Tag::H3, None)])]);
-label!(ChatLog, "Chat Log", "チャットログ", vec![heading(CHAT_LOG_SECTION, Tag::H2)]);
-label!(ChatBox, "Chat Box", "チャットボックス", vec![heading(CHAT_BOX_SECTION, Tag::H2)]);
-label!(Pronunciation, "Pronunciation", "読み", vec![profile_label(Profile::Name.ids()[1])]);
-label!(Title, "Title", "肩書", vec![profile_label(Profile::Occupation.ids()[2])]);
-label!(Initial, "Initial", "初期値", vec![characteristic_head(2)]);
-label!(Change, "Change", "変動値", vec![characteristic_head(3), skill_head(6)]);
-label!(Modifier, "Modifier", "修正値", vec![characteristic_head(4), skill_head(7)]);
-label!(Sum, "Sum", "合計", vec![characteristic_head(5), skill_head(8)]);
-label!(Specialization, "Specialization", "専門分野", vec![skill_head(2)]);
-label!(BasePercent, "Base", "基本値", vec![skill_head(3)]);
-label!(OccupationPoints, "Occupation", "職業PT", vec![skill_head(4)]);
-label!(InterestPoints, "Interest", "興味PT", vec![skill_head(5)]);
-label!(Name, "Name", "名称", vec![weapon_head(1), armor_head(1)]);
-label!(Damage, "Damage", "ダメージ", vec![weapon_head(4)]);
-label!(UsesPerRound, "Uses per Round", "回数", vec![weapon_head(5)]);
-label!(Range, "Range", "射程", vec![weapon_head(6)]);
-label!(Ammunition, "Ammo", "装弾数", vec![weapon_head(7)]);
-label!(Malfunction, "Malf.", "故障", vec![weapon_head(8)]);
-label!(ArmorPoints, "Armor Points", "装甲値", vec![armor_head(3)]);
-label!(Notes, "Notes", "備考", vec![armor_head(4)]);
-label!(
+    ManagementData,
+    ChatLog,
+    ChatBox,
+    Pronunciation,
+    Title,
+    Initial,
+    Change,
+    Modifier,
+    Sum,
+    Specialization,
+    BasePercent,
+    OccupationPoints,
+    InterestPoints,
+    Name,
+    Damage,
+    UsesPerRound,
+    Range,
+    Ammunition,
+    Malfunction,
+    ArmorPoints,
+    Notes,
     Login,
-    "Login",
-    "ログイン",
-    vec![Id::new(&[(Tag::Header, None), (Tag::Label, None), (Tag::Span, None)])]
-);
-label!(
     Create,
-    "Create",
-    "作成",
-    vec![Id::new(&[
-        (Tag::Main, None),
-        (Tag::Dialog, None),
-        (Tag::Label, Some(CREATE_LABEL)),
-        (Tag::Span, None),
-    ])]
-);
+}
+
+impl Label {
+    pub fn display(&self, language: Language) -> &'static str {
+        match (self, language) {
+            (Self::InvestigatorSheet, Language::En(_)) => "Modern Investigator",
+            (Self::InvestigatorSheet, Language::Ja) => "キャラクターシート",
+            (Self::ManagementData, Language::En(_)) => "Management Data",
+            (Self::ManagementData, Language::Ja) => "管理データ",
+            (Self::ChatLog, Language::En(_)) => "Chat Log",
+            (Self::ChatLog, Language::Ja) => "チャットログ",
+            (Self::ChatBox, Language::En(_)) => "Chat Box",
+            (Self::ChatBox, Language::Ja) => "チャットボックス",
+            (Self::Pronunciation, Language::En(_)) => "Pronunciation",
+            (Self::Pronunciation, Language::Ja) => "読み",
+            (Self::Title, Language::En(_)) => "Title",
+            (Self::Title, Language::Ja) => "肩書",
+            (Self::Initial, Language::En(_)) => "Initial",
+            (Self::Initial, Language::Ja) => "初期値",
+            (Self::Change, Language::En(_)) => "Change",
+            (Self::Change, Language::Ja) => "変動値",
+            (Self::Modifier, Language::En(_)) => "Modifier",
+            (Self::Modifier, Language::Ja) => "修正値",
+            (Self::Sum, Language::En(_)) => "Sum",
+            (Self::Sum, Language::Ja) => "合計",
+            (Self::Specialization, Language::En(_)) => "Specialization",
+            (Self::Specialization, Language::Ja) => "専門分野",
+            (Self::BasePercent, Language::En(_)) => "Base",
+            (Self::BasePercent, Language::Ja) => "基本値",
+            (Self::OccupationPoints, Language::En(_)) => "Occupation",
+            (Self::OccupationPoints, Language::Ja) => "職業PT",
+            (Self::InterestPoints, Language::En(_)) => "Interest",
+            (Self::InterestPoints, Language::Ja) => "興味PT",
+            (Self::Name, Language::En(_)) => "Name",
+            (Self::Name, Language::Ja) => "名称",
+            (Self::Damage, Language::En(_)) => "Damage",
+            (Self::Damage, Language::Ja) => "ダメージ",
+            (Self::UsesPerRound, Language::En(_)) => "Uses per Round",
+            (Self::UsesPerRound, Language::Ja) => "回数",
+            (Self::Range, Language::En(_)) => "Range",
+            (Self::Range, Language::Ja) => "射程",
+            (Self::Ammunition, Language::En(_)) => "Ammo",
+            (Self::Ammunition, Language::Ja) => "装弾数",
+            (Self::Malfunction, Language::En(_)) => "Malf.",
+            (Self::Malfunction, Language::Ja) => "故障",
+            (Self::ArmorPoints, Language::En(_)) => "Armor Points",
+            (Self::ArmorPoints, Language::Ja) => "装甲値",
+            (Self::Notes, Language::En(_)) => "Notes",
+            (Self::Notes, Language::Ja) => "備考",
+            (Self::Login, Language::En(_)) => "Login",
+            (Self::Login, Language::Ja) => "ログイン",
+            (Self::Create, Language::En(_)) => "Create",
+            (Self::Create, Language::Ja) => "作成",
+        }
+    }
+
+    pub fn dom(&self) -> Vec<Id> {
+        match self {
+            Self::InvestigatorSheet => {
+                vec![Id::new(&[
+                    (Tag::Main, None),
+                    (Tag::Section, Some(SHEET_SECTION)),
+                    (Tag::H2, None),
+                ])]
+            }
+            Self::ManagementData => vec![join(sheet(1), &[(Tag::H3, None)])],
+            Self::ChatLog => {
+                vec![Id::new(&[
+                    (Tag::Main, None),
+                    (Tag::Section, Some(CHAT_LOG_SECTION)),
+                    (Tag::H2, None),
+                ])]
+            }
+            Self::ChatBox => {
+                vec![Id::new(&[
+                    (Tag::Main, None),
+                    (Tag::Section, Some(CHAT_BOX_SECTION)),
+                    (Tag::H2, None),
+                ])]
+            }
+            Self::Pronunciation => vec![join(
+                sheet(Investigator::Profile.base_id()),
+                &[(Tag::Dl, None), (Tag::Dt, Some(Profile::Name.ids()[1]))],
+            )],
+            Self::Title => vec![join(
+                sheet(Investigator::Profile.base_id()),
+                &[(Tag::Dl, None), (Tag::Dt, Some(Profile::Occupation.ids()[2]))],
+            )],
+            Self::Initial => vec![join(
+                sheet(Investigator::Characteristic.base_id()),
+                &[(Tag::Table, None), (Tag::Thead, None), (Tag::Tr, None), (Tag::Th, Some(2))],
+            )],
+            Self::Change => vec![
+                join(
+                    sheet(Investigator::Characteristic.base_id()),
+                    &[(Tag::Table, None), (Tag::Thead, None), (Tag::Tr, None), (Tag::Th, Some(3))],
+                ),
+                join(
+                    sheet(Investigator::Skill.base_id()),
+                    &[(Tag::Table, None), (Tag::Thead, None), (Tag::Tr, None), (Tag::Th, Some(6))],
+                ),
+            ],
+            Self::Modifier => vec![
+                join(
+                    sheet(Investigator::Characteristic.base_id()),
+                    &[(Tag::Table, None), (Tag::Thead, None), (Tag::Tr, None), (Tag::Th, Some(4))],
+                ),
+                join(
+                    sheet(Investigator::Skill.base_id()),
+                    &[(Tag::Table, None), (Tag::Thead, None), (Tag::Tr, None), (Tag::Th, Some(7))],
+                ),
+            ],
+            Self::Sum => vec![
+                join(
+                    sheet(Investigator::Characteristic.base_id()),
+                    &[(Tag::Table, None), (Tag::Thead, None), (Tag::Tr, None), (Tag::Th, Some(5))],
+                ),
+                join(
+                    sheet(Investigator::Skill.base_id()),
+                    &[(Tag::Table, None), (Tag::Thead, None), (Tag::Tr, None), (Tag::Th, Some(8))],
+                ),
+            ],
+            Self::Specialization => vec![join(
+                sheet(Investigator::Skill.base_id()),
+                &[(Tag::Table, None), (Tag::Thead, None), (Tag::Tr, None), (Tag::Th, Some(2))],
+            )],
+            Self::BasePercent => vec![join(
+                sheet(Investigator::Skill.base_id()),
+                &[(Tag::Table, None), (Tag::Thead, None), (Tag::Tr, None), (Tag::Th, Some(3))],
+            )],
+            Self::OccupationPoints => vec![join(
+                sheet(Investigator::Skill.base_id()),
+                &[(Tag::Table, None), (Tag::Thead, None), (Tag::Tr, None), (Tag::Th, Some(4))],
+            )],
+            Self::InterestPoints => vec![join(
+                sheet(Investigator::Skill.base_id()),
+                &[(Tag::Table, None), (Tag::Thead, None), (Tag::Tr, None), (Tag::Th, Some(5))],
+            )],
+            Self::Name => vec![
+                join(
+                    sheet(Investigator::Possession.base_id()),
+                    &[
+                        (Tag::Table, Some(1)),
+                        (Tag::Thead, None),
+                        (Tag::Tr, None),
+                        (Tag::Th, Some(1)),
+                    ],
+                ),
+                join(
+                    sheet(Investigator::Possession.base_id()),
+                    &[
+                        (Tag::Table, Some(2)),
+                        (Tag::Thead, None),
+                        (Tag::Tr, None),
+                        (Tag::Th, Some(1)),
+                    ],
+                ),
+            ],
+            Self::Damage => vec![join(
+                sheet(Investigator::Possession.base_id()),
+                &[(Tag::Table, Some(1)), (Tag::Thead, None), (Tag::Tr, None), (Tag::Th, Some(4))],
+            )],
+            Self::UsesPerRound => vec![join(
+                sheet(Investigator::Possession.base_id()),
+                &[(Tag::Table, Some(1)), (Tag::Thead, None), (Tag::Tr, None), (Tag::Th, Some(5))],
+            )],
+            Self::Range => vec![join(
+                sheet(Investigator::Possession.base_id()),
+                &[(Tag::Table, Some(1)), (Tag::Thead, None), (Tag::Tr, None), (Tag::Th, Some(6))],
+            )],
+            Self::Ammunition => vec![join(
+                sheet(Investigator::Possession.base_id()),
+                &[(Tag::Table, Some(1)), (Tag::Thead, None), (Tag::Tr, None), (Tag::Th, Some(7))],
+            )],
+            Self::Malfunction => vec![join(
+                sheet(Investigator::Possession.base_id()),
+                &[(Tag::Table, Some(1)), (Tag::Thead, None), (Tag::Tr, None), (Tag::Th, Some(8))],
+            )],
+            Self::ArmorPoints => vec![join(
+                sheet(Investigator::Possession.base_id()),
+                &[(Tag::Table, Some(2)), (Tag::Thead, None), (Tag::Tr, None), (Tag::Th, Some(3))],
+            )],
+            Self::Notes => vec![join(
+                sheet(Investigator::Possession.base_id()),
+                &[(Tag::Table, Some(2)), (Tag::Thead, None), (Tag::Tr, None), (Tag::Th, Some(4))],
+            )],
+            Self::Login => {
+                vec![Id::new(&[(Tag::Header, None), (Tag::Label, None), (Tag::Span, None)])]
+            }
+            Self::Create => vec![Id::new(&[
+                (Tag::Main, None),
+                (Tag::Dialog, None),
+                (Tag::Label, Some(CREATE_LABEL)),
+                (Tag::Span, None),
+            ])],
+        }
+    }
+
+    pub fn list() -> &'static [Label] {
+        &[
+            Self::InvestigatorSheet,
+            Self::ManagementData,
+            Self::ChatLog,
+            Self::ChatBox,
+            Self::Pronunciation,
+            Self::Title,
+            Self::Initial,
+            Self::Change,
+            Self::Modifier,
+            Self::Sum,
+            Self::Specialization,
+            Self::BasePercent,
+            Self::OccupationPoints,
+            Self::InterestPoints,
+            Self::Name,
+            Self::Damage,
+            Self::UsesPerRound,
+            Self::Range,
+            Self::Ammunition,
+            Self::Malfunction,
+            Self::ArmorPoints,
+            Self::Notes,
+            Self::Login,
+            Self::Create,
+        ]
+    }
+}
 
 pub fn every_label(language: Language) -> Vec<(Id, &'static str)> {
-    let mut labels = Vec::new();
-    macro_rules! collect {
-        ($($name:ident),+ $(,)?) => {
-            $(labels.extend($name::dom().into_iter().map(|id| (id, $name::display(language))));)+
-        };
-    }
-    collect!(
-        InvestigatorSheet,
-        ManagementData,
-        ChatLog,
-        ChatBox,
-        Pronunciation,
-        Title,
-        Initial,
-        Change,
-        Modifier,
-        Sum,
-        Specialization,
-        BasePercent,
-        OccupationPoints,
-        InterestPoints,
-        Name,
-        Damage,
-        UsesPerRound,
-        Range,
-        Ammunition,
-        Malfunction,
-        ArmorPoints,
-        Notes,
-        Login,
-        Create,
-    );
-    labels.push((skill_head(1), Investigator::Skill.display(language)));
-    labels.push((weapon_head(2), Possession::Weapon.display(language)));
-    labels.push((weapon_head(3), Investigator::Skill.display(language)));
-    labels.push((armor_head(2), Possession::Armor.display(language)));
-    labels
+    Label::list()
+        .iter()
+        .flat_map(|label| label.dom().into_iter().map(|id| (id, label.display(language))))
+        .chain([
+            (
+                join(
+                    sheet(Investigator::Skill.base_id()),
+                    &[(Tag::Table, None), (Tag::Thead, None), (Tag::Tr, None), (Tag::Th, Some(1))],
+                ),
+                Investigator::Skill.display(language),
+            ),
+            (
+                join(
+                    sheet(Investigator::Possession.base_id()),
+                    &[
+                        (Tag::Table, Some(1)),
+                        (Tag::Thead, None),
+                        (Tag::Tr, None),
+                        (Tag::Th, Some(2)),
+                    ],
+                ),
+                Possession::Weapon.display(language),
+            ),
+            (
+                join(
+                    sheet(Investigator::Possession.base_id()),
+                    &[
+                        (Tag::Table, Some(1)),
+                        (Tag::Thead, None),
+                        (Tag::Tr, None),
+                        (Tag::Th, Some(3)),
+                    ],
+                ),
+                Investigator::Skill.display(language),
+            ),
+            (
+                join(
+                    sheet(Investigator::Possession.base_id()),
+                    &[
+                        (Tag::Table, Some(2)),
+                        (Tag::Thead, None),
+                        (Tag::Tr, None),
+                        (Tag::Th, Some(2)),
+                    ],
+                ),
+                Possession::Armor.display(language),
+            ),
+        ])
+        .collect()
 }
-
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Page {
     Html,
@@ -386,16 +547,7 @@ mod tests {
         ))
         .unwrap();
         let labels = every_label(Language::Ja);
-        assert_eq!(
-            labels.len(),
-            4 + 2
-                + (CHARACTERISTIC_HEADS as usize - 1)
-                + (SKILL_HEADS as usize - 1)
-                + 6
-                + 3
-                + 4
-                + 2
-        );
+        assert_eq!(labels.len(), 32);
         for (id, _) in labels {
             let id = html_id(&id);
             assert!(html.contains(&format!("id=\"{id}\"")), "{id}");

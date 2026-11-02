@@ -79,7 +79,7 @@ impl<S: FileStore> Handler<S> {
 
     fn unlock_commands(&mut self) -> Vec<Command> {
         let mut commands = vec![
-            text(Page::DialogHeading.to_dom(), page::Login::display(self.language)),
+            text(Page::DialogHeading.to_dom(), page::Label::Login.display(self.language)),
             toggle(Page::DialogOptions.to_dom(), Attribute::Hidden, true),
             toggle(Page::DialogNumber.to_dom(), Attribute::Hidden, true),
             toggle(Page::DialogNumberInput.to_dom(), Attribute::Disabled, true),
