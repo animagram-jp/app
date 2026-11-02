@@ -19,8 +19,8 @@ use crate::calendar::handler::Handler;
 #[cfg(all(feature = "coc7th", not(feature = "calendar")))]
 use crate::coc7th::handler::Handler;
 use crate::{
-    Error, Input, Output,
-    arena::{APP, RUNNING, emit},
+    Error, Input,
+    arena::{APP, RUNNING, flush},
     event::{
         Event, EventError, Handler as _, Opened, Response, WindowEvent,
         gesture::{Pointer, Thresholds, detect_device},
@@ -209,12 +209,12 @@ impl App {
             .await,
         );
 
-        let (_events, commands) = app.handler.initial_draw();
-        for command in &commands {
-            let mut frame = Vec::new();
-            command.encode(&mut frame);
-            emit(&frame);
+        let (events, commands) = app.handler.initial_draw();
+        app.commands.extend(commands);
+        for event in events {
+            app.run(event);
         }
+        flush(&app);
 
         let slot: *mut Option<App> = &raw mut APP;
         // SAFETY: `init` runs once on the single app thread before `process_event` /

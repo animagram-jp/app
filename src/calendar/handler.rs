@@ -148,6 +148,7 @@ pub struct Handler<S: FileStore> {
     drag:                 Option<Drag>,
     dirty:                bool,
     store:                Option<S>,
+    attached:             bool,
     lost:                 Vec<(u32, Option<Vec<u8>>)>,
     startup:              Vec<Error>,
     viewport_width_in_px: f64,
@@ -163,8 +164,21 @@ impl<S: FileStore> Handler<S> {
             self.startup.push(Error::Data(error));
         }
         self.store = Some(store);
+        self.attached = true;
         self.resources = self.count_resources();
         self.fit_rectgrid();
+    }
+
+    fn load_commands(&self) -> Vec<Command> {
+        if self.loaded() {
+            return self.loaded_commands();
+        }
+        vec![Command::Fetch {
+            request: LOAD_REQUEST,
+            method:  Method::Get,
+            path:    String::from(LOAD_PATH),
+            body:    Vec::new(),
+        }]
     }
 
     pub(crate) fn read(&self, kind: u32) -> Vec<DataStruct> {
@@ -202,6 +216,7 @@ impl<S: FileStore> Handler<S> {
             drag: None,
             dirty: false,
             store: None,
+            attached: false,
             lost: Vec::new(),
             startup: Vec::new(),
             viewport_width_in_px,
@@ -1645,22 +1660,14 @@ impl<S: Mount> event::Handler for Handler<S> {
         commands.extend(self.header_commands());
         commands.extend(language_commands(self.language));
         commands.extend(Language::list().iter().flat_map(|&l| option_commands(l)));
+        let events = store::startup(STORE, &self.startup);
         let failed = !self.startup.is_empty();
         commands.extend(self.startup.drain(..).map(|error| Command::Error { error }));
         if !failed {
-            if self.loaded() {
-                commands.extend(self.loaded_commands());
-            } else {
-                commands.push(Command::Fetch {
-                    request: LOAD_REQUEST,
-                    method:  Method::Get,
-                    path:    String::from(LOAD_PATH),
-                    body:    Vec::new(),
-                });
-            }
+            commands.extend(self.load_commands());
         }
         commands.push(hidden(Target::Body.to_dom(), false));
-        (vec![], commands)
+        (events, commands)
     }
 
     fn process_fetched(&mut self, response: &Response) -> (Vec<Event>, Vec<Command>) {
@@ -1748,7 +1755,15 @@ impl<S: Mount> event::Handler for Handler<S> {
     }
 
     fn process_opened(&mut self, opened: Opened<S>) -> (Vec<Event>, Vec<Command>) {
-        store::opened(&mut self.store, &mut self.lost, opened)
+        let (events, mut commands) = store::opened(&mut self.store, &mut self.lost, opened);
+        if !self.attached
+            && let Some(store) = self.store.take()
+        {
+            self.attach(store);
+            commands.extend(self.startup.drain(..).map(|error| Command::Error { error }));
+            commands.extend(self.load_commands());
+        }
+        (events, commands)
     }
 }
 
@@ -2148,10 +2163,7 @@ mod tests {
     fn initial_draw_tags_the_language() {
         let mut handler = Handler::<MemoryStore>::new(VIEWPORT, today(), REM);
         let (_, commands) = handler.initial_draw();
-        assert_eq!(
-            text_of(&commands, &Target::LanguageOption(Language::Ja).to_dom()).is_some(),
-            true
-        );
+        assert!(text_of(&commands, &Target::LanguageOption(Language::Ja).to_dom()).is_some());
         assert_eq!(lang_of(&commands, &Target::Html.to_dom()).unwrap(), "ja");
         assert_eq!(
             lang_of(&commands, &Target::LanguageOption(Language::list()[0]).to_dom()).unwrap(),
@@ -3794,7 +3806,7 @@ mod tests {
     }
 
     #[test]
-    fn only_an_invalid_handle_asks_for_a_new_one() {
+    fn an_invalid_or_locked_handle_asks_for_a_new_one() {
         let (events, commands) = store::failed(STORE, FileStoreError::InvalidState(String::new()));
         assert!(
             matches!(events.as_slice(), [Event::StoreLost(id)] if id.name == "calendar" && id.version == STORE.version)
@@ -3803,12 +3815,37 @@ mod tests {
             commands.as_slice(),
             [Command::Error { error: Error::FileStore(FileStoreError::InvalidState(_)) }]
         ));
+        let (events, commands) =
+            store::failed(STORE, FileStoreError::NoModificationAllowed(String::new()));
+        assert!(matches!(events.as_slice(), [Event::StoreLost(_)]));
+        assert!(matches!(
+            commands.as_slice(),
+            [Command::Error { error: Error::FileStore(FileStoreError::NoModificationAllowed(_)) }]
+        ));
         let (events, commands) = store::failed(STORE, FileStoreError::QuotaExceeded(String::new()));
         assert!(events.is_empty());
         assert!(matches!(
             commands.as_slice(),
             [Command::Error { error: Error::FileStore(FileStoreError::QuotaExceeded(_)) }]
         ));
+    }
+
+    #[test]
+    fn a_locked_store_at_startup_is_opened_again_and_then_loaded() {
+        let mut handler = Handler::<MemoryStore>::new(VIEWPORT, today(), REM);
+        handler
+            .startup
+            .push(Error::FileStore(FileStoreError::NoModificationAllowed(String::new())));
+        let (events, commands) = handler.initial_draw();
+        assert!(matches!(events.as_slice(), [Event::StoreLost(id)] if id.name == STORE.name));
+        assert!(!commands.iter().any(|command| matches!(command, Command::Fetch { .. })));
+        assert!(!handler.attached);
+
+        let opened = block_on(MemoryStore::open(STORE, true));
+        let (events, commands) = handler.process_opened(opened);
+        assert!(events.is_empty());
+        assert!(handler.attached);
+        assert!(commands.iter().any(|command| matches!(command, Command::Fetch { .. })));
     }
 
     fn save_pressed<S: Mount>(handler: &mut Handler<S>) -> (Vec<Event>, Vec<Command>) {

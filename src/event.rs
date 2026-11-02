@@ -173,19 +173,29 @@ pub mod store {
                 (vec![], vec![])
             }
             Err(error) => {
-                (vec![], vec![Command::Error { error: Error::FileStore(error) }, Command::Reload])
+                let reload = !matches!(error, FileStoreError::NoModificationAllowed(_));
+                let mut commands = vec![Command::Error { error: Error::FileStore(error) }];
+                if reload {
+                    commands.push(Command::Reload);
+                }
+                (vec![], commands)
             }
         }
     }
 
+    pub fn retryable(error: &FileStoreError) -> bool {
+        matches!(error, FileStoreError::InvalidState(_) | FileStoreError::NoModificationAllowed(_))
+    }
+
     pub fn failed(id: StoreId, error: FileStoreError) -> (Vec<Event>, Vec<Command>) {
-        match error {
-            FileStoreError::InvalidState(_) => (
-                vec![Event::StoreLost(id)],
-                vec![Command::Error { error: Error::FileStore(error) }],
-            ),
-            _ => (vec![], vec![Command::Error { error: Error::FileStore(error) }]),
-        }
+        let events = if retryable(&error) { vec![Event::StoreLost(id)] } else { vec![] };
+        (events, vec![Command::Error { error: Error::FileStore(error) }])
+    }
+
+    pub fn startup(id: StoreId, errors: &[Error]) -> Vec<Event> {
+        let retry =
+            errors.iter().any(|error| matches!(error, Error::FileStore(error) if retryable(error)));
+        if retry { vec![Event::StoreLost(id)] } else { vec![] }
     }
 }
 

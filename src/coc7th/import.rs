@@ -34,7 +34,6 @@ pub struct Imported {
     pub skipped:      Vec<String>,
 }
 
-#[derive(Default)]
 struct Slots {
     next_id:        u32,
     art_and_craft:  u8,
@@ -47,6 +46,17 @@ struct Slots {
 }
 
 impl Slots {
+    const EMPTY: Self = Self {
+        next_id:        CUSTOM_ID_BASE,
+        art_and_craft:  0,
+        fighting:       0,
+        firearms:       0,
+        language_other: 0,
+        pilot:          0,
+        science:        0,
+        survival:       0,
+    };
+
     fn ids(&mut self) -> [u32; 2] {
         let ids = [self.next_id, self.next_id + 1];
         self.next_id += 2;
@@ -63,7 +73,7 @@ pub fn import(body: &[u8], now_in_ms: u64) -> Result<Imported, DataError> {
     let id = root.get("ID").and_then(Value::as_u64).unwrap_or(0) as u32;
     let mut investigator = DataStruct::new(id, now_in_ms, SCHEMA_SIZE);
     let mut skipped = Vec::new();
-    let mut slots = Slots { next_id: CUSTOM_ID_BASE, ..Slots::default() };
+    let mut slots = Slots::EMPTY;
 
     if let Some(profile) = root.get("Profile") {
         profile_into(&mut investigator, profile)?;

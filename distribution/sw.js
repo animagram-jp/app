@@ -2,21 +2,8 @@ const VERSION = "{version}";
 const SITES = {
     "./calendar/": [
         "./calendar/",
-        "./calendar/init.js?v={version}",
-        "./calendar/worker.js?v={version}",
         "./calendar/app/app_bg.wasm?v={version}",
         "./calendar/app/app.js?v={version}",
-        "./calendar/css/library/reset.css?v={version}",
-        "./calendar/css/library/base.css?v={version}",
-        "./calendar/css/library/data_style.css?v={version}",
-        "./calendar/css/library/data_size.css?v={version}",
-        "./calendar/css/library/data_sign.css?v={version}",
-        "./calendar/css/library/data_group.css?v={version}",
-        "./calendar/css/library/button.css?v={version}",
-        "./calendar/css/library/heading.css?v={version}",
-        "./calendar/css/library/table.css?v={version}",
-        "./calendar/css/library/popup.css?v={version}",
-        "./calendar/css/library/slider.css?v={version}",
         "./calendar/css/style.css?v={version}",
         "./calendar/data/calendar.json",
     ],
@@ -38,6 +25,7 @@ const SITES = {
         "./css/library/radio.css?v={version}",
         "./css/library/heading.css?v={version}",
         "./css/library/popup.css?v={version}",
+        "./css/library/slider.css?v={version}",
         "./css/library/table.css?v={version}",
         "./css/library/list.css?v={version}",
         "./css/library/step.css?v={version}",
@@ -64,11 +52,13 @@ self.addEventListener("install", (e) => {
         caches.open(VERSION).then(c =>
             Promise.allSettled(PRECACHE.map(url => c.add(url)))
         ).then(results => {
+            const failed = results.map((r, i) => r.status === "rejected" ? PRECACHE[i] : null).filter(Boolean);
             results.forEach((r, i) => {
                 if (r.status === "rejected") {
                     console.warn(`sw: precache failed for ${PRECACHE[i]}`, r.reason);
                 }
             });
+            if (failed.length > 0) throw new Error(`sw: precache incomplete: ${failed.join(", ")}`);
         }).then(() => self.skipWaiting())
     );
 });
@@ -106,11 +96,16 @@ self.addEventListener("fetch", (e) => {
     if (is_navigate) {
         e.respondWith(
             fetch(req).then((raw_res) => {
+                if (raw_res.type === "opaqueredirect") return raw_res;
                 const res = response_cross_origin_isolation(raw_res);
                 const copy = res.clone();
                 e.waitUntil(caches.open(VERSION).then((c) => c.put(req, copy)));
                 return res;
-            }).catch(() => caches.match(req).then((r) => r ?? caches.match(`.${base_of(url.pathname)}`)).then((r) => r && response_cross_origin_isolation(r)))
+            }).catch(() => {
+                const base = BASES.find((base) => `${url.pathname}/` === base);
+                if (base) return Response.redirect(new URL(`${base}${url.search}`, self.location.href), 307);
+                return caches.match(req).then((r) => r ?? caches.match(`.${base_of(url.pathname)}`)).then((r) => r && response_cross_origin_isolation(r));
+            })
         );
         return;
     }

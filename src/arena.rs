@@ -19,7 +19,10 @@ use wasm_bindgen::prelude::wasm_bindgen;
 
 use crate::{Error, Output, WireError, app::App};
 #[cfg(all(target_arch = "wasm32", target_feature = "atomics"))]
-use crate::{app::Store, file_store::Mount};
+use crate::{
+    app::{Store, now_in_ms},
+    file_store::{FileStoreError, Mount, StoreId},
+};
 
 // === ring ===
 
@@ -253,7 +256,7 @@ pub fn process_event() {
     flush(app);
 }
 
-fn flush(app: &App) {
+pub(crate) fn flush(app: &App) {
     let mut frame = Vec::new();
     let emitted = app.commands().iter().all(|command| {
         frame.clear();
@@ -266,8 +269,14 @@ fn flush(app: &App) {
 }
 
 #[cfg(all(target_arch = "wasm32", target_feature = "atomics"))]
+pub const REOPEN_INTERVAL_IN_MS: u64 = 250;
+#[cfg(all(target_arch = "wasm32", target_feature = "atomics"))]
+pub const REOPEN_ATTEMPTS: u32 = 40;
+
+#[cfg(all(target_arch = "wasm32", target_feature = "atomics"))]
 #[wasm_bindgen]
 pub async fn serve_event() {
+    let mut retry: Option<(StoreId, u32, u64)> = None;
     while RUNNING.load(Ordering::Relaxed) {
         process_event();
         {
@@ -276,25 +285,40 @@ pub async fn serve_event() {
             // and taken again after it.
             let wanted = unsafe { (*slot).as_mut() }.and_then(App::reopen_wanted);
             if let Some(id) = wanted {
-                let opened = Store::open(id, true).await;
-                // SAFETY: same as above; nothing else borrows `APP` across the `await`.
-                if let Some(app) = unsafe { (*slot).as_mut() } {
-                    app.clear();
-                    app.opened(opened);
-                    flush(app);
+                retry = Some((id, 0, 0));
+            }
+            if let Some((id, attempts, due_in_ms)) = retry
+                && now_in_ms() >= due_in_ms
+            {
+                match Store::open(id, true).await {
+                    Err(FileStoreError::NoModificationAllowed(_)) if attempts < REOPEN_ATTEMPTS => {
+                        retry = Some((id, attempts + 1, now_in_ms() + REOPEN_INTERVAL_IN_MS));
+                    }
+                    opened => {
+                        retry = None;
+                        // SAFETY: same as above; nothing else borrows `APP` across the `await`.
+                        if let Some(app) = unsafe { (*slot).as_mut() } {
+                            app.clear();
+                            app.opened(opened);
+                            flush(app);
+                        }
+                    }
                 }
                 continue;
             }
         }
         let write = ARENA.get_write_count(EVENT_RING);
         if ARENA.get_read_count(EVENT_RING) == write {
+            let timeout_in_ns = retry.map_or(-1, |(_, _, due_in_ms)| {
+                (due_in_ms.saturating_sub(now_in_ms()) * 1_000_000) as i64
+            });
             // SAFETY: the counter pointer is 4-aligned shared memory (see `counter_at`), and
             // `serve_event` only runs on the dedicated worker, where `memory.atomic.wait32`
             // is permitted (the main thread would trap).
             unsafe {
                 let pointer =
                     ARENA.counter_at(EVENT_RING.start, COUNTER_WRITE_OFFSET).as_ptr() as *mut i32;
-                memory_atomic_wait32(pointer, write as i32, -1);
+                memory_atomic_wait32(pointer, write as i32, timeout_in_ns);
             }
         }
     }

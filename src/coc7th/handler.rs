@@ -120,6 +120,7 @@ impl<S: Mount> event::Handler for Handler<S> {
     }
 
     fn initial_draw(&mut self) -> (Vec<Event>, Vec<Command>) {
+        let events = store::startup(CHARACTER_STORE, &self.startup);
         let mut commands = Vec::new();
         commands.extend(self.startup.drain(..).map(|error| Command::Error { error }));
         commands.extend(language_commands(self.language));
@@ -137,7 +138,7 @@ impl<S: Mount> event::Handler for Handler<S> {
             id:        Page::Body.to_dom(),
             attribute: Attribute::Hidden,
         });
-        (vec![], commands)
+        (events, commands)
     }
 
     fn process_fetched(&mut self, response: &Response) -> (Vec<Event>, Vec<Command>) {
