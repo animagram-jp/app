@@ -1,4 +1,4 @@
-use alloc::{format, string::String, vec::Vec};
+use alloc::{format, vec::Vec};
 use core::{
     iter::Iterator,
     option::Option::{self, None, Some},
