@@ -2163,10 +2163,7 @@ mod tests {
     fn initial_draw_tags_the_language() {
         let mut handler = Handler::<MemoryStore>::new(VIEWPORT, today(), REM);
         let (_, commands) = handler.initial_draw();
-        assert_eq!(
-            text_of(&commands, &Target::LanguageOption(Language::Ja).to_dom()).is_some(),
-            true
-        );
+        assert!(text_of(&commands, &Target::LanguageOption(Language::Ja).to_dom()).is_some());
         assert_eq!(lang_of(&commands, &Target::Html.to_dom()).unwrap(), "ja");
         assert_eq!(
             lang_of(&commands, &Target::LanguageOption(Language::list()[0]).to_dom()).unwrap(),
