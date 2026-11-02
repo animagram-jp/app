@@ -133,7 +133,7 @@ sh reference/build.sh
 |-|-|
 | lib.rs | `WireError` と `wire_error!`、ワイヤ形式の `Input` / `Output`(LE、u32 長さ前置の slice / str)、`Decimal`、`scalar!` / `wire_enum!`、`parse` / `stringify`。 |
 | app.rs | - initとprocessの公開apiを持つ、Appインスタンス。eventsとcommandsの2つのキューを持ち、handler::Handler.process_*へevents消費を移譲ループする。保存するアプリに共通の`StoreLost`(ストアの失効)は、ここで`serve_event`への「開き直したい」要求(`reopen`)に変え、`StoreOpened`は`Handler`へ渡す。 |
-| arena.rs | JavaScriptとappが共有するメモリのレイアウトと、event / commandのリングバッファ。`serve_event`(async)が、処理待ちの要求があれば`Store::open`をawaitして、結果を`App::opened`に渡す。 |
+| arena.rs | JavaScriptとappが共有するメモリのレイアウトと、event / commandのリングバッファ。`serve_event`(async)が、処理待ちの要求があれば`Store::open`をawaitして、結果を`App::opened`に渡す。ロック競合(`NoModificationAllowed`)は`REOPEN_INTERVAL_IN_MS`間隔で`REOPEN_ATTEMPTS`回まで、イベント待ちのタイムアウトとして開き直す。 |
 | host.rs | ホストとの境界。Command, Eventのフレーム形式(operation番号 / event種別)、DOM語彙(dom::Id、Attribute、StyleProperty など)。 |
 | list.rs | 可変長論理バイト列の宣言と、固定長要素列操作Listと可変長(バイト倍数)要素列操作VariabeList。バイト列読み取り関数new_from_bytesとget_from_bytesも含む。 |
 | field.rs | ビットフィールド(position, mask)の汎用get/set。timestampやobjectのビット配置の定義に使う。 |
@@ -142,7 +142,7 @@ sh reference/build.sh
 | data_struct.rs | データモデル固有のフィールド数(schema_size)固定Listと可変部VariableListによるデータインスタンス操作モジュール。フィールド1にid(u32), 2にcreated_at(timestamp), 3にmodified_at(timestamp)を確定し、4~を開放。 |
 | object.rs | オブジェクト定義の共通部。`SubjectTrait`(schema_size, ids, 表示)、`Predicate`(ids / parse / encode / read / write)。 |
 | coc7th/ | CoC7thアプリ。character(`Dice`と`dice`(表示・ロール)を含む。ドメイン固有のデータモデルの全フィールドとロジックを、各自公開されたenumのネスト群で表現したモジュール。関数はitemのドメイン意味(表示)を定義する`label`, 一意なschema_idを発行する`id`, バイト列とdomからの流入(u32,str,f64)を相互変換する`read` / `write`, 値の表示を導出する`display`などを各enum itemに対して定義する。)、handler(canvasを操作する、ドメイン固有のステートを持つHandler定義。Handlerは、DataStructと、フィールド4~schema_sizeまでの操作ロジックを定義するobjectを束ねて操作を行う。hostのdom::Idとobjectのフィールドを相互にバルクマッピングする関数を定義して、canvasと内部データを相互変換する。)、roll(ロール種別と成功度) |
-| event.rs | appが受け取るeventの型(Canvas / Gesture / Window / Fetch、ワイヤに出ない内部のGesture / Fetched / StoreLost)、各アプリのHandlerが実装する`Handler` trait(`type Store: FileStore`。process_*はデフォルト実装が空)、`store`(open / lost / opened / failed。StoreLost / `App::opened` に対するストアの生存周期を関数で提供)、`gesture`(Pointer によるジェスチャー認識、Thresholds)。ワイヤからのデコードは host.rs が持つ。 |
+| event.rs | appが受け取るeventの型(Canvas / Gesture / Window / Fetch、ワイヤに出ない内部のGesture / Fetched / StoreLost)、各アプリのHandlerが実装する`Handler` trait(`type Store: FileStore`。process_*はデフォルト実装が空)、`store`(open / lost / opened / failed / startup / retryable。StoreLost / `App::opened` に対するストアの生存周期を関数で提供。起動時の開き損ねも`retryable`なら`startup`が`StoreLost`に変える)、`gesture`(Pointer によるジェスチャー認識、Thresholds)。ワイヤからのデコードは host.rs が持つ。 |
 | calendar/ | カレンダーアプリ(feature `calendar`)。data(レコード定義と、JSONの`import` / `export`。全レコードが同じschema_sizeのDataStructで、種別はフィールド4(kind)、FileStoreのidはissue_idで採番する。このidは他のレコードに書かず、参照はJSONと同じ`uid`(資源)と`code`(状態・カテゴリ)で持つ。削除は参照元を書き換えず、参照先が無いことを「削除済み」として読む側が扱う)、grid / target(座標・レーン・DOM対応)、handler(`Calendar`のような集約を持たず、`FileStore`を走査して読み書きする。編集も削除もモーダルではメモリ操作で、save / discardの判断はhandler)。 |
 | credential.rs | 認証プロトコル。email の正規化、`salt` / `authentication_key` / `wrap_key` の HKDF 導出、`stretch`(Argon2id、feature `vault`)、`verifier` / `verify`(HMAC + 定数時間比較)、`digest`、`hex`。server と共有する。 |
 | vault.rs | `root_key` の生成と `wrap_key` による包み込み、store 名ごとの `store_key`、レコードの AEAD(XChaCha20-Poly1305、`key` を AAD に束ねる)。 |
