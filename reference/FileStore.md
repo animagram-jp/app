@@ -4,7 +4,7 @@
 
 ファイルシステムの基礎的なAPIを使って、保存時のエラーハンドリングを適切に行うための操作関数を公開するモジュールを、ストアの1つとしてファイルストアと呼ぶ。本システムにおいて、ストアはディスク上のデータ構造ではなく、あくまでメモリ上の実行体である。ファイルストアは永続化の責務を、公開される操作関数の追加として表現する。
 
-- Storeの基本的な操作関数
+- ストアの基本的な操作関数
 
 | 関数 | 引数 | 戻り値 | 意味 |
 |-|-|-|-|
@@ -23,7 +23,7 @@
 | 関数 | 引数 | 戻り値 | 意味 |
 |-|-|-|-|
 | save    | &mut self | `Result<(), FileStoreError>` | 検証済み末尾（`log_end`）を超える torn 残留を切除した上で、`unsaved`（Set）と `deleted`（Delete）をまとめて検証済み末尾に一括 append し、成功時に両方 clear して `log_end` を進める。デフォルト実装 |
-| discard | &mut self | `Result<(), FileStoreError>` | rollback。`unsaved`/`deleted` を破棄し、`memory` を flush 確認済みの確定状態（`snapshot`+`log[..log_end]` を読み直したもの）に巻き戻す。ディスクへの書き込みは一切行わない。デフォルト実装 |
+| discard | &mut self | `Result<(), FileStoreError>` | `unsaved`/`deleted` を破棄し、`memory` を flush 確認済みの確定状態（`snapshot`+`log[..log_end]` を読み直したもの）に巻き戻す。ディスクへの書き込みは一切行わない。デフォルト実装 |
 | `compact` | `&mut self` | `Result<(), FileStoreError>` | snapshot/log（`log[..log_end]`）を読み直した一時的な状態（memory は参照しない）の全件を、まず log の末尾に追記し、そのあと snapshot を再構築し、log を空にする。デフォルト実装 |
 | close   | &self | | snapshot/log を閉じる。実装ごとに書く |
 
