@@ -1,0 +1,8 @@
+{
+  "name": "app",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "eruda": "3.4.3"
+  }
+}

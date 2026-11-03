@@ -3,6 +3,7 @@
 !CONTRIBUTING.md
 
 .claude/
+node_modules/
 *.fxsnapshot
 
 Cargo.lock
