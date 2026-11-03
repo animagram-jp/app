@@ -1,7 +1,6 @@
 #[cfg(all(feature = "server", not(target_arch = "wasm32")))]
 use alloc::collections::BTreeMap;
 use alloc::{
-    fmt::{self, Display, Formatter},
     format,
     string::{String, ToString},
     vec::Vec,
@@ -9,6 +8,7 @@ use alloc::{
 #[cfg(all(feature = "server", not(target_arch = "wasm32")))]
 use core::option::Option::None;
 use core::{
+    fmt::{self, Display, Formatter},
     option::Option::{self, Some},
     primitive::{u8, u16, u32, u64, usize},
     result::Result::{self, Err, Ok},

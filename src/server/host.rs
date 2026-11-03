@@ -1,13 +1,14 @@
 use alloc::{sync::Arc, vec::Vec};
 use core::{
+    fmt::{self, Display, Formatter},
+    net::SocketAddr,
     primitive::{u64, usize},
     result::Result::{self, Err, Ok},
     time::Duration,
 };
 use std::{
-    fmt::{self, Display, Formatter},
     io::{self, ErrorKind, Read, Write},
-    net::{SocketAddr, TcpListener, TcpStream},
+    net::{TcpListener, TcpStream},
     sync::Mutex,
     thread,
     time::{SystemTime, UNIX_EPOCH},

@@ -19,20 +19,12 @@
 use alloc::collections::BTreeSet;
 #[cfg(feature = "file_store")]
 use alloc::string::ToString;
-use alloc::{
-    collections::BTreeMap,
-    fmt,
-    fmt::{Display, Formatter},
-    format,
-    rc::Rc,
-    string::String,
-    vec,
-    vec::Vec,
-};
+use alloc::{collections::BTreeMap, format, rc::Rc, string::String, vec, vec::Vec};
 use core::{
     cell::{Cell, RefCell},
     clone::Clone,
     cmp::PartialEq,
+    fmt::{self, Display, Formatter},
     future::{Future, ready},
     option::Option::{self, None, Some},
     primitive::{u8, u32},
@@ -72,13 +64,12 @@ use crate::{Input, WireError};
 fn fletcher32(data: &[u8]) -> u32 {
     let mut sum1: u32 = 0;
     let mut sum2: u32 = 0;
-    let mut chunks = data.chunks_exact(2);
-    for chunk in &mut chunks {
-        let word = u16::from_le_bytes([chunk[0], chunk[1]]) as u32;
+    let (chunks, remainder) = data.as_chunks::<2>();
+    for chunk in chunks {
+        let word = u16::from_le_bytes(*chunk) as u32;
         sum1 = (sum1 + word) % 65535;
         sum2 = (sum2 + sum1) % 65535;
     }
-    let remainder = chunks.remainder();
     if !remainder.is_empty() {
         sum1 = (sum1 + remainder[0] as u32) % 65535;
         sum2 = (sum2 + sum1) % 65535;
@@ -997,10 +988,8 @@ impl FsStore {
     }
 
     fn open_file(path: &Path, create: bool) -> Result<OsFile, FileStoreError> {
-        if create {
-            if let Some(parent) = path.parent() {
-                fs::create_dir_all(parent).map_err(|e| classify_io("create_dir_all", e))?;
-            }
+        if create && let Some(parent) = path.parent() {
+            fs::create_dir_all(parent).map_err(|e| classify_io("create_dir_all", e))?;
         }
         OpenOptions::new()
             .read(true)
@@ -1406,12 +1395,12 @@ pub mod cases {
                 self.calls.borrow_mut().push((display(file), access));
                 return Ok(0);
             }
-            if let Some((index, Hit::Partial(n))) = self.at.get() {
-                if index == self.calls.borrow().len() {
-                    self.calls.borrow_mut().push((display(file), access));
-                    self.inner.write_at(file, &data[..n as usize], at)?;
-                    return Err(forge_error());
-                }
+            if let Some((index, Hit::Partial(n))) = self.at.get()
+                && index == self.calls.borrow().len()
+            {
+                self.calls.borrow_mut().push((display(file), access));
+                self.inner.write_at(file, &data[..n as usize], at)?;
+                return Err(forge_error());
             }
             if self.fail_writes_to.get() == Some(display(file)) {
                 self.calls.borrow_mut().push((display(file), access));

@@ -81,10 +81,10 @@ impl DataStruct {
                 SetOutcome::Created(new_id)
             }
         };
-        if schema_id != ID_MODIFIED_AT {
-            if let Some(t) = now_in_ms {
-                self.set(ID_MODIFIED_AT, &encode_time(t), None)?;
-            }
+        if schema_id != ID_MODIFIED_AT
+            && let Some(t) = now_in_ms
+        {
+            self.set(ID_MODIFIED_AT, &encode_time(t), None)?;
         }
         Ok(outcome)
     }
@@ -176,10 +176,10 @@ impl DataStruct {
     pub fn compact(&mut self) -> Result<BTreeMap<u32, u32>, VariableListError> {
         let remap = self.values.compact()?;
         for i in 0..self.index.data.len() as u32 {
-            if let Ok(&v) = self.index.get(&i) {
-                if let Some(&new_id) = remap.get(&v) {
-                    self.index.set(&i, new_id, false, false).map_err(VariableListError::List)?;
-                }
+            if let Ok(&v) = self.index.get(&i)
+                && let Some(&new_id) = remap.get(&v)
+            {
+                self.index.set(&i, new_id, false, false).map_err(VariableListError::List)?;
             }
         }
         Ok(remap)
@@ -243,8 +243,10 @@ impl<'a> Instance<'a> {
             index:       List {
                 data: self
                     .index
-                    .chunks_exact(4)
-                    .map(|b| u32::from_le_bytes(b.try_into().unwrap()))
+                    .as_chunks::<4>()
+                    .0
+                    .iter()
+                    .map(|&b| u32::from_le_bytes(b))
                     .collect(),
             },
             values:      VariableList::new_from_bytes(self.values_index, self.values_data),

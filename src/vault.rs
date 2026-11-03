@@ -1,9 +1,9 @@
 use alloc::{
-    fmt::{self, Display, Formatter},
     string::{String, ToString},
     vec::Vec,
 };
 use core::{
+    fmt::{self, Display, Formatter},
     primitive::{str, u8, u16, usize},
     result::Result::{self, Err, Ok},
 };

@@ -180,8 +180,10 @@ impl VariableList {
     pub fn new_from_bytes(index: &[u8], data: &[u8]) -> Self {
         Self {
             index: index
-                .chunks_exact(WORD)
-                .map(|b| u32::from_le_bytes(b.try_into().unwrap()) as usize)
+                .as_chunks::<WORD>()
+                .0
+                .iter()
+                .map(|&b| u32::from_le_bytes(b) as usize)
                 .collect(),
             data:  data.to_vec(),
         }

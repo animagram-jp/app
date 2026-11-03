@@ -1,10 +1,8 @@
-use std::{
-    env, fs,
-    net::SocketAddr,
-    path::PathBuf,
-    process::ExitCode,
-    sync::{Arc, Mutex},
-};
+extern crate alloc;
+
+use alloc::sync::Arc;
+use core::net::SocketAddr;
+use std::{env, fs, path::PathBuf, process::ExitCode, sync::Mutex};
 
 use app::{
     file_store::FsStore,

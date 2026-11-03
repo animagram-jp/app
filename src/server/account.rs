@@ -1,11 +1,11 @@
 use alloc::{
     collections::{BTreeMap, BTreeSet},
-    fmt::{self, Display, Formatter},
     format,
     string::{String, ToString},
     vec::Vec,
 };
 use core::{
+    fmt::{self, Display, Formatter},
     option::Option::{self, Some},
     primitive::{str, u8, u16, u32, u64, usize},
     result::Result::{self, Err, Ok},

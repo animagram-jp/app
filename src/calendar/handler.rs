@@ -283,14 +283,14 @@ impl<S: FileStore> Handler<S> {
             None => DragKind::Move,
         };
         let mut commands = vec![];
-        if let DragKind::Resize { corner, .. } = &kind {
-            if let Some(cursor) = corner_cursor(*corner) {
-                commands.push(style(
-                    Target::Card(n).to_dom(),
-                    StyleProperty::Cursor,
-                    StyleValue::Keyword(cursor),
-                ));
-            }
+        if let DragKind::Resize { corner, .. } = &kind
+            && let Some(cursor) = corner_cursor(*corner)
+        {
+            commands.push(style(
+                Target::Card(n).to_dom(),
+                StyleProperty::Cursor,
+                StyleValue::Keyword(cursor),
+            ));
         }
         self.drag = Some(Drag {
             n,

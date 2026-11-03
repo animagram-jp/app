@@ -278,9 +278,11 @@ pub mod appointment {
                 return Vec::new();
             };
             input
-                .chunks_exact(Stamp::BYTES + size_of::<u128>())
+                .as_chunks::<{ Stamp::BYTES + size_of::<u128>() }>()
+                .0
+                .iter()
                 .take(count as usize)
-                .filter_map(parse::<Place>)
+                .filter_map(|chunk| parse::<Place>(chunk))
                 .collect()
         }
 
@@ -567,6 +569,7 @@ fn format_error(kind: &str, text: &str) -> DataError {
 
 #[cfg(test)]
 mod tests {
+    use alloc::string::String;
     use std::fs;
 
     use super::{

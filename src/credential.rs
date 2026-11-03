@@ -1,12 +1,11 @@
 use alloc::{
-    fmt::{self, Display, Formatter},
     string::{String, ToString},
     vec::Vec,
 };
 use core::{
     clone::Clone,
     cmp::PartialEq,
-    fmt::Debug,
+    fmt::{self, Debug, Display, Formatter},
     marker::Copy,
     option::Option,
     primitive::{str, u8, u16, u32, usize},
@@ -197,7 +196,9 @@ pub fn from_hexadecimal(text: &str) -> Option<Vec<u8>> {
         return None;
     }
     text.as_bytes()
-        .chunks_exact(2)
+        .as_chunks::<2>()
+        .0
+        .iter()
         .map(|pair| {
             let high = (pair[0] as char).to_digit(16)?;
             let low = (pair[1] as char).to_digit(16)?;
