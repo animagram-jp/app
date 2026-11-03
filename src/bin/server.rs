@@ -13,21 +13,23 @@ use app::{
     },
 };
 
-const ADDRESS: &str = "127.0.0.1:2001";
 const THREAD_COUNT: usize = 4;
 const PEPPER_LENGTH_MIN: usize = 32;
 const ALLOWLIST: &str = "allowlist";
 const PEPPER_CREDENTIAL: &str = "pepper";
 
 fn main() -> ExitCode {
-    let address: SocketAddr =
-        match env::var("SERVER_ADDRESS").unwrap_or_else(|_| ADDRESS.to_string()).parse() {
-            Ok(address) => address,
-            Err(error) => {
-                eprintln!("SERVER_ADDRESS: {error}");
-                return ExitCode::from(2);
-            }
-        };
+    let address: SocketAddr = match env::var("SERVER_ADDRESS").map(|value| value.parse()) {
+        Ok(Ok(address)) => address,
+        Ok(Err(error)) => {
+            eprintln!("SERVER_ADDRESS: {error}");
+            return ExitCode::from(2);
+        }
+        Err(_) => {
+            eprintln!("SERVER_ADDRESS: bind address is required");
+            return ExitCode::from(2);
+        }
+    };
     let thread_count = env::var("SERVER_WORKERS")
         .ok()
         .and_then(|value| value.parse().ok())

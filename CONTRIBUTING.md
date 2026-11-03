@@ -76,6 +76,17 @@ set -a; . ./.env; . ./.secrets; set +a
 cargo run --features server --bin server
 ```
 
+| 環境変数 | 内容 |
+|-|-|
+| `SERVER_ADDRESS` | bind アドレス(必須。`127.0.0.1:2001` など) |
+| `SERVER_WORKERS` | accept スレッド数(既定 4) |
+| `SERVER_DATA` | データディレクトリ(必須。[Server.md](./reference/Server.md) のパス表) |
+| `SERVER_ORIGIN` | 変更系リクエストに要求する `Origin`(カンマ区切り、未設定なら検証しない) |
+| `SERVER_PEPPER` | pepper ファイルのパス。未設定なら `$CREDENTIALS_DIRECTORY/pepper`(systemd credential)を読む。32 bytes 以上 |
+
+- 開発環境では `.secrets` に `SERVER_PEPPER=.pepper` を置く。本番は systemd の `LoadCredentialEncrypted` で渡し、環境変数に秘密を置かない。
+- `allowlist` は起動時に 1 度だけ読む。追加後は再起動。
+
 ### Headless browser test
 
 - [Mozzilla: fire fox](https://support.mozilla.org/en/kb/install-firefox-linux)
