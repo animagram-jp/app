@@ -10,7 +10,7 @@ use core::{
 
 use super::grid::{AXES, Axis};
 use crate::{
-    Language,
+    ColorScheme, Language,
     credential::Field,
     host::dom::{Id, Tag},
 };
@@ -29,6 +29,7 @@ const RELOAD_BUTTON: u32 = 1;
 const SAVE_BUTTON: u32 = 2;
 pub const STEP_TODAY: u32 = 3;
 const LANGUAGE_LIST: u32 = 3;
+const APPEARANCE_LIST: u32 = 2;
 const SUBMIT_BUTTON: u32 = 1;
 const DELETE_BUTTON: u32 = 2;
 
@@ -97,6 +98,7 @@ pub enum Target {
     Reload,
     Save,
     LanguageOption(Language),
+    AppearanceOption(ColorScheme),
     Unlock,
     UnlockName,
     TimeAxis,
@@ -180,6 +182,14 @@ impl Target {
             Self::LanguageOption(l) => {
                 join(header(), &[(Tag::Div, Some(LANGUAGE_LIST)), (Tag::Button, Some(l.number()))])
             }
+            Self::AppearanceOption(c) => join(
+                header(),
+                &[
+                    (Tag::Div, Some(APPEARANCE_LIST)),
+                    (Tag::Label, Some(c.number())),
+                    (Tag::Input, None),
+                ],
+            ),
             Self::Unlock => join(header(), &[(Tag::Label, None), (Tag::Input, None)]),
             Self::UnlockName => join(header(), &[(Tag::Label, None), (Tag::Span, None)]),
             Self::TimeAxis => Vec::from([(Tag::Main, None), (Tag::Ol, None)]),
@@ -335,6 +345,12 @@ impl Target {
             [(Tag::Header, None), (Tag::Div, Some(LANGUAGE_LIST)), (Tag::Button, Some(n))] => {
                 Self::LanguageOption(*Language::list().iter().find(|l| l.number() == *n)?)
             }
+            [
+                (Tag::Header, None),
+                (Tag::Div, Some(APPEARANCE_LIST)),
+                (Tag::Label, Some(n)),
+                (Tag::Input, None),
+            ] => Self::AppearanceOption(*ColorScheme::list().iter().find(|c| c.number() == *n)?),
             _ => return None,
         })
     }
@@ -375,6 +391,7 @@ mod tests {
             Target::Submit(Submit),
             Target::Delete,
         ]);
+        targets.extend(ColorScheme::list().iter().map(|&c| Target::AppearanceOption(c)));
         targets.extend(AXES.map(Target::Axis));
         targets.extend(AXES.map(Target::AxisName));
         targets.extend(FIELDS.map(Target::EditField));

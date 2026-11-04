@@ -9,7 +9,7 @@ use core::{
 };
 
 use crate::{
-    Language,
+    ColorScheme, Language,
     coc7th::investigator::{Investigator, Possession, Profile, join, sheet},
     credential::Field,
     host::dom::{Id, Tag},
@@ -20,6 +20,7 @@ const INVESTIGATOR_BUTTON: u32 = 1;
 const DICE_BUTTON: u32 = 2;
 const APPEARANCE_BUTTON: u32 = 3;
 const INVESTIGATOR_LIST: u32 = 1;
+const APPEARANCE_LIST: u32 = 2;
 const LANGUAGE_LIST: u32 = 3;
 const SHEET_SECTION: u32 = 1;
 const CHAT_LOG_SECTION: u32 = 2;
@@ -342,6 +343,7 @@ pub enum Page {
     Dice,
     Save,
     Appearance,
+    AppearanceOption(ColorScheme),
     LanguageOption(Language),
     Unlock,
     Sheet,
@@ -381,6 +383,11 @@ impl Page {
             Self::Dice => header(&[(Tag::Button, Some(DICE_BUTTON))]),
             Self::Save => header(&[(Tag::Input, None)]),
             Self::Appearance => header(&[(Tag::Button, Some(APPEARANCE_BUTTON))]),
+            Self::AppearanceOption(c) => header(&[
+                (Tag::Div, Some(APPEARANCE_LIST)),
+                (Tag::Label, Some(c.number())),
+                (Tag::Input, None),
+            ]),
             Self::LanguageOption(l) => {
                 header(&[(Tag::Div, Some(LANGUAGE_LIST)), (Tag::Button, Some(l.number()))])
             }
@@ -430,6 +437,12 @@ impl Page {
             [(Tag::Header, None), (Tag::Div, Some(LANGUAGE_LIST)), (Tag::Button, Some(n))] => {
                 Self::LanguageOption(*Language::list().iter().find(|l| l.number() == *n)?)
             }
+            [
+                (Tag::Header, None),
+                (Tag::Div, Some(APPEARANCE_LIST)),
+                (Tag::Label, Some(n)),
+                (Tag::Input, None),
+            ] => Self::AppearanceOption(*ColorScheme::list().iter().find(|c| c.number() == *n)?),
             [(Tag::Main, None), (Tag::Section, Some(SHEET_SECTION)), ..] => Self::Sheet,
             [(Tag::Main, None), (Tag::Section, Some(CHAT_LOG_SECTION)), ..] => Self::ChatLog,
             [(Tag::Main, None), (Tag::Section, Some(CHAT_BOX_SECTION)), (Tag::Textarea, None)] => {
@@ -486,6 +499,7 @@ impl Page {
         pages.extend(Field::LIST.map(Self::Credential));
         pages.extend((1..=INVESTIGATOR_OPTIONS).map(Self::InvestigatorOption));
         pages.extend(Language::list().iter().map(|&l| Self::LanguageOption(l)));
+        pages.extend(ColorScheme::list().iter().map(|&c| Self::AppearanceOption(c)));
         pages
     }
 }

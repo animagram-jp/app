@@ -107,6 +107,7 @@ async function start() {
                 BigInt(now_in_ms),
                 timezone_offset_minutes,
                 params.get("data") ?? "",
+                preferred_color_scheme(),
             );
             bind();
             S.call_app();
@@ -169,6 +170,7 @@ async function start() {
                 now_in_ms: BigInt(Date.now()),
                 timezone_offset_minutes,
                 data_url: params.get("data") ?? "",
+                color_scheme: preferred_color_scheme(),
                 app_url: new URL("app.js?v={version}", APP_DIRECTORY).href,
             },
         });
@@ -770,6 +772,7 @@ const ATTRIBUTES = [
     null,
     "aria-current",
     "checked",
+    "data-color-scheme",
     "data-surround",
     "disabled",
     "hidden",
@@ -1105,8 +1108,12 @@ const TEXT_DECODER = new TextDecoder();
 
 // === color scheme ===
 
-document.querySelectorAll('input[name="color-scheme"]').forEach((radio) => {
-    radio.onchange = () => { document.documentElement.dataset.colorScheme = radio.value; };
-});
+function preferred_color_scheme() {
+    const scheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    const contrast = window.matchMedia("(prefers-contrast: more)").matches ? "-more-contrast"
+        : window.matchMedia("(prefers-contrast: less)").matches ? "-less-contrast"
+        : "";
+    return `${scheme}${contrast}`;
+}
 
 start();

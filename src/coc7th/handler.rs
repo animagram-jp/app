@@ -8,7 +8,7 @@ use core::{
 use arbitrary_int::u2;
 
 use crate::{
-    DataError, Error, Language,
+    ColorScheme, DataError, Error, Language,
     coc7th::{
         import,
         investigator::{
@@ -45,6 +45,7 @@ const STATUS_OK: u16 = 200;
 
 pub struct Handler<S: FileStore> {
     data_url:      String,
+    color_scheme:  ColorScheme,
     dialog:        Dialog,
     keyring:       Keyring,
     language:      Language,
@@ -145,9 +146,11 @@ impl<S: Mount> event::Handler for Handler<S> {
         now_in_ms: u64,
         _timezone_offset_minutes: i32,
         data_url: String,
+        color_scheme: ColorScheme,
     ) -> Self {
         let mut handler = Self {
             data_url,
+            color_scheme,
             dialog: Dialog::None,
             keyring: Keyring::LOCKED,
             language: Language::Ja,
@@ -191,6 +194,7 @@ impl<S: Mount> event::Handler for Handler<S> {
         commands.extend(language_commands(self.language));
         commands.extend(Language::list().iter().flat_map(|&l| option_commands(l)));
         commands.extend(label_commands(self.language));
+        commands.extend(appearance_commands(self.color_scheme));
         if !self.data_url.is_empty() {
             commands.push(Command::Fetch {
                 request: LOAD_REQUEST,
@@ -244,6 +248,10 @@ impl<S: Mount> event::Handler for Handler<S> {
             }
             (EventType::Click, Some(Page::Save)) => self.persist(),
             (EventType::Change, Some(Page::Unlock)) => (vec![], self.toggle_lock()),
+            (EventType::Change, Some(Page::AppearanceOption(c))) => {
+                self.color_scheme = c;
+                (vec![], appearance_commands(c))
+            }
             (EventType::Close, Some(Page::Dialog)) => (vec![], self.close_dialog()),
             (EventType::Submit, Some(Page::DialogForm)) => (vec![], self.submit(&event.value)),
             _ => (vec![], vec![]),
@@ -257,6 +265,17 @@ fn text(id: Id, value: impl Into<String>) -> Command {
 
 fn value(id: Id, value: impl Into<String>) -> Command {
     Command::SetValue { id, value: value.into() }
+}
+
+fn appearance_commands(color_scheme: ColorScheme) -> Vec<Command> {
+    vec![
+        toggle(Page::AppearanceOption(color_scheme).to_dom(), Attribute::Checked, true),
+        Command::SetAttribute {
+            id:        Page::Html.to_dom(),
+            attribute: Attribute::DataColorScheme,
+            value:     String::from(color_scheme.value()),
+        },
+    ]
 }
 
 fn toggle(id: Id, attribute: Attribute, on: bool) -> Command {
@@ -566,7 +585,7 @@ mod tests {
     async fn process_event_emits_one_frame_per_command() {
         assert_eq!(EventType::from_u8(CLICK), EventType::Click);
         initialize();
-        App::init(false, 0.0, 0.0, 16.0, 0, 0).await;
+        App::init(false, 0.0, 0.0, 16.0, 0, 0, String::new(), String::new()).await;
         while ARENA.read_ring(COMMAND_RING).is_some() {
             ARENA.advance_ring(COMMAND_RING);
         }
@@ -646,8 +665,15 @@ mod handler_tests {
 
     #[test]
     fn the_initial_draw_tags_the_language_and_reveals_the_body() {
-        let mut handler =
-            block_on(Handler::<MemoryStore>::ready(0.0, 0.0, 16.0, 0, 0, String::new()));
+        let mut handler = block_on(Handler::<MemoryStore>::ready(
+            0.0,
+            0.0,
+            16.0,
+            0,
+            0,
+            String::new(),
+            ColorScheme::Light,
+        ));
         let (events, commands) = handler.initial_draw();
         assert!(events.is_empty());
         let (texts, reveal) = commands.split_at(commands.len() - 1);
@@ -656,13 +682,24 @@ mod handler_tests {
             .chain(Language::list().iter().flat_map(|&l| labelled(Page::LanguageOption(l), l)))
             .collect();
         assert_eq!(texts[..expected.len()].iter().map(written).collect::<Vec<_>>(), expected);
-        let labels = &texts[expected.len()..];
-        assert_eq!(labels.len(), label_commands(Language::Ja).len());
+        let (labels, appearance) =
+            texts[expected.len()..].split_at(label_commands(Language::Ja).len());
         assert!(labels.iter().all(|command| matches!(command, Command::SetText { .. })));
         assert!(labels.iter().any(|command| matches!(
             command,
             Command::SetText { value, .. } if value == Investigator::Skill.display(Language::Ja)
         )));
+        assert_eq!(
+            appearance.iter().map(written).collect::<Vec<_>>(),
+            [
+                (
+                    Page::AppearanceOption(ColorScheme::Light).to_dom(),
+                    Some(Attribute::Checked),
+                    String::new()
+                ),
+                (Page::Html.to_dom(), Some(Attribute::DataColorScheme), String::from("light")),
+            ]
+        );
         assert_eq!(
             reveal.iter().map(hidden_change).collect::<Vec<_>>(),
             [(false, Page::Body.to_dom())]
@@ -671,8 +708,15 @@ mod handler_tests {
 
     #[test]
     fn choosing_a_language_tags_the_document() {
-        let mut handler =
-            block_on(Handler::<MemoryStore>::ready(0.0, 0.0, 16.0, 0, 0, String::new()));
+        let mut handler = block_on(Handler::<MemoryStore>::ready(
+            0.0,
+            0.0,
+            16.0,
+            0,
+            0,
+            String::new(),
+            ColorScheme::Light,
+        ));
         let english = Language::En(En::Gb);
         let commands = click(&mut handler, Page::LanguageOption(english).to_dom());
         assert_eq!(
@@ -693,8 +737,15 @@ mod handler_tests {
 
     #[test]
     fn other_targets_and_events_change_nothing() {
-        let mut handler =
-            block_on(Handler::<MemoryStore>::ready(0.0, 0.0, 16.0, 0, 0, String::new()));
+        let mut handler = block_on(Handler::<MemoryStore>::ready(
+            0.0,
+            0.0,
+            16.0,
+            0,
+            0,
+            String::new(),
+            ColorScheme::Light,
+        ));
         assert!(click(&mut handler, Page::Sheet.to_dom()).is_empty());
         assert!(click(&mut handler, Page::Dice.to_dom()).is_empty());
     }
@@ -707,8 +758,15 @@ mod handler_tests {
     #[test]
     fn a_data_url_is_fetched_on_the_initial_draw() {
         let url = String::from("investigator/jin.json");
-        let mut handler =
-            block_on(Handler::<MemoryStore>::ready(0.0, 0.0, 16.0, 0, 0, url.clone()));
+        let mut handler = block_on(Handler::<MemoryStore>::ready(
+            0.0,
+            0.0,
+            16.0,
+            0,
+            0,
+            url.clone(),
+            ColorScheme::Light,
+        ));
         let (_, commands) = handler.initial_draw();
         let fetches: Vec<_> = commands
             .iter()
@@ -718,16 +776,30 @@ mod handler_tests {
             })
             .collect();
         assert_eq!(fetches, [(LOAD_REQUEST, url)]);
-        let mut handler =
-            block_on(Handler::<MemoryStore>::ready(0.0, 0.0, 16.0, 0, 0, String::new()));
+        let mut handler = block_on(Handler::<MemoryStore>::ready(
+            0.0,
+            0.0,
+            16.0,
+            0,
+            0,
+            String::new(),
+            ColorScheme::Light,
+        ));
         let (_, commands) = handler.initial_draw();
         assert!(!commands.iter().any(|command| matches!(command, Command::Fetch { .. })));
     }
 
     #[test]
     fn a_fetched_sheet_is_drawn_and_saved_on_demand() {
-        let mut handler =
-            block_on(Handler::<MemoryStore>::ready(0.0, 0.0, 16.0, 0, 0, String::new()));
+        let mut handler = block_on(Handler::<MemoryStore>::ready(
+            0.0,
+            0.0,
+            16.0,
+            0,
+            0,
+            String::new(),
+            ColorScheme::Light,
+        ));
         let (events, commands) = handler.process_fetched(&response(STATUS_OK));
         assert!(events.is_empty());
         let [
@@ -764,8 +836,15 @@ mod handler_tests {
 
     #[test]
     fn a_failed_fetch_reports_the_status_and_other_requests_are_ignored() {
-        let mut handler =
-            block_on(Handler::<MemoryStore>::ready(0.0, 0.0, 16.0, 0, 0, String::new()));
+        let mut handler = block_on(Handler::<MemoryStore>::ready(
+            0.0,
+            0.0,
+            16.0,
+            0,
+            0,
+            String::new(),
+            ColorScheme::Light,
+        ));
         let (_, commands) = handler.process_fetched(&response(404));
         assert!(matches!(
             commands.as_slice(),
@@ -777,8 +856,15 @@ mod handler_tests {
 
     #[test]
     fn closing_the_handler_releases_the_store() {
-        let mut handler =
-            block_on(Handler::<MemoryStore>::ready(0.0, 0.0, 16.0, 0, 0, String::new()));
+        let mut handler = block_on(Handler::<MemoryStore>::ready(
+            0.0,
+            0.0,
+            16.0,
+            0,
+            0,
+            String::new(),
+            ColorScheme::Light,
+        ));
         assert!(handler.save().1.is_empty());
         assert!(handler.close().is_empty());
         let (events, commands) = handler.save();
@@ -790,8 +876,15 @@ mod handler_tests {
     }
     #[test]
     fn a_lost_store_is_replaced_and_the_pending_change_survives() {
-        let mut handler =
-            block_on(Handler::<MemoryStore>::ready(0.0, 0.0, 16.0, 0, 0, String::new()));
+        let mut handler = block_on(Handler::<MemoryStore>::ready(
+            0.0,
+            0.0,
+            16.0,
+            0,
+            0,
+            String::new(),
+            ColorScheme::Light,
+        ));
         handler.investigators.as_mut().unwrap().set(1, b"kept".to_vec());
         let disk = block_on(MemoryStore::open(CHARACTER_STORE, true)).unwrap();
 
@@ -859,8 +952,15 @@ mod handler_tests {
             [(200, accepted.clone(), true), (200, vec![1, 2, 3], false), (401, vec![], false)];
         for seed in 0..8 {
             let mut rng = Rng::new(seed);
-            let mut handler =
-                block_on(Handler::<MemoryStore>::ready(0.0, 0.0, 16.0, 0, 0, String::new()));
+            let mut handler = block_on(Handler::<MemoryStore>::ready(
+                0.0,
+                0.0,
+                16.0,
+                0,
+                0,
+                String::new(),
+                ColorScheme::Light,
+            ));
             let mut dom: Vec<(dom::Id, Attribute, bool)> = Vec::new();
             for field in Field::LIST {
                 dom.push((Page::Credential(field).to_dom(), Attribute::Hidden, true));

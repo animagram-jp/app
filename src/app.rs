@@ -21,7 +21,7 @@ use crate::coc7th::handler::Handler;
 #[cfg(feature = "vault")]
 use crate::event::{LOGIN_REQUEST, LOGOUT_REQUEST, REGISTER_REQUEST};
 use crate::{
-    Error, Input,
+    ColorScheme, Error, Input,
     arena::{APP, RUNNING, flush},
     event::{
         Event, EventError, Handler as _, Opened, Response, WindowEvent,
@@ -206,6 +206,7 @@ impl App {
         now_in_ms: u64,
         timezone_offset_minutes: i32,
         data_url: String,
+        color_scheme: String,
     ) {
         let mut app = App::new(
             pointer_coarse,
@@ -216,6 +217,7 @@ impl App {
                 now_in_ms,
                 timezone_offset_minutes,
                 data_url,
+                ColorScheme::parse(&color_scheme).unwrap_or(ColorScheme::Light),
             )
             .await,
         );
@@ -257,7 +259,18 @@ mod tests {
     const POINTER_UP: u8 = 18;
 
     fn new_app() -> App {
-        App::new(false, block_on(Handler::<Store>::ready(0.0, 0.0, 16.0, 0, 0, String::new())))
+        App::new(
+            false,
+            block_on(Handler::<Store>::ready(
+                0.0,
+                0.0,
+                16.0,
+                0,
+                0,
+                String::new(),
+                ColorScheme::Light,
+            )),
+        )
     }
 
     fn section(n: u32) -> dom::Id {

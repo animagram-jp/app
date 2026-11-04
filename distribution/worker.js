@@ -17,6 +17,7 @@ self.addEventListener("message", async (e) => {
         payload.now_in_ms,
         payload.timezone_offset_minutes,
         payload.data_url,
+        payload.color_scheme,
     );
     await serve_event();
 

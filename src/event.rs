@@ -14,17 +14,17 @@ use core::{
 };
 
 use self::gesture::{Gesture, Pointer};
+use crate::{
+    ColorScheme, WireError,
+    file_store::{FileStore, FileStoreError, StoreId},
+    host::{CanvasEvent, Command, FullscreenEvent, VisibilityState},
+};
 #[cfg(feature = "vault")]
 use crate::{
     DataError, Error, FrameError, Input, Output,
     credential::{self, Form, Key, PROTOCOL},
     host::Method,
     vault,
-};
-use crate::{
-    WireError,
-    file_store::{FileStore, FileStoreError, StoreId},
-    host::{CanvasEvent, Command, FullscreenEvent, VisibilityState},
 };
 
 #[derive(Debug)]
@@ -182,6 +182,7 @@ pub trait Handler: Sized {
         now_in_ms: u64,
         timezone_offset_minutes: i32,
         data_url: String,
+        color_scheme: ColorScheme,
     ) -> impl Future<Output = Self>;
     fn initial_draw(&mut self) -> (Vec<Event>, Vec<Command>);
     fn close(&self) -> Vec<Command>;

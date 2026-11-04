@@ -112,7 +112,7 @@ password, email
    ▼
 stretch (32 B, 端末のみ)
    ├─ HKDF "auth" ─▶ authentication_key ──TLS──▶ server: verifier = HMAC(pepper, authentication_key)
-   └─ HKDF "wrap" ─▶ wrap_key ─▶ root_key を AEAD で包む ─▶ server: wrapped_root (不透明)
+   └─ HKDF "wrap" ─▶ wrap_key ─▶ root_key を AEAD (XChaCha20-Poly1305) で包む ─▶ server: wrapped_root (不透明)
 
 root_key (32 B 乱数、初回有効化時に端末が生成)
    └─ HKDF "store/{name}" ─▶ store_key ─▶ レコードごとの AEAD (XChaCha20-Poly1305)
@@ -124,6 +124,7 @@ root_key (32 B 乱数、初回有効化時に端末が生成)
 | salt | email から導出 | `HKDF(email)` | ログイン前のサーバー往復が不要で、ユーザー存在の照会口を作らない |
 | サーバー側ハッシュ | scrypt(authPW) | `HMAC(pepper, authentication_key)` | `authentication_key` は 256 bit の導出鍵で、推測する経路は端末側 Argon2 を通るしかない。サーバーでの再ストレッチは CPU を消費するだけで強度に寄与しない。pepper はプロセス管理側の credential として渡し、DB 単体の漏洩を無意味にする |
 | データ鍵 | kB を unwrapBKey で包む | `root_key` を `wrap_key` で包む | パスワード変更は包み直しだけで済み、データの再暗号化が不要 |
+| 暗号化 | AES-256-CBC + HMAC-SHA256(鍵は別々に導出) | XChaCha20-Poly1305(AEAD) | 暗号化と改ざん検知を 1 つの鍵・1 回の処理で行い、鍵の組み合わせ違いや MAC の検証漏れが起きない。nonce は 24 B の乱数で、複数端末が同じ鍵で生成しても衝突を考慮しなくてよい。`wrapped_root` とレコードは `nonce ‖ ciphertext ‖ tag` の形で保存し、レコードの AAD に `identifier` を含めることで別レコードへの差し替えを検出する |
 
 サーバーが保証すること:
 

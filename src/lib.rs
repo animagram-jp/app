@@ -432,6 +432,57 @@ impl Language {
     }
 }
 
+// === ColorScheme ===
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ColorScheme {
+    LightLessContrast,
+    Light,
+    LightMoreContrast,
+    DarkLessContrast,
+    Dark,
+    DarkMoreContrast,
+}
+
+impl ColorScheme {
+    pub fn list() -> &'static [Self] {
+        &[
+            Self::LightLessContrast,
+            Self::Light,
+            Self::LightMoreContrast,
+            Self::DarkLessContrast,
+            Self::Dark,
+            Self::DarkMoreContrast,
+        ]
+    }
+
+    pub fn number(self) -> u32 {
+        match self {
+            Self::LightLessContrast => 1,
+            Self::Light => 2,
+            Self::LightMoreContrast => 3,
+            Self::DarkLessContrast => 4,
+            Self::Dark => 5,
+            Self::DarkMoreContrast => 6,
+        }
+    }
+
+    pub fn value(self) -> &'static str {
+        match self {
+            Self::LightLessContrast => "light-less-contrast",
+            Self::Light => "light",
+            Self::LightMoreContrast => "light-more-contrast",
+            Self::DarkLessContrast => "dark-less-contrast",
+            Self::Dark => "dark",
+            Self::DarkMoreContrast => "dark-more-contrast",
+        }
+    }
+
+    pub fn parse(value: &str) -> Option<Self> {
+        Self::list().iter().copied().find(|scheme| scheme.value() == value)
+    }
+}
+
 // === Panic handler ===
 
 #[cfg(all(target_arch = "wasm32", not(test)))]

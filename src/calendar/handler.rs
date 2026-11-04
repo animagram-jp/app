@@ -13,7 +13,7 @@ use rectgrid::{
 };
 
 use crate::{
-    Decimal, Error, Language,
+    ColorScheme, Decimal, Error, Language,
     calendar::{
         HOUR_MINUTE, MONTH_DAY, YEAR_DAY,
         data::{
@@ -159,6 +159,7 @@ pub struct Handler<S: FileStore> {
     rem_in_px:            f64,
     scroll_x_in_px:       f64,
     language:             Language,
+    color_scheme:         ColorScheme,
     rectgrid:             RectGrid<2>,
 }
 
@@ -229,6 +230,7 @@ impl<S: FileStore> Handler<S> {
             rem_in_px,
             scroll_x_in_px: 0.0,
             language: Language::Ja,
+            color_scheme: ColorScheme::Light,
             rectgrid: RectGrid::new(
                 [Px::new(0.0), Px::new(0.0)],
                 [
@@ -1723,6 +1725,7 @@ impl<S: Mount> event::Handler for Handler<S> {
         now_in_ms: u64,
         timezone_offset_minutes: i32,
         _data_url: String,
+        color_scheme: ColorScheme,
     ) -> Self {
         let utc = from_unix_timestamp_in_ms(now_in_ms as i64, Zone::ZERO);
         let offset =
@@ -1736,6 +1739,7 @@ impl<S: Mount> event::Handler for Handler<S> {
         today.set(time::IsUtc::ZERO);
         let mut handler = Self::new(viewport_width_in_px, today, rem_in_px);
         handler.now_in_ms = now_in_ms;
+        handler.color_scheme = color_scheme;
         match store::open::<S>(STORE).await {
             Ok(opened) => handler.attach(opened),
             Err(error) => handler.startup.push(Error::FileStore(error)),
@@ -1753,6 +1757,7 @@ impl<S: Mount> event::Handler for Handler<S> {
     fn initial_draw(&mut self) -> (Vec<Event>, Vec<Command>) {
         let mut commands = self.view_commands();
         commands.extend(self.header_commands());
+        commands.extend(appearance_commands(self.color_scheme));
         commands.extend(language_commands(self.language));
         commands.extend(Language::list().iter().flat_map(|&l| option_commands(l)));
         let events = store::startup(STORE, &self.startup);
@@ -1798,6 +1803,10 @@ impl<S: Mount> event::Handler for Handler<S> {
             EventType::Change => match target {
                 Some(Target::Axis(axis)) => (vec![], self.change_axis(axis)),
                 Some(Target::Unlock) => (vec![], self.toggle_lock()),
+                Some(Target::AppearanceOption(c)) => {
+                    self.color_scheme = c;
+                    (vec![], appearance_commands(c))
+                }
                 _ => (vec![], vec![]),
             },
             EventType::PointerDown => (vec![], self.press(event, target)),
@@ -1986,6 +1995,17 @@ fn hidden(id: Id, on: bool) -> Command {
     toggle(id, Attribute::Hidden, on)
 }
 
+fn appearance_commands(color_scheme: ColorScheme) -> Vec<Command> {
+    vec![
+        toggle(Target::AppearanceOption(color_scheme).to_dom(), Attribute::Checked, true),
+        Command::SetAttribute {
+            id:        Target::Html.to_dom(),
+            attribute: Attribute::DataColorScheme,
+            value:     String::from(color_scheme.value()),
+        },
+    ]
+}
+
 fn toggle(id: Id, attribute: Attribute, on: bool) -> Command {
     if on {
         Command::SetAttribute { id, attribute, value: String::new() }
@@ -2060,6 +2080,7 @@ mod tests {
                 now,
                 offset,
                 String::new(),
+                ColorScheme::Light,
             ));
             let (year, month, day) = expected;
             assert_eq!(handler.base(), pack(0, 0, 0, 0, day, month, year, 0, 0), "{now} {offset}");
