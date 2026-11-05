@@ -1,7 +1,6 @@
 #![no_std]
 #![feature(adt_const_params)]
 #![cfg_attr(feature = "coc7th", feature(const_param_ty_trait))]
-#![cfg_attr(feature = "coc7th", feature(variant_count))]
 #![cfg_attr(
     all(target_arch = "wasm32", target_feature = "atomics"),
     feature(stdarch_wasm_atomic_wait)
@@ -68,6 +67,49 @@ pub mod server;
 pub mod time;
 #[cfg(feature = "vault")]
 pub mod vault;
+
+macro_rules! enumerate {
+    ($(#[$meta:meta])* $vis:vis $name:ident($value:ty) { $($variant:ident),+ $(,)? }) => {
+        $(#[$meta])*
+        #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+        #[repr(u8)]
+        $vis enum $name {
+            $($variant),+
+        }
+
+        impl $name {
+            pub const LIST: &'static [Self] = &[$(Self::$variant),+];
+        }
+
+        impl $crate::bit::Zero for $name {
+            const ZERO: Self = Self::LIST[0];
+        }
+
+        impl $crate::bit::Bits for $name {
+            type Value = $value;
+        }
+
+        impl From<$value> for $name {
+            fn from(value: $value) -> Self {
+                match Self::LIST.get(::arbitrary_int::traits::Integer::as_usize(value)) {
+                    Some(item) => *item,
+                    None => <Self as $crate::bit::Zero>::ZERO,
+                }
+            }
+        }
+
+        impl From<$name> for $value {
+            fn from(item: $name) -> Self {
+                ::arbitrary_int::traits::Integer::masked_new(item as u8)
+            }
+        }
+
+        const _: () = assert!(
+            $name::LIST.len() <= 1 << <$value as ::arbitrary_int::traits::Integer>::BITS
+        );
+    };
+}
+pub(crate) use enumerate;
 
 pub trait WireError {
     fn identifiers(&self, path: &mut Vec<u16>);
@@ -770,7 +812,7 @@ impl Rng {
         let depth = self.below(5);
         let segments: Vec<(dom::Tag, Option<u32>)> = (0..depth)
             .map(|_| {
-                let tag = dom::Tag::from_u8(self.below(24) as u8);
+                let tag = dom::Tag::from(self.below(24) as u8);
                 let number =
                     self.chance(50).then(|| (self.next_u64() % u64::from(u32::MAX)) as u32);
                 (tag, number)

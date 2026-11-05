@@ -1,23 +1,6 @@
-use core::{
-    mem::{size_of, transmute_copy, variant_count},
-    primitive::{i8, u8},
-};
+use core::primitive::{i8, u8};
 
 use crate::{Language, coc7th::investigator::dice};
-
-/// # Safety
-/// `T` must be a `#[repr(u8)]` enum whose discriminants are exactly `1..=N`.
-const unsafe fn all_variants<T: Copy, const N: usize>(first: T) -> [T; N] {
-    assert!(size_of::<T>() == 1 && N == variant_count::<T>());
-    let mut all = [first; N];
-    let mut i = 0;
-    while i < N {
-        // SAFETY: the caller guarantees that `T` is a `#[repr(u8)]` enum with discriminants `1..=N`.
-        all[i] = unsafe { transmute_copy::<u8, T>(&(i as u8 + 1)) };
-        i += 1;
-    }
-    all
-}
 
 fn pick<T: Copy>(list: &[T]) -> T {
     use rand::{RngExt as _, rand_core::UnwrapErr, rngs::SysRng};
@@ -26,29 +9,26 @@ fn pick<T: Copy>(list: &[T]) -> T {
     list[rng.random_range(0..list.len())]
 }
 
-#[derive(Clone, Copy)]
-#[repr(u8)]
-pub enum Roll {
-    DiceRoll = 1,
-    SkillRoll,
-    CharacteristicRoll,
-    SanityRoll,
-    BoutOfMadness,
-    PushedRoll,
-    CombinedSkillRoll,
-    PhobiaAndMania,
-    FailedCasting,
-    DevelopmentCheck,
+crate::enumerate! {
+    pub Roll(u8) {
+        Other,
+        DiceRoll,
+        SkillRoll,
+        CharacteristicRoll,
+        SanityRoll,
+        BoutOfMadness,
+        PushedRoll,
+        CombinedSkillRoll,
+        PhobiaAndMania,
+        FailedCasting,
+        DevelopmentCheck,
+    }
 }
 
 impl Roll {
-    pub fn list() -> &'static [Self] {
-        // SAFETY: `Roll` is `#[repr(u8)]` with discriminants `1..=variant_count`.
-        const ALL: [Roll; variant_count::<Roll>()] = unsafe { all_variants(Roll::DiceRoll) };
-        &ALL
-    }
     pub fn display(self, language: Language) -> &'static str {
         match (self, language) {
+            (Self::Other, _) => "",
             (Self::DiceRoll, Language::En(_)) => "Dice Roll (nDn +-n)",
             (Self::DiceRoll, Language::Ja) => "ダイスロール (nDn +-n)",
             (Self::SkillRoll, Language::En(_)) => "Skill Roll",
@@ -72,21 +52,17 @@ impl Roll {
         }
     }
 }
-#[derive(Clone, Copy)]
-#[repr(u8)]
-pub enum BoutOfMadness {
-    RealTime = 1,
-    Summary,
+crate::enumerate! {
+    pub BoutOfMadness(u8) {
+        Other,
+        RealTime,
+        Summary,
+    }
 }
 impl BoutOfMadness {
-    pub fn list() -> &'static [Self] {
-        const ALL: [BoutOfMadness; variant_count::<BoutOfMadness>()] =
-            // SAFETY: `BoutOfMadness` is `#[repr(u8)]` with discriminants `1..=variant_count`.
-            unsafe { all_variants(BoutOfMadness::RealTime) };
-        &ALL
-    }
     pub fn display(self, language: Language) -> &'static str {
         match (self, language) {
+            (Self::Other, _) => "",
             (Self::RealTime, Language::En(_)) => "real time",
             (Self::RealTime, Language::Ja) => "リアルタイム",
             (Self::Summary, Language::En(_)) => "summary",
@@ -94,21 +70,17 @@ impl BoutOfMadness {
         }
     }
 }
-#[derive(Clone, Copy)]
-#[repr(u8)]
-pub enum PhobiaAndMania {
-    Phobia = 1,
-    Mania,
+crate::enumerate! {
+    pub PhobiaAndMania(u8) {
+        Other,
+        Phobia,
+        Mania,
+    }
 }
 impl PhobiaAndMania {
-    pub fn list() -> &'static [Self] {
-        const ALL: [PhobiaAndMania; variant_count::<PhobiaAndMania>()] =
-            // SAFETY: `PhobiaAndMania` is `#[repr(u8)]` with discriminants `1..=variant_count`.
-            unsafe { all_variants(PhobiaAndMania::Phobia) };
-        &ALL
-    }
     pub fn display(self, language: Language) -> &'static str {
         match (self, language) {
+            (Self::Other, _) => "",
             (Self::Phobia, Language::En(_)) => "Phobia",
             (Self::Phobia, Language::Ja) => "恐怖症",
             (Self::Mania, Language::En(_)) => "Mania",
@@ -116,21 +88,17 @@ impl PhobiaAndMania {
         }
     }
 }
-#[derive(Clone, Copy)]
-#[repr(u8)]
-pub enum FailedCasting {
-    Minor = 1,
-    Major,
+crate::enumerate! {
+    pub FailedCasting(u8) {
+        Other,
+        Minor,
+        Major,
+    }
 }
 impl FailedCasting {
-    pub fn list() -> &'static [Self] {
-        const ALL: [FailedCasting; variant_count::<FailedCasting>()] =
-            // SAFETY: `FailedCasting` is `#[repr(u8)]` with discriminants `1..=variant_count`.
-            unsafe { all_variants(FailedCasting::Minor) };
-        &ALL
-    }
     pub fn display(self, language: Language) -> &'static str {
         match (self, language) {
+            (Self::Other, _) => "",
             (Self::Minor, Language::En(_)) => "minor",
             (Self::Minor, Language::Ja) => "小",
             (Self::Major, Language::En(_)) => "major",
@@ -432,126 +400,119 @@ impl FailedCastingMajor {
     }
 }
 
-#[derive(Clone, Copy, PartialEq)]
-#[repr(u8)]
-pub enum Phobia {
-    Ablutophobia = 1,
-    Acrophobia,
-    Aerophobia,
-    Agoraphobia,
-    Alektorophobia,
-    Alliumphobia,
-    Amaxophobia,
-    Ancraophobia,
-    Androphobia,
-    Anglophobia,
-    Anthophobia,
-    Apotemnophobia,
-    Arachnophobia,
-    Astraphobia,
-    Atephobia,
-    Aulophobia,
-    Bacteriophobia,
-    Ballistophobia,
-    Basophobia,
-    Bibliophobia,
-    Botanophobia,
-    Caligynephobia,
-    Cheimaphobia,
-    Chronomentrophobia,
-    Claustrophobia,
-    Coulrophobia,
-    Cynophobia,
-    Demonophobia,
-    Demophobia,
-    Dentophobia,
-    Disposophobia,
-    Doraphobia,
-    Dromophobia,
-    Ecclesiophobia,
-    Eisoptrophobia,
-    Enetophobia,
-    Entomophobia,
-    Felinophobia,
-    Gephyrophobia,
-    Gerontophobia,
-    Gynophobia,
-    Haemaphobia,
-    Hamartophobia,
-    Haphophobia,
-    Herpetophobia,
-    Homichlophobia,
-    Hoplophobia,
-    Hydrophobia,
-    Hypnophobia,
-    Iatrophobia,
-    Ichthyophobia,
-    Katsaridaphobia,
-    Keraunophobia,
-    Lachanophobia,
-    Ligyrophobia,
-    Limnophobia,
-    Mechanophobia,
-    Megalophobia,
-    Merinthophobia,
-    Meteorophobia,
-    Monophobia,
-    Mysophobia,
-    Myxophobia,
-    Necrophobia,
-    Octophobia,
-    Odontophobia,
-    Oneirophobia,
-    Onomatophobia,
-    Ophidiophobia,
-    Ornithophobia,
-    Parasitophobia,
-    Pediophobia,
-    Phagophobia,
-    Pharmacophobia,
-    Phasmophobia,
-    Phenogophobia,
-    Pogonophobia,
-    Potamophobia,
-    Potophobia,
-    Pyrophobia,
-    Rhabdophobia,
-    Scotophobia,
-    Selenophobia,
-    Siderodromophobia,
-    Siderophobia,
-    Stenophobia,
-    Symmetrophobia,
-    Taphephobia,
-    Taurophobia,
-    Telephonophobia,
-    Teratophobia,
-    Thalassophobia,
-    Tomophobia,
-    Triskadekaphobia,
-    Vestiphobia,
-    Wiccaphobia,
-    Xanthophobia,
-    Xenoglossophobia,
-    Xenophobia,
-    Zoophobia,
+crate::enumerate! {
+    pub Phobia(u8) {
+        Other,
+        Ablutophobia,
+        Acrophobia,
+        Aerophobia,
+        Agoraphobia,
+        Alektorophobia,
+        Alliumphobia,
+        Amaxophobia,
+        Ancraophobia,
+        Androphobia,
+        Anglophobia,
+        Anthophobia,
+        Apotemnophobia,
+        Arachnophobia,
+        Astraphobia,
+        Atephobia,
+        Aulophobia,
+        Bacteriophobia,
+        Ballistophobia,
+        Basophobia,
+        Bibliophobia,
+        Botanophobia,
+        Caligynephobia,
+        Cheimaphobia,
+        Chronomentrophobia,
+        Claustrophobia,
+        Coulrophobia,
+        Cynophobia,
+        Demonophobia,
+        Demophobia,
+        Dentophobia,
+        Disposophobia,
+        Doraphobia,
+        Dromophobia,
+        Ecclesiophobia,
+        Eisoptrophobia,
+        Enetophobia,
+        Entomophobia,
+        Felinophobia,
+        Gephyrophobia,
+        Gerontophobia,
+        Gynophobia,
+        Haemaphobia,
+        Hamartophobia,
+        Haphophobia,
+        Herpetophobia,
+        Homichlophobia,
+        Hoplophobia,
+        Hydrophobia,
+        Hypnophobia,
+        Iatrophobia,
+        Ichthyophobia,
+        Katsaridaphobia,
+        Keraunophobia,
+        Lachanophobia,
+        Ligyrophobia,
+        Limnophobia,
+        Mechanophobia,
+        Megalophobia,
+        Merinthophobia,
+        Meteorophobia,
+        Monophobia,
+        Mysophobia,
+        Myxophobia,
+        Necrophobia,
+        Octophobia,
+        Odontophobia,
+        Oneirophobia,
+        Onomatophobia,
+        Ophidiophobia,
+        Ornithophobia,
+        Parasitophobia,
+        Pediophobia,
+        Phagophobia,
+        Pharmacophobia,
+        Phasmophobia,
+        Phenogophobia,
+        Pogonophobia,
+        Potamophobia,
+        Potophobia,
+        Pyrophobia,
+        Rhabdophobia,
+        Scotophobia,
+        Selenophobia,
+        Siderodromophobia,
+        Siderophobia,
+        Stenophobia,
+        Symmetrophobia,
+        Taphephobia,
+        Taurophobia,
+        Telephonophobia,
+        Teratophobia,
+        Thalassophobia,
+        Tomophobia,
+        Triskadekaphobia,
+        Vestiphobia,
+        Wiccaphobia,
+        Xanthophobia,
+        Xenoglossophobia,
+        Xenophobia,
+        Zoophobia,
+    }
 }
 
 impl Phobia {
-    pub fn list() -> &'static [Self] {
-        const ALL: [Phobia; variant_count::<Phobia>()] =
-            // SAFETY: `Phobia` is `#[repr(u8)]` with discriminants `1..=variant_count`.
-            unsafe { all_variants(Phobia::Ablutophobia) };
-        &ALL
-    }
-    pub fn id(self) -> u8 {
-        self as u8
-    }
     pub fn roll() -> Self {
-        pick(Self::list())
+        pick(&Self::LIST[1..])
     }
     pub fn display(&self, language: Language) -> &'static str {
         match (self, language) {
+            (Self::Other, _) => "",
             (Self::Ablutophobia, Language::En(_)) => "Abluto",
             (Self::Ablutophobia, Language::Ja) => "入浴",
             (Self::Acrophobia, Language::En(_)) => "Acro",
@@ -756,125 +717,119 @@ impl Phobia {
     }
 }
 
-#[derive(Clone, Copy, PartialEq)]
-#[repr(u8)]
-pub enum Mania {
-    Ablutomania = 1,
-    Aboulomania,
-    Achluomania,
-    Acromaniaheights,
-    Agathomania,
-    Agromania,
-    Aichmomania,
-    Ailuromania,
-    Algomania,
-    Alliomania,
-    Amaxomania,
-    Amenomania,
-    Anthomania,
-    Arithmomania,
-    Asoticamania,
-    Eremiomania,
-    Balletmania,
-    Biliokleptomania,
-    Bibliomania,
-    Bruxomania,
-    Cacodemomania,
-    Callomania,
-    Cartacoethes,
-    Catapedamania,
-    Cheimatomania,
-    Choreomania,
-    Clinomania,
-    Coimetormania,
-    Coloromania,
-    Coulromania,
-    Countermania,
-    Dacnomania,
-    Demonomania,
-    Dermatillomania,
-    Dikemania,
-    Dipsomania,
-    Doramania,
-    Doromania,
-    Drapetomania,
-    Ecdemiomania,
-    Egomania,
-    Empleomania,
-    Enosimania,
-    Epistemomania,
-    Eremiomaniaquiet,
-    Etheromania,
-    Gamomania,
-    Geliomania,
-    Goetomania,
-    Graphomania,
-    Gymnomania,
-    Habromania,
-    Helminthomania,
-    Hoplomania,
-    Hydromania,
-    Ichthyomania,
-    Iconomania,
-    Idolomania,
-    Infomania,
-    Klazomania,
-    Kleptomania,
-    Ligyromania,
-    Linonomania,
-    Lotterymania,
-    Lypemania,
-    Megalithomania,
-    Melomania,
-    Metromania,
-    Misomania,
-    Monomania,
-    Mythomania,
-    Nosomania,
-    Notomania,
-    Onomamania,
-    Onomatomania,
-    Onychotillomania,
-    Opsomania,
-    Paramania,
-    Personamania,
-    Phasmomania,
-    Phonomania,
-    Photomania,
-    Antinomiamania,
-    Plutomania,
-    Pseudomania,
-    Pyromania,
-    QuestionAsking,
-    Rhinotillexomania,
-    Scribbleomania,
-    Siderodromomania,
-    Sophomania,
-    Technomania,
-    Thanatomania,
-    Theomania,
-    Titillomaniac,
-    Tomomania,
-    Trichotillomania,
-    Typhlomania,
-    Xenomania,
-    Zoomania,
+crate::enumerate! {
+    pub Mania(u8) {
+        Other,
+        Ablutomania,
+        Aboulomania,
+        Achluomania,
+        Acromaniaheights,
+        Agathomania,
+        Agromania,
+        Aichmomania,
+        Ailuromania,
+        Algomania,
+        Alliomania,
+        Amaxomania,
+        Amenomania,
+        Anthomania,
+        Arithmomania,
+        Asoticamania,
+        Eremiomania,
+        Balletmania,
+        Biliokleptomania,
+        Bibliomania,
+        Bruxomania,
+        Cacodemomania,
+        Callomania,
+        Cartacoethes,
+        Catapedamania,
+        Cheimatomania,
+        Choreomania,
+        Clinomania,
+        Coimetormania,
+        Coloromania,
+        Coulromania,
+        Countermania,
+        Dacnomania,
+        Demonomania,
+        Dermatillomania,
+        Dikemania,
+        Dipsomania,
+        Doramania,
+        Doromania,
+        Drapetomania,
+        Ecdemiomania,
+        Egomania,
+        Empleomania,
+        Enosimania,
+        Epistemomania,
+        Eremiomaniaquiet,
+        Etheromania,
+        Gamomania,
+        Geliomania,
+        Goetomania,
+        Graphomania,
+        Gymnomania,
+        Habromania,
+        Helminthomania,
+        Hoplomania,
+        Hydromania,
+        Ichthyomania,
+        Iconomania,
+        Idolomania,
+        Infomania,
+        Klazomania,
+        Kleptomania,
+        Ligyromania,
+        Linonomania,
+        Lotterymania,
+        Lypemania,
+        Megalithomania,
+        Melomania,
+        Metromania,
+        Misomania,
+        Monomania,
+        Mythomania,
+        Nosomania,
+        Notomania,
+        Onomamania,
+        Onomatomania,
+        Onychotillomania,
+        Opsomania,
+        Paramania,
+        Personamania,
+        Phasmomania,
+        Phonomania,
+        Photomania,
+        Antinomiamania,
+        Plutomania,
+        Pseudomania,
+        Pyromania,
+        QuestionAsking,
+        Rhinotillexomania,
+        Scribbleomania,
+        Siderodromomania,
+        Sophomania,
+        Technomania,
+        Thanatomania,
+        Theomania,
+        Titillomaniac,
+        Tomomania,
+        Trichotillomania,
+        Typhlomania,
+        Xenomania,
+        Zoomania,
+    }
 }
 
 impl Mania {
-    pub fn list() -> &'static [Self] {
-        // SAFETY: `Mania` is `#[repr(u8)]` with discriminants `1..=variant_count`.
-        const ALL: [Mania; variant_count::<Mania>()] = unsafe { all_variants(Mania::Ablutomania) };
-        &ALL
-    }
-    pub fn id(self) -> u8 {
-        self as u8
-    }
     pub fn roll() -> Self {
-        pick(Self::list())
+        pick(&Self::LIST[1..])
     }
     pub fn display(&self, language: Language) -> &'static str {
         match (self, language) {
+            (Self::Other, _) => "",
             (Self::Ablutomania, Language::En(_)) => "Abluto",
             (Self::Ablutomania, Language::Ja) => "洗浄",
             (Self::Aboulomania, Language::En(_)) => "Aboulo",
@@ -1082,41 +1037,37 @@ impl Mania {
 #[cfg(test)]
 mod variant_tests {
     use alloc::{collections::BTreeSet, vec::Vec};
-    use core::mem::{transmute_copy, variant_count};
 
     use super::*;
     use crate::En;
 
-    fn discriminants<T: Copy>(list: &[T]) -> Vec<u8> {
-        // SAFETY: every list passed here is built by `all_variants`, so `T` is a one-byte `#[repr(u8)]` enum.
-        list.iter().map(|v| unsafe { transmute_copy::<T, u8>(v) }).collect()
-    }
-
-    fn assert_list<T: Copy>(list: &[T], expected: usize) {
-        assert_eq!(list.len(), expected);
-        assert_eq!(list.len(), variant_count::<T>());
-        let expected_discriminants: Vec<u8> = (1..=expected as u8).collect();
-        assert_eq!(discriminants(list), expected_discriminants);
+    fn assert_list<T: Copy + Into<u8>>(list: &[T], expected: usize) {
+        assert_eq!(list.len(), expected + 1);
+        let discriminants: Vec<u8> = list.iter().map(|v| (*v).into()).collect();
+        assert_eq!(discriminants, (0..=expected as u8).collect::<Vec<u8>>());
     }
 
     #[test]
     fn list_covers_every_variant_in_declaration_order() {
-        assert_list(Roll::list(), 10);
-        assert_list(BoutOfMadness::list(), 2);
-        assert_list(PhobiaAndMania::list(), 2);
-        assert_list(FailedCasting::list(), 2);
-        assert_list(Phobia::list(), 100);
-        assert_list(Mania::list(), 100);
+        assert_list(Roll::LIST, 10);
+        assert_list(BoutOfMadness::LIST, 2);
+        assert_list(PhobiaAndMania::LIST, 2);
+        assert_list(FailedCasting::LIST, 2);
+        assert_list(Phobia::LIST, 100);
+        assert_list(Mania::LIST, 100);
     }
 
     #[test]
-    fn id_is_one_based_position() {
-        for (i, v) in Phobia::list().iter().enumerate() {
-            assert_eq!(v.id() as usize, i + 1);
+    fn value_is_the_position_in_the_list() {
+        for (i, v) in Phobia::LIST.iter().enumerate() {
+            assert_eq!(u8::from(*v) as usize, i);
+            assert_eq!(Phobia::from(i as u8), *v);
         }
-        for (i, v) in Mania::list().iter().enumerate() {
-            assert_eq!(v.id() as usize, i + 1);
+        for (i, v) in Mania::LIST.iter().enumerate() {
+            assert_eq!(u8::from(*v) as usize, i);
+            assert_eq!(Mania::from(i as u8), *v);
         }
+        assert_eq!(Phobia::from(101), Phobia::Other);
     }
 
     #[test]
@@ -1126,10 +1077,10 @@ mod variant_tests {
         for _ in 0..1000 {
             let p = Phobia::roll();
             let m = Mania::roll();
-            assert!((1..=100).contains(&p.id()));
-            assert!((1..=100).contains(&m.id()));
-            phobia_ids.insert(p.id());
-            mania_ids.insert(m.id());
+            assert!((1..=100).contains(&u8::from(p)));
+            assert!((1..=100).contains(&u8::from(m)));
+            phobia_ids.insert(u8::from(p));
+            mania_ids.insert(u8::from(m));
         }
         assert!(phobia_ids.len() >= 50, "phobia variety {}", phobia_ids.len());
         assert!(mania_ids.len() >= 50, "mania variety {}", mania_ids.len());
@@ -1138,10 +1089,10 @@ mod variant_tests {
     #[test]
     fn every_phobia_and_mania_has_names_in_both_languages() {
         for language in [Language::Ja, Language::En(En::Gb)] {
-            for v in Phobia::list() {
+            for v in &Phobia::LIST[1..] {
                 assert!(!v.display(language).is_empty());
             }
-            for v in Mania::list() {
+            for v in &Mania::LIST[1..] {
                 assert!(!v.display(language).is_empty());
             }
         }
@@ -1150,9 +1101,9 @@ mod variant_tests {
     #[test]
     fn phobia_and_mania_names_are_distinct() {
         let phobias: BTreeSet<&str> =
-            Phobia::list().iter().map(|v| v.display(Language::Ja)).collect();
+            Phobia::LIST[1..].iter().map(|v| v.display(Language::Ja)).collect();
         let manias: BTreeSet<&str> =
-            Mania::list().iter().map(|v| v.display(Language::Ja)).collect();
+            Mania::LIST[1..].iter().map(|v| v.display(Language::Ja)).collect();
         assert_eq!(phobias.len(), 100);
         assert_eq!(manias.len(), 100);
     }

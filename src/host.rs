@@ -11,8 +11,7 @@ use core::{
 use arbitrary_int::{traits::Integer, u1, u2};
 
 use crate::{
-    Error, Input, Output, WireError,
-    bit::{self, Bits},
+    Error, Input, Output, WireError, bit,
     event::{Event, FetchChunk, WindowEvent},
 };
 
@@ -264,45 +263,13 @@ impl CanvasEvent {
     }
 }
 
-/// init.js key_flags BUTTONS
-///
-/// ```
-/// # use app::host::PointerButton;
-/// assert_eq!(PointerButton::from_u8(2), PointerButton::Main);
-/// assert_eq!(PointerButton::from_u8(4), PointerButton::Other);
-/// ```
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum PointerButton {
-    Auxiliary = 1,
-    Main,
-    Secondary,
-    Other = 0,
-}
-
-impl Bits for PointerButton {
-    type Value = u2;
-}
-
-impl From<u2> for PointerButton {
-    fn from(value: u2) -> Self {
-        Self::from_u8(value.value())
-    }
-}
-
-impl From<PointerButton> for u2 {
-    fn from(button: PointerButton) -> Self {
-        u2::new(button as u8)
-    }
-}
-
-impl PointerButton {
-    pub fn from_u8(value: u8) -> Self {
-        match value {
-            1 => Self::Auxiliary,
-            2 => Self::Main,
-            3 => Self::Secondary,
-            _ => Self::Other,
-        }
+crate::enumerate! {
+    /// init.js key_flags BUTTONS
+    pub PointerButton(u2) {
+        Other,
+        Auxiliary,
+        Main,
+        Secondary,
     }
 }
 
@@ -421,331 +388,155 @@ pub enum Method {
     Put,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum EventType {
-    Cancel = 1,
-    Change,
-    Click,
-    Close,
-    ContextMenu,
-    Copy,
-    Cut,
-    Drop,
-    FocusIn,
-    FocusOut,
-    Input,
-    KeyDown,
-    KeyUp,
-    Paste,
-    PointerCancel,
-    PointerDown,
-    PointerMove,
-    PointerUp,
-    Scroll,
-    Submit,
-    Other = 0,
-}
-
-impl EventType {
+crate::enumerate! {
     /// init.js EVENT_TYPES
-    ///
-    /// ```
-    /// # use app::host::EventType;
-    /// assert_eq!(EventType::from_u8(16), EventType::PointerDown);
-    /// assert_eq!(EventType::from_u8(200), EventType::Other);
-    /// ```
-    pub fn from_u8(value: u8) -> Self {
-        match value {
-            1 => Self::Cancel,
-            2 => Self::Change,
-            3 => Self::Click,
-            4 => Self::Close,
-            5 => Self::ContextMenu,
-            6 => Self::Copy,
-            7 => Self::Cut,
-            8 => Self::Drop,
-            9 => Self::FocusIn,
-            10 => Self::FocusOut,
-            11 => Self::Input,
-            12 => Self::KeyDown,
-            13 => Self::KeyUp,
-            14 => Self::Paste,
-            15 => Self::PointerCancel,
-            16 => Self::PointerDown,
-            17 => Self::PointerMove,
-            18 => Self::PointerUp,
-            19 => Self::Scroll,
-            20 => Self::Submit,
-            _ => Self::Other,
-        }
+    pub EventType(u8) {
+        Other,
+        Cancel,
+        Change,
+        Click,
+        Close,
+        ContextMenu,
+        Copy,
+        Cut,
+        Drop,
+        FocusIn,
+        FocusOut,
+        Input,
+        KeyDown,
+        KeyUp,
+        Paste,
+        PointerCancel,
+        PointerDown,
+        PointerMove,
+        PointerUp,
+        Scroll,
+        Submit,
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum KeyName {
-    A = 1,
-    Alt,
-    AltGraph,
-    Ampersand,
-    Apostrophe,
-    ArrowDown,
-    ArrowLeft,
-    ArrowRight,
-    ArrowUp,
-    Asterisk,
-    B,
-    Backspace,
-    C,
-    CapsLock,
-    CircumflexAccent,
-    Colon,
-    Comma,
-    CommercialAt,
-    ContextMenu,
-    Control,
-    D,
-    Delete,
-    DigitEight,
-    DigitFive,
-    DigitFour,
-    DigitNine,
-    DigitOne,
-    DigitSeven,
-    DigitSix,
-    DigitThree,
-    DigitTwo,
-    DigitZero,
-    DollarSign,
-    E,
-    End,
-    Enter,
-    EqualsSign,
-    Escape,
-    ExclamationMark,
-    F,
-    F1,
-    F2,
-    F3,
-    F4,
-    F5,
-    F6,
-    F7,
-    F8,
-    F9,
-    F10,
-    F11,
-    F12,
-    FullStop,
-    G,
-    GraveAccent,
-    GreaterThanSign,
-    H,
-    Home,
-    HyphenMinus,
-    I,
-    Insert,
-    J,
-    K,
-    L,
-    LeftCurlyBracket,
-    LeftParenthesis,
-    LeftSquareBracket,
-    LessThanSign,
-    LowLine,
-    M,
-    Meta,
-    N,
-    NumberSign,
-    O,
-    P,
-    PageDown,
-    PageUp,
-    PercentSign,
-    PlusSign,
-    Q,
-    QuestionMark,
-    QuotationMark,
-    R,
-    ReverseSolidus,
-    RightCurlyBracket,
-    RightParenthesis,
-    RightSquareBracket,
-    S,
-    Semicolon,
-    Shift,
-    Solidus,
-    Space,
-    T,
-    Tab,
-    Tilde,
-    U,
-    V,
-    VerticalLine,
-    W,
-    X,
-    Y,
-    Z,
-    Other = 0,
-}
-
-impl KeyName {
-    /// ```
-    /// # use app::host::KeyName;
-    /// assert_eq!(KeyName::from_u8(36), KeyName::Enter);
-    /// assert_eq!(KeyName::from_u8(200), KeyName::Other);
-    /// ```
-    pub fn from_u8(value: u8) -> Self {
-        match value {
-            1 => Self::A,
-            2 => Self::Alt,
-            3 => Self::AltGraph,
-            4 => Self::Ampersand,
-            5 => Self::Apostrophe,
-            6 => Self::ArrowDown,
-            7 => Self::ArrowLeft,
-            8 => Self::ArrowRight,
-            9 => Self::ArrowUp,
-            10 => Self::Asterisk,
-            11 => Self::B,
-            12 => Self::Backspace,
-            13 => Self::C,
-            14 => Self::CapsLock,
-            15 => Self::CircumflexAccent,
-            16 => Self::Colon,
-            17 => Self::Comma,
-            18 => Self::CommercialAt,
-            19 => Self::ContextMenu,
-            20 => Self::Control,
-            21 => Self::D,
-            22 => Self::Delete,
-            23 => Self::DigitEight,
-            24 => Self::DigitFive,
-            25 => Self::DigitFour,
-            26 => Self::DigitNine,
-            27 => Self::DigitOne,
-            28 => Self::DigitSeven,
-            29 => Self::DigitSix,
-            30 => Self::DigitThree,
-            31 => Self::DigitTwo,
-            32 => Self::DigitZero,
-            33 => Self::DollarSign,
-            34 => Self::E,
-            35 => Self::End,
-            36 => Self::Enter,
-            37 => Self::EqualsSign,
-            38 => Self::Escape,
-            39 => Self::ExclamationMark,
-            40 => Self::F,
-            41 => Self::F1,
-            42 => Self::F2,
-            43 => Self::F3,
-            44 => Self::F4,
-            45 => Self::F5,
-            46 => Self::F6,
-            47 => Self::F7,
-            48 => Self::F8,
-            49 => Self::F9,
-            50 => Self::F10,
-            51 => Self::F11,
-            52 => Self::F12,
-            53 => Self::FullStop,
-            54 => Self::G,
-            55 => Self::GraveAccent,
-            56 => Self::GreaterThanSign,
-            57 => Self::H,
-            58 => Self::Home,
-            59 => Self::HyphenMinus,
-            60 => Self::I,
-            61 => Self::Insert,
-            62 => Self::J,
-            63 => Self::K,
-            64 => Self::L,
-            65 => Self::LeftCurlyBracket,
-            66 => Self::LeftParenthesis,
-            67 => Self::LeftSquareBracket,
-            68 => Self::LessThanSign,
-            69 => Self::LowLine,
-            70 => Self::M,
-            71 => Self::Meta,
-            72 => Self::N,
-            73 => Self::NumberSign,
-            74 => Self::O,
-            75 => Self::P,
-            76 => Self::PageDown,
-            77 => Self::PageUp,
-            78 => Self::PercentSign,
-            79 => Self::PlusSign,
-            80 => Self::Q,
-            81 => Self::QuestionMark,
-            82 => Self::QuotationMark,
-            83 => Self::R,
-            84 => Self::ReverseSolidus,
-            85 => Self::RightCurlyBracket,
-            86 => Self::RightParenthesis,
-            87 => Self::RightSquareBracket,
-            88 => Self::S,
-            89 => Self::Semicolon,
-            90 => Self::Shift,
-            91 => Self::Solidus,
-            92 => Self::Space,
-            93 => Self::T,
-            94 => Self::Tab,
-            95 => Self::Tilde,
-            96 => Self::U,
-            97 => Self::V,
-            98 => Self::VerticalLine,
-            99 => Self::W,
-            100 => Self::X,
-            101 => Self::Y,
-            102 => Self::Z,
-            _ => Self::Other,
-        }
+crate::enumerate! {
+    pub KeyName(u8) {
+        Other,
+        A,
+        Alt,
+        AltGraph,
+        Ampersand,
+        Apostrophe,
+        ArrowDown,
+        ArrowLeft,
+        ArrowRight,
+        ArrowUp,
+        Asterisk,
+        B,
+        Backspace,
+        C,
+        CapsLock,
+        CircumflexAccent,
+        Colon,
+        Comma,
+        CommercialAt,
+        ContextMenu,
+        Control,
+        D,
+        Delete,
+        DigitEight,
+        DigitFive,
+        DigitFour,
+        DigitNine,
+        DigitOne,
+        DigitSeven,
+        DigitSix,
+        DigitThree,
+        DigitTwo,
+        DigitZero,
+        DollarSign,
+        E,
+        End,
+        Enter,
+        EqualsSign,
+        Escape,
+        ExclamationMark,
+        F,
+        F1,
+        F2,
+        F3,
+        F4,
+        F5,
+        F6,
+        F7,
+        F8,
+        F9,
+        F10,
+        F11,
+        F12,
+        FullStop,
+        G,
+        GraveAccent,
+        GreaterThanSign,
+        H,
+        Home,
+        HyphenMinus,
+        I,
+        Insert,
+        J,
+        K,
+        L,
+        LeftCurlyBracket,
+        LeftParenthesis,
+        LeftSquareBracket,
+        LessThanSign,
+        LowLine,
+        M,
+        Meta,
+        N,
+        NumberSign,
+        O,
+        P,
+        PageDown,
+        PageUp,
+        PercentSign,
+        PlusSign,
+        Q,
+        QuestionMark,
+        QuotationMark,
+        R,
+        ReverseSolidus,
+        RightCurlyBracket,
+        RightParenthesis,
+        RightSquareBracket,
+        S,
+        Semicolon,
+        Shift,
+        Solidus,
+        Space,
+        T,
+        Tab,
+        Tilde,
+        U,
+        V,
+        VerticalLine,
+        W,
+        X,
+        Y,
+        Z,
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum FullscreenEvent {
-    Change = 1,
-    Error,
-    Other = 0,
-}
-
-impl FullscreenEvent {
-    /// ```
-    /// # use app::host::FullscreenEvent;
-    /// assert_eq!(FullscreenEvent::from_u8(1), FullscreenEvent::Change);
-    /// assert_eq!(FullscreenEvent::from_u8(0), FullscreenEvent::Other);
-    /// ```
-    pub fn from_u8(value: u8) -> Self {
-        match value {
-            1 => Self::Change,
-            2 => Self::Error,
-            _ => Self::Other,
-        }
+crate::enumerate! {
+    pub FullscreenEvent(u8) {
+        Other,
+        Change,
+        Error,
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum VisibilityState {
-    Hidden = 1,
-    Visible,
-    Other = 0,
-}
-
-impl VisibilityState {
+crate::enumerate! {
     /// init.js VISIBILITY_STATES
-    ///
-    /// ```
-    /// # use app::host::VisibilityState;
-    /// assert_eq!(VisibilityState::from_u8(2), VisibilityState::Visible);
-    /// assert_eq!(VisibilityState::from_u8(0), VisibilityState::Other);
-    /// ```
-    pub fn from_u8(value: u8) -> Self {
-        match value {
-            1 => Self::Hidden,
-            2 => Self::Visible,
-            _ => Self::Other,
-        }
+    pub VisibilityState(u8) {
+        Other,
+        Hidden,
+        Visible,
     }
 }
 
@@ -772,9 +563,9 @@ impl Input<'_> for Event {
         let kind = u8::decode(&mut input)?;
         let event = match kind {
             EVENT_CANVAS => Event::Canvas(CanvasEvent {
-                event_type: EventType::from_u8(u8::decode(&mut input)?),
+                event_type: EventType::from(u8::decode(&mut input)?),
                 id:         Input::decode(&mut input)?,
-                key:        KeyName::from_u8(u8::decode(&mut input)?),
+                key:        KeyName::from(u8::decode(&mut input)?),
                 flags:      Input::decode(&mut input)?,
                 value:      Input::decode(&mut input)?,
                 client_x:   f32::decode(&mut input)? as f64,
@@ -793,7 +584,7 @@ impl Input<'_> for Event {
                 y_in_px: f32::decode(&mut input)? as f64,
             }),
             EVENT_VISIBILITY => Event::Window(WindowEvent::Visibility {
-                state: VisibilityState::from_u8(u8::decode(&mut input)?),
+                state: VisibilityState::from(u8::decode(&mut input)?),
             }),
             EVENT_FETCH => Event::FetchChunk(FetchChunk {
                 request: Input::decode(&mut input)?,
@@ -801,7 +592,7 @@ impl Input<'_> for Event {
                 last:    u8::decode(&mut input)? != 0,
                 bytes:   Input::decode(&mut input)?,
             }),
-            EVENT_FULLSCREEN => Event::Window(WindowEvent::Fullscreen(FullscreenEvent::from_u8(
+            EVENT_FULLSCREEN => Event::Window(WindowEvent::Fullscreen(FullscreenEvent::from(
                 u8::decode(&mut input)?,
             ))),
             EVENT_PAGEHIDE => Event::Window(WindowEvent::PageHide),
@@ -907,8 +698,8 @@ mod event_frame_tests {
                     let Some(Event::Canvas(event)) = decode_event(&frame) else {
                         panic!("seed {seed}: not a canvas event");
                     };
-                    assert_eq!(event.event_type, EventType::from_u8(kind), "seed {seed}");
-                    assert_eq!(event.key, KeyName::from_u8(key), "seed {seed}");
+                    assert_eq!(event.event_type, EventType::from(kind), "seed {seed}");
+                    assert_eq!(event.key, KeyName::from(key), "seed {seed}");
                     assert_eq!(
                         (&event.id, &event.value, event.flags),
                         (&id, &value, Flags::from_le_bytes([flags])),
@@ -954,7 +745,7 @@ mod event_frame_tests {
                     else {
                         panic!("seed {seed}: not a visibility event");
                     };
-                    assert_eq!(decoded, VisibilityState::from_u8(state), "seed {seed}");
+                    assert_eq!(decoded, VisibilityState::from(state), "seed {seed}");
                 }
                 EVENT_FULLSCREEN => {
                     let event = rng.next_u64() as u8;
@@ -965,7 +756,7 @@ mod event_frame_tests {
                     else {
                         panic!("seed {seed}: not a fullscreen event");
                     };
-                    assert_eq!(decoded, FullscreenEvent::from_u8(event), "seed {seed}");
+                    assert_eq!(decoded, FullscreenEvent::from(event), "seed {seed}");
                 }
                 EVENT_FETCH => {
                     let (request, status, last) =
@@ -1036,112 +827,50 @@ pub mod dom {
 
     use super::{Input, Output};
 
-    #[derive(Debug, Clone, Copy, PartialEq)]
-    pub enum Tag {
-        A = 1,
-        Article,
-        Body,
-        Button,
-        Dd,
-        Dialog,
-        Div,
-        Dl,
-        Dt,
-        Fieldset,
-        Footer,
-        Form,
-        H1,
-        H2,
-        H3,
-        Header,
-        Hgroup,
-        Html,
-        Input,
-        Label,
-        Li,
-        Main,
-        Nav,
-        Ol,
-        Option,
-        Output,
-        P,
-        Section,
-        Select,
-        Span,
-        Strong,
-        Table,
-        Tbody,
-        Td,
-        Textarea,
-        Th,
-        Thead,
-        Toast,
-        Tr,
-        Ul,
-        Other = 0,
-    }
-
-    impl Tag {
+    crate::enumerate! {
         /// init.js::TAGS
-        ///
-        /// ```
-        /// # use app::host::dom::Tag;
-        /// assert_eq!(Tag::A.as_u8(), 1);
-        /// assert_eq!(Tag::Other.as_u8(), 0);
-        /// ```
-        pub fn as_u8(&self) -> u8 {
-            *self as u8
-        }
-
-        /// ```
-        /// # use app::host::dom::Tag;
-        /// assert_eq!(Tag::from_u8(1), Tag::A);
-        /// assert_eq!(Tag::from_u8(200), Tag::Other);
-        /// ```
-        pub fn from_u8(value: u8) -> Self {
-            match value {
-                1 => Self::A,
-                2 => Self::Article,
-                3 => Self::Body,
-                4 => Self::Button,
-                5 => Self::Dd,
-                6 => Self::Dialog,
-                7 => Self::Div,
-                8 => Self::Dl,
-                9 => Self::Dt,
-                10 => Self::Fieldset,
-                11 => Self::Footer,
-                12 => Self::Form,
-                13 => Self::H1,
-                14 => Self::H2,
-                15 => Self::H3,
-                16 => Self::Header,
-                17 => Self::Hgroup,
-                18 => Self::Html,
-                19 => Self::Input,
-                20 => Self::Label,
-                21 => Self::Li,
-                22 => Self::Main,
-                23 => Self::Nav,
-                24 => Self::Ol,
-                25 => Self::Option,
-                26 => Self::Output,
-                27 => Self::P,
-                28 => Self::Section,
-                29 => Self::Select,
-                30 => Self::Span,
-                31 => Self::Strong,
-                32 => Self::Table,
-                33 => Self::Tbody,
-                34 => Self::Td,
-                35 => Self::Textarea,
-                36 => Self::Th,
-                37 => Self::Thead,
-                38 => Self::Toast,
-                39 => Self::Tr,
-                40 => Self::Ul,
-                _ => Self::Other,
-            }
+        pub Tag(u8) {
+            Other,
+            A,
+            Article,
+            Body,
+            Button,
+            Dd,
+            Dialog,
+            Div,
+            Dl,
+            Dt,
+            Fieldset,
+            Footer,
+            Form,
+            H1,
+            H2,
+            H3,
+            Header,
+            Hgroup,
+            Html,
+            Input,
+            Label,
+            Li,
+            Main,
+            Nav,
+            Ol,
+            Option,
+            Output,
+            P,
+            Section,
+            Select,
+            Span,
+            Strong,
+            Table,
+            Tbody,
+            Td,
+            Textarea,
+            Th,
+            Thead,
+            Toast,
+            Tr,
+            Ul,
         }
     }
 
@@ -1165,7 +894,7 @@ pub mod dom {
         fn encode(&self, output: &mut Vec<u8>) {
             output.push(self.0.len() as u8);
             for segment in &self.0 {
-                output.push(segment.tag.as_u8());
+                output.push(u8::from(segment.tag));
                 segment.n.unwrap_or(u32::MAX).encode(output);
             }
         }
@@ -1176,7 +905,7 @@ pub mod dom {
             let count = u8::decode(input)? as usize;
             let mut segments = Vec::with_capacity(count);
             for _ in 0..count {
-                let tag = Tag::from_u8(Input::decode(input)?);
+                let tag = Tag::from(u8::decode(input)?);
                 let number = u32::decode(input)?;
                 segments
                     .push(Segment { tag, n: if number == u32::MAX { None } else { Some(number) } });
@@ -1316,12 +1045,12 @@ mod wire_tests {
         let mut sorted = js.clone();
         sorted.sort();
         for (i, name) in sorted.iter().enumerate() {
-            let button = PointerButton::from_u8(i as u8 + 1);
+            let button = PointerButton::from(u2::new(i as u8 + 1));
             assert_eq!(&format!("{button:?}").to_lowercase(), name, "rank {i}");
         }
         assert_eq!(js, ["main", "auxiliary", "secondary"]);
-        assert_eq!(PointerButton::from_u8(js.len() as u8 + 1), PointerButton::Other);
-        assert_eq!(PointerButton::from_u8(0), PointerButton::Other);
+        assert_eq!(PointerButton::LIST.len(), js.len() + 1);
+        assert_eq!(PointerButton::from(u2::new(0)), PointerButton::Other);
     }
 
     #[test]
@@ -1329,10 +1058,10 @@ mod wire_tests {
         let js = js_array("KEY_NAMES");
         assert_eq!(js[0], "");
         for (i, name) in js.iter().enumerate().skip(1) {
-            assert_eq!(&key_string(KeyName::from_u8(i as u8)), name, "index {i}");
+            assert_eq!(&key_string(KeyName::from(i as u8)), name, "index {i}");
         }
-        assert_eq!(KeyName::from_u8(js.len() as u8), KeyName::Other);
-        assert_eq!(KeyName::from_u8(0), KeyName::Other);
+        assert_eq!(KeyName::from(js.len() as u8), KeyName::Other);
+        assert_eq!(KeyName::from(0), KeyName::Other);
     }
 
     #[test]
@@ -1340,11 +1069,11 @@ mod wire_tests {
         let js = js_array("EVENT_TYPES");
         assert_eq!(js[0], "");
         for (i, name) in js.iter().enumerate().skip(1) {
-            let event_type = EventType::from_u8(i as u8);
+            let event_type = EventType::from(i as u8);
             assert_eq!(&format!("{event_type:?}").to_lowercase(), name, "index {i}");
         }
-        assert_eq!(EventType::from_u8(js.len() as u8), EventType::Other);
-        assert_eq!(EventType::from_u8(0), EventType::Other);
+        assert_eq!(EventType::from(js.len() as u8), EventType::Other);
+        assert_eq!(EventType::from(0), EventType::Other);
     }
 
     #[test]
@@ -1352,12 +1081,12 @@ mod wire_tests {
         let js = js_array("TAGS");
         assert_eq!(js[0], "");
         for (i, name) in js.iter().enumerate().skip(1) {
-            let tag = dom::Tag::from_u8(i as u8);
+            let tag = dom::Tag::from(i as u8);
             assert_eq!(&format!("{tag:?}").to_lowercase(), name, "index {i}");
-            assert_eq!(tag.as_u8() as usize, i);
+            assert_eq!(u8::from(tag) as usize, i);
         }
-        assert_eq!(dom::Tag::from_u8(js.len() as u8), dom::Tag::Other);
-        assert_eq!(dom::Tag::Other.as_u8(), 0);
+        assert_eq!(dom::Tag::from(js.len() as u8), dom::Tag::Other);
+        assert_eq!(u8::from(dom::Tag::Other), 0);
     }
 
     #[test]
@@ -1365,11 +1094,11 @@ mod wire_tests {
         let js = js_array("VISIBILITY_STATES");
         assert_eq!(js[0], "");
         for (i, name) in js.iter().enumerate().skip(1) {
-            let state = VisibilityState::from_u8(i as u8);
+            let state = VisibilityState::from(i as u8);
             assert_eq!(&format!("{state:?}").to_lowercase(), name, "index {i}");
         }
-        assert_eq!(VisibilityState::from_u8(js.len() as u8), VisibilityState::Other);
-        assert_eq!(VisibilityState::from_u8(0), VisibilityState::Other);
+        assert_eq!(VisibilityState::from(js.len() as u8), VisibilityState::Other);
+        assert_eq!(VisibilityState::from(0), VisibilityState::Other);
     }
 
     #[test]
@@ -1377,11 +1106,11 @@ mod wire_tests {
         let js = js_array("FULLSCREEN_EVENTS");
         assert_eq!(js[0], "");
         for (i, name) in js.iter().enumerate().skip(1) {
-            let event = FullscreenEvent::from_u8(i as u8);
+            let event = FullscreenEvent::from(i as u8);
             assert_eq!(&format!("fullscreen{event:?}").to_lowercase(), name, "index {i}");
         }
-        assert_eq!(FullscreenEvent::from_u8(js.len() as u8), FullscreenEvent::Other);
-        assert_eq!(FullscreenEvent::from_u8(0), FullscreenEvent::Other);
+        assert_eq!(FullscreenEvent::from(js.len() as u8), FullscreenEvent::Other);
+        assert_eq!(FullscreenEvent::from(0), FullscreenEvent::Other);
     }
 
     #[test]

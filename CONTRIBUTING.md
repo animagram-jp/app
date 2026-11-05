@@ -35,6 +35,10 @@ curl -fsSL -H "Accept: application/vnd.github.raw+json" "https://api.github.com/
 - divは原則使用せず、セマンティックタグを選定して使用する。
 - HTMLの記述順と、レンダリング時のデフォルトの配置・挙動の方向は一致しなければならない。
 
+- bit.rsにて、item->primitive->配置の依存関係を整理した。PJ全体で、どのレイアウト呼び出し側も、最小粒度のitemのprimitiveもしくは`[u8; N]`の値を知ってるべきである。
+    - 同itemの複数個のcomposite!には、添え字付きでBits/Fieldを実装する。
+    - 集合内の列操作向けSoAレイアウトに必要な並びとストライド設計は、bit.rsの外で行う。
+
 ---
 
 ## Requirements

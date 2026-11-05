@@ -23,25 +23,16 @@ pub const PRESENCE_SECONDS_MAX: u64 = 60;
 pub const QUEUE_MAX: usize = 32;
 pub const PAYLOAD_MAX: usize = 16 * 1024;
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum Kind {
-    Offer = 1,
-    Answer,
-    Candidate,
+crate::enumerate! {
+    pub Kind(u8) {
+        Other,
+        Offer,
+        Answer,
+        Candidate,
+    }
 }
 
 crate::wire_enum!(u8: Kind);
-
-impl Kind {
-    pub fn from_u8(value: u8) -> Option<Self> {
-        match value {
-            1 => Some(Kind::Offer),
-            2 => Some(Kind::Answer),
-            3 => Some(Kind::Candidate),
-            _ => None,
-        }
-    }
-}
 
 #[derive(Debug, PartialEq)]
 pub enum MeetError {
@@ -188,7 +179,7 @@ pub fn decode(body: &[u8]) -> Result<(u64, Kind, Vec<u8>), MeetError> {
         rest.is_empty().then_some((target, kind, payload))
     })();
     let (target, kind, payload) = decoded.ok_or(MeetError::Frame(FrameError::Decode))?;
-    let kind = Kind::from_u8(kind).ok_or(MeetError::Kind(kind))?;
+    let kind = Some(Kind::from(kind)).filter(|k| *k != Kind::Other).ok_or(MeetError::Kind(kind))?;
     Ok((target, kind, payload))
 }
 

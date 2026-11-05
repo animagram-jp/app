@@ -583,7 +583,7 @@ mod tests {
 
     #[wasm_bindgen_test]
     async fn process_event_emits_one_frame_per_command() {
-        assert_eq!(EventType::from_u8(CLICK), EventType::Click);
+        assert_eq!(EventType::from(CLICK), EventType::Click);
         initialize();
         App::init(false, 0.0, 0.0, 16.0, 0, 0, String::new(), String::new()).await;
         while ARENA.read_ring(COMMAND_RING).is_some() {

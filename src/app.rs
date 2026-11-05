@@ -315,8 +315,8 @@ mod tests {
 
     #[test]
     fn origin_follows_the_pointerdown_that_starts_a_sequence() {
-        assert_eq!(EventType::from_u8(POINTER_DOWN), EventType::PointerDown);
-        assert_eq!(EventType::from_u8(POINTER_UP), EventType::PointerUp);
+        assert_eq!(EventType::from(POINTER_DOWN), EventType::PointerDown);
+        assert_eq!(EventType::from(POINTER_UP), EventType::PointerUp);
 
         let mut app = new_app();
         assert_eq!(origin_id(&app), None);
