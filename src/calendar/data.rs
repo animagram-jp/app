@@ -9,6 +9,7 @@ use core::{
 use arbitrary_int::{traits::Integer, u4, u5, u13};
 
 use crate::{
+    bit::Zero,
     data_struct::{DataStruct, ID_CREATED_AT, ID_IDENTITY, ID_MODIFIED_AT, encode_time},
     file_store::FileStore,
     object::Predicate,
@@ -171,6 +172,7 @@ pub mod appointment {
     };
     use crate::{
         Input, Language, Output,
+        bit::Zero,
         calendar::{HOUR_MINUTE, YEAR_DAY},
         data_struct::DataStruct,
         file_store::FileStore,

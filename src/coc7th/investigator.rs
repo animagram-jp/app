@@ -15,7 +15,8 @@ use core::{
 use arbitrary_int::{i10, traits::Integer, u7, u9};
 
 use crate::{
-    Input, Language, Output, bit,
+    Input, Language, Output,
+    bit::{self, Zero},
     data_struct::{DataStruct, ID_CREATED_AT, ID_IDENTITY, ID_MODIFIED_AT},
     host::dom::{Id, Tag},
     object::{Predicate, SubjectTrait},

@@ -7,6 +7,7 @@ use core::{
 };
 
 use crate::{
+    bit::Zero,
     list::{List, ListError, SetOutcome, VariableList, VariableListError, read_u32},
     time,
 };

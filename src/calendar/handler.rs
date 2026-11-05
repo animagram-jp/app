@@ -14,6 +14,7 @@ use rectgrid::{
 
 use crate::{
     ColorScheme, Decimal, Error, Language,
+    bit::Zero,
     calendar::{
         HOUR_MINUTE, MONTH_DAY, YEAR_DAY,
         data::{

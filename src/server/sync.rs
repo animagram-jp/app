@@ -18,7 +18,12 @@ use arbitrary_int::u1;
 
 #[cfg(all(feature = "server", not(target_arch = "wasm32")))]
 use crate::file_store::FileStore;
-use crate::{FrameError, Input, Output, WireError, bit, file_store::FileStoreError, parse};
+use crate::{
+    FrameError, Input, Output, WireError,
+    bit::{self, Zero},
+    file_store::FileStoreError,
+    parse,
+};
 
 pub const IDENTIFIER_LENGTH: usize = 16;
 pub const CIPHERTEXT_SIZE_MAX: usize = 64 * 1024;

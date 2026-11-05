@@ -622,7 +622,9 @@ mod handler_tests {
 
     use super::*;
     use crate::{
-        En, Input, Output, Rng, block_on, credential,
+        En, Input, Output, Rng,
+        bit::Zero,
+        block_on, credential,
         event::{LOGIN_REQUEST, LOGOUT_REQUEST, REGISTER_REQUEST},
         file_store::{FileStoreError, MemoryStore, Mount},
         host::{Flags, KeyName, Method, dom},

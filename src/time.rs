@@ -10,7 +10,11 @@ use core::{
 
 use arbitrary_int::{traits::Integer, u1, u4, u5, u6, u7, u10, u13};
 
-use crate::{Input, Language, bit, take};
+use crate::{
+    Input, Language,
+    bit::{self, Zero},
+    take,
+};
 
 // stamp (64 bits)
 // note:
@@ -516,7 +520,7 @@ impl Zone {
     ];
 
     /// ```
-    /// use app::time::Zone;
+    /// use app::{bit::Zero, time::Zone};
     ///
     /// assert_eq!(Zone::index("Etc/UTC"), Some(Zone::ZERO));
     /// assert_eq!(Zone::index("Asia/Tokyo").map(|zone| Zone::LIST[zone.0.value() as usize]), Some("Asia/Tokyo"));

@@ -12,7 +12,7 @@ use arbitrary_int::{traits::Integer, u1, u2};
 
 use crate::{
     Error, Input, Output, WireError,
-    bit::{self, Field},
+    bit::{self, Bits},
     event::{Event, FetchChunk, WindowEvent},
 };
 
@@ -279,7 +279,7 @@ pub enum PointerButton {
     Other = 0,
 }
 
-impl Field for PointerButton {
+impl Bits for PointerButton {
     type Value = u2;
 }
 
