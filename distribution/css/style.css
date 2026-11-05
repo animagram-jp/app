@@ -33,6 +33,192 @@ body > header {
     }
 }
 
+.icon-palette {
+    padding-inline-start: calc(var(--border-radius) * 2 + var(--line-height));
+    position:             relative;
+}
+.icon-palette::before {
+    background-color:   currentColor;
+    block-size:         var(--line-height);
+    clip-path: shape(
+        from 100% 50%,
+        curve to 77.706% 62.938% with 100% 69.688% / 88.338% 66.156%,
+        curve to 62.5% 62.5% with 71.375% 61.019% / 65.406% 59.206%,
+        curve to 60.306% 80.75% with 58.731% 66.769% / 59.531% 73.869%,
+        curve to 50% 100% with 61.413% 90.594% / 62.475% 100%,
+        arc to 100% 50% of 50% cw large,
+        move to 50% 93.75%,
+        curve to 54.094% 92.65% with 53.819% 93.75% / 54.087% 92.681%,
+        curve to 54.531% 85.656% with 54.581% 91.738% / 54.869% 89.75%,
+        curve to 54.15% 81.963% with 54.444% 84.606% / 54.3% 83.344%,
+        curve to 53.412% 72.825% with 53.825% 79.062% / 53.45% 75.681%,
+        curve to 57.812% 58.362% with 53.35% 68.406% / 53.931% 62.762%,
+        curve to 65.763% 54.5% with 60.119% 55.756% / 63.094% 54.75%,
+        curve to 73.013% 55.15% with 68.287% 54.263% / 70.837% 54.663%,
+        curve to 79.419% 56.925% with 75.156% 55.631% / 77.4% 56.312%,
+        line to 79.594% 56.975%,
+        curve to 85.55% 58.637% with 81.756% 57.631% / 83.706% 58.219%,
+        curve to 91.744% 58.788% with 89.631% 59.562% / 91.2% 59.156%,
+        curve to 93.75% 50% with 91.981% 58.625% / 93.75% 57.256%,
+        arc to 50% 93.75% of 43.75% ccw large,
+        close,
+        move to 59.375% 21.875%,
+        arc to 40.625% 21.875% of 9.375% cw,
+        arc to 59.375% 21.875% of 9.375% cw,
+        close,
+        move to 84.375% 40.625%,
+        arc to 65.625% 40.625% of 9.375% cw,
+        arc to 84.375% 40.625% of 9.375% cw,
+        close,
+        move to 34.375% 43.75%,
+        arc to 15.625% 43.75% of 9.375% cw,
+        arc to 34.375% 43.75% of 9.375% cw,
+        close,
+        move to 46.875% 71.875%,
+        arc to 28.125% 71.875% of 9.375% cw,
+        arc to 46.875% 71.875% of 9.375% cw,
+        close
+    );
+    content:            "";
+    inline-size:        var(--line-height);
+    inset-block:        0;
+    inset-inline-start: var(--border-radius);
+    margin-block:       auto;
+    pointer-events:     none;
+    position:           absolute;
+}
+
+.icon-globe {
+    padding-inline-start: calc(var(--border-radius) * 2 + var(--line-height));
+    position:             relative;
+}
+.icon-globe::before {
+    background-color:   currentColor;
+    block-size:         var(--line-height);
+    clip-path: shape(
+        from 0% 50%,
+        arc to 100% 50% of 50% cw large,
+        arc to 0% 50% of 50% cw small,
+        close,
+        move to 46.875% 6.731%,
+        curve to 35.081% 18.325% with 42.688% 8.006% / 38.531% 11.856%,
+        arc to 32.156% 25% of 50% ccw small,
+        line to 46.875% 25%,
+        close,
+        move to 25.562% 25%,
+        arc to 29.562% 15.381% of 58.125% cw small,
+        arc to 33.294% 9.55% of 43.75% cw small,
+        arc to 14.094% 25% of 43.938% ccw small,
+        close,
+        move to 21.925% 46.875%,
+        curve to 23.875% 31.25% with 22.112% 41.394% / 22.787% 36.138%,
+        line to 10.463% 31.25%,
+        arc to 6.362% 46.875% of 43.75% ccw small,
+        close,
+        move to 30.294% 31.25%,
+        arc to 28.181% 46.875% of 78.125% ccw small,
+        line to 46.875% 46.875%,
+        line to 46.875% 31.25%,
+        close,
+        move to 53.125% 31.25%,
+        line to 53.125% 46.875%,
+        line to 71.812% 46.875%,
+        arc to 69.706% 31.25% of 78.125% ccw small,
+        close,
+        move to 28.188% 53.125%,
+        arc to 30.294% 68.75% of 78.125% ccw small,
+        line to 46.875% 68.75%,
+        line to 46.875% 53.125%,
+        close,
+        move to 53.125% 53.125%,
+        line to 53.125% 68.75%,
+        line to 69.706% 68.75%,
+        curve to 71.819% 53.125% with 70.875% 63.969% / 71.619% 58.7%,
+        close,
+        move to 32.156% 75%,
+        curve to 35.081% 81.675% with 33.456% 78.625%,
+        curve to 46.875% 93.269% with 38.531% 88.144% / 42.694% 91.987%,
+        line to 46.875% 75%,
+        close,
+        move to 33.294% 90.45%,
+        arc to 29.563% 84.619% of 43.75% cw small,
+        arc to 25.562% 75% of 58.125% cw small,
+        line to 14.094% 75%,
+        arc to 33.294% 90.45% of 43.75% ccw small,
+        close,
+        move to 23.875% 68.75%,
+        arc to 21.925% 53.125% of 85.625% cw small,
+        line to 6.362% 53.125%,
+        curve to 10.463% 68.75% with 6.75% 58.688% / 8.181% 63.956%,
+        close,
+        move to 66.706% 90.45%,
+        arc to 85.906% 75% of 43.75% ccw small,
+        line to 74.438% 75%,
+        arc to 70.438% 84.619% of 58.125% cw small,
+        arc to 66.706% 90.45% of 43.75% cw small,
+        close,
+        move to 53.125% 75%,
+        line to 53.125% 93.269%,
+        curve to 64.919% 81.675% with 57.312% 91.994% / 61.469% 88.144%,
+        curve to 67.844% 75% with 66.544% 78.631%,
+        close,
+        move to 76.125% 68.75%,
+        line to 89.538% 68.75%,
+        curve to 93.638% 53.125% with 91.819% 63.956% / 93.25% 58.688%,
+        line to 78.075% 53.125%,
+        arc to 76.125% 68.75% of 85.625% cw small,
+        close,
+        move to 93.638% 46.875%,
+        arc to 89.538% 31.25% of 43.75% ccw small,
+        line to 76.125% 31.25%,
+        curve to 78.075% 46.875% with 77.212% 36.138% / 77.888% 41.394%,
+        close,
+        move to 70.438% 15.381%,
+        curve to 74.438% 25% with 71.981% 18.281% / 73.325% 21.506%,
+        line to 85.906% 25%,
+        arc to 66.706% 9.55% of 43.75% ccw small,
+        curve to 70.438% 15.381% with 68.069% 11.325% / 69.319% 13.287%,
+        close,
+        move to 67.844% 25%,
+        arc to 64.919% 18.325% of 50% ccw small,
+        curve to 53.125% 6.731% with 61.469% 11.856% / 57.312% 8.012%,
+        line to 53.125% 25%,
+        close
+    );
+    content:            "";
+    inline-size:        var(--line-height);
+    inset-block:        0;
+    inset-inline-start: var(--border-radius);
+    margin-block:       auto;
+    pointer-events:     none;
+    position:           absolute;
+}
+
+.slider-color {
+    --hue-track: linear-gradient(
+        to right in oklch,
+        light-dark(oklch(0.45 0.163 0),   oklch(0.78 0.126 0)),
+        light-dark(oklch(0.45 0.162 30),  oklch(0.78 0.115 30)),
+        light-dark(oklch(0.45 0.094 60),  oklch(0.78 0.140 60)),
+        light-dark(oklch(0.45 0.081 90),  oklch(0.78 0.143 90)),
+        light-dark(oklch(0.45 0.095 120), oklch(0.78 0.166 120)),
+        light-dark(oklch(0.45 0.110 150), oklch(0.78 0.192 150)),
+        light-dark(oklch(0.45 0.072 180), oklch(0.78 0.126 180)),
+        light-dark(oklch(0.45 0.069 210), oklch(0.78 0.120 210)),
+        light-dark(oklch(0.45 0.092 240), oklch(0.78 0.111 240)),
+        light-dark(oklch(0.45 0.197 270), oklch(0.78 0.099 270)),
+        light-dark(oklch(0.45 0.216 300), oklch(0.78 0.117 300)),
+        light-dark(oklch(0.45 0.184 330), oklch(0.78 0.189 330)),
+        light-dark(oklch(0.45 0.163 360), oklch(0.78 0.126 360))
+    );
+}
+.slider-color::-webkit-slider-runnable-track {
+    background-image: var(--hue-track);
+}
+.slider-color::-moz-range-track {
+    background-image: var(--hue-track);
+}
+
 dialog > :is(input, label:has(> input[name="create"])) {
     display: block;
 }

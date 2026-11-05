@@ -16,6 +16,7 @@ const SITES = {
     "./": [
         "./",
         "./init.js?v={version}",
+        "./js/style.js?v={version}",
         "./manifest.json",
         "./worker.js?v={version}",
         "./css/import.css?v={version}",

@@ -11,6 +11,64 @@ body > * {
 #header_button-4 { anchor-name: --header_button-4; }
 #header_div-3 { position-anchor: --header_button-4; }
 
+.icon-dice {
+    min-block-size:  var(--box-height);
+    min-inline-size: var(--box-height);
+    position:        relative;
+}
+.icon-dice::before {
+    background-color: currentColor;
+    block-size:       var(--line-height);
+    clip-path: shape(
+        from 81.25% 6.25%,
+        arc to 93.75% 18.75% of 12.5% cw small,
+        line to 93.75% 81.25%,
+        arc to 81.25% 93.75% of 12.5% cw small,
+        line to 18.75% 93.75%,
+        arc to 6.25% 81.25% of 12.5% cw small,
+        line to 6.25% 18.75%,
+        arc to 18.75% 6.25% of 12.5% cw small,
+        close,
+        move to 18.75% 0%,
+        arc to 0% 18.75% of 18.75% ccw small,
+        line to 0% 81.25%,
+        arc to 18.75% 100% of 18.75% ccw small,
+        line to 81.25% 100%,
+        arc to 100% 81.25% of 18.75% ccw small,
+        line to 100% 18.75%,
+        arc to 81.25% 0% of 18.75% ccw small,
+        close,
+        move to 34.375% 25%,
+        arc to 15.625% 25% of 9.375% cw large,
+        arc to 34.375% 25% of 9.375% cw small,
+        close,
+        move to 84.375% 25%,
+        arc to 65.625% 25% of 9.375% cw large,
+        arc to 84.375% 25% of 9.375% cw small,
+        close,
+        move to 84.375% 75%,
+        arc to 65.625% 75% of 9.375% cw large,
+        arc to 84.375% 75% of 9.375% cw small,
+        close,
+        move to 34.375% 75%,
+        arc to 15.625% 75% of 9.375% cw large,
+        arc to 34.375% 75% of 9.375% cw small,
+        close,
+        move to 59.375% 50%,
+        arc to 40.625% 50% of 9.375% cw large,
+        arc to 59.375% 50% of 9.375% cw small,
+        close
+    );
+    content:          "";
+    inline-size:      var(--line-height);
+    inset-block:      0;
+    inset-inline:     0;
+    margin-block:     auto;
+    margin-inline:    auto;
+    pointer-events:   none;
+    position:         absolute;
+}
+
 #main_section-1 dl {
     column-gap: 1rem;
     row-gap: 0.5rem;

@@ -1,3 +1,5 @@
+import { start as start_style, bind as bind_style } from "./js/style.js?v={version}";
+
 // === constants ===
 
 const COUNTER_WRITE_OFFSET = 0;
@@ -57,6 +59,7 @@ const S = {
     event_frame: new Uint8Array(EVENT_RING.frame_max),
     command_frame: new Uint8Array(COMMAND_RING.frame_max),
     call_app: () => {},
+    style: null,
 };
 
 let composing_element = null;
@@ -81,6 +84,7 @@ async function start() {
         document.body.appendChild(s);
     }
 
+    S.style = start_style();
     const rem_in_px = parseFloat(getComputedStyle(document.documentElement).fontSize);
     const now_in_ms = Date.now();
     const timezone_offset_minutes = -new Date().getTimezoneOffset();
@@ -511,6 +515,7 @@ function write_event(frame) {
 }
 
 function bind() {
+    bind_style(S.style);
     const EVENTS = [
         "change", "click", "contextmenu", "copy", "cut", "focusin", "focusout", "input",
         "paste", "pointercancel", "pointerdown", "pointerup", "submit"

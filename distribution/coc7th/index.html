@@ -29,11 +29,14 @@
             <button id="header_div-1_button-2" role="option" value="2" hidden></button>
             <button id="header_div-1_button-3" role="option" value="3" hidden></button>
             <button id="header_div-1_button-4" role="option" value="4" hidden></button></div>
-        <button id="header_button-2" type="button" data-surround="outline">🎲</button>
+        <button id="header_button-2" type="button" aria-label="Dice" class="icon-dice" data-surround="outline"></button>
         <input id="header_input" type="checkbox" form="form" aria-label="save" data-facet="sync">
-        <button id="header_button-3" type="button" popovertarget="header_div-2" aria-haspopup="listbox" aria-expanded="false" aria-controls="header_div-2" aria-label="Appearance" data-surround="outline">🎨</button>
+        <button id="header_button-3" type="button" popovertarget="header_div-2" aria-haspopup="listbox" aria-expanded="false" aria-controls="header_div-2" aria-label="Appearance" class="icon-palette" data-surround="outline"></button>
         <div id="header_div-2" popover="auto" role="listbox" aria-labelledby="header_button-3">
-            <span role="presentation">Appearance</span>
+            <label>
+                <span>Main</span>
+                <input max="360" min="0" name="hue" step="1" type="range" value="300" class="slider-color" data-size="xs"></label>
+            <span role="presentation">Color mode</span>
             <label id="header_div-2_label-1">
                 <input id="header_div-2_label-1_input" name="color-scheme" role="option" type="radio" value="light-less-contrast" data-sign="check" data-sign-style="inline">
                 <span>Light (less contrast)</span></label>
@@ -52,8 +55,7 @@
             <label id="header_div-2_label-6">
                 <input id="header_div-2_label-6_input" name="color-scheme" role="option" type="radio" value="dark-more-contrast" data-sign="check" data-sign-style="inline">
                 <span>Dark (more contrast)</span></label></div>
-        <button id="header_button-4" type="button" popovertarget="header_div-3" aria-haspopup="listbox" aria-expanded="false" aria-controls="header_div-3" data-surround="outline">
-            <span>🌐</span></button>
+        <button id="header_button-4" type="button" popovertarget="header_div-3" aria-haspopup="listbox" aria-expanded="false" aria-controls="header_div-3" aria-label="Language" class="icon-globe" data-surround="outline"></button>
         <div id="header_div-3" popover="auto" role="listbox" aria-labelledby="header_button-4">
             <span role="presentation">Select Language</span>
             <button id="header_div-3_button-1" role="option" value="1"></button>
