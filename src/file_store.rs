@@ -435,14 +435,13 @@ pub trait FileStore: Sized {
     /// process. Across restarts, ids of deleted entries may come out again
     /// (see [`OpfsStore::new`]).
     ///
-    /// ```no_run
-    /// # async fn example() -> Result<(), app::file_store::FileStoreError> {
-    /// # use app::file_store::{FileStore, Mount, OpfsStore, StoreId};
-    /// # let mut store = OpfsStore::open(StoreId { name: "tenant", version: "0.0" }, true).await.and_then(OpfsStore::new)?;
+    /// ```
+    /// # use app::file_store::{FileStore, MemoryHandles, MemoryStore};
+    /// # let mut store = MemoryStore::new(MemoryHandles::new())?;
     /// let first  = store.issue_id();
     /// let second = store.issue_id();
     /// assert!(first < second);
-    /// # Ok(()) }
+    /// # Ok::<(), app::file_store::FileStoreError>(())
     /// ```
     fn issue_id(&mut self) -> u32 {
         let index = self.index_mut();
@@ -469,12 +468,11 @@ pub trait FileStore: Sized {
     /// Current value for `id`, straight from the RAM index — no disk access,
     /// and unsaved mutations are visible immediately.
     ///
-    /// ```no_run
-    /// # async fn example() -> Result<(), app::file_store::FileStoreError> {
-    /// # use app::file_store::{FileStore, Mount, OpfsStore, StoreId};
-    /// # let store = OpfsStore::open(StoreId { name: "tenant", version: "0.0" }, true).await.and_then(OpfsStore::new)?;
+    /// ```
+    /// # use app::file_store::{FileStore, MemoryHandles, MemoryStore};
+    /// # let store = MemoryStore::new(MemoryHandles::new())?;
     /// assert_eq!(store.get(9999), None); // absent id
-    /// # Ok(()) }
+    /// # Ok::<(), app::file_store::FileStoreError>(())
     /// ```
     fn get(&self, id: u32) -> Option<&[u8]> {
         self.index().memory.get(&id).map(|bytes| bytes.as_slice())
@@ -492,13 +490,12 @@ pub trait FileStore: Sized {
     /// Insert or overwrite `id` in memory and mark it pending. Never touches
     /// the disk; durability requires an explicit `save()`.
     ///
-    /// ```no_run
-    /// # async fn example() -> Result<(), app::file_store::FileStoreError> {
-    /// # use app::file_store::{FileStore, Mount, OpfsStore, StoreId};
-    /// # let mut store = OpfsStore::open(StoreId { name: "tenant", version: "0.0" }, true).await.and_then(OpfsStore::new)?;
+    /// ```
+    /// # use app::file_store::{FileStore, MemoryHandles, MemoryStore};
+    /// # let mut store = MemoryStore::new(MemoryHandles::new())?;
     /// store.set(1, b"v".to_vec());
     /// assert_eq!(store.get(1), Some(&b"v"[..])); // visible before any save
-    /// # Ok(()) }
+    /// # Ok::<(), app::file_store::FileStoreError>(())
     /// ```
     fn set(&mut self, id: u32, bytes: Vec<u8>) {
         let index = self.index_mut();
@@ -511,14 +508,13 @@ pub trait FileStore: Sized {
     /// mirror of `set`: nothing reaches the disk until `save()` turns it
     /// into a tombstone record.
     ///
-    /// ```no_run
-    /// # async fn example() -> Result<(), app::file_store::FileStoreError> {
-    /// # use app::file_store::{FileStore, Mount, OpfsStore, StoreId};
-    /// # let mut store = OpfsStore::open(StoreId { name: "tenant", version: "0.0" }, true).await.and_then(OpfsStore::new)?;
+    /// ```
+    /// # use app::file_store::{FileStore, MemoryHandles, MemoryStore};
+    /// # let mut store = MemoryStore::new(MemoryHandles::new())?;
     /// store.set(1, b"v".to_vec());
     /// store.delete(1);
     /// assert_eq!(store.get(1), None); // gone from memory, disk untouched
-    /// # Ok(()) }
+    /// # Ok::<(), app::file_store::FileStoreError>(())
     /// ```
     fn delete(&mut self, id: u32) {
         let index = self.index_mut();
@@ -539,15 +535,14 @@ pub trait FileStore: Sized {
     /// On failure `unsaved` / `deleted` are kept and `log_end` does not
     /// advance, so the same `save()` can be retried as-is.
     ///
-    /// ```no_run
-    /// # async fn example() -> Result<(), app::file_store::FileStoreError> {
-    /// # use app::file_store::{FileStore, Mount, OpfsStore, StoreId};
-    /// # let mut store = OpfsStore::open(StoreId { name: "tenant", version: "0.0" }, true).await.and_then(OpfsStore::new)?;
+    /// ```
+    /// # use app::file_store::{FileStore, MemoryHandles, MemoryStore};
+    /// # let mut store = MemoryStore::new(MemoryHandles::new())?;
     /// store.set(1, b"v".to_vec());
     /// if store.save().is_err() {
     ///     store.save()?; // the pending diff survives a failed save; retrying is safe
     /// }
-    /// # Ok(()) }
+    /// # Ok::<(), app::file_store::FileStoreError>(())
     /// ```
     fn save(&mut self) -> Result<(), FileStoreError> {
         let index = self.index();
@@ -608,14 +603,13 @@ pub trait FileStore: Sized {
     /// counter stays monotonic. (A separate concern from the cross-restart
     /// re-issue accepted in [`OpfsStore::new`].)
     ///
-    /// ```no_run
-    /// # async fn example() -> Result<(), app::file_store::FileStoreError> {
-    /// # use app::file_store::{FileStore, Mount, OpfsStore, StoreId};
-    /// # let mut store = OpfsStore::open(StoreId { name: "tenant", version: "0.0" }, true).await.and_then(OpfsStore::new)?;
+    /// ```
+    /// # use app::file_store::{FileStore, MemoryHandles, MemoryStore};
+    /// # let mut store = MemoryStore::new(MemoryHandles::new())?;
     /// store.set(1, b"draft".to_vec());
     /// store.discard()?;               // unsaved set is rolled back
     /// assert_eq!(store.get(1), None);
-    /// # Ok(()) }
+    /// # Ok::<(), app::file_store::FileStoreError>(())
     /// ```
     fn discard(&mut self) -> Result<(), FileStoreError> {
         let snapshot_bytes = read_all(&*self, File::Snapshot)?;
