@@ -6,8 +6,6 @@ use core::{
 
 use crate::{Language, data_struct::DataStruct, list::ListError};
 
-// === SubjectTrait ===
-
 pub trait SubjectTrait {
     const SCHEMA_SIZE: u32;
     fn ids(&self) -> &'static [u32];
@@ -16,8 +14,6 @@ pub trait SubjectTrait {
     where
         Self: Sized;
 }
-
-// === Predicate ===
 
 pub trait Predicate<const N: usize> {
     type Parsed;
