@@ -146,7 +146,7 @@ sh reference/build.sh
 
 | Filename | Description |
 |-|-|
-| lib.rs | `WireError` と `wire_error!`、ワイヤ形式の `Input` / `Output`(LE、u32 長さ前置の slice / str)、`Decimal`、`scalar!` / `wire_enum!`、`parse` / `stringify`。 |
+| lib.rs | `enumerate!`, `WireError`, `wire_error!`, `Input::{decode, from_bytes} / Output::{encode, to_bytes}`(LE, 長さu32前置のslice/str), `Decimal`、`scalar!` / `wire_enum!`、`parse` / `stringify`, `Language`. |
 | bit.rs | Building types with fixed memory layouts: Unit::{Bit, Byte}, Bits, Field, composite!. |
 | app.rs | - initとprocessの公開apiを持つ、Appインスタンス。eventsとcommandsの2つのキューを持ち、handler::Handler.process_*へevents消費を移譲ループする。保存するアプリに共通の`StoreLost`(ストアの失効)は、ここで`serve_event`への「開き直したい」要求(`reopen`)に変え、`StoreOpened`は`Handler`へ渡す。 |
 | arena.rs | JavaScriptとappが共有するメモリのレイアウトと、event / commandのリングバッファ。`serve_event`(async)が、処理待ちの要求があれば`Store::open`をawaitして、結果を`App::opened`に渡す。ロック競合(`NoModificationAllowed`)は`REOPEN_INTERVAL_IN_MS`間隔で`REOPEN_ATTEMPTS`回まで、イベント待ちのタイムアウトとして開き直す。 |

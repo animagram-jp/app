@@ -114,10 +114,6 @@ pub(crate) use enumerate;
 pub trait WireError {
     fn identifiers(&self, path: &mut Vec<u16>);
     fn detail(&self) -> String;
-
-    fn status(&self) -> u16 {
-        400
-    }
 }
 
 macro_rules! wire_error {
@@ -146,12 +142,6 @@ macro_rules! wire_error {
             fn detail(&self) -> ::alloc::string::String {
                 match self {
                     $($(#[$meta])* $name::$variant(error) => $crate::WireError::detail(error)),+
-                }
-            }
-
-            fn status(&self) -> u16 {
-                match self {
-                    $($(#[$meta])* $name::$variant(error) => $crate::WireError::status(error)),+
                 }
             }
         }

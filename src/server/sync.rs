@@ -96,13 +96,6 @@ impl WireError for SyncError {
             other => other.to_string(),
         }
     }
-
-    fn status(&self) -> u16 {
-        match self {
-            SyncError::Record(_) | SyncError::Store(_) => 500,
-            _ => 400,
-        }
-    }
 }
 
 impl From<FileStoreError> for SyncError {

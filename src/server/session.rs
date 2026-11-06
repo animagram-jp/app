@@ -66,10 +66,6 @@ impl WireError for SessionError {
             SessionError::Record(id) => format!("session record {id}"),
         }
     }
-
-    fn status(&self) -> u16 {
-        500
-    }
 }
 
 #[derive(Clone, Debug, PartialEq)]

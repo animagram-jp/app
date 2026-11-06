@@ -56,16 +56,6 @@ impl WireError for HttpError {
     fn detail(&self) -> String {
         self.to_string()
     }
-
-    fn status(&self) -> u16 {
-        match self {
-            HttpError::HeaderTooLarge => 431,
-            HttpError::BodyTooLarge => 413,
-            HttpError::TransferEncoding => 411,
-            HttpError::Version => 505,
-            _ => 400,
-        }
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

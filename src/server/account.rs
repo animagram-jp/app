@@ -64,16 +64,6 @@ impl WireError for AccountError {
             other => other.to_string(),
         }
     }
-
-    fn status(&self) -> u16 {
-        match self {
-            AccountError::Unauthorized => 401,
-            AccountError::NotAllowed => 403,
-            AccountError::AlreadyRegistered => 409,
-            AccountError::Record(_) | AccountError::Store(_) => 500,
-            _ => 400,
-        }
-    }
 }
 
 impl From<FileStoreError> for AccountError {

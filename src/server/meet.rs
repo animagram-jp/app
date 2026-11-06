@@ -69,13 +69,6 @@ impl WireError for MeetError {
             other => other.to_string(),
         }
     }
-
-    fn status(&self) -> u16 {
-        match self {
-            MeetError::Full(_) => 409,
-            _ => 400,
-        }
-    }
 }
 
 #[derive(Clone, Debug, PartialEq)]

@@ -20,9 +20,9 @@ use crate::{
         account::{Account, AccountError},
         authorize,
         http::{HttpError, Method, Request, Response},
-        meet::{self, Board},
+        meet::{self, Board, MeetError},
         session::{self, Session, Token},
-        sync::{self, Collection},
+        sync::{self, Collection, SyncError},
     },
 };
 
@@ -133,8 +133,25 @@ pub fn failure(status: u16, error: Error) -> Response {
     Response::new(status).body(encode_error(&error))
 }
 
+fn status(error: &Error) -> u16 {
+    match error {
+        Error::Http(HttpError::HeaderTooLarge) => 431,
+        Error::Http(HttpError::BodyTooLarge) => 413,
+        Error::Http(HttpError::TransferEncoding) => 411,
+        Error::Http(HttpError::Version) => 505,
+        Error::Account(AccountError::Unauthorized) => 401,
+        Error::Account(AccountError::NotAllowed) => 403,
+        Error::Account(AccountError::AlreadyRegistered) => 409,
+        Error::Account(AccountError::Record(_) | AccountError::Store(_)) => 500,
+        Error::Session(_) => 500,
+        Error::Meet(MeetError::Full(_)) => 409,
+        Error::Sync(SyncError::Record(_) | SyncError::Store(_)) => 500,
+        _ => 400,
+    }
+}
+
 pub fn reject(error: Error) -> Response {
-    failure(error.status(), error)
+    failure(status(&error), error)
 }
 
 fn unauthorized() -> Response {
