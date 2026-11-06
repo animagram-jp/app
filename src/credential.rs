@@ -7,7 +7,7 @@ use core::{
     cmp::PartialEq,
     fmt::{self, Debug, Display, Formatter},
     marker::Copy,
-    option::Option,
+    option::Option::{self, None, Some},
     primitive::{str, u8, u16, u32, usize},
     result::Result::{self, Err, Ok},
 };
@@ -63,14 +63,18 @@ impl WireError for CredentialError {
 
 pub type Key = [u8; KEY_LENGTH];
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum Field {
-    Email = 1,
-    Password,
+crate::enumerate! {
+    pub Field(u8) {
+        Other,
+        Email,
+        Password,
+    }
 }
 
 impl Field {
-    pub const LIST: [Self; 2] = [Self::Email, Self::Password];
+    pub fn list() -> &'static [Self] {
+        &Self::LIST[1..]
+    }
 
     /// ```
     /// # use app::credential::Field;
@@ -78,11 +82,12 @@ impl Field {
     /// assert_eq!(Field::Password.number(), 2);
     /// ```
     pub fn number(self) -> u32 {
-        self as u32
+        u32::from(u8::from(self))
     }
 
     pub fn name(self) -> &'static str {
         match self {
+            Self::Other => "",
             Self::Email => "email",
             Self::Password => "password",
         }
@@ -100,7 +105,7 @@ pub struct Form {
 
 pub fn read_form(value: &str) -> Result<Form, CredentialError> {
     let pairs = parse_url_search_params(value);
-    let [email, password] = Field::LIST.map(|field| {
+    let [email, password] = [Field::Email, Field::Password].map(|field| {
         pairs.iter().find(|(key, _)| key == field.name()).map(|(_, value)| value.clone())
     });
     Ok(Form {

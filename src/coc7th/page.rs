@@ -459,7 +459,7 @@ impl Page {
                 Self::ChatSend
             }
             [(Tag::Main, None), (Tag::Dialog, None), (Tag::Input, Some(n))] => {
-                Self::Credential(*Field::LIST.get(n.checked_sub(1)? as usize)?)
+                Self::Credential(*Field::list().get(n.checked_sub(1)? as usize)?)
             }
             [(Tag::Main, None), (Tag::Dialog, None), (Tag::H3, None)] => Self::DialogHeading,
             [(Tag::Main, None), (Tag::Dialog, None), (Tag::Div, None)] => Self::DialogOptions,
@@ -511,7 +511,7 @@ impl Page {
             Self::Create,
             Self::CreateInput,
         ]);
-        pages.extend(Field::LIST.map(Self::Credential));
+        pages.extend(Field::list().iter().copied().map(Self::Credential));
         pages.extend((1..=INVESTIGATOR_OPTIONS).map(Self::InvestigatorOption));
         pages.extend((1..=TOAST_SLOTS).flat_map(|n| [Self::Toast(n), Self::ToastText(n)]));
         pages.extend(Language::list().iter().map(|&l| Self::LanguageOption(l)));

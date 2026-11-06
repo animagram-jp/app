@@ -24,7 +24,7 @@ use crate::{
             parse_date, parse_time, tag,
         },
         grid::{AXES, Axis, CLOCK, Cell, Clock, Day, Grid, Month, lane_box, lanes, span},
-        target::{CardPart, Dialog, EditField, FIELDS, STEP_TODAY, Submit, TOAST_SLOTS, Target},
+        target::{CardPart, Dialog, EditField, STEP_TODAY, Submit, TOAST_SLOTS, Target},
     },
     credential::{self, Field},
     data_struct::DataStruct,
@@ -535,13 +535,14 @@ impl<S: FileStore> Handler<S> {
             value,
         }));
         commands.push(hidden(Target::EditList.to_dom(), false));
-        commands
-            .extend(FIELDS.map(|field| {
+        commands.extend(
+            EditField::list().iter().map(|&field| {
                 toggle(Target::EditField(field).to_dom(), Attribute::Disabled, false)
-            }));
+            }),
+        );
         commands.push(hidden(Target::Delete.to_dom(), matches!(editing, Editing::New(_))));
         commands.push(toggle(Target::Delete.to_dom(), Attribute::Disabled, false));
-        for field in Field::LIST {
+        for &field in Field::list() {
             commands.push(hidden(Target::Credential(field).to_dom(), true));
             commands.push(toggle(Target::Credential(field).to_dom(), Attribute::Disabled, true));
         }
@@ -775,12 +776,13 @@ impl<S: FileStore> Handler<S> {
             hidden(Target::EditList.to_dom(), true),
         ];
         commands.extend(
-            FIELDS
-                .map(|field| toggle(Target::EditField(field).to_dom(), Attribute::Disabled, true)),
+            EditField::list()
+                .iter()
+                .map(|&field| toggle(Target::EditField(field).to_dom(), Attribute::Disabled, true)),
         );
         commands.push(hidden(Target::Delete.to_dom(), true));
         commands.push(toggle(Target::Delete.to_dom(), Attribute::Disabled, true));
-        for field in Field::LIST {
+        for &field in Field::list() {
             commands.push(hidden(Target::Credential(field).to_dom(), false));
             commands.push(toggle(Target::Credential(field).to_dom(), Attribute::Disabled, false));
         }
@@ -2013,7 +2015,7 @@ fn appearance_commands(color_scheme: ColorScheme) -> Vec<Command> {
         Command::SetAttribute {
             id:        Target::Html.to_dom(),
             attribute: Attribute::DataColorScheme,
-            value:     String::from(color_scheme.value()),
+            value:     String::from(color_scheme.name()),
         },
     ]
 }
@@ -3918,8 +3920,10 @@ mod tests {
 
     #[test]
     fn the_dialog_follows_its_opener_and_each_form_reads_only_its_own_fields() {
-        let credentials = Field::LIST.map(|field| Target::Credential(field).to_dom());
-        let edits: Vec<Id> = FIELDS.map(|field| Target::EditField(field).to_dom()).into();
+        let credentials: Vec<Id> =
+            Field::list().iter().map(|&field| Target::Credential(field).to_dom()).collect();
+        let edits: Vec<Id> =
+            EditField::list().iter().map(|&field| Target::EditField(field).to_dom()).collect();
         let unlock_query = "email=a%40example.jp&password=passphrase&1=x&8=n";
         for seed in 0..10 {
             let mut rng = Rng::new(seed);

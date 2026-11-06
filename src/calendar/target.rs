@@ -15,16 +15,6 @@ use crate::{
     host::dom::{Id, Tag},
 };
 
-pub const FIELDS: [EditField; 8] = [
-    EditField::Title,
-    EditField::Category,
-    EditField::Status,
-    EditField::Date,
-    EditField::Resource,
-    EditField::Start,
-    EditField::End,
-    EditField::Note,
-];
 const RELOAD_BUTTON: u32 = 1;
 const SAVE_BUTTON: u32 = 2;
 pub const STEP_TODAY: u32 = 3;
@@ -33,26 +23,32 @@ const APPEARANCE_LIST: u32 = 2;
 const SUBMIT_BUTTON: u32 = 1;
 const DELETE_BUTTON: u32 = 2;
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum EditField {
-    Title = 1,
-    Category,
-    Status,
-    Date,
-    Resource,
-    Start,
-    End,
-    Note,
+crate::enumerate! {
+    pub EditField(u8) {
+        Other,
+        Title,
+        Category,
+        Status,
+        Date,
+        Resource,
+        Start,
+        End,
+        Note,
+    }
 }
 
 impl EditField {
+    pub fn list() -> &'static [Self] {
+        &Self::LIST[1..]
+    }
+
     /// ```
     /// # use app::calendar::target::EditField;
     /// assert_eq!(EditField::Title.number(), 1);
     /// assert_eq!(EditField::Note.number(), 8);
     /// ```
     pub fn number(self) -> u32 {
-        self as u32
+        u32::from(u8::from(self))
     }
 }
 
@@ -328,7 +324,7 @@ impl Target {
             [(Tag::Dialog, None), rest @ ..] => match rest {
                 [] => Self::Modal,
                 [(Tag::Input, Some(n))] => {
-                    Self::Credential(*Field::LIST.get(n.checked_sub(1)? as usize)?)
+                    Self::Credential(*Field::list().get(n.checked_sub(1)? as usize)?)
                 }
                 [(Tag::Label, None)] => Self::Create,
                 [(Tag::Label, None), (Tag::Span, None)] => Self::CreateName,
@@ -345,14 +341,14 @@ impl Target {
                     (Tag::Dd, Some(n)),
                     (Tag::Select, None),
                     (Tag::Option, Some(k)),
-                ] => match FIELDS.get(n.checked_sub(1)? as usize)? {
+                ] => match EditField::list().get(n.checked_sub(1)? as usize)? {
                     EditField::Category => Self::CategoryOption(*k),
                     EditField::Status => Self::StatusOption(*k),
                     EditField::Resource => Self::ResourceOption(*k),
                     _ => return None,
                 },
                 [(Tag::Form, None), (Tag::Dl, None), (Tag::Dd, Some(n)), (tag, None)] => {
-                    let field = *FIELDS.get(n.checked_sub(1)? as usize)?;
+                    let field = *EditField::list().get(n.checked_sub(1)? as usize)?;
                     let expected = Self::EditField(field).to_dom();
                     (expected.0.last()?.tag == **tag).then_some(Self::EditField(field))?
                 }
@@ -410,8 +406,8 @@ mod tests {
         targets.extend(ColorScheme::list().iter().map(|&c| Target::AppearanceOption(c)));
         targets.extend(AXES.map(Target::Axis));
         targets.extend(AXES.map(Target::AxisName));
-        targets.extend(FIELDS.map(Target::EditField));
-        targets.extend(Field::LIST.map(Target::Credential));
+        targets.extend(EditField::list().iter().copied().map(Target::EditField));
+        targets.extend(Field::list().iter().copied().map(Target::Credential));
         targets.extend((1..=4).flat_map(|n| {
             [Target::CategoryOption(n), Target::StatusOption(n), Target::ResourceOption(n)]
         }));

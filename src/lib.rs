@@ -66,6 +66,40 @@ pub mod time;
 #[cfg(feature = "vault")]
 pub mod vault;
 
+// === Global allocator ===
+
+#[cfg(target_arch = "wasm32")]
+use talc::{sync::TalcLock, wasm::*};
+
+#[cfg(target_arch = "wasm32")]
+#[global_allocator]
+static ALLOCATOR: TalcLock<spinning_top::RawSpinlock, WasmGrowAndClaim, WasmBinning> =
+    TalcLock::new(WasmGrowAndClaim);
+
+// === Panic handler ===
+
+#[cfg(all(target_arch = "wasm32", not(test)))]
+#[panic_handler]
+fn panic(info: &PanicInfo) -> ! {
+    use alloc::format;
+    use core::arch::wasm32::unreachable;
+
+    use crate::{
+        arena::{PanicError, emit, report_error},
+        host::OPERATION_RELOAD,
+    };
+
+    let location = match info.location() {
+        Some(location) => format!("{}:{}", location.file(), location.line()),
+        None => String::from("unknown"),
+    };
+
+    report_error(Error::Panic(PanicError { location, message: format!("{}", info.message()) }));
+    let _ = emit(&[OPERATION_RELOAD]);
+
+    unreachable()
+}
+
 macro_rules! enumerate {
     ($(#[$meta:meta])* $vis:vis $name:ident($value:ty) { $($variant:ident),+ $(,)? }) => {
         $(#[$meta])*
@@ -380,16 +414,6 @@ pub fn stringify<T: Output + ?Sized>(value: &T) -> String {
     String::from_utf8(output).unwrap_or_default()
 }
 
-// === Global allocator ===
-
-#[cfg(target_arch = "wasm32")]
-use talc::{sync::TalcLock, wasm::*};
-
-#[cfg(target_arch = "wasm32")]
-#[global_allocator]
-static ALLOCATOR: TalcLock<spinning_top::RawSpinlock, WasmGrowAndClaim, WasmBinning> =
-    TalcLock::new(WasmGrowAndClaim);
-
 // === Language ===
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -427,41 +451,30 @@ impl Language {
 
 // === ColorScheme ===
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ColorScheme {
-    LightLessContrast,
-    Light,
-    LightMoreContrast,
-    DarkLessContrast,
-    Dark,
-    DarkMoreContrast,
+enumerate! {
+    pub ColorScheme(u8) {
+        Other,
+        LightLessContrast,
+        Light,
+        LightMoreContrast,
+        DarkLessContrast,
+        Dark,
+        DarkMoreContrast,
+    }
 }
 
 impl ColorScheme {
     pub fn list() -> &'static [Self] {
-        &[
-            Self::LightLessContrast,
-            Self::Light,
-            Self::LightMoreContrast,
-            Self::DarkLessContrast,
-            Self::Dark,
-            Self::DarkMoreContrast,
-        ]
+        &Self::LIST[1..]
     }
 
     pub fn number(self) -> u32 {
-        match self {
-            Self::LightLessContrast => 1,
-            Self::Light => 2,
-            Self::LightMoreContrast => 3,
-            Self::DarkLessContrast => 4,
-            Self::Dark => 5,
-            Self::DarkMoreContrast => 6,
-        }
+        u32::from(u8::from(self))
     }
 
-    pub fn value(self) -> &'static str {
+    pub fn name(self) -> &'static str {
         match self {
+            Self::Other => "",
             Self::LightLessContrast => "light-less-contrast",
             Self::Light => "light",
             Self::LightMoreContrast => "light-more-contrast",
@@ -471,33 +484,9 @@ impl ColorScheme {
         }
     }
 
-    pub fn parse(value: &str) -> Option<Self> {
-        Self::list().iter().copied().find(|scheme| scheme.value() == value)
+    pub fn from_name(name: &str) -> Option<Self> {
+        Self::list().iter().copied().find(|scheme| scheme.name() == name)
     }
-}
-
-// === Panic handler ===
-
-#[cfg(all(target_arch = "wasm32", not(test)))]
-#[panic_handler]
-fn panic(info: &PanicInfo) -> ! {
-    use alloc::format;
-    use core::arch::wasm32::unreachable;
-
-    use crate::{
-        arena::{PanicError, emit, report_error},
-        host::OPERATION_RELOAD,
-    };
-
-    let location = match info.location() {
-        Some(location) => format!("{}:{}", location.file(), location.line()),
-        None => String::from("unknown"),
-    };
-
-    report_error(Error::Panic(PanicError { location, message: format!("{}", info.message()) }));
-    let _ = emit(&[OPERATION_RELOAD]);
-
-    unreachable()
 }
 
 #[cfg(test)]

@@ -85,7 +85,7 @@ impl<S: FileStore> Handler<S> {
             toggle(Page::DialogNumber.to_dom(), Attribute::Hidden, true),
             toggle(Page::DialogNumberInput.to_dom(), Attribute::Disabled, true),
         ];
-        for field in Field::LIST {
+        for &field in Field::list() {
             commands.push(toggle(Page::Credential(field).to_dom(), Attribute::Hidden, false));
             commands.push(toggle(Page::Credential(field).to_dom(), Attribute::Disabled, false));
         }
@@ -316,7 +316,7 @@ fn appearance_commands(color_scheme: ColorScheme) -> Vec<Command> {
         Command::SetAttribute {
             id:        Page::Html.to_dom(),
             attribute: Attribute::DataColorScheme,
-            value:     String::from(color_scheme.value()),
+            value:     String::from(color_scheme.name()),
         },
     ]
 }
@@ -1002,7 +1002,7 @@ mod handler_tests {
                 ColorScheme::Light,
             ));
             let mut dom: Vec<(dom::Id, Attribute, bool)> = Vec::new();
-            for field in Field::LIST {
+            for &field in Field::list() {
                 dom.push((Page::Credential(field).to_dom(), Attribute::Hidden, true));
                 dom.push((Page::Credential(field).to_dom(), Attribute::Disabled, true));
             }
@@ -1157,7 +1157,7 @@ mod handler_tests {
                 if !open {
                     continue;
                 }
-                for field in Field::LIST {
+                for &field in Field::list() {
                     let page = Page::Credential(field);
                     assert!(!lookup(&dom, page, Attribute::Hidden), "{seed} {step}");
                     assert!(!lookup(&dom, page, Attribute::Disabled), "{seed} {step}");

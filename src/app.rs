@@ -217,7 +217,7 @@ impl App {
                 now_in_ms,
                 timezone_offset_minutes,
                 data_url,
-                ColorScheme::parse(&color_scheme).unwrap_or(ColorScheme::Light),
+                ColorScheme::from_name(&color_scheme).unwrap_or(ColorScheme::Light),
             )
             .await,
         );
