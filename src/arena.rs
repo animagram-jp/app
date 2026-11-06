@@ -17,7 +17,7 @@ use core::{
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::wasm_bindgen;
 
-use crate::{Error, Output, WireError, app::App};
+use crate::{Error, Output, WireError, app::App, host::Command};
 #[cfg(all(target_arch = "wasm32", target_feature = "atomics"))]
 use crate::{
     app::{Store, now_in_ms},
@@ -396,7 +396,7 @@ impl WireError for PanicError {
 
 pub fn report_error(error: Error) {
     let mut frame = Vec::new();
-    error.encode(&mut frame);
+    Command::Error { error }.encode(&mut frame);
     let _ = emit(&frame);
 }
 

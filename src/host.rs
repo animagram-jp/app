@@ -11,7 +11,7 @@ use core::{
 use arbitrary_int::{traits::Integer, u1, u2};
 
 use crate::{
-    Error, Input, Output, WireError, bit,
+    Error, Input, Output, bit,
     event::{Event, FetchChunk, WindowEvent},
 };
 
@@ -127,21 +127,11 @@ impl Output for Command {
                 <[u8]>::encode(body, frame);
             }
             Command::Reload => frame.push(OPERATION_RELOAD),
-            Command::Error { ref error } => error.encode(frame),
+            Command::Error { ref error } => {
+                frame.push(OPERATION_ERROR);
+                error.encode(frame);
+            }
         }
-    }
-}
-
-impl Output for Error {
-    fn encode(&self, frame: &mut Vec<u8>) {
-        frame.push(OPERATION_ERROR);
-        let mut path = Vec::new();
-        self.identifiers(&mut path);
-        frame.push(path.len() as u8);
-        for identifier in path {
-            identifier.encode(frame);
-        }
-        str::encode(&self.detail(), frame);
     }
 }
 

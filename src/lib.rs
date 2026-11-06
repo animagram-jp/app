@@ -227,6 +227,18 @@ wire_error! {
     }
 }
 
+impl Output for Error {
+    fn encode(&self, output: &mut Vec<u8>) {
+        let mut path = Vec::new();
+        self.identifiers(&mut path);
+        (path.len() as u8).encode(output);
+        for identifier in path {
+            identifier.encode(output);
+        }
+        str::encode(&self.detail(), output);
+    }
+}
+
 pub trait Input<'a>: Sized {
     fn decode(input: &mut &'a [u8]) -> Option<Self>;
 

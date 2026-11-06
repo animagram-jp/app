@@ -1,7 +1,5 @@
 // This file includes untranslated text (ja).
 
-# FileStore
-
 ファイルシステムの基礎的なAPIを使って、保存時のエラーハンドリングを適切に行うための操作関数を公開するモジュールを、ストアの1つとしてファイルストアと呼ぶ。本システムにおいて、ストアはディスク上のデータ構造ではなく、あくまでメモリ上の実行体である。ファイルストアは永続化の責務を、公開される操作関数の追加として表現する。
 
 - ストアの基本的な操作関数
@@ -30,7 +28,7 @@
 バックエンドに依存する部分は、`Mount::open` / `from_handle`（実装の構築）/ `index` / `index_mut`（`Index` への accessor）と、ファイル操作のプリミティブ6つ（`size` / `read_at` / `write_at` / `flush` / `truncate` / `close`。どちらのファイルかは `File::Snapshot` / `File::Log` で指定する）だけである。ロジック（`new` / `save` / `discard` / `compact` ほか）は trait のデフォルト実装として1箇所にだけ書き、`OpfsStore` と `MemoryStore` が共有する。short read / short write のループ（`read_all` / `append`）もプリミティブの上に1つだけある。
 
 ```rust
-/// ストアの識別。ファイル名にバージョンをフラットに含める（`<name>.<version>.snap` / `.log`）。
+/// ストアの識別。ファイル名にバージョンを含める（`{name}.{version}.{snap|log}`）。
 /// レイアウトを変えるときは version を上げ、旧 version のストアを読んで移す。
 pub struct StoreId { pub name: &'static str, pub version: &'static str }
 
@@ -86,7 +84,7 @@ pub struct OpfsHandles {
 }
 ```
 
-`Mount::open` は非同期、`new` は同期である。`Handler::ready` が `open(..).await` のあと `new(..)` を呼ぶ。`std::fs` 実装の `FsStore` は `Mount` を実装せず、同期の固有メソッド `FsStore::open(root, id, create)` で `FsHandles` を返す。`Handle` は実装ごとに決まる、`open` の出力と `new` の入力を結ぶ関連型で、`OpfsStore` では snapshot と log の2つのハンドルを束ねた `OpfsHandles` になる。トレイトは静的ディスパッチ（`dyn` は使わない）で使い、本番とテストの切り替えは `cfg` で行う。
+`Mount::open` は非同期、`new` は同期。`Handler::ready` が `open(..).await` のあと `new(..)` を呼ぶ。`std::fs` 実装の `FsStore` は `Mount` を実装せず、同期の固有メソッド `FsStore::open(root, id, create)` で `FsHandles` を返す。`Handle` は実装ごとに決まる、`open` の出力と `new` の入力を結ぶ関連型で、`OpfsStore` では snapshot と log の2つのハンドルを束ねた `OpfsHandles` になる。トレイトは静的ディスパッチ（`dyn` は使わない）で使い、本番とテストの切り替えは `cfg` で行う。
 
 ---
 

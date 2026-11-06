@@ -1,7 +1,5 @@
 // This file includes untranslated text (ja).
 
-# Meet
-
 ブラウザクライアントを含めたP2P接続機能。
 
 ## シグナリング

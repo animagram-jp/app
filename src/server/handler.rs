@@ -12,7 +12,7 @@ use core::{
 };
 
 use crate::{
-    Error, FrameError, Input, Output, WireError,
+    Error, FrameError, Input, Output,
     credential::{KEY_LENGTH, Key},
     file_store::StoreId,
     server::{
@@ -117,20 +117,8 @@ fn mount<S: Open>(root: &S::Root, id: StoreId) -> Result<S, Error> {
     S::open(root, id, true).and_then(S::new).map_err(Error::FileStore)
 }
 
-fn encode_error(error: &Error) -> Vec<u8> {
-    let mut path = Vec::new();
-    error.identifiers(&mut path);
-    let mut output = Vec::new();
-    (path.len() as u8).encode(&mut output);
-    for identifier in path {
-        identifier.encode(&mut output);
-    }
-    error.detail().as_str().encode(&mut output);
-    output
-}
-
 pub fn failure(status: u16, error: Error) -> Response {
-    Response::new(status).body(encode_error(&error))
+    Response::new(status).body(error.to_bytes())
 }
 
 fn status(error: &Error) -> u16 {

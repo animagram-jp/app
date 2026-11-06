@@ -1,8 +1,6 @@
 // This file includes untranslated text (ja).
 
-# Gesture
-
-Reference data for `event::gesture::Pointer::track()` (`src/event.rs`)
+Reference data for `gesture::Pointer::track()`.
 
 ## References
 

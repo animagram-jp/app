@@ -1,7 +1,5 @@
 // This file includes untranslated text (ja).
 
-# CoC7th
-
 Call of Cthulhu 7th edition playing tool.
 
 ## References
@@ -143,9 +141,7 @@ Development Check - 上達チェック
 
 ---
 
-## Note
-
-This is a note by Andyou written through confirming rulebook.
+## ルール解釈メモ
 
 ### 先制の一撃 (奇襲)
 
@@ -162,7 +158,8 @@ This is a note by Andyou written through confirming rulebook.
 
 ### 職業技能ポイント・個人的な興味ポイント
 
-キャラクター作成後のポイント(合計)の再計算は行わない。直接の公式見解は無いが、関連ルールの方向性・妥当性の観点から判断した。
+キャラクター作成後のポイント(合計)の再計算は行わない。
+直接の公式見解は無いが、関連ルールの方向性・妥当性の観点から判断した。
 
 - 新クトゥルフ神話TRPGルールブック 第2刷 p.31
 - https://cthulhuwiki.chaosium.com/investigators/step-three-occupation-and-skills.html#sample-investigator-occupations
@@ -170,8 +167,8 @@ This is a note by Andyou written through confirming rulebook.
 
 ### Language (Own) 母国語
 
-- 母国語の言語名を明記する場所があるべき
-- 複数言語については、保留
+- 母国語の言語名を明記できるべき
+- 複数言語対応については、保留
 
 ---
 

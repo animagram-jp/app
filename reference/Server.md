@@ -1,20 +1,17 @@
 // This file includes untranslated text (ja).
 
-# Server
+feature `server`でコンパイルする、サーバー側アプリケーション。
+基本機能をパスワードログインとし、端末間暗号化(E2EE)、[Meet.md](./Meet.md)のP2Pシグナリング API、ユーザー単位のデータ同期(feature `sync`)を提供する。
 
-app の feature `server` で組まれる、サーバー側アプリケーション。
-パスワードログインを基本機能とした 端末間暗号化(E2EE)、[Meet.md](./Meet.md) の P2P シグナリング API、ユーザー単位のデータ同期(feature `sync`)を提供する。
-
----
-
-## 前提
+## 要件
 
 | 項目 | 内容 |
 |-|-|
 | 前段 | リバースプロキシ。server は 内部向けにHTTP/1.1 で待ち受ける。TLS 終端、レート制限、ロックアウト、静的配信、圧縮、セキュリティヘッダは前段に任せる。 |
 | ホスト | Linux。プロセス管理(systemd など)の下で非特権ユーザーとして稼働する。 |
-| クライアント | app の wasm worker。リクエストは `credentials: "same-origin", application/octet-stream`(リトルエンディアン、u32 長さ前置の str / bytes)。 |
-| データ | サーバーは利用者データの平文を一切持たない。鍵は端末にしか存在せず、サーバーは不透明な暗号文と、その版管理だけを扱う。 |
+| クライアント | app の wasm worker。リクエストは`credentials: "same-origin"`で、bodyは [Wire format](../CONTRIBUTING.md#wire-format) に従う。 |
+| レスポンス | `Cache-Control: no-store` を常に付ける。 |
+| データ | サーバーは利用者データの平文を一切持たない。鍵は端末にしか存在せず、サーバーは暗号文と、その版管理だけを扱う。 |
 
 ---
 
@@ -71,24 +68,6 @@ app の feature `server` で組まれる、サーバー側アプリケーショ�
 | base64 | バイナリワイヤなので不要。Cookie 値は16進法(`credential::to_hexadecimal`) |
 
 ---
-
-## ワイヤ
-
-- 全て `application/octet-stream`。整数はリトルエンディアン。`str` / `bytes` は u32 の長さ前置。
-- レスポンスには `Cache-Control: no-store` を常に付ける。
-- エラー本文は app の `OPERATION_ERROR` フレームと同じ `[depth: u8][identifier: u16 × depth][detail: str]`。app はこれを自分のエラー表示にそのまま流せる。
-
-| identifier | モジュール | 下位 |
-|-|-|-|
-| 4 | FileStore | 1 InvalidState, 2 QuotaExceeded, 3 Unsupported, 4 InvalidName, 5 Unknown, 6 NotFound, 7 NoModificationAllowed |
-| 6 | Frame | 1 Decode |
-| 7 | Http | 1 RequestLine, 2 Method, 3 Target, 4 Version, 5 Header, 6 HeaderTooLarge, 7 BodyTooLarge, 8 ContentLength, 9 TransferEncoding |
-| 8 | Credential | 1 Email, 2 Password, 3 Parameters |
-| 9 | Session | 1 Random, 2 Frame, 3 Store, 4 Record |
-| 10 | Account | 1 Email, 2 Protocol, 3 WrappedRoot, 4 NotAllowed, 5 AlreadyRegistered, 6 Unauthorized, 7 Record, 8 Store |
-| 11 | Meet | 1 Kind, 2 Payload, 3 SelfAddressed, 4 Full, 5 Frame |
-| 12 | Sync | 1 Frame, 2 Store, 3 Record, 4 Ciphertext, 6 PushCount |
-| 13 | Vault | 1 Random, 2 Length, 3 Integrity, 4 Credential |
 
 ### HTTP の受理範囲
 
