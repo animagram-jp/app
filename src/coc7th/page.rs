@@ -28,6 +28,7 @@ const CHAT_BOX_SECTION: u32 = 3;
 const CREATE_LABEL: u32 = 1;
 const NUMBER_LABEL: u32 = 2;
 pub const INVESTIGATOR_OPTIONS: u32 = 4;
+pub const TOAST_SLOTS: u32 = 2;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Label {
@@ -359,6 +360,8 @@ pub enum Page {
     DialogForm,
     Create,
     CreateInput,
+    Toast(u32),
+    ToastText(u32),
 }
 
 impl Page {
@@ -413,6 +416,10 @@ impl Page {
                 main(&[(Tag::Dialog, None), (Tag::Label, Some(CREATE_LABEL)), (Tag::Input, None)])
             }
             Self::DialogForm => main(&[(Tag::Form, None)]),
+            Self::Toast(n) => Id::new(&[(Tag::Toast, None), (Tag::Button, Some(n))]),
+            Self::ToastText(n) => {
+                Id::new(&[(Tag::Toast, None), (Tag::Button, Some(n)), (Tag::P, None)])
+            }
         }
     }
 
@@ -470,6 +477,14 @@ impl Page {
             }
             [(Tag::Main, None), (Tag::Dialog, None), ..] => Self::Dialog,
             [(Tag::Main, None), (Tag::Form, None)] => Self::DialogForm,
+            [(Tag::Toast, None), (Tag::Button, Some(n))] if (1..=TOAST_SLOTS).contains(n) => {
+                Self::Toast(*n)
+            }
+            [(Tag::Toast, None), (Tag::Button, Some(n)), (Tag::P, None)]
+                if (1..=TOAST_SLOTS).contains(n) =>
+            {
+                Self::ToastText(*n)
+            }
             _ => return None,
         })
     }
@@ -498,6 +513,7 @@ impl Page {
         ]);
         pages.extend(Field::LIST.map(Self::Credential));
         pages.extend((1..=INVESTIGATOR_OPTIONS).map(Self::InvestigatorOption));
+        pages.extend((1..=TOAST_SLOTS).flat_map(|n| [Self::Toast(n), Self::ToastText(n)]));
         pages.extend(Language::list().iter().map(|&l| Self::LanguageOption(l)));
         pages.extend(ColorScheme::list().iter().map(|&c| Self::AppearanceOption(c)));
         pages

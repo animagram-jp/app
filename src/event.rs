@@ -21,7 +21,7 @@ use crate::{
 };
 #[cfg(feature = "vault")]
 use crate::{
-    DataError, Error, FrameError, Input, Output,
+    Error, FrameError, Input, Output,
     credential::{self, Form, Key, PROTOCOL},
     host::Method,
     vault,
@@ -100,6 +100,8 @@ const ACCOUNT_PATH: &str = "/api/v1/account";
 const STATUS_OK: u16 = 200;
 #[cfg(feature = "vault")]
 const STATUS_CREATED: u16 = 201;
+#[cfg(feature = "vault")]
+const STATUS_CONFLICT: u16 = 409;
 
 #[cfg(feature = "vault")]
 pub struct Unlocked {
@@ -291,10 +293,8 @@ pub trait Handler: Sized {
     fn process_session(&mut self, response: &Response) -> (Vec<Event>, Vec<Command>) {
         if response.request == REGISTER_REQUEST {
             return match response.status {
-                STATUS_CREATED => (vec![], self.login()),
-                status => {
-                    (vec![], vec![Command::Error { error: Error::Data(DataError::Status(status)) }])
-                }
+                STATUS_CREATED | STATUS_CONFLICT => (vec![], self.login()),
+                _ => (vec![], vec![]),
             };
         }
         if response.request != LOGIN_REQUEST {
@@ -310,8 +310,7 @@ pub trait Handler: Sized {
             };
         };
         if response.status != STATUS_OK {
-            let error = Error::Data(DataError::Status(response.status));
-            return (vec![], vec![Command::Error { error }]);
+            return (vec![], vec![]);
         }
         match read_session(&response.body, &unlocked.wrap_key) {
             Ok(session) => {

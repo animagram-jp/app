@@ -1,5 +1,6 @@
-use alloc::{format, vec::Vec};
+use alloc::{string::String, vec::Vec};
 use core::{
+    fmt::{self, Display, Formatter},
     iter::Iterator,
     option::Option::{self, None, Some},
     primitive::{bool, i64, str, u8, u16, u32, u64, u128},
@@ -12,6 +13,7 @@ use crate::{
     bit::Zero,
     data_struct::{DataStruct, ID_CREATED_AT, ID_IDENTITY, ID_MODIFIED_AT, encode_time},
     file_store::FileStore,
+    list::ListError,
     object::Predicate,
     parse,
     time::{Day, Length, Month, Stamp, Unit, Year, days_in_month},
@@ -23,7 +25,27 @@ pub const SCHEMA_SIZE: u32 = 12;
 const FIELD_KIND: u32 = 4;
 const CREATED_IN_MS: u64 = 0;
 
-pub use crate::DataError;
+#[derive(Debug)]
+pub enum DataError {
+    Json(serde_json::Error),
+    Missing(String),
+    Shape(String),
+    Value { kind: String, text: String },
+    Kind(u32),
+    Layout(ListError),
+}
+
+impl From<ListError> for DataError {
+    fn from(error: ListError) -> Self {
+        DataError::Layout(error)
+    }
+}
+
+impl Display for DataError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
 
 // --- entry ---
 
@@ -346,8 +368,7 @@ pub mod appointment {
     // --- json ---
 
     pub fn import(store: &mut impl FileStore, body: &[u8]) -> Result<(), DataError> {
-        let root: Value =
-            serde_json::from_slice(body).map_err(|error| DataError::Parse(format!("{error}")))?;
+        let root: Value = serde_json::from_slice(body).map_err(DataError::Json)?;
         let page = |name: &str| field(&root, name)?.as_array().ok_or_else(|| shape(name));
         let mut staged: Vec<(u32, Vec<u8>)> = Vec::new();
 
@@ -452,7 +473,7 @@ pub mod appointment {
     }
 
     fn field<'a>(value: &'a Value, key: &str) -> Result<&'a Value, DataError> {
-        value.get(key).ok_or_else(|| DataError::Parse(format!("missing: {key}")))
+        value.get(key).ok_or_else(|| DataError::Missing(String::from(key)))
     }
 
     fn text<'a>(value: &'a Value, key: &str) -> Result<&'a str, DataError> {
@@ -464,7 +485,7 @@ pub mod appointment {
     }
 
     fn shape(key: &str) -> DataError {
-        DataError::Parse(format!("type: {key}"))
+        DataError::Shape(String::from(key))
     }
 }
 
@@ -501,7 +522,7 @@ pub fn check(store: &impl FileStore, kinds: &[u32]) -> Result<(), DataError> {
     for (_, bytes) in store.range(0, u32::MAX) {
         let kind = kind(bytes);
         if !kinds.contains(&kind) {
-            return Err(DataError::Format(format!("record kind: {kind}")));
+            return Err(DataError::Kind(kind));
         }
         DataStruct::from_bytes(bytes, SCHEMA_SIZE)?;
     }
@@ -566,12 +587,12 @@ pub fn parse_date(text: &str) -> Result<Stamp, DataError> {
 }
 
 fn format_error(kind: &str, text: &str) -> DataError {
-    DataError::Format(format!("{kind}: {text}"))
+    DataError::Value { kind: String::from(kind), text: String::from(text) }
 }
 
 #[cfg(test)]
 mod tests {
-    use alloc::string::String;
+    use alloc::{format, string::String};
     use std::fs;
 
     use super::{
@@ -629,13 +650,16 @@ mod tests {
         assert!(check(&store, &appointment::KINDS).is_ok());
         let unknown = store.issue_id();
         put(&mut store, &blank(unknown, OTHER));
-        assert!(matches!(check(&store, &appointment::KINDS), Err(DataError::Format(_))));
+        assert!(matches!(check(&store, &appointment::KINDS), Err(DataError::Kind(_))));
         assert!(entry(&store, unknown, OTHER).is_some());
         assert!(entry(&store, unknown, tag::KIND).is_none());
         for bytes in [Vec::from(*b"{"), Vec::new(), Vec::from([0u8; 64])] {
             let mut store = imported();
             store.set(1, bytes);
-            assert!(matches!(check(&store, &appointment::KINDS), Err(DataError::Format(_))));
+            assert!(matches!(
+                check(&store, &appointment::KINDS),
+                Err(DataError::Kind(_) | DataError::Layout(_))
+            ));
         }
         assert!(!loaded(&MemoryStore::new(MemoryHandles::new()).unwrap()));
         assert!(check(&MemoryStore::new(MemoryHandles::new()).unwrap(), &[]).is_ok());
@@ -736,11 +760,11 @@ mod tests {
     fn import_rejects_malformed_documents() {
         assert!(matches!(
             import(&mut MemoryStore::new(MemoryHandles::new()).unwrap(), b"{"),
-            Err(DataError::Parse(_))
+            Err(DataError::Json(_))
         ));
         assert!(matches!(
             import(&mut MemoryStore::new(MemoryHandles::new()).unwrap(), b"{}"),
-            Err(DataError::Parse(_))
+            Err(DataError::Missing(_))
         ));
         let text = String::from_utf8(sample()).unwrap();
         assert!(rejected(&text.replacen("\"start\": \"", "\"start\": \"x", 1)));

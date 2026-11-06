@@ -21,7 +21,6 @@ compile_error!("either feature `calendar` or `coc7th` is required");
 extern crate std;
 
 use alloc::{
-    format,
     string::{String, ToString},
     vec::Vec,
 };
@@ -45,7 +44,6 @@ use crate::{
     arena::{ArenaError, PanicError},
     event::EventError,
     file_store::FileStoreError,
-    list::ListError,
 };
 
 pub mod app;
@@ -148,42 +146,6 @@ macro_rules! wire_error {
     };
 }
 
-#[derive(Debug)]
-pub enum DataError {
-    Status(u16),
-    Parse(String),
-    Format(String),
-}
-
-impl From<ListError> for DataError {
-    fn from(error: ListError) -> Self {
-        DataError::Format(format!("record layout: {error:?}"))
-    }
-}
-
-impl Display for DataError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self)
-    }
-}
-
-impl WireError for DataError {
-    fn identifiers(&self, path: &mut Vec<u16>) {
-        match self {
-            DataError::Status(_) => path.push(1),
-            DataError::Parse(_) => path.push(2),
-            DataError::Format(_) => path.push(3),
-        }
-    }
-
-    fn detail(&self) -> String {
-        match self {
-            DataError::Status(status) => format!("{status}"),
-            DataError::Parse(message) | DataError::Format(message) => message.clone(),
-        }
-    }
-}
-
 #[derive(Debug, PartialEq)]
 pub enum FrameError {
     Decode,
@@ -213,22 +175,21 @@ wire_error! {
         Event(EventError) = 2,
         Panic(PanicError) = 3,
         FileStore(FileStoreError) = 4,
-        Data(DataError) = 5,
-        Frame(FrameError) = 6,
+        Frame(FrameError) = 5,
         #[cfg(all(feature = "server", not(target_arch = "wasm32")))]
-        Http(HttpError) = 7,
+        Http(HttpError) = 6,
         #[cfg(feature = "credential")]
-        Credential(CredentialError) = 8,
+        Credential(CredentialError) = 7,
         #[cfg(all(feature = "server", not(target_arch = "wasm32")))]
-        Session(SessionError) = 9,
+        Session(SessionError) = 8,
         #[cfg(all(feature = "server", not(target_arch = "wasm32")))]
-        Account(AccountError) = 10,
+        Account(AccountError) = 9,
         #[cfg(feature = "meet")]
-        Meet(MeetError) = 11,
+        Meet(MeetError) = 10,
         #[cfg(feature = "sync")]
-        Sync(SyncError) = 12,
+        Sync(SyncError) = 11,
         #[cfg(feature = "vault")]
-        Vault(VaultError) = 13,
+        Vault(VaultError) = 12,
     }
 }
 
@@ -690,48 +651,43 @@ mod error_tests {
             (Error::FileStore(FileStoreError::NotFound(message())), vec![4, 6], "m"),
             (Error::FileStore(FileStoreError::NoModificationAllowed(message())), vec![4, 7], "m"),
         ]);
-        cases.extend([
-            (Error::Data(DataError::Status(404)), vec![5, 1], "404"),
-            (Error::Data(DataError::Parse(message())), vec![5, 2], "m"),
-            (Error::Data(DataError::Format(message())), vec![5, 3], "m"),
-            (Error::Frame(FrameError::Decode), vec![6, 1], "Decode"),
-        ]);
+        cases.push((Error::Frame(FrameError::Decode), vec![5, 1], "Decode"));
         #[cfg(all(feature = "server", not(target_arch = "wasm32")))]
         cases.extend([
-            (Error::Http(HttpError::Target), vec![7, 3], "Target"),
-            (Error::Http(HttpError::HeaderTooLarge), vec![7, 6], "HeaderTooLarge"),
-            (Error::Session(SessionError::Frame(FrameError::Decode)), vec![9, 2, 1], "Decode"),
-            (Error::Session(SessionError::Record(4)), vec![9, 4], "session record 4"),
-            (Error::Account(AccountError::Email(CredentialError::Email)), vec![10, 1, 1], "Email"),
-            (Error::Account(AccountError::AlreadyRegistered), vec![10, 5], "AlreadyRegistered"),
-            (Error::Account(AccountError::Record(3)), vec![10, 7], "account record 3"),
+            (Error::Http(HttpError::Target), vec![6, 3], "Target"),
+            (Error::Http(HttpError::HeaderTooLarge), vec![6, 6], "HeaderTooLarge"),
+            (Error::Session(SessionError::Frame(FrameError::Decode)), vec![8, 2, 1], "Decode"),
+            (Error::Session(SessionError::Record(4)), vec![8, 4], "session record 4"),
+            (Error::Account(AccountError::Email(CredentialError::Email)), vec![9, 1, 1], "Email"),
+            (Error::Account(AccountError::AlreadyRegistered), vec![9, 5], "AlreadyRegistered"),
+            (Error::Account(AccountError::Record(3)), vec![9, 7], "account record 3"),
         ]);
         #[cfg(feature = "meet")]
         cases.extend([
-            (Error::Meet(MeetError::Kind(9)), vec![11, 1], "Kind(9)"),
-            (Error::Meet(MeetError::Payload(1)), vec![11, 2], "Payload(1)"),
-            (Error::Meet(MeetError::SelfAddressed), vec![11, 3], "SelfAddressed"),
-            (Error::Meet(MeetError::Full(2)), vec![11, 4], "Full(2)"),
-            (Error::Meet(MeetError::Frame(FrameError::Decode)), vec![11, 5, 1], "Decode"),
+            (Error::Meet(MeetError::Kind(9)), vec![10, 1], "Kind(9)"),
+            (Error::Meet(MeetError::Payload(1)), vec![10, 2], "Payload(1)"),
+            (Error::Meet(MeetError::SelfAddressed), vec![10, 3], "SelfAddressed"),
+            (Error::Meet(MeetError::Full(2)), vec![10, 4], "Full(2)"),
+            (Error::Meet(MeetError::Frame(FrameError::Decode)), vec![10, 5, 1], "Decode"),
         ]);
         #[cfg(feature = "sync")]
         cases.extend([
-            (Error::Sync(SyncError::Frame(FrameError::Decode)), vec![12, 1, 1], "Decode"),
-            (Error::Sync(SyncError::Store(message())), vec![12, 2], "m"),
-            (Error::Sync(SyncError::Record(9)), vec![12, 3], "sync record 9"),
-            (Error::Sync(SyncError::Ciphertext(1)), vec![12, 4], "Ciphertext(1)"),
-            (Error::Sync(SyncError::PushCount(1)), vec![12, 6], "PushCount(1)"),
+            (Error::Sync(SyncError::Frame(FrameError::Decode)), vec![11, 1, 1], "Decode"),
+            (Error::Sync(SyncError::Store(message())), vec![11, 2], "m"),
+            (Error::Sync(SyncError::Record(9)), vec![11, 3], "sync record 9"),
+            (Error::Sync(SyncError::Ciphertext(1)), vec![11, 4], "Ciphertext(1)"),
+            (Error::Sync(SyncError::PushCount(1)), vec![11, 6], "PushCount(1)"),
         ]);
         #[cfg(feature = "credential")]
         cases.extend([
-            (Error::Credential(CredentialError::Email), vec![8, 1], "Email"),
-            (Error::Credential(CredentialError::Password), vec![8, 2], "Password"),
-            (Error::Credential(CredentialError::Parameters), vec![8, 3], "Parameters"),
+            (Error::Credential(CredentialError::Email), vec![7, 1], "Email"),
+            (Error::Credential(CredentialError::Password), vec![7, 2], "Password"),
+            (Error::Credential(CredentialError::Parameters), vec![7, 3], "Parameters"),
         ]);
         #[cfg(feature = "vault")]
         cases.extend([
-            (Error::Vault(VaultError::Length(1)), vec![13, 2], "Length(1)"),
-            (Error::Vault(VaultError::Integrity), vec![13, 3], "Integrity"),
+            (Error::Vault(VaultError::Length(1)), vec![12, 2], "Length(1)"),
+            (Error::Vault(VaultError::Integrity), vec![12, 3], "Integrity"),
         ]);
         for (error, path, detail) in cases {
             let mut actual = Vec::new();

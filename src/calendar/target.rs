@@ -130,7 +130,11 @@ pub enum Target {
     EditMessage,
     Submit(Submit),
     Delete,
+    Toast(u32),
+    ToastText(u32),
 }
+
+pub const TOAST_SLOTS: u32 = 2;
 
 impl Target {
     pub fn display(self, language: Language) -> Option<&'static str> {
@@ -249,6 +253,10 @@ impl Target {
             Self::EditMessage => join(dialog_form(), &[(Tag::Output, None)]),
             Self::Submit(_) => join(dialog_form(), &[(Tag::Button, Some(SUBMIT_BUTTON))]),
             Self::Delete => join(dialog_form(), &[(Tag::Button, Some(DELETE_BUTTON))]),
+            Self::Toast(n) => Vec::from([(Tag::Toast, None), (Tag::Button, Some(n))]),
+            Self::ToastText(n) => {
+                Vec::from([(Tag::Toast, None), (Tag::Button, Some(n)), (Tag::P, None)])
+            }
         };
         Id::new(&path)
     }
@@ -309,6 +317,14 @@ impl Target {
                 [(Tag::Ol, Some(5)), (Tag::Li, None)] => Self::Preview,
                 _ => Self::Surface,
             },
+            [(Tag::Toast, None), (Tag::Button, Some(n))] if (1..=TOAST_SLOTS).contains(n) => {
+                Self::Toast(*n)
+            }
+            [(Tag::Toast, None), (Tag::Button, Some(n)), (Tag::P, None)]
+                if (1..=TOAST_SLOTS).contains(n) =>
+            {
+                Self::ToastText(*n)
+            }
             [(Tag::Dialog, None), rest @ ..] => match rest {
                 [] => Self::Modal,
                 [(Tag::Input, Some(n))] => {
@@ -400,6 +416,7 @@ mod tests {
             [Target::CategoryOption(n), Target::StatusOption(n), Target::ResourceOption(n)]
         }));
         targets.extend((1..=5).map(Target::Step));
+        targets.extend((1..=TOAST_SLOTS).flat_map(|n| [Target::Toast(n), Target::ToastText(n)]));
         targets.push(Target::TimeAxis);
         targets.extend((1..=35).flat_map(|n| [Target::Band(n), Target::BandLabel(n)]));
         for side in 1..=2 {

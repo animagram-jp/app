@@ -547,7 +547,7 @@ mod tests {
         assert_eq!(harness.send("GET", "/v0/health", &[], &[]).status, 404);
         let missing = harness.send("GET", "/v1/nothing", &[], &[]);
         assert_eq!(missing.status, 404);
-        assert_eq!(error_path(&missing), [7, 3]);
+        assert_eq!(error_path(&missing), [6, 3]);
         assert_eq!(harness.send("POST", "/v1/sync/mismatched.name/pull", &[], &[]).status, 404);
         assert_eq!(harness.send("GET", "/v1/sync/calendar/pull", &[], &[]).status, 405);
     }

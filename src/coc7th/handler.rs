@@ -8,9 +8,9 @@ use core::{
 use arbitrary_int::u2;
 
 use crate::{
-    ColorScheme, DataError, Error, Language,
+    ColorScheme, Error, Language,
     coc7th::{
-        import,
+        import::{self, ImportError},
         investigator::{
             Age, ArtAndCraft, ArtAndCraftCustom, Backstory, Birthplace, Build, Characteristic,
             DamageBonus, Fighting, FightingCustom, Firearms, FirearmsCustom, HitPoints,
@@ -20,13 +20,13 @@ use crate::{
             ScienceCustom, SecondaryAttribute, Skill, Survival, SurvivalCustom, WealthField,
             read_skill,
         },
-        page::{self, Page},
+        page::{self, Page, TOAST_SLOTS},
     },
     credential::{self, Field},
     data_struct::{DataStruct, ID_IDENTITY},
     event::{self, Event, Handler as _, Keyring, Opened, Response, gesture::Pointer, store},
     file_store::{FileStore, Mount, StoreId},
-    host::{Attribute, CanvasEvent, Command, EventType, Method, dom::Id},
+    host::{Attribute, CanvasEvent, Command, EventType, FnName, Method, dom::Id},
     object::{Predicate as _, SubjectTrait as _},
 };
 
@@ -154,7 +154,7 @@ impl<S: Mount> event::Handler for Handler<S> {
             dialog: Dialog::None,
             keyring: Keyring::LOCKED,
             language: Language::Ja,
-            last_toast: u2::new(1),
+            last_toast: u2::new(TOAST_SLOTS as u8),
             investigator: DataStruct::new(0, 0, SCHEMA_SIZE),
             now_in_ms,
             investigators: None,
@@ -215,19 +215,27 @@ impl<S: Mount> event::Handler for Handler<S> {
             return (vec![], vec![]);
         }
         if response.status != STATUS_OK {
-            return (vec![], vec![data_error(DataError::Status(response.status))]);
+            return (vec![], vec![]);
         }
         let imported = match import::import(&response.body, self.now_in_ms) {
             Ok(imported) => imported,
-            Err(error) => return (vec![], vec![data_error(error)]),
+            Err(error) => {
+                let notice = match error {
+                    ImportError::Json(_) | ImportError::Root => Notice::Unreadable,
+                    ImportError::List(_) => Notice::Unsupported,
+                };
+                return (vec![], self.toast(String::from(notice.display(self.language))));
+            }
         };
         self.investigator = imported.investigator;
         let mut commands = sheet_commands(&self.investigator, self.language);
         if !imported.skipped.is_empty() {
-            commands.push(data_error(DataError::Format(format!(
-                "skipped: {}",
+            let message = format!(
+                "{}: {}",
+                Notice::Skipped.display(self.language),
                 imported.skipped.join(", ")
-            ))));
+            );
+            commands.extend(self.toast(message));
         }
         (vec![], commands)
     }
@@ -247,6 +255,10 @@ impl<S: Mount> event::Handler for Handler<S> {
                 (vec![], commands)
             }
             (EventType::Click, Some(Page::Save)) => self.persist(),
+            (EventType::Click, Some(Page::Toast(n))) => (
+                vec![],
+                vec![Command::JsFn { id: Page::Toast(n).to_dom(), name: FnName::HideToast }],
+            ),
             (EventType::Change, Some(Page::Unlock)) => (vec![], self.toggle_lock()),
             (EventType::Change, Some(Page::AppearanceOption(c))) => {
                 self.color_scheme = c;
@@ -255,6 +267,37 @@ impl<S: Mount> event::Handler for Handler<S> {
             (EventType::Close, Some(Page::Dialog)) => (vec![], self.close_dialog()),
             (EventType::Submit, Some(Page::DialogForm)) => (vec![], self.submit(&event.value)),
             _ => (vec![], vec![]),
+        }
+    }
+}
+
+impl<S: FileStore> Handler<S> {
+    fn toast(&mut self, message: String) -> Vec<Command> {
+        let slot = TOAST_SLOTS + 1 - u32::from(self.last_toast.value());
+        self.last_toast = u2::new(slot as u8);
+        vec![
+            text(Page::ToastText(slot).to_dom(), message),
+            Command::JsFn { id: Page::Toast(slot).to_dom(), name: FnName::ShowToast },
+        ]
+    }
+}
+
+#[derive(Clone, Copy)]
+enum Notice {
+    Unreadable,
+    Unsupported,
+    Skipped,
+}
+
+impl Notice {
+    fn display(self, language: Language) -> &'static str {
+        match (self, language) {
+            (Self::Unreadable, Language::En(_)) => "The data could not be read",
+            (Self::Unreadable, Language::Ja) => "データを読み込めませんでした",
+            (Self::Unsupported, Language::En(_)) => "The data is not supported",
+            (Self::Unsupported, Language::Ja) => "対応していないデータです",
+            (Self::Skipped, Language::En(_)) => "Skipped",
+            (Self::Skipped, Language::Ja) => "取り込めなかった項目",
         }
     }
 }
@@ -548,10 +591,6 @@ fn language_commands(language: Language) -> [Command; 1] {
     }]
 }
 
-fn data_error(error: DataError) -> Command {
-    Command::Error { error: Error::Data(error) }
-}
-
 fn option_commands(language: Language) -> [Command; 2] {
     let (tag, label) = language.display();
     let id = Page::LanguageOption(language).to_dom();
@@ -807,14 +846,17 @@ mod handler_tests {
         let [
             Command::SetText { id, value },
             ..,
-            Command::Error { error: Error::Data(DataError::Format(message)) },
+            Command::SetText { id: toast, value: message },
+            Command::JsFn { id: slot, name: FnName::ShowToast },
         ] = commands.as_slice()
         else {
             panic!("unexpected commands");
         };
         assert_eq!(*id, Page::Investigator.to_dom());
         assert_eq!(value, "鏖");
-        assert_eq!(message, "skipped: Wealth");
+        assert_eq!(*toast, Page::ToastText(1).to_dom());
+        assert_eq!(*slot, Page::Toast(1).to_dom());
+        assert_eq!(message, "取り込めなかった項目: Wealth");
         assert_eq!(Name::read(&handler.investigator).0, "鏖");
         assert!(handler.investigators.as_ref().unwrap().get(1).is_none());
         let written: Vec<_> = commands
@@ -837,7 +879,7 @@ mod handler_tests {
     }
 
     #[test]
-    fn a_failed_fetch_reports_the_status_and_other_requests_are_ignored() {
+    fn a_failed_fetch_and_other_requests_are_ignored() {
         let mut handler = block_on(Handler::<MemoryStore>::ready(
             0.0,
             0.0,
@@ -847,11 +889,7 @@ mod handler_tests {
             String::new(),
             ColorScheme::Light,
         ));
-        let (_, commands) = handler.process_fetched(&response(404));
-        assert!(matches!(
-            commands.as_slice(),
-            [Command::Error { error: Error::Data(DataError::Status(404)) }]
-        ));
+        assert!(handler.process_fetched(&response(404)).1.is_empty());
         let other = Response { request: 9, status: STATUS_OK, body: Vec::new() };
         assert!(handler.process_fetched(&other).1.is_empty());
     }
@@ -1060,13 +1098,14 @@ mod handler_tests {
                                 vec![(LOGOUT_REQUEST, Method::Delete, Vec::new())]
                             ),
                             (false, _) => assert!(commands.is_empty()),
-                            (true, _) if valid => {
+                            (true, 200) if valid => {
                                 assert!(commands.is_empty());
                                 session = true;
                             }
-                            (true, _) => {
+                            (true, 200) => {
                                 assert!(matches!(commands.as_slice(), [Command::Error { .. }]))
                             }
+                            (true, _) => assert!(commands.is_empty()),
                         }
                         commands
                     }
@@ -1075,12 +1114,11 @@ mod handler_tests {
                         let response = Response { request: REGISTER_REQUEST, status, body: vec![] };
                         let commands = handler.process_session(&response).1;
                         match (status, unlocked) {
-                            (201, true) => assert_eq!(
+                            (201 | 409, true) => assert_eq!(
                                 fetches(&commands),
                                 vec![(LOGIN_REQUEST, Method::Put, login.clone())]
                             ),
-                            (201, false) => assert!(commands.is_empty()),
-                            _ => assert!(matches!(commands.as_slice(), [Command::Error { .. }])),
+                            _ => assert!(commands.is_empty()),
                         }
                         commands
                     }

@@ -6,6 +6,7 @@ use alloc::{
 };
 use core::{
     array::from_fn,
+    fmt::{self, Display, Formatter},
     iter::Iterator,
     option::Option::{self, None, Some},
     primitive::{i16, i64, str, u8, u16, u32, u64},
@@ -15,7 +16,7 @@ use core::{
 use serde_json::Value;
 
 use crate::{
-    DataError, En, Language,
+    En, Language,
     coc7th::investigator::{
         Age, ArtAndCraft, ArtAndCraftCustom, Backstory, Birthplace, Build, CUSTOM_ID_BASE,
         Characteristic, Fighting, FightingCustom, Firearms, FirearmsCustom, HitPoints,
@@ -24,10 +25,30 @@ use crate::{
         Science, ScienceCustom, Skill, Survival, SurvivalCustom, write_skill,
     },
     data_struct::DataStruct,
+    list::ListError,
     object::Predicate,
 };
 
 const EN: Language = Language::En(En::Gb);
+
+#[derive(Debug)]
+pub enum ImportError {
+    Json(serde_json::Error),
+    Root,
+    List(ListError),
+}
+
+impl From<ListError> for ImportError {
+    fn from(error: ListError) -> Self {
+        ImportError::List(error)
+    }
+}
+
+impl Display for ImportError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
 
 pub struct Imported {
     pub investigator: DataStruct,
@@ -64,11 +85,10 @@ impl Slots {
     }
 }
 
-pub fn import(body: &[u8], now_in_ms: u64) -> Result<Imported, DataError> {
-    let root: Value =
-        serde_json::from_slice(body).map_err(|error| DataError::Parse(format!("{error}")))?;
+pub fn import(body: &[u8], now_in_ms: u64) -> Result<Imported, ImportError> {
+    let root: Value = serde_json::from_slice(body).map_err(ImportError::Json)?;
     if !root.is_object() {
-        return Err(DataError::Format(String::from("root")));
+        return Err(ImportError::Root);
     }
     let id = root.get("ID").and_then(Value::as_u64).unwrap_or(0) as u32;
     let mut investigator = DataStruct::new(id, now_in_ms, SCHEMA_SIZE);
@@ -160,7 +180,7 @@ pub fn import(body: &[u8], now_in_ms: u64) -> Result<Imported, DataError> {
     Ok(Imported { investigator, skipped })
 }
 
-fn profile_into(investigator: &mut DataStruct, profile: &Value) -> Result<(), DataError> {
+fn profile_into(investigator: &mut DataStruct, profile: &Value) -> Result<(), ImportError> {
     let text = |key: &str| profile.get(key).and_then(Value::as_str).map(String::from);
     let name = text("Name").unwrap_or_default();
     Name::write(investigator, &(name, text("Pronunciation")), None)?;
@@ -566,8 +586,8 @@ mod tests {
     }
 
     #[test]
-    fn broken_json_is_a_parse_error_and_a_list_is_a_format_error() {
-        assert!(matches!(import(b"{", 0), Err(DataError::Parse(_))));
-        assert!(matches!(import(b"[]", 0), Err(DataError::Format(_))));
+    fn broken_json_is_a_json_error_and_a_list_is_a_root_error() {
+        assert!(matches!(import(b"{", 0), Err(ImportError::Json(_))));
+        assert!(matches!(import(b"[]", 0), Err(ImportError::Root)));
     }
 }

@@ -7,6 +7,7 @@ use core::{
     result::Result::Ok,
 };
 
+use arbitrary_int::u2;
 use rectgrid::{
     BBox, IncrementFunction, Px, RectGrid, Unit as GridUnit, corner_test, drag_resize,
     drag_translate,
@@ -23,7 +24,7 @@ use crate::{
             parse_date, parse_time, tag,
         },
         grid::{AXES, Axis, CLOCK, Cell, Clock, Day, Grid, Month, lane_box, lanes, span},
-        target::{CardPart, Dialog, EditField, FIELDS, STEP_TODAY, Submit, Target},
+        target::{CardPart, Dialog, EditField, FIELDS, STEP_TODAY, Submit, TOAST_SLOTS, Target},
     },
     credential::{self, Field},
     data_struct::DataStruct,
@@ -34,8 +35,8 @@ use crate::{
     },
     file_store::{FileStore, Mount, StoreId},
     host::{
-        Attribute, CanvasEvent, Command, EventType, Keyword, Method, StyleProperty, StyleValue,
-        Unit, dom::Id, parse_url_search_params,
+        Attribute, CanvasEvent, Command, EventType, FnName, Keyword, Method, StyleProperty,
+        StyleValue, Unit, dom::Id, parse_url_search_params,
     },
     object::Predicate,
     parse, stringify,
@@ -156,6 +157,8 @@ pub struct Handler<S: FileStore> {
     attached:             bool,
     lost:                 Vec<(u32, Option<Vec<u8>>)>,
     startup:              Vec<Error>,
+    damaged:              Option<DataError>,
+    last_toast:           u2,
     viewport_width_in_px: f64,
     rem_in_px:            f64,
     scroll_x_in_px:       f64,
@@ -167,7 +170,7 @@ pub struct Handler<S: FileStore> {
 impl<S: FileStore> Handler<S> {
     pub fn attach(&mut self, store: S) {
         if let Err(error) = data::check(&store, &appointment::KINDS) {
-            self.startup.push(Error::Data(error));
+            self.damaged = Some(error);
         }
         self.store = Some(store);
         self.attached = true;
@@ -227,6 +230,8 @@ impl<S: FileStore> Handler<S> {
             attached: false,
             lost: Vec::new(),
             startup: Vec::new(),
+            damaged: None,
+            last_toast: u2::new(TOAST_SLOTS as u8),
             viewport_width_in_px,
             rem_in_px,
             scroll_x_in_px: 0.0,
@@ -1079,6 +1084,10 @@ impl<S: FileStore> Handler<S> {
                 };
                 (vec![], self.date_commands())
             }
+            Target::Toast(n) => (
+                vec![],
+                vec![Command::JsFn { id: Target::Toast(n).to_dom(), name: FnName::HideToast }],
+            ),
             Target::LanguageOption(l) => {
                 self.language = l;
                 let mut commands = self.date_commands();
@@ -1762,8 +1771,9 @@ impl<S: Mount> event::Handler for Handler<S> {
         commands.extend(language_commands(self.language));
         commands.extend(Language::list().iter().flat_map(|&l| option_commands(l)));
         let events = store::startup(STORE, &self.startup);
-        let failed = !self.startup.is_empty();
+        let failed = !self.startup.is_empty() || self.damaged.is_some();
         commands.extend(self.startup.drain(..).map(|error| Command::Error { error }));
+        commands.extend(self.damaged_commands());
         if !failed {
             commands.extend(self.load_commands());
         }
@@ -1776,11 +1786,11 @@ impl<S: Mount> event::Handler for Handler<S> {
             return (vec![], vec![]);
         }
         if response.status != STATUS_OK {
-            return (vec![], vec![data_error(DataError::Status(response.status))]);
+            return (vec![], vec![]);
         }
         let (events, mut commands) = match self.import_commands(&response.body) {
             Ok(result) => result,
-            Err(error) => return (vec![], vec![data_error(error)]),
+            Err(error) => return (vec![], self.toast(notice(&error))),
         };
         self.resources = self.count_resources();
         self.fit_rectgrid();
@@ -1869,6 +1879,7 @@ impl<S: Mount> event::Handler for Handler<S> {
         {
             self.attach(store);
             commands.extend(self.startup.drain(..).map(|error| Command::Error { error }));
+            commands.extend(self.damaged_commands());
             commands.extend(self.load_commands());
         }
         (events, commands)
@@ -2024,8 +2035,35 @@ fn corner_cursor(corner: Corner) -> Option<Keyword> {
     }
 }
 
-fn data_error(error: DataError) -> Command {
-    Command::Error { error: Error::Data(error) }
+impl<S: FileStore> Handler<S> {
+    fn toast(&mut self, message: &str) -> Vec<Command> {
+        let slot = TOAST_SLOTS + 1 - u32::from(self.last_toast.value());
+        self.last_toast = u2::new(slot as u8);
+        vec![
+            Command::SetText {
+                id:    Target::ToastText(slot).to_dom(),
+                value: String::from(message),
+            },
+            Command::JsFn { id: Target::Toast(slot).to_dom(), name: FnName::ShowToast },
+        ]
+    }
+
+    fn damaged_commands(&mut self) -> Vec<Command> {
+        match self.damaged.take() {
+            Some(error) => self.toast(notice(&error)),
+            None => vec![],
+        }
+    }
+}
+
+fn notice(error: &DataError) -> &'static str {
+    match error {
+        DataError::Json(_) | DataError::Missing(_) | DataError::Shape(_) => {
+            "データを読み込めませんでした"
+        }
+        DataError::Value { .. } => "データに不正な値があります",
+        DataError::Kind(_) | DataError::Layout(_) => "保存データが壊れています",
+    }
 }
 
 #[cfg(test)]
@@ -2393,18 +2431,14 @@ mod tests {
     }
 
     #[test]
-    fn fetched_failure_reports_a_data_error_and_keeps_nothing() {
+    fn fetched_failure_keeps_nothing() {
         let (mut handler, _) = with_store();
-        let (_, commands) = handler.process_fetched(&sample_response(1, 404));
-        assert!(matches!(
-            commands.as_slice(),
-            [Command::Error { error: Error::Data(DataError::Status(404)) }]
-        ));
+        assert!(handler.process_fetched(&sample_response(1, 404)).1.is_empty());
         let broken = Response { request: 1, status: 200, body: b"{".to_vec() };
         let (_, commands) = handler.process_fetched(&broken);
         assert!(matches!(
             commands.as_slice(),
-            [Command::Error { error: Error::Data(DataError::Parse(_)) }]
+            [Command::SetText { .. }, Command::JsFn { name: FnName::ShowToast, .. }]
         ));
         assert!(!handler.loaded());
     }
@@ -4159,10 +4193,11 @@ mod tests {
         let mut handler = Handler::<MemoryStore>::new(VIEWPORT, today(), REM);
         handler.attach(MemoryStore::new(disk).unwrap());
         let (_, commands) = handler.initial_draw();
-        assert!(commands.iter().any(|command| matches!(
-            command,
-            Command::Error { error: Error::Data(DataError::Format(_)) }
-        )));
+        assert!(
+            commands
+                .iter()
+                .any(|command| matches!(command, Command::JsFn { name: FnName::ShowToast, .. }))
+        );
         assert!(!commands.iter().any(|command| matches!(command, Command::Fetch { .. })));
     }
 
