@@ -136,8 +136,8 @@ root_key (32 B 乱数、初回有効化時に端末が生成)
 | POST | `/v1/meet/poll` | - | `[count: u16]([from: u64][kind: u8][payload: bytes])*` | |
 | POST | `/v1/meet/signal` | `[target: u64][kind: u8][payload: bytes]` | 204。409 は相手の待ち行列が満杯 | |
 | GET | `/v1/meet/ice` | - | TURN 提供元の `iceServers` JSON | `auth_request` の後に提供元へ proxy。server は関与しない |
-| POST | `/v1/sync/{store}/pull` | `[since: u64]` | `[head: u64][more: u8][count: u32]([identifier: 16][version: u64][flags: u8][ciphertext: bytes])*` | |
-| POST | `/v1/sync/{store}/push` | `[count: u32]([identifier: 16][base: u64][flags: u8][ciphertext: bytes])*` | `[head: u64][count: u32]([status: u8][version: u64][flags: u8][ciphertext: bytes])*`。`status` は 1 受理 / 2 競合(サーバーの現在値を伴う) | |
+| POST | `/v1/sync/{store}/pull` | `[since: u64]` | `[head: u64][more: u8][count: u16]([identifier: 16][version: u64][flags: u8][ciphertext: bytes])*` | |
+| POST | `/v1/sync/{store}/push` | `[count: u16]([identifier: 16][base: u64][flags: u8][ciphertext: bytes])*` | `[head: u64][count: u16]([status: u8][version: u64][flags: u8][ciphertext: bytes])*`。`status` は 1 受理 / 2 競合(サーバーの現在値を伴う) | |
 
 `{store}` は英数字と `_` `-` の 32 文字以内。POST / PUT / DELETE は `SERVER_ORIGIN` が設定されていれば `Origin` ヘッダの一致を要求する(不一致は 403)。
 

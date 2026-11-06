@@ -315,7 +315,7 @@ fn activate<S: Open>(handler: &mut Handler<S>, now: u64, body: &[u8]) -> Respons
         credential.wrapped_root,
     );
     match result.and_then(|user| handler.account.save().map(|_| user)) {
-        Ok(user) => Response::new(201).body(user.to_le_bytes().to_vec()),
+        Ok(user) => Response::new(201).body(user.to_bytes()),
         Err(error) => reject(Error::Account(error)),
     }
 }
@@ -696,7 +696,7 @@ mod tests {
         let (_, bob) = harness.authenticate("bob@example.jp", &key);
 
         let mut writer = Vec::new();
-        2u32.encode(&mut writer);
+        2u16.encode(&mut writer);
         [1u8; 16].encode(&mut writer);
         0u64.encode(&mut writer);
         0u8.encode(&mut writer);
@@ -708,14 +708,14 @@ mod tests {
         let pushed = harness.send("POST", "/v1/sync/calendar/push", &[("Cookie", &alice)], &writer);
         assert_eq!(pushed.status, 200);
         let mut reader = &pushed.body[..];
-        assert_eq!((u64::decode(&mut reader), u32::decode(&mut reader)), (Some(2), Some(2)));
+        assert_eq!((u64::decode(&mut reader), u16::decode(&mut reader)), (Some(2), Some(2)));
         assert_eq!(
             (u8::decode(&mut reader), u64::decode(&mut reader)),
             (Some(Status::Accepted as u8), Some(1))
         );
 
         let mut writer = Vec::new();
-        1u32.encode(&mut writer);
+        1u16.encode(&mut writer);
         [1u8; 16].encode(&mut writer);
         0u64.encode(&mut writer);
         Flags::tombstone().encode(&mut writer);
@@ -724,7 +724,7 @@ mod tests {
             harness.send("POST", "/v1/sync/calendar/push", &[("Cookie", &alice)], &writer);
         let mut reader = &conflict.body[..];
         u64::decode(&mut reader).unwrap();
-        u32::decode(&mut reader).unwrap();
+        u16::decode(&mut reader).unwrap();
         assert_eq!(
             (
                 u8::decode(&mut reader),
@@ -741,7 +741,7 @@ mod tests {
         assert_eq!(pulled.status, 200);
         let mut reader = &pulled.body[..];
         assert_eq!(
-            (u64::decode(&mut reader), u8::decode(&mut reader), u32::decode(&mut reader)),
+            (u64::decode(&mut reader), u8::decode(&mut reader), u16::decode(&mut reader)),
             (Some(2), Some(0), Some(1))
         );
         assert_eq!(<[u8; 16]>::decode(&mut reader), Some([2u8; 16]));
@@ -752,7 +752,7 @@ mod tests {
             harness.send("POST", "/v1/sync/memo/pull", &[("Cookie", &alice)], &writer);
         let mut reader = &other_store.body[..];
         assert_eq!(
-            (u64::decode(&mut reader), u8::decode(&mut reader), u32::decode(&mut reader)),
+            (u64::decode(&mut reader), u8::decode(&mut reader), u16::decode(&mut reader)),
             (Some(0), Some(0), Some(0))
         );
         let mut writer = Vec::new();
@@ -761,7 +761,7 @@ mod tests {
             harness.send("POST", "/v1/sync/calendar/pull", &[("Cookie", &bob)], &writer);
         let mut reader = &other_user.body[..];
         assert_eq!(
-            (u64::decode(&mut reader), u8::decode(&mut reader), u32::decode(&mut reader)),
+            (u64::decode(&mut reader), u8::decode(&mut reader), u16::decode(&mut reader)),
             (Some(0), Some(0), Some(0))
         );
 

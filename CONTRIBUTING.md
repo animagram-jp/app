@@ -151,9 +151,9 @@ appとserverは`lib.rs::{Input::decode, Output::encode}`を共有し、HTTP本�
 |-|-|
 | 整数(`u8`~`u128`,`i32`,`f32`,`f64`) | - |
 | 列挙(`wire_enum!`) | `u8` / `u16` |
-| `[u8; N]` | - |
+| 固定長`[u8; N]` | - |
 | `str` / `bytes` | `[length: u32][u8; length]` |
-| `[T]` / `Vec<T>` | `[count: u32][T; count]` |
+| `[T; count]` | `[count: u16][T; count]` |
 | `lib.rs::Error` | `[depth: u8][identifier: u16; depth][detail: str]` |
 | `host::Command::Error` | `[OPERATION_ERROR: u8][Error]` |
 

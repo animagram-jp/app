@@ -301,7 +301,7 @@ pub fn encode_pull(head: u64, records: &[Record], more: bool) -> Vec<u8> {
     let mut output = Vec::new();
     head.encode(&mut output);
     (more as u8).encode(&mut output);
-    (records.len() as u32).encode(&mut output);
+    (records.len() as u16).encode(&mut output);
     for record in records {
         record.identifier.encode(&mut output);
         record.version.encode(&mut output);
@@ -317,7 +317,7 @@ pub fn decode_pull(body: &[u8]) -> Result<u64, SyncError> {
 
 pub fn decode_push(body: &[u8]) -> Result<Vec<Entry>, SyncError> {
     let mut rest = body;
-    let count = u32::decode(&mut rest).ok_or(FrameError::Decode)? as usize;
+    let count = u16::decode(&mut rest).ok_or(FrameError::Decode)? as usize;
     if count > PUSH_COUNT_MAX {
         return Err(SyncError::PushCount(count));
     }
@@ -334,7 +334,7 @@ pub fn decode_push(body: &[u8]) -> Result<Vec<Entry>, SyncError> {
 pub fn encode_push(head: u64, outcomes: &[Outcome]) -> Vec<u8> {
     let mut output = Vec::new();
     head.encode(&mut output);
-    (outcomes.len() as u32).encode(&mut output);
+    (outcomes.len() as u16).encode(&mut output);
     for outcome in outcomes {
         match outcome {
             Outcome::Accepted(version) => {
@@ -391,7 +391,7 @@ mod tests {
     #[test]
     fn unknown_flags_are_rejected_at_decode() {
         let mut body = Vec::new();
-        1u32.encode(&mut body);
+        1u16.encode(&mut body);
         identifier(1).encode(&mut body);
         0u64.encode(&mut body);
         2u8.encode(&mut body);
@@ -411,7 +411,7 @@ mod tests {
         let mut rest = &bytes[..];
         assert_eq!(u64::decode(&mut rest), Some(7));
         assert_eq!(u8::decode(&mut rest), Some(1));
-        assert_eq!(u32::decode(&mut rest), Some(1));
+        assert_eq!(u16::decode(&mut rest), Some(1));
         assert_eq!(<[u8; 16]>::decode(&mut rest), Some(identifier(1)));
         assert_eq!(u64::decode(&mut rest), Some(2));
         assert_eq!(u8::decode(&mut rest), Some(0));
@@ -422,7 +422,7 @@ mod tests {
         assert_eq!(decode_pull(&[0; 9]), Err(SyncError::Frame(FrameError::Decode)));
 
         let mut body = Vec::new();
-        2u32.encode(&mut body);
+        2u16.encode(&mut body);
         identifier(1).encode(&mut body);
         0u64.encode(&mut body);
         0u8.encode(&mut body);
@@ -445,7 +445,7 @@ mod tests {
             ]
         );
         assert_eq!(
-            decode_push(&(PUSH_COUNT_MAX as u32 + 1).to_le_bytes()),
+            decode_push(&(PUSH_COUNT_MAX as u16 + 1).to_le_bytes()),
             Err(SyncError::PushCount(PUSH_COUNT_MAX + 1))
         );
         assert_eq!(decode_push(&[1, 0, 0, 0]), Err(SyncError::Frame(FrameError::Decode)));
@@ -459,7 +459,7 @@ mod tests {
         let bytes = encode_push(5, &[Outcome::Accepted(4), Outcome::Conflict(conflict)]);
         let mut rest = &bytes[..];
         assert_eq!(u64::decode(&mut rest), Some(5));
-        assert_eq!(u32::decode(&mut rest), Some(2));
+        assert_eq!(u16::decode(&mut rest), Some(2));
         assert_eq!(
             (
                 u8::decode(&mut rest),
