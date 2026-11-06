@@ -53,7 +53,7 @@ handler:
         axis: # rectgridのUnit座標との互換関数axis<D: u8>.from()/to()を要する
             sort:
     filestores: Vec<FileStore>
-    entry: DataStruct
+    entry: Appointment
     
     sync:
         user:
