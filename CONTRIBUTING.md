@@ -168,26 +168,26 @@ appとserverは`lib.rs::{Input::decode, Output::encode}`を共有し、HTTP本�
 | 3 | Panic | - | 1 |
 | 4 | FileStore | - | 1 InvalidState, 2 QuotaExceeded, 3 Unsupported, 4 InvalidName, 5 Unknown, 6 NotFound, 7 NoModificationAllowed |
 | 5 | Frame | - | 1 Decode |
-| 6 | Http | `server` | 1 RequestLine, 2 Method, 3 Target, 4 Version, 5 Header, 6 HeaderTooLarge, 7 BodyTooLarge, 8 ContentLength, 9 TransferEncoding |
-| 7 | Credential | `credential` | 1 Email, 2 Password, 3 Parameters |
-| 8 | Session | `server` | 1 Random, 2 Frame, 3 Store, 4 Record |
-| 9 | Account | `server` | 1 Email, 2 Protocol, 3 WrappedRoot, 4 NotAllowed, 5 AlreadyRegistered, 6 Unauthorized, 7 Record, 8 Store |
-| 10 | Meet | `meet` | 1 Kind, 2 Payload, 3 SelfAddressed, 4 Full, 5 Frame |
-| 11 | Sync | `sync` | 1 Frame, 2 Store, 3 Record, 4 Ciphertext, 6 PushCount |
-| 12 | Vault | `vault` | 1 Random, 2 Length, 3 Integrity |
+| 6 | Http | server | 1 RequestLine, 2 Method, 3 Target, 4 Version, 5 Header, 6 HeaderTooLarge, 7 BodyTooLarge, 8 ContentLength, 9 TransferEncoding |
+| 7 | Credential | credential | 1 Email, 2 Password, 3 Parameters |
+| 8 | Session | server | 1 Random, 2 Frame, 3 Store, 4 Record |
+| 9 | Account | server | 1 Email, 2 Protocol, 3 WrappedRoot, 4 NotAllowed, 5 AlreadyRegistered, 6 Unauthorized, 7 Record, 8 Store |
+| 10 | Meet | meet | 1 Kind, 2 Payload, 3 SelfAddressed, 4 Full, 5 Frame |
+| 11 | Sync | sync | 1 Frame, 2 Store, 3 Record, 4 Ciphertext, 6 PushCount |
+| 12 | Vault | vault | 1 Random, 2 Length, 3 Integrity |
 
 ---
 
 ## Source files
 
-| Filename | Description |
+| Path | Content |
 |-|-|
-| lib.rs | `enumerate!`, `WireError`, `wire_error!`, `Input::{decode, from_bytes} / Output::{encode, to_bytes}`, `Decimal`、`scalar!` / `wire_enum!`、`parse` / `stringify`, `Language`. |
-| bit.rs | Building types with fixed memory layouts: Unit::{Bit, Byte}, Bits, Field, composite!. |
+| lib.rs | `enumerate!, WireError, wire_error!, Input::{decode, from_bytes}, Output::{encode, to_bytes}, Decimal, scalar!, wire_enum!, parse, stringify, Language`. |
+| bit.rs | Building types with fixed memory layouts: `Unit::{Bit, Byte}, Bits, Field, composite!`. |
 |-|-|
 | time.rs | タイムゾーンとセンチ秒、カレンダー加減算に対応したu64モジュール。 |
-| file_store.rs | [ログ・スナップショット付きファイル操作モジュール](./reference/FileStore.md)。`FileStore` trait, 非同期な`Mount::open` trait, target別の3実装`OpfsStore`, `FsStore`, `MemoryStore`。 |
-| object.rs | オブジェクト定義の共通部。`SubjectTrait`(schema_size, ids, 表示)、`Predicate`(ids / parse / encode / read / write)。 |
+| file_store.rs | [FileStore.md](./reference/FileStore.md). `trait FileStore, trait Mount::open -> Future, struct OpfsStore, FsStore, MemoryStore`. |
+| object.rs | [Object.md](./reference/Object.md). `SubjectTrait::{SCHEMA_SIZE, ids, display, list}, Predicate::{ids, parse, encode, read, write}`。 |
 |-|-|
 | list.rs | 可変長論理バイト列の宣言と、固定長要素列操作Listと可変長(バイト倍数)要素列操作VariabeList。バイト列読み取り関数new_from_bytesとget_from_bytesも含む。 |
 | data_struct.rs | データモデル固有のフィールド数(schema_size)固定Listと可変部VariableListによるデータインスタンス操作モジュール。フィールド1にid(u32), 2にcreated_at(timestamp), 3にmodified_at(timestamp)を確定し、4~を開放。 |
@@ -202,15 +202,16 @@ appとserverは`lib.rs::{Input::decode, Output::encode}`を共有し、HTTP本�
 |-|-|
 | coc7th/ | CoC7thアプリ。character(`Dice`と`dice`(表示・ロール)を含む。ドメイン固有のデータモデルの全フィールドとロジックを、各自公開されたenumのネスト群で表現したモジュール。関数はitemのドメイン意味(表示)を定義する`label`, 一意なschema_idを発行する`id`, バイト列とdomからの流入(u32,str,f64)を相互変換する`read` / `write`, 値の表示を導出する`display`などを各enum itemに対して定義する。)、handler(canvasを操作する、ドメイン固有のステートを持つHandler定義。Handlerは、DataStructと、フィールド4~schema_sizeまでの操作ロジックを定義するobjectを束ねて操作を行う。hostのdom::Idとobjectのフィールドを相互にバルクマッピングする関数を定義して、canvasと内部データを相互変換する。)、roll(ロール種別と成功度) |
 | calendar/ | カレンダーアプリ(feature `calendar`)。data(レコード定義と、JSONの`import` / `export`。全レコードが同じschema_sizeのDataStructで、種別はフィールド4(kind)、FileStoreのidはissue_idで採番する。このidは他のレコードに書かず、参照はJSONと同じ`uid`(資源)と`code`(状態・カテゴリ)で持つ。削除は参照元を書き換えず、参照先が無いことを「削除済み」として読む側が扱う)、grid / target(座標・レーン・DOM対応)、handler(`Calendar`のような集約を持たず、`FileStore`を走査して読み書きする。編集も削除もモーダルではメモリ操作で、save / discardの判断はhandler)。 |
-| server/ | `sync` / `meet`(ワイヤ。feature ごと)と、feature `server` の `account` / `session` / `http` / `handler` / `host`、認可の `Principal` / `Action` / `Resource` / `authorize`。[Server.md](./reference/Server.md)。 |
-| server/sync.rs | feature `sync`。同期レコードのワイヤ(`Record` / `Entry` / `Flags` / `Status` / `Outcome` と pull / push の encode / decode)。feature `server` ではサーバー側の `Collection<S>`(`identifier` と `version` の索引、`pull` の分割、`push` の版照合)を含む。[Server.md](./reference/Server.md)。 |
-| server/meet.rs | feature `meet`。P2P シグナリングのワイヤ(`Kind` / `Signal` と poll / signal の encode / decode)。feature `server` ではサーバー側の `Board`(`target` ごとの待ち行列、寿命、在席)を含む。[Meet.md](./reference/Meet.md)、[Server.md](./reference/Server.md)。 |
+|-|-|
+| server/ | [Server.md](./reference/Server.md). feature `meet, sync`, feature `server`: `account, handler, host, http, session, Principal, Action, Resource, authorize`. |
+| server/meet.rs | [Meet.md](./reference/Meet.md). feature `meet`. P2P シグナリングのワイヤ(`Kind` / `Signal` と poll / signal の encode / decode)。feature `server` ではサーバー側の `Board`(`target` ごとの待ち行列、寿命、在席)を含む. |
+| server/sync.rs | feature `sync`. 同期レコードのワイヤ(`Record, Entry, Flags, Status, Outcome` と pull / push の encode / decode)。feature `server` ではサーバー側の `Collection<S>`(`identifier` と `version` の索引、`pull` の分割、`push` の版照合)を含む. |
+| server/account.rs | feature `server`。`Record`(`protocol, email, verifier, wrapped_root, last_device`)と `Account<S>`(有効化、ログイン、パスワード変更)。`parse_allowlist`. |
 | server/http.rs | feature `server`。HTTP/1.1 の厳格な部分集合。`parse`(不完全なら `None`、上限超過と不正は `HttpError`)と `Response::to_bytes`。 |
-| server/account.rs | feature `server`。`Record`(`protocol`, `email`, `verifier`, `wrapped_root`, `last_device`)と `Account<S>`(有効化、ログイン、パスワード変更)。`parse_allowlist`。 |
-| server/session.rs | feature `server`。`Record`(`digest`, `user`, `device`, `peer`, `created`, `seen`)と `Session<S>`(発行、認証、失効、purge)。Cookie の組み立てと解析。 |
 | server/handler.rs | feature `server`。`Handler<S: Open>`(pepper、allowlist、origins、各ストア、`Board`)と `process_request`(パス分岐、認証、`Origin` 検証、同期)。`failure` / `reject` がエラー応答を組む。 |
-| server/host.rs | feature `server`。`std` 実装。`now`、`serve`(accept スレッド、keep-alive、タイムアウト、60 秒ごとの `maintain`)。 |
-| bin/server.rs | bin `server`(feature `server` を要求)。環境変数を読んで `Handler<FsStore>` を開き、`serve` する。 |
+| server/host.rs | feature `server`. `use std`. `now, serve`(accept スレッド、keep-alive、タイムアウト、60 秒ごとの `maintain`). |
+| server/session.rs | feature `server`. `Record`(`digest, user, device, peer, created, seen`)と `Session<S>`(発行、認証、失効、purge)。Cookie の組み立てと解析. |
+| bin/server.rs | 環境変数を読んで `Handler<FsStore>` を開き、`serve`する. |
 
 ---
 
