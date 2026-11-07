@@ -9,6 +9,7 @@ use arbitrary_int::u2;
 
 use crate::{
     ColorScheme, Error, Language,
+    bit::Zero,
     coc7th::{
         import::{self, ImportError},
         investigator::{
@@ -151,7 +152,7 @@ impl<S: Mount> event::Handler for Handler<S> {
             keyring: Keyring::LOCKED,
             language: Language::Ja,
             last_toast: u2::new(TOAST_SLOTS as u8),
-            investigator: Record::new(0, Investigator::default()),
+            investigator: Record::new(0, Investigator::ZERO),
             now_in_ms,
             investigators: None,
             lost: Vec::new(),
@@ -490,7 +491,7 @@ fn sheet_commands(investigator: &Record<Investigator>, language: Language) -> Ve
     }
 
     for slot in 0..MEMO_SLOTS {
-        let memo = investigator.memos.get(slot).cloned().unwrap_or_default();
+        let memo = investigator.memos.get(slot).cloned().unwrap_or(Memo::ZERO);
         let [title_dom, body_dom] = Memo::dom(slot);
         commands.push(value(title_dom, memo.title));
         commands.push(value(body_dom, memo.body));

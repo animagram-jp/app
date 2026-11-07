@@ -16,6 +16,7 @@ use serde_json::Value;
 
 use crate::{
     En, Language,
+    bit::Zero,
     coc7th::investigator::{
         ArtAndCraft, Backstory, Characteristic, Fighting, Firearms, Investigator, MEMO_SLOTS, Memo,
         Occupation, OccupationKind, Pilot, Points, Science, Score, Skill, Specialization,
@@ -49,7 +50,7 @@ pub fn import(body: &[u8], now_in_ms: u64) -> Result<Imported, ImportError> {
         return Err(ImportError::Root);
     }
     let id = root.get("ID").and_then(Value::as_u64).unwrap_or(0) as u32;
-    let mut record = Record::new(id, Investigator::default());
+    let mut record = Record::new(id, Investigator::ZERO);
     record.head.stamp(now_in_ms);
     let investigator = &mut record.body;
     let mut skipped = Vec::new();
