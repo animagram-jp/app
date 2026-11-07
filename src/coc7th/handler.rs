@@ -12,22 +12,17 @@ use crate::{
     coc7th::{
         import::{self, ImportError},
         investigator::{
-            Age, ArtAndCraft, ArtAndCraftCustom, Backstory, Birthplace, Build, Characteristic,
-            DamageBonus, Fighting, FightingCustom, Firearms, FirearmsCustom, HitPoints,
-            InterestSkillPoints, Investigator, LanguageOther, LanguageOwn, Luck, MagicPoints,
-            Management, Memo, MoveRate, Name, Occupation, OccupationSkillPoints, Pilot,
-            PilotCustom, Possession, Profile, Pronoun, Residence, SCHEMA_SIZE, Sanity, Science,
-            ScienceCustom, SecondaryAttribute, Skill, Survival, SurvivalCustom, WealthField,
-            read_skill,
+            Backstory, Characteristic, DamageBonus, InterestSkillPoints, Investigator, MEMO_SLOTS,
+            Management, Memo, Occupation, OccupationSkillPoints, Possession, Profile,
+            SecondaryAttribute, Section, Skill, WealthField,
         },
         page::{self, Page, TOAST_SLOTS},
     },
     credential::{self, Field},
-    data_struct::{DataStruct, ID_IDENTITY},
     event::{self, Event, Handler as _, Keyring, Opened, Response, gesture::Pointer, store},
     file_store::{FileStore, Mount, StoreId},
     host::{Attribute, CanvasEvent, Command, EventType, FnName, Method, dom::Id},
-    object::{Predicate as _, SubjectTrait as _},
+    object::{self, Record},
 };
 
 pub enum Dialog {
@@ -39,7 +34,7 @@ pub enum Dialog {
 }
 
 pub struct Log;
-const CHARACTER_STORE: StoreId = StoreId { name: "investigators", version: "0.0" };
+const CHARACTER_STORE: StoreId = StoreId { name: "investigators", version: "0.1" };
 const LOAD_REQUEST: u32 = 1;
 const STATUS_OK: u16 = 200;
 
@@ -50,7 +45,7 @@ pub struct Handler<S: FileStore> {
     keyring:       Keyring,
     language:      Language,
     last_toast:    u2,
-    investigator:  DataStruct,
+    investigator:  Record<Investigator>,
     pub now_in_ms: u64,
     investigators: Option<S>,
     lost:          Vec<(u32, Option<Vec<u8>>)>,
@@ -73,8 +68,9 @@ impl<S: FileStore> Handler<S> {
         let Some(store) = self.investigators.as_mut() else {
             return (vec![], vec![]);
         };
-        let key = store.issue_id();
-        store.set(key, self.investigator.to_bytes());
+        self.investigator.head.id = store.issue_id();
+        self.investigator.head.touch(self.now_in_ms);
+        object::set(store, &self.investigator);
         self.save()
     }
 
@@ -155,7 +151,7 @@ impl<S: Mount> event::Handler for Handler<S> {
             keyring: Keyring::LOCKED,
             language: Language::Ja,
             last_toast: u2::new(TOAST_SLOTS as u8),
-            investigator: DataStruct::new(0, 0, SCHEMA_SIZE),
+            investigator: Record::new(0, Investigator::default()),
             now_in_ms,
             investigators: None,
             lost: Vec::new(),
@@ -222,7 +218,6 @@ impl<S: Mount> event::Handler for Handler<S> {
             Err(error) => {
                 let notice = match error {
                     ImportError::Json(_) | ImportError::Root => Notice::Unreadable,
-                    ImportError::List(_) => Notice::Unsupported,
                 };
                 return (vec![], self.toast(String::from(notice.display(self.language))));
             }
@@ -285,7 +280,6 @@ impl<S: FileStore> Handler<S> {
 #[derive(Clone, Copy)]
 enum Notice {
     Unreadable,
-    Unsupported,
     Skipped,
 }
 
@@ -294,8 +288,6 @@ impl Notice {
         match (self, language) {
             (Self::Unreadable, Language::En(_)) => "The data could not be read",
             (Self::Unreadable, Language::Ja) => "データを読み込めませんでした",
-            (Self::Unsupported, Language::En(_)) => "The data is not supported",
-            (Self::Unsupported, Language::Ja) => "対応していないデータです",
             (Self::Skipped, Language::En(_)) => "Skipped",
             (Self::Skipped, Language::Ja) => "取り込めなかった項目",
         }
@@ -329,97 +321,31 @@ fn toggle(id: Id, attribute: Attribute, on: bool) -> Command {
     }
 }
 
-fn stored_text(investigator: &DataStruct, id: u32) -> String {
-    investigator.get(id).ok().map(|b| String::from_utf8_lossy(b).into_owned()).unwrap_or_default()
-}
-
 fn skill_sum(base: u16, (occupation, interest, change, modifier): (u16, u16, i16, i16)) -> i32 {
     base as i32 + occupation as i32 + interest as i32 + change as i32 + modifier as i32
 }
 
 fn known_specialization(
     skill: &Skill,
-    investigator: &DataStruct,
+    investigator: &Investigator,
     language: Language,
 ) -> Option<(String, (u16, u16, i16, i16))> {
-    let pick = |candidates: Vec<(String, u32)>| {
-        candidates
-            .into_iter()
-            .map(|(name, id)| (name, read_skill(investigator, id)))
-            .find(|(_, points)| *points != (0, 0, 0, 0))
-    };
-    match skill {
-        Skill::ArtAndCraft => pick(
-            ArtAndCraft::list()
-                .iter()
-                .filter(|a| **a != ArtAndCraft::Custom)
-                .map(|a| (String::from(a.display(language)), a.base_id()))
-                .collect(),
-        ),
-        Skill::Fighting => pick(
-            Fighting::list()
-                .iter()
-                .filter(|f| **f != Fighting::Custom)
-                .map(|f| (String::from(f.display(language)), f.id(Skill::Fighting.base_id())))
-                .collect(),
-        ),
-        Skill::Firearms => pick(
-            Firearms::list()
-                .iter()
-                .filter(|f| **f != Firearms::Custom)
-                .map(|f| (String::from(f.display(language)), f.id(Skill::Firearms.base_id())))
-                .collect(),
-        ),
-        Skill::Pilot => pick(
-            Pilot::list()
-                .iter()
-                .filter(|p| **p != Pilot::Custom)
-                .map(|p| (String::from(p.display(language)), p.id(Skill::Pilot.base_id())))
-                .collect(),
-        ),
-        Skill::Science => pick(
-            Science::list()
-                .iter()
-                .filter(|s| **s != Science::Custom)
-                .map(|s| {
-                    (
-                        String::from(s.display(language).unwrap_or("")),
-                        s.id(Skill::Science.base_id()),
-                    )
-                })
-                .collect(),
-        ),
-        Skill::Survival => pick(
-            Survival::list()
-                .iter()
-                .filter(|s| **s != Survival::Custom)
-                .map(|s| (String::from(s.display(language)), s.id(Skill::Survival.base_id())))
-                .collect(),
-        ),
-        _ => None,
+    let found = investigator.known_specialization(skill)?;
+    Some((String::from(found.specialty.display(language)), found.points.tuple()))
+}
+
+fn free_specialization(skill: &Skill, investigator: &Investigator) -> (u16, u16, i16, i16, String) {
+    let index = usize::from(*skill == Skill::LanguageOther);
+    match investigator.custom_specialization(skill, index) {
+        Some(found) => {
+            let (o, i, c, m) = found.points.tuple();
+            (o, i, c, m, found.name.clone())
+        }
+        None => (0, 0, 0, 0, String::new()),
     }
 }
 
-fn free_specialization(skill: &Skill, investigator: &DataStruct) -> (u16, u16, i16, i16, String) {
-    match skill {
-        Skill::ArtAndCraft => ArtAndCraftCustom(0).read(investigator),
-        Skill::Fighting => {
-            let (_, o, i, c, m, name) = FightingCustom(0).read(investigator);
-            (o, i, c, m, name)
-        }
-        Skill::Firearms => {
-            let (_, o, i, c, m, name) = FirearmsCustom(0).read(investigator);
-            (o, i, c, m, name)
-        }
-        Skill::LanguageOther => LanguageOther(1).read(investigator),
-        Skill::Pilot => PilotCustom(0).read(investigator),
-        Skill::Science => ScienceCustom(0).read(investigator),
-        Skill::Survival => SurvivalCustom(0).read(investigator),
-        _ => (0, 0, 0, 0, String::new()),
-    }
-}
-
-fn skill_commands(investigator: &DataStruct, language: Language) -> Vec<Command> {
+fn skill_commands(investigator: &Investigator, language: Language) -> Vec<Command> {
     let mut commands = Vec::new();
     for skill in Skill::list() {
         if *skill == Skill::Custom {
@@ -428,19 +354,17 @@ fn skill_commands(investigator: &DataStruct, language: Language) -> Vec<Command>
         let base = skill.base_percent();
         let rows = skill.rows();
         let (name, points) = match skill {
-            Skill::LanguageOwn => {
-                let (o, i, c, m, name) = LanguageOwn.read(investigator);
-                (name, (o, i, c, m))
-            }
-            Skill::LanguageOther => {
-                let (o, i, c, m, name) = LanguageOther(0).read(investigator);
-                (name, (o, i, c, m))
+            Skill::LanguageOwn | Skill::LanguageOther => {
+                match investigator.custom_specialization(skill, 0) {
+                    Some(found) => (found.name.clone(), found.points.tuple()),
+                    None => (String::new(), (0, 0, 0, 0)),
+                }
             }
             specialized if specialized.free_row().is_some() => {
                 known_specialization(specialized, investigator, language)
                     .unwrap_or((String::new(), (0, 0, 0, 0)))
             }
-            plain => (String::new(), read_skill(investigator, plain.base_id())),
+            plain => (String::new(), investigator.points(plain).tuple()),
         };
         let mut rows_values = Vec::from([(rows[0], name, points)]);
         if let Some(free) = rows.get(1) {
@@ -467,7 +391,7 @@ fn label_commands(language: Language) -> Vec<Command> {
     commands
         .extend(Management::list().iter().map(|m| text(m.dom()[0].clone(), m.display(language))));
     commands.extend(
-        Investigator::list().iter().map(|part| text(part.dom()[0].clone(), part.display(language))),
+        Section::list().iter().map(|part| text(part.dom()[0].clone(), part.display(language))),
     );
     commands.extend(
         Profile::list().iter().map(|field| text(field.dom()[0].clone(), field.display(language))),
@@ -496,52 +420,46 @@ fn label_commands(language: Language) -> Vec<Command> {
     commands
 }
 
-fn sheet_commands(investigator: &DataStruct, language: Language) -> Vec<Command> {
+fn sheet_commands(investigator: &Record<Investigator>, language: Language) -> Vec<Command> {
     let mut commands = Vec::new();
-    let (name, complement) = Name::read(investigator);
-    commands.push(text(Page::Investigator.to_dom(), name.clone()));
-    let identity = investigator
-        .get(ID_IDENTITY)
-        .ok()
-        .and_then(|b| b.get(0..4)?.try_into().ok())
-        .map(u32::from_le_bytes)
-        .unwrap_or(0);
+    commands.push(text(Page::Investigator.to_dom(), investigator.name.clone()));
     let [_, identity_dom] = Management::Identity.dom();
-    commands.push(text(identity_dom, format!("{identity}")));
+    commands.push(text(identity_dom, format!("{}", investigator.head.id)));
 
     let name_dom = Profile::Name.dom();
-    commands.push(value(name_dom[1].clone(), name));
-    commands.push(value(name_dom[2].clone(), complement.unwrap_or_default()));
-    let (kind, custom, title) = Occupation::read(investigator);
+    commands.push(value(name_dom[1].clone(), investigator.name.clone()));
+    commands.push(value(name_dom[2].clone(), investigator.pronunciation.clone()));
     let occupation_dom = Profile::Occupation.dom();
+    let custom =
+        (!investigator.occupation_name.is_empty()).then_some(investigator.occupation_name.as_str());
     commands.push(value(
         occupation_dom[1].clone(),
-        Occupation::display(&kind, custom.as_deref(), None, language),
+        Occupation::display(&investigator.occupation, custom, None, language),
     ));
-    commands.push(value(occupation_dom[2].clone(), title.unwrap_or_default()));
-    commands.push(value(Profile::Birthplace.dom()[1].clone(), Birthplace::read(investigator)));
-    commands.push(value(Profile::Pronoun.dom()[1].clone(), Pronoun::read(investigator)));
-    commands.push(value(Profile::Residence.dom()[1].clone(), Residence::read(investigator)));
-    commands.push(value(Profile::Age.dom()[1].clone(), format!("{}", Age::read(investigator))));
+    commands.push(value(occupation_dom[2].clone(), investigator.title.clone()));
+    commands.push(value(Profile::Birthplace.dom()[1].clone(), investigator.birthplace.clone()));
+    commands.push(value(Profile::Pronoun.dom()[1].clone(), investigator.pronoun.clone()));
+    commands.push(value(Profile::Residence.dom()[1].clone(), investigator.residence.clone()));
+    commands.push(value(Profile::Age.dom()[1].clone(), format!("{}", investigator.age)));
 
     for characteristic in Characteristic::list() {
-        let (initial, change, modifier) = characteristic.read(investigator);
+        let score = characteristic.score(investigator);
         let [_, initial_dom, change_dom, modifier_dom, sum_dom] = characteristic.dom();
-        commands.push(value(initial_dom, format!("{initial}")));
-        commands.push(value(change_dom, format!("{change}")));
-        commands.push(value(modifier_dom, format!("{modifier}")));
-        commands.push(text(sum_dom, format!("{}", characteristic.sum(investigator))));
+        commands.push(value(initial_dom, format!("{}", score.initial)));
+        commands.push(value(change_dom, format!("{}", score.change)));
+        commands.push(value(modifier_dom, format!("{}", score.modifier)));
+        commands.push(text(sum_dom, format!("{}", score.sum())));
     }
 
     for attribute in SecondaryAttribute::list() {
         let shown = match attribute {
-            SecondaryAttribute::HitPoints => format!("{}", HitPoints::read(investigator)),
-            SecondaryAttribute::MagicPoints => format!("{}", MagicPoints::read(investigator)),
-            SecondaryAttribute::Luck => format!("{}", Luck::read(investigator)),
-            SecondaryAttribute::Sanity => format!("{}", Sanity::read(investigator)),
-            SecondaryAttribute::Build => format!("{}", Build::read(investigator)),
+            SecondaryAttribute::HitPoints => format!("{}", investigator.hit_points),
+            SecondaryAttribute::MagicPoints => format!("{}", investigator.magic_points),
+            SecondaryAttribute::Luck => format!("{}", investigator.luck),
+            SecondaryAttribute::Sanity => format!("{}", investigator.sanity),
+            SecondaryAttribute::Build => format!("{}", investigator.build),
             SecondaryAttribute::DamageBonus => DamageBonus::display(investigator),
-            SecondaryAttribute::MoveRate => format!("{}", MoveRate::read(investigator)),
+            SecondaryAttribute::MoveRate => format!("{}", investigator.move_rate),
             SecondaryAttribute::OccupationSkillPoints => {
                 format!("{}", OccupationSkillPoints::derive(investigator).1)
             }
@@ -555,14 +473,12 @@ fn sheet_commands(investigator: &DataStruct, language: Language) -> Vec<Command>
 
     commands.extend(skill_commands(investigator, language));
 
-    let key_connection = Backstory::KeyConnection(alloc::boxed::Box::new(Backstory::Trait)).id();
-    let connected = investigator.get(key_connection).ok().and_then(|b| b.first().copied());
     for entry in Backstory::list() {
         let textarea = entry.dom().swap_remove(1);
-        commands.push(value(textarea, stored_text(investigator, entry.id())));
+        commands.push(value(textarea, investigator.text(&entry)));
         let checkbox =
             Backstory::KeyConnection(alloc::boxed::Box::new(entry.clone())).dom().swap_remove(0);
-        commands.push(if connected == Some(entry.id() as u8) {
+        commands.push(if investigator.key_connection.as_ref() == Some(&entry) {
             Command::SetAttribute {
                 id:        checkbox,
                 attribute: Attribute::Checked,
@@ -573,11 +489,11 @@ fn sheet_commands(investigator: &DataStruct, language: Language) -> Vec<Command>
         });
     }
 
-    for memo in Memo::list() {
-        let (title, body) = Memo::decode(investigator.get(memo.id()).unwrap_or(&[]));
-        let [title_dom, body_dom] = memo.dom();
-        commands.push(value(title_dom, title));
-        commands.push(value(body_dom, body));
+    for slot in 0..MEMO_SLOTS {
+        let memo = investigator.memos.get(slot).cloned().unwrap_or_default();
+        let [title_dom, body_dom] = Memo::dom(slot);
+        commands.push(value(title_dom, memo.title));
+        commands.push(value(body_dom, memo.body));
     }
     commands
 }
@@ -667,7 +583,7 @@ mod handler_tests {
         event::{LOGIN_REQUEST, LOGOUT_REQUEST, REGISTER_REQUEST},
         file_store::{FileStoreError, MemoryStore, Mount},
         host::{Flags, KeyName, Method, dom},
-        vault,
+        parse, vault,
     };
 
     fn click(handler: &mut Handler<MemoryStore>, id: dom::Id) -> Vec<Command> {
@@ -728,7 +644,7 @@ mod handler_tests {
         assert!(labels.iter().all(|command| matches!(command, Command::SetText { .. })));
         assert!(labels.iter().any(|command| matches!(
             command,
-            Command::SetText { value, .. } if value == Investigator::Skill.display(Language::Ja)
+            Command::SetText { value, .. } if value == Section::Skill.display(Language::Ja)
         )));
         assert_eq!(
             appearance.iter().map(written).collect::<Vec<_>>(),
@@ -857,7 +773,7 @@ mod handler_tests {
         assert_eq!(*toast, Page::ToastText(1).to_dom());
         assert_eq!(*slot, Page::Toast(1).to_dom());
         assert_eq!(message, "取り込めなかった項目: Wealth");
-        assert_eq!(Name::read(&handler.investigator).0, "鏖");
+        assert_eq!(handler.investigator.name, "鏖");
         assert!(handler.investigators.as_ref().unwrap().get(1).is_none());
         let written: Vec<_> = commands
             .iter()
@@ -873,7 +789,7 @@ mod handler_tests {
         assert!(click(&mut handler, Page::Save.to_dom()).is_empty());
         let stored = handler.investigators.as_ref().unwrap().get(1).unwrap();
         assert_eq!(
-            DataStruct::from_bytes(stored, SCHEMA_SIZE).map(|s| Name::read(&s).0).ok(),
+            parse::<Record<Investigator>>(stored).map(|s| s.name.clone()),
             Some(String::from("鏖"))
         );
     }

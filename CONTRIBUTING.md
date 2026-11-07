@@ -149,7 +149,7 @@ appとserverは`lib.rs::{Input::decode, Output::encode}`を共有し、HTTP本�
 
 | 型 | 表現 |
 |-|-|
-| 整数(`u8`~`u128`,`i32`,`f32`,`f64`) | - |
+| 整数(`u8`~`u128`,`i8`,`i16`,`i32`,`f32`,`f64`) | - |
 | 列挙(`wire_enum!`) | `u8, u16` |
 | 固定長`[u8; N]` | - |
 | `str, [u8]` | `[bytes: u16][u8; bytes]` |
@@ -187,10 +187,7 @@ appとserverは`lib.rs::{Input::decode, Output::encode}`を共有し、HTTP本�
 |-|-|
 | time.rs | タイムゾーンとセンチ秒、カレンダー加減算に対応したu64モジュール。 |
 | file_store.rs | [FileStore.md](./reference/FileStore.md). `trait FileStore, trait Mount::open -> Future, struct OpfsStore, FsStore, MemoryStore`. |
-| object.rs | [Object.md](./reference/Object.md). `Head::{id, created, modified, stamp, touch}, trait Body::{Kind, KIND}, Record<B>::{head, body}`と、`[kind: u8][Head][B]`を[Wire format](#wire-format)で並べるその`Input` / `Output`。`FileStore`上のレコード操作`get, set, list, exists`と`new_uid`。coc7th向けの`SubjectTrait::{SCHEMA_SIZE, ids, display, list}, Predicate::{ids, parse, encode, read, write}`。 |
-|-|-|
-| list.rs | 可変長論理バイト列の宣言と、固定長要素列操作Listと可変長(バイト倍数)要素列操作VariabeList。バイト列読み取り関数new_from_bytesとget_from_bytesも含む。 |
-| data_struct.rs | データモデル固有のフィールド数(schema_size)固定Listと可変部VariableListによるデータインスタンス操作モジュール。フィールド1にid(u32), 2にcreated_at(timestamp), 3にmodified_at(timestamp)を確定し、4~を開放。 |
+| object.rs | [Object.md](./reference/Object.md). `Head::{id, created, modified, stamp, touch}, trait Body::{Kind, KIND}, Record<B>::{head, body}`と、`[kind: u8][Head][B]`を[Wire format](#wire-format)で並べるその`Input` / `Output`。`FileStore`上のレコード操作`get, set, list, exists`と`new_uid`。 |
 |-|-|
 | app.rs | initとprocessの公開apiを持つ、Appインスタンス。eventsとcommandsの2つのキューを持ち、handler::Handler.process_*へevents消費を移譲ループする。保存するアプリに共通の`StoreLost`(ストアの失効)は、ここで`serve_event`への「開き直したい」要求(`reopen`)に変え、`StoreOpened`は`Handler`へ渡す。 |
 | arena.rs | JavaScriptとappが共有するメモリのレイアウトと、event / commandのリングバッファ。`serve_event`(async)が、処理待ちの要求があれば`Store::open`をawaitして、結果を`App::opened`に渡す。ロック競合(`NoModificationAllowed`)は`REOPEN_INTERVAL_IN_MS`間隔で`REOPEN_ATTEMPTS`回まで、イベント待ちのタイムアウトとして開き直す。 |
@@ -200,7 +197,7 @@ appとserverは`lib.rs::{Input::decode, Output::encode}`を共有し、HTTP本�
 | credential.rs | 認証プロトコル。email の正規化、`salt` / `authentication_key` / `wrap_key` の HKDF 導出、`stretch`(Argon2id、feature `vault`)、`verifier` / `verify`(HMAC + 定数時間比較)、`digest`、`hex`。server と共有する。 |
 | vault.rs | `root_key` の生成と `wrap_key` による包み込み、store 名ごとの `store_key`、レコードの AEAD(XChaCha20-Poly1305、`key` を AAD に束ねる)。 |
 |-|-|
-| coc7th/ | CoC7thアプリ。character(`Dice`と`dice`(表示・ロール)を含む。ドメイン固有のデータモデルの全フィールドとロジックを、各自公開されたenumのネスト群で表現したモジュール。関数はitemのドメイン意味(表示)を定義する`label`, 一意なschema_idを発行する`id`, バイト列とdomからの流入(u32,str,f64)を相互変換する`read` / `write`, 値の表示を導出する`display`などを各enum itemに対して定義する。)、handler(canvasを操作する、ドメイン固有のステートを持つHandler定義。Handlerは、DataStructと、フィールド4~schema_sizeまでの操作ロジックを定義するobjectを束ねて操作を行う。hostのdom::Idとobjectのフィールドを相互にバルクマッピングする関数を定義して、canvasと内部データを相互変換する。)、roll(ロール種別と成功度) |
+| coc7th.rs, coc7th/ | CoC7thアプリ。coc7th.rs(`Kind`)、investigator(`object::Body`を実装する`Investigator`。`Score`(能力値)、`Points`(技能の各ポイント、`SkillValue`のbit配置で直列化)、`Specialty` / `Specialization`(専門分野と自由記入の技能)、`Memo`を本体に持つ。`Section`, `Profile`, `Characteristic`, `SecondaryAttribute`, `Skill`, `Backstory`などのenumは、言語別の`display`とDOM id の`number` / `row` / `dom`を定義する。`Dice`と`dice`(表示・ロール)を含む)、import(JSONから`Record<Investigator>`を組む)、handler(canvasを操作する、ドメイン固有のステートを持つHandler定義。`Record<Investigator>`のフィールドとhostのdom::Idを相互にバルクマッピングして、canvasと内部データを相互変換する)、roll(ロール種別と成功度) |
 | calendar.rs, calendar/ | カレンダーアプリ(feature `calendar`)。calendar.rs(`Kind`, `Parent`と、`object::Body`を実装する`Tag` / `Appointment`、`tags` / `check`、JSONの`import` / `export`、`parse_uid` / `parse_time` / `parse_date`。FileStoreのidは`Head::id`にissue_idで採番する。このidは他のレコードに書かず、参照はJSONと同じ`uid`(資源)と`code`(状態・カテゴリ)で持つ。削除は参照元を書き換えず、参照先が無いことを「削除済み」として読む側が扱う)、grid / target(座標・レーン・DOM対応)、handler(`Calendar`のような集約を持たず、`object::{get, set, list}`と`calendar::tags`で`FileStore`を走査して読み書きする。編集も削除もモーダルではメモリ操作で、save / discardの判断はhandler)。 |
 |-|-|
 | server/ | [Server.md](./reference/Server.md). feature `meet, sync`, feature `server`: `account, handler, host, http, session, Principal, Action, Resource, authorize`. |
