@@ -261,6 +261,8 @@ pub fn import(store: &mut impl FileStore, body: &[u8]) -> Result<(), CalendarErr
                 })
             })
             .collect::<Result<Vec<_>, CalendarError>>()?;
+        u16::try_from(places.len())
+            .map_err(|_| format_error("places", &format!("{}", places.len())))?;
         if places.is_empty() {
             return Err(format_error("places", &format!("appointment {uid}")));
         }
@@ -325,7 +327,9 @@ fn field<'a>(value: &'a Value, key: &str) -> Result<&'a Value, CalendarError> {
 }
 
 fn text<'a>(value: &'a Value, key: &str) -> Result<&'a str, CalendarError> {
-    field(value, key)?.as_str().ok_or_else(|| shape(key))
+    let text = field(value, key)?.as_str().ok_or_else(|| shape(key))?;
+    u16::try_from(text.len()).map_err(|_| format_error(key, &format!("{}", text.len())))?;
+    Ok(text)
 }
 
 fn uid(value: &Value, key: &str) -> Result<u128, CalendarError> {
@@ -575,6 +579,14 @@ mod tests {
         let end = start + text[start..].find("],").unwrap() + 1;
         let empty = format!("{}\"places\": []{}", &text[..start], &text[end..]);
         assert!(rejected(&empty));
+        let note = |length: usize| {
+            text.replacen("\"note\": \"\"", &format!("\"note\": \"{}\"", "a".repeat(length)), 1)
+        };
+        let fits = note(usize::from(u16::MAX));
+        assert!(
+            import(&mut MemoryStore::new(MemoryHandles::new()).unwrap(), fits.as_bytes()).is_ok()
+        );
+        assert!(rejected(&note(usize::from(u16::MAX) + 1)));
     }
 
     #[test]

@@ -294,7 +294,7 @@ pub(crate) use wire_enum;
 
 impl<'a, T: Input<'a>> Input<'a> for Vec<T> {
     fn decode(input: &mut &'a [u8]) -> Option<Self> {
-        let count = u32::decode(input)? as usize;
+        let count = usize::from(u16::decode(input)?);
         (0..count).map(|_| T::decode(input)).collect()
     }
 }
@@ -307,7 +307,7 @@ impl Input<'_> for String {
 
 impl<'a> Input<'a> for &'a [u8] {
     fn decode(input: &mut &'a [u8]) -> Option<Self> {
-        let count = u32::decode(input)? as usize;
+        let count = usize::from(u16::decode(input)?);
         take(input, count)
     }
 }
@@ -332,7 +332,7 @@ impl<const N: usize> Output for [u8; N] {
 
 impl<T: Output> Output for [T] {
     fn encode(&self, output: &mut Vec<u8>) {
-        (self.len() as u32).encode(output);
+        u16::try_from(self.len()).expect("slice length exceeds u16").encode(output);
         for item in self {
             item.encode(output);
         }
@@ -622,6 +622,18 @@ mod decimal_tests {
         assert_eq!(stringify(&Sample(0.0004)), "0");
         assert_eq!(stringify(&Sample(f64::NAN)), "0");
         assert_eq!(stringify(&Sample(f64::INFINITY)), "0");
+    }
+
+    #[test]
+    fn slices_round_trip_at_u16_count() {
+        let fits = alloc::vec![7u8; usize::from(u16::MAX)];
+        assert_eq!(parse::<Vec<u8>>(&fits.to_bytes()), Some(fits));
+    }
+
+    #[test]
+    #[should_panic(expected = "slice length exceeds u16")]
+    fn slices_over_u16_count_panic() {
+        alloc::vec![7u8; usize::from(u16::MAX) + 1].to_bytes();
     }
 }
 

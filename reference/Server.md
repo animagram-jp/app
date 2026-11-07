@@ -162,7 +162,7 @@ root_key (32 B 乱数、初回有効化時に端末が生成)
 - app の FileStore の id(u32)はプロセス内で閉じた値なので同期の識別子には使わず、app 側はレコード本体に `identifier` を持たせる(Calendar の `uid` と同じ考え方)。
 - サーバーは `(user, store)` ごとに 1 つの FileStore を持ち、値に `[version][flags][identifier][ciphertext]` を入れる。`identifier → id` と `version → id` の索引は open 時にメモリ上で組み、`version` の重複や 0 は壊れたレコードとして open を拒む(`sync::Collection`)。
 - 往復は状態を持たない。`pull` は `since` より大きい `version` を昇順に、1 応答 768 KiB(`sync::PULL_SIZE_MAX`)まで返し、続きがあれば `more` を立てる。端末は最後の `version` を次の `since` にする。
-- `push` は各レコードの `base`(端末が最後に見た `version`、未知なら 0)を持ち、サーバーの現在値と一致すれば `head + 1` を振る。不一致はサーバーの現在値を競合として返し、マージは暗号文を復号できる端末側で行う。1 回の push は 1024 件、`ciphertext` は 64 KiB まで。
+- `push` は各レコードの `base`(端末が最後に見た `version`、未知なら 0)を持ち、サーバーの現在値と一致すれば `head + 1` を振る。不一致はサーバーの現在値を競合として返し、マージは暗号文を復号できる端末側で行う。1 回の push は 1024 件、`ciphertext` は 65535 B まで。
 - 削除は `flags` の bit 0 を立てた tombstone で、`ciphertext` は空にして保持する。compact 方針は運用で決める。
 - `sync.rs` の `two_devices_converge` が、2 端末がランダムに push / pull を繰り返しても最後の pull で全員がサーバーと一致することを、seed 固定の乱数で確かめている。
 
