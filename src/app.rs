@@ -243,16 +243,13 @@ mod tests {
     use std::fs;
 
     use super::*;
+    #[cfg(feature = "calendar")]
+    use crate::file_store::{FileStore, MemoryHandles};
     use crate::{
         Output, Rng, block_on,
         event::{FetchChunk, gesture::Gesture},
         file_store::Mount,
         host::{EVENT_CANVAS, EVENT_FETCH, dom},
-    };
-    #[cfg(feature = "calendar")]
-    use crate::{
-        calendar::data::appointment,
-        file_store::{FileStore, MemoryHandles},
     };
 
     const POINTER_DOWN: u8 = 16;
@@ -434,7 +431,7 @@ mod tests {
             assert!(!app.handler.loaded());
             app.process(&fetch_frame(1, 200, index == last, chunk));
         }
-        assert_eq!(app.handler.read(appointment::KIND).len(), 380);
+        assert_eq!(app.handler.appointments().len(), 380);
         assert!(app.responses.is_empty());
     }
 
