@@ -298,7 +298,7 @@ pub mod appointment {
             let Some(mut input) = bytes[0] else {
                 return Vec::new();
             };
-            let Some(count) = u32::decode(&mut input) else {
+            let Some(count) = u16::decode(&mut input) else {
                 return Vec::new();
             };
             input

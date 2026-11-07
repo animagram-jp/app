@@ -294,7 +294,7 @@ pub(crate) use wire_enum;
 
 impl<'a, T: Input<'a>> Input<'a> for Vec<T> {
     fn decode(input: &mut &'a [u8]) -> Option<Self> {
-        let count = u32::decode(input)? as usize;
+        let count = usize::from(u16::decode(input)?);
         (0..count).map(|_| T::decode(input)).collect()
     }
 }
@@ -307,7 +307,7 @@ impl Input<'_> for String {
 
 impl<'a> Input<'a> for &'a [u8] {
     fn decode(input: &mut &'a [u8]) -> Option<Self> {
-        let count = u32::decode(input)? as usize;
+        let count = usize::from(u16::decode(input)?);
         take(input, count)
     }
 }
@@ -332,8 +332,9 @@ impl<const N: usize> Output for [u8; N] {
 
 impl<T: Output> Output for [T] {
     fn encode(&self, output: &mut Vec<u8>) {
-        (self.len() as u32).encode(output);
-        for item in self {
+        let count = u16::try_from(self.len()).unwrap_or(u16::MAX);
+        count.encode(output);
+        for item in &self[..usize::from(count)] {
             item.encode(output);
         }
     }
@@ -622,6 +623,16 @@ mod decimal_tests {
         assert_eq!(stringify(&Sample(0.0004)), "0");
         assert_eq!(stringify(&Sample(f64::NAN)), "0");
         assert_eq!(stringify(&Sample(f64::INFINITY)), "0");
+    }
+
+    #[test]
+    fn slices_clamp_to_u16_count() {
+        let fits = alloc::vec![7u8; usize::from(u16::MAX)];
+        assert_eq!(parse::<Vec<u8>>(&fits.to_bytes()), Some(fits.clone()));
+        let over = alloc::vec![7u8; usize::from(u16::MAX) + 1];
+        let bytes = over.to_bytes();
+        assert_eq!(bytes.len(), 2 + usize::from(u16::MAX));
+        assert_eq!(parse::<Vec<u8>>(&bytes), Some(fits));
     }
 }
 

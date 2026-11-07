@@ -8,7 +8,7 @@ const DATA_OFFSET = 128;
 const LENGTH_PREFIX = 4;
 const ALIGNMENT = 4;
 const PADDING_MARK = 0xFFFFFFFF;
-const FETCH_HEADER = 1 + 4 + 2 + 1 + LENGTH_PREFIX;
+const FETCH_HEADER = 1 + 4 + 2 + 1 + 2;
 const API_BASE = document.querySelector("meta[name='api-base']")?.content ?? "./api/{version}";
 const SW_URL = document.querySelector("meta[name='sw-url']")?.content ?? "./sw.js";
 const APP_DIRECTORY = new URL("./app/", document.baseURI);
@@ -988,8 +988,8 @@ function set_f64(frame, offset, value) {
 }
 
 function set_bytes(frame, offset, bytes) {
-    reserve(frame, offset, 4 + bytes.length);
-    offset = set_u32(frame, offset, bytes.length);
+    reserve(frame, offset, 2 + bytes.length);
+    offset = set_u16(frame, offset, bytes.length);
     frame.set(bytes, offset);
     return offset + bytes.length;
 }
@@ -1038,7 +1038,7 @@ function get_f32(frame, offset) {
 }
 
 function get_bytes(frame, offset) {
-    const [length, start] = get_u32(frame, offset);
+    const [length, start] = get_u16(frame, offset);
     if (length === undefined || start + length > frame.length) return [undefined, offset];
     return [frame.subarray(start, start + length), start + length];
 }

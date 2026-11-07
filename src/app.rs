@@ -412,7 +412,7 @@ mod tests {
         request.encode(&mut frame);
         frame.extend_from_slice(&status.to_le_bytes());
         frame.push(last as u8);
-        (bytes.len() as u32).encode(&mut frame);
+        (bytes.len() as u16).encode(&mut frame);
         frame.extend_from_slice(bytes);
         frame
     }
