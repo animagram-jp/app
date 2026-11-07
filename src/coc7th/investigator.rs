@@ -7,7 +7,6 @@ use alloc::{
 use core::{
     clone::Clone,
     cmp::{Eq, PartialEq},
-    default::Default,
     fmt::Debug,
     iter::{Iterator, once},
     marker::Copy,
@@ -193,7 +192,7 @@ impl Profile {
     }
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum OccupationKind {
     // p.38
     Activist = 1,
@@ -224,7 +223,6 @@ pub enum OccupationKind {
     Professor,
     Soldier,
     TribeMember,
-    #[default]
     Custom,
 }
 
@@ -452,11 +450,15 @@ impl Characteristic {
     }
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Score {
     pub initial:  u16,
     pub change:   i16,
     pub modifier: i16,
+}
+
+impl Zero for Score {
+    const ZERO: Self = Self { initial: 0, change: 0, modifier: 0 };
 }
 
 impl Score {
@@ -982,12 +984,16 @@ bit::composite! {
     struct SkillValue { OccupationPoints, InterestPoints, Change, Modifier }
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Points {
     pub occupation: u16,
     pub interest:   u16,
     pub change:     i16,
     pub modifier:   i16,
+}
+
+impl Zero for Points {
+    const ZERO: Self = Self { occupation: 0, interest: 0, change: 0, modifier: 0 };
 }
 
 impl Points {
@@ -1198,10 +1204,14 @@ impl Output for Specialization {
     }
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Memo {
     pub title: String,
     pub body:  String,
+}
+
+impl Zero for Memo {
+    const ZERO: Self = Self { title: String::new(), body: String::new() };
 }
 
 impl Input<'_> for Memo {
@@ -1243,33 +1253,31 @@ pub struct Investigator {
     pub memos:                   Vec<Memo>,
 }
 
-impl Default for Investigator {
-    fn default() -> Self {
-        Self {
-            name:                    String::new(),
-            pronunciation:           String::new(),
-            occupation:              OccupationKind::Custom,
-            occupation_name:         String::new(),
-            title:                   String::new(),
-            birthplace:              String::new(),
-            pronoun:                 String::new(),
-            residence:               String::new(),
-            age:                     0,
-            characteristics:         [Score::default(); 8],
-            hit_points:              0,
-            magic_points:            0,
-            luck:                    0,
-            sanity:                  0,
-            build:                   0,
-            move_rate:               0,
-            occupation_skill_points: None,
-            skills:                  [Points::default(); SKILL_COUNT],
-            specializations:         Vec::new(),
-            key_connection:          None,
-            backstory:               Default::default(),
-            memos:                   Vec::new(),
-        }
-    }
+impl Zero for Investigator {
+    const ZERO: Self = Self {
+        name:                    String::new(),
+        pronunciation:           String::new(),
+        occupation:              OccupationKind::Custom,
+        occupation_name:         String::new(),
+        title:                   String::new(),
+        birthplace:              String::new(),
+        pronoun:                 String::new(),
+        residence:               String::new(),
+        age:                     0,
+        characteristics:         [Score::ZERO; 8],
+        hit_points:              0,
+        magic_points:            0,
+        luck:                    0,
+        sanity:                  0,
+        build:                   0,
+        move_rate:               0,
+        occupation_skill_points: None,
+        skills:                  [Points::ZERO; SKILL_COUNT],
+        specializations:         Vec::new(),
+        key_connection:          None,
+        backstory:               [const { String::new() }; BACKSTORY_COUNT],
+        memos:                   Vec::new(),
+    };
 }
 
 impl Investigator {
@@ -1283,7 +1291,7 @@ impl Investigator {
 
     pub fn known_specialization(&self, skill: &Skill) -> Option<&Specialization> {
         self.specializations.iter().find(|s| {
-            s.specialty.skill() == *skill && s.specialty.known() && s.points != Points::default()
+            s.specialty.skill() == *skill && s.specialty.known() && s.points != Points::ZERO
         })
     }
 
@@ -1316,7 +1324,7 @@ impl Input<'_> for Investigator {
             pronoun: String::decode(input)?,
             residence: String::decode(input)?,
             age: u16::decode(input)?,
-            ..Self::default()
+            ..Self::ZERO
         };
         for score in &mut investigator.characteristics {
             *score = Score::decode(input)?;
@@ -2322,8 +2330,6 @@ impl Backstory {
     }
 }
 
-///   [title_len: u32 LE][title: utf-8][body: utf-8]
-
 const MANAGEMENT_SECTION: u32 = 1;
 const SHEET_SECTION: u32 = 1;
 pub const WEAPON_ROWS: u32 = 4;
@@ -2897,7 +2903,7 @@ mod record_tests {
             occupation_skill_points: Some((Characteristic::Education, Characteristic::Strength)),
             key_connection: Some(Backstory::Trait),
             memos: vec![Memo { title: "Scenarios".to_string(), body: "A\nB".to_string() }],
-            ..Investigator::default()
+            ..Investigator::ZERO
         };
         investigator.characteristics[Characteristic::Strength.index()] =
             Score { initial: 75, change: -5, modifier: 10 };
@@ -2922,7 +2928,7 @@ mod record_tests {
     fn an_investigator_survives_the_byte_round_trip() {
         let investigator = sample();
         assert_eq!(parse::<Investigator>(&investigator.to_bytes()), Some(investigator));
-        let blank = Investigator::default();
+        let blank = Investigator::ZERO;
         assert_eq!(parse::<Investigator>(&blank.to_bytes()), Some(blank));
     }
 
