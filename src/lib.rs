@@ -1,6 +1,4 @@
 #![no_std]
-#![feature(adt_const_params)]
-#![cfg_attr(feature = "coc7th", feature(const_param_ty_trait))]
 #![cfg_attr(
     all(target_arch = "wasm32", target_feature = "atomics"),
     feature(stdarch_wasm_atomic_wait)
@@ -55,11 +53,9 @@ pub mod calendar;
 pub mod coc7th;
 #[cfg(feature = "credential")]
 pub mod credential;
-pub mod data_struct;
 pub mod event;
 pub mod file_store;
 pub mod host;
-pub mod list;
 pub mod object;
 pub mod server;
 pub mod time;
@@ -279,7 +275,7 @@ macro_rules! scalar {
     )*};
 }
 
-scalar!(u8, u16, u32, u64, u128, i32, f32, f64);
+scalar!(u8, u16, u32, u64, u128, i8, i16, i32, f32, f64);
 
 macro_rules! wire_enum {
     ($($repr:ty: $($type:ty),+);+ $(;)?) => {$($(
