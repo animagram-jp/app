@@ -26,7 +26,7 @@ use crate::{
 };
 
 pub const IDENTIFIER_LENGTH: usize = 16;
-pub const CIPHERTEXT_SIZE_MAX: usize = 64 * 1024;
+pub const CIPHERTEXT_SIZE_MAX: usize = u16::MAX as usize;
 pub const PULL_SIZE_MAX: usize = 768 * 1024;
 pub const PUSH_COUNT_MAX: usize = 1024;
 
@@ -124,7 +124,7 @@ impl Record {
     }
 
     pub fn size(&self) -> usize {
-        IDENTIFIER_LENGTH + 8 + Flags::BYTES + 4 + self.ciphertext.len()
+        IDENTIFIER_LENGTH + 8 + Flags::BYTES + 2 + self.ciphertext.len()
     }
 }
 

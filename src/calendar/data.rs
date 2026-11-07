@@ -298,7 +298,7 @@ pub mod appointment {
             let Some(mut input) = bytes[0] else {
                 return Vec::new();
             };
-            let Some(count) = u32::decode(&mut input) else {
+            let Some(count) = u16::decode(&mut input) else {
                 return Vec::new();
             };
             input
@@ -410,6 +410,7 @@ pub mod appointment {
                     })
                 })
                 .collect::<Result<Vec<_>, DataError>>()?;
+            bounded("places", places.len())?;
             if places.is_empty() {
                 return Err(format_error("places", &format!("appointment {uid}")));
             }
@@ -477,7 +478,16 @@ pub mod appointment {
     }
 
     fn text<'a>(value: &'a Value, key: &str) -> Result<&'a str, DataError> {
-        field(value, key)?.as_str().ok_or_else(|| shape(key))
+        let text = field(value, key)?.as_str().ok_or_else(|| shape(key))?;
+        bounded(key, text.len())?;
+        Ok(text)
+    }
+
+    fn bounded(key: &str, length: usize) -> Result<(), DataError> {
+        match u16::try_from(length) {
+            Ok(_) => Ok(()),
+            Err(_) => Err(format_error(key, &format!("{length}"))),
+        }
     }
 
     fn uid(value: &Value, key: &str) -> Result<u128, DataError> {
@@ -781,6 +791,14 @@ mod tests {
         let end = start + text[start..].find("],").unwrap() + 1;
         let empty = format!("{}\"places\": []{}", &text[..start], &text[end..]);
         assert!(rejected(&empty));
+        let note = |length: usize| {
+            text.replacen("\"note\": \"\"", &format!("\"note\": \"{}\"", "a".repeat(length)), 1)
+        };
+        let fits = note(usize::from(u16::MAX));
+        assert!(
+            import(&mut MemoryStore::new(MemoryHandles::new()).unwrap(), fits.as_bytes()).is_ok()
+        );
+        assert!(rejected(&note(usize::from(u16::MAX) + 1)));
     }
 
     #[test]

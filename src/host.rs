@@ -1384,12 +1384,12 @@ mod wire_tests {
     #[test]
     fn strings_reject_invalid_utf8_and_overlong_lengths() {
         let mut invalid = Vec::new();
-        2u32.encode(&mut invalid);
+        2u16.encode(&mut invalid);
         invalid.extend_from_slice(&[0xFF, 0xFE]);
         assert_eq!(String::decode(&mut &invalid[..]), None);
 
         let mut too_long = Vec::new();
-        5u32.encode(&mut too_long);
+        5u16.encode(&mut too_long);
         too_long.extend_from_slice(b"abcd");
         assert_eq!(String::decode(&mut &too_long[..]), None);
     }
@@ -1411,7 +1411,7 @@ mod wire_tests {
 
         assert_eq!(
             encode(Command::SetText { id: id.clone(), value: String::from("hi") }),
-            with_id(1, &[2, 0, 0, 0, b'h', b'i'])
+            with_id(1, &[2, 0, b'h', b'i'])
         );
         assert_eq!(
             encode(Command::SetAttribute {
@@ -1419,7 +1419,7 @@ mod wire_tests {
                 attribute: Attribute::Hidden,
                 value:     String::from("x"),
             }),
-            with_id(3, &[6, 0, 1, 0, 0, 0, b'x'])
+            with_id(3, &[6, 0, 1, 0, b'x'])
         );
         assert_eq!(
             encode(Command::AddClass { id: id.clone(), value: ClassName::Show }),
@@ -1455,7 +1455,7 @@ mod wire_tests {
                 property: StyleProperty::Background,
                 value:    StyleValue::Text(String::from("red")),
             }),
-            with_id(7, &[1, 0, 6, 3, 0, 0, 0, b'r', b'e', b'd'])
+            with_id(7, &[1, 0, 6, 3, 0, b'r', b'e', b'd'])
         );
         assert_eq!(
             encode(Command::SetStyle {
@@ -1487,11 +1487,11 @@ mod wire_tests {
         );
         assert_eq!(
             encode(Command::Error { error: Error::Event(EventError::Decode) }),
-            [13, 2, 2, 0, 1, 0, 0, 0, 0, 0]
+            [13, 2, 2, 0, 1, 0, 0, 0]
         );
         assert_eq!(
             encode(Command::Error { error: Error::Arena(ArenaError::CommandOverflow) }),
-            [13, 2, 1, 0, 1, 0, 0, 0, 0, 0]
+            [13, 2, 1, 0, 1, 0, 0, 0]
         );
         let panic = encode(Command::Error {
             error: Error::Panic(PanicError {
@@ -1508,11 +1508,11 @@ mod wire_tests {
                 path:    String::from("/a"),
                 body:    vec![9, 8],
             }),
-            [14, 2, 1, 0, 0, 3, 2, 0, 0, 0, b'/', b'a', 2, 0, 0, 0, 9, 8]
+            [14, 2, 1, 0, 0, 3, 2, 0, b'/', b'a', 2, 0, 9, 8]
         );
         assert_eq!(
             &panic[6..],
-            [12, 0, 0, 0, b'a', b'.', b'r', b's', b':', b'1', b':', b' ', b'b', b'o', b'o', b'm']
+            [12, 0, b'a', b'.', b'r', b's', b':', b'1', b':', b' ', b'b', b'o', b'o', b'm']
         );
     }
 }
