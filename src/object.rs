@@ -1,6 +1,5 @@
 use alloc::vec::Vec;
 use core::{
-    array::from_fn,
     cmp::PartialEq,
     ops::{Deref, DerefMut},
     option::Option::{self, None, Some},
@@ -9,11 +8,9 @@ use core::{
 };
 
 use crate::{
-    Input, Language, Output,
+    Input, Output,
     bit::{Bits, Zero},
-    data_struct::DataStruct,
     file_store::FileStore,
-    list::ListError,
     parse,
     time::{Stamp, Zone, from_unix_timestamp_in_ms},
 };
@@ -153,49 +150,4 @@ pub fn list<B: Body>(store: &impl FileStore) -> Result<Vec<Record<B>>, ObjectErr
 
 pub fn exists(store: &impl FileStore) -> bool {
     store.range(0, u32::MAX).next().is_some()
-}
-
-// --- schema ---
-
-pub trait SubjectTrait {
-    const SCHEMA_SIZE: u32;
-    fn ids(&self) -> &'static [u32];
-    fn display(&self, language: Language) -> &'static str;
-    fn list() -> &'static [Self]
-    where
-        Self: Sized;
-}
-
-pub trait Predicate<const N: usize> {
-    type Parsed;
-    type Subject: SubjectTrait;
-    const VARIANT: Self::Subject;
-
-    fn ids() -> [u32; N] {
-        Self::VARIANT.ids().try_into().expect("id slice length mismatch")
-    }
-
-    fn parse(bytes: [Option<&[u8]>; N]) -> Self::Parsed;
-
-    fn encode(value: &Self::Parsed) -> [Option<Vec<u8>>; N];
-
-    fn read(investigator: &DataStruct) -> Self::Parsed {
-        Self::parse(investigator.get_many(Self::ids()))
-    }
-
-    fn get_from_bytes(instance: &[u8]) -> Self::Parsed {
-        let size = Self::Subject::SCHEMA_SIZE;
-        Self::parse(Self::ids().map(|id| DataStruct::get_from_bytes(instance, size, id).ok()))
-    }
-
-    fn write(
-        investigator: &mut DataStruct,
-        value: &Self::Parsed,
-        now_in_ms: Option<u64>,
-    ) -> Result<(), ListError> {
-        let ids = Self::ids();
-        let encoded = Self::encode(value);
-        let entries: [(u32, Option<&[u8]>); N] = from_fn(|i| (ids[i], encoded[i].as_deref()));
-        investigator.set_many(entries, now_in_ms)
-    }
 }
