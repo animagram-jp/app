@@ -332,9 +332,8 @@ impl<const N: usize> Output for [u8; N] {
 
 impl<T: Output> Output for [T] {
     fn encode(&self, output: &mut Vec<u8>) {
-        let count = u16::try_from(self.len()).unwrap_or(u16::MAX);
-        count.encode(output);
-        for item in &self[..usize::from(count)] {
+        u16::try_from(self.len()).expect("slice length exceeds u16").encode(output);
+        for item in self {
             item.encode(output);
         }
     }
@@ -626,13 +625,15 @@ mod decimal_tests {
     }
 
     #[test]
-    fn slices_clamp_to_u16_count() {
+    fn slices_round_trip_at_u16_count() {
         let fits = alloc::vec![7u8; usize::from(u16::MAX)];
-        assert_eq!(parse::<Vec<u8>>(&fits.to_bytes()), Some(fits.clone()));
-        let over = alloc::vec![7u8; usize::from(u16::MAX) + 1];
-        let bytes = over.to_bytes();
-        assert_eq!(bytes.len(), 2 + usize::from(u16::MAX));
-        assert_eq!(parse::<Vec<u8>>(&bytes), Some(fits));
+        assert_eq!(parse::<Vec<u8>>(&fits.to_bytes()), Some(fits));
+    }
+
+    #[test]
+    #[should_panic(expected = "slice length exceeds u16")]
+    fn slices_over_u16_count_panic() {
+        alloc::vec![7u8; usize::from(u16::MAX) + 1].to_bytes();
     }
 }
 
