@@ -43,17 +43,17 @@ feature `server`でコンパイルする、サーバー側アプリケーショ�
 └──────────────────────────────────────────────────────┘
 ```
 
-### ホスト API
+### Required host API
 
-ホスト API(時計、ネットワーク、ファイル、スレッド)は `host.rs` と `file_store::FsStore` に閉じ込め、それ以外は `core` + `alloc` のみで組む。乱数は `getrandom` を直接呼ぶ。
-
-| 用途 | 実装 | core 側の境界 | テスト |
-|-|-|-|-|
-| 時計 | `std::time::SystemTime`(`host::now`) | `Handler::process_request` / `open` / `maintain` は `now: u64` を受ける | 固定値を渡す |
-| 乱数 | `getrandom::fill` | なし。`session.rs` / `vault.rs` が直接呼ぶ | 実乱数のまま |
-| TCP | `std::net::TcpListener` / `TcpStream`(`host::serve`) | `http::Request` / `http::Response` の値だけが core に入る | `http::parse` の単体テスト |
-| スレッド | `std::thread`、`std::sync::Mutex`(`host::serve`) | `Handler::process_request` は同期関数 | 不要 |
-| ファイル | `std::fs::File` + `std::os::unix::fs::FileExt`(`file_store::FsStore`) | `file_store::FileStore` | `file_store::MemoryStore` |
+| Name | Client (wasm32) | Server (unix) |
+|-|-|-|
+| now: u64 | `js_sys::Date::now` | `std::time::SystemTime` |
+| `getrandom::fill` | feature wasm_js | feature default |
+| `http::Response` | `init.js::fetch` | `std::net::{TcpListener, TcpStream}` |
+| File | `web_sys::FileSystemSyncAccessHandle` | `std::fs::{File, FileExt}` |
+| Spawn | - | `thread::Builder::spawn` |
+| Wait | - | `thread::sleep` |
+| Lock | - | `sync::Mutex` |
 
 ### 不採用
 
