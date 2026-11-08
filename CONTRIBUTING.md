@@ -55,7 +55,7 @@ curl -fsSL -H "Accept: application/vnd.github.raw+json" "https://api.github.com/
 
 # Commands
 
-- Setup: `rustup toolchain install` (Recquire nightly)
+- Setup: `rustup toolchain install` (Require nightly)
 - Format: `cargo fmt`
 - Checker: `cargo clippy --all-targets --all-features`
 - Checker (wasm): `RUSTFLAGS="-Ctarget-feature=+atomics,+bulk-memory" cargo clippy --lib --all-features --target wasm32-unknown-unknown -Zbuild-std=std,panic_abort`
