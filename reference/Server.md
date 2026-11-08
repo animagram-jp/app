@@ -3,7 +3,7 @@
 feature `server`でコンパイルする、サーバー側アプリケーション。
 基本機能をパスワードログインとし、端末間暗号化(E2EE)、[Meet.md](./Meet.md)のP2Pシグナリング API、ユーザー単位のデータ同期(feature `sync`)を提供する。
 
-## 要件
+# 前提
 
 | 項目 | 内容 |
 |-|-|
@@ -13,9 +13,7 @@ feature `server`でコンパイルする、サーバー側アプリケーショ�
 | レスポンス | `Cache-Control: no-store` を常に付ける。 |
 | データ | サーバーは利用者データの平文を一切持たない。鍵は端末にしか存在せず、サーバーは暗号文と、その版管理だけを扱う。 |
 
----
-
-## 構成
+# 構成
 
 | feature | 既定 | 内容 |
 |-|-|-|
@@ -43,19 +41,7 @@ feature `server`でコンパイルする、サーバー側アプリケーショ�
 └──────────────────────────────────────────────────────┘
 ```
 
-### Required host API
-
-| Name | Client (wasm32) | Server (unix) |
-|-|-|-|
-| now: u64 | `js_sys::Date::now` | `std::time::SystemTime` |
-| `getrandom::fill` | feature wasm_js | feature default |
-| `http::Response` | `init.js::fetch` | `std::net::{TcpListener, TcpStream}` |
-| File | `web_sys::FileSystemSyncAccessHandle` | `std::fs::{File, FileExt}` |
-| Spawn | - | `thread::Builder::spawn` |
-| Wait | - | `thread::sleep` |
-| Lock | - | `sync::Mutex` |
-
-### 不採用
+# 不採用
 
 | crate | 理由 |
 |-|-|
@@ -67,9 +53,7 @@ feature `server`でコンパイルする、サーバー側アプリケーショ�
 | rustls, ureq | サーバーから外へ出る HTTPS は TURN 資格情報の取得だけで、前段の proxy で代替する |
 | base64 | バイナリワイヤなので不要。Cookie 値は16進法(`credential::to_hexadecimal`) |
 
----
-
-### HTTP の受理範囲
+# HTTP の受理範囲
 
 | 項目 | 範囲 |
 |-|-|
@@ -81,7 +65,7 @@ feature `server`でコンパイルする、サーバー側アプリケーショ�
 
 ---
 
-## 認証と E2EE
+# 認証とE2EE
 
 Mozilla Sync(onepw)と Proton Mail を参考に、パスワードから「認証に使う鍵」と「データを守る鍵」を分離する。
 
@@ -112,7 +96,7 @@ root_key (32 B 乱数、初回有効化時に端末が生成)
 - DB と pepper が両方漏れた場合の総当たりコストは、1 候補ごとに端末側 Argon2id 1 回である。
 - ログイン失敗の応答と所要時間を、ユーザー不在とパスワード不一致で揃える(不在時はダミーの検証子で HMAC を計算する)。
 
-### セッション
+# セッション
 
 | 項目 | 内容 |
 |-|-|
@@ -123,7 +107,7 @@ root_key (32 B 乱数、初回有効化時に端末が生成)
 | 有効化 | 公開の登録機能は持たない([Calendar.md](./Calendar.md) の方針)。`{SERVER_DATA}/allowlist` に書かれた email だけが初回の `PUT /v1/account` で有効化できる。allowlist は起動時に 1 度だけ読む |
 | 再認証 | パスワード変更は現在の `authentication_key` と新しい `authentication_key`、新しい `wrapped_root` を一度に受け取る |
 
-### API
+# API
 
 | Method | Path | Body | Response | 前段 |
 |-|-|-|-|-|
@@ -143,7 +127,7 @@ root_key (32 B 乱数、初回有効化時に端末が生成)
 
 ---
 
-## Meet
+# Meet
 
 [Meet.md](./Meet.md) のシグナリングを、ログイン済み端末の `peer` id で行う。
 
@@ -156,7 +140,7 @@ root_key (32 B 乱数、初回有効化時に端末が生成)
 
 ---
 
-## Sync
+# Sync
 
 - レコードは `identifier: [u8; 16]`(端末が生成する乱数。複数端末で衝突しない)、`version: u64`(サーバーが store ごとに単調に振る)、`flags`(bit 0 が削除)、`ciphertext: bytes`(端末が `store_key` で暗号化)。
 - app の FileStore の id(u32)はプロセス内で閉じた値なので同期の識別子には使わず、app 側はレコード本体に `identifier` を持たせる(Calendar の `uid` と同じ考え方)。
@@ -168,7 +152,7 @@ root_key (32 B 乱数、初回有効化時に端末が生成)
 
 ---
 
-## 永続化
+# FileSStore
 
 `file_store.rs` の `FsStore`(`std::fs`、unix)を使う。`OpfsStore` との対応は次のとおり。
 
@@ -180,7 +164,7 @@ root_key (32 B 乱数、初回有効化時に端末が生成)
 | `Mount::open`(非同期) | `FsStore::open(root, id, create)`(同期の固有メソッド) |
 | `DOMException` 名による分類 | `io::ErrorKind` による分類(`QuotaExceeded` は `StorageFull`) |
 
-| パス | 内容 |
+| Path | Content |
 |-|-|
 | `{SERVER_DATA}/allowlist` | 有効化を許可する email の一覧(1 行 1 件) |
 | `{SERVER_DATA}/account.1.{snap,log}` | ユーザー、検証子、`wrapped_root`、端末 |

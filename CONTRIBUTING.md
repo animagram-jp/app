@@ -1,8 +1,6 @@
 // This file includes untranslated text (ja).
 
-# Development
-
-## Rule
+# Rule
 
 - Follow [ORG_CONTRIBUTING.md](./ORG_CONTRIBUTING.md)
 
@@ -41,7 +39,7 @@ curl -fsSL -H "Accept: application/vnd.github.raw+json" "https://api.github.com/
 
 ---
 
-## Requirements
+# Requirements
 
 - 人間に普遍的に必要とされるアプリケーションを、提供コストをユビキタスに成り得る閾値まで抑えたwebシステムアーキテクチャで実現する。普遍的機能とは、以下を指す:
     1. データを編集し、保存・複数端末で同期する機能。データは、その最適な閲覧・編集UIを決定するスキーマに多対一に紐づく。人間及びシステムにとって、時系が原始のデータの識別手段である。既存のアプリで「カレンダー」「メモ」に対応する機能は、人間の意識に昇る時系であるかの違いと理解できる。
@@ -51,11 +49,11 @@ curl -fsSL -H "Accept: application/vnd.github.raw+json" "https://api.github.com/
 
 ---
 
-## Links
+# Links
 
 - [Debug link with eruda (dev tools)](https://app.animagram.jp/?eruda) eruda 3.4.3 (fixed)
 
-## Commands for development
+# Commands
 
 - Setup: `rustup toolchain install` (Recquire nightly)
 - Format: `cargo fmt`
@@ -63,7 +61,7 @@ curl -fsSL -H "Accept: application/vnd.github.raw+json" "https://api.github.com/
 - Checker (wasm): `RUSTFLAGS="-Ctarget-feature=+atomics,+bulk-memory" cargo clippy --lib --all-features --target wasm32-unknown-unknown -Zbuild-std=std,panic_abort`
 - Copy from animagram-jp/css: `cp -f ../css/css/*.css ./distribution/css/library/`
 
-### Test
+## Test
 
 ```bash
 cargo test --doc # docTest
@@ -73,7 +71,20 @@ cargo test --no-default-features --features coc7th --lib # unit test (no file_st
 cargo test --features server --lib # server feature (sync, meet, account, session, http, handler, host)
 ```
 
-### Server
+## Browser test
+
+- [Mozzilla: fire fox](https://support.mozilla.org/en/kb/install-firefox-linux)
+- [Mozzilla: gecko driver](https://github.com/mozilla/geckodriver/releases)
+
+```bash
+cargo install wasm-bindgen-cli --version "$(grep -A1 '^name = "wasm-bindgen"$' Cargo.lock | sed -n 's/^version = "\(.*\)"$/\1/p')" --locked
+
+geckodriver --port 8000 & GECKODRIVER_REMOTE=http://127.0.0.1:8000 WASM_BINDGEN_TEST_TIMEOUT=60 cargo test --target wasm32-unknown-unknown --lib --tests
+
+pkill -f "geckodriver --port 8000"
+```
+
+## Run server
 
 ```bash
 set -a; . ./.env; . ./.secrets; set +a
@@ -88,23 +99,10 @@ cargo run --features server --bin server
 | `SERVER_ORIGIN` | 変更系リクエストに要求する `Origin`(カンマ区切り、未設定なら検証しない) |
 | `SERVER_PEPPER` | pepper ファイルのパス。未設定なら `$CREDENTIALS_DIRECTORY/pepper`(systemd credential)を読む。32 bytes 以上 |
 
-- 開発環境では `.secrets` に `SERVER_PEPPER=.pepper` を置く。本番は systemd の `LoadCredentialEncrypted` で渡し、環境変数に秘密を置かない。
+- 開発環境では`.secrets`に`SERVER_PEPPER=`を定義。
 - `allowlist` は起動時に 1 度だけ読む。追加後は再起動。
 
-### Headless browser test
-
-- [Mozzilla: fire fox](https://support.mozilla.org/en/kb/install-firefox-linux)
-- [Mozzilla: gecko driver](https://github.com/mozilla/geckodriver/releases)
-
-```bash
-cargo install wasm-bindgen-cli --version "$(grep -A1 '^name = "wasm-bindgen"$' Cargo.lock | sed -n 's/^version = "\(.*\)"$/\1/p')" --locked
-
-geckodriver --port 8000 & GECKODRIVER_REMOTE=http://127.0.0.1:8000 WASM_BINDGEN_TEST_TIMEOUT=60 cargo test --target wasm32-unknown-unknown --lib --tests
-
-pkill -f "geckodriver --port 8000"
-```
-
-### Build WebAssembly
+## Build WebAssembly
 
 This project compiles to wasm32-unknown-unknown for the browser host.
 The app process memory lives on the main thread or a worker.
@@ -142,7 +140,7 @@ sh reference/build.sh
 
 ---
 
-## Wire format
+# Wire format
 
 appとserverは`lib.rs::{Input::decode, Output::encode}`を共有し、HTTP本文(`application/octet-stream`)、hostへのフレーム、同期レコードの暗号化前の本体はすべてこの規約を守る。
 以下、全てlittle endian。
@@ -157,7 +155,7 @@ appとserverは`lib.rs::{Input::decode, Output::encode}`を共有し、HTTP本�
 | `lib.rs::Error` | `[depth: u8][identifier: u16; depth][detail: str]` |
 | `host::Command::Error` | `[OPERATION_ERROR: u8][Error]` |
 
-### Error
+## Error
 
 最上位(`lib.rs::Error::*`)の`identifier`はfeatureに依らず、プロジェクト全体で一意固定である。下表に示す。
 
@@ -178,7 +176,7 @@ appとserverは`lib.rs::{Input::decode, Output::encode}`を共有し、HTTP本�
 
 ---
 
-## Source files
+# Source files
 
 | Path | Content |
 |-|-|
@@ -212,7 +210,7 @@ appとserverは`lib.rs::{Input::decode, Output::encode}`を共有し、HTTP本�
 
 ---
 
-## System diagram
+# System diagram
 
 ```
 ┌──────┐
@@ -260,7 +258,19 @@ appとserverは`lib.rs::{Input::decode, Output::encode}`を共有し、HTTP本�
 
 ---
 
-# ホストAPI依存機能の設計
+# Host API dependencies
+
+| Name | Client (wasm32) | Server (unix) |
+|-|-|-|
+| now: u64 | `js_sys::Date::now` | `std::time::SystemTime` |
+| `getrandom::fill` | feature wasm_js | feature default |
+| `http::Response` | `init.js::fetch` | `std::net::{TcpListener, TcpStream}` |
+| File | `web_sys::FileSystemSyncAccessHandle` | `std::fs::{File, FileExt}` |
+| Spawn | - | `thread::Builder::spawn` |
+| Wait | - | `thread::sleep` |
+| Lock | - | `sync::Mutex` |
+
+## ホストAPI依存機能の設計
 
 `async App::init`の呼ぶ`Handler::ready` は Futureを返し、
 `OpfsStore::open("{name}{version}").await` のあと `OpfsStore::new` を呼ぶ。
