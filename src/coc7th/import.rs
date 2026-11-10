@@ -1,5 +1,4 @@
 use alloc::{
-    boxed::Box,
     format,
     string::{String, ToString},
     vec::Vec,
@@ -17,16 +16,13 @@ use serde_json::Value;
 
 use crate::{
     En, Language,
+    bit::Zero,
     coc7th::investigator::{
-        Age, ArtAndCraft, ArtAndCraftCustom, Backstory, Birthplace, Build, CUSTOM_ID_BASE,
-        Characteristic, Fighting, FightingCustom, Firearms, FirearmsCustom, HitPoints,
-        LanguageOther, LanguageOwn, Luck, MAX_MEMO_SLOTS, MagicPoints, Memo, MoveRate, Name,
-        Occupation, OccupationKind, Pilot, PilotCustom, Pronoun, Residence, SCHEMA_SIZE, Sanity,
-        Science, ScienceCustom, Skill, Survival, SurvivalCustom, write_skill,
+        ArtAndCraft, Backstory, Characteristic, Fighting, Firearms, Investigator, MEMO_SLOTS, Memo,
+        Occupation, OccupationKind, Pilot, Points, Science, Score, Skill, Specialization,
+        Specialty, Survival,
     },
-    data_struct::DataStruct,
-    list::ListError,
-    object::Predicate,
+    object::Record,
 };
 
 const EN: Language = Language::En(En::Gb);
@@ -35,13 +31,6 @@ const EN: Language = Language::En(En::Gb);
 pub enum ImportError {
     Json(serde_json::Error),
     Root,
-    List(ListError),
-}
-
-impl From<ListError> for ImportError {
-    fn from(error: ListError) -> Self {
-        ImportError::List(error)
-    }
 }
 
 impl Display for ImportError {
@@ -51,38 +40,8 @@ impl Display for ImportError {
 }
 
 pub struct Imported {
-    pub investigator: DataStruct,
+    pub investigator: Record<Investigator>,
     pub skipped:      Vec<String>,
-}
-
-struct Slots {
-    next_id:        u32,
-    art_and_craft:  u8,
-    fighting:       u8,
-    firearms:       u8,
-    language_other: u8,
-    pilot:          u8,
-    science:        u8,
-    survival:       u8,
-}
-
-impl Slots {
-    const EMPTY: Self = Self {
-        next_id:        CUSTOM_ID_BASE,
-        art_and_craft:  0,
-        fighting:       0,
-        firearms:       0,
-        language_other: 0,
-        pilot:          0,
-        science:        0,
-        survival:       0,
-    };
-
-    fn ids(&mut self) -> [u32; 2] {
-        let ids = [self.next_id, self.next_id + 1];
-        self.next_id += 2;
-        ids
-    }
 }
 
 pub fn import(body: &[u8], now_in_ms: u64) -> Result<Imported, ImportError> {
@@ -91,20 +50,24 @@ pub fn import(body: &[u8], now_in_ms: u64) -> Result<Imported, ImportError> {
         return Err(ImportError::Root);
     }
     let id = root.get("ID").and_then(Value::as_u64).unwrap_or(0) as u32;
-    let mut investigator = DataStruct::new(id, now_in_ms, SCHEMA_SIZE);
+    let mut record = Record::new(id, Investigator::ZERO);
+    record.head.stamp(now_in_ms);
+    let investigator = &mut record.body;
     let mut skipped = Vec::new();
-    let mut slots = Slots::EMPTY;
 
     if let Some(profile) = root.get("Profile") {
-        profile_into(&mut investigator, profile)?;
+        profile_into(investigator, profile);
     }
     if let Some(characteristics) = root.get("Characteristics").and_then(Value::as_object) {
         for (key, value) in characteristics {
             match Characteristic::list().iter().find(|c| c.display(EN) == key.as_str()) {
                 Some(characteristic) => {
                     let n = numbers::<3>(value);
-                    characteristic
-                        .write(&mut investigator, (n[0] as u16, n[1] as i16, n[2] as i16));
+                    investigator.characteristics[characteristic.index()] = Score {
+                        initial:  n[0] as u16,
+                        change:   n[1] as i16,
+                        modifier: n[2] as i16,
+                    };
                 }
                 None => skipped.push(key.clone()),
             }
@@ -113,29 +76,29 @@ pub fn import(body: &[u8], now_in_ms: u64) -> Result<Imported, ImportError> {
     if let Some(secondary) = root.get("Secondary Attributes") {
         let number = |key: &str| secondary.get(key).and_then(Value::as_i64);
         if let Some(v) = number("Hit Points") {
-            HitPoints::write(&mut investigator, v as u8);
+            investigator.hit_points = v as u8;
         }
         if let Some(v) = number("Magic Points") {
-            MagicPoints::write(&mut investigator, v as u8);
+            investigator.magic_points = v as u8;
         }
         if let Some(v) = number("Luck") {
-            Luck::write(&mut investigator, v as u8);
+            investigator.luck = v as u8;
         }
         if let Some(v) = number("Sanity") {
-            Sanity::write(&mut investigator, v as u8);
+            investigator.sanity = v as u8;
         }
         if let Some(v) = number("Build") {
-            Build::write(&mut investigator, v as i8);
+            investigator.build = v as i8;
         }
         if let Some(v) = number("Move Rate") {
-            MoveRate::write(&mut investigator, v as u8);
+            investigator.move_rate = v as u8;
         }
     }
     if let Some(skills) = root.get("Skills").and_then(Value::as_object) {
         for (key, value) in skills {
             let n = numbers::<5>(value);
             let points = (n[0] as u16, n[1] as u16, n[2] as u16, n[3] as i16, n[4] as i16);
-            if !skill_into(&mut investigator, &mut slots, key, points) {
+            if !skill_into(investigator, key, points) {
                 skipped.push(key.clone());
             }
         }
@@ -146,22 +109,21 @@ pub fn import(body: &[u8], now_in_ms: u64) -> Result<Imported, ImportError> {
                 continue;
             };
             match backstory_of(key) {
-                Some(entry) if key == "Key Connection" => match backstory_of(text) {
-                    Some(target) => {
-                        let id = Backstory::KeyConnection(Box::new(entry)).id();
-                        investigator.set(id, &[target.id() as u8], None)?;
-                    }
+                Some(_) if key == "Key Connection" => match backstory_of(text) {
+                    Some(target) => investigator.key_connection = Some(target),
                     None => skipped.push(key.clone()),
                 },
                 Some(entry) => {
-                    investigator.set(entry.id(), text.as_bytes(), None)?;
+                    if let Some(index) = entry.index() {
+                        investigator.backstory[index] = String::from(text);
+                    }
                 }
                 None => skipped.push(key.clone()),
             }
         }
     }
     if let Some(notes) = root.get("Notes").and_then(Value::as_object) {
-        for (slot, (key, value)) in notes.iter().take(MAX_MEMO_SLOTS).enumerate() {
+        for (key, value) in notes.iter().take(MEMO_SLOTS) {
             let body = match value {
                 Value::String(text) => text.clone(),
                 Value::Array(items) => {
@@ -169,7 +131,7 @@ pub fn import(body: &[u8], now_in_ms: u64) -> Result<Imported, ImportError> {
                 }
                 other => other.to_string(),
             };
-            investigator.set(Memo { slot }.id(), &Memo::encode(key, &body), None)?;
+            investigator.memos.push(Memo { title: key.clone(), body });
         }
     }
     for key in ["Possessions", "Wealth"] {
@@ -177,42 +139,37 @@ pub fn import(body: &[u8], now_in_ms: u64) -> Result<Imported, ImportError> {
             skipped.push(String::from(key));
         }
     }
-    Ok(Imported { investigator, skipped })
+    Ok(Imported { investigator: record, skipped })
 }
 
-fn profile_into(investigator: &mut DataStruct, profile: &Value) -> Result<(), ImportError> {
+fn profile_into(investigator: &mut Investigator, profile: &Value) {
     let text = |key: &str| profile.get(key).and_then(Value::as_str).map(String::from);
-    let name = text("Name").unwrap_or_default();
-    Name::write(investigator, &(name, text("Pronunciation")), None)?;
+    investigator.name = text("Name").unwrap_or_default();
+    investigator.pronunciation = text("Pronunciation").unwrap_or_default();
     if let Some(occupation) = text("Occupation") {
         let kind = Occupation::list()
             .iter()
             .find(|kind| Occupation::display(kind, None, None, EN) == occupation)
             .copied();
-        let parsed = match kind {
-            Some(kind) => (kind, None, text("Title")),
-            None => (OccupationKind::Custom, Some(occupation), text("Title")),
-        };
-        Occupation::write(investigator, &parsed, None)?;
+        match kind {
+            Some(kind) => investigator.occupation = kind,
+            None => {
+                investigator.occupation = OccupationKind::Custom;
+                investigator.occupation_name = occupation;
+            }
+        }
     }
-    if let Some(value) = text("Birthplace") {
-        Birthplace::write(investigator, &value, None)?;
-    }
-    if let Some(value) = text("Pronoun") {
-        Pronoun::write(investigator, &value, None)?;
-    }
-    if let Some(value) = text("Residence") {
-        Residence::write(investigator, &value, None)?;
-    }
+    investigator.title = text("Title").unwrap_or_default();
+    investigator.birthplace = text("Birthplace").unwrap_or_default();
+    investigator.pronoun = text("Pronoun").unwrap_or_default();
+    investigator.residence = text("Residence").unwrap_or_default();
     if let Some(age) = profile.get("Age").and_then(Value::as_u64) {
-        Age::write(investigator, &(age as u16), None)?;
+        investigator.age = age as u16;
     }
-    Ok(())
 }
 
 fn skill_into(
-    investigator: &mut DataStruct,
-    slots: &mut Slots,
+    investigator: &mut Investigator,
     key: &str,
     (base, occupation, interest, change, modifier): (u16, u16, u16, i16, i16),
 ) -> bool {
@@ -231,212 +188,53 @@ fn skill_into(
     let blank =
         specialization.is_none() && (occupation, interest, change, modifier) == (0, 0, 0, 0);
     let spec = specialization.unwrap_or("");
-    match skill {
-        Skill::LanguageOwn => {
-            LanguageOwn.write(investigator, occupation, interest, change, modifier, spec);
-        }
-        Skill::LanguageOther => {
-            if blank {
-                return true;
-            }
-            let slot = slots.language_other;
-            slots.language_other += 1;
-            let ids = slots.ids();
-            LanguageOther(slot).write(
-                investigator,
-                ids,
-                occupation,
-                interest,
-                change,
-                modifier,
-                spec,
-            );
-        }
-        Skill::ArtAndCraft => {
-            let known = ArtAndCraft::list()
-                .iter()
-                .filter(|a| **a != ArtAndCraft::Custom)
-                .find(|a| a.display(EN) == spec);
-            match known {
-                Some(a) => {
-                    write_skill(investigator, a.base_id(), occupation, interest, change, modifier)
-                }
-                None if blank => {}
-                None => {
-                    let slot = slots.art_and_craft;
-                    slots.art_and_craft += 1;
-                    let ids = slots.ids();
-                    ArtAndCraftCustom(slot).write(
-                        investigator,
-                        ids,
-                        occupation,
-                        interest,
-                        change,
-                        modifier,
-                        spec,
-                    );
-                }
-            }
-        }
+    let points = Points::from((occupation, interest, change, modifier));
+    let known = |candidates: &[Specialty]| {
+        candidates.iter().find(|candidate| candidate.display(EN) == spec).copied()
+    };
+    let specialty = match skill {
+        Skill::LanguageOwn => Specialty::LanguageOwn,
+        Skill::LanguageOther if blank => return true,
+        Skill::LanguageOther => Specialty::LanguageOther,
+        Skill::Custom => return false,
+        Skill::ArtAndCraft => known(
+            &ArtAndCraft::list().iter().map(|a| Specialty::ArtAndCraft(*a)).collect::<Vec<_>>(),
+        )
+        .unwrap_or(Specialty::ArtAndCraft(ArtAndCraft::Custom)),
         Skill::Fighting => {
-            let list_base = Skill::Fighting.base_id();
-            let known = Fighting::list()
-                .iter()
-                .filter(|f| **f != Fighting::Custom)
-                .find(|f| f.display(EN) == spec);
-            match known {
-                Some(f) => write_skill(
-                    investigator,
-                    f.id(list_base),
-                    occupation,
-                    interest,
-                    change,
-                    modifier,
-                ),
-                None if blank => {}
-                None => {
-                    let slot = slots.fighting;
-                    slots.fighting += 1;
-                    let ids = slots.ids();
-                    FightingCustom(slot).write(
-                        investigator,
-                        ids,
-                        base,
-                        occupation,
-                        interest,
-                        change,
-                        modifier,
-                        spec,
-                    );
-                }
-            }
+            known(&Fighting::list().iter().map(|f| Specialty::Fighting(*f)).collect::<Vec<_>>())
+                .unwrap_or(Specialty::Fighting(Fighting::Custom))
         }
         Skill::Firearms => {
-            let list_base = Skill::Firearms.base_id();
-            let known = Firearms::list()
-                .iter()
-                .filter(|f| **f != Firearms::Custom)
-                .find(|f| f.display(EN) == spec);
-            match known {
-                Some(f) => write_skill(
-                    investigator,
-                    f.id(list_base),
-                    occupation,
-                    interest,
-                    change,
-                    modifier,
-                ),
-                None if blank => {}
-                None => {
-                    let slot = slots.firearms;
-                    slots.firearms += 1;
-                    let ids = slots.ids();
-                    FirearmsCustom(slot).write(
-                        investigator,
-                        ids,
-                        base,
-                        occupation,
-                        interest,
-                        change,
-                        modifier,
-                        spec,
-                    );
-                }
-            }
+            known(&Firearms::list().iter().map(|f| Specialty::Firearms(*f)).collect::<Vec<_>>())
+                .unwrap_or(Specialty::Firearms(Firearms::Custom))
         }
         Skill::Pilot => {
-            let list_base = Skill::Pilot.base_id();
-            let known = Pilot::list()
-                .iter()
-                .filter(|p| **p != Pilot::Custom)
-                .find(|p| p.display(EN) == spec);
-            match known {
-                Some(p) => write_skill(
-                    investigator,
-                    p.id(list_base),
-                    occupation,
-                    interest,
-                    change,
-                    modifier,
-                ),
-                None if blank => {}
-                None => {
-                    let slot = slots.pilot;
-                    slots.pilot += 1;
-                    PilotCustom(slot).write(
-                        investigator,
-                        occupation,
-                        interest,
-                        change,
-                        modifier,
-                        spec,
-                    );
-                }
-            }
+            known(&Pilot::list().iter().map(|p| Specialty::Pilot(*p)).collect::<Vec<_>>())
+                .unwrap_or(Specialty::Pilot(Pilot::Custom))
         }
         Skill::Science => {
-            let list_base = Skill::Science.base_id();
-            let known = Science::list()
-                .iter()
-                .filter(|s| **s != Science::Custom)
-                .find(|s| s.display(EN) == Some(spec));
-            match known {
-                Some(s) => write_skill(
-                    investigator,
-                    s.id(list_base),
-                    occupation,
-                    interest,
-                    change,
-                    modifier,
-                ),
-                None if blank => {}
-                None => {
-                    let slot = slots.science;
-                    slots.science += 1;
-                    ScienceCustom(slot).write(
-                        investigator,
-                        occupation,
-                        interest,
-                        change,
-                        modifier,
-                        spec,
-                    );
-                }
-            }
+            known(&Science::list().iter().map(|s| Specialty::Science(*s)).collect::<Vec<_>>())
+                .unwrap_or(Specialty::Science(Science::Custom))
         }
         Skill::Survival => {
-            let list_base = Skill::Survival.base_id();
-            let known = Survival::list()
-                .iter()
-                .filter(|s| **s != Survival::Custom)
-                .find(|s| s.display(EN) == spec);
-            match known {
-                Some(s) => write_skill(
-                    investigator,
-                    s.id(list_base),
-                    occupation,
-                    interest,
-                    change,
-                    modifier,
-                ),
-                None if blank => {}
-                None => {
-                    let slot = slots.survival;
-                    slots.survival += 1;
-                    SurvivalCustom(slot).write(
-                        investigator,
-                        occupation,
-                        interest,
-                        change,
-                        modifier,
-                        spec,
-                    );
-                }
-            }
+            known(&Survival::list().iter().map(|s| Specialty::Survival(*s)).collect::<Vec<_>>())
+                .unwrap_or(Specialty::Survival(Survival::Custom))
         }
-        Skill::Custom => return false,
-        plain => write_skill(investigator, plain.base_id(), occupation, interest, change, modifier),
+        plain => {
+            *investigator.points_mut(&plain) = points;
+            return true;
+        }
+    };
+    if !specialty.known() && blank {
+        return true;
     }
+    investigator.specializations.push(Specialization {
+        specialty,
+        name: if specialty.known() { String::new() } else { String::from(spec) },
+        base: if specialty.known() { specialty.base_percent() as u8 } else { base as u8 },
+        points,
+    });
     true
 }
 
@@ -449,20 +247,10 @@ fn split_name(key: &str) -> (&str, Option<&str>) {
 }
 
 fn backstory_of(name: &str) -> Option<Backstory> {
-    let entries = [
-        Backstory::PersonalDescription,
-        Backstory::IdeologyAndBeliefs,
-        Backstory::SignificantPeople,
-        Backstory::MeaningfulLocation,
-        Backstory::TreasuredPossession,
-        Backstory::Trait,
-        Backstory::InjuresAndScars,
-        Backstory::PhobiasAndManias,
-        Backstory::ArcaneTomesAndSpells,
-        Backstory::EncountersWithStrangeEntities,
-    ];
     if name == "Key Connection" {
-        return Some(Backstory::KeyConnection(Box::new(Backstory::PersonalDescription)));
+        return Some(Backstory::KeyConnection(alloc::boxed::Box::new(
+            Backstory::PersonalDescription,
+        )));
     }
     let wanted = match name {
         "Traits" => "Trait",
@@ -470,7 +258,7 @@ fn backstory_of(name: &str) -> Option<Backstory> {
         "Treasured Possessions" => "Treasured Possession",
         other => other,
     };
-    entries.into_iter().find(|entry| entry.display(EN) == wanted)
+    Backstory::list().into_iter().find(|entry| entry.display(EN) == wanted)
 }
 
 fn scenario_line(item: &Value) -> String {
@@ -490,10 +278,9 @@ fn numbers<const N: usize>(value: &Value) -> [i64; N] {
 
 #[cfg(test)]
 mod tests {
-    use alloc::{string::ToString, vec::Vec};
+    use alloc::vec::Vec;
 
     use super::*;
-    use crate::coc7th::investigator::{Dodge, FightingTrait as _, SkillTrait as _, Sword};
 
     const SAMPLE: &str = r#"{
         "ID": 5,
@@ -532,35 +319,42 @@ mod tests {
     #[test]
     fn the_profile_is_read_into_the_sheet() {
         let sheet = imported().investigator;
-        assert_eq!(Name::read(&sheet), ("鏖".to_string(), Some("じん".to_string())));
-        let (kind, custom, title) = Occupation::read(&sheet);
-        assert_eq!(Occupation::display(&kind, custom.as_deref(), title.as_deref(), EN), "Soldier");
-        assert_eq!(Birthplace::read(&sheet), "日本");
-        assert_eq!(Pronoun::read(&sheet), "he/him");
-        assert_eq!(Age::read(&sheet), 39);
+        assert_eq!(sheet.head.id, 5);
+        assert_eq!((sheet.name.as_str(), sheet.pronunciation.as_str()), ("鏖", "じん"));
+        assert_eq!(Occupation::display(&sheet.occupation, None, None, EN), "Soldier");
+        assert_eq!(sheet.birthplace, "日本");
+        assert_eq!(sheet.pronoun, "he/him");
+        assert_eq!(sheet.age, 39);
     }
 
     #[test]
     fn characteristics_and_secondary_attributes_are_read() {
         let sheet = imported().investigator;
-        assert_eq!(Characteristic::Strength.read(&sheet), (75, 0, 0));
-        assert_eq!(Characteristic::Education.read(&sheet), (75, 5, 0));
-        assert_eq!(HitPoints::read(&sheet), 13);
-        assert_eq!(Luck::read(&sheet), 35);
-        assert_eq!(Build::read(&sheet), 1);
+        assert_eq!(
+            Characteristic::Strength.score(&sheet),
+            Score { initial: 75, change: 0, modifier: 0 }
+        );
+        assert_eq!(
+            Characteristic::Education.score(&sheet),
+            Score { initial: 75, change: 5, modifier: 0 }
+        );
+        assert_eq!((sheet.hit_points, sheet.luck, sheet.build), (13, 35, 1));
     }
 
     #[test]
     fn skills_are_placed_by_name_and_specialization() {
         let sheet = imported().investigator;
-        let (occupation, ..) = Dodge.read(&sheet);
-        assert_eq!(occupation.value(), 48);
-        let (occupation, ..) = Sword.read(&sheet);
-        assert_eq!(occupation.value(), 60);
-        assert!(sheet.get(Skill::CthulhuMythos.base_id()).is_ok());
-        assert_eq!(LanguageOther(0).read(&sheet), (29, 0, 0, 0, "English".to_string()));
-        assert_eq!(LanguageOwn.read(&sheet), (0, 0, 0, 0, "".to_string()));
-        assert_eq!(ArtAndCraftCustom(0).read(&sheet), (0, 10, 0, 0, "Origami".to_string()));
+        assert_eq!(sheet.points(&Skill::Dodge).occupation, 48);
+        assert_eq!(sheet.points(&Skill::CthulhuMythos), Points::from((0, 0, 24, 0)));
+        let sword = sheet.known_specialization(&Skill::Fighting).unwrap();
+        assert_eq!(sword.specialty, Specialty::Fighting(Fighting::Sword));
+        assert_eq!((sword.base, sword.points.occupation), (20, 60));
+        let english = sheet.custom_specialization(&Skill::LanguageOther, 0).unwrap();
+        assert_eq!((english.name.as_str(), english.points.occupation), ("English", 29));
+        assert!(sheet.custom_specialization(&Skill::LanguageOwn, 0).is_none());
+        let origami = sheet.custom_specialization(&Skill::ArtAndCraft, 0).unwrap();
+        assert_eq!((origami.name.as_str(), origami.points.interest), ("Origami", 10));
+        assert!(sheet.known_specialization(&Skill::ArtAndCraft).is_none());
     }
 
     #[test]
@@ -572,17 +366,16 @@ mod tests {
     #[test]
     fn backstory_and_notes_are_read() {
         let sheet = imported().investigator;
+        assert_eq!(sheet.text(&Backstory::IdeologyAndBeliefs), "後悔無きように");
+        assert_eq!(sheet.text(&Backstory::Trait), "低音声");
+        assert_eq!(sheet.key_connection, Some(Backstory::IdeologyAndBeliefs));
         assert_eq!(
-            sheet.get(Backstory::IdeologyAndBeliefs.id()).unwrap(),
-            "後悔無きように".as_bytes()
+            sheet.memos,
+            [
+                Memo { title: "Personality".to_string(), body: "快楽殺人鬼".to_string() },
+                Memo { title: "Scenarios".to_string(), body: "A\nB: 共闘".to_string() },
+            ]
         );
-        assert_eq!(sheet.get(Backstory::Trait.id()).unwrap(), "低音声".as_bytes());
-        let key = Backstory::KeyConnection(Box::new(Backstory::Trait)).id();
-        assert_eq!(sheet.get(key).unwrap(), &[Backstory::IdeologyAndBeliefs.id() as u8]);
-        let (title, body) = Memo::decode(sheet.get(Memo { slot: 0 }.id()).unwrap());
-        assert_eq!((title.as_str(), body.as_str()), ("Personality", "快楽殺人鬼"));
-        let (title, body) = Memo::decode(sheet.get(Memo { slot: 1 }.id()).unwrap());
-        assert_eq!((title.as_str(), body.as_str()), ("Scenarios", "A\nB: 共闘"));
     }
 
     #[test]

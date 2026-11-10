@@ -1,6 +1,6 @@
 use core::primitive::{i8, u8};
 
-use crate::{Language, coc7th::investigator::dice};
+use crate::{Language, coc7th::dice};
 
 fn pick<T: Copy>(list: &[T]) -> T {
     use rand::{RngExt as _, rand_core::UnwrapErr, rngs::SysRng};

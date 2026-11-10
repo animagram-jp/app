@@ -3,7 +3,7 @@
 feature `server`でコンパイルする、サーバー側アプリケーション。
 基本機能をパスワードログインとし、端末間暗号化(E2EE)、[Meet.md](./Meet.md)のP2Pシグナリング API、ユーザー単位のデータ同期(feature `sync`)を提供する。
 
-## 要件
+# 前提
 
 | 項目 | 内容 |
 |-|-|
@@ -13,49 +13,48 @@ feature `server`でコンパイルする、サーバー側アプリケーショ�
 | レスポンス | `Cache-Control: no-store` を常に付ける。 |
 | データ | サーバーは利用者データの平文を一切持たない。鍵は端末にしか存在せず、サーバーは暗号文と、その版管理だけを扱う。 |
 
----
-
-## 構成
+# 構成
 
 | feature | 既定 | 内容 |
 |-|-|-|
-| `sync` | off | 同期レコードのワイヤ(`sync::Record` / `Entry` / `Status` / `Outcome` と encode / decode)。端末側とサーバー側が共有する。`coc7th` と `calendar` が含む。 |
-| `meet` | off | シグナリングのワイヤ(`meet::Kind` / `Signal` と encode / decode)。同上。 |
-| `server` | off | `sync`、`meet`、`credential` を含む。`account` / `session` / `http` / `handler` / `host` と、`sync::Collection`、`meet::Board`。wasm32 では常にコンパイル対象外。bin `server` はこの feature を要求する。 |
+| `sync` | off | 同期レコードのワイヤ(`sync::Record` / `Entry` / `Status` / `Outcome` と encode)。端末側とサーバー側が共有する。`coc7th` と `calendar` が含む。 |
+| `meet` | off | シグナリングのワイヤ(`meet::Kind` / `Signal` と encode)。同上。 |
+| `server` | off | `sync`、`meet`、`credential` を含む。`account` / `session` / `http` / `event` / `app` / `handler` / `host` と、`sync::Collection`、`meet::Board`。wasm32 では常にコンパイル対象外。bin `server` はこの feature を要求する。 |
 
 ```
 ┌──────────────────────────────────────────────────────┐
 │ host.rs (std)                                        │
-│  TcpListener ─ accept × N threads ─ http::parse      │
-│        │                                             │
-│        ▼  Mutex<Handler<FsStore>>                    │
+│  TcpListener ─ accept × N threads                    │
+│   http::frame ─ keep-alive, Connection               │
+│   frame / Event::Maintain             ▲ Command      │
+│        │                              │ Response     │
+│        ▼  Mutex<App<FsStore>>         │              │
 │ ┌──────────────────────────────────────────────────┐ │
-│ │ handler.rs (core + alloc)                        │ │
-│ │  /v1/health  /v1/account  /v1/session            │ │
-│ │  /v1/meet/*  /v1/sync/{store}/*                  │ │
-│ │   ├ credential.rs  (HKDF / HMAC)                 │ │
-│ │   ├ account.rs  session.rs                       │ │
-│ │   ├ meet.rs  (in-memory, lifetime)               │ │
-│ │   ├ sync.rs  (Collection)                        │ │
-│ │   └ file_store.rs  (FsStore)                     │ │
+│ │ app.rs (core + alloc)                            │ │
+│ │  frame ─ Request::decode (event.rs) ─ Request    │ │
+│ │  Request ─ Handler::admit ─ Handler::process_*   │ │
+│ │ ┌──────────────────────────────────────────────┐ │ │
+│ │ │ handler.rs                                   │ │ │
+│ │ │  ├ credential.rs  (HKDF / HMAC)              │ │ │
+│ │ │  ├ account.rs  session.rs                    │ │ │
+│ │ │  ├ meet.rs  (in-memory, lifetime)            │ │ │
+│ │ │  ├ sync.rs  (Collection)                     │ │ │
+│ │ │  └ file_store.rs  (FsStore)                  │ │ │
+│ │ └──────────────────────────────────────────────┘ │ │
 │ └──────────────────────────────────────────────────┘ │
 │  FsStore (std::fs)   now (SystemTime)                │
 └──────────────────────────────────────────────────────┘
 ```
 
-### ホスト API
+| server | client |
+|-|-|
+| `host.rs`(`serve`、`http::frame`、`process_event`、`drain`、`execute`) | `arena.rs`(`serve_event`、リングの長さ prefix、`process_event`)、`init.js`(`drain`、`execute`) |
+| `http.rs`(`Message`、`Response`) | `host.rs`(`Command`、`Event` のフレーム形式) |
+| `app.rs`(`App::process`、`run`、`dispatch`) | `app.rs`(`App::process`、`run`、`dispatch`) |
+| `event.rs`(`Event::Request(Request)`) | `event.rs`(`Event`) |
+| `handler.rs`(`Handler::process_*`) | `Handler::process_*` |
 
-ホスト API(時計、ネットワーク、ファイル、スレッド)は `host.rs` と `file_store::FsStore` に閉じ込め、それ以外は `core` + `alloc` のみで組む。乱数は `getrandom` を直接呼ぶ。
-
-| 用途 | 実装 | core 側の境界 | テスト |
-|-|-|-|-|
-| 時計 | `std::time::SystemTime`(`host::now`) | `Handler::process_request` / `open` / `maintain` は `now: u64` を受ける | 固定値を渡す |
-| 乱数 | `getrandom::fill` | なし。`session.rs` / `vault.rs` が直接呼ぶ | 実乱数のまま |
-| TCP | `std::net::TcpListener` / `TcpStream`(`host::serve`) | `http::Request` / `http::Response` の値だけが core に入る | `http::parse` の単体テスト |
-| スレッド | `std::thread`、`std::sync::Mutex`(`host::serve`) | `Handler::process_request` は同期関数 | 不要 |
-| ファイル | `std::fs::File` + `std::os::unix::fs::FileExt`(`file_store::FsStore`) | `file_store::FileStore` | `file_store::MemoryStore` |
-
-### 不採用
+# 不採用
 
 | crate | 理由 |
 |-|-|
@@ -67,9 +66,7 @@ feature `server`でコンパイルする、サーバー側アプリケーショ�
 | rustls, ureq | サーバーから外へ出る HTTPS は TURN 資格情報の取得だけで、前段の proxy で代替する |
 | base64 | バイナリワイヤなので不要。Cookie 値は16進法(`credential::to_hexadecimal`) |
 
----
-
-### HTTP の受理範囲
+# HTTP の受理範囲
 
 | 項目 | 範囲 |
 |-|-|
@@ -81,7 +78,7 @@ feature `server`でコンパイルする、サーバー側アプリケーショ�
 
 ---
 
-## 認証と E2EE
+# 認証とE2EE
 
 Mozilla Sync(onepw)と Proton Mail を参考に、パスワードから「認証に使う鍵」と「データを守る鍵」を分離する。
 
@@ -112,18 +109,18 @@ root_key (32 B 乱数、初回有効化時に端末が生成)
 - DB と pepper が両方漏れた場合の総当たりコストは、1 候補ごとに端末側 Argon2id 1 回である。
 - ログイン失敗の応答と所要時間を、ユーザー不在とパスワード不一致で揃える(不在時はダミーの検証子で HMAC を計算する)。
 
-### セッション
+# セッション
 
 | 項目 | 内容 |
 |-|-|
 | トークン | 32 B の CSPRNG。Cookie `session=<hex>`、`HttpOnly; Secure; SameSite=Strict; Path=/api`。サーバーは `SHA-256(token)` のみ保存する |
 | 期限 | 作成から 30 日、最終アクセスから 7 日。ログイン成功で再発行、ログアウトでサーバー側を削除 |
-| CSRF | 1 段目は前段の `SameSite` と `Sec-Fetch-Site` 判定、2 段目はサーバーで `Origin` ヘッダを許可リスト(環境変数)と照合する |
+| CSRF | 前段で行う。Cookie の `SameSite=Strict` と、前段の `Sec-Fetch-Site` / `Origin` 判定。server は `Origin` を扱わない |
 | 端末 | ログインごとに `(user, device)` を記録し、Meet の `peer` id(u64 乱数)を発行する |
 | 有効化 | 公開の登録機能は持たない([Calendar.md](./Calendar.md) の方針)。`{SERVER_DATA}/allowlist` に書かれた email だけが初回の `PUT /v1/account` で有効化できる。allowlist は起動時に 1 度だけ読む |
 | 再認証 | パスワード変更は現在の `authentication_key` と新しい `authentication_key`、新しい `wrapped_root` を一度に受け取る |
 
-### API
+# API
 
 | Method | Path | Body | Response | 前段 |
 |-|-|-|-|-|
@@ -139,11 +136,11 @@ root_key (32 B 乱数、初回有効化時に端末が生成)
 | POST | `/v1/sync/{store}/pull` | `[since: u64]` | `[head: u64][more: u8][count: u16]([identifier: 16][version: u64][flags: u8][ciphertext: bytes])*` | |
 | POST | `/v1/sync/{store}/push` | `[count: u16]([identifier: 16][base: u64][flags: u8][ciphertext: bytes])*` | `[head: u64][count: u16]([status: u8][version: u64][flags: u8][ciphertext: bytes])*`。`status` は 1 受理 / 2 競合(サーバーの現在値を伴う) | |
 
-`{store}` は英数字と `_` `-` の 32 文字以内。POST / PUT / DELETE は `SERVER_ORIGIN` が設定されていれば `Origin` ヘッダの一致を要求する(不一致は 403)。
+`{store}` は英数字と `_` `-` の 32 文字以内。メソッドとパスの組が上表に無いもの、本文が上表の形式に合わないものは、いずれも `Request` の decode 失敗として 400 を返す。認証の要るリクエストで Cookie が無いものは、0...0 の token として扱い 401 を返す。
 
 ---
 
-## Meet
+# Meet
 
 [Meet.md](./Meet.md) のシグナリングを、ログイン済み端末の `peer` id で行う。
 
@@ -156,7 +153,7 @@ root_key (32 B 乱数、初回有効化時に端末が生成)
 
 ---
 
-## Sync
+# Sync
 
 - レコードは `identifier: [u8; 16]`(端末が生成する乱数。複数端末で衝突しない)、`version: u64`(サーバーが store ごとに単調に振る)、`flags`(bit 0 が削除)、`ciphertext: bytes`(端末が `store_key` で暗号化)。
 - app の FileStore の id(u32)はプロセス内で閉じた値なので同期の識別子には使わず、app 側はレコード本体に `identifier` を持たせる(Calendar の `uid` と同じ考え方)。
@@ -168,7 +165,7 @@ root_key (32 B 乱数、初回有効化時に端末が生成)
 
 ---
 
-## 永続化
+# FileSStore
 
 `file_store.rs` の `FsStore`(`std::fs`、unix)を使う。`OpfsStore` との対応は次のとおり。
 
@@ -180,7 +177,7 @@ root_key (32 B 乱数、初回有効化時に端末が生成)
 | `Mount::open`(非同期) | `FsStore::open(root, id, create)`(同期の固有メソッド) |
 | `DOMException` 名による分類 | `io::ErrorKind` による分類(`QuotaExceeded` は `StorageFull`) |
 
-| パス | 内容 |
+| Path | Content |
 |-|-|
 | `{SERVER_DATA}/allowlist` | 有効化を許可する email の一覧(1 行 1 件) |
 | `{SERVER_DATA}/account.1.{snap,log}` | ユーザー、検証子、`wrapped_root`、端末 |

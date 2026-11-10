@@ -17,17 +17,12 @@ use crate::{
     ColorScheme, Decimal, Error, Language,
     bit::Zero,
     calendar::{
-        HOUR_MINUTE, MONTH_DAY, YEAR_DAY,
-        data::{
-            self, DataError,
-            appointment::{self, Place},
-            parse_date, parse_time, tag,
-        },
+        self, Appointment, CalendarError, HOUR_MINUTE, MONTH_DAY, Parent, Place, Tag, YEAR_DAY,
         grid::{AXES, Axis, CLOCK, Cell, Clock, Day, Grid, Month, lane_box, lanes, span},
+        parse_date, parse_time,
         target::{CardPart, Dialog, EditField, STEP_TODAY, Submit, TOAST_SLOTS, Target},
     },
     credential::{self, Field},
-    data_struct::DataStruct,
     event::{
         self, Event, Handler as _, Keyring, Opened, Response,
         gesture::{Gesture, Pointer},
@@ -38,7 +33,7 @@ use crate::{
         Attribute, CanvasEvent, Command, EventType, FnName, Keyword, Method, StyleProperty,
         StyleValue, Unit, dom::Id, parse_url_search_params,
     },
-    object::Predicate,
+    object::{self, Record},
     parse, stringify,
     time::{
         self, Format, Length, Stamp, Unit as TimeUnit, Zone, add, diff, display,
@@ -51,7 +46,7 @@ const CARD_POOL: usize = 380;
 const DRAG_Z_INDEX: i32 = 1000;
 const HANDLE_IN_REM: f64 = 0.5;
 const HANDLE_MAX: f64 = 0.35;
-const STORE: StoreId = StoreId { name: "calendar", version: "0.3" };
+const STORE: StoreId = StoreId { name: "calendar", version: "0.4" };
 const NEW_UNITS: f64 = 4.0;
 const ROW_IN_REM: f64 = 1.75;
 const ZOOM_MIN: f64 = 1.0;
@@ -157,7 +152,7 @@ pub struct Handler<S: FileStore> {
     attached:             bool,
     lost:                 Vec<(u32, Option<Vec<u8>>)>,
     startup:              Vec<Error>,
-    damaged:              Option<DataError>,
+    damaged:              Option<CalendarError>,
     last_toast:           u2,
     viewport_width_in_px: f64,
     rem_in_px:            f64,
@@ -169,7 +164,7 @@ pub struct Handler<S: FileStore> {
 
 impl<S: FileStore> Handler<S> {
     pub fn attach(&mut self, store: S) {
-        if let Err(error) = data::check(&store, &appointment::KINDS) {
+        if let Err(error) = calendar::check(&store) {
             self.damaged = Some(error);
         }
         self.store = Some(store);
@@ -190,20 +185,20 @@ impl<S: FileStore> Handler<S> {
         }]
     }
 
-    pub(crate) fn read(&self, kind: u32) -> Vec<DataStruct> {
-        self.store.as_ref().and_then(|store| data::entries(store, kind).ok()).unwrap_or_default()
+    pub(crate) fn appointments(&self) -> Vec<Record<Appointment>> {
+        self.store.as_ref().and_then(|store| object::list(store).ok()).unwrap_or_default()
     }
 
-    fn appointment(&self, key: u32) -> Option<DataStruct> {
-        data::entry(self.store.as_ref()?, key, appointment::KIND)
+    fn appointment(&self, key: u32) -> Option<Record<Appointment>> {
+        object::get(self.store.as_ref()?, key)
     }
 
-    fn tags(&self, parent: u32) -> Vec<DataStruct> {
-        self.store.as_ref().map(|store| data::tags(store, parent)).unwrap_or_default()
+    fn tags(&self, parent: Parent) -> Vec<Record<Tag>> {
+        self.store.as_ref().map(|store| calendar::tags(store, parent)).unwrap_or_default()
     }
 
     pub(crate) fn loaded(&self) -> bool {
-        self.store.as_ref().is_some_and(data::loaded)
+        self.store.as_ref().is_some_and(object::exists)
     }
 
     pub fn new(viewport_width_in_px: f64, today: Stamp, rem_in_px: f64) -> Self {
@@ -354,10 +349,10 @@ impl<S: FileStore> Handler<S> {
 
     fn appointment_box(&self, key: u32) -> Option<BBox<2>> {
         let entry = self.appointment(key)?;
-        let resources = self.tags(appointment::RESOURCE);
+        let resources = self.tags(Parent::Resource);
         let grid = self.grid();
-        let (start, end) = appointment::Range::read(&entry);
-        let flats = appointment::Places::read(&entry).into_iter().filter_map(|place| {
+        let (start, end) = (entry.start, entry.end);
+        let flats = entry.places.iter().filter_map(|place| {
             let resource = column_of(&resources, place.resource)?;
             Some(grid.flat(self.day_offset(place.day), resource as u32))
         });
@@ -489,38 +484,34 @@ impl<S: FileStore> Handler<S> {
         &mut self,
         editing: Editing,
         heading: String,
-        draft: &DataStruct,
+        draft: &Record<Appointment>,
         place: Place,
     ) -> Vec<Command> {
         if !self.loaded() {
             return vec![];
         }
-        let (start, end) = appointment::Range::read(draft);
-        let (category, status) =
-            (appointment::Category::read(draft), appointment::Status::read(draft));
+        let (start, end) = (draft.start, draft.end);
         let values = [
-            (EditField::Title, appointment::Title::read(draft)),
+            (EditField::Title, draft.title.clone()),
             (
                 EditField::Category,
-                option_value(&self.tags(appointment::CATEGORY), |c| tag::Code::read(c) == category),
+                option_value(&self.tags(Parent::Category), |c| c.code == draft.category),
             ),
             (
                 EditField::Status,
-                option_value(&self.tags(appointment::STATUS), |s| tag::Code::read(s) == status),
+                option_value(&self.tags(Parent::Status), |s| s.code == draft.status),
             ),
             (EditField::Date, display(place.day, self.language, YEAR_DAY, Format::Iso)),
             (
                 EditField::Resource,
-                option_value(&self.tags(appointment::RESOURCE), |r| {
-                    tag::Uid::read(r) == place.resource
-                }),
+                option_value(&self.tags(Parent::Resource), |r| r.uid == place.resource),
             ),
             (
                 EditField::Start,
                 display(add(place.day, start), self.language, HOUR_MINUTE, Format::Iso),
             ),
             (EditField::End, display(add(place.day, end), self.language, HOUR_MINUTE, Format::Iso)),
-            (EditField::Note, appointment::Note::read(draft)),
+            (EditField::Note, draft.note.clone()),
         ];
         let mut commands = vec![
             Command::SetText { id: Target::EditHeading.to_dom(), value: heading },
@@ -644,7 +635,7 @@ impl<S: FileStore> Handler<S> {
         let Some(resolved) = self.grid().resolve(&Self::create_box(&create)) else {
             return commands;
         };
-        let resources = self.tags(appointment::RESOURCE);
+        let resources = self.tags(Parent::Resource);
         let cells: Option<Vec<Place>> = resolved
             .cells
             .iter()
@@ -652,7 +643,7 @@ impl<S: FileStore> Handler<S> {
                 let resource = resources.get(cell.resource as usize)?;
                 Some(Place {
                     day:      add(self.base, Length::new(TimeUnit::Day, u64::from(cell.day))),
-                    resource: tag::Uid::read(resource),
+                    resource: resource.uid,
                 })
             })
             .collect();
@@ -667,11 +658,11 @@ impl<S: FileStore> Handler<S> {
             return vec![];
         };
         let place = *first;
-        let (categories, statuses) =
-            (self.tags(appointment::CATEGORY), self.tags(appointment::STATUS));
-        let category = categories.first().map(tag::Code::read).unwrap_or_default();
-        let status = statuses.first().map(tag::Code::read).unwrap_or_default();
-        let draft = appointment::new(0, &[place], start, end, "", &category, &status, "");
+        let (categories, statuses) = (self.tags(Parent::Category), self.tags(Parent::Status));
+        let category = categories.first().map(|t| t.code.clone()).unwrap_or_default();
+        let status = statuses.first().map(|t| t.code.clone()).unwrap_or_default();
+        let draft =
+            Record::new(0, Appointment::new(&[place], start, end, "", &category, &status, ""));
         self.form_commands(Editing::New(cells), String::from("新規"), &draft, place)
     }
 
@@ -682,7 +673,7 @@ impl<S: FileStore> Handler<S> {
         if !self.loaded() {
             return vec![];
         }
-        let resources = self.tags(appointment::RESOURCE);
+        let resources = self.tags(Parent::Resource);
         if self.month() {
             if let Some(BandKind::Date(day)) =
                 self.band_hit([Px::new(pointer[0]), Px::new(pointer[1])])
@@ -701,7 +692,7 @@ impl<S: FileStore> Handler<S> {
                 self.clock.time(self.clock.unit(start) + NEW_UNITS).unwrap_or(self.clock.end());
             let place = Place {
                 day:      add(self.first_day(), Length::new(TimeUnit::Day, u64::from(day))),
-                resource: tag::Uid::read(resource),
+                resource: resource.uid,
             };
             return self.new_form(vec![place], start, end);
         }
@@ -727,7 +718,7 @@ impl<S: FileStore> Handler<S> {
         let end = grid.clock.time(grid.clock.unit(start) + NEW_UNITS).unwrap_or(grid.clock.end());
         let place = Place {
             day:      add(self.base, Length::new(TimeUnit::Day, u64::from(cell.day))),
-            resource: tag::Uid::read(resource),
+            resource: resource.uid,
         };
         self.new_form(vec![place], start, end)
     }
@@ -736,12 +727,11 @@ impl<S: FileStore> Handler<S> {
         let Some(entry) = self.appointment(key) else {
             return vec![];
         };
-        let cells = appointment::Places::read(&entry);
-        let Some(place) = cells.get(cell).or_else(|| cells.first()) else {
+        let Some(place) = entry.places.get(cell).or_else(|| entry.places.first()) else {
             return vec![];
         };
         let place = *place;
-        let heading = format!("#{}", data::key(&entry));
+        let heading = format!("#{}", entry.head.id);
         self.form_commands(Editing::Existing(key), heading, &entry, place)
     }
 
@@ -827,9 +817,9 @@ impl<S: FileStore> Handler<S> {
         let draft = match decode_form(
             value,
             &self.clock,
-            &self.tags(appointment::RESOURCE),
-            &self.tags(appointment::STATUS),
-            &self.tags(appointment::CATEGORY),
+            &self.tags(Parent::Resource),
+            &self.tags(Parent::Status),
+            &self.tags(Parent::Category),
         ) {
             Ok(draft) => draft,
             Err(message) => return Self::reject(message),
@@ -852,55 +842,41 @@ impl<S: FileStore> Handler<S> {
     fn apply_form(
         &mut self,
         editing: Editing,
-        draft: DataStruct,
-    ) -> Result<DataStruct, &'static str> {
-        let resources = self.tags(appointment::RESOURCE);
-        let places = appointment::Places::read(&draft);
-        let place = *places.first().ok_or("入力を読み取れません")?;
+        draft: Record<Appointment>,
+    ) -> Result<Record<Appointment>, &'static str> {
+        let resources = self.tags(Parent::Resource);
+        let place = *draft.places.first().ok_or("入力を読み取れません")?;
         let resource = column_of(&resources, place.resource).ok_or("資源が不正です")?;
-        let range = appointment::Range::read(&draft);
+        let range = (draft.start, draft.end);
         match editing {
             Editing::New(pending) => {
                 let cells = shift_cells(&resources, &pending, place.day, resource)?;
                 let store = self.store.as_mut().ok_or("データがありません")?;
-                let mut entry = appointment::new(
+                let mut entry = Record::new(
                     store.issue_id(),
-                    &cells,
-                    range.0,
-                    range.1,
-                    &appointment::Title::read(&draft),
-                    &appointment::Category::read(&draft),
-                    &appointment::Status::read(&draft),
-                    &appointment::Note::read(&draft),
+                    Appointment::new(
+                        &cells,
+                        range.0,
+                        range.1,
+                        &draft.title,
+                        &draft.category,
+                        &draft.status,
+                        &draft.note,
+                    ),
                 );
-                let _ = appointment::Uid::write(&mut entry, &data::new_uid(self.now_in_ms), None);
-                data::stamp(&mut entry, self.now_in_ms);
+                entry.uid = object::new_uid(self.now_in_ms);
+                entry.head.stamp(self.now_in_ms);
                 Ok(entry)
             }
             Editing::Existing(key) => {
                 let mut entry = self.appointment(key).ok_or("予約がありません")?;
-                let cells = shift_cells(
-                    &resources,
-                    &appointment::Places::read(&entry),
-                    place.day,
-                    resource,
-                )?;
-                let _ = appointment::Places::write(&mut entry, &cells, None);
-                let _ = appointment::Range::write(&mut entry, &range, None);
-                let _ =
-                    appointment::Title::write(&mut entry, &appointment::Title::read(&draft), None);
-                let _ = appointment::Category::write(
-                    &mut entry,
-                    &appointment::Category::read(&draft),
-                    None,
-                );
-                let _ = appointment::Status::write(
-                    &mut entry,
-                    &appointment::Status::read(&draft),
-                    None,
-                );
-                let _ =
-                    appointment::Note::write(&mut entry, &appointment::Note::read(&draft), None);
+                let cells = shift_cells(&resources, &entry.places, place.day, resource)?;
+                entry.places = cells;
+                (entry.start, entry.end) = range;
+                entry.title = draft.body.title;
+                entry.category = draft.body.category;
+                entry.status = draft.body.status;
+                entry.note = draft.body.note;
                 Ok(entry)
             }
         }
@@ -931,16 +907,21 @@ impl<S: FileStore> Handler<S> {
         commands
     }
 
-    fn resize_appointment(&self, key: u32, corner: Corner, bx: &BBox<2>) -> Option<DataStruct> {
+    fn resize_appointment(
+        &self,
+        key: u32,
+        corner: Corner,
+        bx: &BBox<2>,
+    ) -> Option<Record<Appointment>> {
         let base = self.base;
         let grid = self.grid();
-        let resources = self.tags(appointment::RESOURCE);
+        let resources = self.tags(Parent::Resource);
         let cells = (corner[0].is_some()).then(|| {
             let (first, last) = span(bx.base()[0].get(), bx.offset()[0].get());
             (first..last)
                 .map(|flat| {
                     let (day, resource) = grid.locate(flat);
-                    let resource = tag::Uid::read(resources.get(resource as usize)?);
+                    let resource = resources.get(resource as usize)?.uid;
                     Some(Place { day: shift(base, TimeUnit::Day, i64::from(day)), resource })
                 })
                 .collect::<Option<Vec<Place>>>()
@@ -953,22 +934,20 @@ impl<S: FileStore> Handler<S> {
             ))
         });
         let mut entry = self.appointment(key)?;
-        let current_cells = appointment::Places::read(&entry);
-        let current_range = appointment::Range::read(&entry);
         let new_cells = match cells {
             Some(Some(cells)) => cells,
-            _ => current_cells.clone(),
+            _ => entry.places.clone(),
         };
         let new_range = match time {
             Some(Some((start, end))) if end > start => (start, end),
-            _ => current_range,
+            _ => (entry.start, entry.end),
         };
-        let changed = new_cells != current_cells || new_range != current_range;
+        let changed = new_cells != entry.places || new_range != (entry.start, entry.end);
         if !changed {
             return None;
         }
-        let _ = appointment::Places::write(&mut entry, &new_cells, None);
-        let _ = appointment::Range::write(&mut entry, &new_range, None);
+        entry.places = new_cells;
+        (entry.start, entry.end) = new_range;
         Some(entry)
     }
 
@@ -987,7 +966,7 @@ impl<S: FileStore> Handler<S> {
             return None;
         };
         let slot = (libm::floor(top.get() + 0.5).max(0.0) as u32).min(grid.clock.count() - 1);
-        let (start, end) = appointment::Range::read(&entry);
+        let (start, end) = (entry.start, entry.end);
         let units = grid.clock.unit(end) - grid.clock.unit(start);
         let logical = BBox::new(
             [GridUnit::new(libm::floor(column.get())), GridUnit::new(slot as f64)],
@@ -998,24 +977,24 @@ impl<S: FileStore> Handler<S> {
         Some((cell, grid.clock.clamp_start(resolved.start, units)))
     }
 
-    fn move_in_month(&self, drag: &Drag) -> Option<DataStruct> {
+    fn move_in_month(&self, drag: &Drag) -> Option<Record<Appointment>> {
         let first = self.first_day();
         let (target, _) = self.unit_at(drag.pointer).and_then(Month::locate)?;
         let mut entry = self.appointment(drag.key)?;
-        let cells = appointment::Places::read(&entry);
-        let pressed = cells.get(drag.cell)?;
+        let pressed = entry.places.get(drag.cell)?;
         let delta = i64::from(target) - diff(first, pressed.day, TimeUnit::Day);
         if delta == 0 {
             return None;
         }
-        let moved: Vec<Place> = cells
+        let moved: Vec<Place> = entry
+            .places
             .iter()
             .map(|place| Place {
                 day:      shift(place.day, TimeUnit::Day, delta),
                 resource: place.resource,
             })
             .collect();
-        let _ = appointment::Places::write(&mut entry, &moved, None);
+        entry.places = moved;
         Some(entry)
     }
 
@@ -1025,36 +1004,36 @@ impl<S: FileStore> Handler<S> {
         pressed: usize,
         target: Cell,
         start: Length,
-    ) -> Option<DataStruct> {
+    ) -> Option<Record<Appointment>> {
         let base = self.base;
         let axis = self.grid();
-        let resources = self.tags(appointment::RESOURCE);
+        let resources = self.tags(Parent::Resource);
         let mut entry = self.appointment(key)?;
         let flat = |place: &Place| {
             column_of(&resources, place.resource).map(|position| {
                 axis.flat(diff(base, place.day, TimeUnit::Day) as i32, position as u32)
             })
         };
-        let cells = appointment::Places::read(&entry);
-        let from = cells.get(pressed).and_then(flat)?;
+        let from = entry.places.get(pressed).and_then(flat)?;
         let delta = axis.flat(target.day as i32, target.resource) - from;
-        let moved: Vec<Place> = cells
+        let moved: Vec<Place> = entry
+            .places
             .iter()
             .map(|place| {
                 let (day, resource) = axis.locate(flat(place)? + delta);
-                let resource = tag::Uid::read(resources.get(resource as usize)?);
+                let resource = resources.get(resource as usize)?.uid;
                 Some(Place { day: shift(base, TimeUnit::Day, i64::from(day)), resource })
             })
             .collect::<Option<_>>()?;
-        let current = appointment::Range::read(&entry);
+        let current = (entry.start, entry.end);
         let units = axis.clock.unit(current.1) - axis.clock.unit(current.0);
         let range = (start, axis.clock.time(axis.clock.unit(start) + units)?);
-        let changed = cells != moved || current.0 != start;
+        let changed = entry.places != moved || current.0 != start;
         if !changed {
             return None;
         }
-        let _ = appointment::Places::write(&mut entry, &moved, None);
-        let _ = appointment::Range::write(&mut entry, &range, None);
+        entry.places = moved;
+        (entry.start, entry.end) = range;
         Some(entry)
     }
 
@@ -1118,12 +1097,12 @@ impl<S: FileStore> Handler<S> {
         [-page, -unit, 0, unit, page][n as usize - 1]
     }
 
-    fn resource_text(&self, resources: &[DataStruct], n: u32) -> Command {
+    fn resource_text(&self, resources: &[Record<Tag>], n: u32) -> Command {
         let value = self
             .heading()
             .cell(n - 1)
             .and_then(|cell| resources.get(cell.resource as usize))
-            .map(tag::Label::read)
+            .map(|t| t.label.clone())
             .unwrap_or_default();
         Command::SetText { id: Target::ResourceName(n).to_dom(), value }
     }
@@ -1139,11 +1118,8 @@ impl<S: FileStore> Handler<S> {
         if !self.loaded() {
             return vec![];
         }
-        let (statuses, categories, resources) = (
-            self.tags(appointment::STATUS),
-            self.tags(appointment::CATEGORY),
-            self.tags(appointment::RESOURCE),
-        );
+        let (statuses, categories, resources) =
+            (self.tags(Parent::Status), self.tags(Parent::Category), self.tags(Parent::Resource));
         let mut commands = Vec::new();
         let number = |index: usize| index as u32 + 1;
         let options = statuses
@@ -1164,24 +1140,27 @@ impl<S: FileStore> Handler<S> {
                     .map(|(index, tag)| (Target::ResourceOption(number(index)), tag)),
             );
         for (target, tag) in options {
-            commands
-                .push(Command::SetText { id: target.to_dom(), value: tag::Label::read(tag) });
+            commands.push(Command::SetText { id: target.to_dom(), value: tag.label.clone() });
             commands.push(hidden(target.to_dom(), false));
         }
         commands
     }
 
-    fn visible_cards(&self, appointments: &[DataStruct], resources: &[DataStruct]) -> Vec<Card> {
+    fn visible_cards(
+        &self,
+        appointments: &[Record<Appointment>],
+        resources: &[Record<Tag>],
+    ) -> Vec<Card> {
         let grid = self.grid();
         let mut columns: BTreeMap<u32, Vec<(u32, usize, Length, Length)>> = BTreeMap::new();
         let mut extent: BTreeMap<u32, (i32, i32)> = BTreeMap::new();
         for entry in appointments {
-            let key = data::key(entry);
-            let (start, end) = appointment::Range::read(entry);
+            let key = entry.head.id;
+            let (start, end) = (entry.start, entry.end);
             let Some((start, end)) = grid.clock.clip(start, end) else {
                 continue;
             };
-            for (cell_index, place) in appointment::Places::read(entry).iter().enumerate() {
+            for (cell_index, place) in entry.places.iter().enumerate() {
                 let Some(resource) = column_of(resources, place.resource) else {
                     continue;
                 };
@@ -1226,12 +1205,12 @@ impl<S: FileStore> Handler<S> {
         cards
     }
 
-    fn month_cards(&self, appointments: &[DataStruct]) -> Vec<Card> {
+    fn month_cards(&self, appointments: &[Record<Appointment>]) -> Vec<Card> {
         let first = self.first_day();
         let mut days: BTreeMap<u32, Vec<(u32, usize)>> = BTreeMap::new();
         for entry in appointments {
-            let key = data::key(entry);
-            for (cell, place) in appointment::Places::read(entry).iter().enumerate() {
+            let key = entry.head.id;
+            for (cell, place) in entry.places.iter().enumerate() {
                 let Ok(day) = u32::try_from(diff(first, place.day, TimeUnit::Day)) else {
                     continue;
                 };
@@ -1345,16 +1324,15 @@ impl<S: FileStore> Handler<S> {
         if !self.loaded() {
             return vec![];
         }
-        let appointments = self.read(appointment::KIND);
-        let (statuses, categories) =
-            (self.tags(appointment::STATUS), self.tags(appointment::CATEGORY));
+        let appointments = self.appointments();
+        let (statuses, categories) = (self.tags(Parent::Status), self.tags(Parent::Category));
         let cards = if self.month() {
             self.month_cards(&appointments)
         } else {
-            self.visible_cards(&appointments, &self.tags(appointment::RESOURCE))
+            self.visible_cards(&appointments, &self.tags(Parent::Resource))
         };
-        let by_key: BTreeMap<u32, &DataStruct> =
-            appointments.iter().map(|entry| (data::key(entry), entry)).collect();
+        let by_key: BTreeMap<u32, &Record<Appointment>> =
+            appointments.iter().map(|entry| (entry.head.id, entry)).collect();
         let boxes: Vec<BBox<2>> = cards.iter().map(|card| card.bx).collect();
         let resolved = self.rectgrid.box_as_px(&boxes);
         let mut commands = Vec::new();
@@ -1373,18 +1351,16 @@ impl<S: FileStore> Handler<S> {
                 outer: card.outer,
             });
             let entry = by_key[&card.key];
-            let (start, end) = appointment::Range::read(entry);
-            let status_code = appointment::Status::read(entry);
+            let (start, end) = (entry.start, entry.end);
             let status = statuses
                 .iter()
-                .find(|s| tag::Code::read(s) == status_code)
-                .map(tag::Label::read)
+                .find(|s| s.code == entry.status)
+                .map(|t| t.label.clone())
                 .unwrap_or_default();
-            let category_code = appointment::Category::read(entry);
             let category = categories
                 .iter()
-                .find(|c| tag::Code::read(c) == category_code)
-                .map(tag::Label::read)
+                .find(|c| c.code == entry.category)
+                .map(|t| t.label.clone())
                 .unwrap_or_default();
             commands.push(Command::RemoveAttribute {
                 id:        Target::Card(n).to_dom(),
@@ -1415,9 +1391,9 @@ impl<S: FileStore> Handler<S> {
                         display(add(self.base, end), self.language, HOUR_MINUTE, Format::Iso)
                     ),
                 ),
-                (Target::CardPart(n, CardPart::Title).to_dom(), appointment::Title::read(entry)),
+                (Target::CardPart(n, CardPart::Title).to_dom(), entry.title.clone()),
                 (Target::CardPart(n, CardPart::Category).to_dom(), category),
-                (Target::CardPart(n, CardPart::Note).to_dom(), appointment::Note::read(entry)),
+                (Target::CardPart(n, CardPart::Note).to_dom(), entry.note.clone()),
             ] {
                 commands.push(Command::SetText { id, value });
             }
@@ -1441,21 +1417,24 @@ impl<S: FileStore> Handler<S> {
         })
     }
 
-    fn import_commands(&mut self, body: &[u8]) -> Result<(Vec<Event>, Vec<Command>), DataError> {
+    fn import_commands(
+        &mut self,
+        body: &[u8],
+    ) -> Result<(Vec<Event>, Vec<Command>), CalendarError> {
         let Some(store) = self.store.as_mut() else {
             return Ok((vec![], vec![]));
         };
-        appointment::import(store, body)?;
+        calendar::import(store, body)?;
         Ok(match store.save() {
             Ok(()) => (vec![], vec![]),
             Err(error) => store::failed(STORE, error),
         })
     }
 
-    fn persist(&mut self, mut entry: DataStruct) {
+    fn persist(&mut self, mut entry: Record<Appointment>) {
         if let Some(store) = self.store.as_mut() {
-            data::touch(&mut entry, self.now_in_ms);
-            data::put(store, &entry);
+            entry.head.touch(self.now_in_ms);
+            object::set(store, &entry);
         }
     }
 
@@ -1564,7 +1543,7 @@ impl<S: FileStore> Handler<S> {
     }
 
     fn count_resources(&self) -> u32 {
-        (self.tags(appointment::RESOURCE).len() as u32).min(AXIS_ELEMENT_MAX_COUNTS[1])
+        (self.tags(Parent::Resource).len() as u32).min(AXIS_ELEMENT_MAX_COUNTS[1])
     }
 
     fn day_offset(&self, day: Stamp) -> i32 {
@@ -1687,7 +1666,7 @@ impl<S: FileStore> Handler<S> {
             commands.push(hidden(Target::Day(n).to_dom(), n > days));
         }
         commands.extend(self.date_commands());
-        let resources = self.tags(appointment::RESOURCE);
+        let resources = self.tags(Parent::Resource);
         for n in 1..=AXIS_ELEMENT_MAX_COUNTS[0] * AXIS_ELEMENT_MAX_COUNTS[1] {
             commands.push(hidden(Target::Resource(n).to_dom(), self.month() || n > columns));
             commands.push(self.resource_text(&resources, n));
@@ -1910,18 +1889,18 @@ fn option_commands(language: Language) -> [Command; 2] {
     ]
 }
 
-fn column_of(resources: &[DataStruct], uid: u128) -> Option<usize> {
-    resources.iter().position(|resource| tag::Uid::read(resource) == uid)
+fn column_of(resources: &[Record<Tag>], uid: u128) -> Option<usize> {
+    resources.iter().position(|resource| resource.uid == uid)
 }
 
 fn shift_cells(
-    resources: &[DataStruct],
+    resources: &[Record<Tag>],
     cells: &[Place],
     day: Stamp,
     resource: usize,
 ) -> Result<Vec<Place>, &'static str> {
     let first = cells.first().ok_or("予約がありません")?;
-    let target = tag::Uid::read(resources.get(resource).ok_or("資源が不正です")?);
+    let target = resources.get(resource).ok_or("資源が不正です")?.uid;
     let Some(origin) = column_of(resources, first.resource) else {
         return Ok(vec![Place { day, resource: target }]);
     };
@@ -1933,7 +1912,7 @@ fn shift_cells(
             let position = column_of(resources, place.resource).ok_or("資源が不正です")?;
             let index =
                 usize::try_from(position as i32 + resource_delta).map_err(|_| "範囲外です")?;
-            let moved = tag::Uid::read(resources.get(index).ok_or("範囲外です")?);
+            let moved = resources.get(index).ok_or("範囲外です")?.uid;
             Ok(Place { day: shift(place.day, TimeUnit::Day, day_delta), resource: moved })
         })
         .collect()
@@ -1942,10 +1921,10 @@ fn shift_cells(
 fn decode_form(
     value: &str,
     clock: &Clock,
-    resources: &[DataStruct],
-    statuses: &[DataStruct],
-    categories: &[DataStruct],
-) -> Result<DataStruct, &'static str> {
+    resources: &[Record<Tag>],
+    statuses: &[Record<Tag>],
+    categories: &[Record<Tag>],
+) -> Result<Record<Appointment>, &'static str> {
     let pairs = parse_url_search_params(value);
     let field = |field: EditField| {
         let name = format!("{}", field.number());
@@ -1977,10 +1956,10 @@ fn decode_form(
     let resource = option_position(resources, resource).ok_or("資源が不正です")?;
     let status = option_position(statuses, status).ok_or("状態が不正です")?;
     let category = option_position(categories, category).ok_or("カテゴリが不正です")?;
-    let place = Place { day, resource: tag::Uid::read(&resources[resource]) };
-    let category = tag::Code::read(&categories[category]);
-    let status = tag::Code::read(&statuses[status]);
-    Ok(appointment::new(0, &[place], start, end, title, &category, &status, note))
+    let place = Place { day, resource: resources[resource].uid };
+    let category = categories[category].code.clone();
+    let status = statuses[status].code.clone();
+    Ok(Record::new(0, Appointment::new(&[place], start, end, title, &category, &status, note)))
 }
 
 fn option_value<T>(items: &[T], selected: impl Fn(&T) -> bool) -> String {
@@ -2058,13 +2037,13 @@ impl<S: FileStore> Handler<S> {
     }
 }
 
-fn notice(error: &DataError) -> &'static str {
+fn notice(error: &CalendarError) -> &'static str {
     match error {
-        DataError::Json(_) | DataError::Missing(_) | DataError::Shape(_) => {
+        CalendarError::Json(_) | CalendarError::Missing(_) | CalendarError::Shape(_) => {
             "データを読み込めませんでした"
         }
-        DataError::Value { .. } => "データに不正な値があります",
-        DataError::Kind(_) | DataError::Layout(_) => "保存データが壊れています",
+        CalendarError::Value { .. } => "データに不正な値があります",
+        CalendarError::Kind(_) | CalendarError::Object(_) => "保存データが壊れています",
     }
 }
 
@@ -2076,8 +2055,6 @@ mod tests {
     use super::*;
     use crate::{
         En, Rng, block_on,
-        calendar::data::SCHEMA_SIZE,
-        data_struct::{ID_CREATED_AT, ID_MODIFIED_AT, encode_time},
         file_store::{FileStoreError, MemoryHandles, MemoryStore, cases::FaultInjector},
         host::{Flags, KeyName},
         time::pack,
@@ -2453,16 +2430,18 @@ mod tests {
         assert!(!handler.loaded());
     }
 
-    fn entry(id: u32, day: Stamp, resource: u128, start: u32, end: u32) -> DataStruct {
-        appointment::new(
+    fn entry(id: u32, day: Stamp, resource: u128, start: u32, end: u32) -> Record<Appointment> {
+        Record::new(
             id,
-            &[Place { day, resource }],
-            at(start),
-            at(end),
-            &format!("t{id}"),
-            CATEGORY_CODE,
-            STATUS_CODE,
-            "",
+            Appointment::new(
+                &[Place { day, resource }],
+                at(start),
+                at(end),
+                &format!("t{id}"),
+                CATEGORY_CODE,
+                STATUS_CODE,
+                "",
+            ),
         )
     }
 
@@ -2471,25 +2450,31 @@ mod tests {
     const STATUS_CODE: &str = "done";
     const CATEGORY_CODE: &str = "c";
 
-    fn appointments<S: Mount>(handler: &Handler<S>) -> Vec<DataStruct> {
-        handler.read(appointment::KIND)
+    fn appointments<S: Mount>(handler: &Handler<S>) -> Vec<Record<Appointment>> {
+        handler.appointments()
     }
 
-    fn load(handler: &mut Handler<MemoryStore>, appointments: Vec<DataStruct>) {
+    fn load(handler: &mut Handler<MemoryStore>, appointments: Vec<Record<Appointment>>) {
         let mut backend =
             handler.store.take().unwrap_or_else(|| MemoryStore::new(MemoryHandles::new()).unwrap());
         let store = &mut backend;
         for id in 101..105u32 {
             let uid = u128::from(id);
-            data::put(
+            object::set(
                 store,
-                &tag::new(id, appointment::RESOURCE, uid, "", &format!("Studio {}", id - 100)),
+                &Record::new(
+                    id,
+                    Tag::new(Parent::Resource, uid, "", &format!("Studio {}", id - 100)),
+                ),
             );
         }
-        data::put(store, &tag::new(STATUS_KEY, appointment::STATUS, 0, STATUS_CODE, "D"));
-        data::put(store, &tag::new(CATEGORY_KEY, appointment::CATEGORY, 0, CATEGORY_CODE, "C"));
+        object::set(store, &Record::new(STATUS_KEY, Tag::new(Parent::Status, 0, STATUS_CODE, "D")));
+        object::set(
+            store,
+            &Record::new(CATEGORY_KEY, Tag::new(Parent::Category, 0, CATEGORY_CODE, "C")),
+        );
         for entry in &appointments {
-            data::put(store, entry);
+            object::set(store, entry);
         }
         store.save().unwrap();
         handler.attach(backend);
@@ -2619,7 +2604,7 @@ mod tests {
         let (_, commands) = handler.process_fetched(&sample_response(1, 200));
         let expected = appointments(&handler)
             .iter()
-            .flat_map(appointment::Places::read)
+            .flat_map(|a| a.places.iter())
             .filter(|cell| (0..7).contains(&diff(today(), cell.day, TimeUnit::Day)))
             .count();
         assert!(expected > 0);
@@ -2644,7 +2629,10 @@ mod tests {
         assert_eq!(handler.columns(), 0);
         let mut store = MemoryStore::new(MemoryHandles::new()).unwrap();
         for id in 1..=2u32 {
-            data::put(&mut store, &tag::new(id, appointment::RESOURCE, u128::from(id), "", "r"));
+            object::set(
+                &mut store,
+                &Record::new(id, Tag::new(Parent::Resource, u128::from(id), "", "r")),
+            );
         }
         store.save().unwrap();
         handler.attach(store);
@@ -2666,7 +2654,10 @@ mod tests {
 
         let store = handler.store.as_mut().unwrap();
         for id in 3..=9u32 {
-            data::put(store, &tag::new(id, appointment::RESOURCE, u128::from(id), "", "r"));
+            object::set(
+                store,
+                &Record::new(id, Tag::new(Parent::Resource, u128::from(id), "", "r")),
+            );
         }
         let store = handler.store.take().unwrap();
         handler.attach(store);
@@ -2794,9 +2785,9 @@ mod tests {
         drag_to(&mut handler, pointer_x, pointer_y);
         let commands = end(&mut handler);
         let moved = &appointments(&handler)[0];
-        assert_eq!(appointment::Places::read(moved)[0].day, after(base, 2));
-        assert_eq!(appointment::Places::read(moved)[0].resource, 103);
-        assert_eq!(appointment::Range::read(moved), (at(540 + 150), at(540 + 210)));
+        assert_eq!(moved.places[0].day, after(base, 2));
+        assert_eq!(moved.places[0].resource, 103);
+        assert_eq!((moved.start, moved.end), (at(540 + 150), at(540 + 210)));
         assert_eq!(shown_count(&commands), 2);
         assert!(matches!(
             commands.first(),
@@ -2814,11 +2805,7 @@ mod tests {
             drag_to(&mut handler, grid_origin().0 + 5.0, pointer_y);
             end(&mut handler);
             let moved = &appointments(&handler)[0];
-            assert_eq!(
-                appointment::Range::read(moved).0,
-                at(540 + expected_slot * 15),
-                "extra {extra}"
-            );
+            assert_eq!(moved.start, at(540 + expected_slot * 15), "extra {extra}");
         }
     }
 
@@ -2838,7 +2825,7 @@ mod tests {
         drag_to(&mut handler, ox + 5.0, oy + 43.2 * ROW_PX + grab_y);
         end(&mut handler);
         let moved = &appointments(&handler)[0];
-        assert_eq!(appointment::Range::read(moved), (at(20 * 60 - 60), at(20 * 60)));
+        assert_eq!((moved.start, moved.end), (at(20 * 60 - 60), at(20 * 60)));
     }
 
     #[test]
@@ -2853,11 +2840,7 @@ mod tests {
             let commands = end(&mut handler);
             let unchanged = &appointments(&handler)[0];
             assert_eq!(
-                (
-                    appointment::Places::read(unchanged)[0].day,
-                    appointment::Places::read(unchanged)[0].resource,
-                    appointment::Range::read(unchanged).0
-                ),
+                (unchanged.places[0].day, unchanged.places[0].resource, unchanged.start),
                 (base, 101, at(600))
             );
             assert_eq!(translate_of(&commands, 1), Some((0.0, 112.0)));
@@ -2874,10 +2857,7 @@ mod tests {
         assert!(handler.drag.is_none());
         assert_eq!(translate_of(&commands, 1), Some((0.0, 112.0)));
         let unchanged = &appointments(&handler)[0];
-        assert_eq!(
-            (appointment::Places::read(unchanged)[0].day, appointment::Range::read(unchanged).0),
-            (base, at(600))
-        );
+        assert_eq!((unchanged.places[0].day, unchanged.start), (base, at(600)));
     }
 
     #[test]
@@ -2905,10 +2885,7 @@ mod tests {
         drag_to(&mut handler, ox + column_in_px * 3.0 + 5.0, oy + 4.0 * ROW_PX + GRAB_Y);
         end(&mut handler);
         let moved = &appointments(&handler)[0];
-        assert_eq!(
-            (appointment::Places::read(moved)[0].day, appointment::Places::read(moved)[0].resource),
-            (base, 104)
-        );
+        assert_eq!((moved.places[0].day, moved.places[0].resource), (base, 104));
     }
 
     #[test]
@@ -2935,16 +2912,16 @@ mod tests {
                 let moved = &appointments(&handler)[0];
                 let cell = axis.cell(unit).unwrap();
                 assert_eq!(
-                    appointment::Places::read(moved)[0].day,
+                    moved.places[0].day,
                     after(base, i64::from(cell.day)),
                     "view {days} unit {unit}"
                 );
                 assert_eq!(
-                    appointment::Places::read(moved)[0].resource,
+                    moved.places[0].resource,
                     101 + u128::from(cell.resource),
                     "view {days} unit {unit}"
                 );
-                assert_eq!(appointment::Range::read(moved).0, at(600));
+                assert_eq!(moved.start, at(600));
             }
         }
     }
@@ -2967,9 +2944,9 @@ mod tests {
         let base = today();
         let mut handler = Handler::<MemoryStore>::new(VIEWPORT, base, REM);
         let mut spanning = entry(1, base, 102, 600, 660);
-        let mut cells = appointment::Places::read(&spanning);
+        let mut cells = spanning.places.clone();
         cells.push(Place { day: base, resource: 103 });
-        appointment::Places::write(&mut spanning, &cells, None).unwrap();
+        spanning.places = cells;
         load(&mut handler, vec![spanning]);
         choose(&mut handler, view);
         handler.card_commands();
@@ -2993,7 +2970,9 @@ mod tests {
     }
 
     fn places<S: Mount>(handler: &Handler<S>) -> Vec<(Stamp, u128)> {
-        appointment::Places::read(&appointments(handler)[0])
+        appointments(handler)[0]
+            .places
+            .clone()
             .iter()
             .map(|place| (place.day, place.resource))
             .collect()
@@ -3040,9 +3019,9 @@ mod tests {
         let base = today();
         let mut handler = Handler::<MemoryStore>::new(VIEWPORT, base, REM);
         let mut crossing = entry(1, base, 104, 600, 660);
-        let mut cells = appointment::Places::read(&crossing);
+        let mut cells = crossing.places.clone();
         cells.push(Place { day: after(base, 1), resource: 101 });
-        appointment::Places::write(&mut crossing, &cells, None).unwrap();
+        crossing.places = cells;
         load(&mut handler, vec![crossing]);
         choose(&mut handler, Axis::Day(Day::Day));
         let commands = handler.card_commands();
@@ -3105,7 +3084,8 @@ mod tests {
     }
 
     fn times<S: Mount>(handler: &Handler<S>) -> (u32, u32) {
-        let (start, end) = appointment::Range::read(&appointments(handler)[0]);
+        let first = &appointments(handler)[0];
+        let (start, end) = (first.start, first.end);
         (minutes(start), minutes(end))
     }
 
@@ -3292,9 +3272,9 @@ mod tests {
         let make = || {
             let mut handler = Handler::<MemoryStore>::new(VIEWPORT, base, REM);
             let mut crossing = entry(1, base, 104, 600, 660);
-            let mut cells = appointment::Places::read(&crossing);
+            let mut cells = crossing.places.clone();
             cells.push(Place { day: after(base, 1), resource: 101 });
-            appointment::Places::write(&mut crossing, &cells, None).unwrap();
+            crossing.places = cells;
             load(&mut handler, vec![crossing]);
             choose(&mut handler, Axis::Day(Day::Day));
             handler.card_commands();
@@ -3462,7 +3442,7 @@ mod tests {
             let placed = handler.placed.borrow();
             (placed[0].key, placed[0].base)
         };
-        let before = appointment::Range::read(&appointment_of(handler, index)).0;
+        let before = appointment_of(handler, index).start;
         let (ox, oy) = grid_origin();
         handler.process_canvas(
             &pointer_down(
@@ -3477,24 +3457,15 @@ mod tests {
         (index, before)
     }
 
-    fn fields(entries: &[DataStruct]) -> Vec<Vec<Option<Vec<u8>>>> {
-        entries
-            .iter()
-            .map(|entry| {
-                (1..=SCHEMA_SIZE).map(|id| entry.get(id).ok().map(<[u8]>::to_vec)).collect()
-            })
-            .collect()
+    fn committed_appointments(disk: &MemoryHandles) -> Vec<Record<Appointment>> {
+        object::list::<Appointment>(&MemoryStore::new(disk.clone()).unwrap()).unwrap()
     }
 
-    fn committed_appointments(disk: &MemoryHandles) -> Vec<DataStruct> {
-        data::entries(&MemoryStore::new(disk.clone()).unwrap(), appointment::KIND).unwrap()
+    fn committed(disk: &MemoryHandles, key: u32) -> Record<Appointment> {
+        object::get::<Appointment>(&MemoryStore::new(disk.clone()).unwrap(), key).unwrap()
     }
 
-    fn committed(disk: &MemoryHandles, key: u32) -> DataStruct {
-        data::entry(&MemoryStore::new(disk.clone()).unwrap(), key, appointment::KIND).unwrap()
-    }
-
-    fn appointment_of<S: Mount>(handler: &Handler<S>, key: u32) -> DataStruct {
+    fn appointment_of<S: Mount>(handler: &Handler<S>, key: u32) -> Record<Appointment> {
         handler.appointment(key).unwrap()
     }
 
@@ -3529,20 +3500,20 @@ mod tests {
         let (mut handler, disk) = with_store();
         handler.process_fetched(&sample_response(1, 200));
         let (index, before) = drag_first_card_by(&mut handler, 2.0 * ROW_PX);
-        let after = appointment::Range::read(&appointment_of(&handler, index)).0;
+        let after = appointment_of(&handler, index).start;
         assert_eq!(minutes(after), minutes(before) + 30);
         assert!(handler.dirty());
         assert_eq!(pending(&handler), 1);
-        assert_eq!(appointment::Range::read(&committed(&disk, index)).0, before);
+        assert_eq!(committed(&disk, index).start, before);
 
         press(&mut handler, Target::Save.to_dom());
         assert!(!handler.dirty());
         assert_eq!(pending(&handler), 0);
-        assert_eq!(appointment::Range::read(&committed(&disk, index)).0, after);
+        assert_eq!(committed(&disk, index).start, after);
 
         let mut reloaded = Handler::<MemoryStore>::new(VIEWPORT, today(), REM);
         reloaded.attach(MemoryStore::new(disk).unwrap());
-        assert_eq!(appointment::Range::read(&appointment_of(&reloaded, index)).0, after);
+        assert_eq!(appointment_of(&reloaded, index).start, after);
     }
 
     #[test]
@@ -3552,7 +3523,7 @@ mod tests {
         let (index, before) = drag_first_card_by(&mut handler, 2.0 * ROW_PX);
         let mut reloaded = Handler::<MemoryStore>::new(VIEWPORT, today(), REM);
         reloaded.attach(MemoryStore::new(disk).unwrap());
-        assert_eq!(appointment::Range::read(&appointment_of(&reloaded, index)).0, before);
+        assert_eq!(appointment_of(&reloaded, index).start, before);
     }
 
     #[test]
@@ -3561,7 +3532,7 @@ mod tests {
         handler.process_fetched(&sample_response(1, 200));
         let (index, before) = drag_first_card_by(&mut handler, 2.0 * ROW_PX);
         let commands = handler.discard_commands().1;
-        assert_eq!(appointment::Range::read(&appointment_of(&handler, index)).0, before);
+        assert_eq!(appointment_of(&handler, index).start, before);
         assert!(!handler.dirty());
         assert_eq!(pending(&handler), 0);
         assert_eq!(save_disabled(&commands), [true]);
@@ -3583,7 +3554,7 @@ mod tests {
         let first = appointments(&handler)[0].clone();
         assert_eq!(
             value_of(&commands, &Target::EditField(EditField::Title).to_dom()).unwrap(),
-            appointment::Title::read(&first)
+            first.title.clone()
         );
         assert_eq!(
             value_of(&commands, &Target::EditField(EditField::Date).to_dom()).unwrap(),
@@ -3718,8 +3689,8 @@ mod tests {
         submit(&mut handler, &query);
         let all = appointments(&handler);
         let added = all.last().unwrap();
-        assert_eq!(appointment::Places::read(added).len(), 4);
-        assert_eq!(appointment::Range::read(added), (at(750), at(870)));
+        assert_eq!(added.places.len(), 4);
+        assert_eq!((added.start, added.end), (at(750), at(870)));
     }
 
     #[test]
@@ -3831,36 +3802,30 @@ mod tests {
         let all = appointments(&handler);
         assert_eq!(all.len(), before + 1);
         let added = all.last().unwrap();
+        assert_eq!((added.title.as_str(), added.start, added.end), ("Neo", open, close));
         assert_eq!(
+            (added.category.clone(), added.status.clone()),
             (
-                appointment::Title::read(added).as_str(),
-                appointment::Range::read(added).0,
-                appointment::Range::read(added).1
-            ),
-            ("Neo", open, close)
-        );
-        assert_eq!(
-            (appointment::Category::read(added), appointment::Status::read(added)),
-            (
-                tag::Code::read(&handler.tags(appointment::CATEGORY)[0]),
-                tag::Code::read(&handler.tags(appointment::STATUS)[0])
+                handler.tags(Parent::Category)[0].code.clone(),
+                handler.tags(Parent::Status)[0].code.clone()
             )
         );
-        assert_ne!(appointment::Uid::read(added), 0);
+        assert_ne!(added.uid, 0);
         assert_eq!(
-            added.get(ID_CREATED_AT).unwrap(),
-            encode_time(handler.now_in_ms),
+            added.head.created,
+            from_unix_timestamp_in_ms(handler.now_in_ms as i64, Zone::ZERO),
             "a new record is created now"
         );
         assert!(handler.dirty());
         assert!(commands.iter().any(|c| matches!(c, Command::Close { .. })));
         assert!(pending(&handler) == 1);
         assert!(matches!(handler.dialog, Dialog::None));
-        let key = data::key(added);
-        let saved =
-            DataStruct::from_bytes(handler.store.as_ref().unwrap().get(key).unwrap(), SCHEMA_SIZE)
-                .unwrap();
-        assert_eq!(saved.get(ID_MODIFIED_AT).unwrap(), encode_time(handler.now_in_ms));
+        let key = added.head.id;
+        let saved = object::get::<Appointment>(handler.store.as_ref().unwrap(), key).unwrap();
+        assert_eq!(
+            saved.head.modified,
+            from_unix_timestamp_in_ms(handler.now_in_ms as i64, Zone::ZERO)
+        );
     }
 
     #[test]
@@ -4069,7 +4034,7 @@ mod tests {
         handler.process_fetched(&sample_response(1, 200));
         let (index, before) = drag_first_card_by(&mut handler, 2.0 * ROW_PX);
         let commands = press(&mut handler, Target::Reload.to_dom());
-        assert_eq!(appointment::Range::read(&appointment_of(&handler, index)).0, before);
+        assert_eq!(appointment_of(&handler, index).start, before);
         assert_eq!(pending(&handler), 0);
         assert_eq!(save_disabled(&commands), [true]);
     }
@@ -4157,7 +4122,7 @@ mod tests {
         let (mut handler, disk) = with_store();
         handler.process_fetched(&sample_response(1, 200));
         let (index, _) = drag_first_card_by(&mut handler, 2.0 * ROW_PX);
-        let after = appointment::Range::read(&appointment_of(&handler, index)).0;
+        let after = appointment_of(&handler, index).start;
 
         handler.close();
         let (events, _) = save_pressed(&mut handler);
@@ -4170,7 +4135,7 @@ mod tests {
         assert!(handler.dirty());
         save_pressed(&mut handler);
         assert!(!handler.dirty());
-        assert_eq!(appointment::Range::read(&committed(&disk, index)).0, after);
+        assert_eq!(committed(&disk, index).start, after);
     }
 
     #[test]
@@ -4192,7 +4157,7 @@ mod tests {
         let (mut seeding, disk) = with_store();
         seeding.process_fetched(&sample_response(1, 200));
         let mut corrupting = MemoryStore::new(disk.clone()).unwrap();
-        corrupting.set(data::key(&appointments(&seeding)[0]), b"{".to_vec());
+        corrupting.set(appointments(&seeding)[0].head.id, b"{".to_vec());
         corrupting.save().unwrap();
         let mut handler = Handler::<MemoryStore>::new(VIEWPORT, today(), REM);
         handler.attach(MemoryStore::new(disk).unwrap());
@@ -4212,7 +4177,7 @@ mod tests {
         assert!(handler.discard_commands().1.is_empty());
     }
 
-    fn month_fixture(appointments: Vec<DataStruct>) -> Handler<MemoryStore> {
+    fn month_fixture(appointments: Vec<Record<Appointment>>) -> Handler<MemoryStore> {
         let mut handler = Handler::<MemoryStore>::new(VIEWPORT, today(), REM);
         load(&mut handler, appointments);
         choose(&mut handler, Axis::Month);
@@ -4244,10 +4209,13 @@ mod tests {
             .collect()
     }
 
-    fn multi(id: u32, places: &[(Stamp, u128)]) -> DataStruct {
+    fn multi(id: u32, places: &[(Stamp, u128)]) -> Record<Appointment> {
         let places: Vec<Place> =
             places.iter().map(|(day, resource)| Place { day: *day, resource: *resource }).collect();
-        appointment::new(id, &places, at(600), at(660), "m", CATEGORY_CODE, STATUS_CODE, "")
+        Record::new(
+            id,
+            Appointment::new(&places, at(600), at(660), "m", CATEGORY_CODE, STATUS_CODE, ""),
+        )
     }
 
     fn rule_of(commands: &[Command]) -> Option<String> {
@@ -4351,13 +4319,13 @@ mod tests {
         end(&mut handler);
         let moved = &appointments(&handler)[0];
         assert_eq!(
-            appointment::Places::read(moved),
+            moved.places.clone(),
             [
                 Place { day: after(base, 9), resource: 101 },
                 Place { day: after(base, 10), resource: 102 },
             ]
         );
-        assert_eq!(appointment::Range::read(moved), (at(600), at(660)));
+        assert_eq!((moved.start, moved.end), (at(600), at(660)));
         assert!(handler.dirty());
         assert_eq!(placed_ids(&handler), [(1, [6.0, 5.0]), (1, [0.0, 9.0])]);
     }
@@ -4502,7 +4470,7 @@ mod tests {
             let (mut handler, disk) = with_store();
             handler.process_fetched(&sample_response(1, 200));
             handler.card_commands();
-            let mut saved = fields(&committed_appointments(&disk));
+            let mut saved = committed_appointments(&disk);
             for step in 0..60 {
                 let context = format!("seed {seed} step {step}");
                 match rng.below(14) {
@@ -4562,9 +4530,9 @@ mod tests {
                     8 => {
                         press(&mut handler, Target::Save.to_dom());
                         assert!(!handler.dirty(), "{context}: still dirty after save");
-                        saved = fields(&appointments(&handler));
+                        saved = appointments(&handler);
                         assert!(
-                            fields(&committed_appointments(&disk)) == saved,
+                            committed_appointments(&disk) == saved,
                             "{context}: the store differs from what was saved"
                         );
                     }
@@ -4598,13 +4566,13 @@ mod tests {
                 }
                 if !handler.dirty() {
                     assert!(
-                        fields(&appointments(&handler)) == saved,
+                        appointments(&handler) == saved,
                         "{context}: clean but different from the last save"
                     );
                 }
             }
             assert!(
-                fields(&committed_appointments(&disk)) == saved,
+                committed_appointments(&disk) == saved,
                 "seed {seed}: the store changed without a save"
             );
         }
@@ -4680,14 +4648,14 @@ mod tests {
         assert!(handler.appointment(key).is_none());
         assert_eq!(pending(&handler), 1);
         assert!(
-            data::entry(&MemoryStore::new(disk.clone()).unwrap(), key, appointment::KIND).is_some()
+            object::get::<Appointment>(&MemoryStore::new(disk.clone()).unwrap(), key).is_some()
         );
 
         press(&mut handler, Target::Save.to_dom());
         assert!(!handler.dirty());
         assert_eq!(pending(&handler), 0);
         assert!(
-            data::entry(&MemoryStore::new(disk.clone()).unwrap(), key, appointment::KIND).is_none()
+            object::get::<Appointment>(&MemoryStore::new(disk.clone()).unwrap(), key).is_none()
         );
         let mut reloaded = Handler::<MemoryStore>::new(VIEWPORT, today(), REM);
         reloaded.attach(MemoryStore::new(disk).unwrap());
@@ -4706,7 +4674,7 @@ mod tests {
         assert_eq!(appointments(&handler).len(), before);
         assert!(!handler.dirty());
         assert_eq!(save_disabled(&commands), [true]);
-        assert!(data::entry(&MemoryStore::new(disk).unwrap(), key, appointment::KIND).is_some());
+        assert!(object::get::<Appointment>(&MemoryStore::new(disk).unwrap(), key).is_some());
     }
 
     #[test]
@@ -4756,7 +4724,7 @@ mod tests {
         );
         let commands = submit(&mut handler, &query);
         assert!(commands.iter().any(|c| matches!(c, Command::Close { .. })));
-        let cells = appointment::Places::read(&appointment_of(&handler, 1));
+        let cells = appointment_of(&handler, 1).body.places;
         assert_eq!(cells, [Place { day: today(), resource: 103 }]);
     }
 

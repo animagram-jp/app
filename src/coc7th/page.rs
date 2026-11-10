@@ -10,10 +10,9 @@ use core::{
 
 use crate::{
     ColorScheme, Language,
-    coc7th::investigator::{Investigator, Possession, Profile, join, sheet},
+    coc7th::investigator::{Possession, Profile, Section, join, sheet},
     credential::Field,
     host::dom::{Id, Tag},
-    object::SubjectTrait as _,
 };
 
 const INVESTIGATOR_BUTTON: u32 = 1;
@@ -137,66 +136,66 @@ impl Label {
                 ])]
             }
             Self::Pronunciation => vec![join(
-                sheet(Investigator::Profile.base_id()),
-                &[(Tag::Dl, None), (Tag::Dt, Some(Profile::Name.ids()[1]))],
+                sheet(Section::Profile.number()),
+                &[(Tag::Dl, None), (Tag::Dt, Some(Profile::Name.numbers()[1]))],
             )],
             Self::Title => vec![join(
-                sheet(Investigator::Profile.base_id()),
-                &[(Tag::Dl, None), (Tag::Dt, Some(Profile::Occupation.ids()[2]))],
+                sheet(Section::Profile.number()),
+                &[(Tag::Dl, None), (Tag::Dt, Some(Profile::Occupation.numbers()[2]))],
             )],
             Self::Initial => vec![join(
-                sheet(Investigator::Characteristic.base_id()),
+                sheet(Section::Characteristic.number()),
                 &[(Tag::Table, None), (Tag::Thead, None), (Tag::Tr, None), (Tag::Th, Some(2))],
             )],
             Self::Change => vec![
                 join(
-                    sheet(Investigator::Characteristic.base_id()),
+                    sheet(Section::Characteristic.number()),
                     &[(Tag::Table, None), (Tag::Thead, None), (Tag::Tr, None), (Tag::Th, Some(3))],
                 ),
                 join(
-                    sheet(Investigator::Skill.base_id()),
+                    sheet(Section::Skill.number()),
                     &[(Tag::Table, None), (Tag::Thead, None), (Tag::Tr, None), (Tag::Th, Some(6))],
                 ),
             ],
             Self::Modifier => vec![
                 join(
-                    sheet(Investigator::Characteristic.base_id()),
+                    sheet(Section::Characteristic.number()),
                     &[(Tag::Table, None), (Tag::Thead, None), (Tag::Tr, None), (Tag::Th, Some(4))],
                 ),
                 join(
-                    sheet(Investigator::Skill.base_id()),
+                    sheet(Section::Skill.number()),
                     &[(Tag::Table, None), (Tag::Thead, None), (Tag::Tr, None), (Tag::Th, Some(7))],
                 ),
             ],
             Self::Sum => vec![
                 join(
-                    sheet(Investigator::Characteristic.base_id()),
+                    sheet(Section::Characteristic.number()),
                     &[(Tag::Table, None), (Tag::Thead, None), (Tag::Tr, None), (Tag::Th, Some(5))],
                 ),
                 join(
-                    sheet(Investigator::Skill.base_id()),
+                    sheet(Section::Skill.number()),
                     &[(Tag::Table, None), (Tag::Thead, None), (Tag::Tr, None), (Tag::Th, Some(8))],
                 ),
             ],
             Self::Specialization => vec![join(
-                sheet(Investigator::Skill.base_id()),
+                sheet(Section::Skill.number()),
                 &[(Tag::Table, None), (Tag::Thead, None), (Tag::Tr, None), (Tag::Th, Some(2))],
             )],
             Self::BasePercent => vec![join(
-                sheet(Investigator::Skill.base_id()),
+                sheet(Section::Skill.number()),
                 &[(Tag::Table, None), (Tag::Thead, None), (Tag::Tr, None), (Tag::Th, Some(3))],
             )],
             Self::OccupationPoints => vec![join(
-                sheet(Investigator::Skill.base_id()),
+                sheet(Section::Skill.number()),
                 &[(Tag::Table, None), (Tag::Thead, None), (Tag::Tr, None), (Tag::Th, Some(4))],
             )],
             Self::InterestPoints => vec![join(
-                sheet(Investigator::Skill.base_id()),
+                sheet(Section::Skill.number()),
                 &[(Tag::Table, None), (Tag::Thead, None), (Tag::Tr, None), (Tag::Th, Some(5))],
             )],
             Self::Name => vec![
                 join(
-                    sheet(Investigator::Possession.base_id()),
+                    sheet(Section::Possession.number()),
                     &[
                         (Tag::Table, Some(1)),
                         (Tag::Thead, None),
@@ -205,7 +204,7 @@ impl Label {
                     ],
                 ),
                 join(
-                    sheet(Investigator::Possession.base_id()),
+                    sheet(Section::Possession.number()),
                     &[
                         (Tag::Table, Some(2)),
                         (Tag::Thead, None),
@@ -215,31 +214,31 @@ impl Label {
                 ),
             ],
             Self::Damage => vec![join(
-                sheet(Investigator::Possession.base_id()),
+                sheet(Section::Possession.number()),
                 &[(Tag::Table, Some(1)), (Tag::Thead, None), (Tag::Tr, None), (Tag::Th, Some(4))],
             )],
             Self::UsesPerRound => vec![join(
-                sheet(Investigator::Possession.base_id()),
+                sheet(Section::Possession.number()),
                 &[(Tag::Table, Some(1)), (Tag::Thead, None), (Tag::Tr, None), (Tag::Th, Some(5))],
             )],
             Self::Range => vec![join(
-                sheet(Investigator::Possession.base_id()),
+                sheet(Section::Possession.number()),
                 &[(Tag::Table, Some(1)), (Tag::Thead, None), (Tag::Tr, None), (Tag::Th, Some(6))],
             )],
             Self::Ammunition => vec![join(
-                sheet(Investigator::Possession.base_id()),
+                sheet(Section::Possession.number()),
                 &[(Tag::Table, Some(1)), (Tag::Thead, None), (Tag::Tr, None), (Tag::Th, Some(7))],
             )],
             Self::Malfunction => vec![join(
-                sheet(Investigator::Possession.base_id()),
+                sheet(Section::Possession.number()),
                 &[(Tag::Table, Some(1)), (Tag::Thead, None), (Tag::Tr, None), (Tag::Th, Some(8))],
             )],
             Self::ArmorPoints => vec![join(
-                sheet(Investigator::Possession.base_id()),
+                sheet(Section::Possession.number()),
                 &[(Tag::Table, Some(2)), (Tag::Thead, None), (Tag::Tr, None), (Tag::Th, Some(3))],
             )],
             Self::Notes => vec![join(
-                sheet(Investigator::Possession.base_id()),
+                sheet(Section::Possession.number()),
                 &[(Tag::Table, Some(2)), (Tag::Thead, None), (Tag::Tr, None), (Tag::Th, Some(4))],
             )],
             Self::Login => {
@@ -291,14 +290,14 @@ pub fn every_label(language: Language) -> Vec<(Id, &'static str)> {
         .chain([
             (
                 join(
-                    sheet(Investigator::Skill.base_id()),
+                    sheet(Section::Skill.number()),
                     &[(Tag::Table, None), (Tag::Thead, None), (Tag::Tr, None), (Tag::Th, Some(1))],
                 ),
-                Investigator::Skill.display(language),
+                Section::Skill.display(language),
             ),
             (
                 join(
-                    sheet(Investigator::Possession.base_id()),
+                    sheet(Section::Possession.number()),
                     &[
                         (Tag::Table, Some(1)),
                         (Tag::Thead, None),
@@ -310,7 +309,7 @@ pub fn every_label(language: Language) -> Vec<(Id, &'static str)> {
             ),
             (
                 join(
-                    sheet(Investigator::Possession.base_id()),
+                    sheet(Section::Possession.number()),
                     &[
                         (Tag::Table, Some(1)),
                         (Tag::Thead, None),
@@ -318,11 +317,11 @@ pub fn every_label(language: Language) -> Vec<(Id, &'static str)> {
                         (Tag::Th, Some(3)),
                     ],
                 ),
-                Investigator::Skill.display(language),
+                Section::Skill.display(language),
             ),
             (
                 join(
-                    sheet(Investigator::Possession.base_id()),
+                    sheet(Section::Possession.number()),
                     &[
                         (Tag::Table, Some(2)),
                         (Tag::Thead, None),

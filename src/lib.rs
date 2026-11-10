@@ -1,6 +1,4 @@
 #![no_std]
-#![feature(adt_const_params)]
-#![cfg_attr(feature = "coc7th", feature(const_param_ty_trait))]
 #![cfg_attr(
     all(target_arch = "wasm32", target_feature = "atomics"),
     feature(stdarch_wasm_atomic_wait)
@@ -55,11 +53,9 @@ pub mod calendar;
 pub mod coc7th;
 #[cfg(feature = "credential")]
 pub mod credential;
-pub mod data_struct;
 pub mod event;
 pub mod file_store;
 pub mod host;
-pub mod list;
 pub mod object;
 pub mod server;
 pub mod time;
@@ -279,7 +275,7 @@ macro_rules! scalar {
     )*};
 }
 
-scalar!(u8, u16, u32, u64, u128, i32, f32, f64);
+scalar!(u8, u16, u32, u64, u128, i8, i16, i32, f32, f64);
 
 macro_rules! wire_enum {
     ($($repr:ty: $($type:ty),+);+ $(;)?) => {$($(
@@ -667,7 +663,7 @@ mod error_tests {
         cases.push((Error::Frame(FrameError::Decode), vec![5, 1], "Decode"));
         #[cfg(all(feature = "server", not(target_arch = "wasm32")))]
         cases.extend([
-            (Error::Http(HttpError::Target), vec![6, 3], "Target"),
+            (Error::Http(HttpError::RequestLine), vec![6, 1], "RequestLine"),
             (Error::Http(HttpError::HeaderTooLarge), vec![6, 6], "HeaderTooLarge"),
             (Error::Session(SessionError::Frame(FrameError::Decode)), vec![8, 2, 1], "Decode"),
             (Error::Session(SessionError::Record(4)), vec![8, 4], "session record 4"),
@@ -677,15 +673,12 @@ mod error_tests {
         ]);
         #[cfg(feature = "meet")]
         cases.extend([
-            (Error::Meet(MeetError::Kind(9)), vec![10, 1], "Kind(9)"),
             (Error::Meet(MeetError::Payload(1)), vec![10, 2], "Payload(1)"),
             (Error::Meet(MeetError::SelfAddressed), vec![10, 3], "SelfAddressed"),
             (Error::Meet(MeetError::Full(2)), vec![10, 4], "Full(2)"),
-            (Error::Meet(MeetError::Frame(FrameError::Decode)), vec![10, 5, 1], "Decode"),
         ]);
         #[cfg(feature = "sync")]
         cases.extend([
-            (Error::Sync(SyncError::Frame(FrameError::Decode)), vec![11, 1, 1], "Decode"),
             (Error::Sync(SyncError::Store(message())), vec![11, 2], "m"),
             (Error::Sync(SyncError::Record(9)), vec![11, 3], "sync record 9"),
             (Error::Sync(SyncError::Ciphertext(1)), vec![11, 4], "Ciphertext(1)"),
