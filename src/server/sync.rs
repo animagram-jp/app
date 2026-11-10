@@ -19,10 +19,9 @@ use arbitrary_int::u1;
 #[cfg(all(feature = "server", not(target_arch = "wasm32")))]
 use crate::file_store::FileStore;
 use crate::{
-    FrameError, Input, Output, WireError,
+    Input, Output, WireError,
     bit::{self, Zero},
     file_store::FileStoreError,
-    parse,
 };
 
 pub const IDENTIFIER_LENGTH: usize = 16;
@@ -61,7 +60,6 @@ impl Input<'_> for Flags {
 
 #[derive(Debug, PartialEq)]
 pub enum SyncError {
-    Frame(FrameError),
     Store(String),
     Record(u32),
     Ciphertext(usize),
@@ -77,10 +75,6 @@ impl Display for SyncError {
 impl WireError for SyncError {
     fn identifiers(&self, path: &mut Vec<u16>) {
         match self {
-            SyncError::Frame(error) => {
-                path.push(1);
-                error.identifiers(path);
-            }
             SyncError::Store(_) => path.push(2),
             SyncError::Record(_) => path.push(3),
             SyncError::Ciphertext(_) => path.push(4),
@@ -90,7 +84,6 @@ impl WireError for SyncError {
 
     fn detail(&self) -> String {
         match self {
-            SyncError::Frame(error) => error.detail(),
             SyncError::Store(message) => message.clone(),
             SyncError::Record(id) => format!("sync record {id}"),
             other => other.to_string(),
@@ -101,12 +94,6 @@ impl WireError for SyncError {
 impl From<FileStoreError> for SyncError {
     fn from(error: FileStoreError) -> Self {
         SyncError::Store(error.detail())
-    }
-}
-
-impl From<FrameError> for SyncError {
-    fn from(error: FrameError) -> Self {
-        SyncError::Frame(error)
     }
 }
 
@@ -311,26 +298,6 @@ pub fn encode_pull(head: u64, records: &[Record], more: bool) -> Vec<u8> {
     output
 }
 
-pub fn decode_pull(body: &[u8]) -> Result<u64, SyncError> {
-    parse(body).ok_or(SyncError::Frame(FrameError::Decode))
-}
-
-pub fn decode_push(body: &[u8]) -> Result<Vec<Entry>, SyncError> {
-    let mut rest = body;
-    let count = u16::decode(&mut rest).ok_or(FrameError::Decode)? as usize;
-    if count > PUSH_COUNT_MAX {
-        return Err(SyncError::PushCount(count));
-    }
-    let mut entries = Vec::with_capacity(count);
-    for _ in 0..count {
-        entries.push(Entry::decode(&mut rest).ok_or(FrameError::Decode)?);
-    }
-    if !rest.is_empty() {
-        return Err(SyncError::Frame(FrameError::Decode));
-    }
-    Ok(entries)
-}
-
 pub fn encode_push(head: u64, outcomes: &[Outcome]) -> Vec<u8> {
     let mut output = Vec::new();
     head.encode(&mut output);
@@ -357,6 +324,7 @@ pub fn encode_push(head: u64, outcomes: &[Outcome]) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::FrameError;
 
     pub(super) fn identifier(number: u8) -> Identifier {
         [number; IDENTIFIER_LENGTH]
@@ -389,18 +357,7 @@ mod tests {
     }
 
     #[test]
-    fn unknown_flags_are_rejected_at_decode() {
-        let mut body = Vec::new();
-        1u16.encode(&mut body);
-        identifier(1).encode(&mut body);
-        0u64.encode(&mut body);
-        2u8.encode(&mut body);
-        b""[..].encode(&mut body);
-        assert_eq!(decode_push(&body), Err(SyncError::Frame(FrameError::Decode)));
-    }
-
-    #[test]
-    fn push_and_pull_frames_round_trip() {
+    fn pull_and_push_responses_encode_in_wire_order() {
         let records = [Record {
             identifier: identifier(1),
             version:    2,
@@ -417,38 +374,6 @@ mod tests {
         assert_eq!(u8::decode(&mut rest), Some(0));
         assert_eq!(<&[u8]>::decode(&mut rest), Some(&b"x"[..]));
         assert!(rest.is_empty());
-
-        assert_eq!(decode_pull(&9u64.to_le_bytes()), Ok(9));
-        assert_eq!(decode_pull(&[0; 9]), Err(SyncError::Frame(FrameError::Decode)));
-
-        let mut body = Vec::new();
-        2u16.encode(&mut body);
-        identifier(1).encode(&mut body);
-        0u64.encode(&mut body);
-        0u8.encode(&mut body);
-        b"c1"[..].encode(&mut body);
-        identifier(2).encode(&mut body);
-        3u64.encode(&mut body);
-        Flags::tombstone().encode(&mut body);
-        b""[..].encode(&mut body);
-        let entries = decode_push(&body).unwrap();
-        assert_eq!(
-            entries,
-            [
-                entry(1, 0, b"c1"),
-                Entry {
-                    identifier: identifier(2),
-                    base:       3,
-                    flags:      Flags::tombstone(),
-                    ciphertext: Vec::new(),
-                }
-            ]
-        );
-        assert_eq!(
-            decode_push(&(PUSH_COUNT_MAX as u16 + 1).to_le_bytes()),
-            Err(SyncError::PushCount(PUSH_COUNT_MAX + 1))
-        );
-        assert_eq!(decode_push(&[1, 0, 0, 0]), Err(SyncError::Frame(FrameError::Decode)));
 
         let conflict = Record {
             identifier: identifier(1),

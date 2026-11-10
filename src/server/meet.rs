@@ -13,7 +13,7 @@ use core::{
     result::Result::{self, Ok},
 };
 
-use crate::{FrameError, Input, Output, WireError};
+use crate::{Output, WireError};
 
 #[cfg(all(feature = "server", not(target_arch = "wasm32")))]
 pub const LIFETIME_SECONDS_MAX: u64 = 60;
@@ -36,11 +36,9 @@ crate::wire_enum!(u8: Kind);
 
 #[derive(Debug, PartialEq)]
 pub enum MeetError {
-    Kind(u8),
     Payload(usize),
     SelfAddressed,
     Full(u64),
-    Frame(FrameError),
 }
 
 impl Display for MeetError {
@@ -52,22 +50,14 @@ impl Display for MeetError {
 impl WireError for MeetError {
     fn identifiers(&self, path: &mut Vec<u16>) {
         match self {
-            MeetError::Kind(_) => path.push(1),
             MeetError::Payload(_) => path.push(2),
             MeetError::SelfAddressed => path.push(3),
             MeetError::Full(_) => path.push(4),
-            MeetError::Frame(error) => {
-                path.push(5);
-                error.identifiers(path);
-            }
         }
     }
 
     fn detail(&self) -> String {
-        match self {
-            MeetError::Frame(error) => error.detail(),
-            other => other.to_string(),
-        }
+        self.to_string()
     }
 }
 
@@ -163,36 +153,13 @@ pub fn encode(signals: &[Signal]) -> Vec<u8> {
     output
 }
 
-pub fn decode(body: &[u8]) -> Result<(u64, Kind, Vec<u8>), MeetError> {
-    let mut rest = body;
-    let decoded = (|| {
-        let target = u64::decode(&mut rest)?;
-        let kind = u8::decode(&mut rest)?;
-        let payload = Vec::<u8>::decode(&mut rest)?;
-        rest.is_empty().then_some((target, kind, payload))
-    })();
-    let (target, kind, payload) = decoded.ok_or(MeetError::Frame(FrameError::Decode))?;
-    let kind = Some(Kind::from(kind)).filter(|k| *k != Kind::Other).ok_or(MeetError::Kind(kind))?;
-    Ok((target, kind, payload))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Input;
 
     #[test]
-    fn unknown_kinds_are_rejected_at_decode() {
-        for value in [0u8, 4, 255] {
-            let mut body = Vec::new();
-            1u64.encode(&mut body);
-            value.encode(&mut body);
-            b""[..].encode(&mut body);
-            assert_eq!(decode(&body), Err(MeetError::Kind(value)));
-        }
-    }
-
-    #[test]
-    fn signals_round_trip_through_the_wire() {
+    fn signals_encode_in_order() {
         let signals = [
             Signal { from: 5, kind: Kind::Offer, payload: b"v=0".to_vec(), at: 1 },
             Signal { from: 6, kind: Kind::Candidate, payload: Vec::new(), at: 2 },
@@ -207,19 +174,6 @@ mod tests {
         assert_eq!(u8::decode(&mut rest), Some(Kind::Candidate as u8));
         assert_eq!(<&[u8]>::decode(&mut rest), Some(&b""[..]));
         assert!(rest.is_empty());
-
-        let mut body = Vec::new();
-        77u64.encode(&mut body);
-        Kind::Answer.encode(&mut body);
-        b"sdp"[..].encode(&mut body);
-        assert_eq!(decode(&body), Ok((77, Kind::Answer, b"sdp".to_vec())));
-        assert_eq!(decode(&[1, 2]), Err(MeetError::Frame(FrameError::Decode)));
-        let mut trailing = Vec::new();
-        1u64.encode(&mut trailing);
-        1u8.encode(&mut trailing);
-        b""[..].encode(&mut trailing);
-        0u8.encode(&mut trailing);
-        assert_eq!(decode(&trailing), Err(MeetError::Frame(FrameError::Decode)));
     }
 }
 

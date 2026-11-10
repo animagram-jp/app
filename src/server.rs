@@ -6,6 +6,10 @@ pub mod sync;
 #[cfg(all(feature = "server", not(target_arch = "wasm32")))]
 pub mod account;
 #[cfg(all(feature = "server", not(target_arch = "wasm32")))]
+pub mod app;
+#[cfg(all(feature = "server", not(target_arch = "wasm32")))]
+pub mod event;
+#[cfg(all(feature = "server", not(target_arch = "wasm32")))]
 pub mod handler;
 #[cfg(all(feature = "server", not(target_arch = "wasm32")))]
 pub mod host;
