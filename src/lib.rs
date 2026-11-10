@@ -663,7 +663,7 @@ mod error_tests {
         cases.push((Error::Frame(FrameError::Decode), vec![5, 1], "Decode"));
         #[cfg(all(feature = "server", not(target_arch = "wasm32")))]
         cases.extend([
-            (Error::Http(HttpError::Target), vec![6, 3], "Target"),
+            (Error::Http(HttpError::RequestLine), vec![6, 1], "RequestLine"),
             (Error::Http(HttpError::HeaderTooLarge), vec![6, 6], "HeaderTooLarge"),
             (Error::Session(SessionError::Frame(FrameError::Decode)), vec![8, 2, 1], "Decode"),
             (Error::Session(SessionError::Record(4)), vec![8, 4], "session record 4"),
@@ -673,15 +673,12 @@ mod error_tests {
         ]);
         #[cfg(feature = "meet")]
         cases.extend([
-            (Error::Meet(MeetError::Kind(9)), vec![10, 1], "Kind(9)"),
             (Error::Meet(MeetError::Payload(1)), vec![10, 2], "Payload(1)"),
             (Error::Meet(MeetError::SelfAddressed), vec![10, 3], "SelfAddressed"),
             (Error::Meet(MeetError::Full(2)), vec![10, 4], "Full(2)"),
-            (Error::Meet(MeetError::Frame(FrameError::Decode)), vec![10, 5, 1], "Decode"),
         ]);
         #[cfg(feature = "sync")]
         cases.extend([
-            (Error::Sync(SyncError::Frame(FrameError::Decode)), vec![11, 1, 1], "Decode"),
             (Error::Sync(SyncError::Store(message())), vec![11, 2], "m"),
             (Error::Sync(SyncError::Record(9)), vec![11, 3], "sync record 9"),
             (Error::Sync(SyncError::Ciphertext(1)), vec![11, 4], "Ciphertext(1)"),

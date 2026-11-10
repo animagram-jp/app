@@ -70,7 +70,7 @@ cargo test --doc # docTest
 cargo test --lib # unit test
 cargo test --features calendar --lib # calendar feature
 cargo test --no-default-features --features coc7th --lib # unit test (no file_store feature)
-cargo test --features server --lib # server feature (sync, meet, account, session, http, handler, host)
+cargo test --features server --lib # server feature (sync, meet, account, session, http, event, app, handler, host)
 ```
 
 ## Browser test
@@ -98,7 +98,6 @@ cargo run --features server --bin server
 | `SERVER_ADDRESS` | bind アドレス(必須。`127.0.0.1:2001` など) |
 | `SERVER_WORKERS` | accept スレッド数(既定 4) |
 | `SERVER_DATA` | データディレクトリ(必須。[Server.md](./reference/Server.md) のパス表) |
-| `SERVER_ORIGIN` | 変更系リクエストに要求する `Origin`(カンマ区切り、未設定なら検証しない) |
 | `SERVER_PEPPER` | pepper ファイルのパス。未設定なら `$CREDENTIALS_DIRECTORY/pepper`(systemd credential)を読む。32 bytes 以上 |
 
 - 開発環境では`.secrets`に`SERVER_PEPPER=`を定義。
@@ -168,12 +167,12 @@ appとserverは`lib.rs::{Input::decode, Output::encode}`を共有し、HTTP本�
 | 3 | Panic | - | 1 |
 | 4 | FileStore | - | 1 InvalidState, 2 QuotaExceeded, 3 Unsupported, 4 InvalidName, 5 Unknown, 6 NotFound, 7 NoModificationAllowed |
 | 5 | Frame | - | 1 Decode |
-| 6 | Http | server | 1 RequestLine, 2 Method, 3 Target, 4 Version, 5 Header, 6 HeaderTooLarge, 7 BodyTooLarge, 8 ContentLength, 9 TransferEncoding |
+| 6 | Http | server | 1 RequestLine, 4 Version, 5 Header, 6 HeaderTooLarge, 7 BodyTooLarge, 8 ContentLength, 9 TransferEncoding |
 | 7 | Credential | credential | 1 Email, 2 Password, 3 Parameters |
 | 8 | Session | server | 1 Random, 2 Frame, 3 Store, 4 Record |
 | 9 | Account | server | 1 Email, 2 Protocol, 3 WrappedRoot, 4 NotAllowed, 5 AlreadyRegistered, 6 Unauthorized, 7 Record, 8 Store |
-| 10 | Meet | meet | 1 Kind, 2 Payload, 3 SelfAddressed, 4 Full, 5 Frame |
-| 11 | Sync | sync | 1 Frame, 2 Store, 3 Record, 4 Ciphertext, 6 PushCount |
+| 10 | Meet | meet | 2 Payload, 3 SelfAddressed, 4 Full |
+| 11 | Sync | sync | 2 Store, 3 Record, 4 Ciphertext, 6 PushCount |
 | 12 | Vault | vault | 1 Random, 2 Length, 3 Integrity |
 
 ---
@@ -200,15 +199,17 @@ appとserverは`lib.rs::{Input::decode, Output::encode}`を共有し、HTTP本�
 | coc7th.rs, coc7th/ | CoC7thアプリ。coc7th.rs(`Kind`)、investigator(`object::Body`を実装する`Investigator`。`Score`(能力値)、`Points`(技能の各ポイント、`SkillValue`のbit配置で直列化)、`Specialty` / `Specialization`(専門分野と自由記入の技能)、`Memo`を本体に持つ。`Section`, `Profile`, `Characteristic`, `SecondaryAttribute`, `Skill`, `Backstory`などのenumは、言語別の`display`とDOM id の`number` / `row` / `dom`を定義する。`Dice`と`dice`(表示・ロール)を含む)、import(JSONから`Record<Investigator>`を組む)、handler(canvasを操作する、ドメイン固有のステートを持つHandler定義。`Record<Investigator>`のフィールドとhostのdom::Idを相互にバルクマッピングして、canvasと内部データを相互変換する)、roll(ロール種別と成功度) |
 | calendar.rs, calendar/ | カレンダーアプリ(feature `calendar`)。calendar.rs(`Kind`, `Parent`と、`object::Body`を実装する`Tag` / `Appointment`、`tags` / `check`、JSONの`import` / `export`、`parse_uid` / `parse_time` / `parse_date`。FileStoreのidは`Head::id`にissue_idで採番する。このidは他のレコードに書かず、参照はJSONと同じ`uid`(資源)と`code`(状態・カテゴリ)で持つ。削除は参照元を書き換えず、参照先が無いことを「削除済み」として読む側が扱う)、grid / target(座標・レーン・DOM対応)、handler(`Calendar`のような集約を持たず、`object::{get, set, list}`と`calendar::tags`で`FileStore`を走査して読み書きする。編集も削除もモーダルではメモリ操作で、save / discardの判断はhandler)。 |
 |-|-|
-| server/ | [Server.md](./reference/Server.md). feature `meet, sync`, feature `server`: `account, handler, host, http, session, Principal, Action, Resource, authorize`. |
-| server/meet.rs | [Meet.md](./reference/Meet.md). feature `meet`. P2P シグナリングのワイヤ(`Kind` / `Signal` と poll / signal の encode / decode)。feature `server` ではサーバー側の `Board`(`target` ごとの待ち行列、寿命、在席)を含む. |
-| server/sync.rs | feature `sync`. 同期レコードのワイヤ(`Record, Entry, Flags, Status, Outcome` と pull / push の encode / decode)。feature `server` ではサーバー側の `Collection<S>`(`identifier` と `version` の索引、`pull` の分割、`push` の版照合)を含む. |
+| server/ | [Server.md](./reference/Server.md). feature `meet, sync`, feature `server`: `account, app, event, handler, host, http, session, Principal, Action, Resource, authorize`. |
+| server/meet.rs | [Meet.md](./reference/Meet.md). feature `meet`. P2P シグナリングのワイヤ(`Kind` / `Signal` と poll の encode)。feature `server` ではサーバー側の `Board`(`target` ごとの待ち行列、寿命、在席)を含む. |
+| server/sync.rs | feature `sync`. 同期レコードのワイヤ(`Record, Entry, Flags, Status, Outcome` と pull / push の encode)。feature `server` ではサーバー側の `Collection<S>`(`identifier` と `version` の索引、`pull` の分割、`push` の版照合)を含む. |
 | server/account.rs | feature `server`。`Record`(`protocol, email, verifier, wrapped_root, last_device`)と `Account<S>`(有効化、ログイン、パスワード変更)。`parse_allowlist`. |
-| server/http.rs | feature `server`。HTTP/1.1 の厳格な部分集合。`parse`(不完全なら `None`、上限超過と不正は `HttpError`)と `Response::to_bytes`。 |
-| server/handler.rs | feature `server`。`Handler<S: Open>`(pepper、allowlist、origins、各ストア、`Board`)と `process_request`(パス分岐、認証、`Origin` 検証、同期)。`failure` / `reject` がエラー応答を組む。 |
-| server/host.rs | feature `server`. `use std`. `now, serve`(accept スレッド、keep-alive、タイムアウト、60 秒ごとの `maintain`). |
+| server/http.rs | feature `server`。HTTP/1.1 の厳格な部分集合。`frame` がバッファから1リクエストの長さと keep-alive を区切る(不完全なら `None`、上限超過と区切れないものは `HttpError`)。`Message` の `Input`(メソッド、パス、ヘッダ、本文)と `Response` の `Output`。 |
+| server/app.rs | feature `server`。`App<S: Open>`。events と commands の2つのキューを持つ。`process` が1フレームを `Request` に decode し(失敗は 400)、`run` が events を消費するまで `dispatch` を繰り返す。`Event::Request` は `Handler::admit`(認証と認可)を経て `Handler::process_*` へ移譲し、`Command::Response` を積む。 |
+| server/event.rs | feature `server`。`Event`(`Request / Maintain`)、`Credential`、`Request` と、その `Input`(`Message` のメソッドとパスで variant を決め、本文を wire format で読む。認証の要る variant は Cookie の `Token` を持ち、Cookie が無ければ 0...0。失敗は `None`)。 |
+| server/handler.rs | feature `server`。`Handler<S: Open>`(pepper、allowlist、各ストア、`Board`)。`admit` と、`Request` の各 variant に対応する `process_*`。`failure` / `reject` がエラー応答を組む。 |
+| server/host.rs | feature `server`. `use std`. `now`、`Command`、`serve`(accept スレッド、60 秒ごとの `Event::Maintain`)。接続ごとに `http::frame` で1リクエストを区切り、`process_event` が `Mutex<App>` にフレームを渡して commands を受け取る。`drain` / `execute` が `Connection` ヘッダを付けて書き出し、keep-alive でなければ切断する。区切れないものはここで拒否する。 |
 | server/session.rs | feature `server`. `Record`(`digest, user, device, peer, created, seen`)と `Session<S>`(発行、認証、失効、purge)。Cookie の組み立てと解析. |
-| bin/server.rs | 環境変数を読んで `Handler<FsStore>` を開き、`serve`する. |
+| bin/server.rs | 環境変数を読んで `Handler<FsStore>` を開き、`App` に渡して `serve` する. |
 
 ---
 
