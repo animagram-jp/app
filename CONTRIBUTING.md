@@ -96,7 +96,6 @@ cargo run --features server --bin server
 | `SERVER_ADDRESS` | bind アドレス(必須。`127.0.0.1:2001` など) |
 | `SERVER_WORKERS` | accept スレッド数(既定 4) |
 | `SERVER_DATA` | データディレクトリ(必須。[Server.md](./reference/Server.md) のパス表) |
-| `SERVER_ORIGIN` | 変更系リクエストに要求する `Origin`(カンマ区切り、未設定なら検証しない) |
 | `SERVER_PEPPER` | pepper ファイルのパス。未設定なら `$CREDENTIALS_DIRECTORY/pepper`(systemd credential)を読む。32 bytes 以上 |
 
 - 開発環境では`.secrets`に`SERVER_PEPPER=`を定義。
@@ -166,7 +165,7 @@ appとserverは`lib.rs::{Input::decode, Output::encode}`を共有し、HTTP本�
 | 3 | Panic | - | 1 |
 | 4 | FileStore | - | 1 InvalidState, 2 QuotaExceeded, 3 Unsupported, 4 InvalidName, 5 Unknown, 6 NotFound, 7 NoModificationAllowed |
 | 5 | Frame | - | 1 Decode |
-| 6 | Http | server | 1 RequestLine, 2 Method, 3 Target, 4 Version, 5 Header, 6 HeaderTooLarge, 7 BodyTooLarge, 8 ContentLength, 9 TransferEncoding |
+| 6 | Http | server | 1 RequestLine, 4 Version, 5 Header, 6 HeaderTooLarge, 7 BodyTooLarge, 8 ContentLength, 9 TransferEncoding |
 | 7 | Credential | credential | 1 Email, 2 Password, 3 Parameters |
 | 8 | Session | server | 1 Random, 2 Frame, 3 Store, 4 Record |
 | 9 | Account | server | 1 Email, 2 Protocol, 3 WrappedRoot, 4 NotAllowed, 5 AlreadyRegistered, 6 Unauthorized, 7 Record, 8 Store |
@@ -202,11 +201,11 @@ appとserverは`lib.rs::{Input::decode, Output::encode}`を共有し、HTTP本�
 | server/meet.rs | [Meet.md](./reference/Meet.md). feature `meet`. P2P シグナリングのワイヤ(`Kind` / `Signal` と poll の encode)。feature `server` ではサーバー側の `Board`(`target` ごとの待ち行列、寿命、在席)を含む. |
 | server/sync.rs | feature `sync`. 同期レコードのワイヤ(`Record, Entry, Flags, Status, Outcome` と pull / push の encode)。feature `server` ではサーバー側の `Collection<S>`(`identifier` と `version` の索引、`pull` の分割、`push` の版照合)を含む. |
 | server/account.rs | feature `server`。`Record`(`protocol, email, verifier, wrapped_root, last_device`)と `Account<S>`(有効化、ログイン、パスワード変更)。`parse_allowlist`. |
-| server/http.rs | feature `server`。HTTP/1.1 の厳格な部分集合。`parse` が `Message` を返す(不完全なら `None`、上限超過と不正は `HttpError`)。`Response` の `Output`。 |
-| server/app.rs | feature `server`。`App<S: Open>`。events と commands の2つのキューを持ち、`process` が events を消費するまで `dispatch` を繰り返す。`Event::Chunk` を接続ごとに溜めて `Message` に区切り、`Origin` 検証と Cookie の `Token` 取り出しの後、`Event::Request` を派生させる。`Event::Request` は `Handler::admit`(認証と認可)を経て `Handler::process_*` へ移譲し、`Command::Response` / `Command::Close` を積む。 |
-| server/event.rs | feature `server`。`Event`(`Chunk / Request / Closed / Maintain`)、`Chunk`、`Credential`、`Request` と、その `Input`(メソッドとパスで variant を決め、本文を wire format で読む。失敗は `None`)。 |
+| server/http.rs | feature `server`。HTTP/1.1 の厳格な部分集合。`frame` がバッファから1リクエストの長さと keep-alive を区切る(不完全なら `None`、上限超過と区切れないものは `HttpError`)。`Message` の `Input`(メソッド、パス、ヘッダ、本文)と `Response` の `Output`。 |
+| server/app.rs | feature `server`。`App<S: Open>`。events と commands の2つのキューを持つ。`process` が1フレームを `Request` に decode し(失敗は 400)、`run` が events を消費するまで `dispatch` を繰り返す。`Event::Request` は `Handler::admit`(認証と認可)を経て `Handler::process_*` へ移譲し、`Command::Response` を積む。 |
+| server/event.rs | feature `server`。`Event`(`Request / Maintain`)、`Credential`、`Request` と、その `Input`(`Message` のメソッドとパスで variant を決め、本文を wire format で読む。認証の要る variant は Cookie の `Token` を持ち、Cookie が無ければ 0...0。失敗は `None`)。 |
 | server/handler.rs | feature `server`。`Handler<S: Open>`(pepper、allowlist、各ストア、`Board`)。`admit` と、`Request` の各 variant に対応する `process_*`。`failure` / `reject` がエラー応答を組む。 |
-| server/host.rs | feature `server`. `use std`. `now`、`Command`、`serve`(accept スレッド、接続ごとの `Event::Chunk` / `Event::Closed`、60 秒ごとの `Event::Maintain`)。`process_event` が `Mutex<App>` に event を渡して commands を受け取り、`drain` / `execute` が書き出しと切断を行う。 |
+| server/host.rs | feature `server`. `use std`. `now`、`Command`、`serve`(accept スレッド、60 秒ごとの `Event::Maintain`)。接続ごとに `http::frame` で1リクエストを区切り、`process_event` が `Mutex<App>` にフレームを渡して commands を受け取る。`drain` / `execute` が `Connection` ヘッダを付けて書き出し、keep-alive でなければ切断する。区切れないものはここで拒否する。 |
 | server/session.rs | feature `server`. `Record`(`digest, user, device, peer, created, seen`)と `Session<S>`(発行、認証、失効、purge)。Cookie の組み立てと解析. |
 | bin/server.rs | 環境変数を読んで `Handler<FsStore>` を開き、`App` に渡して `serve` する. |
 

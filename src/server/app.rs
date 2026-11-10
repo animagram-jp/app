@@ -1,111 +1,42 @@
-use alloc::{
-    collections::{BTreeMap, VecDeque},
-    string::String,
-    vec,
-    vec::Vec,
-};
+use alloc::{collections::VecDeque, vec, vec::Vec};
 use core::{
     iter::Extend,
     mem,
-    option::Option::{self, None, Some},
-    primitive::{bool, u32, u64},
-    result::Result::{self, Err, Ok},
+    option::Option::Some,
+    primitive::{u8, u64},
+    result::Result::{self, Ok},
 };
 
 use crate::{
     Error, FrameError, Input,
     server::{
         Action, Open, Resource,
-        event::{Chunk, Event, Request},
-        handler::{Handler, failure, reject},
+        event::{Event, Request},
+        handler::{Handler, reject},
         host::Command,
-        http::{self, HttpError, Message, Method, Response},
-        session::{self, Token},
+        http::Response,
     },
 };
 
 pub struct App<S: Open> {
-    origins:  Vec<String>,
     events:   VecDeque<Event>,
     handler:  Handler<S>,
     commands: Vec<Command>,
-    requests: BTreeMap<u32, Vec<u8>>,
-}
-
-fn is_origin_allowed(origins: &[String], message: &Message) -> bool {
-    if message.method == Method::Get || origins.is_empty() {
-        return true;
-    }
-    message.header("origin").is_some_and(|origin| origins.iter().any(|allowed| allowed == origin))
-}
-
-fn respond(connection: u32, keep_alive: bool, response: Response) -> Vec<Command> {
-    let response = response.header("Connection", if keep_alive { "keep-alive" } else { "close" });
-    let mut commands = vec![Command::Response { connection, response }];
-    if !keep_alive {
-        commands.push(Command::Close { connection });
-    }
-    commands
 }
 
 impl<S: Open> App<S> {
-    pub fn new(origins: Vec<String>, handler: Handler<S>) -> Self {
-        Self {
-            origins,
-            events: VecDeque::new(),
-            handler,
-            commands: Vec::new(),
-            requests: BTreeMap::new(),
-        }
+    pub fn new(handler: Handler<S>) -> Self {
+        Self { events: VecDeque::new(), handler, commands: Vec::new() }
     }
 
     fn dispatch(&mut self, now: u64, event: Event) -> (Vec<Event>, Vec<Command>) {
-        let Self { origins, handler, requests, .. } = self;
+        let Self { handler, .. } = self;
 
         match event {
-            Event::Chunk(chunk) => {
-                let connection = chunk.connection;
-                let buffer = requests.entry(connection).or_default();
-                buffer.extend_from_slice(&chunk.bytes);
-                let (message, consumed) = match http::parse(buffer) {
-                    Ok(Some(parsed)) => parsed,
-                    Ok(None) => return (vec![], vec![]),
-                    Err(error) => {
-                        requests.remove(&connection);
-                        return (vec![], respond(connection, false, reject(Error::Http(error))));
-                    }
-                };
-                let keep_alive = message.keep_alive;
-                let allowed = is_origin_allowed(origins, &message);
-                let token = message.header("cookie").and_then(session::token_from_cookie);
-                let request = Request::decode(&mut &buffer[..consumed]);
-                if keep_alive {
-                    buffer.drain(..consumed);
-                } else {
-                    requests.remove(&connection);
-                }
-                let next = Event::Chunk(Chunk { connection, bytes: Vec::new() });
-                let response = match (allowed, request) {
-                    (false, _) => failure(403, Error::Http(HttpError::Header)),
-                    (true, None) => reject(Error::Frame(FrameError::Decode)),
-                    (true, Some(request)) => {
-                        let event = Event::Request { connection, keep_alive, token, request };
-                        return (if keep_alive { vec![event, next] } else { vec![event] }, vec![]);
-                    }
-                };
-                (
-                    if keep_alive { vec![next] } else { vec![] },
-                    respond(connection, keep_alive, response),
-                )
-            }
-            Event::Request { connection, keep_alive, token, request } => {
-                let response = process_request(handler, now, token, request)
-                    .unwrap_or_else(|response| response);
-                (vec![], respond(connection, keep_alive, response))
-            }
-            Event::Closed(connection) => {
-                requests.remove(&connection);
-                (vec![], vec![])
+            Event::Request(request) => {
+                let response =
+                    process_request(handler, now, request).unwrap_or_else(|response| response);
+                (vec![], vec![Command::Response(response)])
             }
             Event::Maintain => {
                 let _ = handler.maintain(now);
@@ -114,7 +45,7 @@ impl<S: Open> App<S> {
         }
     }
 
-    pub fn process(&mut self, now: u64, event: Event) {
+    pub(crate) fn run(&mut self, now: u64, event: Event) {
         self.events.push_back(event);
 
         while let Some(event) = self.events.pop_front() {
@@ -122,6 +53,15 @@ impl<S: Open> App<S> {
             self.events.extend(new_events);
             self.commands.extend(new_commands);
         }
+    }
+
+    pub fn process(&mut self, now: u64, frame: &[u8]) {
+        let Some(request) = Request::decode(&mut { frame }) else {
+            self.commands.push(Command::Response(reject(Error::Frame(FrameError::Decode))));
+            return;
+        };
+
+        self.run(now, Event::Request(request));
     }
 
     pub fn take_commands(&mut self) -> Vec<Command> {
@@ -132,7 +72,6 @@ impl<S: Open> App<S> {
 fn process_request<S: Open>(
     handler: &mut Handler<S>,
     now: u64,
-    token: Option<Token>,
     request: Request,
 ) -> Result<Response, Response> {
     Ok(match request {
@@ -141,14 +80,14 @@ fn process_request<S: Open>(
             handler.process_activate(now, &credential, &wrapped_root)
         }
         Request::Issue { credential } => handler.process_issue(now, &credential),
-        Request::Revoke => handler.process_revoke(token),
-        Request::Check => {
-            handler.admit(now, token, Action::Read, |session| Resource::Account(session.user))?;
+        Request::Revoke { token } => handler.process_revoke(&token),
+        Request::Check { token } => {
+            handler.admit(now, &token, Action::Read, |session| Resource::Account(session.user))?;
             Response::new(204)
         }
-        Request::ChangePassword { current_key, next_key, wrapped_root } => {
+        Request::ChangePassword { token, current_key, next_key, wrapped_root } => {
             let session = handler
-                .admit(now, token, Action::Write, |session| Resource::Account(session.user))?;
+                .admit(now, &token, Action::Write, |session| Resource::Account(session.user))?;
             handler.process_change_password(
                 now,
                 session.user,
@@ -157,25 +96,25 @@ fn process_request<S: Open>(
                 &wrapped_root,
             )
         }
-        Request::Poll => {
+        Request::Poll { token } => {
             let session =
-                handler.admit(now, token, Action::Read, |session| Resource::Peer(session.peer))?;
+                handler.admit(now, &token, Action::Read, |session| Resource::Peer(session.peer))?;
             handler.process_poll(now, session.peer)
         }
-        Request::Signal { target, kind, payload } => {
-            let session =
-                handler.admit(now, token, Action::Write, |session| Resource::Peer(session.peer))?;
+        Request::Signal { token, target, kind, payload } => {
+            let session = handler
+                .admit(now, &token, Action::Write, |session| Resource::Peer(session.peer))?;
             handler.process_signal(now, session.peer, target, kind, payload)
         }
-        Request::Pull { store, since } => {
-            let session = handler.admit(now, token, Action::Read, |session| Resource::Store {
+        Request::Pull { token, store, since } => {
+            let session = handler.admit(now, &token, Action::Read, |session| Resource::Store {
                 user: session.user,
                 name: store.clone(),
             })?;
             handler.process_pull(session.user, &store, since)
         }
-        Request::Push { store, entries } => {
-            let session = handler.admit(now, token, Action::Write, |session| Resource::Store {
+        Request::Push { token, store, entries } => {
+            let session = handler.admit(now, &token, Action::Write, |session| Resource::Store {
                 user: session.user,
                 name: store.clone(),
             })?;
@@ -186,7 +125,10 @@ fn process_request<S: Open>(
 
 #[cfg(test)]
 mod tests {
-    use alloc::{format, string::ToString};
+    use alloc::{
+        format,
+        string::{String, ToString},
+    };
 
     use super::*;
     use crate::{
@@ -195,14 +137,13 @@ mod tests {
         file_store::MemoryStore,
         server::{
             account::parse_allowlist,
-            meet,
+            meet, session,
             sync::{Flags, Status},
         },
     };
 
     const PEPPER: &[u8] = b"pepper pepper pepper pepper pepper";
     const ROOT: [u8; 72] = [7u8; 72];
-    const CONNECTION: u32 = 1;
 
     struct Harness {
         app: App<MemoryStore>,
@@ -225,7 +166,7 @@ mod tests {
     }
 
     impl Harness {
-        fn new(origins: &[&str]) -> Self {
+        fn new() -> Self {
             let handler = Handler::<MemoryStore>::open(
                 (),
                 100,
@@ -233,14 +174,7 @@ mod tests {
                 parse_allowlist("alice@example.jp\nbob@example.jp\n"),
             )
             .unwrap();
-            let origins = origins.iter().map(|origin| origin.to_string()).collect();
-            Self { app: App::new(origins, handler), now: 100 }
-        }
-
-        fn receive(&mut self, bytes: &[u8]) -> Vec<Command> {
-            let chunk = Chunk { connection: CONNECTION, bytes: bytes.to_vec() };
-            self.app.process(self.now, Event::Chunk(chunk));
-            self.app.take_commands()
+            Self { app: App::new(handler), now: 100 }
         }
 
         fn send(
@@ -250,15 +184,11 @@ mod tests {
             headers: &[(&str, &str)],
             body: &[u8],
         ) -> Response {
-            let mut commands = self.receive(&frame(method, path, headers, body));
+            self.app.process(self.now, &frame(method, path, headers, body));
+            let mut commands = self.app.take_commands();
             assert_eq!(commands.len(), 1);
-            match commands.remove(0) {
-                Command::Response { connection, response } => {
-                    assert_eq!(connection, CONNECTION);
-                    response
-                }
-                Command::Close { .. } => panic!("closed without a response"),
-            }
+            let Command::Response(response) = commands.remove(0);
+            response
         }
 
         fn activate(&mut self, email: &str, authentication_key: &Key) -> Response {
@@ -291,11 +221,10 @@ mod tests {
 
     #[test]
     fn health_answers_and_unknown_routes_do_not_decode() {
-        let mut harness = Harness::new(&[]);
+        let mut harness = Harness::new();
         harness.now = 160;
         let response = harness.send("GET", "/v1/health", &[], &[]);
         assert_eq!(response.status, 200);
-        assert_eq!(header(&response, "Connection"), Some("keep-alive"));
         let mut reader = &response.body[..];
         assert_eq!((u8::decode(&mut reader), u64::decode(&mut reader)), (Some(1), Some(60)));
 
@@ -306,57 +235,8 @@ mod tests {
     }
 
     #[test]
-    fn a_request_split_across_chunks_is_answered_once_complete() {
-        let mut harness = Harness::new(&[]);
-        let bytes = frame("GET", "/v1/health", &[], &[]);
-        assert!(harness.receive(&bytes[..7]).is_empty());
-        let commands = harness.receive(&bytes[7..]);
-        assert!(matches!(
-            commands.as_slice(),
-            [Command::Response { response, .. }] if response.status == 200
-        ));
-    }
-
-    #[test]
-    fn pipelined_requests_are_answered_in_order() {
-        let mut harness = Harness::new(&["https://app.example.jp"]);
-        let mut bytes = frame("GET", "/v1/health", &[], &[]);
-        bytes.extend(frame("PUT", "/v1/account", &[("Origin", "https://evil.example")], &[]));
-        bytes.extend(frame("GET", "/v1/nothing", &[], &[]));
-        let statuses: Vec<u16> = harness
-            .receive(&bytes)
-            .iter()
-            .map(|command| match command {
-                Command::Response { response, .. } => response.status,
-                Command::Close { .. } => 0,
-            })
-            .collect();
-        assert_eq!(statuses, [200, 403, 400]);
-    }
-
-    #[test]
-    fn a_connection_closes_after_a_malformed_or_final_request() {
-        let mut harness = Harness::new(&[]);
-        let commands = harness.receive(b"GET / HTTP/2\r\n\r\n");
-        assert!(matches!(
-            commands.as_slice(),
-            [Command::Response { response, .. }, Command::Close { connection: CONNECTION }]
-                if response.status == 505
-        ));
-        let commands =
-            harness.receive(b"GET /v1/health HTTP/1.0\r\n\r\nGET /v1/health HTTP/1.1\r\n\r\n");
-        assert!(matches!(
-            commands.as_slice(),
-            [Command::Response { response, .. }, Command::Close { connection: CONNECTION }]
-                if response.status == 200 && header(response, "Connection") == Some("close")
-        ));
-        harness.app.process(harness.now, Event::Closed(CONNECTION));
-        assert!(harness.app.requests.is_empty());
-    }
-
-    #[test]
     fn an_account_activates_issues_and_revokes_a_session() {
-        let mut harness = Harness::new(&[]);
+        let mut harness = Harness::new();
         let key = credential::authentication_key(&[1u8; 32]);
         let created = harness.activate("alice@example.jp", &key);
         assert_eq!(created.status, 201);
@@ -403,7 +283,7 @@ mod tests {
 
     #[test]
     fn a_password_change_revokes_every_session() {
-        let mut harness = Harness::new(&[]);
+        let mut harness = Harness::new();
         let old = credential::authentication_key(&[1u8; 32]);
         let new = credential::authentication_key(&[2u8; 32]);
         harness.activate("bob@example.jp", &old);
@@ -446,7 +326,7 @@ mod tests {
 
     #[test]
     fn a_signal_reaches_only_the_target_peer() {
-        let mut harness = Harness::new(&[]);
+        let mut harness = Harness::new();
         let key = credential::authentication_key(&[1u8; 32]);
         harness.activate("alice@example.jp", &key);
         harness.activate("bob@example.jp", &key);
@@ -491,7 +371,7 @@ mod tests {
 
     #[test]
     fn sync_stores_are_isolated_per_user() {
-        let mut harness = Harness::new(&[]);
+        let mut harness = Harness::new();
         let key = credential::authentication_key(&[1u8; 32]);
         harness.activate("alice@example.jp", &key);
         harness.activate("bob@example.jp", &key);
@@ -568,29 +448,6 @@ mod tests {
         assert_eq!(
             harness.send("POST", "/v1/sync/calendar/push", &[], &0u16.to_le_bytes()).status,
             401
-        );
-    }
-
-    #[test]
-    fn mutations_require_a_matching_origin() {
-        let mut harness = Harness::new(&["https://app.example.jp"]);
-        let key = credential::authentication_key(&[1u8; 32]);
-        assert_eq!(harness.send("GET", "/v1/health", &[], &[]).status, 200);
-        assert_eq!(harness.activate("alice@example.jp", &key).status, 403);
-        let mut body = Vec::new();
-        PROTOCOL.encode(&mut body);
-        "alice@example.jp".encode(&mut body);
-        key.encode(&mut body);
-        ROOT[..].encode(&mut body);
-        assert_eq!(
-            harness.send("PUT", "/v1/account", &[("Origin", "https://evil.example")], &body).status,
-            403
-        );
-        assert_eq!(
-            harness
-                .send("PUT", "/v1/account", &[("Origin", "https://app.example.jp")], &body)
-                .status,
-            201
         );
     }
 }

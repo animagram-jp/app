@@ -10,7 +10,7 @@ use core::{
     str::from_utf8,
 };
 
-use crate::{Output, WireError};
+use crate::{Input, Output, WireError};
 
 pub const HEADER_SIZE_MAX: usize = 8 * 1024;
 pub const HEADER_COUNT_MAX: usize = 32;
@@ -22,8 +22,6 @@ const HEADER_END: &[u8] = b"\r\n\r\n";
 #[derive(Debug, PartialEq)]
 pub enum HttpError {
     RequestLine,
-    Method,
-    Target,
     Version,
     Header,
     HeaderTooLarge,
@@ -42,8 +40,6 @@ impl WireError for HttpError {
     fn identifiers(&self, path: &mut Vec<u16>) {
         path.push(match self {
             HttpError::RequestLine => 1,
-            HttpError::Method => 2,
-            HttpError::Target => 3,
             HttpError::Version => 4,
             HttpError::Header => 5,
             HttpError::HeaderTooLarge => 6,
@@ -67,24 +63,29 @@ pub enum Method {
 }
 
 impl Method {
-    fn parse(token: &[u8]) -> Result<Self, HttpError> {
+    fn parse(token: &[u8]) -> Option<Self> {
         match token {
-            b"DELETE" => Ok(Method::Delete),
-            b"GET" => Ok(Method::Get),
-            b"POST" => Ok(Method::Post),
-            b"PUT" => Ok(Method::Put),
-            _ => Err(HttpError::Method),
+            b"DELETE" => Some(Method::Delete),
+            b"GET" => Some(Method::Get),
+            b"POST" => Some(Method::Post),
+            b"PUT" => Some(Method::Put),
+            _ => None,
         }
     }
 }
 
 #[derive(Debug, PartialEq)]
 pub struct Message<'a> {
-    pub method:     Method,
-    pub path:       String,
-    pub query:      Option<String>,
-    pub headers:    Vec<(String, String)>,
-    pub body:       &'a [u8],
+    pub method:  Method,
+    pub path:    String,
+    pub query:   Option<String>,
+    pub headers: Vec<(String, String)>,
+    pub body:    &'a [u8],
+}
+
+#[derive(Debug, PartialEq)]
+pub struct Frame {
+    pub length:     usize,
     pub keep_alive: bool,
 }
 
@@ -106,19 +107,19 @@ fn is_target(byte: u8) -> bool {
     byte.is_ascii_graphic() && byte != b'#'
 }
 
-fn parse_target(bytes: &[u8]) -> Result<(String, Option<String>), HttpError> {
-    if bytes.is_empty() || bytes[0] != b'/' || !bytes.iter().all(|byte| is_target(*byte)) {
-        return Err(HttpError::Target);
+fn parse_target(bytes: &[u8]) -> Option<(String, Option<String>)> {
+    if bytes.first() != Some(&b'/') || !bytes.iter().all(|byte| is_target(*byte)) {
+        return None;
     }
-    let text = from_utf8(bytes).map_err(|_| HttpError::Target)?;
+    let text = from_utf8(bytes).ok()?;
     let (path, query) = match text.split_once('?') {
         Some((path, query)) => (path, Some(query.to_string())),
         None => (text, None),
     };
     if path.split('/').any(|segment| segment == "." || segment == "..") {
-        return Err(HttpError::Target);
+        return None;
     }
-    Ok((path.to_string(), query))
+    Some((path.to_string(), query))
 }
 
 fn parse_header(line: &[u8]) -> Result<(String, String), HttpError> {
@@ -144,39 +145,36 @@ fn find(part: &[u8], whole: &[u8]) -> Option<usize> {
     whole.windows(part.len()).position(|window| window == part)
 }
 
-pub fn parse(buffer: &[u8]) -> Result<Option<(Message<'_>, usize)>, HttpError> {
+fn split_lines(bytes: &[u8]) -> impl Iterator<Item = &[u8]> {
+    bytes.split(|byte| *byte == b'\n').map(|line| line.strip_suffix(b"\r").unwrap_or(line))
+}
+
+pub fn frame(buffer: &[u8]) -> Result<Option<Frame>, HttpError> {
     let header_end = match find(HEADER_END, &buffer[..buffer.len().min(HEADER_SIZE_MAX)]) {
         Some(at) => at,
         None if buffer.len() >= HEADER_SIZE_MAX => return Err(HttpError::HeaderTooLarge),
         None => return Ok(None),
     };
-    let mut lines = buffer[..header_end]
-        .split(|byte| *byte == b'\n')
-        .map(|line| line.strip_suffix(b"\r").unwrap_or(line));
+    let mut lines = split_lines(&buffer[..header_end]);
     let request_line = lines.next().ok_or(HttpError::RequestLine)?;
-    let mut parts = request_line.split(|byte| *byte == b' ');
-    let method = Method::parse(parts.next().ok_or(HttpError::RequestLine)?)?;
-    let (path, query) = parse_target(parts.next().ok_or(HttpError::RequestLine)?)?;
-    let version = parts.next().ok_or(HttpError::RequestLine)?;
-    if parts.next().is_some() {
+    let parts: Vec<&[u8]> = request_line.split(|byte| *byte == b' ').collect();
+    let [_, _, version] = parts.as_slice() else {
         return Err(HttpError::RequestLine);
-    }
-    let mut keep_alive = match version {
+    };
+    let mut keep_alive = match *version {
         b"HTTP/1.1" => true,
         b"HTTP/1.0" => false,
         _ => return Err(HttpError::Version),
     };
 
-    let mut headers = Vec::new();
+    let mut count = 0usize;
+    let mut length = 0usize;
     for line in lines {
-        if headers.len() >= HEADER_COUNT_MAX {
+        count += 1;
+        if count > HEADER_COUNT_MAX {
             return Err(HttpError::HeaderTooLarge);
         }
-        headers.push(parse_header(line)?);
-    }
-
-    let mut length = 0usize;
-    for (name, value) in &headers {
+        let (name, value) = parse_header(line)?;
         match name.as_str() {
             "content-length" => {
                 length = value.parse().map_err(|_| HttpError::ContentLength)?;
@@ -196,13 +194,35 @@ pub fn parse(buffer: &[u8]) -> Result<Option<(Message<'_>, usize)>, HttpError> {
         }
     }
 
-    let body_start = header_end + HEADER_END.len();
-    let total = body_start + length;
+    let total = header_end + HEADER_END.len() + length;
     if buffer.len() < total {
         return Ok(None);
     }
-    let body = &buffer[body_start..total];
-    Ok(Some((Message { method, path, query, headers, body, keep_alive }, total)))
+    Ok(Some(Frame { length: total, keep_alive }))
+}
+
+impl<'a> Input<'a> for Message<'a> {
+    fn decode(input: &mut &'a [u8]) -> Option<Self> {
+        let whole: &'a [u8] = input;
+        let header_end = find(HEADER_END, whole)?;
+        let mut lines = split_lines(&whole[..header_end]);
+        let mut parts = lines.next()?.split(|byte| *byte == b' ');
+        let method = Method::parse(parts.next()?)?;
+        let (path, query) = parse_target(parts.next()?)?;
+        parts.next()?;
+        if parts.next().is_some() {
+            return None;
+        }
+        let headers =
+            lines.map(|line| parse_header(line).ok()).collect::<Option<Vec<(String, String)>>>()?;
+        let length = match headers.iter().find(|(name, _)| name == "content-length") {
+            Some((_, value)) => value.parse().ok()?,
+            None => 0,
+        };
+        let (body, rest) = whole[header_end + HEADER_END.len()..].split_at_checked(length)?;
+        *input = rest;
+        Some(Self { method, path, query, headers, body })
+    }
 }
 
 pub struct Response {
@@ -278,52 +298,62 @@ impl Output for Response {
 mod tests {
     use super::*;
 
+    fn decode(raw: &[u8]) -> Option<Message<'_>> {
+        Message::decode(&mut &raw[..])
+    }
+
     #[test]
-    fn parse_accepts_a_get_without_body() {
+    fn a_message_decodes_its_method_target_headers_and_body() {
         let raw = b"GET /api/v1/health?x=1 HTTP/1.1\r\nHost: localhost\r\nX-Forwarded-For: 127.0.0.1\r\n\r\n";
-        let (message, consumed) = parse(raw).unwrap().unwrap();
-        assert_eq!(consumed, raw.len());
+        let message = decode(raw).unwrap();
         assert_eq!(message.method, Method::Get);
         assert_eq!(message.path, "/api/v1/health");
         assert_eq!(message.query.as_deref(), Some("x=1"));
         assert_eq!(message.header("host"), Some("localhost"));
-        assert!(message.keep_alive);
         assert_eq!(message.segments().collect::<Vec<_>>(), ["api", "v1", "health"]);
+
+        let mut input = &b"POST /a HTTP/1.0\r\nContent-Length: 3\r\n\r\nabcNEXT"[..];
+        assert_eq!(Message::decode(&mut input).unwrap().body, b"abc");
+        assert_eq!(input, b"NEXT");
     }
 
     #[test]
-    fn parse_leaves_bytes_after_the_body() {
+    fn a_malformed_message_does_not_decode() {
+        assert_eq!(decode(b"PATCH / HTTP/1.1\r\n\r\n"), None);
+        assert_eq!(decode(b"GET a HTTP/1.1\r\n\r\n"), None);
+        assert_eq!(decode(b"GET /../x HTTP/1.1\r\n\r\n"), None);
+        assert_eq!(decode(b"GET / HTTP/1.1\r\nBad\r\n\r\n"), None);
+        assert_eq!(decode(b"POST / HTTP/1.1\r\nContent-Length: 5\r\n\r\nab"), None);
+    }
+
+    #[test]
+    fn a_frame_spans_the_headers_and_the_declared_body() {
         let raw = b"POST /a HTTP/1.0\r\nContent-Length: 3\r\n\r\nabcNEXT";
-        let (message, consumed) = parse(raw).unwrap().unwrap();
-        assert_eq!(message.body, b"abc");
-        assert_eq!(consumed, raw.len() - 4);
-        assert!(!message.keep_alive);
-    }
-
-    #[test]
-    fn parse_waits_for_an_incomplete_request() {
-        assert_eq!(parse(b"GET / HTTP/1.1\r\nHost: x\r\n").unwrap(), None);
-        assert_eq!(parse(b"POST / HTTP/1.1\r\nContent-Length: 5\r\n\r\nab").unwrap(), None);
-    }
-
-    #[test]
-    fn parse_rejects_malformed_requests() {
-        assert_eq!(parse(b"PATCH / HTTP/1.1\r\n\r\n").unwrap_err(), HttpError::Method);
-        assert_eq!(parse(b"GET a HTTP/1.1\r\n\r\n").unwrap_err(), HttpError::Target);
-        assert_eq!(parse(b"GET /../x HTTP/1.1\r\n\r\n").unwrap_err(), HttpError::Target);
-        assert_eq!(parse(b"GET / HTTP/2\r\n\r\n").unwrap_err(), HttpError::Version);
-        assert_eq!(parse(b"GET / HTTP/1.1\r\nBad\r\n\r\n").unwrap_err(), HttpError::Header);
+        assert_eq!(frame(raw), Ok(Some(Frame { length: raw.len() - 4, keep_alive: false })));
         assert_eq!(
-            parse(b"POST / HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n").unwrap_err(),
-            HttpError::TransferEncoding
+            frame(b"GET / HTTP/1.0\r\nConnection: keep-alive\r\n\r\n"),
+            Ok(Some(Frame { length: 42, keep_alive: true }))
+        );
+        assert_eq!(frame(b"GET / HTTP/1.1\r\nHost: x\r\n"), Ok(None));
+        assert_eq!(frame(b"POST / HTTP/1.1\r\nContent-Length: 5\r\n\r\nab"), Ok(None));
+    }
+
+    #[test]
+    fn a_frame_rejects_what_cannot_be_delimited() {
+        assert_eq!(frame(b"GET /\r\n\r\n"), Err(HttpError::RequestLine));
+        assert_eq!(frame(b"GET / HTTP/2\r\n\r\n"), Err(HttpError::Version));
+        assert_eq!(frame(b"GET / HTTP/1.1\r\nBad\r\n\r\n"), Err(HttpError::Header));
+        assert_eq!(
+            frame(b"POST / HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n"),
+            Err(HttpError::TransferEncoding)
         );
         assert_eq!(
-            parse(b"POST / HTTP/1.1\r\nContent-Length: 2000000\r\n\r\n").unwrap_err(),
-            HttpError::BodyTooLarge
+            frame(b"POST / HTTP/1.1\r\nContent-Length: 2000000\r\n\r\n"),
+            Err(HttpError::BodyTooLarge)
         );
         let mut oversized = b"GET / HTTP/1.1\r\n".to_vec();
         oversized.resize(HEADER_SIZE_MAX + 1, b'a');
-        assert_eq!(parse(&oversized).unwrap_err(), HttpError::HeaderTooLarge);
+        assert_eq!(frame(&oversized), Err(HttpError::HeaderTooLarge));
     }
 
     #[test]

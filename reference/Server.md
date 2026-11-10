@@ -25,13 +25,13 @@ feature `server`でコンパイルする、サーバー側アプリケーショ�
 ┌──────────────────────────────────────────────────────┐
 │ host.rs (std)                                        │
 │  TcpListener ─ accept × N threads                    │
-│   Event::Chunk / Closed / Maintain    ▲ Command      │
+│   http::frame ─ keep-alive, Connection               │
+│   frame / Event::Maintain             ▲ Command      │
 │        │                              │ Response     │
-│        ▼  Mutex<App<FsStore>>         │ Close        │
+│        ▼  Mutex<App<FsStore>>         │              │
 │ ┌──────────────────────────────────────────────────┐ │
 │ │ app.rs (core + alloc)                            │ │
-│ │  Chunk ─ http::parse ─ Origin, Cookie            │ │
-│ │        ─ Request::decode (event.rs) ─ Request    │ │
+│ │  frame ─ Request::decode (event.rs) ─ Request    │ │
 │ │  Request ─ Handler::admit ─ Handler::process_*   │ │
 │ │ ┌──────────────────────────────────────────────┐ │ │
 │ │ │ handler.rs                                   │ │ │
@@ -48,10 +48,10 @@ feature `server`でコンパイルする、サーバー側アプリケーショ�
 
 | server | client |
 |-|-|
-| `host.rs`(`serve`、`process_event`、`drain`、`execute`) | `arena.rs`(`serve_event`、`process_event`)、`init.js`(`drain`、`execute`) |
+| `host.rs`(`serve`、`http::frame`、`process_event`、`drain`、`execute`) | `arena.rs`(`serve_event`、リングの長さ prefix、`process_event`)、`init.js`(`drain`、`execute`) |
 | `http.rs`(`Message`、`Response`) | `host.rs`(`Command`、`Event` のフレーム形式) |
-| `app.rs`(`App::process`、`dispatch`) | `app.rs`(`App::process`、`run`、`dispatch`) |
-| `event.rs`(`Event::Chunk` → `Event::Request`) | `event.rs`(`Event::FetchChunk` → `Event::Fetched`) |
+| `app.rs`(`App::process`、`run`、`dispatch`) | `app.rs`(`App::process`、`run`、`dispatch`) |
+| `event.rs`(`Event::Request(Request)`) | `event.rs`(`Event`) |
 | `handler.rs`(`Handler::process_*`) | `Handler::process_*` |
 
 # 不採用
@@ -115,7 +115,7 @@ root_key (32 B 乱数、初回有効化時に端末が生成)
 |-|-|
 | トークン | 32 B の CSPRNG。Cookie `session=<hex>`、`HttpOnly; Secure; SameSite=Strict; Path=/api`。サーバーは `SHA-256(token)` のみ保存する |
 | 期限 | 作成から 30 日、最終アクセスから 7 日。ログイン成功で再発行、ログアウトでサーバー側を削除 |
-| CSRF | 1 段目は前段の `SameSite` と `Sec-Fetch-Site` 判定、2 段目はサーバーで `Origin` ヘッダを許可リスト(環境変数)と照合する |
+| CSRF | 前段で行う。Cookie の `SameSite=Strict` と、前段の `Sec-Fetch-Site` / `Origin` 判定。server は `Origin` を扱わない |
 | 端末 | ログインごとに `(user, device)` を記録し、Meet の `peer` id(u64 乱数)を発行する |
 | 有効化 | 公開の登録機能は持たない([Calendar.md](./Calendar.md) の方針)。`{SERVER_DATA}/allowlist` に書かれた email だけが初回の `PUT /v1/account` で有効化できる。allowlist は起動時に 1 度だけ読む |
 | 再認証 | パスワード変更は現在の `authentication_key` と新しい `authentication_key`、新しい `wrapped_root` を一度に受け取る |
@@ -136,7 +136,7 @@ root_key (32 B 乱数、初回有効化時に端末が生成)
 | POST | `/v1/sync/{store}/pull` | `[since: u64]` | `[head: u64][more: u8][count: u16]([identifier: 16][version: u64][flags: u8][ciphertext: bytes])*` | |
 | POST | `/v1/sync/{store}/push` | `[count: u16]([identifier: 16][base: u64][flags: u8][ciphertext: bytes])*` | `[head: u64][count: u16]([status: u8][version: u64][flags: u8][ciphertext: bytes])*`。`status` は 1 受理 / 2 競合(サーバーの現在値を伴う) | |
 
-`{store}` は英数字と `_` `-` の 32 文字以内。POST / PUT / DELETE は `SERVER_ORIGIN` が設定されていれば `Origin` ヘッダの一致を要求する(不一致は 403)。メソッドとパスの組が上表に無いもの、本文が上表の形式に合わないものは、いずれも `Request` の decode 失敗として 400 を返す。
+`{store}` は英数字と `_` `-` の 32 文字以内。メソッドとパスの組が上表に無いもの、本文が上表の形式に合わないものは、いずれも `Request` の decode 失敗として 400 を返す。認証の要るリクエストで Cookie が無いものは、0...0 の token として扱い 401 を返す。
 
 ---
 

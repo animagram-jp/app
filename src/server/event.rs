@@ -1,16 +1,16 @@
 use alloc::{string::String, vec::Vec};
 use core::{
     option::Option::{self, None, Some},
-    primitive::{bool, str, u8, u32, u64, usize},
+    primitive::{str, u8, u64, usize},
 };
 
 use crate::{
     Input,
     credential::Key,
     server::{
-        http::{self, Method},
+        http::{Message, Method},
         meet::Kind,
-        session::Token,
+        session::{self, TOKEN_LENGTH, Token},
         sync::{Entry, PUSH_COUNT_MAX},
     },
 };
@@ -19,15 +19,8 @@ pub const API_VERSION: &str = "v1";
 pub const STORE_NAME_LENGTH_MAX: usize = 32;
 
 pub enum Event {
-    Chunk(Chunk),
-    Request { connection: u32, keep_alive: bool, token: Option<Token>, request: Request },
-    Closed(u32),
+    Request(Request),
     Maintain,
-}
-
-pub struct Chunk {
-    pub connection: u32,
-    pub bytes:      Vec<u8>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -50,15 +43,44 @@ impl Input<'_> for Credential {
 #[derive(Debug, PartialEq)]
 pub enum Request {
     Health,
-    Activate { credential: Credential, wrapped_root: Vec<u8> },
-    Issue { credential: Credential },
-    Check,
-    Revoke,
-    ChangePassword { current_key: Key, next_key: Key, wrapped_root: Vec<u8> },
-    Poll,
-    Signal { target: u64, kind: Kind, payload: Vec<u8> },
-    Pull { store: String, since: u64 },
-    Push { store: String, entries: Vec<Entry> },
+    Activate {
+        credential:   Credential,
+        wrapped_root: Vec<u8>,
+    },
+    Issue {
+        credential: Credential,
+    },
+    Check {
+        token: Token,
+    },
+    Revoke {
+        token: Token,
+    },
+    ChangePassword {
+        token:        Token,
+        current_key:  Key,
+        next_key:     Key,
+        wrapped_root: Vec<u8>,
+    },
+    Poll {
+        token: Token,
+    },
+    Signal {
+        token:   Token,
+        target:  u64,
+        kind:    Kind,
+        payload: Vec<u8>,
+    },
+    Pull {
+        token: Token,
+        store: String,
+        since: u64,
+    },
+    Push {
+        token:   Token,
+        store:   String,
+        entries: Vec<Entry>,
+    },
 }
 
 fn is_store_name(name: &str) -> bool {
@@ -69,8 +91,11 @@ fn is_store_name(name: &str) -> bool {
 
 impl Input<'_> for Request {
     fn decode(input: &mut &[u8]) -> Option<Self> {
-        let (message, consumed) = http::parse(input).ok()??;
-        *input = &input[consumed..];
+        let message = Message::decode(input)?;
+        let token = message
+            .header("cookie")
+            .and_then(session::token_from_cookie)
+            .unwrap_or([0; TOKEN_LENGTH]);
         let segments: Vec<&str> = message.segments().collect();
         let body = &mut { message.body };
         let request = match (message.method, segments.as_slice()) {
@@ -82,25 +107,28 @@ impl Input<'_> for Request {
             (Method::Put, [API_VERSION, "session"]) => {
                 Request::Issue { credential: Input::decode(body)? }
             }
-            (Method::Get, [API_VERSION, "session"]) => Request::Check,
-            (Method::Delete, [API_VERSION, "session"]) => Request::Revoke,
+            (Method::Get, [API_VERSION, "session"]) => Request::Check { token },
+            (Method::Delete, [API_VERSION, "session"]) => Request::Revoke { token },
             (Method::Put, [API_VERSION, "account", "password"]) => Request::ChangePassword {
-                current_key:  Input::decode(body)?,
-                next_key:     Input::decode(body)?,
+                token,
+                current_key: Input::decode(body)?,
+                next_key: Input::decode(body)?,
                 wrapped_root: Input::decode(body)?,
             },
-            (Method::Post, [API_VERSION, "meet", "poll"]) => Request::Poll,
+            (Method::Post, [API_VERSION, "meet", "poll"]) => Request::Poll { token },
             (Method::Post, [API_VERSION, "meet", "signal"]) => Request::Signal {
-                target:  Input::decode(body)?,
-                kind:    Some(Kind::from(u8::decode(body)?)).filter(|kind| *kind != Kind::Other)?,
+                token,
+                target: Input::decode(body)?,
+                kind: Some(Kind::from(u8::decode(body)?)).filter(|kind| *kind != Kind::Other)?,
                 payload: Input::decode(body)?,
             },
             (Method::Post, [API_VERSION, "sync", store, "pull"]) if is_store_name(store) => {
-                Request::Pull { store: String::from(*store), since: Input::decode(body)? }
+                Request::Pull { token, store: String::from(*store), since: Input::decode(body)? }
             }
             (Method::Post, [API_VERSION, "sync", store, "push"]) if is_store_name(store) => {
                 Request::Push {
-                    store:   String::from(*store),
+                    token,
+                    store: String::from(*store),
                     entries: Some(Vec::<Entry>::decode(body)?)
                         .filter(|entries| entries.len() <= PUSH_COUNT_MAX)?,
                 }
@@ -138,9 +166,18 @@ mod tests {
     #[test]
     fn a_request_selects_its_variant_by_method_and_path() {
         assert_eq!(decode("GET", "/v1/health", &[]), Some(Request::Health));
-        assert_eq!(decode("GET", "/v1/session", &[]), Some(Request::Check));
-        assert_eq!(decode("DELETE", "/v1/session", &[]), Some(Request::Revoke));
-        assert_eq!(decode("POST", "/v1/meet/poll", &[]), Some(Request::Poll));
+        assert_eq!(
+            decode("GET", "/v1/session", &[]),
+            Some(Request::Check { token: [0; TOKEN_LENGTH] })
+        );
+        assert_eq!(
+            decode("DELETE", "/v1/session", &[]),
+            Some(Request::Revoke { token: [0; TOKEN_LENGTH] })
+        );
+        assert_eq!(
+            decode("POST", "/v1/meet/poll", &[]),
+            Some(Request::Poll { token: [0; TOKEN_LENGTH] })
+        );
         assert_eq!(decode("POST", "/v1/health", &[]), None);
         assert_eq!(decode("GET", "/v0/health", &[]), None);
         assert_eq!(decode("GET", "/v1/nothing", &[]), None);
@@ -165,7 +202,11 @@ mod tests {
 
         assert_eq!(
             decode("POST", "/v1/sync/calendar/pull", &9u64.to_le_bytes()),
-            Some(Request::Pull { store: String::from("calendar"), since: 9 })
+            Some(Request::Pull {
+                token: [0; TOKEN_LENGTH],
+                store: String::from("calendar"),
+                since: 9,
+            })
         );
         assert_eq!(decode("POST", "/v1/sync/calendar/pull", &[0; 9]), None);
     }
@@ -185,7 +226,12 @@ mod tests {
         b"sdp"[..].encode(&mut body);
         assert_eq!(
             decode("POST", "/v1/meet/signal", &body),
-            Some(Request::Signal { target: 77, kind: Kind::Answer, payload: b"sdp".to_vec() })
+            Some(Request::Signal {
+                token:   [0; TOKEN_LENGTH],
+                target:  77,
+                kind:    Kind::Answer,
+                payload: b"sdp".to_vec(),
+            })
         );
     }
 
@@ -204,6 +250,7 @@ mod tests {
         assert_eq!(
             decode("POST", "/v1/sync/calendar/push", &body),
             Some(Request::Push {
+                token:   [0; TOKEN_LENGTH],
                 store:   String::from("calendar"),
                 entries: vec![
                     Entry {
@@ -239,6 +286,19 @@ mod tests {
             b""[..].encode(&mut oversized);
         }
         assert_eq!(decode("POST", "/v1/sync/calendar/push", &oversized), None);
+    }
+
+    #[test]
+    fn a_session_cookie_becomes_the_token_and_its_absence_is_zero() {
+        let token = [5u8; TOKEN_LENGTH];
+        let cookie = session::set_cookie(&token);
+        let cookie = cookie.split(';').next().unwrap();
+        let bytes = format!("GET /v1/session HTTP/1.1\r\nCookie: {cookie}\r\n\r\n").into_bytes();
+        assert_eq!(Request::decode(&mut &bytes[..]), Some(Request::Check { token }));
+        assert_eq!(
+            decode("GET", "/v1/session", &[]),
+            Some(Request::Check { token: [0; TOKEN_LENGTH] })
+        );
     }
 
     #[test]

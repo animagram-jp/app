@@ -663,7 +663,7 @@ mod error_tests {
         cases.push((Error::Frame(FrameError::Decode), vec![5, 1], "Decode"));
         #[cfg(all(feature = "server", not(target_arch = "wasm32")))]
         cases.extend([
-            (Error::Http(HttpError::Target), vec![6, 3], "Target"),
+            (Error::Http(HttpError::RequestLine), vec![6, 1], "RequestLine"),
             (Error::Http(HttpError::HeaderTooLarge), vec![6, 6], "HeaderTooLarge"),
             (Error::Session(SessionError::Frame(FrameError::Decode)), vec![8, 2, 1], "Decode"),
             (Error::Session(SessionError::Record(4)), vec![8, 4], "session record 4"),

@@ -2,9 +2,8 @@ use alloc::{sync::Arc, vec, vec::Vec};
 use core::{
     fmt::{self, Display, Formatter},
     net::SocketAddr,
-    primitive::{bool, u32, u64, usize},
+    primitive::{bool, u64, usize},
     result::Result::{self, Err, Ok},
-    sync::atomic::{AtomicU32, Ordering},
     time::Duration,
 };
 use std::{
@@ -16,12 +15,14 @@ use std::{
 };
 
 use crate::{
-    Output,
+    Error, Output,
     file_store::FsStore,
     server::{
+        Open,
         app::App,
-        event::{Chunk, Event},
-        http::Response,
+        event::Event,
+        handler::reject,
+        http::{self, Response},
     },
 };
 
@@ -49,16 +50,13 @@ pub fn now() -> u64 {
 }
 
 pub enum Command {
-    Response { connection: u32, response: Response },
-    Close { connection: u32 },
+    Response(Response),
 }
 
 pub struct Config {
     pub address:      SocketAddr,
     pub thread_count: usize,
 }
-
-static CONNECTION_COUNT: AtomicU32 = AtomicU32::new(0);
 
 pub fn serve(config: Config, app: Arc<Mutex<App<FsStore>>>) -> Result<(), HostError> {
     let listener = Arc::new(TcpListener::bind(config.address).map_err(HostError::Bind)?);
@@ -68,7 +66,9 @@ pub fn serve(config: Config, app: Arc<Mutex<App<FsStore>>>) -> Result<(), HostEr
         .spawn(move || {
             loop {
                 thread::sleep(MAINTAIN_INTERVAL);
-                process_event(&keeper, Event::Maintain);
+                if let Ok(mut app) = keeper.lock() {
+                    app.run(now(), Event::Maintain);
+                }
             }
         })
         .map_err(HostError::Spawn)?;
@@ -99,61 +99,109 @@ pub fn serve(config: Config, app: Arc<Mutex<App<FsStore>>>) -> Result<(), HostEr
     Ok(())
 }
 
-fn serve_connection(mut stream: TcpStream, app: &Mutex<App<FsStore>>) -> io::Result<()> {
-    let connection = CONNECTION_COUNT.fetch_add(1, Ordering::Relaxed).wrapping_add(1);
-    let served = (|| {
-        stream.set_read_timeout(Some(READ_TIMEOUT))?;
-        stream.set_write_timeout(Some(WRITE_TIMEOUT))?;
-        stream.set_nodelay(true)?;
-        let mut chunk = [0u8; CHUNK_SIZE];
-        loop {
-            let count = stream.read(&mut chunk)?;
-            if count == 0 {
-                return Ok(());
+fn serve_connection<S: Open>(mut stream: TcpStream, app: &Mutex<App<S>>) -> io::Result<()> {
+    stream.set_read_timeout(Some(READ_TIMEOUT))?;
+    stream.set_write_timeout(Some(WRITE_TIMEOUT))?;
+    stream.set_nodelay(true)?;
+    let mut buffer: Vec<u8> = Vec::with_capacity(CHUNK_SIZE);
+    let mut chunk = [0u8; CHUNK_SIZE];
+    loop {
+        let (commands, keep_alive, consumed) = match http::frame(&buffer) {
+            Ok(Some(frame)) => {
+                (process_event(app, &buffer[..frame.length]), frame.keep_alive, frame.length)
             }
-            let bytes = chunk[..count].to_vec();
-            if !drain(&mut stream, process_event(app, Event::Chunk(Chunk { connection, bytes })))? {
-                return Ok(());
+            Ok(None) => {
+                let count = stream.read(&mut chunk)?;
+                if count == 0 {
+                    return Ok(());
+                }
+                buffer.extend_from_slice(&chunk[..count]);
+                continue;
             }
+            Err(error) => {
+                (vec![Command::Response(reject(Error::Http(error)))], false, buffer.len())
+            }
+        };
+        drain(&mut stream, commands, keep_alive)?;
+        if !keep_alive {
+            return Ok(());
         }
-    })();
-    process_event(app, Event::Closed(connection));
-    served
+        buffer.drain(..consumed);
+    }
 }
 
-fn process_event(app: &Mutex<App<FsStore>>, event: Event) -> Vec<Command> {
+fn process_event<S: Open>(app: &Mutex<App<S>>, frame: &[u8]) -> Vec<Command> {
     match app.lock() {
         Ok(mut app) => {
-            app.process(now(), event);
+            app.process(now(), frame);
             app.take_commands()
         }
-        Err(_) => match event {
-            Event::Chunk(Chunk { connection, .. }) => vec![
-                Command::Response { connection, response: Response::new(500) },
-                Command::Close { connection },
-            ],
-            _ => Vec::new(),
-        },
+        Err(_) => vec![Command::Response(Response::new(500))],
     }
 }
 
-fn drain(stream: &mut TcpStream, commands: Vec<Command>) -> io::Result<bool> {
+fn drain(stream: &mut TcpStream, commands: Vec<Command>, keep_alive: bool) -> io::Result<()> {
     for command in commands {
-        if !execute(stream, command)? {
-            stream.flush()?;
-            return Ok(false);
-        }
+        execute(stream, command, keep_alive)?;
     }
-    stream.flush()?;
-    Ok(true)
+    stream.flush()
 }
 
-fn execute(stream: &mut TcpStream, command: Command) -> io::Result<bool> {
+fn execute(stream: &mut TcpStream, command: Command, keep_alive: bool) -> io::Result<()> {
     match command {
-        Command::Response { response, .. } => {
-            stream.write_all(&response.to_bytes())?;
-            Ok(true)
+        Command::Response(response) => {
+            let connection = if keep_alive { "keep-alive" } else { "close" };
+            stream.write_all(&response.header("Connection", connection).to_bytes())
         }
-        Command::Close { .. } => Ok(false),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use alloc::{collections::BTreeSet, string::String};
+    use std::net::Shutdown;
+
+    use super::*;
+    use crate::{file_store::MemoryStore, server::handler::Handler};
+
+    fn exchange(request: &[u8]) -> String {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        let request = request.to_vec();
+        let client = thread::spawn(move || {
+            let mut stream = TcpStream::connect(address).unwrap();
+            stream.write_all(&request).unwrap();
+            stream.shutdown(Shutdown::Write).unwrap();
+            let mut received = Vec::new();
+            stream.read_to_end(&mut received).unwrap();
+            received
+        });
+        let handler =
+            Handler::<MemoryStore>::open((), 0, b"pepper".to_vec(), BTreeSet::new()).unwrap();
+        let app = Mutex::new(App::new(handler));
+        let (stream, _) = listener.accept().unwrap();
+        serve_connection(stream, &app).unwrap();
+        String::from_utf8_lossy(&client.join().unwrap()).into_owned()
+    }
+
+    fn statuses(received: &str) -> Vec<&str> {
+        received.match_indices("HTTP/1.1 ").map(|(at, _)| &received[at + 9..at + 12]).collect()
+    }
+
+    #[test]
+    fn pipelined_requests_are_answered_in_order_until_the_connection_closes() {
+        let received = exchange(
+            b"GET /v1/health HTTP/1.1\r\n\r\nGET /v1/nothing HTTP/1.1\r\n\r\nGET /v1/health HTTP/1.0\r\n\r\nGET /v1/health HTTP/1.1\r\n\r\n",
+        );
+        assert_eq!(statuses(&received), ["200", "400", "200"]);
+        assert_eq!(received.matches("Connection: keep-alive").count(), 2);
+        assert_eq!(received.matches("Connection: close").count(), 1);
+    }
+
+    #[test]
+    fn a_request_that_cannot_be_delimited_is_rejected_and_closed() {
+        let received = exchange(b"GET / HTTP/2\r\n\r\nGET /v1/health HTTP/1.1\r\n\r\n");
+        assert_eq!(statuses(&received), ["505"]);
+        assert!(received.contains("Connection: close"));
     }
 }

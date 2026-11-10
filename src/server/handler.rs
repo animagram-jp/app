@@ -6,7 +6,7 @@ use alloc::{
     vec::Vec,
 };
 use core::{
-    option::Option::{self, Some},
+    option::Option::Some,
     primitive::{u8, u16, u32, u64},
     result::Result::{self, Err, Ok},
 };
@@ -140,11 +140,11 @@ impl<S: Open> Handler<S> {
     pub fn admit(
         &mut self,
         now: u64,
-        token: Option<Token>,
+        token: &Token,
         action: Action,
         resource: impl FnOnce(&session::Record) -> Resource,
     ) -> Result<session::Record, Response> {
-        let Some(session) = token.and_then(|token| self.session.authenticate(now, &token)) else {
+        let Some(session) = self.session.authenticate(now, token) else {
             return Err(reject(Error::Account(AccountError::Unauthorized)));
         };
         if !authorize(&(&session).into(), action, &resource(&session)) {
@@ -209,9 +209,8 @@ impl<S: Open> Handler<S> {
         Response::new(200).header("Set-Cookie", &session::set_cookie(&token)).body(output)
     }
 
-    pub fn process_revoke(&mut self, token: Option<Token>) -> Response {
-        let revoked = token.is_some_and(|token| self.session.revoke(&token));
-        if !revoked {
+    pub fn process_revoke(&mut self, token: &Token) -> Response {
+        if !self.session.revoke(token) {
             return reject(Error::Account(AccountError::Unauthorized));
         }
         match self.session.save() {
