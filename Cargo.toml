@@ -63,11 +63,12 @@ meet     = []
 server   = ["credential", "sync", "meet"]
 
 [profile.release]
-panic         = "abort"
-lto           = "fat"
-strip         = true
-opt-level     = "z"
-codegen-units = 1
+codegen-units   = 1
+lto             = "fat"
+opt-level       = "z"
+overflow-checks = true
+panic           = "abort"
+strip           = true
 
 [lints.rust]
 unsafe_op_in_unsafe_fn = "forbid"
