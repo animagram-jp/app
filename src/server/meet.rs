@@ -5,12 +5,11 @@ use alloc::{
     vec::Vec,
 };
 #[cfg(all(feature = "server", not(target_arch = "wasm32")))]
-use core::result::Result::Err;
+use core::result::Result::{self, Err, Ok};
 use core::{
     fmt::{self, Display, Formatter},
     option::Option::{None, Some},
     primitive::{u8, u16, u64, usize},
-    result::Result::{self, Ok},
 };
 
 use crate::{Output, WireError};

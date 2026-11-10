@@ -5,12 +5,14 @@ use alloc::{
     string::{String, ToString},
     vec::Vec,
 };
-#[cfg(all(feature = "server", not(target_arch = "wasm32")))]
-use core::option::Option::None;
 use core::{
     fmt::{self, Display, Formatter},
     option::Option::{self, Some},
     primitive::{u8, u16, u32, u64, usize},
+};
+#[cfg(all(feature = "server", not(target_arch = "wasm32")))]
+use core::{
+    option::Option::None,
     result::Result::{self, Err, Ok},
 };
 
@@ -323,6 +325,8 @@ pub fn encode_push(head: u64, outcomes: &[Outcome]) -> Vec<u8> {
 
 #[cfg(test)]
 mod tests {
+    use core::result::Result::{Err, Ok};
+
     use super::*;
     use crate::FrameError;
 
