@@ -8,6 +8,7 @@ use app::{
     file_store::FsStore,
     server::{
         account::parse_allowlist,
+        app::App,
         handler::Handler,
         host::{Config, now, serve},
     },
@@ -76,15 +77,15 @@ fn main() -> ExitCode {
                 .collect()
         })
         .unwrap_or_default();
-    let handler = match Handler::<FsStore>::open(data_directory, now(), pepper, allowlist, origins)
-    {
+    let handler = match Handler::<FsStore>::open(data_directory, now(), pepper, allowlist) {
         Ok(handler) => handler,
         Err(error) => {
             eprintln!("open: {error}");
             return ExitCode::FAILURE;
         }
     };
-    match serve(Config { address, thread_count }, Arc::new(Mutex::new(handler))) {
+    match serve(Config { address, thread_count }, Arc::new(Mutex::new(App::new(origins, handler))))
+    {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => {
             eprintln!("server: {error}");

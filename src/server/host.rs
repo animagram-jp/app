@@ -1,9 +1,10 @@
-use alloc::{sync::Arc, vec::Vec};
+use alloc::{sync::Arc, vec, vec::Vec};
 use core::{
     fmt::{self, Display, Formatter},
     net::SocketAddr,
-    primitive::{u64, usize},
+    primitive::{bool, u32, u64, usize},
     result::Result::{self, Err, Ok},
+    sync::atomic::{AtomicU32, Ordering},
     time::Duration,
 };
 use std::{
@@ -15,17 +16,17 @@ use std::{
 };
 
 use crate::{
-    Error,
+    Output,
     file_store::FsStore,
     server::{
-        handler::{self, Handler},
-        http,
+        app::App,
+        event::{Chunk, Event},
+        http::Response,
     },
 };
 
 pub const READ_TIMEOUT: Duration = Duration::from_secs(10);
 pub const WRITE_TIMEOUT: Duration = Duration::from_secs(10);
-pub const BUFFER_SIZE_MAX: usize = http::HEADER_SIZE_MAX + http::BODY_MAX;
 pub const CHUNK_SIZE: usize = 16 * 1024;
 pub const MAINTAIN_INTERVAL: Duration = Duration::from_secs(60);
 
@@ -47,34 +48,39 @@ pub fn now() -> u64 {
     SystemTime::now().duration_since(UNIX_EPOCH).map(|elapsed| elapsed.as_secs()).unwrap_or(0)
 }
 
+pub enum Command {
+    Response { connection: u32, response: Response },
+    Close { connection: u32 },
+}
+
 pub struct Config {
     pub address:      SocketAddr,
     pub thread_count: usize,
 }
 
-pub fn serve(config: Config, handler: Arc<Mutex<Handler<FsStore>>>) -> Result<(), HostError> {
+static CONNECTION_COUNT: AtomicU32 = AtomicU32::new(0);
+
+pub fn serve(config: Config, app: Arc<Mutex<App<FsStore>>>) -> Result<(), HostError> {
     let listener = Arc::new(TcpListener::bind(config.address).map_err(HostError::Bind)?);
     let mut handles = Vec::with_capacity(config.thread_count);
-    let keeper = Arc::clone(&handler);
+    let keeper = Arc::clone(&app);
     thread::Builder::new()
         .spawn(move || {
             loop {
                 thread::sleep(MAINTAIN_INTERVAL);
-                if let Ok(mut handler) = keeper.lock() {
-                    let _ = handler.maintain(now());
-                }
+                process_event(&keeper, Event::Maintain);
             }
         })
         .map_err(HostError::Spawn)?;
     for _ in 0..config.thread_count.max(1) {
         let listener = Arc::clone(&listener);
-        let handler = Arc::clone(&handler);
+        let app = Arc::clone(&app);
         let handle = thread::Builder::new()
             .spawn(move || {
                 loop {
                     match listener.accept() {
                         Ok((stream, _)) => {
-                            let _ = serve_connection(stream, &handler);
+                            let _ = serve_connection(stream, &app);
                         }
                         Err(error) if error.kind() == ErrorKind::ConnectionAborted => {}
                         Err(error) => return Err(HostError::Accept(error)),
@@ -93,47 +99,61 @@ pub fn serve(config: Config, handler: Arc<Mutex<Handler<FsStore>>>) -> Result<()
     Ok(())
 }
 
-fn serve_connection(mut stream: TcpStream, handler: &Mutex<Handler<FsStore>>) -> io::Result<()> {
-    stream.set_read_timeout(Some(READ_TIMEOUT))?;
-    stream.set_write_timeout(Some(WRITE_TIMEOUT))?;
-    stream.set_nodelay(true)?;
-    let mut buffer: Vec<u8> = Vec::with_capacity(CHUNK_SIZE);
-    let mut chunk = [0u8; CHUNK_SIZE];
-    loop {
-        let (response, keep_alive, consumed) = match http::parse(&buffer) {
-            Ok(Some((request, consumed))) => {
-                (respond(handler, &request), request.keep_alive, consumed)
+fn serve_connection(mut stream: TcpStream, app: &Mutex<App<FsStore>>) -> io::Result<()> {
+    let connection = CONNECTION_COUNT.fetch_add(1, Ordering::Relaxed).wrapping_add(1);
+    let served = (|| {
+        stream.set_read_timeout(Some(READ_TIMEOUT))?;
+        stream.set_write_timeout(Some(WRITE_TIMEOUT))?;
+        stream.set_nodelay(true)?;
+        let mut chunk = [0u8; CHUNK_SIZE];
+        loop {
+            let count = stream.read(&mut chunk)?;
+            if count == 0 {
+                return Ok(());
             }
-            Ok(None) => {
-                if buffer.len() >= BUFFER_SIZE_MAX {
-                    (
-                        handler::reject(Error::Http(http::HttpError::BodyTooLarge)),
-                        false,
-                        buffer.len(),
-                    )
-                } else {
-                    let count = stream.read(&mut chunk)?;
-                    if count == 0 {
-                        return Ok(());
-                    }
-                    buffer.extend_from_slice(&chunk[..count]);
-                    continue;
-                }
+            let bytes = chunk[..count].to_vec();
+            if !drain(&mut stream, process_event(app, Event::Chunk(Chunk { connection, bytes })))? {
+                return Ok(());
             }
-            Err(error) => (handler::reject(Error::Http(error)), false, buffer.len()),
-        };
-        stream.write_all(&response.to_bytes(keep_alive))?;
-        stream.flush()?;
-        if !keep_alive {
-            return Ok(());
         }
-        buffer.drain(..consumed);
+    })();
+    process_event(app, Event::Closed(connection));
+    served
+}
+
+fn process_event(app: &Mutex<App<FsStore>>, event: Event) -> Vec<Command> {
+    match app.lock() {
+        Ok(mut app) => {
+            app.process(now(), event);
+            app.take_commands()
+        }
+        Err(_) => match event {
+            Event::Chunk(Chunk { connection, .. }) => vec![
+                Command::Response { connection, response: Response::new(500) },
+                Command::Close { connection },
+            ],
+            _ => Vec::new(),
+        },
     }
 }
 
-fn respond(handler: &Mutex<Handler<FsStore>>, request: &http::Request) -> http::Response {
-    match handler.lock() {
-        Ok(mut handler) => handler.process_request(now(), request),
-        Err(_) => http::Response::new(500),
+fn drain(stream: &mut TcpStream, commands: Vec<Command>) -> io::Result<bool> {
+    for command in commands {
+        if !execute(stream, command)? {
+            stream.flush()?;
+            return Ok(false);
+        }
+    }
+    stream.flush()?;
+    Ok(true)
+}
+
+fn execute(stream: &mut TcpStream, command: Command) -> io::Result<bool> {
+    match command {
+        Command::Response { response, .. } => {
+            stream.write_all(&response.to_bytes())?;
+            Ok(true)
+        }
+        Command::Close { .. } => Ok(false),
     }
 }

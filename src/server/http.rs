@@ -10,7 +10,7 @@ use core::{
     str::from_utf8,
 };
 
-use crate::WireError;
+use crate::{Output, WireError};
 
 pub const HEADER_SIZE_MAX: usize = 8 * 1024;
 pub const HEADER_COUNT_MAX: usize = 32;
@@ -79,16 +79,16 @@ impl Method {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct Request {
+pub struct Message<'a> {
     pub method:     Method,
     pub path:       String,
     pub query:      Option<String>,
     pub headers:    Vec<(String, String)>,
-    pub body:       Vec<u8>,
+    pub body:       &'a [u8],
     pub keep_alive: bool,
 }
 
-impl Request {
+impl Message<'_> {
     pub fn header(&self, name: &str) -> Option<&str> {
         self.headers.iter().find(|(field, _)| field == name).map(|(_, value)| value.as_str())
     }
@@ -144,7 +144,7 @@ fn find(part: &[u8], whole: &[u8]) -> Option<usize> {
     whole.windows(part.len()).position(|window| window == part)
 }
 
-pub fn parse(buffer: &[u8]) -> Result<Option<(Request, usize)>, HttpError> {
+pub fn parse(buffer: &[u8]) -> Result<Option<(Message<'_>, usize)>, HttpError> {
     let header_end = match find(HEADER_END, &buffer[..buffer.len().min(HEADER_SIZE_MAX)]) {
         Some(at) => at,
         None if buffer.len() >= HEADER_SIZE_MAX => return Err(HttpError::HeaderTooLarge),
@@ -201,8 +201,8 @@ pub fn parse(buffer: &[u8]) -> Result<Option<(Request, usize)>, HttpError> {
     if buffer.len() < total {
         return Ok(None);
     }
-    let body = buffer[body_start..total].to_vec();
-    Ok(Some((Request { method, path, query, headers, body, keep_alive }, total)))
+    let body = &buffer[body_start..total];
+    Ok(Some((Message { method, path, query, headers, body, keep_alive }, total)))
 }
 
 pub struct Response {
@@ -246,9 +246,11 @@ impl Response {
             _ => "",
         }
     }
+}
 
-    pub fn to_bytes(&self, keep_alive: bool) -> Vec<u8> {
-        let mut output = Vec::with_capacity(128 + self.body.len());
+impl Output for Response {
+    fn encode(&self, output: &mut Vec<u8>) {
+        output.reserve(128 + self.body.len());
         output.extend_from_slice(b"HTTP/1.1 ");
         output.extend_from_slice(self.status.to_string().as_bytes());
         output.push(b' ');
@@ -261,11 +263,6 @@ impl Response {
             output.extend_from_slice(b"Content-Type: application/octet-stream\r\n");
         }
         output.extend_from_slice(b"Cache-Control: no-store\r\n");
-        output.extend_from_slice(if keep_alive {
-            b"Connection: keep-alive\r\n"
-        } else {
-            b"Connection: close\r\n"
-        });
         for (name, value) in &self.headers {
             output.extend_from_slice(name.as_bytes());
             output.extend_from_slice(b": ");
@@ -274,7 +271,6 @@ impl Response {
         }
         output.extend_from_slice(CRLF);
         output.extend_from_slice(&self.body);
-        output
     }
 }
 
@@ -285,23 +281,23 @@ mod tests {
     #[test]
     fn parse_accepts_a_get_without_body() {
         let raw = b"GET /api/v1/health?x=1 HTTP/1.1\r\nHost: localhost\r\nX-Forwarded-For: 127.0.0.1\r\n\r\n";
-        let (request, consumed) = parse(raw).unwrap().unwrap();
+        let (message, consumed) = parse(raw).unwrap().unwrap();
         assert_eq!(consumed, raw.len());
-        assert_eq!(request.method, Method::Get);
-        assert_eq!(request.path, "/api/v1/health");
-        assert_eq!(request.query.as_deref(), Some("x=1"));
-        assert_eq!(request.header("host"), Some("localhost"));
-        assert!(request.keep_alive);
-        assert_eq!(request.segments().collect::<Vec<_>>(), ["api", "v1", "health"]);
+        assert_eq!(message.method, Method::Get);
+        assert_eq!(message.path, "/api/v1/health");
+        assert_eq!(message.query.as_deref(), Some("x=1"));
+        assert_eq!(message.header("host"), Some("localhost"));
+        assert!(message.keep_alive);
+        assert_eq!(message.segments().collect::<Vec<_>>(), ["api", "v1", "health"]);
     }
 
     #[test]
     fn parse_leaves_bytes_after_the_body() {
         let raw = b"POST /a HTTP/1.0\r\nContent-Length: 3\r\n\r\nabcNEXT";
-        let (request, consumed) = parse(raw).unwrap().unwrap();
-        assert_eq!(request.body, b"abc");
+        let (message, consumed) = parse(raw).unwrap().unwrap();
+        assert_eq!(message.body, b"abc");
         assert_eq!(consumed, raw.len() - 4);
-        assert!(!request.keep_alive);
+        assert!(!message.keep_alive);
     }
 
     #[test]
@@ -332,15 +328,13 @@ mod tests {
 
     #[test]
     fn a_response_serializes_its_status_headers_and_body() {
-        let bytes =
-            Response::new(404).body(b"xy".to_vec()).header("Set-Cookie", "a=b").to_bytes(false);
+        let bytes = Response::new(404).body(b"xy".to_vec()).header("Set-Cookie", "a=b").to_bytes();
         let text = from_utf8(&bytes).unwrap();
         assert!(text.starts_with("HTTP/1.1 404 Not Found\r\nContent-Length: 2\r\n"));
         assert!(text.contains("Content-Type: application/octet-stream\r\n"));
-        assert!(text.contains("Connection: close\r\n"));
         assert!(text.contains("Set-Cookie: a=b\r\n"));
         assert!(text.ends_with("\r\n\r\nxy"));
-        let empty = Response::new(204).to_bytes(true);
+        let empty = Response::new(204).to_bytes();
         assert!(!from_utf8(&empty).unwrap().contains("Content-Type"));
     }
 }

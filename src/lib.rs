@@ -673,15 +673,12 @@ mod error_tests {
         ]);
         #[cfg(feature = "meet")]
         cases.extend([
-            (Error::Meet(MeetError::Kind(9)), vec![10, 1], "Kind(9)"),
             (Error::Meet(MeetError::Payload(1)), vec![10, 2], "Payload(1)"),
             (Error::Meet(MeetError::SelfAddressed), vec![10, 3], "SelfAddressed"),
             (Error::Meet(MeetError::Full(2)), vec![10, 4], "Full(2)"),
-            (Error::Meet(MeetError::Frame(FrameError::Decode)), vec![10, 5, 1], "Decode"),
         ]);
         #[cfg(feature = "sync")]
         cases.extend([
-            (Error::Sync(SyncError::Frame(FrameError::Decode)), vec![11, 1, 1], "Decode"),
             (Error::Sync(SyncError::Store(message())), vec![11, 2], "m"),
             (Error::Sync(SyncError::Record(9)), vec![11, 3], "sync record 9"),
             (Error::Sync(SyncError::Ciphertext(1)), vec![11, 4], "Ciphertext(1)"),

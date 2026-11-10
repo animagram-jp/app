@@ -17,29 +17,42 @@ feature `server`でコンパイルする、サーバー側アプリケーショ�
 
 | feature | 既定 | 内容 |
 |-|-|-|
-| `sync` | off | 同期レコードのワイヤ(`sync::Record` / `Entry` / `Status` / `Outcome` と encode / decode)。端末側とサーバー側が共有する。`coc7th` と `calendar` が含む。 |
-| `meet` | off | シグナリングのワイヤ(`meet::Kind` / `Signal` と encode / decode)。同上。 |
-| `server` | off | `sync`、`meet`、`credential` を含む。`account` / `session` / `http` / `handler` / `host` と、`sync::Collection`、`meet::Board`。wasm32 では常にコンパイル対象外。bin `server` はこの feature を要求する。 |
+| `sync` | off | 同期レコードのワイヤ(`sync::Record` / `Entry` / `Status` / `Outcome` と encode)。端末側とサーバー側が共有する。`coc7th` と `calendar` が含む。 |
+| `meet` | off | シグナリングのワイヤ(`meet::Kind` / `Signal` と encode)。同上。 |
+| `server` | off | `sync`、`meet`、`credential` を含む。`account` / `session` / `http` / `event` / `app` / `handler` / `host` と、`sync::Collection`、`meet::Board`。wasm32 では常にコンパイル対象外。bin `server` はこの feature を要求する。 |
 
 ```
 ┌──────────────────────────────────────────────────────┐
 │ host.rs (std)                                        │
-│  TcpListener ─ accept × N threads ─ http::parse      │
-│        │                                             │
-│        ▼  Mutex<Handler<FsStore>>                    │
+│  TcpListener ─ accept × N threads                    │
+│   Event::Chunk / Closed / Maintain    ▲ Command      │
+│        │                              │ Response     │
+│        ▼  Mutex<App<FsStore>>         │ Close        │
 │ ┌──────────────────────────────────────────────────┐ │
-│ │ handler.rs (core + alloc)                        │ │
-│ │  /v1/health  /v1/account  /v1/session            │ │
-│ │  /v1/meet/*  /v1/sync/{store}/*                  │ │
-│ │   ├ credential.rs  (HKDF / HMAC)                 │ │
-│ │   ├ account.rs  session.rs                       │ │
-│ │   ├ meet.rs  (in-memory, lifetime)               │ │
-│ │   ├ sync.rs  (Collection)                        │ │
-│ │   └ file_store.rs  (FsStore)                     │ │
+│ │ app.rs (core + alloc)                            │ │
+│ │  Chunk ─ http::parse ─ Origin, Cookie            │ │
+│ │        ─ Request::decode (event.rs) ─ Request    │ │
+│ │  Request ─ Handler::admit ─ Handler::process_*   │ │
+│ │ ┌──────────────────────────────────────────────┐ │ │
+│ │ │ handler.rs                                   │ │ │
+│ │ │  ├ credential.rs  (HKDF / HMAC)              │ │ │
+│ │ │  ├ account.rs  session.rs                    │ │ │
+│ │ │  ├ meet.rs  (in-memory, lifetime)            │ │ │
+│ │ │  ├ sync.rs  (Collection)                     │ │ │
+│ │ │  └ file_store.rs  (FsStore)                  │ │ │
+│ │ └──────────────────────────────────────────────┘ │ │
 │ └──────────────────────────────────────────────────┘ │
 │  FsStore (std::fs)   now (SystemTime)                │
 └──────────────────────────────────────────────────────┘
 ```
+
+| server | client |
+|-|-|
+| `host.rs`(`serve`、`process_event`、`drain`、`execute`) | `arena.rs`(`serve_event`、`process_event`)、`init.js`(`drain`、`execute`) |
+| `http.rs`(`Message`、`Response`) | `host.rs`(`Command`、`Event` のフレーム形式) |
+| `app.rs`(`App::process`、`dispatch`) | `app.rs`(`App::process`、`run`、`dispatch`) |
+| `event.rs`(`Event::Chunk` → `Event::Request`) | `event.rs`(`Event::FetchChunk` → `Event::Fetched`) |
+| `handler.rs`(`Handler::process_*`) | `Handler::process_*` |
 
 # 不採用
 
@@ -123,7 +136,7 @@ root_key (32 B 乱数、初回有効化時に端末が生成)
 | POST | `/v1/sync/{store}/pull` | `[since: u64]` | `[head: u64][more: u8][count: u16]([identifier: 16][version: u64][flags: u8][ciphertext: bytes])*` | |
 | POST | `/v1/sync/{store}/push` | `[count: u16]([identifier: 16][base: u64][flags: u8][ciphertext: bytes])*` | `[head: u64][count: u16]([status: u8][version: u64][flags: u8][ciphertext: bytes])*`。`status` は 1 受理 / 2 競合(サーバーの現在値を伴う) | |
 
-`{store}` は英数字と `_` `-` の 32 文字以内。POST / PUT / DELETE は `SERVER_ORIGIN` が設定されていれば `Origin` ヘッダの一致を要求する(不一致は 403)。
+`{store}` は英数字と `_` `-` の 32 文字以内。POST / PUT / DELETE は `SERVER_ORIGIN` が設定されていれば `Origin` ヘッダの一致を要求する(不一致は 403)。メソッドとパスの組が上表に無いもの、本文が上表の形式に合わないものは、いずれも `Request` の decode 失敗として 400 を返す。
 
 ---
 
