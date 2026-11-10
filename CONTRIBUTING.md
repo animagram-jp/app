@@ -60,7 +60,6 @@ curl -fsSL -H "Accept: application/vnd.github.raw+json" "https://api.github.com/
 - Checker: `cargo clippy --all-targets --all-features`
 - Checker (wasm): `RUSTFLAGS="-Ctarget-feature=+atomics,+bulk-memory" cargo clippy --lib --all-features --target wasm32-unknown-unknown -Zbuild-std=std,panic_abort`
 - Copy from animagram-jp/css: `cp -f ../css/css/*.css ./distribution/css/library/`
-- Audit: `cargo install --locked cargo-audit && cargo audit`
 
 ## Test
 
