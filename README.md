@@ -1,5 +1,9 @@
 # animagram-jp/app
 
+[![CI](https://github.com/animagram-jp/app/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/animagram-jp/app/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/animagram-jp/app/graph/badge.svg)](https://codecov.io/gh/animagram-jp/app)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/animagram-jp/app/badge)](https://scorecard.dev/viewer/?uri=github.com/animagram-jp/app)
+
 A general-purpose boilerplate for GUI applications that edit and read structured data.
 The application owns a single event loop and is designed to run on multiple host environments, such as WebAssembly in a browser.
 

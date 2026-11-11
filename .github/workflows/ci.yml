@@ -1,0 +1,71 @@
+name: "CI"
+
+on:
+    push:
+        branches: ["main"]
+    pull_request:
+    workflow_dispatch:
+
+permissions:
+    contents: read
+
+concurrency:
+    group: "ci-${{ github.ref }}"
+    cancel-in-progress: true
+
+jobs:
+    check:
+        runs-on: ubuntu-latest
+        steps:
+            - name: "git checkout"
+              uses: actions/checkout@v7
+
+            - name: "install toolchain"
+              run: rustup toolchain install
+
+            - name: "cargo fmt"
+              run: cargo fmt --check
+
+            - name: "cargo clippy"
+              run: cargo clippy --locked --all-targets --all-features
+
+            - name: "cargo clippy (wasm)"
+              env:
+                  RUSTFLAGS: "-Ctarget-feature=+atomics,+bulk-memory"
+              run: cargo clippy --locked --lib --all-features --target wasm32-unknown-unknown -Zbuild-std=std,panic_abort
+
+    test:
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            id-token: write
+        steps:
+            - name: "git checkout"
+              uses: actions/checkout@v7
+
+            - name: "install toolchain"
+              run: |
+                  rustup toolchain install
+                  rustup component add llvm-tools-preview
+
+            - name: "install cargo-llvm-cov"
+              uses: taiki-e/install-action@v2
+              with:
+                  tool: cargo-llvm-cov
+
+            - name: "cargo test"
+              run: |
+                  cargo test --doc --locked
+                  cargo llvm-cov --no-report --lib --locked
+                  cargo llvm-cov --no-report --lib --locked --features calendar
+                  cargo llvm-cov --no-report --lib --locked --no-default-features --features coc7th
+                  cargo llvm-cov --no-report --lib --locked --features server
+                  cargo llvm-cov report --lcov --output-path lcov.info
+                  cargo build --locked --features server --bin server
+
+            - name: "upload coverage"
+              uses: codecov/codecov-action@v7
+              with:
+                  files: lcov.info
+                  use_oidc: true
+                  fail_ci_if_error: true
