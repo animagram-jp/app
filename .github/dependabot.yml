@@ -17,6 +17,9 @@ updates:
       cargo:
         patterns:
           - "*"
+    ignore:
+      - dependency-name: "spinning_top"
+        versions: [">=0.4"]
   - package-ecosystem: "npm"
     directory: "/reference"
     schedule:
