@@ -68,7 +68,7 @@ lto             = "fat"
 opt-level       = "z"
 overflow-checks = true
 panic           = "abort"
-strip           = true
+strip           = "debuginfo"
 
 [lints.rust]
 unsafe_op_in_unsafe_fn = "forbid"
