@@ -129,11 +129,11 @@ Either `calendar` or `coc7th` (default on) is required. Both enable `vault`, `sy
 ```bash
 # file_store on
 RUSTFLAGS="-Ctarget-feature=+atomics,+bulk-memory -Clink-arg=--import-memory -Clink-arg=--shared-memory -Clink-arg=--max-memory=134217728 -Clink-arg=--export=__wasm_init_tls -Clink-arg=--export=__tls_size -Clink-arg=--export=__tls_align -Clink-arg=--export=__tls_base" cargo build --release --target wasm32-unknown-unknown -Zbuild-std=std,panic_abort
-wasm-bindgen --target web --out-dir distribution/coc7th/app --out-name app target/wasm32-unknown-unknown/release/app.wasm
+wasm-bindgen --target web --remove-name-section --out-dir distribution/coc7th/app --out-name app target/wasm32-unknown-unknown/release/app.wasm
 
 # file_store off
 cargo build --release --target wasm32-unknown-unknown --no-default-features --features coc7th
-wasm-bindgen --target web --out-dir distribution/coc7th/app --out-name app target/wasm32-unknown-unknown/release/app.wasm
+wasm-bindgen --target web --remove-name-section --out-dir distribution/coc7th/app --out-name app target/wasm32-unknown-unknown/release/app.wasm
 
 # app + calendar + deploy output (output dir: target/cloudflare)
 sh reference/build.sh
