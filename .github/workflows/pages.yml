@@ -87,7 +87,7 @@ jobs:
         needs: build-server
         runs-on: ubuntu-latest
         environment:
-            name: server
+            name: "server"
         steps:
             - name: "notify"
               run: "true"
@@ -111,7 +111,7 @@ jobs:
               with:
                   apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
                   accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-                  command: deploy --config reference/app/wrangler.toml
+                  command: "deploy --config reference/app/wrangler.toml"
 
     deploy-github:
         needs: build
@@ -122,7 +122,7 @@ jobs:
             pages: write
             id-token: write
         environment:
-            name: github-pages
+            name: "github-pages"
             url: ${{ steps.deployment.outputs.page_url }}
         steps:
             - name: "download app"
