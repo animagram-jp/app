@@ -3,6 +3,7 @@ name: "CI"
 on:
     push:
         branches: ["main"]
+        tags: ["*.*.*"]
     pull_request:
     workflow_dispatch:
 
@@ -14,7 +15,8 @@ concurrency:
     cancel-in-progress: true
 
 jobs:
-    check:
+    validate:
+        if: github.ref_type != 'tag'
         runs-on: ubuntu-latest
         steps:
             - name: "git checkout"
@@ -35,6 +37,7 @@ jobs:
               run: cargo clippy --locked --lib --all-features --target wasm32-unknown-unknown -Zbuild-std=std,panic_abort
 
     test:
+        if: github.ref_type == 'tag' || github.event_name == 'workflow_dispatch'
         runs-on: ubuntu-latest
         permissions:
             contents: read
@@ -51,7 +54,7 @@ jobs:
             - name: "install cargo-llvm-cov"
               uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39 # v2.90.3
               with:
-                  tool: cargo-llvm-cov
+                  tool: "cargo-llvm-cov"
 
             - name: "cargo test"
               run: |
@@ -66,6 +69,6 @@ jobs:
             - name: "upload coverage"
               uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
               with:
-                  files: lcov.info
+                  files: "lcov.info"
                   use_oidc: true
                   fail_ci_if_error: true
