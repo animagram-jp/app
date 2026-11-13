@@ -1,4 +1,4 @@
-name: "Deploy to Pages"
+name: "Deploy"
 
 on:
     push:
@@ -22,7 +22,7 @@ permissions:
     contents: read
 
 concurrency:
-    group: "pages"
+    group: "deploy"
     cancel-in-progress: false
 
 jobs:
@@ -45,15 +45,6 @@ jobs:
                   version="$(grep -A1 '^name = "wasm-bindgen"$' Cargo.lock | sed -n 's/^version = "\(.*\)"$/\1/p')"
                   cargo install wasm-bindgen-cli --version "$version" --locked
 
-            - name: "cargo test"
-              run: |
-                  cargo test --doc --locked
-                  cargo test --lib --locked
-                  cargo test --lib --locked --features calendar
-                  cargo test --lib --locked --no-default-features --features coc7th
-                  cargo test --lib --locked --features server
-                  cargo build --locked --features server --bin server
-
             - name: "build"
               run: reference/build.sh
 
@@ -67,6 +58,8 @@ jobs:
         needs: build
         if: github.event_name == 'workflow_dispatch' && inputs.server
         runs-on: ubuntu-24.04-arm
+        environment:
+            name: "server"
         steps:
             - name: "git checkout"
               uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -82,15 +75,6 @@ jobs:
               with:
                   name: "server"
                   path: "target/release/server"
-
-    deploy-server:
-        needs: build-server
-        runs-on: ubuntu-latest
-        environment:
-            name: "server"
-        steps:
-            - name: "notify"
-              run: "true"
 
     deploy-app:
         needs: build

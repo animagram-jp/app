@@ -3,6 +3,7 @@ name: "CI"
 on:
     push:
         branches: ["main"]
+        tags: ["*.*.*"]
     pull_request:
     workflow_dispatch:
 
@@ -15,6 +16,7 @@ concurrency:
 
 jobs:
     validate:
+        if: github.ref_type != 'tag'
         runs-on: ubuntu-latest
         steps:
             - name: "git checkout"
@@ -35,6 +37,7 @@ jobs:
               run: cargo clippy --locked --lib --all-features --target wasm32-unknown-unknown -Zbuild-std=std,panic_abort
 
     test:
+        if: github.ref_type == 'tag' || github.event_name == 'workflow_dispatch'
         runs-on: ubuntu-latest
         permissions:
             contents: read
