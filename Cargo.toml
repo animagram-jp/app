@@ -1,6 +1,6 @@
 [package]
 name = "app"
-version = "0.1.0"
+version = "0.0.10"
 edition = "2024"
 description = "Gui application for editing and reading structured data."
 license = "Apache-2.0"
