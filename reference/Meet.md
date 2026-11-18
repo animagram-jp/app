@@ -1,4 +1,7 @@
-// This file includes untranslated text (ja).
+---
+lang: ja
+translations: none
+---
 
 ブラウザクライアントを含めたP2P接続機能。
 

@@ -1,4 +1,7 @@
-// This file includes untranslated text (ja).
+---
+lang: ja
+translations: none
+---
 
 Call of Cthulhu 7th edition playing tool.
 
