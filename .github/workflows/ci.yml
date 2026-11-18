@@ -86,10 +86,10 @@ jobs:
             - name: "cargo test"
               run: |
                   cargo test --doc --locked
-                  cargo llvm-cov --no-report --lib --locked
-                  cargo llvm-cov --no-report --lib --locked --features calendar
-                  cargo llvm-cov --no-report --lib --locked --no-default-features --features coc7th
-                  cargo llvm-cov --no-report --lib --locked --features server
+                  cargo llvm-cov --branch --no-report --lib --locked
+                  cargo llvm-cov --branch --no-report --lib --locked --features calendar
+                  cargo llvm-cov --branch --no-report --lib --locked --no-default-features --features coc7th
+                  cargo llvm-cov --branch --no-report --lib --locked --features server
                   cargo llvm-cov report --lcov --output-path lcov.info
                   cargo build --locked --features server --bin server
 
