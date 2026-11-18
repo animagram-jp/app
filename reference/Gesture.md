@@ -1,4 +1,7 @@
-// This file includes untranslated text (ja).
+---
+lang: ja
+translations: none
+---
 
 Reference data for `gesture::Pointer::track()`.
 

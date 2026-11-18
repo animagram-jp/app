@@ -1,4 +1,7 @@
-// This file includes untranslated text (ja).
+---
+lang: ja
+translations: none
+---
 
 feature `server`でコンパイルする、サーバー側アプリケーション。
 基本機能をパスワードログインとし、端末間暗号化(E2EE)、[Meet.md](./Meet.md)のP2Pシグナリング API、ユーザー単位のデータ同期(feature `sync`)を提供する。
