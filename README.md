@@ -16,7 +16,7 @@ The application owns a single event loop and is designed to run on multiple host
 
 | Version | Status | Date | Description |
 |-|-|-|-|
-| 0.1.0   | scheduled | 2026-11-31 | 1st release |
+| 0.1.0   | scheduled | 2026-11-30 | 1st release |
 
 This project adheres to [Semantic Versioning](https://semver.org/).
 
