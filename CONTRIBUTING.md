@@ -28,9 +28,7 @@ curl -fsSL -H "Accept: application/vnd.github.raw+json" "https://api.github.com/
 - 関数名は、namespaceで上位に既に並ぶ語彙・引数に現れている目的語は含まず、その上で{verbまたはpreposition}_{adjective}_{object}のように命名する。
 - script中の変数であっても、略語を用いない。但し、シグネチャでは無い関数内matchやiterator処理では、最初の一文字で表してよい。
 - テスト関数名は、主語と動詞を含む平叙文で検証した仕様を表現する。testやmod名はprefixに置かない。`_and_`が含まれるときは、前後2者の真偽が理論上割れないことを前提とする。
-- コメントによる仕切り線は `//(/) === text ===`、または`// --- text ---`とする。`/* */`はなるべく使わない。
 - hrefの値は、相対パスは"./"または"../"、絶対パスは"/"で必ず始める。原則、相対パスに統一する。
-- HTMLのID, フォーマット規則は[ORG_CONTRIBUTING.md](./ORG_CONTRIBUTING.md)に従う。
 - HTMLは各アプリごとにindex.html 1ファイル完結とする。
 - FOUC防止のためHTMLのbodyにhidden属性を付与しておくのが望ましい。
 - HTML中のテキストは言語に左右されず、一切変化しない要素のみ静的に書く。aria-labelは必要なものだけ英語で書いておく。
@@ -42,8 +40,6 @@ curl -fsSL -H "Accept: application/vnd.github.raw+json" "https://api.github.com/
     - 同itemの複数個のcomposite!には、添え字付きでBits/Fieldを実装する。
     - 集合内の列操作向けSoAレイアウトに必要な並びとストライド設計は、bit.rsの外で行う。
 
----
-
 # Requirements
 
 - 人間に普遍的に必要とされるアプリケーションを、提供コストをユビキタスに成り得る閾値まで抑えたwebシステムアーキテクチャで実現する。普遍的機能とは、以下を指す:
@@ -52,11 +48,9 @@ curl -fsSL -H "Accept: application/vnd.github.raw+json" "https://api.github.com/
     3. スキーマ自体を編集する機能。
 - 開発は、カレンダーやCoCプレイツールなど、具体的なアプリケーションを普遍的なアーキテクチャで実装することで進行する。各アプリケーション固有の処理は、分離境界を明確にしてコンパイル・ビルド時に選択可能にする。各実装時は、普遍的な要件にエスカレーションする妥当性を毎回検討する。
 
----
-
 # Links
 
-- [Debug link with eruda (dev tools)](https://app.animagram.jp/?eruda) eruda 3.4.3 (fixed)
+- [Debug link with eruda (dev tools)](https://app.animagram.jp/?eruda)
 
 # Commands
 
@@ -142,8 +136,6 @@ wasm-bindgen --target web --remove-name-section --out-dir distribution/coc7th/ap
 sh reference/build.sh
 ```
 
----
-
 # Wire format
 
 appとserverは`lib.rs::{Input::decode, Output::encode}`を共有し、HTTP本文(`application/octet-stream`)、hostへのフレーム、同期レコードの暗号化前の本体はすべてこの規約を守る。
@@ -178,8 +170,6 @@ appとserverは`lib.rs::{Input::decode, Output::encode}`を共有し、HTTP本�
 | 11 | Sync | sync | 2 Store, 3 Record, 4 Ciphertext, 6 PushCount |
 | 12 | Vault | vault | 1 Random, 2 Length, 3 Integrity |
 
----
-
 # Source files
 
 | Path | Content |
@@ -213,8 +203,6 @@ appとserverは`lib.rs::{Input::decode, Output::encode}`を共有し、HTTP本�
 | server/host.rs | feature `server`. `use std`. `now`、`Command`、`serve`(accept スレッド、60 秒ごとの `Event::Maintain`)。接続ごとに `http::frame` で1リクエストを区切り、`process_event` が `Mutex<App>` にフレームを渡して commands を受け取る。`drain` / `execute` が `Connection` ヘッダを付けて書き出し、keep-alive でなければ切断する。区切れないものはここで拒否する。 |
 | server/session.rs | feature `server`. `Record`(`digest, user, device, peer, created, seen`)と `Session<S>`(発行、認証、失効、purge)。Cookie の組み立てと解析. |
 | bin/server.rs | 環境変数を読んで `Handler<FsStore>` を開き、`App` に渡して `serve` する. |
-
----
 
 # System diagram
 
@@ -261,8 +249,6 @@ appとserverは`lib.rs::{Input::decode, Output::encode}`を共有し、HTTP本�
 │└────────────┘          │
 └────────────────────────┘
 ```
-
----
 
 # Host API dependencies
 
