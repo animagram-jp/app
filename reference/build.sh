@@ -20,6 +20,7 @@ rm -f "$CALENDAR_DIR/app/README.md" "$CALENDAR_DIR/app/LICENSE" "$CALENDAR_DIR/a
 rm -rf "$DEPLOY_DIR"
 mkdir -p "$DEPLOY_DIR/app"
 cp -r "$DIST/." "$DEPLOY_DIR/app/"
+cargo about generate --config reference/about.toml --features calendar --locked --output-file "$DEPLOY_DIR/app/NOTICE" reference/about.hbs
 find "$DEPLOY_DIR" -name .gitignore -delete
 
 find "$DEPLOY_DIR" -type f \( -name "*.html" -o -name "*.js" -o -name "*.json" -o -name "*.css" \) \

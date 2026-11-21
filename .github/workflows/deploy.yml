@@ -45,6 +45,11 @@ jobs:
                   version="$(grep -A1 '^name = "wasm-bindgen"$' Cargo.lock | sed -n 's/^version = "\(.*\)"$/\1/p')"
                   cargo install wasm-bindgen-cli --version "$version" --locked
 
+            - name: "install cargo-about"
+              uses: taiki-e/install-action@ab49d3c64680143e184118bed66a46419fc15519 # v2.90.5
+              with:
+                  tool: "cargo-about"
+
             - name: "build"
               run: reference/build.sh
 
