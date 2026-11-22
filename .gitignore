@@ -19,3 +19,4 @@ target/
 /.secrets
 /.pepper
 /data/
+/allowlist

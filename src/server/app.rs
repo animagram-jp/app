@@ -8,7 +8,7 @@ use core::{
 };
 
 use crate::{
-    Error, FrameError, Input,
+    Error, FrameError,
     server::{
         Action, Open, Resource,
         event::{Event, Request},
@@ -38,10 +38,10 @@ impl<S: Open> App<S> {
                     process_request(handler, now, request).unwrap_or_else(|response| response);
                 (vec![], vec![Command::Response(response)])
             }
-            Event::Maintain => {
-                let _ = handler.maintain(now);
-                (vec![], vec![])
-            }
+            Event::Maintain => match handler.maintain(now) {
+                Ok(()) => (vec![], vec![]),
+                Err(error) => (vec![], vec![Command::Error(error)]),
+            },
         }
     }
 
@@ -56,7 +56,9 @@ impl<S: Open> App<S> {
     }
 
     pub fn process(&mut self, now: u64, frame: &[u8]) {
-        let Some(request) = Request::decode(&mut { frame }) else {
+        let Some(request) =
+            Request::decode(&mut { frame }, &self.handler.config.session_cookie_name)
+        else {
             self.commands.push(Command::Response(reject(Error::Frame(FrameError::Decode))));
             return;
         };
@@ -132,12 +134,13 @@ mod tests {
 
     use super::*;
     use crate::{
-        Output,
+        Input, Output,
         credential::{self, Key, PROTOCOL},
         file_store::MemoryStore,
         server::{
             account::parse_allowlist,
-            meet, session,
+            handler::Config,
+            meet,
             sync::{Flags, Status},
         },
     };
@@ -172,6 +175,7 @@ mod tests {
                 100,
                 PEPPER.to_vec(),
                 parse_allowlist("alice@example.jp\nbob@example.jp\n"),
+                Config::new(),
             )
             .unwrap();
             Self { app: App::new(handler), now: 100 }
@@ -187,7 +191,9 @@ mod tests {
             self.app.process(self.now, &frame(method, path, headers, body));
             let mut commands = self.app.take_commands();
             assert_eq!(commands.len(), 1);
-            let Command::Response(response) = commands.remove(0);
+            let Command::Response(response) = commands.remove(0) else {
+                panic!("a request answers with a response");
+            };
             response
         }
 
@@ -270,7 +276,7 @@ mod tests {
             401
         );
 
-        harness.now += session::INACTIVITY_SECONDS_MAX;
+        harness.now += harness.app.handler.config.session_inactivity_seconds.get();
         assert_eq!(harness.send("GET", "/v1/session", &[("Cookie", &cookie)], &[]).status, 401);
 
         let (_, cookie) = harness.issue("alice@example.jp", &key);

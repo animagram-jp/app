@@ -18,10 +18,12 @@ use sha2::Sha256;
 use crate::{
     WireError,
     credential::{KEY_LENGTH, Key},
+    server::sync::CIPHERTEXT_SIZE_MAX,
 };
 
 pub const NONCE_LENGTH: usize = 24;
 pub const TAG_LENGTH: usize = 16;
+pub const PLAINTEXT_SIZE_MAX: usize = CIPHERTEXT_SIZE_MAX - NONCE_LENGTH - TAG_LENGTH;
 pub const WRAPPED_ROOT_LENGTH: usize = NONCE_LENGTH + KEY_LENGTH + TAG_LENGTH;
 
 const ROOT_INFO: &[u8] = b"animagram/vault/1/root";

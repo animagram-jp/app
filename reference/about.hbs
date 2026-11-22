@@ -1,0 +1,19 @@
+# NOTICE
+
+## Rust crates (linked into the distributed WebAssembly binaries)
+
+{{#each overview}}
+- {{{name}}}: {{count}}
+{{/each}}
+{{#each licenses}}
+
+---
+
+## {{{name}}}
+
+{{#each used_by}}
+- {{{crate.name}}} {{{crate.version}}}{{#if crate.repository}} ({{{crate.repository}}}){{/if}}
+{{/each}}
+
+{{{text}}}
+{{/each}}

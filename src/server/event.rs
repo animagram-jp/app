@@ -1,5 +1,6 @@
 use alloc::{string::String, vec::Vec};
 use core::{
+    num::NonZeroUsize,
     option::Option::{self, None, Some},
     primitive::{str, u8, u64, usize},
 };
@@ -10,12 +11,14 @@ use crate::{
     server::{
         http::{Message, Method},
         meet::Kind,
-        session::{self, TOKEN_LENGTH, Token},
-        sync::{Entry, PUSH_COUNT_MAX},
+        session::{self, CookieName, TOKEN_LENGTH, Token},
+        sync::{CIPHERTEXT_SIZE_MAX, Entry, PUSH_COUNT_MAX, RECORD_SIZE_MIN},
     },
 };
 
 pub const API_VERSION: &str = "v1";
+pub const BODY_SIZE_MAX: NonZeroUsize =
+    NonZeroUsize::new(2 + PUSH_COUNT_MAX * (RECORD_SIZE_MIN + CIPHERTEXT_SIZE_MAX)).unwrap();
 pub const STORE_NAME_LENGTH_MAX: usize = 32;
 
 pub enum Event {
@@ -89,12 +92,12 @@ fn is_store_name(name: &str) -> bool {
         && name.bytes().all(|byte| byte.is_ascii_alphanumeric() || byte == b'_' || byte == b'-')
 }
 
-impl Input<'_> for Request {
-    fn decode(input: &mut &[u8]) -> Option<Self> {
+impl Request {
+    pub fn decode(input: &mut &[u8], cookie_name: &CookieName) -> Option<Self> {
         let message = Message::decode(input)?;
         let token = message
             .header("cookie")
-            .and_then(session::token_from_cookie)
+            .and_then(|header| session::token_from_cookie(header, cookie_name))
             .unwrap_or([0; TOKEN_LENGTH]);
         let segments: Vec<&str> = message.segments().collect();
         let body = &mut { message.body };
@@ -148,7 +151,10 @@ mod tests {
         Output,
         bit::Zero,
         credential::PROTOCOL,
-        server::sync::{Flags, IDENTIFIER_LENGTH},
+        server::{
+            handler::Config,
+            sync::{Flags, IDENTIFIER_LENGTH},
+        },
     };
 
     fn frame(method: &str, path: &str, body: &[u8]) -> Vec<u8> {
@@ -160,7 +166,7 @@ mod tests {
     }
 
     fn decode(method: &str, path: &str, body: &[u8]) -> Option<Request> {
-        Request::decode(&mut &frame(method, path, body)[..])
+        Request::decode(&mut &frame(method, path, body)[..], &Config::new().session_cookie_name)
     }
 
     #[test]
@@ -291,10 +297,19 @@ mod tests {
     #[test]
     fn a_session_cookie_becomes_the_token_and_its_absence_is_zero() {
         let token = [5u8; TOKEN_LENGTH];
-        let cookie = session::set_cookie(&token);
+        let config = Config::new();
+        let cookie = session::set_cookie(
+            &token,
+            config.session_lifetime_seconds,
+            &config.session_cookie_name,
+            &config.session_cookie_path,
+        );
         let cookie = cookie.split(';').next().unwrap();
         let bytes = format!("GET /v1/session HTTP/1.1\r\nCookie: {cookie}\r\n\r\n").into_bytes();
-        assert_eq!(Request::decode(&mut &bytes[..]), Some(Request::Check { token }));
+        assert_eq!(
+            Request::decode(&mut &bytes[..], &config.session_cookie_name),
+            Some(Request::Check { token })
+        );
         assert_eq!(
             decode("GET", "/v1/session", &[]),
             Some(Request::Check { token: [0; TOKEN_LENGTH] })
@@ -306,7 +321,10 @@ mod tests {
         let mut bytes = frame("GET", "/v1/health", &[]);
         bytes.extend_from_slice(b"NEXT");
         let mut input = &bytes[..];
-        assert_eq!(Request::decode(&mut input), Some(Request::Health));
+        assert_eq!(
+            Request::decode(&mut input, &Config::new().session_cookie_name),
+            Some(Request::Health)
+        );
         assert_eq!(input, b"NEXT");
     }
 }

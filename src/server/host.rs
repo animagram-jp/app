@@ -2,15 +2,17 @@ use alloc::{sync::Arc, vec, vec::Vec};
 use core::{
     fmt::{self, Display, Formatter},
     net::SocketAddr,
-    primitive::{bool, u64, usize},
+    num::{NonZeroU64, NonZeroUsize},
+    primitive::{bool, u64},
     result::Result::{self, Err, Ok},
     time::Duration,
 };
 use std::{
+    eprintln,
     io::{self, ErrorKind, Read, Write},
     net::{TcpListener, TcpStream},
     sync::Mutex,
-    thread,
+    thread::{self, JoinHandle},
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -20,16 +22,11 @@ use crate::{
     server::{
         Open,
         app::App,
-        event::Event,
+        event::{BODY_SIZE_MAX, Event},
         handler::reject,
         http::{self, Response},
     },
 };
-
-pub const READ_TIMEOUT: Duration = Duration::from_secs(10);
-pub const WRITE_TIMEOUT: Duration = Duration::from_secs(10);
-pub const CHUNK_SIZE: usize = 16 * 1024;
-pub const MAINTAIN_INTERVAL: Duration = Duration::from_secs(60);
 
 #[derive(Debug)]
 pub enum HostError {
@@ -50,29 +47,26 @@ pub fn now() -> u64 {
 }
 
 pub enum Command {
+    Error(Error),
     Response(Response),
 }
 
+#[derive(Clone, Copy)]
 pub struct Config {
-    pub address:      SocketAddr,
-    pub thread_count: usize,
+    pub address:                   SocketAddr,
+    pub connection_thread_count:   NonZeroUsize,
+    pub http_header_count_max:     NonZeroUsize,
+    pub http_header_size_max:      NonZeroUsize,
+    pub maintain_interval_seconds: NonZeroU64,
+    pub read_size:                 NonZeroUsize,
+    pub read_timeout_seconds:      NonZeroU64,
+    pub write_timeout_seconds:     NonZeroU64,
 }
 
 pub fn serve(config: Config, app: Arc<Mutex<App<FsStore>>>) -> Result<(), HostError> {
     let listener = Arc::new(TcpListener::bind(config.address).map_err(HostError::Bind)?);
-    let mut handles = Vec::with_capacity(config.thread_count);
-    let keeper = Arc::clone(&app);
-    thread::Builder::new()
-        .spawn(move || {
-            loop {
-                thread::sleep(MAINTAIN_INTERVAL);
-                if let Ok(mut app) = keeper.lock() {
-                    app.run(now(), Event::Maintain);
-                }
-            }
-        })
-        .map_err(HostError::Spawn)?;
-    for _ in 0..config.thread_count.max(1) {
+    let mut handles = Vec::with_capacity(config.connection_thread_count.get());
+    for _ in 0..config.connection_thread_count.get() {
         let listener = Arc::clone(&listener);
         let app = Arc::clone(&app);
         let handle = thread::Builder::new()
@@ -80,7 +74,7 @@ pub fn serve(config: Config, app: Arc<Mutex<App<FsStore>>>) -> Result<(), HostEr
                 loop {
                     match listener.accept() {
                         Ok((stream, _)) => {
-                            let _ = serve_connection(stream, &app);
+                            let _ = serve_connection(stream, &app, &config);
                         }
                         Err(error) if error.kind() == ErrorKind::ConnectionAborted => {}
                         Err(error) => return Err(HostError::Accept(error)),
@@ -90,32 +84,54 @@ pub fn serve(config: Config, app: Arc<Mutex<App<FsStore>>>) -> Result<(), HostEr
             .map_err(HostError::Spawn)?;
         handles.push(handle);
     }
-    for handle in handles {
-        match handle.join() {
-            Ok(result) => result?,
-            Err(_) => return Err(HostError::Panicked),
+    loop {
+        thread::sleep(Duration::from_secs(config.maintain_interval_seconds.get()));
+        let Ok(mut app) = app.lock() else {
+            return Err(HostError::Panicked);
+        };
+        app.run(now(), Event::Maintain);
+        for command in app.take_commands() {
+            if let Command::Error(error) = command {
+                eprintln!("maintain: {error}");
+            }
+        }
+        drop(app);
+        if let Some(index) = handles.iter().position(JoinHandle::is_finished) {
+            return match handles.swap_remove(index).join() {
+                Ok(result) => result,
+                Err(_) => Err(HostError::Panicked),
+            };
         }
     }
-    Ok(())
 }
 
-fn serve_connection<S: Open>(mut stream: TcpStream, app: &Mutex<App<S>>) -> io::Result<()> {
-    stream.set_read_timeout(Some(READ_TIMEOUT))?;
-    stream.set_write_timeout(Some(WRITE_TIMEOUT))?;
+fn serve_connection<S: Open>(
+    mut stream: TcpStream,
+    app: &Mutex<App<S>>,
+    config: &Config,
+) -> io::Result<()> {
+    stream.set_read_timeout(Some(Duration::from_secs(config.read_timeout_seconds.get())))?;
+    stream.set_write_timeout(Some(Duration::from_secs(config.write_timeout_seconds.get())))?;
     stream.set_nodelay(true)?;
-    let mut buffer: Vec<u8> = Vec::with_capacity(CHUNK_SIZE);
-    let mut chunk = [0u8; CHUNK_SIZE];
+    let mut buffer: Vec<u8> = Vec::new();
     loop {
-        let (commands, keep_alive, consumed) = match http::frame(&buffer) {
+        let (commands, keep_alive, consumed) = match http::frame(
+            &buffer,
+            BODY_SIZE_MAX,
+            config.http_header_count_max,
+            config.http_header_size_max,
+        ) {
             Ok(Some(frame)) => {
                 (process_event(app, &buffer[..frame.length]), frame.keep_alive, frame.length)
             }
             Ok(None) => {
-                let count = stream.read(&mut chunk)?;
+                let length = buffer.len();
+                buffer.resize(length + config.read_size.get(), 0);
+                let count = stream.read(&mut buffer[length..])?;
+                buffer.truncate(length + count);
                 if count == 0 {
                     return Ok(());
                 }
-                buffer.extend_from_slice(&chunk[..count]);
                 continue;
             }
             Err(error) => {
@@ -149,6 +165,10 @@ fn drain(stream: &mut TcpStream, commands: Vec<Command>, keep_alive: bool) -> io
 
 fn execute(stream: &mut TcpStream, command: Command, keep_alive: bool) -> io::Result<()> {
     match command {
+        Command::Error(error) => {
+            eprintln!("request: {error}");
+            Ok(())
+        }
         Command::Response(response) => {
             let connection = if keep_alive { "keep-alive" } else { "close" };
             stream.write_all(&response.header("Connection", connection).to_bytes())
@@ -162,7 +182,10 @@ mod tests {
     use std::net::Shutdown;
 
     use super::*;
-    use crate::{file_store::MemoryStore, server::handler::Handler};
+    use crate::{
+        file_store::MemoryStore,
+        server::handler::{self, Handler},
+    };
 
     fn exchange(request: &[u8]) -> String {
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
@@ -176,11 +199,27 @@ mod tests {
             stream.read_to_end(&mut received).unwrap();
             received
         });
-        let handler =
-            Handler::<MemoryStore>::open((), 0, b"pepper".to_vec(), BTreeSet::new()).unwrap();
+        let handler = Handler::<MemoryStore>::open(
+            (),
+            0,
+            b"pepper".to_vec(),
+            BTreeSet::new(),
+            handler::Config::new(),
+        )
+        .unwrap();
         let app = Mutex::new(App::new(handler));
         let (stream, _) = listener.accept().unwrap();
-        serve_connection(stream, &app).unwrap();
+        let config = Config {
+            address,
+            connection_thread_count: NonZeroUsize::new(1).unwrap(),
+            http_header_count_max: NonZeroUsize::new(32).unwrap(),
+            http_header_size_max: NonZeroUsize::new(8 * 1024).unwrap(),
+            maintain_interval_seconds: NonZeroU64::new(60).unwrap(),
+            read_size: NonZeroUsize::new(16 * 1024).unwrap(),
+            read_timeout_seconds: NonZeroU64::new(10).unwrap(),
+            write_timeout_seconds: NonZeroU64::new(10).unwrap(),
+        };
+        serve_connection(stream, &app, &config).unwrap();
         String::from_utf8_lossy(&client.join().unwrap()).into_owned()
     }
 

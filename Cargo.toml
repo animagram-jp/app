@@ -6,7 +6,7 @@ description = "Gui application for editing and reading structured data."
 license = "Apache-2.0"
 repository = "https://github.com/animagram-jp/app"
 readme = "README.md"
-include = ["/src/**", "/Cargo.toml", "/README.md", "/LICENSE", "/NOTICE"]
+include = ["/src/**", "/Cargo.toml", "/README.md", "/LICENSE"]
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -57,7 +57,7 @@ coc7th     = ["vault", "sync", "meet", "dep:rand", "dep:serde_json"]
 credential = ["dep:hmac", "dep:sha2", "dep:hkdf"]
 file_store = ["dep:web-sys"]
 calendar = ["file_store", "vault", "sync", "meet", "dep:serde_json", "dep:rectgrid"]
-vault    = ["credential", "dep:argon2", "dep:chacha20poly1305"]
+vault    = ["credential", "dep:argon2", "dep:chacha20poly1305", "sync"]
 sync     = []
 meet     = []
 server   = ["credential", "sync", "meet"]

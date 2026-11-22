@@ -6,6 +6,7 @@ use alloc::{
     vec::Vec,
 };
 use core::{
+    num::{NonZeroU16, NonZeroU64},
     option::Option::Some,
     primitive::{u8, u16, u32, u64},
     result::Result::{self, Err, Ok},
@@ -22,7 +23,7 @@ use crate::{
         event::Credential,
         http::{HttpError, Response},
         meet::{self, Board, Kind, MeetError},
-        session::{self, Session, Token},
+        session::{self, CookieName, CookiePath, Session, Token},
         sync::{self, Collection, Entry, SyncError},
     },
 };
@@ -30,18 +31,45 @@ use crate::{
 pub const STORE_VERSION: &str = "1";
 pub const ACCOUNT_STORE: &str = "account";
 pub const SESSION_STORE: &str = "session";
-pub const COMPACT_INTERVAL_SECONDS: u64 = 24 * 3600;
+
+pub struct Config {
+    pub compact_interval_seconds:   NonZeroU64,
+    pub meet_lifetime_seconds:      NonZeroU64,
+    pub meet_presence_seconds:      NonZeroU64,
+    pub meet_queue_max:             NonZeroU16,
+    pub session_cookie_name:        CookieName,
+    pub session_cookie_path:        CookiePath,
+    pub session_inactivity_seconds: NonZeroU64,
+    pub session_lifetime_seconds:   NonZeroU64,
+}
+
+#[cfg(test)]
+impl Config {
+    pub(crate) fn new() -> Self {
+        Self {
+            compact_interval_seconds:   NonZeroU64::new(24 * 3600).unwrap(),
+            meet_lifetime_seconds:      NonZeroU64::new(60).unwrap(),
+            meet_presence_seconds:      NonZeroU64::new(60).unwrap(),
+            meet_queue_max:             NonZeroU16::new(32).unwrap(),
+            session_cookie_name:        CookieName::parse("session").unwrap(),
+            session_cookie_path:        CookiePath::parse("/api").unwrap(),
+            session_inactivity_seconds: NonZeroU64::new(7 * 24 * 3600).unwrap(),
+            session_lifetime_seconds:   NonZeroU64::new(30 * 24 * 3600).unwrap(),
+        }
+    }
+}
 
 pub struct Handler<S: Open> {
-    pub started_at: u64,
-    compacted_at:   u64,
-    pepper:         Vec<u8>,
-    allowlist:      BTreeSet<String>,
-    root:           S::Root,
     account:        Account<S>,
-    session:        Session<S>,
-    by_user_store:  BTreeMap<(u32, String), Collection<S>>,
+    allowlist:      BTreeSet<String>,
     board:          Board,
+    by_user_store:  BTreeMap<(u32, String), Collection<S>>,
+    compacted_at:   u64,
+    pub config:     Config,
+    pepper:         Vec<u8>,
+    root:           S::Root,
+    session:        Session<S>,
+    pub started_at: u64,
 }
 
 fn mount<S: Open>(root: &S::Root, id: StoreId) -> Result<S, Error> {
@@ -79,6 +107,7 @@ impl<S: Open> Handler<S> {
         started: u64,
         pepper: Vec<u8>,
         allowlist: BTreeSet<String>,
+        config: Config,
     ) -> Result<Self, Error> {
         let mut accounts =
             mount::<S>(&root, StoreId { name: ACCOUNT_STORE, version: STORE_VERSION })
@@ -89,24 +118,30 @@ impl<S: Open> Handler<S> {
                 .and_then(|store| Session::new(store).map_err(Error::Session))?;
         sessions.compact().map_err(Error::Session)?;
         Ok(Self {
-            started_at: started,
-            compacted_at: started,
-            pepper,
-            allowlist,
-            root,
             account: accounts,
-            session: sessions,
-            by_user_store: BTreeMap::new(),
+            allowlist,
             board: Board::new(),
+            by_user_store: BTreeMap::new(),
+            compacted_at: started,
+            config,
+            pepper,
+            root,
+            session: sessions,
+            started_at: started,
         })
     }
 
     pub fn maintain(&mut self, now: u64) -> Result<(), Error> {
-        self.board.sweep(now);
-        if self.session.purge(now) > 0 {
+        self.board.sweep(now, self.config.meet_lifetime_seconds, self.config.meet_presence_seconds);
+        if self.session.purge(
+            now,
+            self.config.session_inactivity_seconds,
+            self.config.session_lifetime_seconds,
+        ) > 0
+        {
             self.session.save().map_err(Error::Session)?;
         }
-        if now.saturating_sub(self.compacted_at) >= COMPACT_INTERVAL_SECONDS {
+        if now.saturating_sub(self.compacted_at) >= self.config.compact_interval_seconds.get() {
             self.compact()?;
             self.compacted_at = now;
         }
@@ -144,7 +179,12 @@ impl<S: Open> Handler<S> {
         action: Action,
         resource: impl FnOnce(&session::Record) -> Resource,
     ) -> Result<session::Record, Response> {
-        let Some(session) = self.session.authenticate(now, token) else {
+        let Some(session) = self.session.authenticate(
+            now,
+            token,
+            self.config.session_inactivity_seconds,
+            self.config.session_lifetime_seconds,
+        ) else {
             return Err(reject(Error::Account(AccountError::Unauthorized)));
         };
         if !authorize(&(&session).into(), action, &resource(&session)) {
@@ -206,7 +246,13 @@ impl<S: Open> Handler<S> {
         principal.device.encode(&mut output);
         issued.peer.encode(&mut output);
         wrapped_root.encode(&mut output);
-        Response::new(200).header("Set-Cookie", &session::set_cookie(&token)).body(output)
+        let cookie = session::set_cookie(
+            &token,
+            self.config.session_lifetime_seconds,
+            &self.config.session_cookie_name,
+            &self.config.session_cookie_path,
+        );
+        Response::new(200).header("Set-Cookie", &cookie).body(output)
     }
 
     pub fn process_revoke(&mut self, token: &Token) -> Response {
@@ -214,7 +260,13 @@ impl<S: Open> Handler<S> {
             return reject(Error::Account(AccountError::Unauthorized));
         }
         match self.session.save() {
-            Ok(()) => Response::new(204).header("Set-Cookie", &session::clear_cookie()),
+            Ok(()) => Response::new(204).header(
+                "Set-Cookie",
+                &session::clear_cookie(
+                    &self.config.session_cookie_name,
+                    &self.config.session_cookie_path,
+                ),
+            ),
             Err(error) => reject(Error::Session(error)),
         }
     }
@@ -244,11 +296,21 @@ impl<S: Open> Handler<S> {
         if let Err(error) = self.session.save() {
             return reject(Error::Session(error));
         }
-        Response::new(204).header("Set-Cookie", &session::clear_cookie())
+        Response::new(204).header(
+            "Set-Cookie",
+            &session::clear_cookie(
+                &self.config.session_cookie_name,
+                &self.config.session_cookie_path,
+            ),
+        )
     }
 
     pub fn process_poll(&mut self, now: u64, peer: u64) -> Response {
-        Response::new(200).body(meet::encode(&self.board.poll(now, peer)))
+        Response::new(200).body(meet::encode(&self.board.poll(
+            now,
+            peer,
+            self.config.meet_lifetime_seconds,
+        )))
     }
 
     pub fn process_signal(
@@ -259,7 +321,15 @@ impl<S: Open> Handler<S> {
         kind: Kind,
         payload: Vec<u8>,
     ) -> Response {
-        match self.board.post(now, from, target, kind, payload) {
+        match self.board.post(
+            now,
+            from,
+            target,
+            kind,
+            payload,
+            self.config.meet_lifetime_seconds,
+            self.config.meet_queue_max,
+        ) {
             Ok(()) => Response::new(204),
             Err(error) => reject(Error::Meet(error)),
         }
@@ -314,6 +384,7 @@ mod tests {
             started,
             PEPPER.to_vec(),
             parse_allowlist("alice@example.jp\n"),
+            Config::new(),
         )
         .unwrap()
     }
@@ -328,7 +399,7 @@ mod tests {
         handler.process_activate(100, &credential("alice@example.jp"), &ROOT);
         assert_eq!(handler.process_issue(100, &credential("alice@example.jp")).status, 200);
         assert_eq!(handler.session.by_digest.len(), 1);
-        handler.maintain(100 + session::LIFETIME_SECONDS_MAX).unwrap();
+        handler.maintain(100 + handler.config.session_lifetime_seconds.get()).unwrap();
         assert_eq!(handler.session.by_digest.len(), 0);
     }
 
@@ -339,9 +410,9 @@ mod tests {
         handler.process_issue(100, &credential("alice@example.jp"));
         assert!(log_size(&handler.account.store) > 0);
         assert!(log_size(&handler.session.store) > 0);
-        handler.maintain(100 + COMPACT_INTERVAL_SECONDS - 1).unwrap();
+        handler.maintain(100 + handler.config.compact_interval_seconds.get() - 1).unwrap();
         assert!(log_size(&handler.account.store) > 0);
-        handler.maintain(100 + COMPACT_INTERVAL_SECONDS).unwrap();
+        handler.maintain(100 + handler.config.compact_interval_seconds.get()).unwrap();
         assert_eq!(log_size(&handler.account.store), 0);
         assert_eq!(log_size(&handler.session.store), 0);
         assert_eq!(handler.account.by_email.len(), 1);
