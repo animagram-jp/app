@@ -1,5 +1,3 @@
-# animagram-jp/app
-
 [![CI](https://github.com/animagram-jp/app/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/animagram-jp/app/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/animagram-jp/app/graph/badge.svg)](https://codecov.io/gh/animagram-jp/app)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/animagram-jp/app/badge)](https://scorecard.dev/viewer/?uri=github.com/animagram-jp/app)
@@ -12,7 +10,7 @@ The application owns a single event loop and is designed to run on multiple host
 構造を持つデータを編集・閲覧する、一般的な用途を想定したアプリケーションシステムのボイラープレート。
 アプリ内にイベントループを持ち、複数のホスト環境(ブラウザのWebAssemblyなど)で動作するよう設計されている。
 
-## Version
+# Version
 
 | Version | Status | Date | Description |
 |-|-|-|-|
@@ -20,9 +18,7 @@ The application owns a single event loop and is designed to run on multiple host
 
 This project adheres to [Semantic Versioning](https://semver.org/).
 
----
-
-## Apps
+# Apps
 
 Applications built on this boilerplate. They share the same core.
 
@@ -33,26 +29,19 @@ Applications built on this boilerplate. They share the same core.
 | [calendar](#calendar) | Web calendar with reservation management. | 予約管理を含むWebカレンダー。 |
 | [coc7th](#coc7th) | Call of Cthulhu 7th edition playing tool. | 新クトゥルフ神話TRPGをオンラインで遊ぶためのツール。 |
 
-### Calendar
+## Calendar
 
 A web calendar with day, 3-day, week, and month views. Supports recurring events, reservation management, and JSON import and export.
 
 日・3日・週・月の表示を持つWebカレンダー。繰り返し予定、予約管理、JSONのインポート・エクスポートに対応する。
 
-### CoC7th
+## CoC7th
 
 An online tool dedicated to Call of Cthulhu TRPG 7th Edition. Supports character sheet editing, dice rolling during sessions, and post-session log management and tallying.
 
 新クトゥルフ神話TRPGに特化したオンラインツール。キャラクターシートの編集、セッション時のダイスロール、セッション後のログ管理と集計が可能。
 
----
-
-## License
-
-SPDX-License-Identifier: Apache-2.0
-Copyright (c) 2026 Andyou <andyou@animagram.jp>
-
-## Notice
+# Notice
 
 "Call of Cthulhu" is a trademark of Chaosium Inc.
 This project is an independent, unofficial work and is not affiliated with, endorsed by, or sponsored by Chaosium Inc.
