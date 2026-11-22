@@ -523,16 +523,16 @@ fn option_commands(language: Language) -> [Command; 2] {
 
 #[cfg(all(test, target_arch = "wasm32"))]
 mod tests {
-    use alloc::vec::Vec;
+    use alloc::{string::String, vec::Vec};
 
     use wasm_bindgen_test::*;
 
     use crate::{
-        En, Language, Output,
+        Output,
         app::App,
         arena::{ARENA, COMMAND_RING, EVENT_RING, initialize, process_event},
         coc7th::page::Page,
-        host::{EVENT_CANVAS, EventType, OPERATION_SET_ATTRIBUTE},
+        host::{EVENT_CANVAS, EventType, OPERATION_JS_FN},
     };
 
     const CLICK: u8 = 3;
@@ -549,7 +549,7 @@ mod tests {
         let mut frame = Vec::new();
         frame.push(EVENT_CANVAS);
         frame.push(CLICK);
-        Page::LanguageOption(Language::En(En::Gb)).to_dom().encode(&mut frame);
+        Page::Toast(1).to_dom().encode(&mut frame);
         frame.push(0);
         frame.push(0);
         str::encode("", &mut frame);
@@ -568,7 +568,7 @@ mod tests {
             operations.push(command[0]);
             ARENA.advance_ring(COMMAND_RING);
         }
-        assert_eq!(operations, [OPERATION_SET_ATTRIBUTE]);
+        assert_eq!(operations, [OPERATION_JS_FN]);
     }
 }
 

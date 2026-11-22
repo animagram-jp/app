@@ -92,12 +92,29 @@ cargo run --features server --bin server
 
 | 環境変数 | 内容 |
 |-|-|
-| `SERVER_ADDRESS` | bind アドレス(必須。`127.0.0.1:2001` など) |
-| `SERVER_WORKERS` | accept スレッド数(既定 4) |
-| `SERVER_DATA` | データディレクトリ(必須。[Server.md](./reference/Server.md) のパス表) |
-| `SERVER_PEPPER` | pepper ファイルのパス。未設定なら `$CREDENTIALS_DIRECTORY/pepper`(systemd credential)を読む。32 bytes 以上 |
+| `SERVER_ADDRESS` | bindアドレス。`127.0.0.1:2001`など |
+| `SERVER_ALLOWLIST_PATH` | 有効化を許可するemailの一覧(1行1件)のパス |
+| `SERVER_COMPACT_INTERVAL_SECONDS` | storeを`compact`する間隔(秒) |
+| `SERVER_CONNECTION_THREAD_COUNT` | 接続スレッド数 |
+| `SERVER_DATA_PATH` | データディレクトリのパス。[Server.md](./reference/Server.md)のパス表 |
+| `SERVER_HTTP_HEADER_COUNT_MAX` | ヘッダ数の上限。超過は431 |
+| `SERVER_HTTP_HEADER_SIZE_MAX` | ヘッダ部の上限(bytes)。超過は431 |
+| `SERVER_MAINTAIN_INTERVAL_SECONDS` | `Event::Maintain`の間隔(秒) |
+| `SERVER_MEET_LIFETIME_SECONDS` | シグナルの寿命(秒) |
+| `SERVER_MEET_PRESENCE_SECONDS` | 最後の`/v1/meet/poll`からオンラインとみなす時間(秒) |
+| `SERVER_MEET_QUEUE_MAX` | `target`ごとの待ち行列の上限 |
+| `SERVER_PEPPER_PATH` | pepperファイルのパス。32 bytes以上、全0不可 |
+| `SERVER_READ_SIZE` | 1回の`read`で読む量(bytes) |
+| `SERVER_READ_TIMEOUT_SECONDS` | 接続ごとの読み取りタイムアウト(秒) |
+| `SERVER_SESSION_COOKIE_NAME` | セッションCookieの名前。RFC 6265のtoken |
+| `SERVER_SESSION_COOKIE_PATH` | セッションCookieの`Path`。`/`始まり、制御文字と`;`不可 |
+| `SERVER_SESSION_INACTIVITY_SECONDS` | 最終アクセスからのセッション期限(秒) |
+| `SERVER_SESSION_LIFETIME_SECONDS` | 作成からのセッション期限(秒)。Cookieの`Max-Age` |
+| `SERVER_WRITE_TIMEOUT_SECONDS` | 接続ごとの書き込みタイムアウト(秒) |
 
-- 開発環境では`.secrets`に`SERVER_PEPPER=`を定義。
+- すべて必須。空文字は未設定として扱う。数値は0不可。
+- systemdでは、`ExecStart`で`SERVER_PEPPER_PATH=%d/pepper`を渡す。
+- 開発環境では`.secrets`に`SERVER_PEPPER_PATH=`を定義。
 - `allowlist` は起動時に 1 度だけ読む。追加後は再起動。
 
 ## Build WebAssembly
@@ -109,7 +126,7 @@ With feature `file_store`, `createSyncAccessHandle` is provided only to a dedica
 An app without `file_store` runs on the main thread.
 Its store is `MemoryStore`, which is not persisted.
 `calendar` enables `file_store`.
-Either `calendar` or `coc7th` (default on) is required. Both enable `vault`, `sync` and `meet`. `vault` enables `credential`.
+Either `calendar` or `coc7th` (default on) is required. Both enable `vault`, `sync` and `meet`. `vault` enables `credential` and `sync`.
 `sync` is the sync wire and `meet` is the signaling wire. `server` enables `sync`, `meet` and `credential`, builds the `server` binary, and is compiled out on wasm32. See [Server.md](./reference/Server.md).
 
 当プロジェクトでは、 wasm32-unknown-unknown コンパイルをブラウザホスト環境向けに利用している。
@@ -200,7 +217,7 @@ appとserverは`lib.rs::{Input::decode, Output::encode}`を共有し、HTTP本�
 | server/app.rs | feature `server`。`App<S: Open>`。events と commands の2つのキューを持つ。`process` が1フレームを `Request` に decode し(失敗は 400)、`run` が events を消費するまで `dispatch` を繰り返す。`Event::Request` は `Handler::admit`(認証と認可)を経て `Handler::process_*` へ移譲し、`Command::Response` を積む。 |
 | server/event.rs | feature `server`。`Event`(`Request / Maintain`)、`Credential`、`Request` と、その `Input`(`Message` のメソッドとパスで variant を決め、本文を wire format で読む。認証の要る variant は Cookie の `Token` を持ち、Cookie が無ければ 0...0。失敗は `None`)。 |
 | server/handler.rs | feature `server`。`Handler<S: Open>`(pepper、allowlist、各ストア、`Board`)。`admit` と、`Request` の各 variant に対応する `process_*`。`failure` / `reject` がエラー応答を組む。 |
-| server/host.rs | feature `server`. `use std`. `now`、`Command`、`serve`(accept スレッド、60 秒ごとの `Event::Maintain`)。接続ごとに `http::frame` で1リクエストを区切り、`process_event` が `Mutex<App>` にフレームを渡して commands を受け取る。`drain` / `execute` が `Connection` ヘッダを付けて書き出し、keep-alive でなければ切断する。区切れないものはここで拒否する。 |
+| server/host.rs | feature `server`. `use std`. `now`、`Command`、`serve`(接続スレッド、`SERVER_MAINTAIN_INTERVAL_SECONDS`ごとの`Event::Maintain`と接続スレッドの終了の検出)。接続ごとに `http::frame` で1リクエストを区切り、`process_event` が `Mutex<App>` にフレームを渡して commands を受け取る。`drain` / `execute` が `Connection` ヘッダを付けて書き出し、keep-alive でなければ切断する。区切れないものはここで拒否する。 |
 | server/session.rs | feature `server`. `Record`(`digest, user, device, peer, created, seen`)と `Session<S>`(発行、認証、失効、purge)。Cookie の組み立てと解析. |
 | bin/server.rs | 環境変数を読んで `Handler<FsStore>` を開き、`App` に渡して `serve` する. |
 
@@ -258,9 +275,10 @@ appとserverは`lib.rs::{Input::decode, Output::encode}`を共有し、HTTP本�
 | `getrandom::fill` | feature wasm_js | feature default |
 | `http::Response` | `init.js::fetch` | `std::net::{TcpListener, TcpStream}` |
 | File | `web_sys::FileSystemSyncAccessHandle` | `std::fs::{File, FileExt}` |
-| Spawn | - | `thread::Builder::spawn` |
+| Spawn | - | `thread::Builder::spawn`, `thread::JoinHandle::{is_finished, join}` |
 | Wait | - | `thread::sleep` |
 | Lock | - | `sync::Mutex` |
+| Log | - | `eprintln!` |
 
 ## ホストAPI依存機能の設計
 

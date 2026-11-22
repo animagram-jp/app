@@ -4,6 +4,7 @@ use alloc::{
 };
 use core::{
     fmt::{self, Display, Formatter},
+    num::NonZeroUsize,
     option::Option::{self, None, Some},
     primitive::{str, u8, u16, usize},
     result::Result::{self, Err, Ok},
@@ -11,10 +12,6 @@ use core::{
 };
 
 use crate::{Input, Output, WireError};
-
-pub const HEADER_SIZE_MAX: usize = 8 * 1024;
-pub const HEADER_COUNT_MAX: usize = 32;
-pub const BODY_MAX: usize = 1024 * 1024;
 
 const CRLF: &[u8] = b"\r\n";
 const HEADER_END: &[u8] = b"\r\n\r\n";
@@ -99,7 +96,7 @@ impl Message<'_> {
     }
 }
 
-fn is_token(byte: u8) -> bool {
+pub(crate) fn is_token(byte: u8) -> bool {
     matches!(byte, b'!' | b'#'..=b'\'' | b'*' | b'+' | b'-' | b'.' | b'0'..=b'9' | b'A'..=b'Z' | b'^'..=b'z' | b'|' | b'~')
 }
 
@@ -149,10 +146,15 @@ fn split_lines(bytes: &[u8]) -> impl Iterator<Item = &[u8]> {
     bytes.split(|byte| *byte == b'\n').map(|line| line.strip_suffix(b"\r").unwrap_or(line))
 }
 
-pub fn frame(buffer: &[u8]) -> Result<Option<Frame>, HttpError> {
-    let header_end = match find(HEADER_END, &buffer[..buffer.len().min(HEADER_SIZE_MAX)]) {
+pub fn frame(
+    buffer: &[u8],
+    body_size_max: NonZeroUsize,
+    header_count_max: NonZeroUsize,
+    header_size_max: NonZeroUsize,
+) -> Result<Option<Frame>, HttpError> {
+    let header_end = match find(HEADER_END, &buffer[..buffer.len().min(header_size_max.get())]) {
         Some(at) => at,
-        None if buffer.len() >= HEADER_SIZE_MAX => return Err(HttpError::HeaderTooLarge),
+        None if buffer.len() >= header_size_max.get() => return Err(HttpError::HeaderTooLarge),
         None => return Ok(None),
     };
     let mut lines = split_lines(&buffer[..header_end]);
@@ -171,14 +173,14 @@ pub fn frame(buffer: &[u8]) -> Result<Option<Frame>, HttpError> {
     let mut length = 0usize;
     for line in lines {
         count += 1;
-        if count > HEADER_COUNT_MAX {
+        if count > header_count_max.get() {
             return Err(HttpError::HeaderTooLarge);
         }
         let (name, value) = parse_header(line)?;
         match name.as_str() {
             "content-length" => {
                 length = value.parse().map_err(|_| HttpError::ContentLength)?;
-                if length > BODY_MAX {
+                if length > body_size_max.get() {
                     return Err(HttpError::BodyTooLarge);
                 }
             }
@@ -298,8 +300,16 @@ impl Output for Response {
 mod tests {
     use super::*;
 
+    const BODY_SIZE_MAX: NonZeroUsize = NonZeroUsize::new(1024 * 1024).unwrap();
+    const HEADER_COUNT_MAX: NonZeroUsize = NonZeroUsize::new(32).unwrap();
+    const HEADER_SIZE_MAX: NonZeroUsize = NonZeroUsize::new(8 * 1024).unwrap();
+
     fn decode(raw: &[u8]) -> Option<Message<'_>> {
         Message::decode(&mut &raw[..])
+    }
+
+    fn frame(buffer: &[u8]) -> Result<Option<Frame>, HttpError> {
+        super::frame(buffer, BODY_SIZE_MAX, HEADER_COUNT_MAX, HEADER_SIZE_MAX)
     }
 
     #[test]
@@ -352,7 +362,7 @@ mod tests {
             Err(HttpError::BodyTooLarge)
         );
         let mut oversized = b"GET / HTTP/1.1\r\n".to_vec();
-        oversized.resize(HEADER_SIZE_MAX + 1, b'a');
+        oversized.resize(HEADER_SIZE_MAX.get() + 1, b'a');
         assert_eq!(frame(&oversized), Err(HttpError::HeaderTooLarge));
     }
 

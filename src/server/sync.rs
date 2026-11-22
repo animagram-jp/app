@@ -29,7 +29,7 @@ use crate::{
 pub const IDENTIFIER_LENGTH: usize = 16;
 pub const CIPHERTEXT_SIZE_MAX: usize = u16::MAX as usize;
 pub const PULL_SIZE_MAX: usize = 768 * 1024;
-pub const PUSH_COUNT_MAX: usize = 1024;
+pub const PUSH_COUNT_MAX: usize = 15;
 
 pub type Identifier = [u8; IDENTIFIER_LENGTH];
 
@@ -59,6 +59,11 @@ impl Input<'_> for Flags {
         (byte >> Self::BITS == 0).then(|| Self::from_le_bytes([byte]))
     }
 }
+
+pub const RECORD_SIZE_MIN: usize = IDENTIFIER_LENGTH + 8 + Flags::BYTES + 2;
+
+const _: () = assert!(PULL_SIZE_MAX / RECORD_SIZE_MIN < u16::MAX as usize);
+const _: () = assert!(PUSH_COUNT_MAX <= u16::MAX as usize);
 
 #[derive(Debug, PartialEq)]
 pub enum SyncError {
@@ -113,7 +118,7 @@ impl Record {
     }
 
     pub fn size(&self) -> usize {
-        IDENTIFIER_LENGTH + 8 + Flags::BYTES + 2 + self.ciphertext.len()
+        RECORD_SIZE_MIN + self.ciphertext.len()
     }
 }
 

@@ -4,22 +4,19 @@ use alloc::{
     string::{String, ToString},
     vec::Vec,
 };
-#[cfg(all(feature = "server", not(target_arch = "wasm32")))]
-use core::result::Result::{self, Err, Ok};
 use core::{
     fmt::{self, Display, Formatter},
     option::Option::{None, Some},
     primitive::{u8, u16, u64, usize},
 };
+#[cfg(all(feature = "server", not(target_arch = "wasm32")))]
+use core::{
+    num::{NonZeroU16, NonZeroU64},
+    result::Result::{self, Err, Ok},
+};
 
 use crate::{Output, WireError};
 
-#[cfg(all(feature = "server", not(target_arch = "wasm32")))]
-pub const LIFETIME_SECONDS_MAX: u64 = 60;
-#[cfg(all(feature = "server", not(target_arch = "wasm32")))]
-pub const PRESENCE_SECONDS_MAX: u64 = 60;
-#[cfg(all(feature = "server", not(target_arch = "wasm32")))]
-pub const QUEUE_MAX: usize = 32;
 pub const PAYLOAD_MAX: usize = 16 * 1024;
 
 crate::enumerate! {
@@ -70,8 +67,8 @@ pub struct Signal {
 
 #[cfg(all(feature = "server", not(target_arch = "wasm32")))]
 impl Signal {
-    fn is_expired(&self, now: u64) -> bool {
-        now.saturating_sub(self.at) >= LIFETIME_SECONDS_MAX
+    fn is_expired(&self, now: u64, lifetime_seconds: NonZeroU64) -> bool {
+        now.saturating_sub(self.at) >= lifetime_seconds.get()
     }
 }
 
@@ -102,6 +99,8 @@ impl Board {
         target: u64,
         kind: Kind,
         payload: Vec<u8>,
+        lifetime_seconds: NonZeroU64,
+        queue_max: NonZeroU16,
     ) -> Result<(), MeetError> {
         if payload.len() > PAYLOAD_MAX {
             return Err(MeetError::Payload(payload.len()));
@@ -110,34 +109,37 @@ impl Board {
             return Err(MeetError::SelfAddressed);
         }
         let queue = self.by_target.entry(target).or_default();
-        queue.retain(|signal| !signal.is_expired(now));
-        if queue.len() >= QUEUE_MAX {
+        queue.retain(|signal| !signal.is_expired(now, lifetime_seconds));
+        if queue.len() >= usize::from(queue_max.get()) {
             return Err(MeetError::Full(target));
         }
         queue.push_back(Signal { from, kind, payload, at: now });
         Ok(())
     }
 
-    pub fn poll(&mut self, now: u64, peer: u64) -> Vec<Signal> {
+    pub fn poll(&mut self, now: u64, peer: u64, lifetime_seconds: NonZeroU64) -> Vec<Signal> {
         self.last_seen.insert(peer, now);
         match self.by_target.remove(&peer) {
-            Some(queue) => queue.into_iter().filter(|signal| !signal.is_expired(now)).collect(),
+            Some(queue) => queue
+                .into_iter()
+                .filter(|signal| !signal.is_expired(now, lifetime_seconds))
+                .collect(),
             None => Vec::new(),
         }
     }
 
-    pub fn is_online(&self, now: u64, peer: u64) -> bool {
+    pub fn is_online(&self, now: u64, peer: u64, presence_seconds: NonZeroU64) -> bool {
         self.last_seen
             .get(&peer)
-            .is_some_and(|seen| now.saturating_sub(*seen) < PRESENCE_SECONDS_MAX)
+            .is_some_and(|seen| now.saturating_sub(*seen) < presence_seconds.get())
     }
 
-    pub fn sweep(&mut self, now: u64) {
+    pub fn sweep(&mut self, now: u64, lifetime_seconds: NonZeroU64, presence_seconds: NonZeroU64) {
         for queue in self.by_target.values_mut() {
-            queue.retain(|signal| !signal.is_expired(now));
+            queue.retain(|signal| !signal.is_expired(now, lifetime_seconds));
         }
         self.by_target.retain(|_, queue| !queue.is_empty());
-        self.last_seen.retain(|_, seen| now.saturating_sub(*seen) < PRESENCE_SECONDS_MAX);
+        self.last_seen.retain(|_, seen| now.saturating_sub(*seen) < presence_seconds.get());
     }
 }
 
@@ -183,56 +185,95 @@ mod board_tests {
     use super::*;
     use crate::Rng;
 
+    const LIFETIME_SECONDS: NonZeroU64 = NonZeroU64::new(60).unwrap();
+    const PRESENCE_SECONDS: NonZeroU64 = NonZeroU64::new(60).unwrap();
+    const QUEUE_MAX: NonZeroU16 = NonZeroU16::new(32).unwrap();
+
     #[test]
     fn poll_returns_posted_signals_in_order() {
         let mut board = Board::new();
-        board.post(10, 1, 2, Kind::Offer, b"o".to_vec()).unwrap();
-        board.post(11, 1, 2, Kind::Candidate, b"c".to_vec()).unwrap();
-        board.post(11, 3, 2, Kind::Offer, b"x".to_vec()).unwrap();
+        board.post(10, 1, 2, Kind::Offer, b"o".to_vec(), LIFETIME_SECONDS, QUEUE_MAX).unwrap();
+        board.post(11, 1, 2, Kind::Candidate, b"c".to_vec(), LIFETIME_SECONDS, QUEUE_MAX).unwrap();
+        board.post(11, 3, 2, Kind::Offer, b"x".to_vec(), LIFETIME_SECONDS, QUEUE_MAX).unwrap();
         assert_eq!(board.len(), 3);
-        let got = board.poll(12, 2);
+        let got = board.poll(12, 2, LIFETIME_SECONDS);
         assert_eq!(
             got.iter().map(|signal| (signal.from, signal.kind)).collect::<Vec<_>>(),
             [(1, Kind::Offer), (1, Kind::Candidate), (3, Kind::Offer)]
         );
-        assert!(board.poll(12, 2).is_empty());
+        assert!(board.poll(12, 2, LIFETIME_SECONDS).is_empty());
         assert!(board.is_empty());
     }
 
     #[test]
     fn post_rejects_a_self_addressed_or_oversized_signal() {
         let mut board = Board::new();
-        assert_eq!(board.post(0, 1, 1, Kind::Offer, Vec::new()), Err(MeetError::SelfAddressed));
+        assert_eq!(
+            board.post(0, 1, 1, Kind::Offer, Vec::new(), LIFETIME_SECONDS, QUEUE_MAX),
+            Err(MeetError::SelfAddressed)
+        );
         let oversized = alloc::vec![0u8; PAYLOAD_MAX + 1];
         assert_eq!(
-            board.post(0, 1, 2, Kind::Offer, oversized),
+            board.post(0, 1, 2, Kind::Offer, oversized, LIFETIME_SECONDS, QUEUE_MAX),
             Err(MeetError::Payload(PAYLOAD_MAX + 1))
         );
-        assert!(board.post(0, 1, 2, Kind::Answer, alloc::vec![0u8; PAYLOAD_MAX]).is_ok());
+        assert!(
+            board
+                .post(
+                    0,
+                    1,
+                    2,
+                    Kind::Answer,
+                    alloc::vec![0u8; PAYLOAD_MAX],
+                    LIFETIME_SECONDS,
+                    QUEUE_MAX
+                )
+                .is_ok()
+        );
     }
 
     #[test]
     fn a_full_queue_accepts_again_after_expiry() {
         let mut board = Board::new();
-        for i in 0..QUEUE_MAX {
-            board.post(i as u64, 1, 2, Kind::Candidate, Vec::new()).unwrap();
+        for i in 0..QUEUE_MAX.get() {
+            board
+                .post(i as u64, 1, 2, Kind::Candidate, Vec::new(), LIFETIME_SECONDS, QUEUE_MAX)
+                .unwrap();
         }
         assert_eq!(
-            board.post(QUEUE_MAX as u64, 1, 2, Kind::Candidate, Vec::new()),
+            board.post(
+                QUEUE_MAX.get() as u64,
+                1,
+                2,
+                Kind::Candidate,
+                Vec::new(),
+                LIFETIME_SECONDS,
+                QUEUE_MAX
+            ),
             Err(MeetError::Full(2))
         );
-        board.post(LIFETIME_SECONDS_MAX, 1, 2, Kind::Candidate, b"late".to_vec()).unwrap();
-        let got = board.poll(LIFETIME_SECONDS_MAX, 2);
-        assert_eq!(got.len(), QUEUE_MAX);
+        board
+            .post(
+                LIFETIME_SECONDS.get(),
+                1,
+                2,
+                Kind::Candidate,
+                b"late".to_vec(),
+                LIFETIME_SECONDS,
+                QUEUE_MAX,
+            )
+            .unwrap();
+        let got = board.poll(LIFETIME_SECONDS.get(), 2, LIFETIME_SECONDS);
+        assert_eq!(got.len(), usize::from(QUEUE_MAX.get()));
         assert_eq!(got.last().unwrap().payload, b"late");
     }
 
     #[test]
     fn poll_drops_expired_signals() {
         let mut board = Board::new();
-        board.post(0, 1, 2, Kind::Offer, Vec::new()).unwrap();
-        board.post(5, 1, 2, Kind::Offer, Vec::new()).unwrap();
-        let got = board.poll(LIFETIME_SECONDS_MAX + 2, 2);
+        board.post(0, 1, 2, Kind::Offer, Vec::new(), LIFETIME_SECONDS, QUEUE_MAX).unwrap();
+        board.post(5, 1, 2, Kind::Offer, Vec::new(), LIFETIME_SECONDS, QUEUE_MAX).unwrap();
+        let got = board.poll(LIFETIME_SECONDS.get() + 2, 2, LIFETIME_SECONDS);
         assert_eq!(got.len(), 1);
         assert_eq!(got[0].at, 5);
     }
@@ -240,17 +281,17 @@ mod board_tests {
     #[test]
     fn sweep_forgets_expired_signals_and_presence() {
         let mut board = Board::new();
-        assert!(!board.is_online(0, 9));
-        board.poll(100, 9);
-        assert!(board.is_online(100 + PRESENCE_SECONDS_MAX - 1, 9));
-        assert!(!board.is_online(100 + PRESENCE_SECONDS_MAX, 9));
-        board.post(100, 9, 8, Kind::Offer, Vec::new()).unwrap();
-        board.post(150, 9, 7, Kind::Offer, Vec::new()).unwrap();
-        board.sweep(100 + LIFETIME_SECONDS_MAX);
+        assert!(!board.is_online(0, 9, PRESENCE_SECONDS));
+        board.poll(100, 9, LIFETIME_SECONDS);
+        assert!(board.is_online(100 + PRESENCE_SECONDS.get() - 1, 9, PRESENCE_SECONDS));
+        assert!(!board.is_online(100 + PRESENCE_SECONDS.get(), 9, PRESENCE_SECONDS));
+        board.post(100, 9, 8, Kind::Offer, Vec::new(), LIFETIME_SECONDS, QUEUE_MAX).unwrap();
+        board.post(150, 9, 7, Kind::Offer, Vec::new(), LIFETIME_SECONDS, QUEUE_MAX).unwrap();
+        board.sweep(100 + LIFETIME_SECONDS.get(), LIFETIME_SECONDS, PRESENCE_SECONDS);
         assert_eq!(board.len(), 1);
         assert!(!board.by_target.contains_key(&8));
-        assert!(!board.is_online(100 + LIFETIME_SECONDS_MAX, 9));
-        board.sweep(150 + LIFETIME_SECONDS_MAX);
+        assert!(!board.is_online(100 + LIFETIME_SECONDS.get(), 9, PRESENCE_SECONDS));
+        board.sweep(150 + LIFETIME_SECONDS.get(), LIFETIME_SECONDS, PRESENCE_SECONDS);
         assert!(board.is_empty());
     }
 
@@ -268,14 +309,22 @@ mod board_tests {
                     0..7 => {
                         let from = rng.below(4) as u64;
                         let target = rng.below(4) as u64;
-                        let result = board.post(now, from, target, Kind::Candidate, Vec::new());
+                        let result = board.post(
+                            now,
+                            from,
+                            target,
+                            Kind::Candidate,
+                            Vec::new(),
+                            LIFETIME_SECONDS,
+                            QUEUE_MAX,
+                        );
                         if from == target {
                             assert_eq!(result, Err(MeetError::SelfAddressed), "{context}");
                             continue;
                         }
                         let queue = model.entry(target).or_default();
-                        queue.retain(|(_, at)| now - at < LIFETIME_SECONDS_MAX);
-                        if queue.len() >= QUEUE_MAX {
+                        queue.retain(|(_, at)| now - at < LIFETIME_SECONDS.get());
+                        if queue.len() >= usize::from(QUEUE_MAX.get()) {
                             assert_eq!(result, Err(MeetError::Full(target)), "{context}");
                         } else {
                             assert_eq!(result, Ok(()), "{context}");
@@ -284,16 +333,19 @@ mod board_tests {
                     }
                     7..9 => {
                         let peer = rng.below(4) as u64;
-                        let got: Vec<(u64, u64)> =
-                            board.poll(now, peer).iter().map(|s| (s.from, s.at)).collect();
+                        let got: Vec<(u64, u64)> = board
+                            .poll(now, peer, LIFETIME_SECONDS)
+                            .iter()
+                            .map(|s| (s.from, s.at))
+                            .collect();
                         let mut expected = model.remove(&peer).unwrap_or_default();
-                        expected.retain(|(_, at)| now - at < LIFETIME_SECONDS_MAX);
+                        expected.retain(|(_, at)| now - at < LIFETIME_SECONDS.get());
                         assert_eq!(got, expected, "{context}");
                     }
                     _ => {
-                        board.sweep(now);
+                        board.sweep(now, LIFETIME_SECONDS, PRESENCE_SECONDS);
                         for queue in model.values_mut() {
-                            queue.retain(|(_, at)| now - at < LIFETIME_SECONDS_MAX);
+                            queue.retain(|(_, at)| now - at < LIFETIME_SECONDS.get());
                         }
                         model.retain(|_, queue| !queue.is_empty());
                         assert_eq!(

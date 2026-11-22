@@ -20,7 +20,7 @@ feature `server`でコンパイルする、サーバー側アプリケーショ�
 
 | feature | 既定 | 内容 |
 |-|-|-|
-| `sync` | off | 同期レコードのワイヤ(`sync::Record` / `Entry` / `Status` / `Outcome` と encode)。端末側とサーバー側が共有する。`coc7th` と `calendar` が含む。 |
+| `sync` | off | 同期レコードのワイヤ(`sync::Record` / `Entry` / `Status` / `Outcome` と encode)。端末側とサーバー側が共有する。`coc7th` と `calendar` が含む。`vault`も含む。 |
 | `meet` | off | シグナリングのワイヤ(`meet::Kind` / `Signal` と encode)。同上。 |
 | `server` | off | `sync`、`meet`、`credential` を含む。`account` / `session` / `http` / `event` / `app` / `handler` / `host` と、`sync::Collection`、`meet::Board`。wasm32 では常にコンパイル対象外。bin `server` はこの feature を要求する。 |
 
@@ -73,10 +73,10 @@ feature `server`でコンパイルする、サーバー側アプリケーショ�
 
 | 項目 | 範囲 |
 |-|-|
-| メソッド | DELETE, GET, POST, PUT(番号は `host::Method` と一致) |
+| メソッド | DELETE, GET, POST, PUT(番号は`http::Method`と一致) |
 | 版 | HTTP/1.1(keep-alive 既定)、HTTP/1.0(close 既定) |
 | 本文 | `Content-Length` のみ。`Transfer-Encoding` は 411。前段は本文をバッファして `Content-Length` 付きで渡す |
-| 上限 | ヘッダ部 8 KiB、ヘッダ 32 個、本文 1 MiB。超過は 431 / 413 |
+| 上限 | ヘッダ部`SERVER_HTTP_HEADER_SIZE_MAX`、ヘッダ数`SERVER_HTTP_HEADER_COUNT_MAX`、本文`event::BODY_SIZE_MAX`(最大の push の大きさ)。超過は 431 / 413 |
 | パス | `/` 始まり、印字可能 ASCII、`.` と `..` セグメント無し。クエリは `?` で分離 |
 
 ---
@@ -116,11 +116,11 @@ root_key (32 B 乱数、初回有効化時に端末が生成)
 
 | 項目 | 内容 |
 |-|-|
-| トークン | 32 B の CSPRNG。Cookie `session=<hex>`、`HttpOnly; Secure; SameSite=Strict; Path=/api`。サーバーは `SHA-256(token)` のみ保存する |
-| 期限 | 作成から 30 日、最終アクセスから 7 日。ログイン成功で再発行、ログアウトでサーバー側を削除 |
+| トークン | 32 B の CSPRNG。Cookie `{SERVER_SESSION_COOKIE_NAME}=<hex>`、`HttpOnly; Secure; SameSite=Strict; Path={SERVER_SESSION_COOKIE_PATH}`。サーバーは `SHA-256(token)` のみ保存する |
+| 期限 | 作成から`SERVER_SESSION_LIFETIME_SECONDS`、最終アクセスから`SERVER_SESSION_INACTIVITY_SECONDS`。ログイン成功で再発行、ログアウトでサーバー側を削除 |
 | CSRF | 前段で行う。Cookie の `SameSite=Strict` と、前段の `Sec-Fetch-Site` / `Origin` 判定。server は `Origin` を扱わない |
 | 端末 | ログインごとに `(user, device)` を記録し、Meet の `peer` id(u64 乱数)を発行する |
-| 有効化 | 公開の登録機能は持たない([Calendar.md](./Calendar.md) の方針)。`{SERVER_DATA}/allowlist` に書かれた email だけが初回の `PUT /v1/account` で有効化できる。allowlist は起動時に 1 度だけ読む |
+| 有効化 | 公開の登録機能は持たない([Calendar.md](./Calendar.md) の方針)。`SERVER_ALLOWLIST_PATH` に書かれた email だけが初回の `PUT /v1/account` で有効化できる。allowlist は起動時に 1 度だけ読む |
 | 再認証 | パスワード変更は現在の `authentication_key` と新しい `authentication_key`、新しい `wrapped_root` を一度に受け取る |
 
 # API
@@ -148,7 +148,7 @@ root_key (32 B 乱数、初回有効化時に端末が生成)
 [Meet.md](./Meet.md) のシグナリングを、ログイン済み端末の `peer` id で行う。
 
 - `from` はサーバーがセッションから埋め、クライアントは詐称できない。`target` は任意の `peer` で、受け入れるかは相手側が決める。
-- インメモリ。`target` ごとに `VecDeque`(上限 32 件)、寿命 60 秒。ディスクには書かない。
+- インメモリ。`target` ごとに `VecDeque`(上限`SERVER_MEET_QUEUE_MAX`件)、寿命`SERVER_MEET_LIFETIME_SECONDS`。ディスクには書かない。
 - `kind` は 1 offer、2 answer、3 candidate。`payload` は SDP の文字列、または `[media_line: u16][media_id: str][candidate: str]`。
 - `/v1/meet/poll` はオンライン申告を兼ね、`last_seen` を更新する。
 - TURN 資格情報は前段が提供元から取得する。server は `GET /v1/session` で `auth_request` に答えるだけで、HTTPS クライアントを持たない。
@@ -162,13 +162,13 @@ root_key (32 B 乱数、初回有効化時に端末が生成)
 - app の FileStore の id(u32)はプロセス内で閉じた値なので同期の識別子には使わず、app 側はレコード本体に `identifier` を持たせる(Calendar の `uid` と同じ考え方)。
 - サーバーは `(user, store)` ごとに 1 つの FileStore を持ち、値に `[version][flags][identifier][ciphertext]` を入れる。`identifier → id` と `version → id` の索引は open 時にメモリ上で組み、`version` の重複や 0 は壊れたレコードとして open を拒む(`sync::Collection`)。
 - 往復は状態を持たない。`pull` は `since` より大きい `version` を昇順に、1 応答 768 KiB(`sync::PULL_SIZE_MAX`)まで返し、続きがあれば `more` を立てる。端末は最後の `version` を次の `since` にする。
-- `push` は各レコードの `base`(端末が最後に見た `version`、未知なら 0)を持ち、サーバーの現在値と一致すれば `head + 1` を振る。不一致はサーバーの現在値を競合として返し、マージは暗号文を復号できる端末側で行う。1 回の push は 1024 件、`ciphertext` は 65535 B まで。
+- `push` は各レコードの `base`(端末が最後に見た `version`、未知なら 0)を持ち、サーバーの現在値と一致すれば `head + 1` を振る。不一致はサーバーの現在値を競合として返し、マージは暗号文を復号できる端末側で行う。1 回の push は`sync::PUSH_COUNT_MAX`件、`ciphertext`は`sync::CIPHERTEXT_SIZE_MAX`まで(平文は`vault::PLAINTEXT_SIZE_MAX`まで)。
 - 削除は `flags` の bit 0 を立てた tombstone で、`ciphertext` は空にして保持する。compact 方針は運用で決める。
 - `sync.rs` の `two_devices_converge` が、2 端末がランダムに push / pull を繰り返しても最後の pull で全員がサーバーと一致することを、seed 固定の乱数で確かめている。
 
 ---
 
-# FileSStore
+# FileStore
 
 `file_store.rs` の `FsStore`(`std::fs`、unix)を使う。`OpfsStore` との対応は次のとおり。
 
@@ -182,12 +182,11 @@ root_key (32 B 乱数、初回有効化時に端末が生成)
 
 | Path | Content |
 |-|-|
-| `{SERVER_DATA}/allowlist` | 有効化を許可する email の一覧(1 行 1 件) |
-| `{SERVER_DATA}/account.1.{snap,log}` | ユーザー、検証子、`wrapped_root`、端末 |
-| `{SERVER_DATA}/session.1.{snap,log}` | セッション(ハッシュ、期限) |
-| `{SERVER_DATA}/user/{user}/{store}.1.{snap,log}` | 同期レコード |
+| `{SERVER_DATA_PATH}/account.1.{snap,log}` | ユーザー、検証子、`wrapped_root`、端末 |
+| `{SERVER_DATA_PATH}/session.1.{snap,log}` | セッション(ハッシュ、期限) |
+| `{SERVER_DATA_PATH}/user/{user}/{store}.1.{snap,log}` | 同期レコード |
 
-- 変更を伴うリクエストの応答前に `save` する。`compact` は起動時と 1 日 1 回。
+- 変更を伴うリクエストの応答前に `save` する。`compact` は起動時と`SERVER_COMPACT_INTERVAL_SECONDS`ごと。
 - 単一 writer なので、バックアップは `compact` 直後の snapshot を別ホストへ複製する。
 - OPFS の `SyncAccessHandle` が持つ排他ロックに相当するものは置いていない。単一プロセスで、`Handler` が同じ store を 1 度しか mount しないことで単一 writer を守る。
 - `file_store.rs` のテストは同じ `cases`(故障注入の sweep、モデル walk、torn tail)を `MemoryStore` / `OpfsStore` / `FsStore` で回す。
@@ -196,7 +195,9 @@ root_key (32 B 乱数、初回有効化時に端末が生成)
 
 ## 並行モデル
 
-- `std::net` のブロッキング I/O。`SERVER_WORKERS`(既定 4)本のスレッドが同じ `TcpListener` で `accept` し、接続ごとに読み取り 10 秒、書き込み 10 秒のタイムアウトで keep-alive を回す。
-- 状態は `Mutex<Handler>` 1 つ。`process_request` は短い同期関数で、ロック保持中に I/O をしない(FileStore の `save` だけが例外で、これは設計上ロック内で行う)。
-- accept スレッドが panic すると `serve` が `Err` を返してプロセスが終了し、プロセス管理側が再起動する。`Mutex` の poison は 500 で返す。
+- `std::net` のブロッキング I/O。`SERVER_CONNECTION_THREAD_COUNT` 本のスレッドが同じ `TcpListener` で `accept` し、接続ごとに読み取り`SERVER_READ_TIMEOUT_SECONDS`、書き込み`SERVER_WRITE_TIMEOUT_SECONDS`のタイムアウトで keep-alive を回す。
+- 状態は`Mutex<App>`1つ。`process_request` は短い同期関数で、ロック保持中に I/O をしない(FileStore の `save` だけが例外で、これは設計上ロック内で行う)。
+- `serve`を呼んだスレッドが`SERVER_MAINTAIN_INTERVAL_SECONDS`ごとに`Event::Maintain`を実行し、その都度、終了した接続スレッドの有無を確かめる。接続スレッドの終了(`accept`の失敗、debugビルドでのpanic)と`Mutex`のpoisonを検出すると`serve`が`Err`を返してプロセスが終了し、プロセス管理側が再起動する。releaseビルドは`panic = "abort"`なので、panicの時点でプロセスが終了する。poison後の接続には500を返す。
+- maintainの失敗は`host::Command::Error`としてstderrに出す。
+- 設定の誤りは終了コード2で終了する。プロセス管理側はこれを再起動しない(`RestartPreventExitStatus=2`)。
 - 非同期化が必要になった時は `host.rs` だけを差し替える。

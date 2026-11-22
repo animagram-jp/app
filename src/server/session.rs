@@ -6,6 +6,7 @@ use alloc::{
 };
 use core::{
     fmt::{self, Display, Formatter},
+    num::NonZeroU64,
     option::Option::{self, None, Some},
     primitive::{str, u8, u16, u32, u64, usize},
     result::Result::{self, Ok},
@@ -15,18 +16,40 @@ use crate::{
     FrameError, Input, Output, WireError,
     credential::{self, Key, from_hexadecimal, to_hexadecimal},
     file_store::{FileStore, FileStoreError},
-    server::Principal,
+    server::{Principal, http::is_token},
 };
 
 pub const TOKEN_LENGTH: usize = 32;
-pub const LIFETIME_SECONDS_MAX: u64 = 30 * 24 * 3600;
-pub const INACTIVITY_SECONDS_MAX: u64 = 7 * 24 * 3600;
-pub const COOKIE_NAME: &str = "session";
-pub const COOKIE_PATH: &str = "/api";
 #[cfg(test)]
 const RECORD_LENGTH: usize = 32 + 4 + 2 + 8 + 8 + 8;
 
 pub type Token = [u8; TOKEN_LENGTH];
+
+pub struct CookieName(String);
+
+impl CookieName {
+    pub fn parse(value: &str) -> Option<Self> {
+        (!value.is_empty() && value.bytes().all(is_token)).then(|| Self(value.to_string()))
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+pub struct CookiePath(String);
+
+impl CookiePath {
+    pub fn parse(value: &str) -> Option<Self> {
+        (value.starts_with('/')
+            && value.bytes().all(|byte| (0x20..0x7f).contains(&byte) && byte != b';'))
+        .then(|| Self(value.to_string()))
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
 
 #[derive(Debug)]
 pub enum SessionError {
@@ -85,11 +108,16 @@ impl From<&Record> for Principal {
 }
 
 impl Record {
-    pub fn is_expired(&self, now: u64) -> bool {
+    pub fn is_expired(
+        &self,
+        now: u64,
+        inactivity_seconds: NonZeroU64,
+        lifetime_seconds: NonZeroU64,
+    ) -> bool {
         now < self.created
             || now < self.seen
-            || now - self.created >= LIFETIME_SECONDS_MAX
-            || now - self.seen >= INACTIVITY_SECONDS_MAX
+            || now - self.created >= lifetime_seconds.get()
+            || now - self.seen >= inactivity_seconds.get()
     }
 }
 
@@ -117,21 +145,32 @@ impl Input<'_> for Record {
     }
 }
 
-pub fn set_cookie(token: &Token) -> String {
+pub fn set_cookie(
+    token: &Token,
+    lifetime_seconds: NonZeroU64,
+    name: &CookieName,
+    path: &CookiePath,
+) -> String {
     format!(
-        "{COOKIE_NAME}={}; Max-Age={LIFETIME_SECONDS_MAX}; Path={COOKIE_PATH}; Secure; HttpOnly; SameSite=Strict",
-        to_hexadecimal(token)
+        "{}={}; Max-Age={lifetime_seconds}; Path={}; Secure; HttpOnly; SameSite=Strict",
+        name.as_str(),
+        to_hexadecimal(token),
+        path.as_str()
     )
 }
 
-pub fn clear_cookie() -> String {
-    format!("{COOKIE_NAME}=; Max-Age=0; Path={COOKIE_PATH}; Secure; HttpOnly; SameSite=Strict")
+pub fn clear_cookie(name: &CookieName, path: &CookiePath) -> String {
+    format!(
+        "{}=; Max-Age=0; Path={}; Secure; HttpOnly; SameSite=Strict",
+        name.as_str(),
+        path.as_str()
+    )
 }
 
-pub fn token_from_cookie(header: &str) -> Option<Token> {
+pub fn token_from_cookie(header: &str, name: &CookieName) -> Option<Token> {
     header.split(';').find_map(|pair| {
-        let (name, value) = pair.trim().split_once('=')?;
-        if name.trim() != COOKIE_NAME {
+        let (field, value) = pair.trim().split_once('=')?;
+        if field.trim() != name.as_str() {
             return None;
         }
         from_hexadecimal(value.trim())?.try_into().ok()
@@ -183,9 +222,15 @@ impl<S: FileStore> Session<S> {
         Some((id, session))
     }
 
-    pub fn authenticate(&mut self, now: u64, token: &Token) -> Option<Record> {
+    pub fn authenticate(
+        &mut self,
+        now: u64,
+        token: &Token,
+        inactivity_seconds: NonZeroU64,
+        lifetime_seconds: NonZeroU64,
+    ) -> Option<Record> {
         let (id, mut session) = self.find(token)?;
-        if session.is_expired(now) {
+        if session.is_expired(now, inactivity_seconds, lifetime_seconds) {
             self.remove(id, &session.digest);
             return None;
         }
@@ -221,13 +266,20 @@ impl<S: FileStore> Session<S> {
         found.len()
     }
 
-    pub fn purge(&mut self, now: u64) -> usize {
+    pub fn purge(
+        &mut self,
+        now: u64,
+        inactivity_seconds: NonZeroU64,
+        lifetime_seconds: NonZeroU64,
+    ) -> usize {
         let expired: Vec<(u32, Key)> = self
             .store
             .range(0, u32::MAX)
             .filter_map(|(id, bytes)| {
                 let session = Record::from_bytes(bytes).ok()?;
-                session.is_expired(now).then_some((id, session.digest))
+                session
+                    .is_expired(now, inactivity_seconds, lifetime_seconds)
+                    .then_some((id, session.digest))
             })
             .collect();
         for (id, digest) in &expired {
@@ -260,12 +312,19 @@ mod tests {
         file_store::{MemoryStore, Mount, StoreId},
     };
 
-    fn store(id: StoreId) -> MemoryStore {
-        block_on(MemoryStore::open(id, true)).and_then(MemoryStore::new).unwrap()
+    const INACTIVITY_SECONDS: NonZeroU64 = NonZeroU64::new(7 * 24 * 3600).unwrap();
+    const LIFETIME_SECONDS: NonZeroU64 = NonZeroU64::new(30 * 24 * 3600).unwrap();
+
+    fn cookie() -> (CookieName, CookiePath) {
+        (CookieName::parse("session").unwrap(), CookiePath::parse("/api").unwrap())
     }
 
     fn derive_id(name: &str) -> StoreId {
         StoreId { name: Box::leak(format!("session_{name}").into_boxed_str()), version: "0" }
+    }
+
+    fn store(id: StoreId) -> MemoryStore {
+        block_on(MemoryStore::open(id, true)).and_then(MemoryStore::new).unwrap()
     }
 
     fn sessions(id: StoreId) -> Session<MemoryStore> {
@@ -298,30 +357,68 @@ mod tests {
             created: 1000,
             seen:    1000,
         };
-        assert!(!session.is_expired(1000));
-        assert!(!session.is_expired(1000 + INACTIVITY_SECONDS_MAX - 1));
-        assert!(session.is_expired(1000 + INACTIVITY_SECONDS_MAX));
-        assert!(session.is_expired(999));
-        let touched = Record { seen: 1000 + LIFETIME_SECONDS_MAX - 10, ..session.clone() };
-        assert!(!touched.is_expired(1000 + LIFETIME_SECONDS_MAX - 1));
-        assert!(touched.is_expired(1000 + LIFETIME_SECONDS_MAX));
+        assert!(!session.is_expired(1000, INACTIVITY_SECONDS, LIFETIME_SECONDS));
+        assert!(!session.is_expired(
+            1000 + INACTIVITY_SECONDS.get() - 1,
+            INACTIVITY_SECONDS,
+            LIFETIME_SECONDS
+        ));
+        assert!(session.is_expired(
+            1000 + INACTIVITY_SECONDS.get(),
+            INACTIVITY_SECONDS,
+            LIFETIME_SECONDS
+        ));
+        assert!(session.is_expired(999, INACTIVITY_SECONDS, LIFETIME_SECONDS));
+        let touched = Record { seen: 1000 + LIFETIME_SECONDS.get() - 10, ..session.clone() };
+        assert!(!touched.is_expired(
+            1000 + LIFETIME_SECONDS.get() - 1,
+            INACTIVITY_SECONDS,
+            LIFETIME_SECONDS
+        ));
+        assert!(touched.is_expired(
+            1000 + LIFETIME_SECONDS.get(),
+            INACTIVITY_SECONDS,
+            LIFETIME_SECONDS
+        ));
+    }
+
+    #[test]
+    fn a_cookie_name_is_a_nonempty_token() {
+        assert!(CookieName::parse("session").is_some());
+        assert!(CookieName::parse("").is_none());
+        assert!(CookieName::parse("a b").is_none());
+        assert!(CookieName::parse("a;b").is_none());
+        assert!(CookieName::parse("a=b").is_none());
+        assert!(CookieName::parse("a\r\nb").is_none());
+    }
+
+    #[test]
+    fn a_cookie_path_starts_with_a_slash_and_has_no_control_or_semicolon() {
+        assert!(CookiePath::parse("/").is_some());
+        assert!(CookiePath::parse("/api").is_some());
+        assert!(CookiePath::parse("").is_none());
+        assert!(CookiePath::parse("api").is_none());
+        assert!(CookiePath::parse("/api;Domain=x").is_none());
+        assert!(CookiePath::parse("/api\r\nX: y").is_none());
     }
 
     #[test]
     fn a_cookie_round_trips_through_its_header() {
+        let (name, path) = cookie();
         let token = [0xabu8; TOKEN_LENGTH];
-        let header = set_cookie(&token);
+        let header = set_cookie(&token, LIFETIME_SECONDS, &name, &path);
         assert!(header.starts_with("session=abab"));
         assert!(header.contains("; HttpOnly"));
         assert!(header.contains("; Secure"));
         assert!(header.contains("; SameSite=Strict"));
         assert!(header.contains("; Path=/api"));
+        assert!(header.contains(&format!("; Max-Age={LIFETIME_SECONDS}")));
         let value = header.split(';').next().unwrap();
-        assert_eq!(token_from_cookie(&format!("other=1; {value}; x=y")), Some(token));
-        assert_eq!(token_from_cookie("session=abcd"), None);
-        assert_eq!(token_from_cookie("sessions=abab"), None);
-        assert_eq!(token_from_cookie(""), None);
-        assert!(clear_cookie().contains("Max-Age=0"));
+        assert_eq!(token_from_cookie(&format!("other=1; {value}; x=y"), &name), Some(token));
+        assert_eq!(token_from_cookie("session=abcd", &name), None);
+        assert_eq!(token_from_cookie("sessions=abab", &name), None);
+        assert_eq!(token_from_cookie("", &name), None);
+        assert!(clear_cookie(&name, &path).contains("Max-Age=0"));
     }
 
     #[test]
@@ -333,13 +430,17 @@ mod tests {
         assert_ne!(token, other);
         assert_eq!(sessions.by_digest.len(), 2);
 
-        let seen = sessions.authenticate(150, &token).unwrap();
+        let seen =
+            sessions.authenticate(150, &token, INACTIVITY_SECONDS, LIFETIME_SECONDS).unwrap();
         assert_eq!((seen.user, seen.device, seen.peer, seen.seen), (7, 1, issued.peer, 150));
-        assert_eq!(sessions.authenticate(150, &[0u8; 32]), None);
+        assert_eq!(
+            sessions.authenticate(150, &[0u8; 32], INACTIVITY_SECONDS, LIFETIME_SECONDS),
+            None
+        );
 
         assert!(sessions.revoke(&token));
         assert!(!sessions.revoke(&token));
-        assert_eq!(sessions.authenticate(150, &token), None);
+        assert_eq!(sessions.authenticate(150, &token, INACTIVITY_SECONDS, LIFETIME_SECONDS), None);
         assert_eq!(sessions.by_digest.len(), 1);
     }
 
@@ -354,11 +455,40 @@ mod tests {
 
         let mut reopened = self::sessions(id);
         assert_eq!(reopened.by_digest.len(), 3);
-        assert!(reopened.authenticate(1000 + INACTIVITY_SECONDS_MAX - 1, &fresh).is_some());
-        assert!(reopened.authenticate(1000 + 2 * INACTIVITY_SECONDS_MAX - 2, &fresh).is_some());
-        assert_eq!(reopened.authenticate(1000 + INACTIVITY_SECONDS_MAX, &idle), None);
+        assert!(
+            reopened
+                .authenticate(
+                    1000 + INACTIVITY_SECONDS.get() - 1,
+                    &fresh,
+                    INACTIVITY_SECONDS,
+                    LIFETIME_SECONDS
+                )
+                .is_some()
+        );
+        assert!(
+            reopened
+                .authenticate(
+                    1000 + 2 * INACTIVITY_SECONDS.get() - 2,
+                    &fresh,
+                    INACTIVITY_SECONDS,
+                    LIFETIME_SECONDS
+                )
+                .is_some()
+        );
+        assert_eq!(
+            reopened.authenticate(
+                1000 + INACTIVITY_SECONDS.get(),
+                &idle,
+                INACTIVITY_SECONDS,
+                LIFETIME_SECONDS
+            ),
+            None
+        );
         assert_eq!(reopened.by_digest.len(), 2);
-        assert_eq!(reopened.purge(1000 + LIFETIME_SECONDS_MAX), 2);
+        assert_eq!(
+            reopened.purge(1000 + LIFETIME_SECONDS.get(), INACTIVITY_SECONDS, LIFETIME_SECONDS),
+            2
+        );
         assert_eq!(reopened.by_digest.len(), 0);
         let _ = old;
     }
@@ -371,9 +501,9 @@ mod tests {
         let (b, _) = sessions.issue(1, 5, 2).unwrap();
         let (c, _) = sessions.issue(1, 6, 1).unwrap();
         assert_eq!(sessions.revoke_user(5), 2);
-        assert_eq!(sessions.authenticate(2, &a), None);
-        assert_eq!(sessions.authenticate(2, &b), None);
-        assert!(sessions.authenticate(2, &c).is_some());
+        assert_eq!(sessions.authenticate(2, &a, INACTIVITY_SECONDS, LIFETIME_SECONDS), None);
+        assert_eq!(sessions.authenticate(2, &b, INACTIVITY_SECONDS, LIFETIME_SECONDS), None);
+        assert!(sessions.authenticate(2, &c, INACTIVITY_SECONDS, LIFETIME_SECONDS).is_some());
     }
 
     #[test]
