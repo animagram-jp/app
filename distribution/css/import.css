@@ -4,7 +4,7 @@
     css.data_style,
     css.data_size,
     css.data_sign,
-    css.data_group,
+    css.data_union,
     css.input,
     css.button,
     css.checkbox,
@@ -25,7 +25,7 @@
 @import url("./library/data_style.css?v={version}");
 @import url("./library/data_size.css?v={version}");
 @import url("./library/data_sign.css?v={version}");
-@import url("./library/data_group.css?v={version}");
+@import url("./library/data_union.css?v={version}");
 @import url("./library/input.css?v={version}");
 @import url("./library/button.css?v={version}");
 @import url("./library/checkbox.css?v={version}");

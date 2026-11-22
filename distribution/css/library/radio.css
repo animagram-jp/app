@@ -29,7 +29,7 @@
             <span></span>
             <input type="radio"></label></fieldset>
 
-    <fieldset data-group="inline">
+    <fieldset data-union="inline | block">
         <legend>
             <span></span></legend>
         <label>
@@ -45,9 +45,8 @@
             <input type="radio" role="tab"></label></*>
     <* role="tabpanel"></*>
 */
-
 @layer css.radio {
-    fieldset:has(> label > input[type="radio"]):not([data-group="inline"]) {
+    fieldset:has(> label > input[type="radio"]):not([data-union]) {
         display: grid;
         border:  none;
         gap:     0.5rem;
@@ -81,9 +80,6 @@
         grid-template-columns: max-content repeat(8, max-content);
     }
 
-    fieldset:has(> label > input[type="radio"]) > legend {
-        display: contents;
-    }
     fieldset:has(> label > input[type="radio"]) > legend > * {
         grid-column:     1 / -1;
         min-inline-size: 0;
@@ -95,8 +91,8 @@
         margin:          0;
     }
 
-    fieldset:has(> label > input[type="radio"]):where([data-axis="block"], :not([data-axis])):not([data-group="inline"]) > legend > *,
-    fieldset:has(> label > input[type="radio"]):where([data-axis="block"], :not([data-axis])):not([data-group="inline"]) > *:not(legend, label),
+    fieldset:has(> label > input[type="radio"]):where([data-axis="block"], :not([data-axis])):not([data-union]) > legend > *,
+    fieldset:has(> label > input[type="radio"]):where([data-axis="block"], :not([data-axis])):not([data-union]) > *:not(legend, label),
     fieldset:has(> label > input[type="radio"])[data-axis="inline"]:has(> label:first-of-type:nth-last-of-type(n+9)) > legend > *,
     fieldset:has(> label > input[type="radio"])[data-axis="inline"]:has(> label:first-of-type:nth-last-of-type(n+9)) > *:not(legend, label) {
         contain: inline-size;
@@ -156,15 +152,15 @@
         }
     }
 
-    /* === data-group="inline" === */
+    /* === data-union === */
 
-    fieldset[data-group="inline"]:has(> label > input[type="radio"]) > label {
+    [data-union]:has(> label > input[type="radio"]) > label {
         display:     inline flow-root;
         inline-size: auto;
         position:    relative;
     }
 
-    fieldset[data-group="inline"] > label > input[type="radio"] {
+    [data-union] > label > input[type="radio"] {
         block-size:     100%;
         inline-size:    100%;
         inset:          0;

@@ -9,7 +9,6 @@
         <span>inline</span>
         <input type="checkbox" role="switch"></label>
 */
-
 @layer css.toggle {
 
     /* === color, layout === */
@@ -37,6 +36,10 @@
         background-color: var(--color-ink-mix);
     }
 
+    label > input[type="checkbox"][role="switch"]:checked:not(:user-invalid, [aria-invalid="true"], :disabled, [aria-disabled="true"]) {
+        border-color: var(--color-ink);
+    }
+
     @media (prefers-reduced-motion: no-preference) {
         label > input[type="checkbox"][role="switch"] {
             transition: background-color 0.15s ease;
@@ -50,7 +53,7 @@
     label > input[type="checkbox"][role="switch"]::after {
         align-items:     center;
         background:      var(--color-paper);
-        border-color:    var(--color-ink);
+        border-color:    transparent;
         border-style:    solid;
         color:           var(--color-ink);
         content:         "OFF";
@@ -133,8 +136,7 @@
         :disabled,
         [aria-disabled="true"]
     )::after {
-        border-color: var(--color-ink-mix);
-        color:        var(--color-ink-mix);
+        color: var(--color-ink-mix);
     }
 
     @media (forced-colors: active) {

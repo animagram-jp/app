@@ -5,7 +5,11 @@
 
 /*  Usage:
 
-    <input type="text|email|password|search|url|tel|checkbox|radio">
+    <input type="text | email | password | search | url | tel | checkbox | radio">
+
+    <input type="text" inputmode="numeric" maxlength="4" pattern="[0-9]{4}" size="4">
+    <input type="text" inputmode="numeric" maxlength="2" pattern="0?[1-9]|1[0-2]" size="2">
+    <input type="text" inputmode="numeric" maxlength="2" pattern="0?[1-9]|[12][0-9]|3[01]" size="2">
 
     <label>
         <span></span>
@@ -31,12 +35,7 @@
             [type="search"],
             [type="url"],
             [type="tel"],
-            [type="number"],
-            [type="date"],
-            [type="time"],
-            [type="datetime-local"],
-            [type="month"],
-            [type="week"]
+            [type="number"]
         ),
         select,
         textarea
@@ -54,21 +53,12 @@
             [type="search"],
             [type="url"],
             [type="tel"],
-            [type="number"],
-            [type="date"],
-            [type="time"],
-            [type="datetime-local"],
-            [type="month"],
-            [type="week"]
+            [type="number"]
         ),
         textarea
     ) {
         caret-color: var(--color-ink-mix);
         cursor:      text;
-
-        &::placeholder {
-            color: var(--color-ink-mix);        
-        }
     }
 
     :where(
@@ -88,6 +78,11 @@
 
     input[inputmode="numeric"] {
         text-align: right;
+    }
+
+    input[inputmode="numeric"][maxlength] {
+        field-sizing:    fixed;
+        min-inline-size: 0;
     }
 
     /* === password === */

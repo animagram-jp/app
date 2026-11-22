@@ -40,14 +40,9 @@
             <input type="search"></label>
         <button type="submit"></button></form>
 */
-
 @layer css.search {
     label:has(> input[type="search"]) {
         position: relative;
-    }
-
-    :where(search, form[role="search"]) > span {
-        margin-inline-end: 0.5rem;
     }
 
     label:has(> input[type="search"])::before,

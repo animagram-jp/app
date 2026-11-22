@@ -20,7 +20,6 @@
 
     (a sortable column header is in step.css)
 */
-
 @layer css.table {
     table {
         max-inline-size: 100%;
@@ -76,7 +75,7 @@
     table[data-border="booktabs"] {
         border-block: var(--md-border-width) solid var(--color-ink);
     }
-    table[data-border="booktabs"] thead tr:last-of-type :where(td, th) {
+    table:where([data-border="booktabs"]) thead tr:last-of-type :where(td, th) {
         border-block-end:  var(--md-border-width) solid var(--color-ink);
         padding-block-end: calc(((var(--md-box-height) - var(--md-line-height)) / 2) - var(--md-border-width));
     }

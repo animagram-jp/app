@@ -55,12 +55,11 @@
     === tooltip ===
 
     <button type="button" id="tooltip_trigger-1" popovertarget="tooltip-1">
-    <* id="tooltip-1" popover="auto|manual"></*>
+    <* id="tooltip-1" popover="auto | manual"></*>
 
     #tooltip_trigger-1 {anchor-name: --tooltip_trigger-1;}
     #tooltip-1         {position-anchor: --tooltip_trigger-1;}
 */
-
 @layer css.popup {
 
     [popover] {

@@ -113,7 +113,7 @@
     :where(
         [data-surround="fill"],
         [data-surround="outline"],
-        fieldset[data-group="inline"] > label:has(> input[type="radio"]),
+        [data-union] > label:has(> input:is([type="radio"], [type="checkbox"])),
         :is(
             button,
             [type="button"],
@@ -126,12 +126,7 @@
                 [type="search"],
                 [type="url"],
                 [type="tel"],
-                [type="number"],
-                [type="date"],
-                [type="time"],
-                [type="datetime-local"],
-                [type="month"],
-                [type="week"]
+                [type="number"]
             ),
             select,
             summary,

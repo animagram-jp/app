@@ -111,9 +111,8 @@
     }
 
     input[type="file"]:where([data-surround="outline"])::file-selector-button:active {
-        background-color: var(--color-paper-mix);
-        border-color:     var(--color-emphasis-ink-mix);
-        color:            var(--color-emphasis-ink);
+        border-color: var(--color-emphasis-ink-mix);
+        color:        var(--color-emphasis-ink-mix);
     }
 
     /* --- invalid --- */

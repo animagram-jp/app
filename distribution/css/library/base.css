@@ -45,32 +45,34 @@
 
         --color-ink:       light-dark(rgb(var(--rgb-black)), rgb(var(--rgb-white)));
         --color-paper:     light-dark(rgb(var(--rgb-white)), rgb(var(--rgb-black)));
-        --color-ink-mix:   color-mix(in srgb, var(--color-ink) 60%, var(--color-paper));
+        --color-ink-mix:   light-dark(color-mix(in srgb, var(--color-ink) 41.8%, var(--color-paper)), color-mix(in srgb, var(--color-ink) 35.1%, var(--color-paper)));
         --color-paper-mix: color-mix(in srgb, var(--color-ink) 16%, var(--color-paper));
 
         --color-error:           rgb(var(--rgb-accent-red));
-        --color-highlight-ink:   light-dark(color-mix(in srgb, rgb(var(--rgb-accent-yellow)) 46%, rgb(0,0,0)), rgb(var(--rgb-accent-yellow)));
-        --color-highlight-paper: light-dark(rgb(var(--rgb-accent-yellow)), color-mix(in srgb, rgb(var(--rgb-accent-yellow)) 41%, rgb(0,0,0)));
-        --color-success:         light-dark(color-mix(in srgb, rgb(var(--rgb-accent-green)) 98%, rgb(0,0,0)), rgb(var(--rgb-accent-green)));
-        --color-visited:         light-dark(color-mix(in srgb, rgb(var(--rgb-accent-purple)) 74%, rgb(0,0,0)), color-mix(in srgb, rgb(var(--rgb-accent-purple)) 19%, rgb(255,255,255)));
+        --color-highlight-ink:   light-dark(color-mix(in srgb, rgb(var(--rgb-accent-yellow)) 49.9%, rgb(0,0,0)), rgb(var(--rgb-accent-yellow)));
+        --color-highlight-paper: light-dark(rgb(var(--rgb-accent-yellow)), color-mix(in srgb, rgb(var(--rgb-accent-yellow)) 40.8%, rgb(0,0,0)));
+        --color-success:         oklch(from rgb(var(--rgb-accent-green)) 0.628 0.128 h);
+        --color-visited:         light-dark(rgb(var(--rgb-accent-purple)), oklch(from rgb(var(--rgb-accent-purple)) 0.690 0.167 h));
 
-        --color-emphasis-ink:     light-dark(rgb(var(--rgb-accent-purple)), color-mix(in srgb, rgb(var(--rgb-accent-purple)) 35%, rgb(255,255,255)));
-        --color-emphasis-paper:   light-dark(color-mix(in srgb, rgb(var(--rgb-accent-purple)) 54%, rgb(255,255,255)), color-mix(in srgb, rgb(var(--rgb-accent-purple)) 74%, rgb(255,255,255)));
+        --color-emphasis-ink:     light-dark(rgb(var(--rgb-accent-purple)), oklch(from rgb(var(--rgb-accent-purple)) 0.790 0.157 h));
         --color-emphasis-ink-mix: color-mix(in srgb, var(--color-emphasis-ink) 50%, var(--color-ink));
 
         --color-focus: var(--color-emphasis-ink);
     }
     @media (prefers-contrast: more) {
         :root {
-            --color-ink-mix: color-mix(in srgb, var(--color-ink) 66%, var(--color-paper));
+            --color-highlight-ink:   light-dark(color-mix(in srgb, rgb(var(--rgb-accent-yellow)) 37.3%, rgb(0,0,0)), rgb(var(--rgb-accent-yellow)));
+            --color-highlight-paper: light-dark(rgb(var(--rgb-accent-yellow)), color-mix(in srgb, rgb(var(--rgb-accent-yellow)) 37.3%, rgb(0,0,0)));
         }
     }
     @media (prefers-contrast: less) {
         :root {
-            --color-ink:       light-dark(rgb(43,43,43), rgb(243,243,243));
-            --color-paper:     light-dark(rgb(243,243,243), rgb(43,43,43));
-            --color-ink-mix:   light-dark(rgb(111,111,111), rgb(147,147,147));
-            --color-paper-mix: light-dark(rgb(147,147,147), rgb(111,111,111));
+            --color-ink:             light-dark(rgb(43,43,43), rgb(243,243,243));
+            --color-paper:           light-dark(rgb(243,243,243), rgb(43,43,43));
+            --color-ink-mix:         light-dark(rgb(140,140,140), rgb(116,116,116));
+            --color-paper-mix:       light-dark(rgb(198,198,198), rgb(111,111,111));
+            --color-highlight-ink:   light-dark(color-mix(in srgb, rgb(var(--rgb-accent-yellow)) 46.1%, rgb(0,0,0)), rgb(var(--rgb-accent-yellow)));
+            --color-highlight-paper: light-dark(rgb(var(--rgb-accent-yellow)), color-mix(in srgb, rgb(var(--rgb-accent-yellow)) 40.8%, rgb(0,0,0)));
         }
     }
     @media (forced-colors: none) {
@@ -86,24 +88,30 @@
         }
         :root[data-color-scheme="light"],
         :root[data-color-scheme="dark"] {
-            --color-ink:       light-dark(rgb(var(--rgb-black)), rgb(var(--rgb-white)));
-            --color-paper:     light-dark(rgb(var(--rgb-white)), rgb(var(--rgb-black)));
-            --color-ink-mix:   color-mix(in srgb, var(--color-ink) 60%, var(--color-paper));
-            --color-paper-mix: color-mix(in srgb, var(--color-ink) 16%, var(--color-paper));
+            --color-ink:             light-dark(rgb(var(--rgb-black)), rgb(var(--rgb-white)));
+            --color-paper:           light-dark(rgb(var(--rgb-white)), rgb(var(--rgb-black)));
+            --color-ink-mix:         light-dark(color-mix(in srgb, var(--color-ink) 41.8%, var(--color-paper)), color-mix(in srgb, var(--color-ink) 35.1%, var(--color-paper)));
+            --color-paper-mix:       color-mix(in srgb, var(--color-ink) 16%, var(--color-paper));
+            --color-highlight-ink:   light-dark(color-mix(in srgb, rgb(var(--rgb-accent-yellow)) 49.9%, rgb(0,0,0)), rgb(var(--rgb-accent-yellow)));
+            --color-highlight-paper: light-dark(rgb(var(--rgb-accent-yellow)), color-mix(in srgb, rgb(var(--rgb-accent-yellow)) 40.8%, rgb(0,0,0)));
         }
         :root[data-color-scheme="light-more-contrast"],
         :root[data-color-scheme="dark-more-contrast"] {
-            --color-ink:       light-dark(rgb(var(--rgb-black)), rgb(var(--rgb-white)));
-            --color-paper:     light-dark(rgb(var(--rgb-white)), rgb(var(--rgb-black)));
-            --color-ink-mix:   color-mix(in srgb, var(--color-ink) 66%, var(--color-paper));
-            --color-paper-mix: color-mix(in srgb, var(--color-ink) 16%, var(--color-paper));
+            --color-ink:             light-dark(rgb(var(--rgb-black)), rgb(var(--rgb-white)));
+            --color-paper:           light-dark(rgb(var(--rgb-white)), rgb(var(--rgb-black)));
+            --color-ink-mix:         light-dark(color-mix(in srgb, var(--color-ink) 41.8%, var(--color-paper)), color-mix(in srgb, var(--color-ink) 35.1%, var(--color-paper)));
+            --color-paper-mix:       color-mix(in srgb, var(--color-ink) 16%, var(--color-paper));
+            --color-highlight-ink:   light-dark(color-mix(in srgb, rgb(var(--rgb-accent-yellow)) 37.3%, rgb(0,0,0)), rgb(var(--rgb-accent-yellow)));
+            --color-highlight-paper: light-dark(rgb(var(--rgb-accent-yellow)), color-mix(in srgb, rgb(var(--rgb-accent-yellow)) 37.3%, rgb(0,0,0)));
         }
         :root[data-color-scheme="light-less-contrast"],
         :root[data-color-scheme="dark-less-contrast"] {
-            --color-ink:       light-dark(rgb(43,43,43), rgb(243,243,243));
-            --color-paper:     light-dark(rgb(243,243,243), rgb(43,43,43));
-            --color-ink-mix:   light-dark(rgb(111,111,111), rgb(147,147,147));
-            --color-paper-mix: light-dark(rgb(147,147,147), rgb(111,111,111));
+            --color-ink:             light-dark(rgb(43,43,43), rgb(243,243,243));
+            --color-paper:           light-dark(rgb(243,243,243), rgb(43,43,43));
+            --color-ink-mix:         light-dark(rgb(140,140,140), rgb(116,116,116));
+            --color-paper-mix:       light-dark(rgb(198,198,198), rgb(111,111,111));
+            --color-highlight-ink:   light-dark(color-mix(in srgb, rgb(var(--rgb-accent-yellow)) 46.1%, rgb(0,0,0)), rgb(var(--rgb-accent-yellow)));
+            --color-highlight-paper: light-dark(rgb(var(--rgb-accent-yellow)), color-mix(in srgb, rgb(var(--rgb-accent-yellow)) 40.8%, rgb(0,0,0)));
         }
     }
     @media (forced-colors: active) {
@@ -119,7 +127,6 @@
             --color-focus:            Highlight;
             --color-emphasis-ink:     AccentColor;
             --color-emphasis-ink-mix: AccentColor;
-            --color-emphasis-paper:   AccentColor;
         }
     }
     @media print {
@@ -128,10 +135,12 @@
             color-scheme:       light;
             print-color-adjust: exact;
 
-            --color-ink:       light-dark(rgb(var(--rgb-black)), rgb(var(--rgb-white)));
-            --color-paper:     light-dark(rgb(var(--rgb-white)), rgb(var(--rgb-black)));
-            --color-ink-mix:   color-mix(in srgb, var(--color-ink) 60%, var(--color-paper));
-            --color-paper-mix: color-mix(in srgb, var(--color-ink) 16%, var(--color-paper));
+            --color-ink:             light-dark(rgb(var(--rgb-black)), rgb(var(--rgb-white)));
+            --color-paper:           light-dark(rgb(var(--rgb-white)), rgb(var(--rgb-black)));
+            --color-ink-mix:         light-dark(color-mix(in srgb, var(--color-ink) 41.8%, var(--color-paper)), color-mix(in srgb, var(--color-ink) 35.1%, var(--color-paper)));
+            --color-paper-mix:       color-mix(in srgb, var(--color-ink) 16%, var(--color-paper));
+            --color-highlight-ink:   light-dark(color-mix(in srgb, rgb(var(--rgb-accent-yellow)) 49.9%, rgb(0,0,0)), rgb(var(--rgb-accent-yellow)));
+            --color-highlight-paper: light-dark(rgb(var(--rgb-accent-yellow)), color-mix(in srgb, rgb(var(--rgb-accent-yellow)) 40.8%, rgb(0,0,0)));
         }
     }
 
@@ -236,9 +245,9 @@
         }
     }
 
-    /* --- class, attribute --- */
+    /* --- class --- */
 
-    .visually-hidden {
+    .visually-hidden:not(:focus, :focus-within) {
         clip: rect(0 0 0 0) !important;
         clip-path: inset(50%) !important;
         height: 1px !important;

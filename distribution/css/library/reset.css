@@ -19,6 +19,10 @@
         display: revert;
     }
 
+    legend {
+        display: contents;
+    }
+
     /* Preferred box-sizing value */
     *,
     *::before,
@@ -133,6 +137,12 @@
         top: -0.5em;
     }
 
+    rt {
+        font-size: 50%;
+        line-height: normal;
+        text-emphasis: none;
+    }
+
     time { /* per kiso.css:220 */
         text-autospace: no-autospace;
     }
@@ -236,8 +246,9 @@
     }
 
     /* reset default text opacity of input placeholder. */
-    ::placeholder { /* per tailwind-preflight.css:283-289 */
-        opacity: 1;
+    ::placeholder {
+        color:   inherit;
+        opacity: 1; /* per tailwind-preflight.css:283-289 */
     }
 
     :-moz-ui-invalid { /* per tailwind-preflight.css:365-371 */

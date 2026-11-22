@@ -1,14 +1,15 @@
 /*
  * SPDX-FileCopyrightText: 2026 Andyou <andyou@animagram.jp>
- * SPDX-License-Identifier: Apache-2.0
+ * SPDX-FileCopyrightText: 2019-2024 The Bootstrap Authors
+ * SPDX-License-Identifier: Apache-2.0 AND MIT
  */
 
 /*  Usage:
 
-    <* data-surround="" data-sign|facet="" (data-inline-align="start|end|center")></>
+    <* data-surround="" data-sign | facet="" (data-inline-align="start|end|center")></*>
 
     <* data-surround="">
-        <* data-sign-style="inline" data-sign|facet="" (data-inline-align="start|end|center")></*></*>
+        <* data-sign-style="inline" data-sign | facet="" (data-inline-align="start | end | center")></*></*>
 
     <summary (data-facet="chevron")></summary>
 
@@ -16,7 +17,6 @@
         <select data-facet="chevron">
             <option></option></select></label>
 */
-
 @layer css.data_sign {
     :where(
         [data-sign],
