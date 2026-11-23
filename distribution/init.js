@@ -528,6 +528,10 @@ function bind() {
     }
     document.addEventListener("pointermove", send, { passive: true });
 
+    document.addEventListener("focusin", (e) => {
+        if (e.target.matches('input[inputmode="numeric"][maxlength]')) e.target.select();
+    });
+
     document.addEventListener("compositionstart", (e) => { composing_element = e.target; });
     document.addEventListener("compositionend", () => { composing_element = null; });
     document.addEventListener("focusout", () => { composing_element = null; });
