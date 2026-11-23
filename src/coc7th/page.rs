@@ -26,8 +26,9 @@ const LANGUAGE_LIST: u32 = 3;
 const SHEET_SECTION: u32 = 1;
 const CHAT_LOG_SECTION: u32 = 2;
 const CHAT_BOX_SECTION: u32 = 3;
-const CREATE_LABEL: u32 = 1;
-const NUMBER_LABEL: u32 = 2;
+const CREATE_LABEL: u32 = 3;
+const NUMBER_LABEL: u32 = 4;
+const PASSWORD_INPUT: u32 = 1;
 pub const INVESTIGATOR_OPTIONS: u32 = 4;
 pub const TOAST_SLOTS: u32 = 2;
 
@@ -247,7 +248,6 @@ impl Label {
                 vec![Id::new(&[(Tag::Header, None), (Tag::Label, None), (Tag::Span, None)])]
             }
             Self::Create => vec![Id::new(&[
-                (Tag::Main, None),
                 (Tag::Dialog, None),
                 (Tag::Label, Some(CREATE_LABEL)),
                 (Tag::Span, None),
@@ -334,6 +334,11 @@ pub fn every_label(language: Language) -> Vec<(Id, &'static str)> {
                 Possession::Armor.display(language),
             ),
         ])
+        .chain(
+            Field::list()
+                .iter()
+                .map(|&field| (Page::CredentialName(field).to_dom(), field.display(language))),
+        )
         .collect()
 }
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -355,13 +360,15 @@ pub enum Page {
     ChatSend,
     Dialog,
     Credential(Field),
+    CredentialName(Field),
+    CredentialInput(Field),
     DialogHeading,
     DialogOptions,
     DialogNumber,
     DialogNumberInput,
-    DialogForm,
     Create,
     CreateInput,
+    Form,
     Toast(u32),
     ToastText(u32),
 }
@@ -375,6 +382,11 @@ impl Page {
         };
         let main = |tail: &[(Tag, Option<u32>)]| {
             let mut path = Vec::from([(Tag::Main, None)]);
+            path.extend_from_slice(tail);
+            Id::new(&path)
+        };
+        let dialog = |tail: &[(Tag, Option<u32>)]| {
+            let mut path = Vec::from([(Tag::Dialog, None)]);
             path.extend_from_slice(tail);
             Id::new(&path)
         };
@@ -404,21 +416,23 @@ impl Page {
                 main(&[(Tag::Section, Some(CHAT_BOX_SECTION)), (Tag::Textarea, None)])
             }
             Self::ChatSend => main(&[(Tag::Section, Some(CHAT_BOX_SECTION)), (Tag::Button, None)]),
-            Self::Dialog => main(&[(Tag::Dialog, None)]),
-            Self::Credential(field) => {
-                main(&[(Tag::Dialog, None), (Tag::Input, Some(field.number()))])
+            Self::Dialog => dialog(&[]),
+            Self::Credential(field) => dialog(&[(Tag::Label, Some(field.number()))]),
+            Self::CredentialName(field) => {
+                dialog(&[(Tag::Label, Some(field.number())), (Tag::Span, None)])
             }
-            Self::DialogHeading => main(&[(Tag::Dialog, None), (Tag::H3, None)]),
-            Self::DialogOptions => main(&[(Tag::Dialog, None), (Tag::Div, None)]),
-            Self::DialogNumber => main(&[(Tag::Dialog, None), (Tag::Label, Some(NUMBER_LABEL))]),
+            Self::CredentialInput(field) => {
+                dialog(&[(Tag::Label, Some(field.number())), (Tag::Input, to_input_number(field))])
+            }
+            Self::DialogHeading => dialog(&[(Tag::H3, None)]),
+            Self::DialogOptions => dialog(&[(Tag::Div, None)]),
+            Self::DialogNumber => dialog(&[(Tag::Label, Some(NUMBER_LABEL))]),
             Self::DialogNumberInput => {
-                main(&[(Tag::Dialog, None), (Tag::Label, Some(NUMBER_LABEL)), (Tag::Input, None)])
+                dialog(&[(Tag::Label, Some(NUMBER_LABEL)), (Tag::Input, None)])
             }
-            Self::Create => main(&[(Tag::Dialog, None), (Tag::Label, Some(CREATE_LABEL))]),
-            Self::CreateInput => {
-                main(&[(Tag::Dialog, None), (Tag::Label, Some(CREATE_LABEL)), (Tag::Input, None)])
-            }
-            Self::DialogForm => main(&[(Tag::Form, None)]),
+            Self::Create => dialog(&[(Tag::Label, Some(CREATE_LABEL))]),
+            Self::CreateInput => dialog(&[(Tag::Label, Some(CREATE_LABEL)), (Tag::Input, None)]),
+            Self::Form => Id::new(&[(Tag::Form, None)]),
             Self::Toast(n) => Id::new(&[(Tag::Toast, None), (Tag::Button, Some(n))]),
             Self::ToastText(n) => {
                 Id::new(&[(Tag::Toast, None), (Tag::Button, Some(n)), (Tag::P, None)])
@@ -465,25 +479,33 @@ impl Page {
             [(Tag::Main, None), (Tag::Section, Some(CHAT_BOX_SECTION)), (Tag::Button, None)] => {
                 Self::ChatSend
             }
-            [(Tag::Main, None), (Tag::Dialog, None), (Tag::Input, Some(n))] => {
-                Self::Credential(*Field::list().get(n.checked_sub(1)? as usize)?)
+            [(Tag::Dialog, None), (Tag::H3, None)] => Self::DialogHeading,
+            [(Tag::Dialog, None), (Tag::Div, None)] => Self::DialogOptions,
+            [(Tag::Dialog, None), (Tag::Label, Some(CREATE_LABEL))] => Self::Create,
+            [(Tag::Dialog, None), (Tag::Label, Some(CREATE_LABEL)), (Tag::Input, None)] => {
+                Self::CreateInput
             }
-            [(Tag::Main, None), (Tag::Dialog, None), (Tag::H3, None)] => Self::DialogHeading,
-            [(Tag::Main, None), (Tag::Dialog, None), (Tag::Div, None)] => Self::DialogOptions,
-            [(Tag::Main, None), (Tag::Dialog, None), (Tag::Label, Some(n))] => match *n {
-                CREATE_LABEL => Self::Create,
-                NUMBER_LABEL => Self::DialogNumber,
-                _ => Self::Dialog,
-            },
-            [(Tag::Main, None), (Tag::Dialog, None), (Tag::Label, Some(n)), (Tag::Input, None)] => {
-                match *n {
-                    CREATE_LABEL => Self::CreateInput,
-                    NUMBER_LABEL => Self::DialogNumberInput,
+            [(Tag::Dialog, None), (Tag::Label, Some(NUMBER_LABEL))] => Self::DialogNumber,
+            [(Tag::Dialog, None), (Tag::Label, Some(NUMBER_LABEL)), (Tag::Input, None)] => {
+                Self::DialogNumberInput
+            }
+            [(Tag::Dialog, None), (Tag::Label, Some(n)), rest @ ..] => {
+                let Some(&field) =
+                    n.checked_sub(1).and_then(|index| Field::list().get(index as usize))
+                else {
+                    return Some(Self::Dialog);
+                };
+                match rest {
+                    [] => Self::Credential(field),
+                    [(Tag::Span, None)] => Self::CredentialName(field),
+                    [(Tag::Input, input)] if *input == to_input_number(field) => {
+                        Self::CredentialInput(field)
+                    }
                     _ => Self::Dialog,
                 }
             }
-            [(Tag::Main, None), (Tag::Dialog, None), ..] => Self::Dialog,
-            [(Tag::Main, None), (Tag::Form, None)] => Self::DialogForm,
+            [(Tag::Dialog, None), ..] => Self::Dialog,
+            [(Tag::Form, None)] => Self::Form,
             [(Tag::Toast, None), (Tag::Button, Some(n))] if (1..=TOAST_SLOTS).contains(n) => {
                 Self::Toast(*n)
             }
@@ -515,17 +537,23 @@ impl Page {
             Self::DialogOptions,
             Self::DialogNumber,
             Self::DialogNumberInput,
-            Self::DialogForm,
             Self::Create,
             Self::CreateInput,
+            Self::Form,
         ]);
-        pages.extend(Field::list().iter().copied().map(Self::Credential));
+        pages.extend(Field::list().iter().flat_map(|&field| {
+            [Self::Credential(field), Self::CredentialName(field), Self::CredentialInput(field)]
+        }));
         pages.extend((1..=INVESTIGATOR_OPTIONS).map(Self::InvestigatorOption));
         pages.extend((1..=TOAST_SLOTS).flat_map(|n| [Self::Toast(n), Self::ToastText(n)]));
         pages.extend(Language::list().iter().map(|&l| Self::LanguageOption(l)));
         pages.extend(ColorScheme::list().iter().map(|&c| Self::AppearanceOption(c)));
         pages
     }
+}
+
+fn to_input_number(field: Field) -> Option<u32> {
+    (field == Field::Password).then_some(PASSWORD_INPUT)
 }
 
 #[cfg(test)]
@@ -585,7 +613,7 @@ mod tests {
         ))
         .unwrap();
         let labels = every_label(Language::Ja);
-        assert_eq!(labels.len(), 32);
+        assert_eq!(labels.len(), 34);
         for (id, _) in labels {
             let id = html_id(&id);
             assert!(html.contains(&format!("id=\"{id}\"")), "{id}");

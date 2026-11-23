@@ -98,7 +98,7 @@
     inline-size: 8rem;
 }
 
-#dialog form {
+#dialog:modal {
     display:        flex;
     flex-direction: column;
 }

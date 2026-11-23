@@ -24,6 +24,8 @@ const LANGUAGE_LIST: u32 = 3;
 const APPEARANCE_LIST: u32 = 2;
 const SUBMIT_BUTTON: u32 = 1;
 const DELETE_BUTTON: u32 = 2;
+const CREATE_LABEL: u32 = 3;
+const PASSWORD_INPUT: u32 = 1;
 
 crate::enumerate! {
     pub EditField(u8) {
@@ -172,10 +174,12 @@ pub enum Target {
     Preview,
     Modal,
     Credential(Field),
+    CredentialName(Field),
+    CredentialInput(Field),
     Create,
     CreateName,
     CreateInput,
-    EditForm,
+    Form,
     EditList,
     EditHeading,
     EditField(EditField),
@@ -201,6 +205,7 @@ impl Target {
             (Self::UnlockName, Language::Ja) => Some("ログイン"),
             (Self::CreateName, Language::En(_)) => Some("Create"),
             (Self::CreateName, Language::Ja) => Some("作成"),
+            (Self::CredentialName(field), _) => Some(field.display(language)),
             _ => None,
         }
     }
@@ -208,7 +213,7 @@ impl Target {
     pub fn to_dom(self) -> Id {
         let header = || Vec::from([(Tag::Header, None)]);
         let surface = || Vec::from([(Tag::Main, None), (Tag::Section, None)]);
-        let dialog_form = || Vec::from([(Tag::Dialog, None), (Tag::Form, None)]);
+        let dialog = || Vec::from([(Tag::Dialog, None)]);
         let list = |n, item| {
             let mut path = surface();
             path.extend([(Tag::Ol, Some(n)), (Tag::Li, item)]);
@@ -223,7 +228,7 @@ impl Target {
             join(header(), &[(Tag::Fieldset, None), (Tag::Label, Some(n)), (tag, None)])
         };
         let option = |field: EditField| {
-            let mut path = dialog_form();
+            let mut path = dialog();
             path.extend([(Tag::Dl, None), (Tag::Dd, Some(field.number())), (Tag::Select, None)]);
             path
         };
@@ -281,18 +286,32 @@ impl Target {
             Self::Preview => list(5, None),
             Self::Modal => Vec::from([(Tag::Dialog, None)]),
             Self::Credential(field) => {
-                Vec::from([(Tag::Dialog, None), (Tag::Input, Some(field.number()))])
+                Vec::from([(Tag::Dialog, None), (Tag::Label, Some(field.number()))])
             }
-            Self::Create => Vec::from([(Tag::Dialog, None), (Tag::Label, None)]),
-            Self::CreateName => {
-                Vec::from([(Tag::Dialog, None), (Tag::Label, None), (Tag::Span, None)])
-            }
-            Self::CreateInput => {
-                Vec::from([(Tag::Dialog, None), (Tag::Label, None), (Tag::Input, None)])
-            }
-            Self::EditForm => dialog_form(),
-            Self::EditList => join(dialog_form(), &[(Tag::Dl, None)]),
-            Self::EditHeading => join(dialog_form(), &[(Tag::Header, None), (Tag::H3, None)]),
+            Self::CredentialName(field) => Vec::from([
+                (Tag::Dialog, None),
+                (Tag::Label, Some(field.number())),
+                (Tag::Span, None),
+            ]),
+            Self::CredentialInput(field) => Vec::from([
+                (Tag::Dialog, None),
+                (Tag::Label, Some(field.number())),
+                (Tag::Input, to_input_number(field)),
+            ]),
+            Self::Create => Vec::from([(Tag::Dialog, None), (Tag::Label, Some(CREATE_LABEL))]),
+            Self::CreateName => Vec::from([
+                (Tag::Dialog, None),
+                (Tag::Label, Some(CREATE_LABEL)),
+                (Tag::Span, None),
+            ]),
+            Self::CreateInput => Vec::from([
+                (Tag::Dialog, None),
+                (Tag::Label, Some(CREATE_LABEL)),
+                (Tag::Input, None),
+            ]),
+            Self::Form => Vec::from([(Tag::Form, None)]),
+            Self::EditList => join(dialog(), &[(Tag::Dl, None)]),
+            Self::EditHeading => join(dialog(), &[(Tag::Header, None), (Tag::H3, None)]),
             Self::EditField(field) => {
                 let n = field.number();
                 let tail = match field {
@@ -303,12 +322,12 @@ impl Target {
                     EditField::Date | EditField::Start | EditField::End => None,
                     _ => Some(Tag::Input),
                 };
-                let mut path = join(dialog_form(), &[(Tag::Dl, None), (Tag::Dd, Some(n))]);
+                let mut path = join(dialog(), &[(Tag::Dl, None), (Tag::Dd, Some(n))]);
                 path.extend(tail.map(|tag| (tag, None)));
                 path
             }
             Self::EditPart(field, part) => join(
-                dialog_form(),
+                dialog(),
                 &[
                     (Tag::Dl, None),
                     (Tag::Dd, Some(field.number())),
@@ -318,9 +337,9 @@ impl Target {
             Self::CategoryOption(n) => join(option(EditField::Category), &[(Tag::Option, Some(n))]),
             Self::StatusOption(n) => join(option(EditField::Status), &[(Tag::Option, Some(n))]),
             Self::ResourceOption(n) => join(option(EditField::Resource), &[(Tag::Option, Some(n))]),
-            Self::EditMessage => join(dialog_form(), &[(Tag::Output, None)]),
-            Self::Submit(_) => join(dialog_form(), &[(Tag::Button, Some(SUBMIT_BUTTON))]),
-            Self::Delete => join(dialog_form(), &[(Tag::Button, Some(DELETE_BUTTON))]),
+            Self::EditMessage => join(dialog(), &[(Tag::Output, None)]),
+            Self::Submit(_) => join(dialog(), &[(Tag::Button, Some(SUBMIT_BUTTON))]),
+            Self::Delete => join(dialog(), &[(Tag::Button, Some(DELETE_BUTTON))]),
             Self::Toast(n) => Vec::from([(Tag::Toast, None), (Tag::Button, Some(n))]),
             Self::ToastText(n) => {
                 Vec::from([(Tag::Toast, None), (Tag::Button, Some(n)), (Tag::P, None)])
@@ -386,6 +405,7 @@ impl Target {
                 [(Tag::Ol, Some(5)), (Tag::Li, None)] => Self::Preview,
                 _ => Self::Surface,
             },
+            [(Tag::Form, None)] => Self::Form,
             [(Tag::Toast, None), (Tag::Button, Some(n))] if (1..=TOAST_SLOTS).contains(n) => {
                 Self::Toast(*n)
             }
@@ -396,20 +416,28 @@ impl Target {
             }
             [(Tag::Dialog, None), rest @ ..] => match rest {
                 [] => Self::Modal,
-                [(Tag::Input, Some(n))] => {
+                [(Tag::Label, Some(CREATE_LABEL))] => Self::Create,
+                [(Tag::Label, Some(CREATE_LABEL)), (Tag::Span, None)] => Self::CreateName,
+                [(Tag::Label, Some(CREATE_LABEL)), (Tag::Input, None)] => Self::CreateInput,
+                [(Tag::Label, Some(n))] => {
                     Self::Credential(*Field::list().get(n.checked_sub(1)? as usize)?)
                 }
-                [(Tag::Label, None)] => Self::Create,
-                [(Tag::Label, None), (Tag::Span, None)] => Self::CreateName,
-                [(Tag::Label, None), (Tag::Input, None)] => Self::CreateInput,
-                [(Tag::Form, None)] => Self::EditForm,
-                [(Tag::Form, None), (Tag::Dl, None)] => Self::EditList,
-                [(Tag::Form, None), (Tag::Header, None), (Tag::H3, None)] => Self::EditHeading,
-                [(Tag::Form, None), (Tag::Output, None)] => Self::EditMessage,
-                [(Tag::Form, None), (Tag::Button, Some(SUBMIT_BUTTON))] => Self::Submit(Submit),
-                [(Tag::Form, None), (Tag::Button, Some(DELETE_BUTTON))] => Self::Delete,
+                [(Tag::Label, Some(n)), (Tag::Span, None)] => {
+                    Self::CredentialName(*Field::list().get(n.checked_sub(1)? as usize)?)
+                }
+                [(Tag::Label, Some(n)), (Tag::Input, input)] => {
+                    let field = *Field::list().get(n.checked_sub(1)? as usize)?;
+                    if *input != to_input_number(field) {
+                        return None;
+                    }
+                    Self::CredentialInput(field)
+                }
+                [(Tag::Dl, None)] => Self::EditList,
+                [(Tag::Header, None), (Tag::H3, None)] => Self::EditHeading,
+                [(Tag::Output, None)] => Self::EditMessage,
+                [(Tag::Button, Some(SUBMIT_BUTTON))] => Self::Submit(Submit),
+                [(Tag::Button, Some(DELETE_BUTTON))] => Self::Delete,
                 [
-                    (Tag::Form, None),
                     (Tag::Dl, None),
                     (Tag::Dd, Some(n)),
                     (Tag::Select, None),
@@ -420,16 +448,16 @@ impl Target {
                     EditField::Resource => Self::ResourceOption(*k),
                     _ => return None,
                 },
-                [(Tag::Form, None), (Tag::Dl, None), (Tag::Dd, Some(n))] => {
+                [(Tag::Dl, None), (Tag::Dd, Some(n))] => {
                     let field = *EditField::list().get(n.checked_sub(1)? as usize)?;
                     (!field.parts().is_empty()).then_some(Self::EditField(field))?
                 }
-                [(Tag::Form, None), (Tag::Dl, None), (Tag::Dd, Some(n)), (Tag::Input, Some(k))] => {
+                [(Tag::Dl, None), (Tag::Dd, Some(n)), (Tag::Input, Some(k))] => {
                     let field = *EditField::list().get(n.checked_sub(1)? as usize)?;
                     let part = *field.parts().iter().find(|part| part.number() == *k)?;
                     Self::EditPart(field, part)
                 }
-                [(Tag::Form, None), (Tag::Dl, None), (Tag::Dd, Some(n)), (tag, None)] => {
+                [(Tag::Dl, None), (Tag::Dd, Some(n)), (tag, None)] => {
                     let field = *EditField::list().get(n.checked_sub(1)? as usize)?;
                     let expected = Self::EditField(field).to_dom();
                     (expected.0.last()?.tag == **tag).then_some(Self::EditField(field))?
@@ -448,6 +476,10 @@ impl Target {
             _ => return None,
         })
     }
+}
+
+fn to_input_number(field: Field) -> Option<u32> {
+    (field == Field::Password).then_some(PASSWORD_INPUT)
 }
 
 #[cfg(test)]
@@ -476,7 +508,7 @@ mod tests {
             Target::BandList,
             Target::Preview,
             Target::Modal,
-            Target::EditForm,
+            Target::Form,
             Target::EditList,
             Target::Create,
             Target::CreateName,
@@ -493,7 +525,13 @@ mod tests {
         targets.extend(EditField::list().iter().flat_map(|&field| {
             field.parts().iter().map(move |&part| Target::EditPart(field, part))
         }));
-        targets.extend(Field::list().iter().copied().map(Target::Credential));
+        targets.extend(Field::list().iter().flat_map(|&field| {
+            [
+                Target::Credential(field),
+                Target::CredentialName(field),
+                Target::CredentialInput(field),
+            ]
+        }));
         targets.extend((1..=4).flat_map(|n| {
             [Target::CategoryOption(n), Target::StatusOption(n), Target::ResourceOption(n)]
         }));

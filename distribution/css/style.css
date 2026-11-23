@@ -223,12 +223,29 @@ input[name="hue"]::-moz-range-track {
     background-image: var(--hue-track);
 }
 
-dialog > :is(input, label:has(> input[name="create"])) {
+dialog > label:has(> input[name="create"]) {
     display: block;
 }
 
-dialog > input {
-    inline-size: 100%;
+dialog > label:has(> input:is([name="email"], [name="password"])) {
+    align-items:     stretch;
+    display:         flex;
+    flex-direction:  column;
+    max-inline-size: 20rem;
+    row-gap:         var(--border-radius);
+
+    & > span {
+        align-self: stretch;
+    }
+
+    & > input:is([name="email"], [name="password"]) {
+        inline-size: 100%;
+    }
+
+    & > input[type="checkbox"][aria-controls] {
+        inset-block-end:   0;
+        inset-block-start: auto;
+    }
 }
 
 textarea {

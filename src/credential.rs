@@ -18,7 +18,7 @@ use hkdf::Hkdf;
 use hmac::{Hmac, KeyInit, Mac};
 use sha2::{Digest, Sha256};
 
-use crate::{WireError, host::parse_url_search_params};
+use crate::{Language, WireError, host::parse_url_search_params};
 
 pub const PROTOCOL: u8 = 1;
 pub const KEY_LENGTH: usize = 32;
@@ -90,6 +90,21 @@ impl Field {
             Self::Other => "",
             Self::Email => "email",
             Self::Password => "password",
+        }
+    }
+
+    /// ```
+    /// # use app::{Language, credential::Field};
+    /// assert_eq!(Field::Email.display(Language::Ja), "メールアドレス");
+    /// assert_eq!(Field::Password.display(Language::Ja), "パスワード");
+    /// ```
+    pub fn display(self, language: Language) -> &'static str {
+        match (self, language) {
+            (Self::Other, _) => "",
+            (Self::Email, Language::En(_)) => "Email",
+            (Self::Email, Language::Ja) => "メールアドレス",
+            (Self::Password, Language::En(_)) => "Password",
+            (Self::Password, Language::Ja) => "パスワード",
         }
     }
 }

@@ -1385,32 +1385,35 @@
         <section id="main_section-3" aria-label="Input Message">
             <h2 id="main_section-3_h2"></h2>
             <textarea id="main_section-3_textarea" name="main_section-3_textarea" rows="2" maxlength="1000"></textarea>
-            <button id="main_section-3_button" type="submit" data-surround="fill">↑</button></section>
-
-        <dialog id="main_dialog" aria-label="overlay">
-            <input id="main_dialog_input-1" name="email" type="email" autocomplete="username" required maxlength="254" aria-label="email" form="main_form" hidden disabled>
-            <input id="main_dialog_input-2" name="password" type="password" autocomplete="current-password" required minlength="8" maxlength="128" aria-label="password" form="main_form" hidden disabled>
-            <label id="main_dialog_label-1" hidden>
-                <span id="main_dialog_label-1_span"></span>
-                <input id="main_dialog_label-1_input" name="create" type="checkbox" form="main_form" disabled></label>
-            <h3 id="main_dialog_h3"></h3>
-            <div id="main_dialog_div" role="listbox">
-                <button role="option"></button>
-                <button role="option"></button>
-                <button role="option"></button>
-                <button role="option" hidden></button>
-                <button role="option" hidden></button>
-                <button role="option" hidden></button>
-                <button role="option" hidden></button>
-                <button role="option" hidden></button>
-                <button role="option" hidden></button>
-                <button role="option" hidden></button></div>
-            <label id="main_dialog_label-2" data-union="inline">
-                <button id="main_dialog_label-2_button-1" type="button" data-sign="minus" tabindex="-1" aria-label="decrement"></button>
-                <input id="main_dialog_label-2_input" type="text" inputmode="numeric" pattern="[0-9]*" role="spinbutton" value="0" size="3" form="main_form">
-                <button id="main_dialog_label-2_button-2" type="button" data-sign="plus" tabindex="-1" aria-label="increment"></button></label>
-            <button id="main_dialog_button" type="submit" form="main_form" data-surround="transparent">→</button></dialog>
-        <form id="main_form" method="dialog"></form></main>
+            <button id="main_section-3_button" type="submit" data-surround="fill">↑</button></section></main>
+    <dialog id="dialog" aria-label="overlay">
+        <label id="dialog_label-1" hidden>
+            <span id="dialog_label-1_span"></span>
+            <input id="dialog_label-1_input" name="email" type="email" autocomplete="username" required maxlength="254" form="form" disabled></label>
+        <label id="dialog_label-2" hidden>
+            <span id="dialog_label-2_span"></span>
+            <input id="dialog_label-2_input-1" name="password" type="password" autocomplete="current-password" required minlength="8" maxlength="128" form="form" disabled>
+            <input id="dialog_label-2_input-2" type="checkbox" aria-controls="dialog_label-2_input-1" aria-label="show password" data-facet="eye"></label>
+        <label id="dialog_label-3" hidden>
+            <span id="dialog_label-3_span"></span>
+            <input id="dialog_label-3_input" name="create" type="checkbox" form="form" disabled></label>
+        <h3 id="dialog_h3"></h3>
+        <div id="dialog_div" role="listbox">
+            <button role="option"></button>
+            <button role="option"></button>
+            <button role="option"></button>
+            <button role="option" hidden></button>
+            <button role="option" hidden></button>
+            <button role="option" hidden></button>
+            <button role="option" hidden></button>
+            <button role="option" hidden></button>
+            <button role="option" hidden></button>
+            <button role="option" hidden></button></div>
+        <label id="dialog_label-4" data-union="inline">
+            <button id="dialog_label-4_button-1" type="button" data-sign="minus" tabindex="-1" aria-label="decrement"></button>
+            <input id="dialog_label-4_input" type="text" inputmode="numeric" pattern="[0-9]*" role="spinbutton" value="0" size="3" form="form">
+            <button id="dialog_label-4_button-2" type="button" data-sign="plus" tabindex="-1" aria-label="increment"></button></label>
+        <button id="dialog_button" type="submit" form="form" data-surround="transparent">→</button></dialog>
 
     <form id="form" method="dialog"></form>
     <section id="toast" data-type="toast" aria-live="polite" aria-atomic="true">

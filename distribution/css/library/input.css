@@ -99,15 +99,31 @@
         inset-block-start: 0;
         inset-inline-end: 0;
         position:         absolute;
+        z-index:          2;
     }
 
     /* --- size --- */
 
+    label:has(> input[aria-controls]:where([data-size="xs"])) > input:not([type="checkbox"]) {
+        padding-inline-end: var(--xs-box-height);
+    }
+    label:has(> input[aria-controls]:where([data-size="sm"])) > input:not([type="checkbox"]) {
+        padding-inline-end: var(--sm-box-height);
+    }
     label:has(> input[aria-controls]:where([data-size="md"], :not([data-size]))) > input:not([type="checkbox"]) {
         padding-inline-end: var(--md-box-height);
     }
-    label:has(> input[aria-controls]) > input[type="checkbox"]:where([data-size="md"], :not([data-size])) {
-        padding-inline-end: var(--md-border-radius);
+    label:has(> input[aria-controls]:where([data-size="lg"])) > input:not([type="checkbox"]) {
+        padding-inline-end: var(--lg-box-height);
+    }
+    label:has(> input[aria-controls]:where([data-size="xl"])) > input:not([type="checkbox"]) {
+        padding-inline-end: var(--xl-box-height);
+    }
+    label:has(> input[aria-controls]:where([data-size="2xl"])) > input:not([type="checkbox"]) {
+        padding-inline-end: var(--2xl-box-height);
+    }
+    label:has(> input[aria-controls]) > input[type="checkbox"] {
+        padding-inline-end: var(--border-radius);
     }
 
     select:not([data-facet]):not(label > select) {

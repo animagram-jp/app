@@ -280,6 +280,7 @@ pub enum Attribute {
     Hidden,
     Href,
     Lang,
+    Type,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -1156,6 +1157,7 @@ mod wire_tests {
                     (Attribute::Hidden as u16, "hidden"),
                     (Attribute::Href as u16, "href"),
                     (Attribute::Lang as u16, "lang"),
+                    (Attribute::Type as u16, "type"),
                 ],
             ),
             (

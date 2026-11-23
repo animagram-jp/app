@@ -62,6 +62,8 @@ const S = {
     style: null,
 };
 
+const PASSWORD_TOGGLE = 'input[type="checkbox"][data-facet="eye"][aria-controls]';
+
 let composing_element = null;
 
 const sw_registration = "serviceWorker" in navigator
@@ -293,6 +295,19 @@ function execute(frame) {
             break;
         }
     }
+}
+
+function execute_attribute(operation, id, attribute, value) {
+    const frame = new Uint8Array(EVENT_RING.frame_max);
+    let offset = set_u8(frame, 0, operation);
+    offset = set_id(frame, offset, id);
+    offset = set_u16(frame, offset, ATTRIBUTES.indexOf(attribute));
+    if (value !== undefined) offset = set_str(frame, offset, value);
+    execute(frame.subarray(0, offset));
+}
+
+function toggle_password(checkbox) {
+    execute_attribute(3, checkbox.getAttribute("aria-controls"), "type", checkbox.checked ? "text" : "password");
 }
 
 async function fetch_request(request, method, path, body) {
@@ -551,6 +566,17 @@ function bind() {
         if (e.target.matches('input[inputmode="numeric"][maxlength]')) e.target.select();
     });
 
+    document.addEventListener("change", (e) => {
+        if (e.target.matches(PASSWORD_TOGGLE)) toggle_password(e.target);
+    });
+    document.addEventListener("close", (e) => {
+        for (const checkbox of e.target.querySelectorAll(PASSWORD_TOGGLE)) {
+            if (!checkbox.checked) continue;
+            execute_attribute(4, checkbox.id, "checked");
+            toggle_password(checkbox);
+        }
+    }, true);
+
     document.addEventListener("compositionstart", (e) => { composing_element = e.target; });
     document.addEventListener("compositionend", () => { composing_element = null; });
     document.addEventListener("focusout", () => { composing_element = null; });
@@ -806,6 +832,7 @@ const ATTRIBUTES = [
     "hidden",
     "href",
     "lang",
+    "type",
 ];
 
 /**

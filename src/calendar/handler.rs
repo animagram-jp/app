@@ -526,7 +526,11 @@ impl<S: FileStore> Handler<S> {
         commands.push(toggle(Target::Delete.to_dom(), Attribute::Disabled, false));
         for &field in Field::list() {
             commands.push(hidden(Target::Credential(field).to_dom(), true));
-            commands.push(toggle(Target::Credential(field).to_dom(), Attribute::Disabled, true));
+            commands.push(toggle(
+                Target::CredentialInput(field).to_dom(),
+                Attribute::Disabled,
+                true,
+            ));
         }
         commands.push(hidden(Target::Create.to_dom(), true));
         commands.push(toggle(Target::CreateInput.to_dom(), Attribute::Disabled, true));
@@ -766,7 +770,11 @@ impl<S: FileStore> Handler<S> {
         commands.push(toggle(Target::Delete.to_dom(), Attribute::Disabled, true));
         for &field in Field::list() {
             commands.push(hidden(Target::Credential(field).to_dom(), false));
-            commands.push(toggle(Target::Credential(field).to_dom(), Attribute::Disabled, false));
+            commands.push(toggle(
+                Target::CredentialInput(field).to_dom(),
+                Attribute::Disabled,
+                false,
+            ));
         }
         commands.push(hidden(Target::Create.to_dom(), false));
         commands.push(toggle(Target::CreateInput.to_dom(), Attribute::Disabled, false));
@@ -781,7 +789,7 @@ impl<S: FileStore> Handler<S> {
             Dialog::Unlock => {
                 let mut commands = vec![
                     Command::SetValue {
-                        id:    Target::Credential(Field::Password).to_dom(),
+                        id:    Target::CredentialInput(Field::Password).to_dom(),
                         value: String::new(),
                     },
                     toggle(Target::CreateInput.to_dom(), Attribute::Checked, false),
@@ -1471,6 +1479,7 @@ impl<S: FileStore> Handler<S> {
         commands.extend(
             [Target::Step(STEP_TODAY), Target::UnlockName, Target::CreateName]
                 .into_iter()
+                .chain(Field::list().iter().copied().map(Target::CredentialName))
                 .filter_map(|target| {
                     Some(Command::SetText {
                         id:    target.to_dom(),
@@ -1785,7 +1794,7 @@ impl<S: Mount> event::Handler for Handler<S> {
             },
             EventType::PointerDown => (vec![], self.press(event, target)),
             EventType::Close if target == Some(Target::Modal) => (vec![], self.close_dialog()),
-            EventType::Submit if target == Some(Target::EditForm) => match self.dialog {
+            EventType::Submit if target == Some(Target::Form) => match self.dialog {
                 Dialog::Unlock => (vec![], self.submit_unlock(&event.value)),
                 _ => (vec![], self.submit(&event.value)),
             },
@@ -3632,7 +3641,7 @@ mod tests {
         let event = CanvasEvent {
             event_type: EventType::Submit,
             value: String::from(query),
-            ..click(Target::EditForm.to_dom(), 0.0, 0.0)
+            ..click(Target::Form.to_dom(), 0.0, 0.0)
         };
         handler.process_canvas(&event, &pointer()).1
     }
@@ -3898,8 +3907,12 @@ mod tests {
 
     #[test]
     fn the_dialog_follows_its_opener_and_each_form_reads_only_its_own_fields() {
-        let credentials: Vec<Id> =
-            Field::list().iter().map(|&field| Target::Credential(field).to_dom()).collect();
+        let credentials: Vec<(Id, Id)> = Field::list()
+            .iter()
+            .map(|&field| {
+                (Target::Credential(field).to_dom(), Target::CredentialInput(field).to_dom())
+            })
+            .collect();
         let edits: Vec<Id> = EditField::list()
             .iter()
             .flat_map(|&field| field.controls())
@@ -3910,9 +3923,9 @@ mod tests {
             let mut rng = Rng::new(seed);
             let (mut handler, _) = drag_fixture();
             let mut dom: Vec<(Id, Attribute, bool)> = Vec::new();
-            for id in &credentials {
-                dom.push((id.clone(), Attribute::Hidden, true));
-                dom.push((id.clone(), Attribute::Disabled, true));
+            for (label, input) in &credentials {
+                dom.push((label.clone(), Attribute::Hidden, true));
+                dom.push((input.clone(), Attribute::Disabled, true));
             }
             let lookup = |dom: &[(Id, Attribute, bool)], id: &Id, attribute: Attribute| {
                 dom.iter().rev().find(|(i, a, _)| i == id && *a == attribute).is_some_and(|e| e.2)
@@ -4023,9 +4036,9 @@ mod tests {
                 }
                 let unlock = model == 2;
                 assert_eq!(submit_text, if unlock { "ログイン" } else { "保存" }, "{seed} {step}");
-                for id in &credentials {
-                    assert_eq!(lookup(&dom, id, Attribute::Hidden), !unlock, "{seed} {step}");
-                    assert_eq!(lookup(&dom, id, Attribute::Disabled), !unlock, "{seed} {step}");
+                for (label, input) in &credentials {
+                    assert_eq!(lookup(&dom, label, Attribute::Hidden), !unlock, "{seed} {step}");
+                    assert_eq!(lookup(&dom, input, Attribute::Disabled), !unlock, "{seed} {step}");
                 }
                 for id in &edits {
                     assert_eq!(lookup(&dom, id, Attribute::Disabled), unlock, "{seed} {step}");

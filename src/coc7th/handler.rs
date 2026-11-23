@@ -146,7 +146,11 @@ impl<S: FileStore> Handler<S> {
         ];
         for &field in Field::list() {
             commands.push(toggle(Page::Credential(field).to_dom(), Attribute::Hidden, false));
-            commands.push(toggle(Page::Credential(field).to_dom(), Attribute::Disabled, false));
+            commands.push(toggle(
+                Page::CredentialInput(field).to_dom(),
+                Attribute::Disabled,
+                false,
+            ));
         }
         commands.push(toggle(Page::Create.to_dom(), Attribute::Hidden, false));
         commands.push(toggle(Page::CreateInput.to_dom(), Attribute::Disabled, false));
@@ -159,9 +163,23 @@ impl<S: FileStore> Handler<S> {
         match mem::replace(&mut self.dialog, Dialog::None) {
             Dialog::Unlock => {
                 let mut commands = vec![
-                    value(Page::Credential(Field::Password).to_dom(), ""),
+                    value(Page::CredentialInput(Field::Password).to_dom(), ""),
                     toggle(Page::CreateInput.to_dom(), Attribute::Checked, false),
                 ];
+                for &field in Field::list() {
+                    commands.push(toggle(
+                        Page::Credential(field).to_dom(),
+                        Attribute::Hidden,
+                        true,
+                    ));
+                    commands.push(toggle(
+                        Page::CredentialInput(field).to_dom(),
+                        Attribute::Disabled,
+                        true,
+                    ));
+                }
+                commands.push(toggle(Page::Create.to_dom(), Attribute::Hidden, true));
+                commands.push(toggle(Page::CreateInput.to_dom(), Attribute::Disabled, true));
                 if !self.keyring.is_unlocked() {
                     commands.push(toggle(Page::Unlock.to_dom(), Attribute::Checked, false));
                 }
@@ -302,7 +320,7 @@ impl<S: Mount> event::Handler for Handler<S> {
                 (vec![], appearance_commands(c))
             }
             (EventType::Close, Some(Page::Dialog)) => (vec![], self.close_dialog()),
-            (EventType::Submit, Some(Page::DialogForm)) => (vec![], self.submit(&event.value)),
+            (EventType::Submit, Some(Page::Form)) => (vec![], self.submit(&event.value)),
             _ => (vec![], vec![]),
         }
     }
@@ -959,8 +977,10 @@ mod handler_tests {
             let mut dom: Vec<(dom::Id, Attribute, bool)> = Vec::new();
             for &field in Field::list() {
                 dom.push((Page::Credential(field).to_dom(), Attribute::Hidden, true));
-                dom.push((Page::Credential(field).to_dom(), Attribute::Disabled, true));
+                dom.push((Page::CredentialInput(field).to_dom(), Attribute::Disabled, true));
             }
+            dom.push((Page::Create.to_dom(), Attribute::Hidden, true));
+            dom.push((Page::CreateInput.to_dom(), Attribute::Disabled, true));
             let lookup = |dom: &[(dom::Id, Attribute, bool)], page: Page, attribute: Attribute| {
                 let id = page.to_dom();
                 dom.iter().rev().find(|(i, a, _)| *i == id && *a == attribute).is_some_and(|e| e.2)
@@ -1007,8 +1027,7 @@ mod handler_tests {
                     }
                     2 | 3 => {
                         let (query, valid, create) = queries[rng.below(queries.len())];
-                        let commands =
-                            send(&mut handler, EventType::Submit, Page::DialogForm, query);
+                        let commands = send(&mut handler, EventType::Submit, Page::Form, query);
                         match (open, valid) {
                             (true, true) => {
                                 assert!(
@@ -1109,16 +1128,21 @@ mod handler_tests {
                     "{seed} {step}"
                 );
                 assert_eq!(checked, unlocked || open, "{seed} {step}");
+                for &field in Field::list() {
+                    let label = Page::Credential(field);
+                    let input = Page::CredentialInput(field);
+                    assert_eq!(lookup(&dom, label, Attribute::Hidden), !open, "{seed} {step}");
+                    assert_eq!(lookup(&dom, input, Attribute::Disabled), !open, "{seed} {step}");
+                }
+                assert_eq!(lookup(&dom, Page::Create, Attribute::Hidden), !open, "{seed} {step}");
+                assert_eq!(
+                    lookup(&dom, Page::CreateInput, Attribute::Disabled),
+                    !open,
+                    "{seed} {step}"
+                );
                 if !open {
                     continue;
                 }
-                for &field in Field::list() {
-                    let page = Page::Credential(field);
-                    assert!(!lookup(&dom, page, Attribute::Hidden), "{seed} {step}");
-                    assert!(!lookup(&dom, page, Attribute::Disabled), "{seed} {step}");
-                }
-                assert!(!lookup(&dom, Page::Create, Attribute::Hidden), "{seed} {step}");
-                assert!(!lookup(&dom, Page::CreateInput, Attribute::Disabled), "{seed} {step}");
                 assert!(lookup(&dom, Page::DialogOptions, Attribute::Hidden), "{seed} {step}");
                 assert!(lookup(&dom, Page::DialogNumber, Attribute::Hidden), "{seed} {step}");
                 assert!(
