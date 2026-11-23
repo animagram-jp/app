@@ -205,7 +205,6 @@ impl App {
         rem_in_px: f64,
         now_in_ms: u64,
         timezone_offset_minutes: i32,
-        data_url: String,
         color_scheme: String,
     ) {
         let mut app = App::new(
@@ -216,7 +215,6 @@ impl App {
                 rem_in_px,
                 now_in_ms,
                 timezone_offset_minutes,
-                data_url,
                 ColorScheme::from_name(&color_scheme).unwrap_or(ColorScheme::Light),
             )
             .await,
@@ -256,18 +254,7 @@ mod tests {
     const POINTER_UP: u8 = 18;
 
     fn new_app() -> App {
-        App::new(
-            false,
-            block_on(Handler::<Store>::ready(
-                0.0,
-                0.0,
-                16.0,
-                0,
-                0,
-                String::new(),
-                ColorScheme::Light,
-            )),
-        )
+        App::new(false, block_on(Handler::<Store>::ready(0.0, 0.0, 16.0, 0, 0, ColorScheme::Light)))
     }
 
     fn section(n: u32) -> dom::Id {
@@ -417,11 +404,8 @@ mod tests {
     #[cfg(feature = "calendar")]
     #[test]
     fn fetch_chunks_are_joined_until_the_last_one() {
-        let body = fs::read(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/distribution/calendar/data/calendar.json"
-        ))
-        .unwrap();
+        let body =
+            fs::read(concat!(env!("CARGO_MANIFEST_DIR"), "/reference/calendar.json")).unwrap();
         let mut app = new_app();
         app.handler.attach(Store::new(MemoryHandles::new()).unwrap());
 

@@ -16,7 +16,9 @@ use crate::{
 };
 
 const RELOAD_BUTTON: u32 = 1;
-const SAVE_BUTTON: u32 = 2;
+const ZOOM_INPUT: u32 = 1;
+const SAVE_INPUT: u32 = 2;
+const IMPORT_INPUT: u32 = 3;
 pub const STEP_TODAY: u32 = 3;
 const LANGUAGE_LIST: u32 = 3;
 const APPEARANCE_LIST: u32 = 2;
@@ -149,6 +151,7 @@ pub enum Target {
     Zoom,
     Reload,
     Save,
+    Import,
     LanguageOption(Language),
     AppearanceOption(ColorScheme),
     Unlock,
@@ -194,8 +197,6 @@ impl Target {
         match (self, language) {
             (Self::Step(STEP_TODAY), Language::En(_)) => Some("Today"),
             (Self::Step(STEP_TODAY), Language::Ja) => Some("本日"),
-            (Self::Save, Language::En(_)) => Some("Save"),
-            (Self::Save, Language::Ja) => Some("保存"),
             (Self::UnlockName, Language::En(_)) => Some("Login"),
             (Self::UnlockName, Language::Ja) => Some("ログイン"),
             (Self::CreateName, Language::En(_)) => Some("Create"),
@@ -233,9 +234,10 @@ impl Target {
             Self::Axis(axis) => axis_tail(axis, Tag::Input),
             Self::AxisName(axis) => axis_tail(axis, Tag::Span),
             Self::Step(n) => join(header(), &[(Tag::Div, Some(1)), (Tag::Button, Some(n))]),
-            Self::Zoom => join(header(), &[(Tag::Input, None)]),
+            Self::Zoom => join(header(), &[(Tag::Input, Some(ZOOM_INPUT))]),
             Self::Reload => join(header(), &[(Tag::Button, Some(RELOAD_BUTTON))]),
-            Self::Save => join(header(), &[(Tag::Button, Some(SAVE_BUTTON))]),
+            Self::Save => join(header(), &[(Tag::Input, Some(SAVE_INPUT))]),
+            Self::Import => join(header(), &[(Tag::Input, Some(IMPORT_INPUT))]),
             Self::LanguageOption(l) => {
                 join(header(), &[(Tag::Div, Some(LANGUAGE_LIST)), (Tag::Button, Some(l.number()))])
             }
@@ -346,14 +348,15 @@ impl Target {
                 (Tag::Span, None),
             ] => Self::AxisName(*AXES.get(n.checked_sub(1)? as usize)?),
             [(Tag::Header, None), (Tag::Div, Some(1)), (Tag::Button, Some(n))] => Self::Step(*n),
-            [(Tag::Header, None), (Tag::Input, None)] => Self::Zoom,
-            [(Tag::Header, None), (Tag::Label, None), (Tag::Input, None)] => Self::Unlock,
-            [(Tag::Header, None), (Tag::Label, None), (Tag::Span, None)] => Self::UnlockName,
-            [(Tag::Header, None), (Tag::Button, Some(n))] => match *n {
-                RELOAD_BUTTON => Self::Reload,
-                SAVE_BUTTON => Self::Save,
+            [(Tag::Header, None), (Tag::Input, Some(n))] => match *n {
+                ZOOM_INPUT => Self::Zoom,
+                SAVE_INPUT => Self::Save,
+                IMPORT_INPUT => Self::Import,
                 _ => return None,
             },
+            [(Tag::Header, None), (Tag::Label, None), (Tag::Input, None)] => Self::Unlock,
+            [(Tag::Header, None), (Tag::Label, None), (Tag::Span, None)] => Self::UnlockName,
+            [(Tag::Header, None), (Tag::Button, Some(RELOAD_BUTTON))] => Self::Reload,
             [(Tag::Main, None), (Tag::Ol, None)] => Self::TimeAxis,
             [(Tag::Main, None), (Tag::Ol, None), (Tag::Li, Some(row)), (Tag::Span, Some(side))] => {
                 Self::AxisLabel(*side, *row)
@@ -463,6 +466,7 @@ mod tests {
             Target::Zoom,
             Target::Reload,
             Target::Save,
+            Target::Import,
             Target::Unlock,
             Target::UnlockName,
             Target::LanguageOption(Language::En(En::Gb)),

@@ -26,12 +26,12 @@ use crate::{
     event::{
         self, Event, Handler as _, Keyring, Opened, Response,
         gesture::{Gesture, Pointer},
-        store,
+        store::{self, Persistence},
     },
     file_store::{FileStore, Mount, StoreId},
     host::{
-        Attribute, CanvasEvent, Command, EventType, FnName, Keyword, Method, StyleProperty,
-        StyleValue, Unit, dom::Id, parse_url_search_params,
+        Attribute, CanvasEvent, Command, EventType, FnName, Keyword, StyleProperty, StyleValue,
+        Unit, dom::Id, parse_url_search_params,
     },
     object::{self, Record},
     parse, stringify,
@@ -55,8 +55,8 @@ const COLUMN_MIN_IN_REM: f64 = 5.0;
 const AXIS_IN_REM: f64 = 4.0;
 const HEAD_IN_REM: f64 = 5.0;
 const STEP_COUNT: u32 = 5;
-const LOAD_REQUEST: u32 = 1;
-const LOAD_PATH: &str = "data/calendar.json";
+const IMPORT_REQUEST: u32 = 1;
+const UNREADABLE: &str = "データを読み込めませんでした";
 const STATUS_OK: u16 = 200;
 
 struct RowInRem(f64);
@@ -147,7 +147,7 @@ pub struct Handler<S: FileStore> {
     create:               Option<CreateDrag>,
     row_in_rem:           f64,
     drag:                 Option<Drag>,
-    dirty:                bool,
+    persistence:          Persistence,
     store:                Option<S>,
     attached:             bool,
     lost:                 Vec<(u32, Option<Vec<u8>>)>,
@@ -174,15 +174,7 @@ impl<S: FileStore> Handler<S> {
     }
 
     fn load_commands(&self) -> Vec<Command> {
-        if self.loaded() {
-            return self.loaded_commands();
-        }
-        vec![Command::Fetch {
-            request: LOAD_REQUEST,
-            method:  Method::Get,
-            path:    String::from(LOAD_PATH),
-            body:    Vec::new(),
-        }]
+        if self.loaded() { self.loaded_commands() } else { vec![] }
     }
 
     pub(crate) fn appointments(&self) -> Vec<Record<Appointment>> {
@@ -220,7 +212,7 @@ impl<S: FileStore> Handler<S> {
             create: None,
             row_in_rem: ROW_IN_REM,
             drag: None,
-            dirty: false,
+            persistence: Persistence::Stored,
             store: None,
             attached: false,
             lost: Vec::new(),
@@ -1082,7 +1074,6 @@ impl<S: FileStore> Handler<S> {
                 (vec![], commands)
             }
             Target::Delete => (vec![], self.delete_commands()),
-            Target::Save => self.save_commands(),
             Target::Reload => self.discard_commands(),
             _ => (vec![], vec![]),
         }
@@ -1406,29 +1397,25 @@ impl<S: FileStore> Handler<S> {
         commands
     }
 
-    fn mark_dirty(&mut self) -> Option<Command> {
-        if self.dirty {
-            return None;
-        }
-        self.dirty = true;
-        Some(Command::RemoveAttribute {
-            id:        Target::Save.to_dom(),
-            attribute: Attribute::Disabled,
-        })
+    fn mark(&mut self, persistence: Persistence) -> Command {
+        self.persistence = persistence;
+        toggle(Target::Save.to_dom(), Attribute::Checked, persistence.saved())
     }
 
-    fn import_commands(
-        &mut self,
-        body: &[u8],
-    ) -> Result<(Vec<Event>, Vec<Command>), CalendarError> {
+    fn mark_dirty(&mut self) -> Option<Command> {
+        self.persistence.saved().then(|| self.mark(Persistence::Unsaved))
+    }
+
+    fn import_commands(&mut self, body: &[u8]) -> Result<Vec<Command>, CalendarError> {
         let Some(store) = self.store.as_mut() else {
-            return Ok((vec![], vec![]));
+            return Ok(vec![]);
         };
+        let replaced: Vec<u32> = store.range(0, u32::MAX).map(|(id, _)| id).collect();
         calendar::import(store, body)?;
-        Ok(match store.save() {
-            Ok(()) => (vec![], vec![]),
-            Err(error) => store::failed(STORE, error),
-        })
+        for id in replaced {
+            store.delete(id);
+        }
+        Ok(vec![self.mark(Persistence::Unsaved)])
     }
 
     fn persist(&mut self, mut entry: Record<Appointment>) {
@@ -1443,17 +1430,11 @@ impl<S: FileStore> Handler<S> {
             return (vec![], vec![]);
         };
         if let Err(error) = store.save() {
-            return store::failed(STORE, error);
+            let (events, mut commands) = store::failed(STORE, error);
+            commands.push(self.mark(Persistence::Unsaved));
+            return (events, commands);
         }
-        self.dirty = false;
-        (
-            vec![],
-            vec![Command::SetAttribute {
-                id:        Target::Save.to_dom(),
-                attribute: Attribute::Disabled,
-                value:     String::new(),
-            }],
-        )
+        (vec![], vec![self.mark(Persistence::Stored)])
     }
 
     pub fn discard_commands(&mut self) -> (Vec<Event>, Vec<Command>) {
@@ -1471,19 +1452,12 @@ impl<S: FileStore> Handler<S> {
             commands.extend(self.view_commands());
         }
         commands.extend(self.card_commands());
-        if self.dirty {
-            self.dirty = false;
-            commands.push(Command::SetAttribute {
-                id:        Target::Save.to_dom(),
-                attribute: Attribute::Disabled,
-                value:     String::new(),
-            });
-        }
+        commands.push(self.mark(Persistence::Stored));
         (vec![], commands)
     }
 
     pub fn dirty(&self) -> bool {
-        self.dirty
+        !self.persistence.saved()
     }
 
     fn header_commands(&self) -> Vec<Command> {
@@ -1495,7 +1469,7 @@ impl<S: FileStore> Handler<S> {
             })
             .collect();
         commands.extend(
-            [Target::Step(STEP_TODAY), Target::Save, Target::UnlockName, Target::CreateName]
+            [Target::Step(STEP_TODAY), Target::UnlockName, Target::CreateName]
                 .into_iter()
                 .filter_map(|target| {
                     Some(Command::SetText {
@@ -1715,7 +1689,6 @@ impl<S: Mount> event::Handler for Handler<S> {
         rem_in_px: f64,
         now_in_ms: u64,
         timezone_offset_minutes: i32,
-        _data_url: String,
         color_scheme: ColorScheme,
     ) -> Self {
         let utc = from_unix_timestamp_in_ms(now_in_ms as i64, Zone::ZERO);
@@ -1748,6 +1721,7 @@ impl<S: Mount> event::Handler for Handler<S> {
     fn initial_draw(&mut self) -> (Vec<Event>, Vec<Command>) {
         let mut commands = self.view_commands();
         commands.extend(self.header_commands());
+        commands.push(toggle(Target::Save.to_dom(), Attribute::Checked, self.persistence.saved()));
         commands.extend(appearance_commands(self.color_scheme));
         commands.extend(language_commands(self.language));
         commands.extend(Language::list().iter().flat_map(|&l| option_commands(l)));
@@ -1763,21 +1737,21 @@ impl<S: Mount> event::Handler for Handler<S> {
     }
 
     fn process_fetched(&mut self, response: &Response) -> (Vec<Event>, Vec<Command>) {
-        if response.request != LOAD_REQUEST {
+        if response.request != IMPORT_REQUEST {
             return (vec![], vec![]);
         }
         if response.status != STATUS_OK {
-            return (vec![], vec![]);
+            return (vec![], self.toast(UNREADABLE));
         }
-        let (events, mut commands) = match self.import_commands(&response.body) {
-            Ok(result) => result,
+        let mut commands = match self.import_commands(&response.body) {
+            Ok(commands) => commands,
             Err(error) => return (vec![], self.toast(notice(&error))),
         };
         self.resources = self.count_resources();
         self.fit_rectgrid();
         commands.extend(self.view_commands());
         commands.extend(self.option_commands());
-        (events, commands)
+        (vec![], commands)
     }
 
     fn process_canvas(
@@ -1794,6 +1768,14 @@ impl<S: Mount> event::Handler for Handler<S> {
             EventType::Input if target == Some(Target::Zoom) => (vec![], self.zoom(&event.value)),
             EventType::Change => match target {
                 Some(Target::Axis(axis)) => (vec![], self.change_axis(axis)),
+                Some(Target::Save) => self.save_commands(),
+                Some(Target::Import) => (
+                    vec![],
+                    vec![Command::ReadFile {
+                        id:      Target::Import.to_dom(),
+                        request: IMPORT_REQUEST,
+                    }],
+                ),
                 Some(Target::Unlock) => (vec![], self.toggle_lock()),
                 Some(Target::AppearanceOption(c)) => {
                     self.color_scheme = c;
@@ -2063,9 +2045,7 @@ impl<S: FileStore> Handler<S> {
 
 fn notice(error: &CalendarError) -> &'static str {
     match error {
-        CalendarError::Json(_) | CalendarError::Missing(_) | CalendarError::Shape(_) => {
-            "データを読み込めませんでした"
-        }
+        CalendarError::Json(_) | CalendarError::Missing(_) | CalendarError::Shape(_) => UNREADABLE,
         CalendarError::Value { .. } => "データに不正な値があります",
         CalendarError::Kind(_) | CalendarError::Object(_) => "保存データが壊れています",
     }
@@ -2121,7 +2101,6 @@ mod tests {
                 REM,
                 now,
                 offset,
-                String::new(),
                 ColorScheme::Light,
             ));
             let (year, month, day) = expected;
@@ -2348,12 +2327,10 @@ mod tests {
         assert_eq!(text(&commands, Target::AxisName(Axis::Month)), "1ヶ月");
         assert_eq!(text(&commands, Target::AxisName(Axis::Day(Day::Day))), "1日");
         assert_eq!(text(&commands, Target::Step(3)), "本日");
-        assert_eq!(text(&commands, Target::Save), "保存");
         let commands = press(&mut handler, Target::LanguageOption(Language::En(En::Gb)).to_dom());
         assert_eq!(text(&commands, Target::AxisName(Axis::Month)), "1 month");
         assert_eq!(text(&commands, Target::AxisName(Axis::Day(Day::Week))), "1 week");
         assert_eq!(text(&commands, Target::Step(3)), "Today");
-        assert_eq!(text(&commands, Target::Save), "Save");
     }
 
     #[test]
@@ -2390,32 +2367,53 @@ mod tests {
     }
 
     fn sample_response(request: u32, status: u16) -> Response {
-        let body = fs::read(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/distribution/calendar/data/calendar.json"
-        ))
-        .unwrap();
+        let body =
+            fs::read(concat!(env!("CARGO_MANIFEST_DIR"), "/reference/calendar.json")).unwrap();
         Response { request, status, body }
     }
 
     #[test]
-    fn initial_draw_requests_the_calendar_once() {
+    fn nothing_is_fetched_and_a_chosen_file_is_read() {
         let mut handler = Handler::<MemoryStore>::new(VIEWPORT, today(), REM);
         let (_, commands) = handler.initial_draw();
-        let fetches: Vec<_> = commands
-            .iter()
-            .filter_map(|command| match command {
-                Command::Fetch { request, method, path, body } => {
-                    Some((*request, *method, path.clone(), body.len()))
-                }
-                _ => None,
-            })
-            .collect();
-        assert_eq!(fetches, [(1, Method::Get, String::from("data/calendar.json"), 0)]);
+        assert!(!commands.iter().any(|command| matches!(command, Command::Fetch { .. })));
+        assert_eq!(sync_checked(&commands), Some(true));
+        let event = CanvasEvent {
+            event_type: EventType::Change,
+            ..click(Target::Import.to_dom(), 10.0, 10.0)
+        };
+        let commands = handler.process_canvas(&event, &pointer()).1;
+        assert!(matches!(
+            commands.as_slice(),
+            [Command::ReadFile { id, request: IMPORT_REQUEST }] if *id == Target::Import.to_dom()
+        ));
+    }
+
+    fn sync_checked(commands: &[Command]) -> Option<bool> {
+        sync_checks(commands).last().copied()
     }
 
     #[test]
-    fn fetched_calendar_is_kept_and_names_the_resources() {
+    fn an_imported_calendar_replaces_the_store_unsaved_until_synced() {
+        let (mut handler, disk) = with_store();
+        let (_, commands) = handler.process_fetched(&sample_response(1, 200));
+        assert_eq!(sync_checked(&commands), Some(false));
+        assert!(handler.dirty());
+        assert!(MemoryStore::new(disk.clone()).unwrap().range(0, u32::MAX).next().is_none());
+        handler.process_fetched(&sample_response(1, 200));
+        assert_eq!(appointments(&handler).len(), 380);
+        let (events, commands) = save_pressed(&mut handler);
+        assert!(events.is_empty());
+        assert_eq!(sync_checked(&commands), Some(true));
+        assert!(!handler.dirty());
+        assert_eq!(
+            object::list::<Appointment>(&MemoryStore::new(disk).unwrap()).unwrap().len(),
+            380
+        );
+    }
+
+    #[test]
+    fn an_imported_calendar_names_the_resources() {
         let (mut handler, _) = with_store();
         assert!(!handler.loaded());
         let (_, commands) = handler.process_fetched(&sample_response(1, 200));
@@ -2428,15 +2426,18 @@ mod tests {
     #[test]
     fn view_change_keeps_loaded_resource_names() {
         let (mut handler, _) = with_store();
-        handler.process_fetched(&sample_response(1, 200));
+        import_saved(&mut handler);
         let commands = choose(&mut handler, Axis::Day(Day::Day));
         assert_eq!(text_of(&commands, &Target::ResourceName(2).to_dom()).unwrap(), "Studio 2");
     }
 
     #[test]
-    fn fetched_failure_keeps_nothing() {
+    fn an_unreadable_file_keeps_nothing() {
         let (mut handler, _) = with_store();
-        assert!(handler.process_fetched(&sample_response(1, 404)).1.is_empty());
+        let (_, commands) = handler.process_fetched(&sample_response(1, 404));
+        assert!(matches!(commands.as_slice(),
+            [Command::SetText { value, .. }, Command::JsFn { name: FnName::ShowToast, .. }]
+                if value == UNREADABLE));
         let broken = Response { request: 1, status: 200, body: b"{".to_vec() };
         let (_, commands) = handler.process_fetched(&broken);
         assert!(matches!(
@@ -3383,16 +3384,16 @@ mod tests {
         )));
     }
 
-    fn save_disabled(commands: &[Command]) -> Vec<bool> {
+    fn sync_checks(commands: &[Command]) -> Vec<bool> {
         commands
             .iter()
             .filter_map(|command| match command {
-                Command::SetAttribute { id, attribute: Attribute::Disabled, .. }
+                Command::SetAttribute { id, attribute: Attribute::Checked, .. }
                     if *id == Target::Save.to_dom() =>
                 {
                     Some(true)
                 }
-                Command::RemoveAttribute { id, attribute: Attribute::Disabled }
+                Command::RemoveAttribute { id, attribute: Attribute::Checked }
                     if *id == Target::Save.to_dom() =>
                 {
                     Some(false)
@@ -3403,28 +3404,28 @@ mod tests {
     }
 
     #[test]
-    fn edits_enable_the_save_button_once() {
+    fn edits_uncheck_the_sync_checkbox_once() {
         let mut handler = lone(102);
         assert!(!handler.dirty());
         press_local(&mut handler, 1, 120.0, 221.0);
         drag_by(&mut handler, 0.0, 2.0 * ROW_PX);
         let commands = end(&mut handler);
         assert!(handler.dirty());
-        assert_eq!(save_disabled(&commands), [false]);
+        assert_eq!(sync_checks(&commands), [false]);
         press_local(&mut handler, 1, 120.0, 168.0);
         drag_by(&mut handler, COLUMN_MIN_PX, 0.0);
         let commands = end(&mut handler);
-        assert!(save_disabled(&commands).is_empty());
+        assert!(sync_checks(&commands).is_empty());
     }
 
     #[test]
-    fn a_drop_that_changes_nothing_keeps_the_save_button_disabled() {
+    fn a_drop_that_changes_nothing_keeps_the_sync_checkbox_checked() {
         let mut handler = lone(102);
         press_local(&mut handler, 1, 120.0, 168.0);
         drag_by(&mut handler, 10.0, 3.0);
         let commands = end(&mut handler);
         assert!(!handler.dirty());
-        assert!(save_disabled(&commands).is_empty());
+        assert!(sync_checks(&commands).is_empty());
         press_local(&mut handler, 1, 120.0, 221.0);
         drag_by(&mut handler, 0.0, 5.0);
         end(&mut handler);
@@ -3494,13 +3495,13 @@ mod tests {
     }
 
     #[test]
-    fn a_first_run_fetches_seeds_and_saves_the_records() {
+    fn a_first_run_fetches_nothing_and_an_import_is_kept_once_synced() {
         let (mut handler, disk) = with_store();
         assert!(!handler.loaded());
         let (_, commands) = handler.initial_draw();
-        assert!(commands.iter().any(|command| matches!(command, Command::Fetch { .. })));
+        assert!(!commands.iter().any(|command| matches!(command, Command::Fetch { .. })));
         assert_eq!(disk.count_committed(), 0);
-        handler.process_fetched(&sample_response(1, 200));
+        import_saved(&mut handler);
         assert_eq!(disk.count_committed(), 392);
         assert_eq!(pending(&handler), 0);
         assert!(!handler.dirty());
@@ -3509,7 +3510,7 @@ mod tests {
     #[test]
     fn a_later_run_loads_from_the_store_without_fetching() {
         let (mut first, disk) = with_store();
-        first.process_fetched(&sample_response(1, 200));
+        import_saved(&mut first);
         let mut second = Handler::<MemoryStore>::new(VIEWPORT, today(), REM);
         second.attach(MemoryStore::new(disk).unwrap());
         assert_eq!(appointments(&second).len(), 380);
@@ -3522,7 +3523,7 @@ mod tests {
     #[test]
     fn an_edit_is_pending_until_save_and_survives_a_reload_only_after_it() {
         let (mut handler, disk) = with_store();
-        handler.process_fetched(&sample_response(1, 200));
+        import_saved(&mut handler);
         let (index, before) = drag_first_card_by(&mut handler, 2.0 * ROW_PX);
         let after = appointment_of(&handler, index).start;
         assert_eq!(minutes(after), minutes(before) + 30);
@@ -3530,7 +3531,7 @@ mod tests {
         assert_eq!(pending(&handler), 1);
         assert_eq!(committed(&disk, index).start, before);
 
-        press(&mut handler, Target::Save.to_dom());
+        save_pressed(&mut handler);
         assert!(!handler.dirty());
         assert_eq!(pending(&handler), 0);
         assert_eq!(committed(&disk, index).start, after);
@@ -3543,7 +3544,7 @@ mod tests {
     #[test]
     fn an_unsaved_edit_is_gone_after_a_reload() {
         let (mut handler, disk) = with_store();
-        handler.process_fetched(&sample_response(1, 200));
+        import_saved(&mut handler);
         let (index, before) = drag_first_card_by(&mut handler, 2.0 * ROW_PX);
         let mut reloaded = Handler::<MemoryStore>::new(VIEWPORT, today(), REM);
         reloaded.attach(MemoryStore::new(disk).unwrap());
@@ -3553,13 +3554,13 @@ mod tests {
     #[test]
     fn discard_restores_the_saved_state_and_redraws() {
         let (mut handler, _) = with_store();
-        handler.process_fetched(&sample_response(1, 200));
+        import_saved(&mut handler);
         let (index, before) = drag_first_card_by(&mut handler, 2.0 * ROW_PX);
         let commands = handler.discard_commands().1;
         assert_eq!(appointment_of(&handler, index).start, before);
         assert!(!handler.dirty());
         assert_eq!(pending(&handler), 0);
-        assert_eq!(save_disabled(&commands), [true]);
+        assert_eq!(sync_checks(&commands), [true]);
         assert!(shown_count(&commands) > 0);
     }
 
@@ -3800,7 +3801,7 @@ mod tests {
     fn submitting_a_new_form_adds_a_persisted_appointment() {
         let (mut handler, _) = with_store();
         handler.now_in_ms = 1_790_942_400_000;
-        handler.process_fetched(&sample_response(1, 200));
+        import_saved(&mut handler);
         let before = appointments(&handler).len();
         tap_empty(&mut handler, 0.0, 0.0);
         let date = display(today(), Language::Ja, YEAR_DAY, Format::Iso);
@@ -4046,42 +4047,48 @@ mod tests {
     #[test]
     fn reload_button_discards_pending_edits() {
         let (mut handler, _) = with_store();
-        handler.process_fetched(&sample_response(1, 200));
+        import_saved(&mut handler);
         let (index, before) = drag_first_card_by(&mut handler, 2.0 * ROW_PX);
         let commands = press(&mut handler, Target::Reload.to_dom());
         assert_eq!(appointment_of(&handler, index).start, before);
         assert_eq!(pending(&handler), 0);
-        assert_eq!(save_disabled(&commands), [true]);
+        assert_eq!(sync_checks(&commands), [true]);
     }
 
     #[test]
     fn a_failed_save_reports_the_error_and_stays_dirty() {
         let mut handler = with_faulty_store();
-        handler.process_fetched(&sample_response(1, 200));
+        import_saved(&mut handler);
         drag_first_card_by(&mut handler, 2.0 * ROW_PX);
         handler.store.as_ref().unwrap().fail_writes_to.set(Some("log"));
-        let commands = press(&mut handler, Target::Save.to_dom());
+        let commands = save_pressed(&mut handler).1;
         assert!(matches!(
             commands.as_slice(),
-            [Command::Error { error: Error::FileStore(FileStoreError::InvalidState(_)) }]
+            [
+                Command::Error { error: Error::FileStore(FileStoreError::InvalidState(_)) },
+                Command::RemoveAttribute { attribute: Attribute::Checked, .. },
+            ]
         ));
         assert!(handler.dirty());
         handler.store.as_ref().unwrap().fail_writes_to.set(None);
-        press(&mut handler, Target::Save.to_dom());
+        assert_eq!(sync_checks(&save_pressed(&mut handler).1), [true]);
         assert!(!handler.dirty());
     }
 
     #[test]
     fn closing_the_handler_releases_the_store() {
         let (mut handler, _) = with_store();
-        handler.process_fetched(&sample_response(1, 200));
+        import_saved(&mut handler);
         drag_first_card_by(&mut handler, 2.0 * ROW_PX);
         assert!(handler.close().is_empty());
         let (events, commands) = save_pressed(&mut handler);
         assert!(matches!(events.as_slice(), [Event::StoreLost(_)]));
         assert!(matches!(
             commands.as_slice(),
-            [Command::Error { error: Error::FileStore(FileStoreError::InvalidState(_)) }]
+            [
+                Command::Error { error: Error::FileStore(FileStoreError::InvalidState(_)) },
+                Command::RemoveAttribute { attribute: Attribute::Checked, .. },
+            ]
         ));
     }
 
@@ -4111,7 +4118,7 @@ mod tests {
     }
 
     #[test]
-    fn a_locked_store_at_startup_is_opened_again_and_then_loaded() {
+    fn a_locked_store_at_startup_is_opened_again_without_fetching() {
         let mut handler = Handler::<MemoryStore>::new(VIEWPORT, today(), REM);
         handler
             .startup
@@ -4125,17 +4132,26 @@ mod tests {
         let (events, commands) = handler.process_opened(opened);
         assert!(events.is_empty());
         assert!(handler.attached);
-        assert!(commands.iter().any(|command| matches!(command, Command::Fetch { .. })));
+        assert!(!commands.iter().any(|command| matches!(command, Command::Fetch { .. })));
+    }
+
+    fn import_saved<S: Mount>(handler: &mut Handler<S>) {
+        handler.process_fetched(&sample_response(1, 200));
+        save_pressed(handler);
     }
 
     fn save_pressed<S: Mount>(handler: &mut Handler<S>) -> (Vec<Event>, Vec<Command>) {
-        handler.process_canvas(&click(Target::Save.to_dom(), 10.0, 10.0), &pointer())
+        let event = CanvasEvent {
+            event_type: EventType::Change,
+            ..click(Target::Save.to_dom(), 10.0, 10.0)
+        };
+        handler.process_canvas(&event, &pointer())
     }
 
     #[test]
     fn a_lost_store_is_replaced_and_the_pending_edit_survives() {
         let (mut handler, disk) = with_store();
-        handler.process_fetched(&sample_response(1, 200));
+        import_saved(&mut handler);
         let (index, _) = drag_first_card_by(&mut handler, 2.0 * ROW_PX);
         let after = appointment_of(&handler, index).start;
 
@@ -4170,7 +4186,7 @@ mod tests {
     #[test]
     fn a_corrupt_store_is_reported_and_nothing_is_fetched_over_it() {
         let (mut seeding, disk) = with_store();
-        seeding.process_fetched(&sample_response(1, 200));
+        import_saved(&mut seeding);
         let mut corrupting = MemoryStore::new(disk.clone()).unwrap();
         corrupting.set(appointments(&seeding)[0].head.id, b"{".to_vec());
         corrupting.save().unwrap();
@@ -4188,7 +4204,7 @@ mod tests {
     #[test]
     fn save_and_discard_without_a_store_do_nothing() {
         let mut handler = Handler::<MemoryStore>::new(VIEWPORT, today(), REM);
-        assert!(press(&mut handler, Target::Save.to_dom()).is_empty());
+        assert!(save_pressed(&mut handler).1.is_empty());
         assert!(handler.discard_commands().1.is_empty());
     }
 
@@ -4480,7 +4496,7 @@ mod tests {
         for seed in 0..30 {
             let mut rng = Rng::new(seed);
             let (mut handler, disk) = with_store();
-            handler.process_fetched(&sample_response(1, 200));
+            import_saved(&mut handler);
             handler.card_commands();
             let mut saved = committed_appointments(&disk);
             for step in 0..60 {
@@ -4540,7 +4556,7 @@ mod tests {
                         submit(&mut handler, &query);
                     }
                     8 => {
-                        press(&mut handler, Target::Save.to_dom());
+                        save_pressed(&mut handler);
                         assert!(!handler.dirty(), "{context}: still dirty after save");
                         saved = appointments(&handler);
                         assert!(
@@ -4628,7 +4644,7 @@ mod tests {
     #[test]
     fn the_delete_button_belongs_to_the_form_of_an_existing_appointment() {
         let (mut handler, _) = with_store();
-        handler.process_fetched(&sample_response(1, 200));
+        import_saved(&mut handler);
         let (_, commands) = open_first_card(&mut handler);
         assert_eq!(delete_hidden(&commands), Some(false));
         handler.process_canvas(
@@ -4646,14 +4662,14 @@ mod tests {
     }
 
     #[test]
-    fn a_deletion_waits_in_memory_for_the_save_button_like_an_edit() {
+    fn a_deletion_waits_in_memory_for_the_sync_checkbox_like_an_edit() {
         let (mut handler, disk) = with_store();
-        handler.process_fetched(&sample_response(1, 200));
+        import_saved(&mut handler);
         let before = appointments(&handler).len();
         let (key, _) = open_first_card(&mut handler);
         let commands = press(&mut handler, Target::Delete.to_dom());
         assert!(commands.iter().any(|c| matches!(c, Command::Close { .. })));
-        assert_eq!(save_disabled(&commands), [false]);
+        assert_eq!(sync_checks(&commands), [false]);
         assert!(matches!(handler.dialog, Dialog::None));
         assert!(handler.dirty());
         assert_eq!(appointments(&handler).len(), before - 1);
@@ -4663,7 +4679,7 @@ mod tests {
             object::get::<Appointment>(&MemoryStore::new(disk.clone()).unwrap(), key).is_some()
         );
 
-        press(&mut handler, Target::Save.to_dom());
+        save_pressed(&mut handler);
         assert!(!handler.dirty());
         assert_eq!(pending(&handler), 0);
         assert!(
@@ -4677,7 +4693,7 @@ mod tests {
     #[test]
     fn reload_brings_a_deleted_appointment_back() {
         let (mut handler, disk) = with_store();
-        handler.process_fetched(&sample_response(1, 200));
+        import_saved(&mut handler);
         let before = appointments(&handler).len();
         let (key, _) = open_first_card(&mut handler);
         press(&mut handler, Target::Delete.to_dom());
@@ -4685,7 +4701,7 @@ mod tests {
         assert!(handler.appointment(key).is_some());
         assert_eq!(appointments(&handler).len(), before);
         assert!(!handler.dirty());
-        assert_eq!(save_disabled(&commands), [true]);
+        assert_eq!(sync_checks(&commands), [true]);
         assert!(object::get::<Appointment>(&MemoryStore::new(disk).unwrap(), key).is_some());
     }
 

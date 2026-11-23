@@ -19,6 +19,8 @@ const INVESTIGATOR_BUTTON: u32 = 1;
 const DICE_BUTTON: u32 = 2;
 const APPEARANCE_BUTTON: u32 = 3;
 const INVESTIGATOR_LIST: u32 = 1;
+const SAVE_INPUT: u32 = 1;
+const IMPORT_INPUT: u32 = 2;
 const APPEARANCE_LIST: u32 = 2;
 const LANGUAGE_LIST: u32 = 3;
 const SHEET_SECTION: u32 = 1;
@@ -342,6 +344,7 @@ pub enum Page {
     InvestigatorOption(u32),
     Dice,
     Save,
+    Import,
     Appearance,
     AppearanceOption(ColorScheme),
     LanguageOption(Language),
@@ -383,7 +386,8 @@ impl Page {
                 header(&[(Tag::Div, Some(INVESTIGATOR_LIST)), (Tag::Button, Some(n))])
             }
             Self::Dice => header(&[(Tag::Button, Some(DICE_BUTTON))]),
-            Self::Save => header(&[(Tag::Input, None)]),
+            Self::Save => header(&[(Tag::Input, Some(SAVE_INPUT))]),
+            Self::Import => header(&[(Tag::Input, Some(IMPORT_INPUT))]),
             Self::Appearance => header(&[(Tag::Button, Some(APPEARANCE_BUTTON))]),
             Self::AppearanceOption(c) => header(&[
                 (Tag::Div, Some(APPEARANCE_LIST)),
@@ -433,7 +437,11 @@ impl Page {
                 APPEARANCE_BUTTON => Self::Appearance,
                 _ => return None,
             },
-            [(Tag::Header, None), (Tag::Input, None)] => Self::Save,
+            [(Tag::Header, None), (Tag::Input, Some(n))] => match *n {
+                SAVE_INPUT => Self::Save,
+                IMPORT_INPUT => Self::Import,
+                _ => return None,
+            },
             [(Tag::Header, None), (Tag::Label, None), (Tag::Input, None)] => Self::Unlock,
             [(Tag::Header, None), (Tag::Div, Some(INVESTIGATOR_LIST)), (Tag::Button, Some(n))]
                 if (1..=INVESTIGATOR_OPTIONS).contains(n) =>
@@ -495,6 +503,7 @@ impl Page {
             Self::Investigator,
             Self::Dice,
             Self::Save,
+            Self::Import,
             Self::Appearance,
             Self::Unlock,
             Self::Sheet,

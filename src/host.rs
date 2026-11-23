@@ -32,6 +32,7 @@ pub const OPERATION_JS_FN: u8 = 12;
 pub const OPERATION_ERROR: u8 = 13;
 pub const OPERATION_FETCH: u8 = 14;
 pub const OPERATION_RELOAD: u8 = 15;
+pub const OPERATION_READ_FILE: u8 = 16;
 
 pub enum Command {
     SetText { id: dom::Id, value: String },
@@ -49,6 +50,7 @@ pub enum Command {
     Fetch { request: u32, method: Method, path: String, body: Vec<u8> },
     Reload,
     Error { error: Error },
+    ReadFile { id: dom::Id, request: u32 },
 }
 
 /// ```
@@ -130,6 +132,11 @@ impl Output for Command {
             Command::Error { ref error } => {
                 frame.push(OPERATION_ERROR);
                 error.encode(frame);
+            }
+            Command::ReadFile { ref id, request } => {
+                frame.push(OPERATION_READ_FILE);
+                id.encode(frame);
+                request.encode(frame);
             }
         }
     }
@@ -1221,6 +1228,7 @@ mod wire_tests {
             (OPERATION_CLOSE, 10),
             (OPERATION_FOCUS, 11),
             (OPERATION_JS_FN, 12),
+            (OPERATION_READ_FILE, 16),
         ];
         for (operation, number) in operations {
             assert_eq!(operation as usize, number);
@@ -1501,6 +1509,10 @@ mod wire_tests {
         });
         assert_eq!(&panic[..6], [13, 2, 3, 0, 1, 0]);
         assert_eq!(encode(Command::Reload), [15]);
+        assert_eq!(
+            encode(Command::ReadFile { id: id.clone(), request: 258 }),
+            with_id(16, &[2, 1, 0, 0])
+        );
         assert_eq!(
             encode(Command::Fetch {
                 request: 258,

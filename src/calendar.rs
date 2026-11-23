@@ -418,8 +418,7 @@ mod tests {
     }
 
     fn sample() -> Vec<u8> {
-        fs::read(concat!(env!("CARGO_MANIFEST_DIR"), "/distribution/calendar/data/calendar.json"))
-            .unwrap()
+        fs::read(concat!(env!("CARGO_MANIFEST_DIR"), "/reference/calendar.json")).unwrap()
     }
 
     fn imported() -> MemoryStore {

@@ -5,7 +5,6 @@ const SITES = {
         "./calendar/app/app_bg.wasm?v={version}",
         "./calendar/app/app.js?v={version}",
         "./calendar/calendar.css?v={version}",
-        "./calendar/data/calendar.json",
     ],
     "./coc7th/": [
         "./coc7th/",

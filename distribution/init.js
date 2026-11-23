@@ -110,7 +110,6 @@ async function start() {
                 rem_in_px,
                 BigInt(now_in_ms),
                 timezone_offset_minutes,
-                params.get("data") ?? "",
                 preferred_color_scheme(),
             );
             bind();
@@ -173,7 +172,6 @@ async function start() {
                 rem_in_px,
                 now_in_ms: BigInt(Date.now()),
                 timezone_offset_minutes,
-                data_url: params.get("data") ?? "",
                 color_scheme: preferred_color_scheme(),
                 app_url: new URL("app.js?v={version}", APP_DIRECTORY).href,
             },
@@ -289,6 +287,11 @@ function execute(frame) {
         case 10: el.close(); break;
         case 11: el.focus(); break;
         case 12: js_fn[FN_NAMES[get_u16(frame, offset)[0]]]?.(el); break;
+        case 16: {
+            const [request] = get_u32(frame, offset);
+            if (request !== undefined) read_file(request, el);
+            break;
+        }
     }
 }
 
@@ -309,6 +312,22 @@ async function fetch_request(request, method, path, body) {
         status = 0;
         bytes = TEXT_ENCODER.encode(String(err?.message ?? err));
     }
+    await write_fetched(request, status, bytes);
+}
+
+async function read_file(request, el) {
+    const file = el.files?.[0];
+    if (!file) return;
+    let status;
+    let bytes;
+    try {
+        bytes = new Uint8Array(await file.arrayBuffer());
+        status = 200;
+    } catch (err) {
+        status = 0;
+        bytes = TEXT_ENCODER.encode(String(err?.message ?? err));
+    }
+    el.value = "";
     await write_fetched(request, status, bytes);
 }
 
