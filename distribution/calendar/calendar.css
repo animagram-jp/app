@@ -98,11 +98,6 @@
     inline-size: 8rem;
 }
 
-#dialog:modal {
-    display:        flex;
-    flex-direction: column;
-}
-
 #dialog dl {
     display:               grid;
     grid-template-columns: auto 1fr;

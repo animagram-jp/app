@@ -223,16 +223,25 @@ input[name="hue"]::-moz-range-track {
     background-image: var(--hue-track);
 }
 
+dialog:modal {
+    display:        flex;
+    flex-direction: column;
+}
+
+dialog > :is(label, dl) {
+    inline-size:     24rem;
+    max-inline-size: 100%;
+}
+
 dialog > label:has(> input[name="create"]) {
     display: block;
 }
 
 dialog > label:has(> input:is([name="email"], [name="password"])) {
-    align-items:     stretch;
-    display:         flex;
-    flex-direction:  column;
-    max-inline-size: 20rem;
-    row-gap:         var(--border-radius);
+    align-items:    stretch;
+    display:        flex;
+    flex-direction: column;
+    row-gap:        var(--border-radius);
 
     & > span {
         align-self: stretch;

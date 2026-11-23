@@ -366,6 +366,7 @@ pub enum Page {
     DialogOptions,
     DialogNumber,
     DialogNumberInput,
+    DialogSubmit,
     Create,
     CreateInput,
     Form,
@@ -430,6 +431,7 @@ impl Page {
             Self::DialogNumberInput => {
                 dialog(&[(Tag::Label, Some(NUMBER_LABEL)), (Tag::Input, None)])
             }
+            Self::DialogSubmit => dialog(&[(Tag::Button, None)]),
             Self::Create => dialog(&[(Tag::Label, Some(CREATE_LABEL))]),
             Self::CreateInput => dialog(&[(Tag::Label, Some(CREATE_LABEL)), (Tag::Input, None)]),
             Self::Form => Id::new(&[(Tag::Form, None)]),
@@ -489,6 +491,7 @@ impl Page {
             [(Tag::Dialog, None), (Tag::Label, Some(NUMBER_LABEL)), (Tag::Input, None)] => {
                 Self::DialogNumberInput
             }
+            [(Tag::Dialog, None), (Tag::Button, None)] => Self::DialogSubmit,
             [(Tag::Dialog, None), (Tag::Label, Some(n)), rest @ ..] => {
                 let Some(&field) =
                     n.checked_sub(1).and_then(|index| Field::list().get(index as usize))
@@ -537,6 +540,7 @@ impl Page {
             Self::DialogOptions,
             Self::DialogNumber,
             Self::DialogNumberInput,
+            Self::DialogSubmit,
             Self::Create,
             Self::CreateInput,
             Self::Form,
