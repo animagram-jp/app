@@ -1,4 +1,4 @@
-use alloc::vec::Vec;
+use alloc::{format, string::String, vec::Vec};
 use core::{
     clone::Clone,
     cmp::PartialEq,
@@ -49,6 +49,62 @@ impl EditField {
     /// ```
     pub fn number(self) -> u32 {
         u32::from(u8::from(self))
+    }
+
+    /// ```
+    /// # use app::calendar::target::{EditField, EditPart};
+    /// assert_eq!(EditField::Date.parts(), [EditPart::Year, EditPart::Month, EditPart::Day]);
+    /// assert_eq!(EditField::Start.parts(), [EditPart::Hour, EditPart::Minute]);
+    /// assert!(EditField::Title.parts().is_empty());
+    /// ```
+    pub fn parts(self) -> &'static [EditPart] {
+        match self {
+            Self::Date => &[EditPart::Year, EditPart::Month, EditPart::Day],
+            Self::Start | Self::End => &[EditPart::Hour, EditPart::Minute],
+            _ => &[],
+        }
+    }
+
+    pub fn separator(self) -> Option<char> {
+        match self {
+            Self::Date => Some('-'),
+            Self::Start | Self::End => Some(':'),
+            _ => None,
+        }
+    }
+
+    pub fn controls(self) -> Vec<Target> {
+        match self.parts() {
+            [] => Vec::from([Target::EditField(self)]),
+            parts => parts.iter().map(|&part| Target::EditPart(self, part)).collect(),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum EditPart {
+    Year,
+    Month,
+    Day,
+    Hour,
+    Minute,
+}
+
+impl EditPart {
+    pub fn number(self) -> u32 {
+        match self {
+            Self::Year | Self::Hour => 1,
+            Self::Month | Self::Minute => 2,
+            Self::Day => 3,
+        }
+    }
+
+    /// ```
+    /// # use app::calendar::target::{EditField, EditPart};
+    /// assert_eq!(EditPart::Month.name(EditField::Date), "4-2");
+    /// ```
+    pub fn name(self, field: EditField) -> String {
+        format!("{}-{}", field.number(), self.number())
     }
 }
 
@@ -120,6 +176,7 @@ pub enum Target {
     EditList,
     EditHeading,
     EditField(EditField),
+    EditPart(EditField, EditPart),
     CategoryOption(u32),
     StatusOption(u32),
     ResourceOption(u32),
@@ -236,13 +293,26 @@ impl Target {
             Self::EditHeading => join(dialog_form(), &[(Tag::Header, None), (Tag::H3, None)]),
             Self::EditField(field) => {
                 let n = field.number();
-                let tag = match field {
-                    EditField::Category | EditField::Status | EditField::Resource => Tag::Select,
-                    EditField::Note => Tag::Textarea,
-                    _ => Tag::Input,
+                let tail = match field {
+                    EditField::Category | EditField::Status | EditField::Resource => {
+                        Some(Tag::Select)
+                    }
+                    EditField::Note => Some(Tag::Textarea),
+                    EditField::Date | EditField::Start | EditField::End => None,
+                    _ => Some(Tag::Input),
                 };
-                join(dialog_form(), &[(Tag::Dl, None), (Tag::Dd, Some(n)), (tag, None)])
+                let mut path = join(dialog_form(), &[(Tag::Dl, None), (Tag::Dd, Some(n))]);
+                path.extend(tail.map(|tag| (tag, None)));
+                path
             }
+            Self::EditPart(field, part) => join(
+                dialog_form(),
+                &[
+                    (Tag::Dl, None),
+                    (Tag::Dd, Some(field.number())),
+                    (Tag::Input, Some(part.number())),
+                ],
+            ),
             Self::CategoryOption(n) => join(option(EditField::Category), &[(Tag::Option, Some(n))]),
             Self::StatusOption(n) => join(option(EditField::Status), &[(Tag::Option, Some(n))]),
             Self::ResourceOption(n) => join(option(EditField::Resource), &[(Tag::Option, Some(n))]),
@@ -347,6 +417,15 @@ impl Target {
                     EditField::Resource => Self::ResourceOption(*k),
                     _ => return None,
                 },
+                [(Tag::Form, None), (Tag::Dl, None), (Tag::Dd, Some(n))] => {
+                    let field = *EditField::list().get(n.checked_sub(1)? as usize)?;
+                    (!field.parts().is_empty()).then_some(Self::EditField(field))?
+                }
+                [(Tag::Form, None), (Tag::Dl, None), (Tag::Dd, Some(n)), (Tag::Input, Some(k))] => {
+                    let field = *EditField::list().get(n.checked_sub(1)? as usize)?;
+                    let part = *field.parts().iter().find(|part| part.number() == *k)?;
+                    Self::EditPart(field, part)
+                }
                 [(Tag::Form, None), (Tag::Dl, None), (Tag::Dd, Some(n)), (tag, None)] => {
                     let field = *EditField::list().get(n.checked_sub(1)? as usize)?;
                     let expected = Self::EditField(field).to_dom();
@@ -407,6 +486,9 @@ mod tests {
         targets.extend(AXES.map(Target::Axis));
         targets.extend(AXES.map(Target::AxisName));
         targets.extend(EditField::list().iter().copied().map(Target::EditField));
+        targets.extend(EditField::list().iter().flat_map(|&field| {
+            field.parts().iter().map(move |&part| Target::EditPart(field, part))
+        }));
         targets.extend(Field::list().iter().copied().map(Target::Credential));
         targets.extend((1..=4).flat_map(|n| {
             [Target::CategoryOption(n), Target::StatusOption(n), Target::ResourceOption(n)]

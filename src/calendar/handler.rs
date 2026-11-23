@@ -521,15 +521,14 @@ impl<S: FileStore> Handler<S> {
                 value: Submit.display(Dialog::Edit, self.language).into(),
             },
         ];
-        commands.extend(values.into_iter().map(|(field, value)| Command::SetValue {
-            id: Target::EditField(field).to_dom(),
-            value,
-        }));
+        commands
+            .extend(values.into_iter().flat_map(|(field, value)| value_commands(field, &value)));
         commands.push(hidden(Target::EditList.to_dom(), false));
         commands.extend(
-            EditField::list().iter().map(|&field| {
-                toggle(Target::EditField(field).to_dom(), Attribute::Disabled, false)
-            }),
+            EditField::list()
+                .iter()
+                .flat_map(|&field| field.controls())
+                .map(|target| toggle(target.to_dom(), Attribute::Disabled, false)),
         );
         commands.push(hidden(Target::Delete.to_dom(), matches!(editing, Editing::New(_))));
         commands.push(toggle(Target::Delete.to_dom(), Attribute::Disabled, false));
@@ -768,7 +767,8 @@ impl<S: FileStore> Handler<S> {
         commands.extend(
             EditField::list()
                 .iter()
-                .map(|&field| toggle(Target::EditField(field).to_dom(), Attribute::Disabled, true)),
+                .flat_map(|&field| field.controls())
+                .map(|target| toggle(target.to_dom(), Attribute::Disabled, true)),
         );
         commands.push(hidden(Target::Delete.to_dom(), true));
         commands.push(toggle(Target::Delete.to_dom(), Attribute::Disabled, true));
@@ -1926,13 +1926,21 @@ fn decode_form(
     categories: &[Record<Tag>],
 ) -> Result<Record<Appointment>, &'static str> {
     let pairs = parse_url_search_params(value);
-    let field = |field: EditField| {
-        let name = format!("{}", field.number());
+    let read = |name: String| {
         pairs
             .iter()
             .find(|(key, _)| *key == name)
-            .map(|(_, value)| value.as_str())
+            .map(|(_, value)| value.clone())
             .ok_or("入力を読み取れません")
+    };
+    let field = |field: EditField| match field.separator() {
+        None => read(format!("{}", field.number())),
+        Some(separator) => field
+            .parts()
+            .iter()
+            .map(|part| read(part.name(field)))
+            .collect::<Result<Vec<_>, _>>()
+            .map(|texts| texts.join(&String::from(separator))),
     };
     let [title, category, status, date, resource, start, end, note] = [
         EditField::Title,
@@ -1947,19 +1955,35 @@ fn decode_form(
     .map(field);
     let (title, category, status, date) = (title?, category?, status?, date?);
     let (resource, start, end, note) = (resource?, start?, end?, note?);
-    let day = parse_date(date).map_err(|_| "日付が不正です")?;
-    let start = parse_time(start).map_err(|_| "開始時刻が不正です")?;
-    let end = parse_time(end).map_err(|_| "終了時刻が不正です")?;
+    let day = parse_date(&date).map_err(|_| "日付が不正です")?;
+    let start = parse_time(&start).map_err(|_| "開始時刻が不正です")?;
+    let end = parse_time(&end).map_err(|_| "終了時刻が不正です")?;
     if start >= end || start < clock.start() || end > clock.end() {
         return Err("時間帯が不正です");
     }
-    let resource = option_position(resources, resource).ok_or("資源が不正です")?;
-    let status = option_position(statuses, status).ok_or("状態が不正です")?;
-    let category = option_position(categories, category).ok_or("カテゴリが不正です")?;
+    let resource = option_position(resources, &resource).ok_or("資源が不正です")?;
+    let status = option_position(statuses, &status).ok_or("状態が不正です")?;
+    let category = option_position(categories, &category).ok_or("カテゴリが不正です")?;
     let place = Place { day, resource: resources[resource].uid };
     let category = categories[category].code.clone();
     let status = statuses[status].code.clone();
-    Ok(Record::new(0, Appointment::new(&[place], start, end, title, &category, &status, note)))
+    Ok(Record::new(0, Appointment::new(&[place], start, end, &title, &category, &status, &note)))
+}
+
+fn value_commands(field: EditField, value: &str) -> Vec<Command> {
+    let texts: Vec<&str> = match field.separator() {
+        None => Vec::from([value]),
+        Some(separator) => value.split(separator).collect(),
+    };
+    field
+        .controls()
+        .into_iter()
+        .zip(texts)
+        .map(|(target, text)| Command::SetValue {
+            id:    target.to_dom(),
+            value: String::from(text),
+        })
+        .collect()
 }
 
 fn option_value<T>(items: &[T], selected: impl Fn(&T) -> bool) -> String {
@@ -3546,28 +3570,28 @@ mod tests {
         })
     }
 
+    fn field_value(commands: &[Command], field: EditField) -> String {
+        let texts: Vec<String> = field
+            .controls()
+            .into_iter()
+            .map(|target| value_of(commands, &target.to_dom()).unwrap())
+            .collect();
+        texts.join(&field.separator().map(String::from).unwrap_or_default())
+    }
+
     #[test]
     fn clicking_a_card_without_moving_opens_the_edit_form() {
         let (mut handler, base) = drag_fixture();
         grab(&mut handler, 1);
         let (_, commands) = handler.process_gesture(&Gesture::Tap, &pointer(), None);
         let first = appointments(&handler)[0].clone();
+        assert_eq!(field_value(&commands, EditField::Title), first.title.clone());
         assert_eq!(
-            value_of(&commands, &Target::EditField(EditField::Title).to_dom()).unwrap(),
-            first.title.clone()
-        );
-        assert_eq!(
-            value_of(&commands, &Target::EditField(EditField::Date).to_dom()).unwrap(),
+            field_value(&commands, EditField::Date),
             display(base, Language::Ja, YEAR_DAY, Format::Iso)
         );
-        assert_eq!(
-            value_of(&commands, &Target::EditField(EditField::Resource).to_dom()).unwrap(),
-            "1"
-        );
-        assert_eq!(
-            value_of(&commands, &Target::EditField(EditField::Start).to_dom()).unwrap(),
-            "10:00"
-        );
+        assert_eq!(field_value(&commands, EditField::Resource), "1");
+        assert_eq!(field_value(&commands, EditField::Start), "10:00");
         assert!(
             matches!(commands.last(), Some(Command::ShowModal { id }) if *id == Target::Modal.to_dom())
         );
@@ -3585,7 +3609,22 @@ mod tests {
     }
 
     fn form_query(title: &str, date: &str, resource: u32, start: &str, end: &str) -> String {
-        format!("1={title}&2=1&3=1&4={date}&5={resource}&6={start}&7={end}&8=n")
+        let parted = |field: EditField, value: &str| {
+            let separator = field.separator().unwrap();
+            let pairs: Vec<String> = field
+                .parts()
+                .iter()
+                .zip(value.split(separator))
+                .map(|(part, text)| format!("{}={text}", part.name(field)))
+                .collect();
+            pairs.join("&")
+        };
+        let (date, start, end) = (
+            parted(EditField::Date, date),
+            parted(EditField::Start, start),
+            parted(EditField::End, end),
+        );
+        format!("1={title}&2=1&3=1&{date}&5={resource}&{start}&{end}&8=n")
     }
 
     fn submit<S: Mount>(handler: &mut Handler<S>, query: &str) -> Vec<Command> {
@@ -3601,23 +3640,14 @@ mod tests {
     fn tapping_an_empty_cell_opens_a_new_form_at_that_slot() {
         let (mut handler, base) = drag_fixture();
         let commands = tap_empty(&mut handler, 2.0, 4.0);
-        assert_eq!(value_of(&commands, &Target::EditField(EditField::Title).to_dom()).unwrap(), "");
+        assert_eq!(field_value(&commands, EditField::Title), "");
         assert_eq!(
-            value_of(&commands, &Target::EditField(EditField::Date).to_dom()).unwrap(),
+            field_value(&commands, EditField::Date),
             display(base, Language::Ja, YEAR_DAY, Format::Iso)
         );
-        assert_eq!(
-            value_of(&commands, &Target::EditField(EditField::Resource).to_dom()).unwrap(),
-            "3"
-        );
-        assert_eq!(
-            value_of(&commands, &Target::EditField(EditField::Start).to_dom()).unwrap(),
-            "10:00"
-        );
-        assert_eq!(
-            value_of(&commands, &Target::EditField(EditField::End).to_dom()).unwrap(),
-            "11:00"
-        );
+        assert_eq!(field_value(&commands, EditField::Resource), "3");
+        assert_eq!(field_value(&commands, EditField::Start), "10:00");
+        assert_eq!(field_value(&commands, EditField::End), "11:00");
         assert!(
             matches!(commands.last(), Some(Command::ShowModal { id }) if *id == Target::Modal.to_dom())
         );
@@ -3648,20 +3678,11 @@ mod tests {
     fn dragging_over_empty_cells_opens_a_form_for_the_range() {
         let (mut handler, base) = drag_fixture();
         let commands = drag_create(&mut handler, (2.0, 8.0), (2.0, 11.0));
+        assert_eq!(field_value(&commands, EditField::Start), "11:00");
+        assert_eq!(field_value(&commands, EditField::End), "12:00");
+        assert_eq!(field_value(&commands, EditField::Resource), "3");
         assert_eq!(
-            value_of(&commands, &Target::EditField(EditField::Start).to_dom()).unwrap(),
-            "11:00"
-        );
-        assert_eq!(
-            value_of(&commands, &Target::EditField(EditField::End).to_dom()).unwrap(),
-            "12:00"
-        );
-        assert_eq!(
-            value_of(&commands, &Target::EditField(EditField::Resource).to_dom()).unwrap(),
-            "3"
-        );
-        assert_eq!(
-            value_of(&commands, &Target::EditField(EditField::Date).to_dom()).unwrap(),
+            field_value(&commands, EditField::Date),
             display(base, Language::Ja, YEAR_DAY, Format::Iso)
         );
         assert!(commands.iter().any(|c| matches!(c,
@@ -3697,10 +3718,7 @@ mod tests {
     fn a_small_drag_in_one_slot_behaves_like_a_tap() {
         let (mut handler, _) = drag_fixture();
         let commands = drag_create(&mut handler, (2.0, 8.0), (2.0, 8.0));
-        assert_eq!(
-            value_of(&commands, &Target::EditField(EditField::End).to_dom()).unwrap(),
-            "12:00"
-        );
+        assert_eq!(field_value(&commands, EditField::End), "12:00");
     }
 
     #[test]
@@ -3762,14 +3780,8 @@ mod tests {
         );
         drag_to(&mut handler, ox + 10.0, oy + 7.0 * slot + 3.0);
         let commands = end(&mut handler);
-        assert_eq!(
-            value_of(&commands, &Target::EditField(EditField::Start).to_dom()).unwrap(),
-            "10:15"
-        );
-        assert_eq!(
-            value_of(&commands, &Target::EditField(EditField::End).to_dom()).unwrap(),
-            "11:00"
-        );
+        assert_eq!(field_value(&commands, EditField::Start), "10:15");
+        assert_eq!(field_value(&commands, EditField::End), "11:00");
     }
 
     #[test]
@@ -3887,8 +3899,11 @@ mod tests {
     fn the_dialog_follows_its_opener_and_each_form_reads_only_its_own_fields() {
         let credentials: Vec<Id> =
             Field::list().iter().map(|&field| Target::Credential(field).to_dom()).collect();
-        let edits: Vec<Id> =
-            EditField::list().iter().map(|&field| Target::EditField(field).to_dom()).collect();
+        let edits: Vec<Id> = EditField::list()
+            .iter()
+            .flat_map(|&field| field.controls())
+            .map(|target| target.to_dom())
+            .collect();
         let unlock_query = "email=a%40example.jp&password=passphrase&1=x&8=n";
         for seed in 0..10 {
             let mut rng = Rng::new(seed);
@@ -4336,7 +4351,7 @@ mod tests {
         let (x, y) = month_point(10, Some(2));
         handler.process_canvas(&pointer_down(Target::Surface.to_dom(), x, y), &pointer());
         let commands = handler.process_gesture(&Gesture::Tap, &pointer(), None).1;
-        let value = |field| value_of(&commands, &Target::EditField(field).to_dom()).unwrap();
+        let value = |field| field_value(&commands, field);
         assert_eq!(value(EditField::Date), "2026-10-08");
         assert_eq!(value(EditField::Resource), "1");
         assert_eq!(value(EditField::Start), "09:00");
@@ -4384,10 +4399,7 @@ mod tests {
         let y = oy + (bx.base()[1].get() + 0.5) * 3.0 * REM;
         handler.process_canvas(&pointer_down(Target::Surface.to_dom(), x, y), &pointer());
         let commands = handler.process_gesture(&Gesture::Tap, &pointer(), None).1;
-        assert_eq!(
-            value_of(&commands, &Target::EditField(EditField::Date).to_dom()).unwrap(),
-            "2026-10-08"
-        );
+        assert_eq!(field_value(&commands, EditField::Date), "2026-10-08");
     }
 
     #[test]
