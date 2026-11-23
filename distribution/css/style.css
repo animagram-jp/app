@@ -23,9 +23,9 @@
 
 @media (forced-colors: none) {
     :root {
-        --rgb-theme-purple: 91 47 145;
+        --rgb-animagram: 91 47 145;
 
-        --color-emphasis-ink: light-dark(rgb(var(--rgb-theme-purple)), oklch(from rgb(var(--rgb-theme-purple)) 0.780 0.113 h));
+        --color-emphasis-ink: light-dark(rgb(var(--rgb-animagram)), oklch(from rgb(var(--rgb-animagram)) 0.780 0.113 h));
     }
 }
 
