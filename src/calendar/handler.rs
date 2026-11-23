@@ -3927,6 +3927,14 @@ mod tests {
                 dom.push((label.clone(), Attribute::Hidden, true));
                 dom.push((input.clone(), Attribute::Disabled, true));
             }
+            for id in &edits {
+                dom.push((id.clone(), Attribute::Disabled, true));
+            }
+            dom.push((Target::Create.to_dom(), Attribute::Hidden, true));
+            dom.push((Target::CreateInput.to_dom(), Attribute::Disabled, true));
+            dom.push((Target::EditList.to_dom(), Attribute::Hidden, true));
+            dom.push((Target::Delete.to_dom(), Attribute::Hidden, true));
+            dom.push((Target::Delete.to_dom(), Attribute::Disabled, true));
             let lookup = |dom: &[(Id, Attribute, bool)], id: &Id, attribute: Attribute| {
                 dom.iter().rev().find(|(i, a, _)| i == id && *a == attribute).is_some_and(|e| e.2)
             };
