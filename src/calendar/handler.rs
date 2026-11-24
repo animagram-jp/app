@@ -500,9 +500,16 @@ impl<S: FileStore> Handler<S> {
             ),
             (
                 EditField::Start,
-                display(add(place.day, start), self.language, HOUR_MINUTE, Format::Iso),
+                add(place.day, start).map_or_else(String::new, |stamp| {
+                    display(stamp, self.language, HOUR_MINUTE, Format::Iso)
+                }),
             ),
-            (EditField::End, display(add(place.day, end), self.language, HOUR_MINUTE, Format::Iso)),
+            (
+                EditField::End,
+                add(place.day, end).map_or_else(String::new, |stamp| {
+                    display(stamp, self.language, HOUR_MINUTE, Format::Iso)
+                }),
+            ),
             (EditField::Note, draft.note.clone()),
         ];
         let mut commands = vec![
@@ -637,7 +644,7 @@ impl<S: FileStore> Handler<S> {
             .map(|cell| {
                 let resource = resources.get(cell.resource as usize)?;
                 Some(Place {
-                    day:      add(self.base, Length::new(TimeUnit::Day, u64::from(cell.day))),
+                    day:      add(self.base, Length::new(TimeUnit::Day, u64::from(cell.day)))?,
                     resource: resource.uid,
                 })
             })
@@ -685,10 +692,13 @@ impl<S: FileStore> Handler<S> {
             let start = self.clock.clamp_start(Length::ZERO, NEW_UNITS);
             let end =
                 self.clock.time(self.clock.unit(start) + NEW_UNITS).unwrap_or(self.clock.end());
-            let place = Place {
-                day:      add(self.first_day(), Length::new(TimeUnit::Day, u64::from(day))),
-                resource: resource.uid,
+            let Some(day) = self
+                .first_day()
+                .and_then(|first| add(first, Length::new(TimeUnit::Day, u64::from(day))))
+            else {
+                return vec![];
             };
+            let place = Place { day, resource: resource.uid };
             return self.new_form(vec![place], start, end);
         }
         let [Ok(column), Ok(row)] =
@@ -711,10 +721,10 @@ impl<S: FileStore> Handler<S> {
         };
         let start = grid.clock.clamp_start(time, NEW_UNITS);
         let end = grid.clock.time(grid.clock.unit(start) + NEW_UNITS).unwrap_or(grid.clock.end());
-        let place = Place {
-            day:      add(self.base, Length::new(TimeUnit::Day, u64::from(cell.day))),
-            resource: resource.uid,
+        let Some(day) = add(self.base, Length::new(TimeUnit::Day, u64::from(cell.day))) else {
+            return vec![];
         };
+        let place = Place { day, resource: resource.uid };
         self.new_form(vec![place], start, end)
     }
 
@@ -922,7 +932,7 @@ impl<S: FileStore> Handler<S> {
                 .map(|flat| {
                     let (day, resource) = grid.locate(flat);
                     let resource = resources.get(resource as usize)?.uid;
-                    Some(Place { day: shift(base, TimeUnit::Day, i64::from(day)), resource })
+                    Some(Place { day: shift(base, TimeUnit::Day, i64::from(day))?, resource })
                 })
                 .collect::<Option<Vec<Place>>>()
         });
@@ -978,7 +988,7 @@ impl<S: FileStore> Handler<S> {
     }
 
     fn move_in_month(&self, drag: &Drag) -> Option<Record<Appointment>> {
-        let first = self.first_day();
+        let first = self.first_day()?;
         let (target, _) = self.unit_at(drag.pointer).and_then(Month::locate)?;
         let mut entry = self.appointment(drag.key)?;
         let pressed = entry.places.get(drag.cell)?;
@@ -989,11 +999,13 @@ impl<S: FileStore> Handler<S> {
         let moved: Vec<Place> = entry
             .places
             .iter()
-            .map(|place| Place {
-                day:      shift(place.day, TimeUnit::Day, delta),
-                resource: place.resource,
+            .map(|place| {
+                Some(Place {
+                    day:      shift(place.day, TimeUnit::Day, delta)?,
+                    resource: place.resource,
+                })
             })
-            .collect();
+            .collect::<Option<_>>()?;
         entry.places = moved;
         Some(entry)
     }
@@ -1022,7 +1034,7 @@ impl<S: FileStore> Handler<S> {
             .map(|place| {
                 let (day, resource) = axis.locate(flat(place)? + delta);
                 let resource = resources.get(resource as usize)?.uid;
-                Some(Place { day: shift(base, TimeUnit::Day, i64::from(day)), resource })
+                Some(Place { day: shift(base, TimeUnit::Day, i64::from(day))?, resource })
             })
             .collect::<Option<_>>()?;
         let current = (entry.start, entry.end);
@@ -1061,7 +1073,7 @@ impl<S: FileStore> Handler<S> {
                 self.base = if n == STEP_TODAY {
                     self.today
                 } else {
-                    shift(self.base, TimeUnit::Day, self.step_days(n))
+                    shift(self.base, TimeUnit::Day, self.step_days(n)).unwrap_or(self.base)
                 };
                 (vec![], self.date_commands())
             }
@@ -1205,7 +1217,9 @@ impl<S: FileStore> Handler<S> {
     }
 
     fn month_cards(&self, appointments: &[Record<Appointment>]) -> Vec<Card> {
-        let first = self.first_day();
+        let Some(first) = self.first_day() else {
+            return Vec::new();
+        };
         let mut days: BTreeMap<u32, Vec<(u32, usize)>> = BTreeMap::new();
         for entry in appointments {
             let key = entry.head.id;
@@ -1240,12 +1254,14 @@ impl<S: FileStore> Handler<S> {
         if !self.month() {
             return Vec::new();
         }
-        let first = self.first_day();
+        let Some(first) = self.first_day() else {
+            return Vec::new();
+        };
         (0..Month::days())
             .filter_map(|day| {
                 let bx = Month::bbox(day, None)?;
                 Some(Band {
-                    kind: BandKind::Date(add(first, Length::new(TimeUnit::Day, u64::from(day)))),
+                    kind: BandKind::Date(add(first, Length::new(TimeUnit::Day, u64::from(day)))?),
                     bx,
                 })
             })
@@ -1386,8 +1402,18 @@ impl<S: FileStore> Handler<S> {
                     Target::CardPart(n, CardPart::Time).to_dom(),
                     format!(
                         "{}–{}",
-                        display(add(self.base, start), self.language, HOUR_MINUTE, Format::Iso),
-                        display(add(self.base, end), self.language, HOUR_MINUTE, Format::Iso)
+                        add(self.base, start).map_or_else(String::new, |stamp| display(
+                            stamp,
+                            self.language,
+                            HOUR_MINUTE,
+                            Format::Iso
+                        )),
+                        add(self.base, end).map_or_else(String::new, |stamp| display(
+                            stamp,
+                            self.language,
+                            HOUR_MINUTE,
+                            Format::Iso
+                        ))
                     ),
                 ),
                 (Target::CardPart(n, CardPart::Title).to_dom(), entry.title.clone()),
@@ -1491,19 +1517,23 @@ impl<S: FileStore> Handler<S> {
     }
 
     fn date_commands(&self) -> Vec<Command> {
-        let first = self.first_day();
+        let Some(first) = self.first_day() else {
+            return Vec::new();
+        };
         let days = self.axis.days();
         let mut commands: Vec<Command> = (1..=days)
-            .map(|n| {
-                let day = add(first, Length::new(TimeUnit::Day, u64::from(n - 1)));
-                Command::SetText {
-                    id:    Target::DayTitle(n).to_dom(),
-                    value: if self.month() {
-                        String::from(youbi(day).display(self.language))
-                    } else {
-                        display(day, self.language, MONTH_DAY, Format::WithYoubi)
+            .map(|n| Command::SetText {
+                id:    Target::DayTitle(n).to_dom(),
+                value: add(first, Length::new(TimeUnit::Day, u64::from(n - 1))).map_or_else(
+                    String::new,
+                    |day| {
+                        if self.month() {
+                            String::from(youbi(day).display(self.language))
+                        } else {
+                            display(day, self.language, MONTH_DAY, Format::WithYoubi)
+                        }
                     },
-                }
+                ),
             })
             .collect();
         let value =
@@ -1541,11 +1571,11 @@ impl<S: FileStore> Handler<S> {
         self.axis == Axis::Month
     }
 
-    fn first_day(&self) -> Stamp {
+    fn first_day(&self) -> Option<Stamp> {
         if self.month() {
             sub(self.base, Length::new(TimeUnit::Day, youbi(self.base) as u64 - 1))
         } else {
-            self.base
+            Some(self.base)
         }
     }
 
@@ -1602,23 +1632,26 @@ impl<S: FileStore> Handler<S> {
     }
 
     fn axis_commands(&self) -> Vec<Command> {
-        let first = self.first_day();
+        let Some(first) = self.first_day() else {
+            return Vec::new();
+        };
         let mut commands = Vec::new();
         for row in 0..self.clock.count() {
             let value = if self.month() {
                 match Month::locate([0, row as i32]) {
-                    Some((day, None)) => display(
-                        add(first, Length::new(TimeUnit::Day, u64::from(day))),
-                        self.language,
-                        MONTH_DAY,
-                        Format::WithoutYoubi,
-                    ),
+                    Some((day, None)) => add(first, Length::new(TimeUnit::Day, u64::from(day)))
+                        .map_or_else(String::new, |day| {
+                            display(day, self.language, MONTH_DAY, Format::WithoutYoubi)
+                        }),
                     _ => String::new(),
                 }
             } else {
-                self.clock.time(f64::from(row)).map_or_else(String::new, |time| {
-                    display(add(first, time), self.language, HOUR_MINUTE, Format::Iso)
-                })
+                self.clock
+                    .time(f64::from(row))
+                    .and_then(|time| add(first, time))
+                    .map_or_else(String::new, |stamp| {
+                        display(stamp, self.language, HOUR_MINUTE, Format::Iso)
+                    })
             };
             for side in 1..=2 {
                 commands.push(Command::SetText {
@@ -1703,7 +1736,8 @@ impl<S: Mount> event::Handler for Handler<S> {
         let utc = from_unix_timestamp_in_ms(now_in_ms as i64, Zone::ZERO);
         let offset =
             Length::new(TimeUnit::Minute, u64::from(timezone_offset_minutes.unsigned_abs()));
-        let local = if timezone_offset_minutes < 0 { sub(utc, offset) } else { add(utc, offset) };
+        let local = if timezone_offset_minutes < 0 { sub(utc, offset) } else { add(utc, offset) }
+            .unwrap_or(utc);
         let mut today = local;
         today.set(time::Hour::ZERO);
         today.set(time::Minute::ZERO);
@@ -1904,7 +1938,8 @@ fn shift_cells(
             let index =
                 usize::try_from(position as i32 + resource_delta).map_err(|_| "範囲外です")?;
             let moved = resources.get(index).ok_or("範囲外です")?.uid;
-            Ok(Place { day: shift(place.day, TimeUnit::Day, day_delta), resource: moved })
+            let day = shift(place.day, TimeUnit::Day, day_delta).ok_or("範囲外です")?;
+            Ok(Place { day, resource: moved })
         })
         .collect()
 }
@@ -2083,7 +2118,7 @@ mod tests {
     const GRAB_Y: f64 = 40.0;
 
     fn after(day: Stamp, n: i64) -> Stamp {
-        shift(day, TimeUnit::Day, n)
+        shift(day, TimeUnit::Day, n).unwrap()
     }
 
     fn today() -> Stamp {
@@ -3114,7 +3149,7 @@ mod tests {
     }
 
     fn minutes(time: Length) -> u32 {
-        time.total(TimeUnit::Minute) as u32
+        u32::try_from(time.total(TimeUnit::Minute).unwrap()).unwrap()
     }
 
     fn times<S: Mount>(handler: &Handler<S>) -> (u32, u32) {
@@ -3816,8 +3851,8 @@ mod tests {
         let date = display(today(), Language::Ja, YEAR_DAY, Format::Iso);
         let (open, close) = (at(600), at(660));
         let (start, end) = (
-            display(add(today(), open), Language::Ja, HOUR_MINUTE, Format::Iso),
-            display(add(today(), close), Language::Ja, HOUR_MINUTE, Format::Iso),
+            display(add(today(), open).unwrap(), Language::Ja, HOUR_MINUTE, Format::Iso),
+            display(add(today(), close).unwrap(), Language::Ja, HOUR_MINUTE, Format::Iso),
         );
         let query = form_query("Neo", &date, 1, &start, &end);
         let commands = submit(&mut handler, &query);

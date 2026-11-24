@@ -4,8 +4,9 @@ use core::{
     cmp::{Ordering, PartialEq},
     fmt::Debug,
     marker::Copy,
+    ops::RangeInclusive,
     option::Option::{self, None, Some},
-    primitive::{bool, i64, str, u8, u16, u64, usize},
+    primitive::{bool, i64, str, u8, u16, u64, u128, usize},
 };
 
 use arbitrary_int::{traits::Integer, u1, u4, u5, u6, u7, u10, u13};
@@ -601,8 +602,10 @@ pub enum Unit {
 /// assert_eq!(Length::ZERO, Length::new(Unit::Day, 0));
 ///
 /// let hours = Length::new(Unit::Hour, 9).with(Unit::Minute, 30);
-/// assert_eq!(hours.total(Unit::Minute), 570);
-/// assert_eq!(hours.total(Unit::Hour), 9);
+/// assert_eq!(hours.total(Unit::Minute), Some(570));
+/// assert_eq!(hours.total(Unit::Hour), Some(9));
+/// assert_eq!(Length::new(Unit::Day, u64::MAX).total(Unit::Minute), None);
+/// assert!(Length::new(Unit::Day, u64::MAX) > Length::new(Unit::Hour, u64::MAX));
 /// assert_eq!(hours, Length::new(Unit::Minute, 570));
 /// assert!(hours < Length::new(Unit::Minute, 571));
 /// assert!(Length::new(Unit::Month, 1) > Length::new(Unit::Day, 31));
@@ -627,20 +630,25 @@ impl Length {
         self.0[unit as usize - 1]
     }
 
-    pub fn total(&self, unit: Unit) -> u64 {
+    pub fn total(&self, unit: Unit) -> Option<u64> {
+        u64::try_from(self.sum(unit)).ok()
+    }
+
+    fn sum(&self, unit: Unit) -> u128 {
         use Unit::*;
+        let get = |unit: Unit| u128::from(self.get(unit));
         match unit {
-            Year => self.get(Year),
-            Month => self.get(Year) * 12 + self.get(Month),
+            Year => get(Year),
+            Month => get(Year) * 12 + get(Month),
             unit => [(Day, 1), (Hour, 24), (Minute, 60), (Second, 60), (Centisecond, 100)]
                 .into_iter()
                 .take_while(|(slot, _)| *slot >= unit)
-                .fold(0, |total, (slot, scale)| total * scale + self.get(slot)),
+                .fold(0, |total, (slot, scale)| total * scale + get(slot)),
         }
     }
 
-    fn key(&self) -> (u64, u64) {
-        (self.total(Unit::Centisecond), self.total(Unit::Month))
+    fn key(&self) -> (u128, u128) {
+        (self.sum(Unit::Centisecond), self.sum(Unit::Month))
     }
 }
 
@@ -816,13 +824,7 @@ pub fn display(stamp: Stamp, language: Language, scope: (Unit, Unit), format: Fo
 /// ```
 pub fn youbi(stamp: Stamp) -> Youbi {
     let (.., day, month, year, _, _) = unpack(stamp);
-    let month_offsets: [i64; 12] = [0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4];
-    let adjusted_year = if month < 3 { year - 1 } else { year };
-    let youbi_index = (adjusted_year + adjusted_year / 4 - adjusted_year / 100
-        + adjusted_year / 400
-        + month_offsets[(month - 1) as usize]
-        + day)
-        % 7;
+    let youbi_index = (day_number(year, month, day) + 3).rem_euclid(7);
     [
         Youbi::Sunday,
         Youbi::Monday,
@@ -872,47 +874,52 @@ pub fn diff(stamp: Stamp, other: Stamp, unit: Unit) -> i64 {
 /// ```
 /// use app::time::*;
 ///
-/// let date = |stamp: Stamp| {
-///     let (_, _, minute, hour, day, month, year, ..) = unpack(stamp);
-///     (year, month, day, hour, minute)
+/// let date = |stamp: Option<Stamp>| {
+///     let (_, _, minute, hour, day, month, year, ..) = unpack(stamp?);
+///     Some((year, month, day, hour, minute))
 /// };
 /// let at = |year, month, day, hour, minute| pack(0, 0, minute, hour, day, month, year, 0, 0);
 /// let length = |unit, value| Length::new(unit, value);
 ///
-/// assert_eq!(date(add(at(2000, 2, 29, 0, 0), length(Unit::Year, 1))), (2001, 2, 28, 0, 0));
-/// assert_eq!(date(add(at(2001, 1, 31, 0, 0), length(Unit::Month, 1))), (2001, 2, 28, 0, 0));
-/// assert_eq!(date(add(at(2001, 12, 31, 0, 0), length(Unit::Day, 1))), (2002, 1, 1, 0, 0));
-/// assert_eq!(date(add(at(2001, 1, 31, 23, 0), length(Unit::Hour, 2))), (2001, 2, 1, 1, 0));
-/// assert_eq!(date(add(at(2001, 1, 1, 23, 59), length(Unit::Minute, 2))), (2001, 1, 2, 0, 1));
+/// assert_eq!(date(add(at(2000, 2, 29, 0, 0), length(Unit::Year, 1))), Some((2001, 2, 28, 0, 0)));
+/// assert_eq!(date(add(at(2001, 1, 31, 0, 0), length(Unit::Month, 1))), Some((2001, 2, 28, 0, 0)));
+/// assert_eq!(date(add(at(2001, 12, 31, 0, 0), length(Unit::Day, 1))), Some((2002, 1, 1, 0, 0)));
+/// assert_eq!(date(add(at(2001, 1, 31, 23, 0), length(Unit::Hour, 2))), Some((2001, 2, 1, 1, 0)));
+/// assert_eq!(date(add(at(2001, 1, 1, 23, 59), length(Unit::Minute, 2))), Some((2001, 1, 2, 0, 1)));
 ///
 /// let mixed = length(Unit::Month, 1).with(Unit::Day, 1);
-/// assert_eq!(date(add(at(2001, 1, 30, 0, 0), mixed)), (2001, 3, 1, 0, 0));
+/// assert_eq!(date(add(at(2001, 1, 30, 0, 0), mixed)), Some((2001, 3, 1, 0, 0)));
 ///
-/// assert_eq!(date(add(at(0, 0, 0, 9, 30), length(Unit::Minute, 45))), (0, 0, 0, 10, 15));
-/// assert_eq!(date(add(at(0, 0, 0, 9, 30), length(Unit::Day, 0))), (0, 0, 0, 9, 30));
+/// assert_eq!(date(add(at(0, 0, 0, 9, 30), length(Unit::Minute, 45))), Some((0, 0, 0, 10, 15)));
+/// assert_eq!(date(add(at(0, 0, 0, 9, 30), length(Unit::Day, 0))), Some((0, 0, 0, 9, 30)));
+///
+/// assert_eq!(add(at(0, 0, 0, 23, 30), length(Unit::Minute, 45)), None);
+/// assert_eq!(add(at(8191, 12, 31, 0, 0), length(Unit::Day, 1)), None);
 /// ```
-pub fn add(stamp: Stamp, length: Length) -> Stamp {
+pub fn add(stamp: Stamp, length: Length) -> Option<Stamp> {
     shift_length(stamp, length, 1)
 }
 
 /// ```
 /// use app::time::*;
 ///
-/// let date = |stamp: Stamp| {
-///     let (_, _, minute, hour, day, month, year, ..) = unpack(stamp);
-///     (year, month, day, hour, minute)
+/// let date = |stamp: Option<Stamp>| {
+///     let (_, _, minute, hour, day, month, year, ..) = unpack(stamp?);
+///     Some((year, month, day, hour, minute))
 /// };
 /// let at = |year, month, day, hour, minute| pack(0, 0, minute, hour, day, month, year, 0, 0);
 /// let length = |unit, value| Length::new(unit, value);
 ///
-/// assert_eq!(date(sub(at(2000, 2, 29, 0, 0), length(Unit::Year, 1))), (1999, 2, 28, 0, 0));
-/// assert_eq!(date(sub(at(2002, 3, 1, 0, 0), length(Unit::Month, 14))), (2001, 1, 1, 0, 0));
-/// assert_eq!(date(sub(at(2001, 3, 1, 0, 0), length(Unit::Day, 1))), (2001, 2, 28, 0, 0));
-/// assert_eq!(date(sub(at(2001, 3, 1, 0, 0), length(Unit::Hour, 2))), (2001, 2, 28, 22, 0));
-/// assert_eq!(date(sub(at(2001, 1, 2, 0, 0), length(Unit::Minute, 1))), (2001, 1, 1, 23, 59));
-/// assert_eq!(date(sub(at(0, 0, 0, 10, 15), length(Unit::Minute, 45))), (0, 0, 0, 9, 30));
+/// assert_eq!(date(sub(at(2000, 2, 29, 0, 0), length(Unit::Year, 1))), Some((1999, 2, 28, 0, 0)));
+/// assert_eq!(date(sub(at(2002, 3, 1, 0, 0), length(Unit::Month, 14))), Some((2001, 1, 1, 0, 0)));
+/// assert_eq!(date(sub(at(2001, 3, 1, 0, 0), length(Unit::Day, 1))), Some((2001, 2, 28, 0, 0)));
+/// assert_eq!(date(sub(at(2001, 3, 1, 0, 0), length(Unit::Hour, 2))), Some((2001, 2, 28, 22, 0)));
+/// assert_eq!(date(sub(at(2001, 1, 2, 0, 0), length(Unit::Minute, 1))), Some((2001, 1, 1, 23, 59)));
+/// assert_eq!(date(sub(at(0, 0, 0, 10, 15), length(Unit::Minute, 45))), Some((0, 0, 0, 9, 30)));
+///
+/// assert_eq!(sub(at(0, 1, 1, 0, 0), length(Unit::Day, 1)), None);
 /// ```
-pub fn sub(stamp: Stamp, length: Length) -> Stamp {
+pub fn sub(stamp: Stamp, length: Length) -> Option<Stamp> {
     shift_length(stamp, length, -1)
 }
 
@@ -920,37 +927,56 @@ pub fn sub(stamp: Stamp, length: Length) -> Stamp {
 /// use app::time::*;
 ///
 /// let day = pack(0, 0, 30, 9, 2, 10, 2026, 0, 0);
-/// assert_eq!(shift(day, Unit::Day, 30), pack(0, 0, 30, 9, 1, 11, 2026, 0, 0));
-/// assert_eq!(shift(day, Unit::Day, -2), pack(0, 0, 30, 9, 30, 9, 2026, 0, 0));
-/// assert_eq!(shift(day, Unit::Minute, -45), pack(0, 0, 45, 8, 2, 10, 2026, 0, 0));
-/// assert_eq!(shift(day, Unit::Month, 0), day);
+/// assert_eq!(shift(day, Unit::Day, 30), Some(pack(0, 0, 30, 9, 1, 11, 2026, 0, 0)));
+/// assert_eq!(shift(day, Unit::Day, -2), Some(pack(0, 0, 30, 9, 30, 9, 2026, 0, 0)));
+/// assert_eq!(shift(day, Unit::Minute, -45), Some(pack(0, 0, 45, 8, 2, 10, 2026, 0, 0)));
+/// assert_eq!(shift(day, Unit::Month, 0), Some(day));
 /// ```
-pub fn shift(stamp: Stamp, unit: Unit, value: i64) -> Stamp {
+pub fn shift(stamp: Stamp, unit: Unit, value: i64) -> Option<Stamp> {
     shift_length(stamp, Length::new(unit, value.unsigned_abs()), value.signum())
 }
 
-fn shift_length(stamp: Stamp, length: Length, sign: i64) -> Stamp {
-    let value = |unit: Unit| length.get(unit) as i64 * sign;
+pub const YEARS: RangeInclusive<i64> = 0..=u13::MAX.value() as i64;
+
+fn shift_length(stamp: Stamp, length: Length, sign: i64) -> Option<Stamp> {
+    let value = |unit: Unit| i64::try_from(length.get(unit)).ok()?.checked_mul(sign);
     let (centisecond, second, minute, hour, day, month, year, is_utc, zone) = unpack(stamp);
-    let (year, month, day) = match value(Unit::Year) * 12 + value(Unit::Month) {
-        0 => (year, month, day),
-        months => {
-            let total = year * 12 + (month - 1) + months;
-            let (year, month) = (total.div_euclid(12), total.rem_euclid(12) + 1);
-            (year, month, day.min(days_in_month(year, month)))
+    let months = value(Unit::Year)?.checked_mul(12)?.checked_add(value(Unit::Month)?)?;
+    let delta = [(Unit::Minute, 60), (Unit::Second, 60), (Unit::Centisecond, 100)]
+        .into_iter()
+        .try_fold(value(Unit::Hour)?, |total, (unit, scale)| {
+            total.checked_mul(scale)?.checked_add(value(unit)?)
+        })?;
+    let total = (((hour * 60 + minute) * 60 + second) * 100 + centisecond).checked_add(delta)?;
+    let days = value(Unit::Day)?.checked_add(total.div_euclid(8_640_000))?;
+    let (year, month, day) = match (months, days) {
+        (0, 0) => (year, month, day),
+        _ if month == 0 || day == 0 => return None,
+        (months, days) => {
+            let (year, month, day) = match months {
+                0 => (year, month, day),
+                months => {
+                    let total = (year * 12 + (month - 1)).checked_add(months)?;
+                    let (year, month) = (total.div_euclid(12), total.rem_euclid(12) + 1);
+                    if !YEARS.contains(&year) {
+                        return None;
+                    }
+                    (year, month, day.min(days_in_month(year, month)))
+                }
+            };
+            let (year, month, day) = match days {
+                0 => (year, month, day),
+                days => date_of(day_number(year, month, day).checked_add(days)?),
+            };
+            if !YEARS.contains(&year) {
+                return None;
+            }
+            (year, month, day)
         }
-    };
-    let total = ((hour * 60 + minute) * 60 + second) * 100
-        + centisecond
-        + ((value(Unit::Hour) * 60 + value(Unit::Minute)) * 60 + value(Unit::Second)) * 100
-        + value(Unit::Centisecond);
-    let (year, month, day) = match value(Unit::Day) + total.div_euclid(8_640_000) {
-        0 => (year, month, day),
-        days => date_of(day_number(year, month, day) + days),
     };
     let time = total.rem_euclid(8_640_000);
     let seconds = time / 100;
-    pack(
+    Some(pack(
         time % 100,
         seconds % 60,
         seconds % 3600 / 60,
@@ -960,7 +986,7 @@ fn shift_length(stamp: Stamp, length: Length, sign: i64) -> Stamp {
         year,
         is_utc,
         zone,
-    )
+    ))
 }
 
 fn day_number(year: i64, month: i64, day: i64) -> i64 {
@@ -1061,7 +1087,7 @@ impl Recurrence {
     /// let year = Length::new(Unit::Day, 364)
     ///     .with(Unit::Hour, 23)
     ///     .with(Unit::Minute, 59);
-    /// assert_eq!(add(year_start, year), year_end);
+    /// assert_eq!(add(year_start, year), Some(year_end));
     ///
     /// let morning   = pack(0, 0, 0, 9, 1, 1, 2000, 1, 0);
     /// let afternoon = pack(0, 0, 0, 14, 1, 1, 2000, 1, 0);
@@ -1084,7 +1110,7 @@ impl Recurrence {
     ///
     /// let (_, _, minute, hour, day, month, year, ..) = unpack(result[0].start);
     /// assert_eq!((year, month, day, hour, minute), (2026, 1, 5, 9, 0));
-    /// let (_, _, end_minute, end_hour, ..) = unpack(add(result[0].start, result[0].length));
+    /// let (_, _, end_minute, end_hour, ..) = unpack(add(result[0].start, result[0].length).unwrap());
     /// assert_eq!((end_hour, end_minute), (12, 0));
     /// ```
     pub fn occurrences(&self, start: Stamp, end: Stamp) -> Vec<Range> {
@@ -1092,7 +1118,7 @@ impl Recurrence {
         let until = if self.range.start == Stamp::ZERO || self.range.length == Length::ZERO {
             Stamp::ZERO
         } else {
-            add(self.range.start, self.range.length)
+            add(self.range.start, self.range.length).unwrap_or(Stamp::ZERO)
         };
         let end = match (until, end) {
             (Stamp::ZERO, end) => end,
@@ -1138,7 +1164,10 @@ impl Recurrence {
                 }
             }
 
-            current = add(current, day);
+            let Some(next) = add(current, day) else {
+                break;
+            };
+            current = next;
         }
 
         result
@@ -1160,10 +1189,33 @@ mod tests {
     fn minute_arithmetic_keeps_a_zero_date_within_the_day() {
         let at = |hour, minute| pack(0, 0, minute, hour, 0, 0, 0, 0, 0);
         let minutes = |n| Length::new(Unit::Minute, n);
-        assert_eq!(add(at(9, 30), minutes(60)), at(10, 30));
-        assert_eq!(add(at(9, 30), minutes(45)), at(10, 15));
-        assert_eq!(sub(at(10, 15), minutes(45)), at(9, 30));
-        assert_eq!(add(at(9, 30), Length::ZERO), at(9, 30));
+        assert_eq!(add(at(9, 30), minutes(60)), Some(at(10, 30)));
+        assert_eq!(add(at(9, 30), minutes(45)), Some(at(10, 15)));
+        assert_eq!(sub(at(10, 15), minutes(45)), Some(at(9, 30)));
+        assert_eq!(add(at(9, 30), Length::ZERO), Some(at(9, 30)));
+        assert_eq!(add(at(23, 30), minutes(30)), None);
+        assert_eq!(sub(at(0, 0), minutes(1)), None);
+        assert_eq!(add(at(9, 30), Length::new(Unit::Day, 1)), None);
+        assert_eq!(add(at(9, 30), Length::new(Unit::Month, 1)), None);
+        let day = Length::new(Unit::Day, 1);
+        assert_eq!(add(pack(0, 0, 0, 0, 0, 1, 2026, 0, 0), day), None);
+        assert_eq!(add(pack(0, 0, 0, 0, 1, 0, 2026, 0, 0), day), None);
+        let stamp = pack(0, 0, 0, 0, 1, 1, 2026, 0, 0);
+        for unit in [
+            Unit::Centisecond,
+            Unit::Second,
+            Unit::Minute,
+            Unit::Hour,
+            Unit::Day,
+            Unit::Month,
+            Unit::Year,
+        ] {
+            for value in [u64::MAX, i64::MAX as u64, i64::MAX as u64 / 12 + 1] {
+                let length = Length::new(unit, value);
+                assert_eq!(add(stamp, length), None, "{unit:?} {value}");
+                assert_eq!(sub(stamp, length), None, "{unit:?} {value}");
+            }
+        }
         let hour = 60 * 60 * 100;
         assert_eq!(diff(at(9, 30), at(10, 30), Unit::Centisecond), hour);
         assert_eq!(diff(at(10, 30), at(9, 30), Unit::Centisecond), -hour);
@@ -1363,12 +1415,15 @@ mod tests {
             + centisecond
     }
 
-    fn at_centiseconds(flags_from: Stamp, total: i64) -> Stamp {
+    fn at_centiseconds(flags_from: Stamp, total: i64) -> Option<Stamp> {
         let (.., is_utc, zone) = unpack(flags_from);
         let (year, month, day) = civil(total.div_euclid(8_640_000));
+        if !(0..8192).contains(&year) {
+            return None;
+        }
         let time = total.rem_euclid(8_640_000);
         let (seconds, centisecond) = (time / 100, time % 100);
-        pack(
+        Some(pack(
             centisecond,
             seconds % 60,
             seconds % 3600 / 60,
@@ -1378,17 +1433,17 @@ mod tests {
             year,
             is_utc,
             zone,
-        )
+        ))
     }
 
-    fn step(stamp: Stamp, unit: Unit, value: i64) -> Stamp {
+    fn step(stamp: Stamp, unit: Unit, value: i64) -> Option<Stamp> {
         let length = Length::new(unit, value.unsigned_abs());
         if value < 0 { sub(stamp, length) } else { add(stamp, length) }
     }
 
     fn random_stamp(rng: &mut Rng) -> Stamp {
         let year = if rng.chance(30) {
-            [1900, 2000, 2100, 2400][rng.below(4)]
+            [0, 1900, 2000, 2100, 2400, 8191][rng.below(6)]
         } else {
             1700 + rng.below(800) as i64
         };
@@ -1446,16 +1501,21 @@ mod tests {
                 assert_eq!(diff(second, first, unit), -expected, "{context} {unit:?}");
             }
             let delta = rng.below(2_000_000_001) as i64 - 1_000_000_000;
-            let third = at_centiseconds(first, centiseconds(first) + delta);
-            assert_eq!(first.cmp(&third), 0.cmp(&delta), "{context} order");
+            if let Some(third) = at_centiseconds(first, centiseconds(first) + delta) {
+                assert_eq!(first.cmp(&third), 0.cmp(&delta), "{context} order");
+            }
 
             let days = rng.below(80001) as i64 - 40000;
             let hours = rng.below(200001) as i64 - 100000;
             let minutes = rng.below(2_000_001) as i64 - 1_000_000;
+            let seconds = rng.below(200_000_001) as i64 - 100_000_000;
+            let hundredths = rng.below(2_000_000_001) as i64 - 1_000_000_000;
             for (moved, unit, name) in [
                 (step(first, Unit::Day, days), 8_640_000, days),
                 (step(first, Unit::Hour, hours), 360_000, hours),
                 (step(first, Unit::Minute, minutes), 6_000, minutes),
+                (step(first, Unit::Second, seconds), 100, seconds),
+                (step(first, Unit::Centisecond, hundredths), 1, hundredths),
             ]
             .map(|(moved, unit, value)| (moved, unit * value, value))
             {
@@ -1465,7 +1525,9 @@ mod tests {
                     "{context} {name}"
                 );
             }
-            assert_eq!(step(step(first, Unit::Day, days), Unit::Day, -days), first, "{context}");
+            if let Some(moved) = step(first, Unit::Day, days) {
+                assert_eq!(step(moved, Unit::Day, -days), Some(first), "{context}");
+            }
 
             let (.., day, month, year, _, _) = unpack(first);
             let weekday = (days_since_epoch(year, month, day) + 4).rem_euclid(7);
@@ -1488,17 +1550,23 @@ mod tests {
             };
             let total = year * 12 + month - 1 + months;
             let (target_year, target_month) = (total.div_euclid(12), total.rem_euclid(12) + 1);
-            let moved = unpack(step(first, Unit::Month, months));
+            let date_of = |stamp: Stamp| {
+                let (.., day, month, year, _, _) = unpack(stamp);
+                (year, month, day)
+            };
             assert_eq!(
-                (moved.6, moved.5, moved.4),
-                (target_year, target_month, day.min(month_days(target_year, target_month))),
+                step(first, Unit::Month, months).map(date_of),
+                (0..8192).contains(&target_year).then(|| {
+                    (target_year, target_month, day.min(month_days(target_year, target_month)))
+                }),
                 "{context} months {months}"
             );
             let years = if rng.chance(30) { century - year } else { rng.below(201) as i64 - 100 };
-            let moved = unpack(step(first, Unit::Year, years));
             assert_eq!(
-                (moved.6, moved.5, moved.4),
-                (year + years, month, day.min(month_days(year + years, month))),
+                step(first, Unit::Year, years).map(date_of),
+                (0..8192)
+                    .contains(&(year + years))
+                    .then(|| { (year + years, month, day.min(month_days(year + years, month))) }),
                 "{context} years {years}"
             );
             for shifted in [
@@ -1507,7 +1575,10 @@ mod tests {
                 step(first, Unit::Day, days),
                 step(first, Unit::Hour, hours),
                 step(first, Unit::Minute, minutes),
-            ] {
+            ]
+            .into_iter()
+            .flatten()
+            {
                 let (centisecond, second_of_minute, .., is_utc, zone) = unpack(shifted);
                 let (original_centisecond, original_second, .., original_utc, original_zone) =
                     unpack(first);
@@ -1546,5 +1617,239 @@ mod tests {
                 "seed {seed} ms {milliseconds}"
             );
         }
+    }
+
+    #[test]
+    fn occurrences_match_a_day_by_day_reference_over_the_clipped_window() {
+        const DAY: i64 = 8_640_000;
+        let youbis = [
+            Youbi::Sunday,
+            Youbi::Monday,
+            Youbi::Tuesday,
+            Youbi::Wednesday,
+            Youbi::Thursday,
+            Youbi::Friday,
+            Youbi::Saturday,
+        ];
+        for seed in 0..600 {
+            let mut rng = Rng::new(seed);
+            let context = format!("seed {seed}");
+            let base = [1899, 1999, 2099, 2399][rng.below(4)] + rng.below(2) as i64;
+            let (is_utc, zone) = (rng.below(2) as u64, rng.below(10) as u64);
+            let stamp = |rng: &mut Rng| {
+                if rng.chance(15) {
+                    return Stamp::ZERO;
+                }
+                let year = base + rng.below(2) as i64;
+                let month = 1 + rng.below(12) as i64;
+                let day = 1 + rng.below(month_days(year, month) as usize) as i64;
+                let (hour, minute) = (rng.below(24) as i64, rng.below(60) as i64);
+                pack(0, 0, minute, hour, day, month, year, is_utc, zone)
+            };
+            let length = |rng: &mut Rng| {
+                if rng.chance(15) {
+                    return (Length::ZERO, 0);
+                }
+                let (days, hours, minutes) =
+                    (rng.below(400) as u64, rng.below(48) as u64, rng.below(120) as u64);
+                let length = Length::new(Unit::Day, days)
+                    .with(Unit::Hour, hours)
+                    .with(Unit::Minute, minutes);
+                (length, ((days * 24 + hours) * 60 + minutes) as i64 * 6_000)
+            };
+            let subset = |rng: &mut Rng, size: u8| {
+                rng.chance(70).then(|| (1..=size).filter(|_| rng.chance(50)).collect::<Vec<u8>>())
+            };
+            let months = subset(&mut rng, 12);
+            let weeks = subset(&mut rng, 6);
+            let days_of_week = subset(&mut rng, 7);
+            let periods = rng.chance(60).then(|| {
+                (0..rng.below(4))
+                    .map(|_| Range { start: stamp(&mut rng), length: length(&mut rng).0 })
+                    .collect::<Vec<Range>>()
+            });
+            let (activation, (span, span_centiseconds)) = (stamp(&mut rng), length(&mut rng));
+            let from = stamp(&mut rng);
+            let to = match rng.below(4) {
+                0 => from,
+                1 if from != Stamp::ZERO => {
+                    let mut to = from;
+                    to.set(Hour(u5::new(rng.below(24) as u8)));
+                    to
+                }
+                _ => stamp(&mut rng),
+            };
+
+            let recurrence = Recurrence {
+                range:            Range { start: activation, length: span },
+                months:           months
+                    .clone()
+                    .map(|list| list.iter().map(|&m| Month(u4::new(m))).collect()),
+                weeks:            weeks.clone(),
+                youbi:            days_of_week
+                    .clone()
+                    .map(|list| list.iter().map(|&d| youbis[d as usize - 1]).collect()),
+                periods_in_a_day: periods.clone(),
+            };
+
+            let bound = |stamp: Stamp| (stamp != Stamp::ZERO).then(|| centiseconds(stamp));
+            let until = match (bound(activation), span_centiseconds) {
+                (Some(start), length) if length != 0 => Some(start + length),
+                _ => None,
+            };
+            let lower = bound(activation).max(bound(from));
+            let upper = match (until, bound(to)) {
+                (Some(until), Some(to)) => Some(until.min(to)),
+                (until, to) => until.or(to),
+            };
+            let mut expected = Vec::new();
+            if let (Some(lower), Some(upper)) = (lower, upper)
+                && lower <= upper
+            {
+                let flags = pack(0, 0, 0, 0, 1, 1, 2000, is_utc, zone);
+                for day in lower.div_euclid(DAY)..=upper.div_euclid(DAY) {
+                    let (year, month, date) = civil(day);
+                    let selected = months.as_ref().is_none_or(|l| l.contains(&(month as u8)))
+                        && weeks.as_ref().is_none_or(|l| l.contains(&(((date - 1) / 7 + 1) as u8)))
+                        && days_of_week.as_ref().is_none_or(|l| {
+                            l.iter().any(|&d| {
+                                youbis[d as usize - 1] == youbis[(day + 4).rem_euclid(7) as usize]
+                            })
+                        });
+                    if !selected {
+                        continue;
+                    }
+                    match &periods {
+                        Some(periods) => expected.extend(periods.iter().map(|period| {
+                            let start = if period.start == Stamp::ZERO {
+                                Stamp::ZERO
+                            } else {
+                                let (centisecond, second, minute, hour, .., is_utc, zone) =
+                                    unpack(period.start);
+                                pack(
+                                    centisecond,
+                                    second,
+                                    minute,
+                                    hour,
+                                    date,
+                                    month,
+                                    year,
+                                    is_utc,
+                                    zone,
+                                )
+                            };
+                            Range { start, length: period.length }
+                        })),
+                        None => expected.push(Range {
+                            start:  at_centiseconds(flags, day * DAY).unwrap(),
+                            length: Length::new(Unit::Day, 1),
+                        }),
+                    }
+                }
+            }
+            assert_eq!(recurrence.occurrences(from, to), expected, "{context}");
+        }
+    }
+}
+
+#[cfg(kani)]
+mod proofs {
+    use super::*;
+
+    fn any_date() -> (i64, i64, i64) {
+        let (year, month, day): (i64, i64, i64) = (kani::any(), kani::any(), kani::any());
+        kani::assume((0..8192).contains(&year) && (1..=12).contains(&month));
+        kani::assume(1 <= day && day <= days_in_month(year, month));
+        (year, month, day)
+    }
+
+    #[kani::proof]
+    fn a_date_round_trips_through_its_day_number() {
+        let date = any_date();
+        assert!(date_of(day_number(date.0, date.1, date.2)) == date);
+    }
+
+    fn next(year: i64, month: i64, day: i64) -> (i64, i64, i64) {
+        if day < days_in_month(year, month) {
+            (year, month, day + 1)
+        } else if month < 12 {
+            (year, month + 1, 1)
+        } else {
+            (year + 1, 1, 1)
+        }
+    }
+
+    fn any_stamp() -> Stamp {
+        let (year, month, day) = any_date();
+        let (hour, minute, second, centisecond): (i64, i64, i64, i64) =
+            (kani::any(), kani::any(), kani::any(), kani::any());
+        kani::assume((0..24).contains(&hour) && (0..60).contains(&minute));
+        kani::assume((0..60).contains(&second) && (0..100).contains(&centisecond));
+        pack(centisecond, second, minute, hour, day, month, year, kani::any::<bool>() as u64, 0)
+    }
+
+    #[kani::proof]
+    fn the_next_date_has_the_next_day_number() {
+        let (year, month, day) = any_date();
+        let (y, m, d) = next(year, month, day);
+        assert!(day_number(y, m, d) == day_number(year, month, day) + 1);
+    }
+
+    #[kani::proof]
+    fn youbi_advances_by_one_each_day() {
+        let (year, month, day) = any_date();
+        kani::assume(year < 8191 || month < 12 || day < 31);
+        let (y, m, d) = next(year, month, day);
+        let today = youbi(pack(0, 0, 0, 0, day, month, year, 0, 0)) as usize;
+        let tomorrow = youbi(pack(0, 0, 0, 0, d, m, y, 0, 0)) as usize;
+        assert!(tomorrow == today % 7 + 1);
+    }
+
+    fn check_shift(length: Length, span: i64) {
+        let stamp = any_stamp();
+        let last = pack(99, 59, 59, 23, 31, 12, 8191, 0, 0);
+        match add(stamp, length) {
+            Some(moved) => {
+                assert!(diff(stamp, moved, Unit::Centisecond) == span);
+                assert!(sub(moved, length) == Some(stamp));
+            }
+            None => assert!(diff(stamp, last, Unit::Centisecond) < span),
+        }
+    }
+
+    #[kani::proof]
+    #[kani::solver(cadical)]
+    fn shifting_by_any_length_does_not_panic() {
+        let (stamp, length) = (any_stamp(), Length(kani::any()));
+        let _ = (add(stamp, length), sub(stamp, length));
+    }
+
+    #[kani::proof]
+    fn length_totals_do_not_overflow_and_fail_past_u64() {
+        let length = Length(kani::any());
+        let unit: Unit = [
+            Unit::Centisecond,
+            Unit::Second,
+            Unit::Minute,
+            Unit::Hour,
+            Unit::Day,
+            Unit::Month,
+            Unit::Year,
+        ][kani::any::<usize>() % 7];
+        assert!(length.total(unit).is_some() == (length.sum(unit) <= u128::from(u64::MAX)));
+    }
+
+    #[kani::proof]
+    #[kani::solver(cadical)]
+    fn adding_days_moves_by_their_span_or_fails_past_the_last_stamp() {
+        let days: u16 = kani::any();
+        check_shift(Length::new(Unit::Day, u64::from(days)), i64::from(days) * 8_640_000);
+    }
+
+    #[kani::proof]
+    #[kani::solver(cadical)]
+    fn adding_minutes_moves_by_their_span_or_fails_past_the_last_stamp() {
+        let minutes: u16 = kani::any();
+        check_shift(Length::new(Unit::Minute, u64::from(minutes)), i64::from(minutes) * 6_000);
     }
 }

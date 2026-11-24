@@ -3,7 +3,7 @@ use core::{
     clone::Clone,
     marker::Copy,
     ops::Range,
-    primitive::{i8, i16, i32, i64, u8, u16, u32, u64, usize},
+    primitive::{i8, i16, i32, u8, u16, u32, u64, usize},
 };
 
 use arbitrary_int::traits::Integer;
@@ -135,13 +135,7 @@ pub fn read<V: Integer>(bytes: &[u8], position: u32) -> V {
     let r = range(position, b);
     let mut word = [0u8; 8];
     word[..r.len()].copy_from_slice(&bytes[r]);
-    let value = (u64::from_le_bytes(word) >> (position % 8)) & mask(b);
-    if V::IS_SIGNED {
-        let shift = 64 - b;
-        ((value << shift) as i64 >> shift).as_::<V>()
-    } else {
-        value.as_::<V>()
-    }
+    (u64::from_le_bytes(word) >> (position % 8)).as_::<V>()
 }
 
 pub fn write<V: Integer>(bytes: &mut [u8], position: u32, value: V) {
@@ -596,5 +590,70 @@ mod tests {
             assert_eq!(a.cmp(&b), integer(&a).cmp(&integer(&b)), "seed {seed}");
             assert_eq!(a.cmp(&a), Ordering::Equal, "seed {seed}");
         }
+    }
+}
+
+#[cfg(kani)]
+mod proofs {
+    use core::primitive::u128;
+
+    use arbitrary_int::{i3, i10, u1, u7, u57};
+
+    use super::*;
+
+    const LENGTH: usize = 10;
+
+    fn integer(bytes: &[u8; LENGTH]) -> u128 {
+        let mut word = [0u8; 16];
+        word[..LENGTH].copy_from_slice(bytes);
+        u128::from_le_bytes(word)
+    }
+
+    fn check<V: Integer>() {
+        let b = bits::<V>();
+        let position: u32 = kani::any();
+        kani::assume(position <= LENGTH as u32 * 8 - b);
+        let value = V::masked_new(kani::any::<u64>());
+        let before: [u8; LENGTH] = kani::any();
+        let mut after = before;
+        write(&mut after, position, value);
+        assert!(read::<V>(&after, position) == value);
+        let outside = !(((1u128 << b) - 1) << position);
+        assert!(integer(&before) & outside == integer(&after) & outside);
+    }
+
+    #[kani::proof]
+    fn a_u1_round_trips_and_leaves_the_other_bits() {
+        check::<u1>();
+    }
+
+    #[kani::proof]
+    fn an_i3_round_trips_and_leaves_the_other_bits() {
+        check::<i3>();
+    }
+
+    #[kani::proof]
+    fn a_u7_round_trips_and_leaves_the_other_bits() {
+        check::<u7>();
+    }
+
+    #[kani::proof]
+    fn an_i10_round_trips_and_leaves_the_other_bits() {
+        check::<i10>();
+    }
+
+    #[kani::proof]
+    fn a_u32_round_trips_and_leaves_the_other_bits() {
+        check::<u32>();
+    }
+
+    #[kani::proof]
+    fn an_i32_round_trips_and_leaves_the_other_bits() {
+        check::<i32>();
+    }
+
+    #[kani::proof]
+    fn a_u57_round_trips_and_leaves_the_other_bits() {
+        check::<u57>();
     }
 }
