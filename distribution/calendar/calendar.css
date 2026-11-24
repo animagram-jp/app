@@ -98,11 +98,6 @@
     inline-size: 8rem;
 }
 
-#dialog dl {
-    display:               grid;
-    grid-template-columns: auto 1fr;
-}
-
 [data-sign="ring-arrow"] {
     color: var(--color-emphasis-ink);
     display:       inline-grid;
