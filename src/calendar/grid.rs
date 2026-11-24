@@ -208,7 +208,7 @@ impl Clock {
 }
 
 fn minutes_of(length: Length) -> i64 {
-    length.total(time::Unit::Minute) as i64
+    length.total(time::Unit::Minute).and_then(|m| i64::try_from(m).ok()).unwrap_or(i64::MAX)
 }
 
 fn time_of(minutes: i64) -> Length {
