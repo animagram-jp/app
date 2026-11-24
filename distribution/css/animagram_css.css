@@ -1,0 +1,4712 @@
+/*
+ * SPDX-FileCopyrightText: 2026 Andyou <andyou@animagram.jp>
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+@layer
+    css.reset,
+    css.base,
+    css.data_style,
+    css.data_size,
+    css.data_sign,
+    css.data_union,
+
+    css.heading,
+    css.list,
+    css.table,
+
+    css.input,
+    css.button,
+    css.checkbox,
+    css.toggle,
+    css.radio, /* dependency: input */
+    css.slider,
+    css.search,
+    css.step, /* dependency: input, radio */
+
+    css.popup,
+    css.toast,
+    css.status; /* dependency: list */
+
+/*
+ * SPDX-FileCopyrightText: 2026 Andyou <andyou@animagram.jp>
+ * SPDX-FileCopyrightText: 2021 Elad Shechter
+ * SPDX-FileCopyrightText: 2019 Andy Bell and other contributors
+ * SPDX-FileCopyrightText: tak-dcxi
+ * SPDX-FileCopyrightText: Tailwind Labs, Inc.
+ * SPDX-License-Identifier: Apache-2.0 AND MIT
+ */
+
+@layer css.reset {
+
+    /*
+        Remove all the styles of the "User-Agent-Stylesheet", except for the 'display' property
+        - The "symbol *" part is to solve Firefox SVG sprite bug
+        - The "html" element is excluded, otherwise a bug in Chrome breaks the CSS hyphens property (https://github.com/elad2412/the-new-css-reset/issues/36)
+    */
+    :where(:not(html, iframe, canvas, img, svg, video, audio):not(svg *, symbol *)) {
+        all: unset;
+        display: revert;
+    }
+
+    legend {
+        display: contents;
+    }
+
+    /* Preferred box-sizing value */
+    *,
+    *::before,
+    *::after,
+    ::backdrop, /* per tailwind-preflight.css:7-16 */
+    ::file-selector-button { /* per tailwind-preflight.css:7-16 */
+        box-sizing: border-box;
+    }
+
+    /* Fix mobile Safari increase font-size on landscape mode */
+    html, :host { /* per tailwind-preflight.css:28-51 */
+        -moz-text-size-adjust: none;
+        -webkit-text-size-adjust: none;
+        text-size-adjust: none;
+        line-height: var(--md-line-height); /* per tailwind-preflight.css:28-51 */
+        tab-size: 4; /* per tailwind-preflight.css:28-51 */
+        text-spacing-trim: trim-start; /* per kiso.css:30 */
+        text-autospace: normal; /* per kiso.css:33 */
+        line-break: strict; /* per kiso.css:36 */
+        overflow-wrap: anywhere; /* per kiso.css:39 */
+        -webkit-tap-highlight-color: transparent; /* per kiso.css:55 */
+    }
+
+    html:focus-within { /* per modern-reset.css */
+        scroll-behavior: smooth;
+    }
+    @media (prefers-reduced-motion: reduce) {
+        html:focus-within {
+            scroll-behavior: auto;
+        }
+    }
+
+    @media screen {
+        body {
+            min-block-size: 100dvb; /* per kiso.css:63 */
+        }
+    }
+
+    /* Revert Modal native behavior */
+    :where(dialog:modal) {
+        all: revert;
+        box-sizing: border-box;
+        scrollbar-gutter: stable;
+    }
+
+    :where(html) {
+        scrollbar-gutter: stable;
+    }
+    :where(html):has(:modal) {
+        overflow: hidden;
+    }
+
+    :where(dialog, [popover]) { /* per kiso.css:483-493 */
+        overscroll-behavior-block: contain;
+    }
+
+    :is(h1, h2, h3, h4, h5, h6, p, caption):lang(en) { /* per kiso.css:74, 118, 311 */
+        text-wrap: pretty;
+    }
+
+    hr { /* per tailwind-preflight.css:53-63 */
+        border-block-start-width: 1px;
+        border-block-start-style: solid;
+        height: 0;
+    }
+
+    /* Firefox: solve issue where nested ordered lists continue numbering from parent (https://bugzilla.mozilla.org/show_bug.cgi?id=1881517) */
+    ol {
+        counter-reset: revert;
+    }
+
+    /* Remove list styles (bullets/numbers). */
+    ol, ul, menu, summary {
+        list-style: none;
+    }
+
+    /* preformatted text - use only for this feature */
+    pre {
+        all: revert;
+        box-sizing: border-box;
+    }
+
+    b, strong { /* per tailwind-preflight.css:98-105 */
+        font-weight: bolder;
+    }
+
+    em:lang(ja) { /* per kiso.css:171 */
+        font-weight: bolder;
+    }
+
+    cite, i, dfn, em { /* per kiso.css:174 */
+        font-style: italic;
+    }
+    :where(cite, i, dfn, em):where(:lang(ja), :lang(zh), :lang(ko)) { /* per kiso.css:176 */
+        font-style: normal;
+    }
+
+    small { /* per tailwind-preflight.css:134-140, but "smaller" not "80%" */
+        font-size: smaller;
+    }
+
+    sub, sup { /* per tailwind-preflight.css:142-160 */
+        font-size: 0.75em;
+        line-height: 0;
+        position: relative;
+        vertical-align: baseline;
+    }
+    sub { /* per tailwind-preflight.css:142-160 */
+        bottom: -0.25em;
+    }
+    sup { /* per tailwind-preflight.css:142-160 */
+        top: -0.5em;
+    }
+
+    rt {
+        font-size: 50%;
+        line-height: normal;
+        text-emphasis: none;
+    }
+
+    time { /* per kiso.css:220 */
+        text-autospace: no-autospace;
+    }
+
+    /* Reapply the pointer cursor for anchor tags */
+    a, button {
+        cursor: revert;
+    }
+
+    a { /* per modern-reset.css */
+        text-decoration-skip-ink: auto;
+    }
+
+    /* For images to not be able to exceed their container */
+    img, svg, picture, video, audio, canvas, model, iframe, embed, object { /* per kiso.css:276-282 */
+        max-inline-size: 100%;
+        vertical-align: bottom;
+    }
+
+    img, svg, picture, video, canvas, model, iframe, embed, object { /* per kiso.css:284-291 */
+        display: inline flow-root;
+        block-size: auto;
+    }
+
+    iframe { /* per kiso.css:294-296 */
+        border: unset;
+    }
+
+    /* removes spacing between cells in tables */
+    table {
+        border-collapse: collapse;
+        text-indent: 0; /* per tailwind-preflight.css:162-172 */
+        border-color: inherit; /* per tailwind-preflight.css:162-172 */
+    }
+
+    /* Safari - solving issue when using user-select:none on the <body> text input doesn't working */
+    input, textarea {
+        -webkit-user-select: auto;
+    }
+
+    input[type="search"] { /* per kiso.css:348-351 */
+        appearance: textfield;
+    }
+
+    input[type="number"] {
+        appearance: textfield;
+    }
+    
+    @supports (-webkit-touch-callout: none) { /* per kiso.css:353-358 */
+        input[type="search"] {
+            background-color: Canvas;
+        }
+    }
+
+    input:is([type="tel"], [type="url"], [type="email"], [type="number"]):not(:placeholder-shown) { /* per kiso.css:360-374 */
+        direction: ltr;
+    }
+
+    /* revert the 'white-space' property for textarea elements on Safari */
+    textarea {
+        white-space: revert;
+        resize: block; /* per kiso.css:381 */
+    }
+
+    input:not([type="button"], [type="submit"], [type="reset"]), textarea, [contenteditable] { /* per kiso.css:384-391 */
+        text-autospace: no-autospace;
+    }
+
+    ::file-selector-button { /* per tailwind-preflight.css:236-257 */
+        color: inherit;
+        font: inherit;
+        font-feature-settings: inherit;
+        font-variation-settings: inherit;
+        letter-spacing: inherit;
+        background-color: unset; /* per kiso.css:393-400 */
+    }
+
+    :where(
+        button,
+        input:is([type="button"], [type="submit"], [type="reset"]),
+        [role="tab"],
+        [role="button"],
+        [role="option"]
+    ),
+    ::file-selector-button { /* per kiso.css:402-416 */
+        touch-action: manipulation;
+    }
+
+    fieldset { /* per kiso.css:438-450 */
+        min-inline-size: 0;
+    }
+
+    /* minimum style to allow to style meter element */
+    meter {
+        -webkit-appearance: revert;
+        appearance: revert;
+    }
+
+    ::-webkit-search-decoration { /* per tailwind-preflight.css:311-317 */
+        -webkit-appearance: none;
+    }
+
+    /* reset default text opacity of input placeholder. */
+    ::placeholder {
+        color:   inherit;
+        opacity: 1; /* per tailwind-preflight.css:283-289 */
+    }
+
+    :-moz-ui-invalid { /* per tailwind-preflight.css:365-371 */
+        box-shadow: none;
+    }
+
+    ::-webkit-inner-spin-button,
+    ::-webkit-outer-spin-button { /* per tailwind-preflight.css:383-390 */
+        height: auto;
+        appearance: none;
+        margin: 0;
+    }
+
+    /* revert for bug in Chromium browsers
+       - fix for the content editable attribute will work properly.
+       - webkit-user-select: auto; added for Safari in case of using user-select:none on wrapper element*/
+    :where([contenteditable]:not([contenteditable="false"])) {
+        -moz-user-modify: read-write;
+        -webkit-user-modify: read-write;
+        overflow-wrap: break-word;
+        -webkit-line-break: after-white-space;
+        -webkit-user-select: auto;
+    }
+
+    /* apply back the draggable feature - exist only in Chromium and Safari */
+    :where([draggable="true"]) {
+        -webkit-user-drag: element;
+    }
+
+    /* fix the feature of 'hidden' attribute.
+       display:revert; revert to element instead of attribute */
+    :where([hidden]):where(:not([hidden="until-found"])) { /* per tailwind-preflight.css:392-398 */
+        display: none !important;
+    }
+}
+/*
+ * SPDX-FileCopyrightText: 2026 Andyou <andyou@animagram.jp>
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+@layer css.base {
+
+    /* --- color properties --- */
+
+    :root {
+        /*
+        * Source: Color Universal Design Recommended Color Set ver.3
+        * CUDO (Color Universal Design Organization)
+        * https://cudo.jp/wp-content/uploads/2016/07/CUD%E6%8E%A8%E5%A5%A8%E9%85%8D%E8%89%B2%E3%82%BB%E3%83%83%E3%83%88%E3%82%AC%E3%82%A4%E3%83%89%E3%83%96%E3%83%83%E3%82%AF.pdf
+        * Per-color comments: JPMA color chip no. (Munsell notation), CMYK
+        */
+
+        /* Accent colors: high-saturation colors for small areas like signage and graphs */
+        --rgb-accent-red:    255  40   0; /* G08-50V (8.75R 5/12),  CMYK 0,75,95,0 (or 0.75,90,0) */
+        --rgb-accent-yellow: 250 245   0; /* G27-85V (7.5Y 8.5/12), CMYK 0,0,100,0 */
+        --rgb-accent-green:   53 161 107; /* G47-60T (7.5G 6/10),   CMYK 75,0,65,0 */
+        --rgb-accent-blue:     0  65 255; /* G77-40V (7.5PB 4/12),  CMYK 100,45,0,0 */
+        --rgb-accent-sky:    102 204 255; /* G69-70P (10B 7/18),    CMYK 55,0,0,0 */
+        --rgb-accent-pink:   255 153 160; /* G02-70T (2.5R 7/10),   CMYK 0,55,35,0 */
+        --rgb-accent-orange: 255 153   0; /* G15-65X (5YR 6.5/14),  CMYK 0,45,100,0 */
+        --rgb-accent-purple: 154   0 121; /* G89-40T (10P 4/10),    CMYK 30,95,0,0 */
+        --rgb-accent-brown:  102  51   0; /* G09-30L (10R 3/6),     CMYK 55,90,100,0 */
+
+        /* Base colors: low-saturation colors for large areas like maps and diagrams */
+        --rgb-base-light-pink:         255 209 209; /* G05-80L (5R 8/6),     CMYK 0,25,15,0 */
+        --rgb-base-cream:              255 255 153; /* G25-90H (5Y 9/4),     CMYK 0,0,40,0 */
+        --rgb-base-light-yellow-green: 203 242 102; /* G32-80P (2.5GY 8/8),  CMYK 25,0,80,0 */
+        --rgb-base-light-sky:          180 235 250; /* G69-80H (10B 8/4),    CMYK 30,0,0,0 */
+        --rgb-base-beige:              237 197 143; /* G19-75L (10YR 7.5/6), CMYK 0,25,45,0 */
+        --rgb-base-light-green:        135 231 176; /* G42-70H (2.5G 7/4),   CMYK 45,0,45,0 */
+        --rgb-base-light-purple:       199 178 222; /* G82-70H (2.5P 7/4),   CMYK 25,30,0,0 */
+
+        /* Achromatic colors */
+        --rgb-white:      255 255 255; /* GN93 (N9.3),       CMYK 0,0,0,0 */
+        --rgb-light-gray: 200 200 203; /* G75-80B (5PB 8/1), CMYK 15,10,10,0 */
+        --rgb-gray:       127 135 143; /* G75-50D (5PB 5/2), CMYK 18,10,0,55 */
+        --rgb-black:        0   0   0; /* GN-15 (N1.5),      CMYK 50,50,50,100 (or 0,0,0,100) */
+
+        color-scheme: light dark;
+
+        --color-ink:       light-dark(rgb(var(--rgb-black)), rgb(var(--rgb-white)));
+        --color-paper:     light-dark(rgb(var(--rgb-white)), rgb(var(--rgb-black)));
+        --color-ink-mix:   light-dark(color-mix(in srgb, var(--color-ink) 41.8%, var(--color-paper)), color-mix(in srgb, var(--color-ink) 35.1%, var(--color-paper)));
+        --color-paper-mix: color-mix(in srgb, var(--color-ink) 16%, var(--color-paper));
+
+        --color-error:           rgb(var(--rgb-accent-red));
+        --color-highlight-ink:   light-dark(color-mix(in srgb, rgb(var(--rgb-accent-yellow)) 49.9%, rgb(0,0,0)), rgb(var(--rgb-accent-yellow)));
+        --color-highlight-paper: light-dark(rgb(var(--rgb-accent-yellow)), color-mix(in srgb, rgb(var(--rgb-accent-yellow)) 40.8%, rgb(0,0,0)));
+        --color-success:         oklch(from rgb(var(--rgb-accent-green)) 0.628 0.128 h);
+        --color-visited:         light-dark(rgb(var(--rgb-accent-purple)), oklch(from rgb(var(--rgb-accent-purple)) 0.690 0.167 h));
+
+        --color-emphasis-ink:     light-dark(rgb(var(--rgb-accent-purple)), oklch(from rgb(var(--rgb-accent-purple)) 0.790 0.157 h));
+        --color-emphasis-ink-mix: color-mix(in srgb, var(--color-emphasis-ink) 50%, var(--color-ink));
+
+        --color-focus: var(--color-emphasis-ink);
+    }
+    @media (prefers-contrast: more) {
+        :root {
+            --color-highlight-ink:   light-dark(color-mix(in srgb, rgb(var(--rgb-accent-yellow)) 37.3%, rgb(0,0,0)), rgb(var(--rgb-accent-yellow)));
+            --color-highlight-paper: light-dark(rgb(var(--rgb-accent-yellow)), color-mix(in srgb, rgb(var(--rgb-accent-yellow)) 37.3%, rgb(0,0,0)));
+        }
+    }
+    @media (prefers-contrast: less) {
+        :root {
+            --color-ink:             light-dark(rgb(43,43,43), rgb(243,243,243));
+            --color-paper:           light-dark(rgb(243,243,243), rgb(43,43,43));
+            --color-ink-mix:         light-dark(rgb(140,140,140), rgb(116,116,116));
+            --color-paper-mix:       light-dark(rgb(198,198,198), rgb(111,111,111));
+            --color-highlight-ink:   light-dark(color-mix(in srgb, rgb(var(--rgb-accent-yellow)) 46.1%, rgb(0,0,0)), rgb(var(--rgb-accent-yellow)));
+            --color-highlight-paper: light-dark(rgb(var(--rgb-accent-yellow)), color-mix(in srgb, rgb(var(--rgb-accent-yellow)) 40.8%, rgb(0,0,0)));
+        }
+    }
+    @media (forced-colors: none) {
+        :root[data-color-scheme="light"],
+        :root[data-color-scheme="light-less-contrast"],
+        :root[data-color-scheme="light-more-contrast"] {
+            color-scheme: light;
+        }
+        :root[data-color-scheme="dark"],
+        :root[data-color-scheme="dark-less-contrast"],
+        :root[data-color-scheme="dark-more-contrast"] {
+            color-scheme: dark;
+        }
+        :root[data-color-scheme="light"],
+        :root[data-color-scheme="dark"] {
+            --color-ink:             light-dark(rgb(var(--rgb-black)), rgb(var(--rgb-white)));
+            --color-paper:           light-dark(rgb(var(--rgb-white)), rgb(var(--rgb-black)));
+            --color-ink-mix:         light-dark(color-mix(in srgb, var(--color-ink) 41.8%, var(--color-paper)), color-mix(in srgb, var(--color-ink) 35.1%, var(--color-paper)));
+            --color-paper-mix:       color-mix(in srgb, var(--color-ink) 16%, var(--color-paper));
+            --color-highlight-ink:   light-dark(color-mix(in srgb, rgb(var(--rgb-accent-yellow)) 49.9%, rgb(0,0,0)), rgb(var(--rgb-accent-yellow)));
+            --color-highlight-paper: light-dark(rgb(var(--rgb-accent-yellow)), color-mix(in srgb, rgb(var(--rgb-accent-yellow)) 40.8%, rgb(0,0,0)));
+        }
+        :root[data-color-scheme="light-more-contrast"],
+        :root[data-color-scheme="dark-more-contrast"] {
+            --color-ink:             light-dark(rgb(var(--rgb-black)), rgb(var(--rgb-white)));
+            --color-paper:           light-dark(rgb(var(--rgb-white)), rgb(var(--rgb-black)));
+            --color-ink-mix:         light-dark(color-mix(in srgb, var(--color-ink) 41.8%, var(--color-paper)), color-mix(in srgb, var(--color-ink) 35.1%, var(--color-paper)));
+            --color-paper-mix:       color-mix(in srgb, var(--color-ink) 16%, var(--color-paper));
+            --color-highlight-ink:   light-dark(color-mix(in srgb, rgb(var(--rgb-accent-yellow)) 37.3%, rgb(0,0,0)), rgb(var(--rgb-accent-yellow)));
+            --color-highlight-paper: light-dark(rgb(var(--rgb-accent-yellow)), color-mix(in srgb, rgb(var(--rgb-accent-yellow)) 37.3%, rgb(0,0,0)));
+        }
+        :root[data-color-scheme="light-less-contrast"],
+        :root[data-color-scheme="dark-less-contrast"] {
+            --color-ink:             light-dark(rgb(43,43,43), rgb(243,243,243));
+            --color-paper:           light-dark(rgb(243,243,243), rgb(43,43,43));
+            --color-ink-mix:         light-dark(rgb(140,140,140), rgb(116,116,116));
+            --color-paper-mix:       light-dark(rgb(198,198,198), rgb(111,111,111));
+            --color-highlight-ink:   light-dark(color-mix(in srgb, rgb(var(--rgb-accent-yellow)) 46.1%, rgb(0,0,0)), rgb(var(--rgb-accent-yellow)));
+            --color-highlight-paper: light-dark(rgb(var(--rgb-accent-yellow)), color-mix(in srgb, rgb(var(--rgb-accent-yellow)) 40.8%, rgb(0,0,0)));
+        }
+    }
+    @media (forced-colors: active) {
+        :root {
+            --color-ink:              CanvasText;
+            --color-paper:            Canvas;
+            --color-ink-mix:          GrayText;
+            --color-paper-mix:        Canvas;
+            --color-error:            Mark;
+            --color-highlight-ink:    Mark;
+            --color-highlight-paper:  Mark;
+            --color-visited:          VisitedText;
+            --color-focus:            Highlight;
+            --color-emphasis-ink:     AccentColor;
+            --color-emphasis-ink-mix: AccentColor;
+        }
+    }
+    @media print {
+        :root,
+        :root[data-color-scheme] {
+            color-scheme:       light;
+            print-color-adjust: exact;
+
+            --color-ink:             light-dark(rgb(var(--rgb-black)), rgb(var(--rgb-white)));
+            --color-paper:           light-dark(rgb(var(--rgb-white)), rgb(var(--rgb-black)));
+            --color-ink-mix:         light-dark(color-mix(in srgb, var(--color-ink) 41.8%, var(--color-paper)), color-mix(in srgb, var(--color-ink) 35.1%, var(--color-paper)));
+            --color-paper-mix:       color-mix(in srgb, var(--color-ink) 16%, var(--color-paper));
+            --color-highlight-ink:   light-dark(color-mix(in srgb, rgb(var(--rgb-accent-yellow)) 49.9%, rgb(0,0,0)), rgb(var(--rgb-accent-yellow)));
+            --color-highlight-paper: light-dark(rgb(var(--rgb-accent-yellow)), color-mix(in srgb, rgb(var(--rgb-accent-yellow)) 40.8%, rgb(0,0,0)));
+        }
+    }
+
+    /* --- size properties --- */
+
+    :root {
+        --xs-border-radius:  0.325rem;
+        --xs-border-width:   0.0625rem;
+        --xs-box-height:     1.75rem;
+        --xs-font-size:      0.85rem;
+        --xs-letter-spacing: 0.02rem;
+        --xs-line-height:    1.5rem;
+
+        --sm-border-radius:  0.325rem;
+        --sm-border-width:   0.125rem;
+        --sm-box-height:     2.5rem;
+        --sm-font-size:      0.85rem;
+        --sm-letter-spacing: 0.02rem;
+        --sm-line-height:    1.5rem;
+
+        --md-border-radius:  0.325rem;
+        --md-border-width:   0.125rem;
+        --md-box-height:     3rem;
+        --md-font-size:      1rem;
+        --md-letter-spacing: 0;
+        --md-line-height:    1.5rem;
+
+        --lg-border-radius:  0.325rem;
+        --lg-border-width:   0.125rem;
+        --lg-box-height:     3.5rem;
+        --lg-font-size:      1.15rem;
+        --lg-letter-spacing: 0;
+        --lg-line-height:    1.725rem;
+
+        --xl-border-radius:  0.325rem;
+        --xl-border-width:   0.125rem;
+        --xl-box-height:     4rem;
+        --xl-font-size:      1.5rem;
+        --xl-letter-spacing: 0;
+        --xl-line-height:    2.25rem;
+
+        --2xl-border-radius:  0.325rem;
+        --2xl-border-width:   0.125rem;
+        --2xl-box-height:     4.75rem;
+        --2xl-font-size:      2rem;
+        --2xl-letter-spacing: 0;
+        --2xl-line-height:    3rem;
+
+        --border-radius:  var(--md-border-radius);
+        --border-width:   var(--md-border-width);
+        --box-height:     var(--md-box-height);
+        --font-size:      var(--md-font-size);
+        --letter-spacing: var(--md-letter-spacing);
+        --line-height:    var(--md-line-height);
+
+        --font-family-sans-serif: ui-sans-serif, system-ui, sans-serif;
+        --font-family-serif:      ui-serif, serif;
+        --font-family-monospace:  ui-monospace, monospace;
+
+        font-family: var(--font-family-sans-serif);
+    }
+
+    @media print {
+        html {
+            font-size: 14pt;
+        }
+    }
+
+    body {
+        color: var(--color-ink);
+        background: var(--color-paper);
+    }
+
+    ::selection, mark {
+        background-color: var(--color-highlight-ink);
+        color: var(--color-paper);
+    }
+
+    code, pre, kbd, samp, var,
+    input:where(
+        [type="tel"],
+        [type="number"],
+        [inputmode="numeric"]
+    ) {
+        font-family: var(--font-family-monospace);
+        font-style: normal;
+        font-feature-settings: initial; /* per kiso.css:193 */
+        font-variation-settings: initial; /* per kiso.css:194 */
+        font-variant-ligatures: none; /* per kiso.css:203 */
+    }
+
+    /* --- forced-color --- */
+    
+    @media (forced-colors: active) {
+        :where(button, [type="button"], [type="submit"], [type="reset"]) {
+            background-color: ButtonFace;
+            border-color:     ButtonBorder;
+            color:            ButtonText;
+        }
+        :where(a:any-link) {
+            color: LinkText;
+        }
+    }
+
+    /* --- class --- */
+
+    .visually-hidden:not(:focus, :focus-within) {
+        clip: rect(0 0 0 0) !important;
+        clip-path: inset(50%) !important;
+        height: 1px !important;
+        overflow: hidden !important;
+        position: absolute !important;
+        white-space: nowrap !important;
+        width: 1px !important;
+    }
+}
+/*
+ * SPDX-FileCopyrightText: 2026 Andyou <andyou@animagram.jp>
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/*  Usage:
+
+    <* data-surround="fill | outline | transparent"></*>
+
+    <* data-style="underline"></*>
+*/
+@layer css.data_style {
+
+    /* === surround fill style === */
+
+    :where(
+        [data-surround="fill"],
+        :is(
+            button,
+            [type="button"],
+            [type="submit"],
+            [type="reset"],
+            [data-type="toast"] > *
+        ):not([data-surround], [data-style="underline"])
+    ) {
+        background-color: var(--color-emphasis-ink);
+        border-color:     transparent;
+        border-style:     solid;
+        color:            var(--color-paper);
+        display:          inline flow-root;
+        vertical-align:   middle;
+        width:            auto;
+    }
+
+    :where(
+        [data-surround="fill"],
+        :is(
+            button,
+            [type="button"],
+            [type="submit"],
+            [type="reset"],
+            [data-type="toast"] > *
+        ):not([data-surround], [data-style="underline"])
+    ) > ::selection,
+    :where(
+        [data-surround="fill"],
+        :is(
+            button,
+            [type="button"],
+            [type="submit"],
+            [type="reset"],
+            [data-type="toast"] > *
+        ):not([data-surround], [data-style="underline"])
+    )::selection,
+    :where(
+        [data-surround="fill"],
+        :is(
+            button,
+            [type="button"],
+            [type="submit"],
+            [type="reset"],
+            [data-type="toast"] > *
+        ):not([data-surround], [data-style="underline"])
+    ) > mark {
+        background-color: var(--color-highlight-paper);
+        color:             var(--color-ink);
+    }
+
+    /* === surround outline style  === */
+
+    :where(
+        [data-surround="outline"],
+        [data-union] > label:not([data-surround]):has(> input:is([type="radio"], [type="checkbox"]))
+    ) {
+        background-color: var(--color-paper);
+        border-color:     currentColor;
+        border-style:     solid;
+        color:            var(--color-emphasis-ink);
+        display:          inline flow-root;
+        vertical-align:   middle;
+        width:            auto;
+    }
+
+    /* === surround input style === */
+
+    :where(
+        input:is(
+            [type="text"],
+            [type="email"],
+            [type="password"],
+            [type="search"],
+            [type="url"],
+            [type="tel"],
+            [type="number"],
+            [type="checkbox"],
+            [type="radio"]
+        ):not([data-sign], [data-facet], [data-surround]),
+        select,
+        textarea
+    ) {
+        background-color: var(--color-paper);
+        border-color:     var(--color-ink-mix);
+        border-style:     solid;
+        color:            var(--color-ink);
+        display:          inline flow-root;
+        vertical-align:   middle;
+    }
+
+    @media (forced-colors: active) {
+        :where(
+            input:is(
+                [type="text"],
+                [type="email"],
+                [type="password"],
+                [type="search"],
+                [type="url"],
+                [type="tel"],
+                [type="number"],
+                [type="checkbox"],
+                [type="radio"]
+            ):not([data-sign], [data-facet], [data-surround]),
+            select,
+            textarea
+        ) {
+            background-color: Field;
+            border-color:     FieldText;
+            color:            FieldText;
+        }
+    }
+
+    input[type="checkbox"]:not([role="switch"]):not([data-sign]):not([data-facet]):where(:checked, :indeterminate)::before,
+    input[type="radio"]:not([data-sign], [data-facet], [data-surround]):checked::after {
+        background-color: var(--color-emphasis-ink);
+    }
+
+    @media (forced-colors: active) {
+        input[type="checkbox"]:not([role="switch"]):not([data-sign]):not([data-facet]):where(:checked, :indeterminate)::before,
+        input[type="radio"]:not([data-sign], [data-facet], [data-surround]):checked::after {
+            background-color: CanvasText;
+        }
+    }
+
+    input[type="checkbox"]:not([role="switch"]):not([data-sign]):not([data-facet]):where(:user-invalid, [aria-invalid="true"]):where(:checked, :indeterminate)::before,
+    input[type="radio"]:not([data-sign], [data-facet], [data-surround]):where(:user-invalid, [aria-invalid="true"]):checked::after {
+        background-color: var(--color-error);
+    }
+
+    input[type="checkbox"]:not([role="switch"]):not([data-sign]):not([data-facet]):where(:disabled, [aria-disabled="true"]):where(:checked, :indeterminate)::before,
+    input[type="radio"]:not([data-sign], [data-facet], [data-surround]):where(:disabled, [aria-disabled="true"]):checked::after {
+        background-color: var(--color-ink-mix);
+    }
+
+    /* === surround transparent style === */
+
+    :where(
+        [data-surround="transparent"],
+        :where([role="menu"], [role="listbox"]) > *,
+        :where(dl, dl > div) > :where(dt, dd),
+        [popovertarget]:not([data-surround])
+    ) {
+        background-color: transparent;
+        border:           none;
+        color:            inherit;
+        vertical-align:   middle;
+        width:            auto;
+    }
+
+    /* --- hover, active --- */
+
+    :where(
+        :where(
+            a:any-link,
+            button,
+            [type="button"],
+            [type="submit"],
+            [type="reset"],
+            summary
+        )[data-surround="transparent"],
+        :where([role="menu"], [role="listbox"]) > [role]:where(a, button),
+        :where([role="menu"], [role="listbox"]) > label:has(> input[role]:not(:disabled, [aria-disabled="true"])),
+        [popovertarget]:not([data-surround])
+    ) {
+        &:where(:active, [aria-pressed="true"]) {
+            outline-color: var(--color-focus);
+            outline-style: solid;
+        }
+
+        @media (hover: hover) {
+            &:hover {
+                outline-color: var(--color-focus);
+                outline-style: solid;
+            }
+        }
+
+        &:is(:user-invalid, [aria-invalid="true"]) {
+            outline-color: var(--color-error);
+            outline-style: solid;
+        }
+
+        @media (forced-colors: active) {
+            &:is(:user-invalid, [aria-invalid="true"]) {
+                outline-color: Mark;
+            }
+        }
+    }
+
+    /* === default inline style (not focusable): nothing to define more  === */
+
+    /* === underline inline style === */
+
+    [data-style="underline"],
+    :where(summary, a, :has(> input[role="tab"])):not([data-surround]) {
+        background-color:          var(--color-paper);
+        border:                    none;
+        box-decoration-break:      clone;
+        color:                     var(--color-emphasis-ink);
+        display:                   inline flow;
+        text-decoration-color:     currentColor;
+        text-decoration-line:      underline;
+        text-decoration-thickness: 0.0625rem;
+        text-underline-offset:     0.3em;
+    }
+
+    /* --- focus --- */
+
+    :where(
+        a,
+        button,
+        [type="button"],
+        [type="submit"],
+        [type="reset"],
+        input,
+        select,
+        summary,
+        textarea
+    ) {
+        position: relative; /* for :focus-visible {z-index:1} */
+    }
+
+    *:focus-visible,
+    [data-union] > label:has(> input:is([type="radio"], [type="checkbox"]):focus-visible),
+    :where(input[type="checkbox"], input[type="radio"]):where(:active) {
+        outline-color:  var(--color-focus);
+        outline-offset: 0;
+        outline-style:  solid;
+        outline-width:  0.25rem;
+        z-index:        1;
+    }
+
+    /* --- hover --- */
+
+    :where(
+        a:any-link,
+        button,
+        [type="button"],
+        [type="submit"],
+        [type="reset"],
+        select,
+        summary
+    ),
+    label:has(> input:is([type="checkbox"], [type="radio"]), > select) {
+        cursor: pointer;
+    }
+
+    @media (hover: hover) {
+        :where(input[type="checkbox"], input[type="radio"]):where(:hover) {
+            outline-color:  var(--color-focus);
+            outline-offset: 0;
+            outline-style:  solid;
+            outline-width:  0.25rem;
+            z-index:        1;
+        }
+
+        :where(a, button, [type="button"], [type="submit"], [type="reset"], summary):hover,
+        [data-union] > label:has(> input:is([type="radio"], [type="checkbox"])):hover {
+            text-decoration-color:     currentColor;
+            text-decoration-line:      underline;
+            text-decoration-thickness: max(0.1875rem, 0.12em);
+            text-underline-offset:     0.3em; /* font requirement: 0.25em < x <= 0.351em */
+        }
+    }
+
+    /* --- invalid --- */
+
+    :where(:user-invalid, [aria-invalid="true"]),
+    [data-surround="outline"]:where(:user-invalid, [aria-invalid="true"]),
+    [data-union] > label:has(> input:is([type="radio"], [type="checkbox"]):where(:user-invalid, [aria-invalid="true"])) {
+        border-color: var(--color-error);
+    }
+
+    :where(:user-invalid, [aria-invalid="true"]):focus-visible {
+        outline-color: var(--color-error);
+    }
+
+    @media (forced-colors: active) {
+        :where(:user-invalid, [aria-invalid="true"]),
+        [data-surround="outline"]:where(:user-invalid, [aria-invalid="true"]),
+        [data-union] > label:has(> input:is([type="radio"], [type="checkbox"]):where(:user-invalid, [aria-invalid="true"])) {
+            border-color: Mark;
+        }
+
+        :where(:user-invalid, [aria-invalid="true"]):focus-visible {
+            outline-color: Mark;
+        }
+    }
+
+    /* --- active, pressed --- */
+
+    :where(
+        a:any-link,
+        button,
+        [type="button"],
+        [type="submit"],
+        [type="reset"],
+        summary
+    )[data-surround="fill"]:where(:active, [aria-pressed="true"]),
+    :where(
+        button,
+        [type="button"],
+        [type="submit"],
+        [type="reset"]
+    ):not([data-surround], [data-style="underline"]):where(:active, [aria-pressed="true"]),
+    [data-union] > label[data-surround="fill"]:has(> input:is([type="radio"], [type="checkbox"]):checked) {
+        background-color: var(--color-emphasis-ink-mix);
+        border-color:     transparent;
+    }
+
+    :where(
+        a:any-link,
+        button,
+        [type="button"],
+        [type="submit"],
+        [type="reset"],
+        summary
+    )[data-surround="outline"]:where(:active, [aria-pressed="true"]),
+    :where(
+        a:any-link,
+        summary
+    ):not([data-surround]):where(:active, [aria-pressed="true"]),
+    :where(
+        a:any-link,
+        button,
+        [type="button"],
+        [type="submit"],
+        [type="reset"],
+        summary
+    )[data-style="underline"]:where(:active, [aria-pressed="true"]),
+    [data-union] > label:where(:not([data-surround]), [data-surround="outline"]):has(> input:is([type="radio"], [type="checkbox"]):checked) {
+        border-color: var(--color-emphasis-ink-mix);
+        color:        var(--color-emphasis-ink-mix);
+    }
+
+    @media (forced-colors: active) {
+        :where(
+            a:any-link,
+            button,
+            [type="button"],
+            [type="submit"],
+            [type="reset"],
+            summary
+        ):where(:active, [aria-pressed="true"]),
+        [data-union] > label:has(> input:is([type="radio"], [type="checkbox"]):checked) {
+            color: ActiveText;
+        }
+    }
+
+    /* --- disabled --- */
+
+    :where(:disabled, [aria-disabled="true"]),
+    label:has(> :is(input, select):is(:disabled, [aria-disabled="true"])) {
+        cursor: not-allowed;
+    }
+
+    :where(:disabled, [aria-disabled="true"]) {
+        pointer-events: none;
+    }
+
+    :where(input[type="checkbox"], input[type="radio"]):where(:disabled, [aria-disabled="true"]):not(:focus-visible) {
+        outline-style: none;
+    }
+
+    @media (hover: hover) {
+        [data-union] > label:has(> input:is([type="radio"], [type="checkbox"]):is(:disabled, [aria-disabled="true"])):hover {
+            text-decoration-line: none;
+        }
+    }
+
+    /* --- disabled, readonly --- */
+
+    :is(
+        :not(
+            [data-surround="fill"],
+            :is(
+                button,
+                [type="button"],
+                [type="submit"],
+                [type="reset"],
+                [data-type="toast"] > *
+            ):not([data-surround], [data-style="underline"])
+    )):where(
+        :disabled,
+        [aria-disabled="true"],
+        [readonly]
+    ),
+    [data-union] > label:where(:not([data-surround]), [data-surround="outline"]):has(> input:is([type="radio"], [type="checkbox"]):where(:disabled, [aria-disabled="true"])) {
+        border-color: var(--color-ink-mix);
+    }
+
+    :is(
+        :not(
+            [data-surround="fill"],
+            :is(
+                button,
+                [type="button"],
+                [type="submit"],
+                [type="reset"],
+                [data-type="toast"] > *
+            ):not([data-surround], [data-style="underline"])
+    )):where(
+        :disabled,
+        [aria-disabled="true"]
+    ),
+    [data-union] > label:where(:not([data-surround]), [data-surround="outline"]):has(> input:is([type="radio"], [type="checkbox"]):where(:disabled, [aria-disabled="true"])) {
+        color: var(--color-ink-mix);
+    }
+
+    :is(
+        [data-surround="fill"],
+        :is(
+            button,
+            [type="button"],
+            [type="submit"],
+            [type="reset"],
+            [data-type="toast"] > *
+        ):not([data-surround], [data-style="underline"])
+    ):where(
+        :disabled, 
+        [aria-disabled="true"], 
+        [readonly]
+    ),
+    [data-union] > label[data-surround="fill"]:has(> input:is([type="radio"], [type="checkbox"]):where(:disabled, [aria-disabled="true"])) {
+        background-color: var(--color-ink-mix);
+        border-color:     transparent;
+        color:            var(--color-paper);
+    }
+
+    @media (forced-colors: active) {
+        :is(
+            :disabled,
+            [aria-disabled="true"],
+            [readonly]
+        ),
+        [data-union] > label:has(> input:is([type="radio"], [type="checkbox"]):where(:disabled, [aria-disabled="true"])) {
+            border-color: GrayText;
+        }
+        :is(
+            :disabled,
+            [aria-disabled="true"]
+        ),
+        [data-union] > label:has(> input:is([type="radio"], [type="checkbox"]):where(:disabled, [aria-disabled="true"])) {
+            color: GrayText;
+        }
+    }
+}
+/*
+ * SPDX-FileCopyrightText: 2026 Andyou <andyou@animagram.jp>
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/*  Usage:
+
+    <* data-size="xs | sm | md | lg | xl | 2xl"></*>
+*/
+@layer css.data_size {
+
+    /* === size === */
+
+    [data-size="xs"] {
+        --border-radius:  var(--xs-border-radius);
+        --border-width:   var(--xs-border-width);
+        --box-height:     var(--xs-box-height);
+        --font-size:      var(--xs-font-size);
+        --letter-spacing: var(--xs-letter-spacing);
+        --line-height:    var(--xs-line-height);
+    }
+
+    [data-size="sm"] {
+        --border-radius:  var(--sm-border-radius);
+        --border-width:   var(--sm-border-width);
+        --box-height:     var(--sm-box-height);
+        --font-size:      var(--sm-font-size);
+        --letter-spacing: var(--sm-letter-spacing);
+        --line-height:    var(--sm-line-height);
+    }
+
+    [data-size="md"] {
+        --border-radius:  var(--md-border-radius);
+        --border-width:   var(--md-border-width);
+        --box-height:     var(--md-box-height);
+        --font-size:      var(--md-font-size);
+        --letter-spacing: var(--md-letter-spacing);
+        --line-height:    var(--md-line-height);
+    }
+
+    [data-size="lg"] {
+        --border-radius:  var(--lg-border-radius);
+        --border-width:   var(--lg-border-width);
+        --box-height:     var(--lg-box-height);
+        --font-size:      var(--lg-font-size);
+        --letter-spacing: var(--lg-letter-spacing);
+        --line-height:    var(--lg-line-height);
+    }
+
+    [data-size="xl"] {
+        --border-radius:  var(--xl-border-radius);
+        --border-width:   var(--xl-border-width);
+        --box-height:     var(--xl-box-height);
+        --font-size:      var(--xl-font-size);
+        --letter-spacing: var(--xl-letter-spacing);
+        --line-height:    var(--xl-line-height);
+    }
+
+    [data-size="2xl"] {
+        --border-radius:  var(--2xl-border-radius);
+        --border-width:   var(--2xl-border-width);
+        --box-height:     var(--2xl-box-height);
+        --font-size:      var(--2xl-font-size);
+        --letter-spacing: var(--2xl-letter-spacing);
+        --line-height:    var(--2xl-line-height);
+    }
+
+    h3:not([data-size]) {
+        --border-radius:  var(--lg-border-radius);
+        --border-width:   var(--lg-border-width);
+        --box-height:     var(--lg-box-height);
+        --font-size:      var(--lg-font-size);
+        --letter-spacing: var(--lg-letter-spacing);
+        --line-height:    var(--lg-line-height);
+    }
+
+    h2:not([data-size]) {
+        --border-radius:  var(--xl-border-radius);
+        --border-width:   var(--xl-border-width);
+        --box-height:     var(--xl-box-height);
+        --font-size:      var(--xl-font-size);
+        --letter-spacing: var(--xl-letter-spacing);
+        --line-height:    var(--xl-line-height);
+    }
+
+    h1:not([data-size]) {
+        --border-radius:  var(--2xl-border-radius);
+        --border-width:   var(--2xl-border-width);
+        --box-height:     var(--2xl-box-height);
+        --font-size:      var(--2xl-font-size);
+        --letter-spacing: var(--2xl-letter-spacing);
+        --line-height:    var(--2xl-line-height);
+    }
+
+    /* === common for elements whether inline flow or not, focusable or not. === */
+
+    :where([data-size], :not(html, [data-size] *)) {
+        font-size:      var(--font-size);
+        letter-spacing: var(--letter-spacing);
+        line-height:    var(--line-height);
+    }
+
+    /* === surround style without border === */
+
+    :where(
+        [data-surround="transparent"],
+        :where([role="menu"], [role="listbox"]) > *,
+        :where(dl, dl > div) > :where(dt, dd)
+    ) {
+        min-height:     var(--box-height);
+        padding-block:  calc((var(--box-height) - var(--line-height)) / 2);
+        padding-inline: var(--border-radius);
+    }
+
+    /* === surround style with border === */
+
+    :where(
+        [data-surround="fill"],
+        [data-surround="outline"],
+        [data-union] > label:has(> input:is([type="radio"], [type="checkbox"])),
+        :is(
+            button,
+            [type="button"],
+            [type="submit"],
+            [type="reset"],
+            input:is(
+                [type="text"],
+                [type="email"],
+                [type="password"],
+                [type="search"],
+                [type="url"],
+                [type="tel"],
+                [type="number"]
+            ),
+            select,
+            summary,
+            textarea,
+            [data-type="toast"] > *,
+            [role="alert"],
+            [role="status"]
+        ):not([data-surround])
+    ) {
+        border-radius:  var(--border-radius);
+        border-width:   var(--border-width);
+        min-height:     var(--box-height);
+        padding-block:  calc(((var(--box-height) - var(--line-height)) / 2) - var(--border-width));
+        padding-inline: var(--border-radius);
+    }
+
+    /* === common for elements inline flow and focusable === */
+
+    a:not([data-surround="fill"], [data-surround="outline"], [data-surround="transparent"]) {
+        &:focus-visible {
+            outline-offset: calc(((var(--box-height) - var(--line-height)) / 2) - var(--border-width));
+            outline-width:  var(--border-width);
+        }
+    }
+
+    /* === surround transparent style: focus === */
+
+    :where(
+        [data-surround="transparent"],
+        tr:not([data-style], [data-surround]),
+        :where([role="menu"], [role="listbox"]) > [role]:where(a, button),
+        :where([role="menu"], [role="listbox"]) > label:has(> input[role])
+    ) {
+        &:is(:focus-visible, :has(:checked)) {
+            outline-offset: calc(var(--border-width) * -1);
+        }
+    }
+
+    /* --- hover, active --- */
+
+    :where(
+        :where(
+            a:any-link,
+            button,
+            [type="button"],
+            [type="submit"],
+            [type="reset"],
+            summary
+        )[data-surround="transparent"],
+        :where([role="menu"], [role="listbox"]) > [role]:where(a, button),
+        :where([role="menu"], [role="listbox"]) > label:has(> input[role]:not(:disabled, [aria-disabled="true"])),
+        [popovertarget]:not([data-surround])
+    ) {
+        &:not(:focus-visible) {
+            outline-offset: calc(var(--border-width) * -1);
+            outline-width:  var(--border-width);
+        }
+    }
+}
+/*
+ * SPDX-FileCopyrightText: 2026 Andyou <andyou@animagram.jp>
+ * SPDX-FileCopyrightText: 2019-2024 The Bootstrap Authors
+ * SPDX-License-Identifier: Apache-2.0 AND MIT
+ */
+
+/*  Usage:
+
+    <* data-surround="" data-sign | facet="" (data-inline-align="start|end|center")></*>
+
+    <* data-surround="">
+        <* data-sign-style="inline" data-sign | facet="" (data-inline-align="start | end | center")></*></*>
+
+    <summary (data-facet="chevron")></summary>
+
+    <label>
+        <select data-facet="chevron">
+            <option></option></select></label>
+*/
+@layer css.data_sign {
+    :where(
+        [data-sign],
+        [data-facet],
+        summary:not([data-facet]),
+        button[aria-haspopup="listbox"],
+        label:has(> select:is([data-facet="chevron"], :not([data-facet])))
+    ) {
+        position: relative;
+    }
+
+    /* --- min inline size, min block size --- */
+
+    :where(
+        [data-sign],
+        [data-facet]
+    ):not(select, [data-sign-style="inline"]) {
+        min-block-size:  var(--box-height);
+        min-inline-size: var(--box-height);
+    }
+
+    /*  === sign-style: inline === */
+
+    [data-sign-style="inline"] {
+        block-size:     var(--line-height);
+        vertical-align: middle;
+    }
+
+    /* === data-inline-align === */
+
+    :where(
+        [data-sign="check"],
+        [data-sign="folder"],
+        [data-sign="hatch"],
+        [data-sign="minus"],
+        [data-sign="rule"],
+        [data-facet="chevron"]:not(select),
+        summary:not([data-facet]),
+        button[aria-haspopup="listbox"]:not([data-facet]),
+        [data-facet="eye"],
+        [data-facet="reload"],
+        [data-facet="sync"]
+    ):where([data-inline-align="start"])::before,
+    :where(
+        [data-sign="check"],
+        [data-sign="folder"],
+        [data-sign="hatch"],
+        [data-sign="minus"],
+        [data-sign="rule"],
+        [data-facet="chevron"]:not(select),
+        summary:not([data-facet]),
+        button[aria-haspopup="listbox"]:not([data-facet]),
+        [data-facet="eye"],
+        [data-facet="reload"],
+        [data-facet="sync"]
+    ):not([data-inline-align="start"])::after,
+    :where(
+        [data-sign="copy"],
+        [data-sign="file"],
+        [data-sign="plus"],
+        [data-sign="x"]
+    )::before,
+    :where(
+        [data-sign="copy"],
+        [data-sign="file"],
+        [data-sign="plus"],
+        [data-sign="x"]
+    )::after,
+    input[type="checkbox"]:not([role="switch"]):not([data-sign]):not([data-facet])::after {
+        content:      "";
+        inset-block:  0;
+        margin-block: auto;
+        position:     absolute;
+    }
+
+    /* --- center --- */
+
+    :where(
+        [data-sign="check"],
+        [data-sign="folder"],
+        [data-sign="hatch"],
+        [data-sign="minus"],
+        [data-facet="eye"],
+        [data-facet="reload"],
+        [data-facet="sync"]
+    ):where(
+        [data-inline-align="center"],
+        :not([data-inline-align])
+    )::after,
+    :where(
+        [data-sign="rule"],
+        [data-facet="chevron"]:not(select),
+        summary:not([data-facet]),
+        button[aria-haspopup="listbox"]:not([data-facet])
+    )[data-inline-align="center"]::after,
+    :where(
+        [data-sign="copy"],
+        [data-sign="file"],
+        [data-sign="plus"],
+        [data-sign="x"]
+    ):where(
+        [data-inline-align="center"],
+        :not([data-inline-align])
+    )::before,
+    :where(
+        [data-sign="copy"],
+        [data-sign="file"],
+        [data-sign="plus"],
+        [data-sign="x"]
+    ):where(
+        [data-inline-align="center"],
+        :not([data-inline-align])
+    )::after,
+    input[type="checkbox"]:not([role="switch"]):not([data-sign]):not([data-facet])::after {
+        inset-inline:  0;
+        margin-inline: auto;
+    }
+
+    /* --- start --- */
+
+    :where(
+        [data-sign="check"],
+        [data-sign="folder"],
+        [data-sign="hatch"],
+        [data-sign="minus"],
+        [data-sign="rule"],
+        [data-facet="chevron"]:not(select),
+        summary:not([data-facet]),
+        button[aria-haspopup="listbox"]:not([data-facet]),
+        [data-facet="eye"],
+        [data-facet="reload"],
+        [data-facet="sync"]
+    )[data-inline-align="start"]::before,
+    :where(
+        [data-sign="copy"],
+        [data-sign="file"],
+        [data-sign="plus"],
+        [data-sign="x"]
+    )[data-inline-align="start"]::before,
+    :where(
+        [data-sign="copy"],
+        [data-sign="file"],
+        [data-sign="plus"],
+        [data-sign="x"]
+    )[data-inline-align="start"]::after {
+        inset-inline-start: var(--border-radius);
+        inset-inline-end:   auto;
+        margin-inline:      0;
+    }
+
+    :where(
+        [data-sign="check"],
+        [data-sign="copy"],
+        [data-sign="file"],
+        [data-sign="folder"],
+        [data-sign="hatch"],
+        [data-sign="minus"],
+        [data-sign="plus"],
+        [data-sign="x"],
+        [data-facet="eye"],
+        [data-facet="reload"],
+        [data-facet="sync"]
+    )[data-inline-align="start"] {
+        padding-inline-start: calc(var(--border-radius) * 2 + var(--line-height));
+    }
+
+    /* --- end --- */
+
+    :where(
+        [data-sign="check"],
+        [data-sign="folder"],
+        [data-sign="hatch"],
+        [data-sign="minus"],
+        [data-sign="rule"],
+        [data-facet="chevron"]:not(select),
+        summary:not([data-facet]),
+        button[aria-haspopup="listbox"]:not([data-facet]),
+        [data-facet="eye"],
+        [data-facet="reload"],
+        [data-facet="sync"]
+    )[data-inline-align="end"]::after,
+    :where(
+        [data-facet="chevron"]:not(select),
+        summary:not([data-facet]),
+        button[aria-haspopup="listbox"]:not([data-facet])
+    ):not([data-inline-align])::after,
+    :where(
+        [data-sign="copy"],
+        [data-sign="file"],
+        [data-sign="plus"],
+        [data-sign="x"]
+    )[data-inline-align="end"]::before,
+    :where(
+        [data-sign="copy"],
+        [data-sign="file"],
+        [data-sign="plus"],
+        [data-sign="x"]
+    )[data-inline-align="end"]::after {
+        inset-inline-start: auto;
+        inset-inline-end:   var(--border-radius);
+        margin-inline:      0;
+    }
+
+    :where(
+        [data-sign="check"],
+        [data-sign="copy"],
+        [data-sign="file"],
+        [data-sign="folder"],
+        [data-sign="hatch"],
+        [data-sign="minus"],
+        [data-sign="plus"],
+        [data-sign="x"],
+        [data-facet="eye"],
+        [data-facet="reload"],
+        [data-facet="sync"]
+    )[data-inline-align="end"] {
+        padding-inline-end: calc(var(--border-radius) * 2 + var(--line-height));
+    }
+
+    /* === check === */
+
+    input[type="checkbox"]:not([role="switch"]):not([data-sign]):not([data-facet])::before {
+        content:  "";
+        inset:    0;
+        position: absolute;
+    }
+
+    [data-sign="check"]:where([data-inline-align="start"])::before,
+    [data-sign="check"]:not([data-inline-align="start"])::after,
+    input[type="checkbox"]:not([role="switch"]):not([data-sign]):not([data-facet])::after {
+        border-color:  currentColor;
+        border-radius: 0;
+        border-style:  solid;
+        border-width:  0 0.1875rem 0.1875rem 0;
+        inset-block:   0;
+        margin-block:  auto;
+        rotate:        45deg;
+    }
+
+    input[data-sign="check"]:not(:checked, [type="checkbox"]:indeterminate):where([data-inline-align="start"])::before,
+    input[data-sign="check"]:not(:checked, [type="checkbox"]:indeterminate):not([data-inline-align="start"])::after,
+    input[type="checkbox"]:not([role="switch"]):not([data-sign]):not([data-facet]):not(:checked, :indeterminate)::after {
+        border-width: 0;
+    }
+
+    /* --- size --- */
+
+    :where(
+        [data-sign="check"],
+        input[type="checkbox"]:not([role="switch"]):not([data-sign]):not([data-facet])
+    ) {
+        block-size:      var(--box-height);
+        min-inline-size: var(--box-height);
+    }
+
+    [data-sign="check"]:where([data-inline-align="start"])::before,
+    [data-sign="check"]:not([data-inline-align="start"])::after,
+    input[type="checkbox"]:not([role="switch"]):not([data-sign]):not([data-facet])::after {
+        block-size:  var(--line-height);
+        inline-size: calc(var(--line-height) * 0.5);
+    }
+
+    [data-sign="check"][data-size="xs"]:where([data-inline-align="start"])::before,
+    [data-sign="check"][data-size="xs"]:not([data-inline-align="start"])::after,
+    input[type="checkbox"]:not([role="switch"]):not([data-sign]):not([data-facet])[data-size="xs"]::after {
+        translate: 0 -0.09375rem;
+    }
+
+    [data-sign="check"][data-size="sm"]:where([data-inline-align="start"])::before,
+    [data-sign="check"][data-size="sm"]:not([data-inline-align="start"])::after,
+    input[type="checkbox"]:not([role="switch"]):not([data-sign]):not([data-facet])[data-size="sm"]::after {
+        translate: 0 -0.15625rem;
+    }
+
+    [data-sign="check"]:where([data-size="md"], :not([data-size])):where([data-inline-align="start"])::before,
+    [data-sign="check"]:where([data-size="md"], :not([data-size])):not([data-inline-align="start"])::after,
+    input[type="checkbox"]:not([role="switch"]):not([data-sign]):not([data-facet]):where([data-size="md"], :not([data-size]))::after {
+        translate: 0 -0.20312rem;
+    }
+
+    [data-sign="check"][data-size="lg"]:where([data-inline-align="start"])::before,
+    [data-sign="check"][data-size="lg"]:not([data-inline-align="start"])::after,
+    input[type="checkbox"]:not([role="switch"]):not([data-sign]):not([data-facet])[data-size="lg"]::after {
+        translate: 0 -0.25rem;
+    }
+
+    [data-sign="check"][data-size="xl"]:where([data-inline-align="start"])::before,
+    [data-sign="check"][data-size="xl"]:not([data-inline-align="start"])::after,
+    input[type="checkbox"]:not([role="switch"]):not([data-sign]):not([data-facet])[data-size="xl"]::after {
+        translate: 0 -0.28125rem;
+    }
+
+    [data-sign="check"][data-size="2xl"]:where([data-inline-align="start"])::before,
+    [data-sign="check"][data-size="2xl"]:not([data-inline-align="start"])::after,
+    input[type="checkbox"]:not([role="switch"]):not([data-sign]):not([data-facet])[data-size="2xl"]::after {
+        translate: 0 -0.35938rem;
+    }
+
+    /* === copy === */
+
+    [data-sign="copy"]::before,
+    [data-sign="copy"]::after {
+        border-color: currentColor;
+        border-style: solid;
+    }
+    [data-sign="copy"]::after {
+        background-color: inherit;
+    }
+
+    /* --- size --- */
+
+    [data-sign="copy"] {
+        &::before,
+        &::after {
+            block-size:    calc(var(--line-height) * 0.875);
+            border-radius: var(--border-radius);
+            border-width:  var(--border-width);
+            inline-size:   calc(var(--line-height) * 0.625);
+        }
+        &::before {
+            translate: calc(var(--line-height) * 0.1875) calc(var(--line-height) * -0.0625);
+        }
+        &::after {
+            translate: calc(var(--line-height) * -0.1875) calc(var(--line-height) * 0.0625);
+        }
+        &[data-type="landscape"]::before,
+        &[data-type="landscape"]::after {
+            block-size:  calc(var(--line-height) * 0.625);
+            inline-size: calc(var(--line-height) * 0.875);
+        }
+        &[data-type="landscape"]::before {
+            translate: calc(var(--line-height) * 0.0625) calc(var(--line-height) * -0.1875);
+        }
+        &[data-type="landscape"]::after {
+            translate: calc(var(--line-height) * -0.0625) calc(var(--line-height) * 0.1875);
+        }
+    }
+
+    /* === file === */
+
+    [data-sign="file"]::before {
+        border-color:            currentColor;
+        border-style:            solid;
+        border-top-right-radius: 0;
+        clip-path:               polygon(0% 0%, 62.5% 0%, 100% 28.125%, 100% 100%, 0% 100%);
+    }
+
+    [data-sign="file"]::after {
+        background-color: currentColor;
+        clip-path:        polygon(62.5% 0%, 100% 28.125%, 94.1074% 32.5444%, 56.6074% 4.4194%);
+    }
+
+    /* --- size --- */
+
+    [data-sign="file"] {
+        &::before,
+        &::after {
+            block-size:  var(--line-height);
+            inline-size: calc(var(--line-height) * 0.75);
+        }
+        &::before {
+            border-radius: calc(var(--line-height) * 0.125);
+            border-top-right-radius: 0;
+            border-width:  calc(var(--line-height) * 0.0625);
+        }
+    }
+
+    /* === folder === */
+
+    [data-sign="folder"]:where([data-inline-align="start"])::before,
+    [data-sign="folder"]:not([data-inline-align="start"])::after {
+        background-color: currentColor;
+        clip-path:        shape(
+            evenodd from 3.375% 24.1875%,
+            line to 3.125% 18.75%,
+            arc to 15.625% 6.25% of 12.5% cw,
+            line to 38.575% 6.25%,
+            arc to 47.4125% 9.9125% of 12.5% cw,
+            line to 52.5875% 15.0875%,
+            arc to 61.425% 18.75% of 12.5% ccw,
+            line to 86.3125% 18.75%,
+            arc to 98.7625% 32.3813% of 12.5% cw,
+            line to 94.7812% 76.1312%,
+            arc to 82.3375% 87.5% of 12.5% cw,
+            line to 17.6625% 87.5%,
+            arc to 5.21875% 76.1312% of 12.5% cw,
+            line to 1.2375% 32.3813%,
+            arc to 3.375% 24.1875% of 12.5% cw,
+            close,
+            move to 13.6875% 25%,
+            arc to 7.4625% 31.8125% of 6.25% ccw,
+            line to 11.4437% 75.5625%,
+            arc to 17.6625% 81.25% of 6.25% ccw,
+            line to 82.3375% 81.25%,
+            arc to 88.5563% 75.5625% of 6.25% ccw,
+            line to 92.5375% 31.8125%,
+            arc to 86.3125% 25% of 6.25% ccw,
+            close,
+            move to 43% 14.3313%,
+            arc to 38.575% 12.5% of 6.25% ccw,
+            line to 15.625% 12.5%,
+            arc to 9.375% 18.6313% of 6.25% ccw,
+            line to 9.4125% 19.5%,
+            curve to 13.6875% 18.75% with 11.4313% 18.7563%,
+            line to 47.4125% 18.75%,
+            close
+        );
+        content:          "";
+        inset-block:      0;
+        margin-block:     auto;
+        position:         absolute;
+    }
+
+    /* --- size --- */
+
+    [data-sign="folder"]:where([data-inline-align="start"])::before,
+    [data-sign="folder"]:not([data-inline-align="start"])::after {
+        block-size:  var(--line-height);
+        inline-size: var(--line-height);
+    }
+
+    /* === hatch === */
+
+    [data-sign="hatch"]:where([data-inline-align="start"])::before,
+    [data-sign="hatch"]:not([data-inline-align="start"])::after {
+        background-image: repeating-linear-gradient(
+            -45deg,
+            currentcolor 0,
+            currentcolor 0.125rem,
+            transparent 0.125rem,
+            transparent 0.25rem
+        );
+        border-radius: 0;
+    }
+
+    /* --- size --- */
+
+    [data-sign="hatch"]:where([data-inline-align="start"])::before,
+    [data-sign="hatch"]:not([data-inline-align="start"])::after {
+        block-size:  var(--line-height);
+        inline-size: var(--line-height);
+    }
+
+    /*  === minus, plus === */
+
+    [data-sign="minus"]:where([data-inline-align="start"])::before,
+    [data-sign="minus"]:not([data-inline-align="start"])::after,
+    [data-sign="plus"]::before,
+    [data-sign="plus"]::after {
+        background-color: currentColor;
+        border-radius:    0;
+    }
+    [data-sign="plus"]::after {
+        rotate: 90deg;
+    }
+
+    /* --- size --- */
+
+    [data-sign="minus"]:where([data-inline-align="start"])::before,
+    [data-sign="minus"]:not([data-inline-align="start"])::after,
+    [data-sign="plus"]::before,
+    [data-sign="plus"]::after {
+        block-size:  var(--border-width);
+        inline-size: calc(var(--line-height) * 0.625);
+    }
+
+    /* === rule: indent with a rule bar === */
+
+    [data-sign="rule"]:where(
+        [data-inline-align="start"],
+        :not([data-inline-align])
+    ) {
+        padding-inline-start: 1.5rem;
+    }
+    [data-sign="rule"][data-inline-align="end"] {
+        padding-inline-end: 1.5rem;
+    }
+
+    [data-sign="rule"]:where([data-inline-align="start"])::before,
+    [data-sign="rule"]:not([data-inline-align="start"])::after {
+        background-color: var(--color-emphasis-ink);
+        border-radius:     0;
+        inline-size:       0.5rem;
+    }
+    [data-sign="rule"][data-inline-align="start"]::before,
+    [data-sign="rule"]:not([data-inline-align])::after {
+        inset-inline-start: 0;
+    }
+    [data-sign="rule"][data-inline-align="end"]::after {
+        inset-inline-end: 0;
+    }
+    @media (forced-colors: active) {
+        [data-sign="rule"]:where([data-inline-align="start"])::before,
+        [data-sign="rule"]:not([data-inline-align="start"])::after {
+            background-color: CanvasText;
+        }
+    }
+
+    /* --- size --- */
+
+    [data-sign="rule"]:where([data-inline-align="start"])::before,
+    [data-sign="rule"]:not([data-inline-align="start"])::after {
+        inset-block: calc((var(--box-height) - var(--line-height)) / 2);
+    }
+
+    /*  === x === */
+
+    [data-sign="x"]::before,
+    [data-sign="x"]::after {
+        background-color: currentColor;
+        border-radius:    0;
+    }
+    [data-sign="x"]::before {
+        rotate: 45deg;
+    }
+    [data-sign="x"]::after {
+        rotate: -45deg;
+    }
+
+    /* --- size --- */
+
+    [data-sign="x"]::before,
+    [data-sign="x"]::after {
+        block-size:  var(--border-width);
+        inline-size: calc(var(--line-height) / 1.4142);
+    }
+
+    /* === chevron === */
+
+    :where(
+        [data-facet="chevron"]:not(select),
+        summary:not([data-facet]),
+        button[aria-haspopup="listbox"]:not([data-facet])
+    ):where([data-inline-align="start"])::before,
+    :where(
+        [data-facet="chevron"]:not(select),
+        summary:not([data-facet]),
+        button[aria-haspopup="listbox"]:not([data-facet])
+    ):not([data-inline-align="start"])::after,
+    label:has(> select:is([data-facet="chevron"], :not([data-facet])))::after {
+        border-radius:        0;
+        border-style:         solid;
+        border-top-width:     0;
+        border-left-width:    0;
+        border-bottom-width:  var(--border-width);
+        border-right-width:   var(--border-width);
+        content:              "";
+        inset-block:          0;
+        margin-block:         auto;
+        pointer-events:       none;
+        position:             absolute;
+        z-index:              2;
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+        :where(
+            [data-facet="chevron"]:not(select),
+            summary:not([data-facet]),
+            button[aria-haspopup="listbox"]:not([data-facet])
+        ):where([data-inline-align="start"])::before,
+        :where(
+            [data-facet="chevron"]:not(select),
+            summary:not([data-facet]),
+            button[aria-haspopup="listbox"]:not([data-facet])
+        ):not([data-inline-align="start"])::after,
+        label:has(> select:is([data-facet="chevron"], :not([data-facet])))::after {
+            transition: transform 0.15s ease;
+        }
+    }
+
+    /* --- size --- */
+
+    :where(
+        [data-facet="chevron"]:not(select),
+        summary:not([data-facet]),
+        button[aria-haspopup="listbox"]:not([data-facet])
+    ):where([data-inline-align="end"], :not([data-inline-align])) {
+        padding-inline-end: calc(var(--border-radius) * 2 + var(--font-size) * 0.6 * 1.06);
+
+        &:where([data-size="xs"], [data-size="sm"], [data-size="md"], :not([data-size])) {
+            padding-inline-end: calc(var(--border-radius) * 2 + var(--font-size) * 0.75 * 1.06);
+        }
+    }
+    :where(
+        [data-facet="chevron"]:not(select),
+        summary:not([data-facet]),
+        button[aria-haspopup="listbox"]:not([data-facet])
+    )[data-inline-align="start"] {
+        padding-inline-start: calc(var(--border-radius) * 2 + var(--font-size) * 0.6 * 1.06);
+
+        &:where([data-size="xs"], [data-size="sm"], [data-size="md"], :not([data-size])) {
+            padding-inline-start: calc(var(--border-radius) * 2 + var(--font-size) * 0.75 * 1.06);
+        }
+    }
+
+    :where(
+        [data-facet="chevron"]:not(select),
+        summary:not([data-facet]),
+        button[aria-haspopup="listbox"]:not([data-facet])
+    ):where([data-inline-align="start"])::before,
+    :where(
+        [data-facet="chevron"]:not(select),
+        summary:not([data-facet]),
+        button[aria-haspopup="listbox"]:not([data-facet])
+    ):not([data-inline-align="start"])::after {
+        block-size:  calc(var(--font-size) * 0.6 * 1.06);
+        inline-size: calc(var(--font-size) * 0.6 * 1.06);
+    }
+
+    :where(
+        [data-facet="chevron"]:not(select):where([data-size="xs"], [data-size="sm"], [data-size="md"], :not([data-size])),
+        summary:not([data-facet]):where([data-size="xs"], [data-size="sm"], [data-size="md"], :not([data-size])),
+        button[aria-haspopup="listbox"]:not([data-facet]):where([data-size="xs"], [data-size="sm"], [data-size="md"], :not([data-size]))
+    ):where([data-inline-align="start"])::before,
+    :where(
+        [data-facet="chevron"]:not(select):where([data-size="xs"], [data-size="sm"], [data-size="md"], :not([data-size])),
+        summary:not([data-facet]):where([data-size="xs"], [data-size="sm"], [data-size="md"], :not([data-size])),
+        button[aria-haspopup="listbox"]:not([data-facet]):where([data-size="xs"], [data-size="sm"], [data-size="md"], :not([data-size]))
+    ):not([data-inline-align="start"])::after {
+        block-size:  calc(var(--font-size) * 0.75 * 1.06);
+        inline-size: calc(var(--font-size) * 0.75 * 1.06);
+    }
+
+    :where(
+        [data-facet="chevron"]:not(select):where([data-size="xs"], [data-size="sm"], [data-size="lg"]),
+        summary:not([data-facet]):where([data-size="xs"], [data-size="sm"], [data-size="lg"]),
+        button[aria-haspopup="listbox"]:not([data-facet]):where([data-size="xs"], [data-size="sm"], [data-size="lg"])
+    ):where([data-inline-align="start"])::before,
+    :where(
+        [data-facet="chevron"]:not(select):where([data-size="xs"], [data-size="sm"], [data-size="lg"]),
+        summary:not([data-facet]):where([data-size="xs"], [data-size="sm"], [data-size="lg"]),
+        button[aria-haspopup="listbox"]:not([data-facet]):where([data-size="xs"], [data-size="sm"], [data-size="lg"])
+    ):not([data-inline-align="start"])::after {
+        transform: translateY(-0.125rem) rotate(45deg);
+    }
+
+    :where(
+        [data-facet="chevron"]:not(select):where([data-size="xs"], [data-size="sm"], [data-size="lg"]):where(:open, :checked, :has(+ [popover]:popover-open)),
+        details:open > summary:not([data-facet]):where([data-size="xs"], [data-size="sm"], [data-size="lg"]),
+        button[aria-haspopup="listbox"]:not([data-facet]):where([data-size="xs"], [data-size="sm"], [data-size="lg"]):has(+ [popover]:popover-open)
+    ):where([data-inline-align="start"])::before,
+    :where(
+        [data-facet="chevron"]:not(select):where([data-size="xs"], [data-size="sm"], [data-size="lg"]):where(:open, :checked, :has(+ [popover]:popover-open)),
+        details:open > summary:not([data-facet]):where([data-size="xs"], [data-size="sm"], [data-size="lg"]),
+        button[aria-haspopup="listbox"]:not([data-facet]):where([data-size="xs"], [data-size="sm"], [data-size="lg"]):has(+ [popover]:popover-open)
+    ):not([data-inline-align="start"])::after {
+        transform: translateY(0.125rem) rotate(225deg);
+    }
+
+    :where(
+        [data-facet="chevron"]:not(select):where([data-size="md"], :not([data-size]), [data-size="xl"]),
+        summary:not([data-facet]):where([data-size="md"], :not([data-size]), [data-size="xl"]),
+        button[aria-haspopup="listbox"]:not([data-facet]):where([data-size="md"], :not([data-size]), [data-size="xl"])
+    ):where([data-inline-align="start"])::before,
+    :where(
+        [data-facet="chevron"]:not(select):where([data-size="md"], :not([data-size]), [data-size="xl"]),
+        summary:not([data-facet]):where([data-size="md"], :not([data-size]), [data-size="xl"]),
+        button[aria-haspopup="listbox"]:not([data-facet]):where([data-size="md"], :not([data-size]), [data-size="xl"])
+    ):not([data-inline-align="start"])::after {
+        transform: translateY(-0.1875rem) rotate(45deg);
+    }
+
+    :where(
+        [data-facet="chevron"]:not(select):where([data-size="md"], :not([data-size]), [data-size="xl"]):where(:open, :checked, :has(+ [popover]:popover-open)),
+        details:open > summary:not([data-facet]):where([data-size="md"], :not([data-size]), [data-size="xl"]),
+        button[aria-haspopup="listbox"]:not([data-facet]):where([data-size="md"], :not([data-size]), [data-size="xl"]):has(+ [popover]:popover-open)
+    ):where([data-inline-align="start"])::before,
+    :where(
+        [data-facet="chevron"]:not(select):where([data-size="md"], :not([data-size]), [data-size="xl"]):where(:open, :checked, :has(+ [popover]:popover-open)),
+        details:open > summary:not([data-facet]):where([data-size="md"], :not([data-size]), [data-size="xl"]),
+        button[aria-haspopup="listbox"]:not([data-facet]):where([data-size="md"], :not([data-size]), [data-size="xl"]):has(+ [popover]:popover-open)
+    ):not([data-inline-align="start"])::after {
+        transform: translateY(0.1875rem) rotate(225deg);
+    }
+
+    :where(
+        [data-facet="chevron"]:not(select)[data-size="2xl"],
+        summary:not([data-facet])[data-size="2xl"],
+        button[aria-haspopup="listbox"]:not([data-facet])[data-size="2xl"]
+    ):where([data-inline-align="start"])::before,
+    :where(
+        [data-facet="chevron"]:not(select)[data-size="2xl"],
+        summary:not([data-facet])[data-size="2xl"],
+        button[aria-haspopup="listbox"]:not([data-facet])[data-size="2xl"]
+    ):not([data-inline-align="start"])::after {
+        transform: translateY(-0.25rem) rotate(45deg);
+    }
+
+    :where(
+        [data-facet="chevron"]:not(select)[data-size="2xl"]:where(:open, :checked, :has(+ [popover]:popover-open)),
+        details:open > summary:not([data-facet])[data-size="2xl"],
+        button[aria-haspopup="listbox"]:not([data-facet])[data-size="2xl"]:has(+ [popover]:popover-open)
+    ):where([data-inline-align="start"])::before,
+    :where(
+        [data-facet="chevron"]:not(select)[data-size="2xl"]:where(:open, :checked, :has(+ [popover]:popover-open)),
+        details:open > summary:not([data-facet])[data-size="2xl"],
+        button[aria-haspopup="listbox"]:not([data-facet])[data-size="2xl"]:has(+ [popover]:popover-open)
+    ):not([data-inline-align="start"])::after {
+        transform: translateY(0.25rem) rotate(225deg);
+    }
+
+    label:has(> select:is([data-facet="chevron"], :not([data-facet]))[data-size="xs"])::after {
+        block-size:          calc(var(--xs-font-size) * 0.75 * 1.06);
+        border-bottom-width: var(--xs-border-width);
+        border-right-width:  var(--xs-border-width);
+        inline-size:         calc(var(--xs-font-size) * 0.75 * 1.06);
+        inset-block-end:     auto;
+        inset-block-start:   calc((var(--xs-box-height) - var(--xs-font-size) * 0.75 * 1.06) / 2);
+        inset-inline-end:    var(--xs-border-radius);
+        margin-block:        0;
+        transform:           translateY(-0.125rem) rotate(45deg);
+    }
+
+    label:has(> select:is([data-facet="chevron"], :not([data-facet]))[data-size="xs"]:open)::after {
+        transform: translateY(0.125rem) rotate(225deg);
+    }
+
+    label:has(> select:is([data-facet="chevron"], :not([data-facet]))[data-size="sm"])::after {
+        block-size:          calc(var(--sm-font-size) * 0.75 * 1.06);
+        border-bottom-width: var(--sm-border-width);
+        border-right-width:  var(--sm-border-width);
+        inline-size:         calc(var(--sm-font-size) * 0.75 * 1.06);
+        inset-block-end:     auto;
+        inset-block-start:   calc((var(--sm-box-height) - var(--sm-font-size) * 0.75 * 1.06) / 2);
+        inset-inline-end:    var(--sm-border-radius);
+        margin-block:        0;
+        transform:           translateY(-0.125rem) rotate(45deg);
+    }
+
+    label:has(> select:is([data-facet="chevron"], :not([data-facet]))[data-size="sm"]:open)::after {
+        transform: translateY(0.125rem) rotate(225deg);
+    }
+
+    label:has(> select:is([data-facet="chevron"], :not([data-facet])):where([data-size="md"], :not([data-size])))::after {
+        block-size:          calc(var(--md-font-size) * 0.75 * 1.06);
+        border-bottom-width: var(--md-border-width);
+        border-right-width:  var(--md-border-width);
+        inline-size:         calc(var(--md-font-size) * 0.75 * 1.06);
+        inset-block-end:     auto;
+        inset-block-start:   calc((var(--md-box-height) - var(--md-font-size) * 0.75 * 1.06) / 2);
+        inset-inline-end:    var(--md-border-radius);
+        margin-block:        0;
+        transform:           translateY(-0.1875rem) rotate(45deg);
+    }
+
+    label:has(> select:is([data-facet="chevron"], :not([data-facet])):where([data-size="md"], :not([data-size])):open)::after {
+        transform: translateY(0.1875rem) rotate(225deg);
+    }
+
+    label:has(> select:is([data-facet="chevron"], :not([data-facet]))[data-size="lg"])::after {
+        block-size:          calc(var(--lg-font-size) * 0.6 * 1.06);
+        border-bottom-width: var(--lg-border-width);
+        border-right-width:  var(--lg-border-width);
+        inline-size:         calc(var(--lg-font-size) * 0.6 * 1.06);
+        inset-block-end:     auto;
+        inset-block-start:   calc((var(--lg-box-height) - var(--lg-font-size) * 0.6 * 1.06) / 2);
+        inset-inline-end:    var(--lg-border-radius);
+        margin-block:        0;
+        transform:           translateY(-0.125rem) rotate(45deg);
+    }
+
+    label:has(> select:is([data-facet="chevron"], :not([data-facet]))[data-size="lg"]:open)::after {
+        transform: translateY(0.125rem) rotate(225deg);
+    }
+
+    label:has(> select:is([data-facet="chevron"], :not([data-facet]))[data-size="xl"])::after {
+        block-size:          calc(var(--xl-font-size) * 0.6 * 1.06);
+        border-bottom-width: var(--xl-border-width);
+        border-right-width:  var(--xl-border-width);
+        inline-size:         calc(var(--xl-font-size) * 0.6 * 1.06);
+        inset-block-end:     auto;
+        inset-block-start:   calc((var(--xl-box-height) - var(--xl-font-size) * 0.6 * 1.06) / 2);
+        inset-inline-end:    var(--xl-border-radius);
+        margin-block:        0;
+        transform:           translateY(-0.1875rem) rotate(45deg);
+    }
+
+    label:has(> select:is([data-facet="chevron"], :not([data-facet]))[data-size="xl"]:open)::after {
+        transform: translateY(0.1875rem) rotate(225deg);
+    }
+
+    label:has(> select:is([data-facet="chevron"], :not([data-facet]))[data-size="2xl"])::after {
+        block-size:          calc(var(--2xl-font-size) * 0.6 * 1.06);
+        border-bottom-width: var(--2xl-border-width);
+        border-right-width:  var(--2xl-border-width);
+        inline-size:         calc(var(--2xl-font-size) * 0.6 * 1.06);
+        inset-block-end:     auto;
+        inset-block-start:   calc((var(--2xl-box-height) - var(--2xl-font-size) * 0.6 * 1.06) / 2);
+        inset-inline-end:    var(--2xl-border-radius);
+        margin-block:        0;
+        transform:           translateY(-0.25rem) rotate(45deg);
+    }
+
+    label:has(> select:is([data-facet="chevron"], :not([data-facet]))[data-size="2xl"]:open)::after {
+        transform: translateY(0.25rem) rotate(225deg);
+    }
+
+    /* === eye === */
+
+    [data-facet="eye"]:where([data-inline-align="start"])::before,
+    [data-facet="eye"]:not([data-inline-align="start"])::after {
+        background-color: currentColor;
+        clip-path: shape(
+            from 100% 50%,
+            curve to 50% 15.625% with 100% 50% / 81.25% 15.625%,
+            curve to 0% 50% with 18.75% 15.625% / 0% 50%,
+            curve to 50% 84.375% with 0% 50% / 18.75% 84.375%,
+            curve to 100% 50% with 81.25% 84.375% / 100% 50%,
+            close,
+            move to 92.5% 50%,
+            curve to 50% 79.219% with 92.5% 50% / 76.562% 79.219%,
+            curve to 7.5% 50% with 23.438% 79.219% / 7.5% 50%,
+            curve to 50% 20.781% with 7.5% 50% / 23.438% 20.781%,
+            curve to 92.5% 50% with 76.562% 20.781% / 92.5% 50%,
+            close,
+            move to -10.828% -5.172%,
+            line to 105.172% 110.828%,
+            line to 110.828% 105.172%,
+            line to -5.172% -10.828%,
+            close
+        );
+    }
+
+    [data-facet="eye"]:where(:checked, [aria-pressed="true"]):where([data-inline-align="start"])::before,
+    [data-facet="eye"]:where(:checked, [aria-pressed="true"]):not([data-inline-align="start"])::after {
+        clip-path: shape(
+            from 100% 50%,
+            curve to 50% 15.625% with 100% 50% / 81.25% 15.625%,
+            curve to 0% 50% with 18.75% 15.625% / 0% 50%,
+            curve to 50% 84.375% with 0% 50% / 18.75% 84.375%,
+            curve to 100% 50% with 81.25% 84.375% / 100% 50%,
+            close,
+            move to 92.5% 50%,
+            curve to 50% 79.219% with 92.5% 50% / 76.562% 79.219%,
+            curve to 7.5% 50% with 23.438% 79.219% / 7.5% 50%,
+            curve to 50% 20.781% with 7.5% 50% / 23.438% 20.781%,
+            curve to 92.5% 50% with 76.562% 20.781% / 92.5% 50%,
+            close,
+            move to 71.875% 50%,
+            arc to 28.125% 50% of 21.875% ccw,
+            arc to 71.875% 50% of 21.875% ccw,
+            close,
+            move to 65.625% 50%,
+            arc to 34.375% 50% of 15.625% cw,
+            arc to 65.625% 50% of 15.625% cw,
+            close
+        );
+    }
+
+    /* --- size --- */
+
+    [data-facet="eye"]:where([data-inline-align="start"])::before,
+    [data-facet="eye"]:not([data-inline-align="start"])::after {
+        block-size:  var(--line-height);
+        inline-size: var(--line-height);
+    }
+
+    /* === reload, sync === */
+
+    :where(
+        [data-facet="reload"],
+        [data-facet="sync"]
+    ):where([data-inline-align="start"])::before,
+    :where(
+        [data-facet="reload"],
+        [data-facet="sync"]
+    ):not([data-inline-align="start"])::after {
+        background-color: currentColor;
+    }
+
+    /* --- size --- */
+
+    :where(
+        [data-facet="reload"],
+        [data-facet="sync"]
+    ):where([data-inline-align="start"])::before,
+    :where(
+        [data-facet="reload"],
+        [data-facet="sync"]
+    ):not([data-inline-align="start"])::after {
+        block-size:  var(--line-height);
+        inline-size: var(--line-height);
+    }
+
+    /* === reload === */
+
+    [data-facet="reload"]:where([data-inline-align="start"])::before,
+    [data-facet="reload"]:not([data-inline-align="start"])::after {
+        clip-path: shape(
+            from 50% 18.75%,
+            arc to 78.412% 36.962% of 31.25% 31.25% ccw large,
+            arc to 84.087% 34.356% of 3.125% 3.125% cw small,
+            arc to 50% 12.5% of 37.5% 37.5% cw large,
+            line to 50% 3.338%,
+            arc to 52.562% 2.138% of 1.562% 1.562% cw small,
+            line to 67.312% 14.425%,
+            curve to 67.312% 16.825% with 68.062% 15.05% / 68.062% 16.2%,
+            line to 52.562% 29.113%,
+            arc to 50% 27.913% of 1.562% 1.562% cw small,
+            line to 50% 18.75%,
+            close
+        );
+    }
+
+    /* === sync === */
+
+    [data-facet="sync"]:where([data-inline-align="start"])::before,
+    [data-facet="sync"]:not([data-inline-align="start"])::after {
+        clip-path: shape(
+            from 50% 18.75%,
+            curve to 25.894% 30.112% with 40.3% 18.75% / 31.625% 23.169%,
+            arc to 21.075% 26.137% of 3.125% 3.125% cw large,
+            arc to 86.981% 43.75% of 37.512% 37.512% cw small,
+            line to 96.663% 43.75%,
+            arc to 97.863% 46.312% of 1.562% 1.562% cw small,
+            line to 85.575% 61.062%,
+            arc to 83.175% 61.062% of 1.562% 1.562% cw small,
+            line to 70.888% 46.312%,
+            arc to 72.088% 43.75% of 1.562% 1.562% cw small,
+            line to 80.625% 43.75%,
+            arc to 50% 18.75% of 31.25% 31.25% ccw small,
+            close,
+            move to 19.375% 56.25%,
+            arc to 74.106% 69.888% of 31.262% 31.262% ccw small,
+            arc to 78.925% 73.862% of 3.125% 3.125% cw large,
+            arc to 13.019% 56.25% of 37.512% 37.512% cw small,
+            line to 3.75% 56.25%,
+            line to 28.325% 56.25%,
+            arc to 29.525% 58.812% of 1.562% 1.562% cw small,
+            line to 17.238% 73.562%,
+            arc to 14.838% 73.562% of 1.562% 1.562% cw small,
+            line to 2.55% 58.812%,
+            arc to 3.75% 56.25% of 1.562% 1.562% cw small,
+            line to 19.375% 56.25%,
+            close
+        );
+    }
+
+    /* === reload, sync: busy === */
+
+    :is(
+        [data-facet="reload"],
+        [data-facet="sync"]
+    ):where(
+        [aria-busy="true"],
+        [aria-pressed="true"],
+        :checked
+    ):where([data-inline-align="start"])::before,
+    :is(
+        [data-facet="reload"],
+        [data-facet="sync"]
+    ):where(
+        [aria-busy="true"],
+        [aria-pressed="true"],
+        :checked
+    ):not([data-inline-align="start"])::after {
+        background-color:    transparent;
+        background-image:
+            radial-gradient(circle closest-side, currentColor 95%, transparent 100%),
+            radial-gradient(circle closest-side, currentColor 95%, transparent 100%),
+        radial-gradient(circle closest-side, currentColor 95%, transparent 100%);
+        background-position:
+            13.077% 62.5%,
+            50% 62.5%,
+        86.923% 62.5%;
+        background-repeat:   no-repeat;
+        background-size:     18.75% 18.75%;
+        clip-path:           none;
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+        :is(
+            [data-facet="reload"],
+            [data-facet="sync"]
+        ):where(
+            [aria-busy="true"],
+            [aria-pressed="true"],
+            :checked
+        ):where([data-inline-align="start"])::before,
+        :is(
+            [data-facet="reload"],
+            [data-facet="sync"]
+        ):where(
+            [aria-busy="true"],
+            [aria-pressed="true"],
+            :checked
+        ):not([data-inline-align="start"])::after {
+            animation: sign-hop 1.5s ease infinite;
+        }
+
+        @keyframes sign-hop {
+            0%, 40%, 100% {
+                background-position:
+                    13.077% 62.5%,
+                    50% 62.5%,
+                86.923% 62.5%;
+            }
+            10% {
+                background-position:
+                    13.077% 25%,
+                    50% 62.5%,
+                86.923% 62.5%;
+            }
+            20% {
+                background-position:
+                    13.077% 62.5%,
+                    50% 25%,
+                86.923% 62.5%;
+            }
+            30% {
+                background-position:
+                    13.077% 62.5%,
+                    50% 62.5%,
+                86.923% 25%;
+            }
+        }
+    }
+}
+/*
+ * SPDX-FileCopyrightText: 2026 Andyou <andyou@animagram.jp>
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/*  Usage:
+
+    <* role="toolbar | radiogroup | tablist" aria-orientation="horizontal | vertical">
+      <span></span>
+      <button></button>
+      <label><input></label>
+      <label><select></select></label></*>
+
+    <* role="toolbar | radiogroup | tablist" aria-orientation="horizontal | vertical" data-union="inline | block">
+      <span></span>
+      <button></button>
+      <label><input></label>
+      <label><select></select></label></*>
+
+    <* data-union="inline | block">
+      <span></span>
+      <button></button>
+      <label><input></label>
+      <label><select></select></label></*>
+
+    <fieldset data-union="inline">
+      <legend>
+        <span></span></legend>
+      <label><input type="radio"></label>
+      <label><input type="radio"></label></fieldset>
+
+    <search>
+      <span></span>
+      <label><input></label>
+      <button></button></search>
+
+    <form role="search">
+      <span></span>
+      <label><input></label>
+      <button></button></form>
+
+    <label>
+        <span></span>
+        <input>
+        <select></select>
+        <button></button></label>
+*/
+@layer css.data_union {
+
+    :where(
+        [role="toolbar"],
+        [role="radiogroup"],
+        [role="tablist"],
+        search,
+        form[role="search"],
+        label:has(> *),
+        [data-union="inline"],
+        [data-union="block"]
+    ) {
+        display: inline flex;
+
+        & > :not(span) {
+            flex-shrink: 0;
+        }
+    }
+
+    :where(
+        [role="toolbar"],
+        [role="radiogroup"],
+        [role="tablist"],
+        search,
+        form[role="search"],
+        label:has(> *),
+        [data-union="inline"]
+    ):where(:not([aria-orientation="vertical"], [data-union="block"])) {
+        align-items:    start;
+        column-gap:     var(--border-radius);
+        flex-direction: row;
+
+        & > span,
+        & > legend > * {
+            align-self: center;
+        }
+    }
+
+    :where(
+        [role="toolbar"],
+        [role="radiogroup"],
+        [role="tablist"]
+    ):where([aria-orientation="vertical"]:not([data-union="block"])) {
+        align-items:    start;
+        flex-direction: column;
+        row-gap:        var(--border-radius);
+    }
+
+    :where([data-union="block"]) {
+        align-items:    stretch;
+        flex-direction: column;
+
+        & > label > :where(
+            input:is(
+                [type="text"],
+                [type="email"],
+                [type="password"],
+                [type="search"],
+                [type="url"],
+                [type="tel"],
+                [type="number"]
+            ),
+            select
+        ) {
+            flex-grow: 1;
+        }
+    }
+
+    label:not([data-surround="fill"]):has(> :where(
+        :disabled,
+        [aria-disabled="true"]
+    )) {
+        color: var(--color-ink-mix);
+    }
+
+    :where(
+        [data-union="inline"],
+        search,
+        form[role="search"]
+    ) {
+        column-gap: 0;
+
+        & > span:first-child,
+        & > legend > :last-child {
+            padding-inline-end: var(--border-radius);
+        }
+    }
+
+    :where([data-union="block"]) {
+        & > span:first-child,
+        & > legend > :last-child {
+            padding-block-end: var(--border-radius);
+        }
+    }
+
+    :where(
+        [data-union="inline"],
+        search,
+        form[role="search"],
+        label
+    ),
+    :where(
+        [data-union="inline"],
+        search,
+        form[role="search"],
+        label
+    ) * {
+        vertical-align: middle;
+    }
+
+    /* --- corner --- */
+
+    [data-union="inline"] > label:not(:last-child) > :where(
+        input:is(
+            [type="text"],
+            [type="email"],
+            [type="password"],
+            [type="search"],
+            [type="url"],
+            [type="tel"],
+            [type="number"]
+        ),
+        select
+    ),
+    [data-union="inline"] > :where(
+        :is(
+            button,
+            input:is(
+                [type="text"],
+                [type="email"],
+                [type="password"],
+                [type="search"],
+                [type="url"],
+                [type="tel"],
+                [type="number"]
+            ),
+            select,
+            textarea
+        ):not([data-surround]),
+        [data-surround="fill"],
+        [data-surround="outline"],
+        label:has(> input:is([type="radio"], [type="checkbox"]))
+    ):not(:last-child),
+    :where(
+        search,
+        form[role="search"]
+    ) > label:not(:last-child) > :where(
+        input,
+        select
+    ),
+    :where(
+        search,
+        form[role="search"]
+    ) > button:not(:last-child) {
+        border-end-end-radius:   0;
+        border-start-end-radius: 0;
+    }
+
+    [data-union="inline"] > :where(
+        label,
+        button,
+        input,
+        select
+    ) ~ label > :where(
+        input:is(
+            [type="text"],
+            [type="email"],
+            [type="password"],
+            [type="search"],
+            [type="url"],
+            [type="tel"],
+            [type="number"]
+        ),
+        select
+    ),
+    [data-union="inline"] > :where(
+        label,
+        button,
+        input,
+        select
+    ) ~ :where(
+        :is(
+            button,
+            input:is(
+                [type="text"],
+                [type="email"],
+                [type="password"],
+                [type="search"],
+                [type="url"],
+                [type="tel"],
+                [type="number"]
+            ),
+            select,
+            textarea
+        ):not([data-surround]),
+        [data-surround="fill"],
+        [data-surround="outline"],
+        label:has(> input:is([type="radio"], [type="checkbox"]))
+    ),
+    :where(
+        search,
+        form[role="search"]
+    ) > label ~ label > :where(
+        input,
+        select
+    ),
+    :where(
+        search,
+        form[role="search"]
+    ) > label ~ button {
+        border-end-start-radius:   0;
+        border-start-start-radius: 0;
+    }
+
+    [data-union="block"] > label:not(:last-child) > :where(
+        input:is(
+            [type="text"],
+            [type="email"],
+            [type="password"],
+            [type="search"],
+            [type="url"],
+            [type="tel"],
+            [type="number"]
+        ),
+        select
+    ),
+    [data-union="block"] > :where(
+        :is(
+            button,
+            input:is(
+                [type="text"],
+                [type="email"],
+                [type="password"],
+                [type="search"],
+                [type="url"],
+                [type="tel"],
+                [type="number"]
+            ),
+            select,
+            textarea
+        ):not([data-surround]),
+        [data-surround="fill"],
+        [data-surround="outline"],
+        label:has(> input:is([type="radio"], [type="checkbox"]))
+    ):not(:last-child) {
+        border-end-end-radius:   0;
+        border-end-start-radius: 0;
+    }
+
+    [data-union="block"] > :where(
+        label,
+        button,
+        input,
+        select
+    ) ~ label > :where(
+        input:is(
+            [type="text"],
+            [type="email"],
+            [type="password"],
+            [type="search"],
+            [type="url"],
+            [type="tel"],
+            [type="number"]
+        ),
+        select
+    ),
+    [data-union="block"] > :where(
+        label,
+        button,
+        input,
+        select
+    ) ~ :where(
+        :is(
+            button,
+            input:is(
+                [type="text"],
+                [type="email"],
+                [type="password"],
+                [type="search"],
+                [type="url"],
+                [type="tel"],
+                [type="number"]
+            ),
+            select,
+            textarea
+        ):not([data-surround]),
+        [data-surround="fill"],
+        [data-surround="outline"],
+        label:has(> input:is([type="radio"], [type="checkbox"]))
+    ) {
+        border-start-end-radius:   0;
+        border-start-start-radius: 0;
+    }
+
+    /* --- color --- */
+
+    :where(
+        [data-union="inline"],
+        [data-union="block"],
+        search,
+        form[role="search"]
+    ) {
+        & > button[data-surround="outline"]:not(:where(:active, [aria-pressed="true"], :user-invalid, [aria-invalid="true"])),
+        & > label:where(:not([data-surround]), [data-surround="outline"]):has(> input:is([type="radio"], [type="checkbox"]):not(:checked, :user-invalid, [aria-invalid="true"])) {
+            border-color: var(--color-ink-mix);
+        }
+    }
+}
+
+/*
+ * SPDX-FileCopyrightText: 2026 Andyou <andyou@animagram.jp>
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/*  Usage:
+
+    <h1></h1>
+
+    <hgroup>
+        <h1>block</h1>
+        <p>block</p></hgroup> 
+
+    <hgroup data-axis="inline">
+        <h1>block</h1>
+        <p>block</p></hgroup> 
+*/
+@layer css.heading {
+
+    :where(h1, h2, h3, h4, h5, h6) {
+        font-weight: bold;
+    }
+
+    hgroup > p {
+        font-weight: bold;
+    }
+
+    hgroup:where([data-axis="block"], :not([data-axis])) > :where(h1, h2, h3, h4, h5, h6, p) {
+        display: block flow;
+    }
+
+    /* --- data-axis="inline" --- */
+
+    hgroup[data-axis="inline"] > :where(h1, h2, h3, h4, h5, h6) {
+        display:        inline flow;
+        vertical-align: baseline;
+    }
+
+    hgroup[data-axis="inline"] > p {
+        display:        inline flow-root;
+        vertical-align: baseline;
+    }
+}
+/*
+ * SPDX-FileCopyrightText: 2026 Andyou <andyou@animagram.jp>
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/*  Usage:
+
+    <dl>
+        <dt></dt>
+        <dd></dd>
+        <dd></dd></dl>
+    <dl>
+        <div>
+            <dt></dt>
+            <dd></dd>
+            <dd></dd></div></dl>
+
+    <ol>
+        <li></li></ol>
+
+    <ul>
+        <li></li></ul>
+ */
+@layer css.list {
+
+    /* === description list (dl) === */
+
+    :where(dl) {
+        display:               grid;
+        grid-template-columns: auto 1fr;
+    }
+
+    :where(dl) > div {
+        display:               grid;
+        grid-column:           1 / -1;
+        grid-template-columns: subgrid;
+    }
+
+    :where(dl, dl > div) > dt {
+        grid-column: 1;
+    }
+
+    :where(dl, dl > div) > dd {
+        grid-column: 2;
+    }
+
+    /* === marker list (ol, ul) === */
+
+    :where(ol, ul) {
+        padding-inline-start: calc(var(--font-size) * 2);
+    }
+    :where(ol) {
+        list-style-type: decimal;
+    }
+    :where(ul) {
+        list-style-type: disc;
+    }
+}
+/*
+ * SPDX-FileCopyrightText: 2026 Andyou <andyou@animagram.jp>
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/*  Usage:
+
+    <table>
+        <caption></caption>
+        <thead>
+            <tr>
+                <th scope="col"></th></tr></thead>
+        <tbody>
+            <tr>
+                <th scope="row"></th>
+                <td></td></tr></tbody>
+        <tfoot>
+            <tr>
+                <td></td></tr></tfoot></table>
+
+    (a sortable column header is in step.css)
+*/
+@layer css.table {
+    table {
+        max-inline-size: 100%;
+    }
+
+    table :where(td, th) {
+        text-align:     start;
+        vertical-align: baseline;
+    }
+
+    /* --- size --- */
+
+    table :where(td, th) {
+        padding-block:  calc((var(--box-height) - var(--line-height)) / 2);
+        padding-inline: var(--border-radius);
+    }
+    table:where([data-size]) caption {
+        font-size: var(--font-size);
+    }
+
+    /* === data-border === */
+
+    table:where(:not([data-border]), [data-border="sectioned"]) thead tr:last-of-type :where(td, th) {
+        border-block-end:  var(--md-border-width) solid var(--color-ink);
+        padding-block-end: calc(((var(--md-box-height) - var(--md-line-height)) / 2) - var(--md-border-width));
+    }
+
+    table:where(:not([data-border]), [data-border="sectioned"]) tbody th[scope="row"] {
+        border-inline-end: var(--md-border-width) solid var(--color-ink);
+    }
+
+    table:where(:not([data-border]), [data-border="sectioned"]) tfoot tr:first-of-type :where(td, th) {
+        border-block-start:  var(--md-border-width) solid var(--color-ink);
+        padding-block-start: calc(((var(--md-box-height) - var(--md-line-height)) / 2) - var(--md-border-width));
+    }
+
+    table[data-border="grid"] {
+        border-block-start:  var(--md-border-width) solid var(--color-ink);
+        border-inline-start: var(--md-border-width) solid var(--color-ink);
+    }
+    table[data-border="grid"] :where(td, th) {
+        border-block-end:  var(--md-border-width) solid var(--color-ink-mix);
+        border-inline-end: var(--md-border-width) solid var(--color-ink-mix);
+        padding-block-end: calc(((var(--md-box-height) - var(--md-line-height)) / 2) - var(--md-border-width));
+    }
+    table[data-border="grid"] tr:last-child :where(td, th) {
+        border-block-end-color: var(--color-ink);
+    }
+    table[data-border="grid"] :where(td, th):last-child {
+        border-inline-end-color: var(--color-ink);
+    }
+
+    table[data-border="booktabs"] {
+        border-block: var(--md-border-width) solid var(--color-ink);
+    }
+    table:where([data-border="booktabs"]) thead tr:last-of-type :where(td, th) {
+        border-block-end:  var(--md-border-width) solid var(--color-ink);
+        padding-block-end: calc(((var(--md-box-height) - var(--md-line-height)) / 2) - var(--md-border-width));
+    }
+
+    /* --- size --- */
+
+    table:where([data-size]):where(:not([data-border]), [data-border="sectioned"], [data-border="booktabs"]) thead tr:last-of-type :where(td, th) {
+        border-block-end-width: var(--border-width);
+        padding-block-end:      calc(((var(--box-height) - var(--line-height)) / 2) - var(--border-width));
+    }
+    table:where([data-size]):where(:not([data-border]), [data-border="sectioned"]) tbody th[scope="row"] {
+        border-inline-end-width: var(--border-width);
+    }
+    table:where([data-size]):where(:not([data-border]), [data-border="sectioned"]) tfoot tr:first-of-type :where(td, th) {
+        border-block-start-width: var(--border-width);
+        padding-block-start:      calc(((var(--box-height) - var(--line-height)) / 2) - var(--border-width));
+    }
+    table:where([data-size])[data-border="grid"] {
+        border-block-start-width:  var(--border-width);
+        border-inline-start-width: var(--border-width);
+    }
+    table:where([data-size])[data-border="grid"] :where(td, th) {
+        border-block-end-width:  var(--border-width);
+        border-inline-end-width: var(--border-width);
+        padding-block-end:       calc(((var(--box-height) - var(--line-height)) / 2) - var(--border-width));
+    }
+    table:where([data-size])[data-border="booktabs"] {
+        border-block-width: var(--border-width);
+    }
+
+    /* === data-stripe === */
+    table[data-stripe] tbody tr:nth-child(even) {
+        background-color: var(--color-paper-mix);
+    }
+
+    /* === data-selectable === */
+    table[data-selectable] tbody tr:has(:checked) {
+        outline-color: var(--color-emphasis-ink);
+        outline-style: solid;
+        outline-width: var(--md-border-width);
+    }
+
+    @media (forced-colors: active) {
+        table[data-stripe] tbody tr:nth-child(even) {
+            background-color: revert;
+        }
+        table[data-selectable] tbody tr:has(:checked) {
+            outline-color: Highlight;
+        }
+    }
+
+    @media (forced-colors: active) {
+        :where(table, table :is(td, th)) {
+            border-color: CanvasText;
+        }
+    }
+}
+
+/*
+ * SPDX-FileCopyrightText: 2026 Andyou <andyou@animagram.jp>
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/*  Usage:
+
+    <input type="text | email | password | search | url | tel | checkbox | radio">
+
+    <input type="text" inputmode="numeric" maxlength="4" pattern="[0-9]{4}" size="4">
+    <input type="text" inputmode="numeric" maxlength="2" pattern="0?[1-9]|1[0-2]" size="2">
+    <input type="text" inputmode="numeric" maxlength="2" pattern="0?[1-9]|[12][0-9]|3[01]" size="2">
+
+    <label>
+        <span></span>
+        <input type="password">
+        <input type="checkbox"></label>
+
+    <textarea placeholder=""></textarea>
+    
+    <select>
+        <option></option></select>
+        
+    <label>
+        <select data-facet="chevron">
+            <option></option></select></label>
+*/
+@layer css.input {
+
+    :where(
+        input:is(
+            [type="text"],
+            [type="email"],
+            [type="password"],
+            [type="search"],
+            [type="url"],
+            [type="tel"],
+            [type="number"]
+        ),
+        select,
+        textarea
+    ) {
+        field-sizing:     content;
+        max-inline-size:  100%;
+        min-inline-size:  7ch; /* per https://developer.chrome.com/docs/css-ui/css-field-sizing */
+    }
+
+    :where(
+        input:is(
+            [type="text"],
+            [type="email"],
+            [type="password"],
+            [type="search"],
+            [type="url"],
+            [type="tel"],
+            [type="number"]
+        ),
+        textarea
+    ) {
+        caret-color: var(--color-ink-mix);
+        cursor:      text;
+    }
+
+    :where(
+        input[type="checkbox"],
+        input[type="radio"]
+    ) {
+        cursor: pointer;
+    }
+
+    :where(
+        input[type="checkbox"],
+        input[type="radio"]
+    ):is([data-sign]):not([data-sign-style="inline"], [data-surround]):where(:checked, :indeterminate) {
+        background-color: var(--color-emphasis-ink);
+        color:             var(--color-paper);
+    }
+
+    input[inputmode="numeric"] {
+        text-align: right;
+    }
+
+    input[inputmode="numeric"][maxlength] {
+        field-sizing:    fixed;
+        min-inline-size: 0;
+    }
+
+    /* === password === */
+
+    input[type="password"]::-ms-reveal {
+        display: none;
+    }
+
+    label:has(> input[aria-controls]) {
+        position: relative;
+    }
+
+    label:has(> input[aria-controls]) > input[type="checkbox"] {
+        inset-block-start: 0;
+        inset-inline-end: 0;
+        position:         absolute;
+        z-index:          2;
+    }
+
+    /* --- size --- */
+
+    label:has(> input[aria-controls]:where([data-size="xs"])) > input:not([type="checkbox"]) {
+        padding-inline-end: var(--xs-box-height);
+    }
+    label:has(> input[aria-controls]:where([data-size="sm"])) > input:not([type="checkbox"]) {
+        padding-inline-end: var(--sm-box-height);
+    }
+    label:has(> input[aria-controls]:where([data-size="md"], :not([data-size]))) > input:not([type="checkbox"]) {
+        padding-inline-end: var(--md-box-height);
+    }
+    label:has(> input[aria-controls]:where([data-size="lg"])) > input:not([type="checkbox"]) {
+        padding-inline-end: var(--lg-box-height);
+    }
+    label:has(> input[aria-controls]:where([data-size="xl"])) > input:not([type="checkbox"]) {
+        padding-inline-end: var(--xl-box-height);
+    }
+    label:has(> input[aria-controls]:where([data-size="2xl"])) > input:not([type="checkbox"]) {
+        padding-inline-end: var(--2xl-box-height);
+    }
+    label:has(> input[aria-controls]) > input[type="checkbox"] {
+        padding-inline-end: var(--border-radius);
+    }
+
+    select:not([data-facet]):not(label > select) {
+        appearance: auto;
+    }
+
+    /* --- size --- */
+
+    label > select:is([data-facet="chevron"], :not([data-facet])) {
+        padding-inline-end: calc(var(--box-height) * 0.6);
+    }
+    label > select:is([data-facet="chevron"], :not([data-facet]))[data-size="xs"] {
+        padding-inline-end: calc(var(--xs-box-height) * 0.75);
+    }
+
+    /* === required ===
+
+        Usage:
+
+        <label>
+            <span></span>
+            <input:not([type="radio"]) required></label>
+            
+        <label></label>
+        <input:not([type="radio"]) required>
+
+        <fieldset>
+            <legend>
+                <span></span></legend>
+            <label>
+                <input type="radio" required></label></fieldset>
+
+        <fieldset>
+            <*:not(legend, label)></*:not(legend, label)>
+            <label>
+                <span></span>
+                <input type="radio" required></label></fieldset>
+    */
+    label:has(:not(input[type="radio"]):required) > :not(input, select, textarea):first-child::after {
+        color:   var(--color-error);
+        content: "*";
+    }
+
+    label:has(+ :not([type="radio"]):required)::after {
+        color:   var(--color-error);
+        content: "*";
+    }
+
+    fieldset:has(input[type="radio"]:required) > legend > :first-child::after {
+        color:   var(--color-error);
+        content: "*";
+    }
+
+    fieldset:has(input[type="radio"]:required) > :not(label, legend):first-child::after {
+        color:   var(--color-error);
+        content: "*";
+    }
+}
+/*
+ * SPDX-FileCopyrightText: 2026 Andyou <andyou@animagram.jp>
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/*  Usage:
+
+    <a></a>
+    <button></button>
+    <input type="button">
+    <input type="submit">
+    <input type="reset">
+    <input type="file">
+    <summary></summary>
+*/
+@layer css.button {
+
+    :where(button, [type="button"], [type="submit"], [type="reset"]) {
+        font-weight: bold;
+    }
+
+    summary:not([data-surround]) {
+        display: block;
+    }
+
+    /* --- visited --- */
+
+    @media (hover: hover) {
+        a:visited:not([data-surround="fill"], :hover, :focus-visible, [aria-disabled="true"]) {
+            color: var(--color-visited);
+        }
+    }
+
+    @media (hover: none) {
+        a:visited:not([data-surround="fill"], :focus-visible, [aria-disabled="true"]) {
+            color: var(--color-visited);
+        }
+    }
+
+    @media (forced-colors: active) {
+        @media (hover: hover) {
+            a:visited:not([data-surround="fill"], :hover, :focus-visible, [aria-disabled="true"]) {
+                color: VisitedText;
+            }
+        }
+
+        @media (hover: none) {
+            a:visited:not([data-surround="fill"], :focus-visible, [aria-disabled="true"]) {
+                color: VisitedText;
+            }
+        }
+    }
+
+    /* === input file === */
+
+    input[type="file"][data-surround] {
+        background-color: transparent;
+        border:           none;
+        color:            inherit;
+        min-height:       0;
+        padding:          0;
+    }
+
+    input[type="file"][data-surround]:where(:disabled, [aria-disabled="true"]) {
+        color: var(--color-ink-mix);
+    }
+
+    input[type="file"]::file-selector-button {
+        border-style:   solid;
+        cursor:         pointer;
+        display:        inline flow-root;
+        font-weight:    bold;
+        vertical-align: middle;
+    }
+
+    input[type="file"]:where(
+        [data-surround="fill"],
+        :not([data-surround])
+    )::file-selector-button {
+        background-color: var(--color-emphasis-ink);
+        border-color:     transparent;
+        color:            var(--color-paper);
+    }
+
+    input[type="file"]:where([data-surround="outline"])::file-selector-button {
+        background-color: var(--color-paper);
+        border-color:     currentColor;
+        color:            var(--color-emphasis-ink);
+    }
+
+    input[type="file"]:where([data-surround="transparent"])::file-selector-button {
+        background-color: transparent;
+        border-color:     transparent;
+        color:            inherit;
+    }
+
+    /* --- size --- */
+
+    input[type="file"]::file-selector-button {
+        border-radius:     var(--border-radius);
+        border-width:      var(--border-width);
+        margin-inline-end: var(--border-radius);
+        min-height:        var(--box-height);
+        padding-block:     calc(((var(--box-height) - var(--line-height)) / 2) - var(--border-width));
+        padding-inline:    var(--border-radius);
+    }
+
+    /* --- hover --- */
+
+    @media (hover: hover) {
+        input[type="file"]::file-selector-button:hover {
+            text-decoration-color:     currentColor;
+            text-decoration-line:      underline;
+            text-decoration-thickness: max(0.1875rem, 0.12em);
+            text-underline-offset:     0.3em;
+        }
+    }
+
+    /* --- active --- */
+
+    input[type="file"]:where(
+        [data-surround="fill"],
+        :not([data-surround])
+    )::file-selector-button:active {
+        background-color: var(--color-emphasis-ink-mix);
+        border-color:     transparent;
+    }
+
+    input[type="file"]:where([data-surround="outline"])::file-selector-button:active {
+        border-color: var(--color-emphasis-ink-mix);
+        color:        var(--color-emphasis-ink-mix);
+    }
+
+    /* --- invalid --- */
+
+    input[type="file"]:where(:user-invalid, [aria-invalid="true"])::file-selector-button {
+        border-color: var(--color-error);
+    }
+
+    /* --- disabled --- */
+
+    input[type="file"]:where(
+        [data-surround="outline"],
+        [data-surround="transparent"]
+    ):where(:disabled, [aria-disabled="true"])::file-selector-button {
+        border-color: var(--color-ink-mix);
+        color:        var(--color-ink-mix);
+    }
+
+    input[type="file"]:where(
+        [data-surround="fill"],
+        :not([data-surround])
+    ):where(:disabled, [aria-disabled="true"])::file-selector-button {
+        background-color: var(--color-ink-mix);
+        border-color:     transparent;
+        color:            var(--color-paper);
+    }
+
+    /* --- forced-color --- */
+
+    @media (forced-colors: active) {
+        input[type="file"]::file-selector-button {
+            background-color: ButtonFace;
+            border-color:     ButtonBorder;
+            color:            ButtonText;
+        }
+
+        input[type="file"]::file-selector-button:active {
+            color: ActiveText;
+        }
+
+        input[type="file"]:where(:user-invalid, [aria-invalid="true"])::file-selector-button {
+            border-color: Mark;
+        }
+
+        input[type="file"]:where(:disabled, [aria-disabled="true"])::file-selector-button {
+            border-color: GrayText;
+            color:        GrayText;
+        }
+
+        input[type="file"][data-surround]:where(:disabled, [aria-disabled="true"]) {
+            color: GrayText;
+        }
+    }
+}
+/*
+ * SPDX-FileCopyrightText: 2026 Andyou <andyou@animagram.jp>
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/*  Usage:
+
+    <label>
+        <span></span>
+        <input type="checkbox"></label>
+
+    <fieldset data-union="inline | block">
+        <legend>
+            <span></span></legend>
+        <label>
+            <span></span>
+            <input type="checkbox"></label>
+        <label>
+            <span></span>
+            <input type="checkbox"></label></fieldset>
+*/
+@layer css.checkbox {
+
+    input[type="checkbox"]:not([role="switch"]):not([data-sign]):not([data-facet]):where(:checked, :indeterminate) {
+        color: var(--color-paper);
+    }
+
+    /* --- indeterminate --- */
+
+    input[type="checkbox"]:not([role="switch"]):is(:not([data-sign]):not([data-facet]), [data-sign="check"]:not([data-inline-align="start"])):indeterminate::after,
+    input[type="checkbox"]:not([role="switch"])[data-sign="check"][data-inline-align="start"]:indeterminate::before {
+        block-size:   0;
+        border-width: 0 0 0.1875rem 0;
+        inline-size:  calc(var(--box-height) / 2);
+        rotate:       0deg;
+        translate:    0;
+    }
+
+    @media (forced-colors: active) {
+        input[type="checkbox"]:not([role="switch"]):not([data-sign]):not([data-facet])::after {
+            border-color: Canvas;
+        }
+    }
+
+    /* === size === */
+
+    input[type="checkbox"]:not([role="switch"]):not([data-sign], [data-facet], [data-surround]) {
+        border-radius: var(--border-radius);
+        border-width:  var(--border-width);
+        block-size:    var(--box-height);
+        inline-size:   var(--box-height);
+    }
+
+    /* === data-union === */
+
+    [data-union] > label:has(> input[type="checkbox"]:not([role="switch"], [data-sign], [data-facet])) {
+        position: relative;
+    }
+
+    [data-union] > label > input[type="checkbox"]:not([role="switch"], [data-sign], [data-facet]) {
+        block-size:     100%;
+        inline-size:    100%;
+        inset:          0;
+        margin:         0;
+        opacity:        0;
+        pointer-events: none;
+        position:       absolute;
+    }
+}
+/*
+ * SPDX-FileCopyrightText: 2026 Andyou <andyou@animagram.jp>
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/*  Usage:
+
+    <label>
+        <span>inline</span>
+        <input type="checkbox" role="switch"></label>
+*/
+@layer css.toggle {
+
+    /* === color, layout === */
+
+    label:has(> input[type="checkbox"][role="switch"]):where([data-axis="inline"], :not([data-axis])) > *:first-child {
+        display: inline flow;
+    }
+
+    /* label[data-axis="block"] */
+
+    label:has(> input[type="checkbox"][role="switch"])[data-axis="block"] {
+        display: inline flow-root;
+    }
+    label:has(> input[type="checkbox"][role="switch"])[data-axis="block"] > *:first-child {
+        display:    block;
+        text-align: center;
+    }
+    label:has(> input[type="checkbox"][role="switch"])[data-axis="block"] > *:first-child:not([data-size]) {
+        border-radius:  var(--md-border-radius);
+        border-width:   var(--md-border-width);
+        padding-bottom: calc(((var(--md-box-height) - var(--md-line-height)) / 2) - var(--md-border-width));
+    }
+
+    label > input[type="checkbox"][role="switch"] {
+        background-color: var(--color-ink-mix);
+    }
+
+    label > input[type="checkbox"][role="switch"]:checked:not(:user-invalid, [aria-invalid="true"], :disabled, [aria-disabled="true"]) {
+        border-color: var(--color-ink);
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+        label > input[type="checkbox"][role="switch"] {
+            transition: background-color 0.15s ease;
+        }
+    }
+
+    label > input[type="checkbox"][role="switch"]:checked {
+        background: var(--color-success);
+    }
+
+    label > input[type="checkbox"][role="switch"]::after {
+        align-items:     center;
+        background:      var(--color-paper);
+        border-color:    transparent;
+        border-style:    solid;
+        color:           var(--color-ink);
+        content:         "OFF";
+        display:         flex;
+        font-weight:     bold;
+        justify-content: center;
+        position:        absolute;
+        top:             50%;
+        translate:       0 -50%;
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+        label > input[type="checkbox"][role="switch"]::after {
+            transition: transform 0.15s ease;
+        }
+    }
+
+    label > input[type="checkbox"][role="switch"]:checked::after {
+        content: "ON";
+    }
+
+    /* label[data-type="knob-only"] */
+
+    label[data-type="knob-only"] {
+        pointer-events: none;
+    }
+    label[data-type="knob-only"] > input[type="checkbox"] {
+        pointer-events: none;
+    }
+    label[data-type="knob-only"] > input[type="checkbox"][role="switch"]::after {
+        pointer-events: auto;
+    }
+
+    @media (forced-colors: active) {
+        label > input[type="checkbox"][role="switch"]:checked {
+            background: Canvas;
+        }
+        label > input[type="checkbox"][role="switch"]::after {
+            background:   CanvasText;
+            border-color: CanvasText;
+            color:        Canvas;
+        }
+        label > input[type="checkbox"][role="switch"]:checked::after {
+            color: Canvas;
+        }
+    }
+
+    /* --- size --- */
+
+    label > input[type="checkbox"][role="switch"] {
+        border-radius: calc(var(--box-height) / 2);
+        border-width:  var(--border-width);
+        block-size:    var(--box-height);
+        inline-size:   calc(calc(var(--box-height) - var(--border-width) * 4) * 2 + var(--border-width) * 4);
+
+        &::after {
+            border-radius:      calc(var(--box-height) / 2);
+            border-width:       var(--border-width);
+            font-size:          inherit;
+            block-size:         calc(var(--box-height) - var(--border-width) * 4);
+            inset-inline-start: var(--border-width);
+            inline-size:        calc(var(--box-height) - var(--border-width) * 4);
+        }
+
+        &:checked::after {
+            transform: translateX(calc(var(--box-height) - var(--border-width) * 4));
+        }
+        &:checked:dir(rtl)::after {
+            transform: translateX(calc(calc(var(--box-height) - var(--border-width) * 4) * -1));
+        }
+    }
+
+    label > input[type="checkbox"][role="switch"][data-size="xs"]::after {
+        content: "";
+    }
+
+    /* --- disabled --- */
+
+    label > input[type="checkbox"][role="switch"]:is(
+        :disabled,
+        [aria-disabled="true"]
+    )::after {
+        color: var(--color-ink-mix);
+    }
+
+    @media (forced-colors: active) {
+        label > input[type="checkbox"][role="switch"]:is(
+            :disabled,
+            [aria-disabled="true"]
+        )::after {
+            background:   GrayText;
+            border-color: GrayText;
+        }
+    }
+}
+/*
+ * SPDX-FileCopyrightText: 2026 Andyou <andyou@animagram.jp>
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/*  Usage:
+
+    <label>
+        <span></span>
+        <input type="radio"></label>
+
+    <fieldset data-axis="block | inline">
+        <legend><span></span></legend>
+        <label>
+            <span></span>
+            <input type="radio"></label>
+        <label>
+            <span></span>
+            <input type="radio"></label></fieldset>
+
+    === role="radiogroup" ===
+
+    <fieldset>
+        <*:not(legend, label)></*:not(legend, label)>
+        <label>
+            <span></span>
+            <input type="radio"></label>
+        <label>
+            <span></span>
+            <input type="radio"></label></fieldset>
+
+    <fieldset data-union="inline | block">
+        <legend>
+            <span></span></legend>
+        <label>
+            <span></span>
+            <input type="radio" name=""></label>
+        <label>
+            <span></span>
+            <input type="radio" name="" checked></label></fieldset>
+
+    <* role="tablist">
+        <label>
+            <span></span>
+            <input type="radio" role="tab"></label></*>
+    <* role="tabpanel"></*>
+*/
+@layer css.radio {
+    fieldset:has(> label > input[type="radio"]):not([data-union]) {
+        display: grid;
+        border:  none;
+        gap:     0.5rem;
+    }
+
+    /* --- data-axis="inline" ---
+        To fit vertical, needs grid-template-rows: repeat(N, ...); */
+        
+    fieldset:has(> label > input[type="radio"])[data-axis="inline"]:has(> label:first-of-type:nth-last-of-type(1)) {
+        grid-template-columns: max-content repeat(1, max-content);
+    }
+    fieldset:has(> label > input[type="radio"])[data-axis="inline"]:has(> label:first-of-type:nth-last-of-type(2)) {
+        grid-template-columns: max-content repeat(2, max-content);
+    }
+    fieldset:has(> label > input[type="radio"])[data-axis="inline"]:has(> label:first-of-type:nth-last-of-type(3)) {
+        grid-template-columns: max-content repeat(3, max-content);
+    }
+    fieldset:has(> label > input[type="radio"])[data-axis="inline"]:has(> label:first-of-type:nth-last-of-type(4)) {
+        grid-template-columns: max-content repeat(4, max-content);
+    }
+    fieldset:has(> label > input[type="radio"])[data-axis="inline"]:has(> label:first-of-type:nth-last-of-type(5)) {
+        grid-template-columns: max-content repeat(5, max-content);
+    }
+    fieldset:has(> label > input[type="radio"])[data-axis="inline"]:has(> label:first-of-type:nth-last-of-type(6)) {
+        grid-template-columns: max-content repeat(6, max-content);
+    }
+    fieldset:has(> label > input[type="radio"])[data-axis="inline"]:has(> label:first-of-type:nth-last-of-type(7)) {
+        grid-template-columns: max-content repeat(7, max-content);
+    }
+    fieldset:has(> label > input[type="radio"])[data-axis="inline"]:has(> label:first-of-type:nth-last-of-type(8)) {
+        grid-template-columns: max-content repeat(8, max-content);
+    }
+
+    fieldset:has(> label > input[type="radio"]) > legend > * {
+        grid-column:     1 / -1;
+        min-inline-size: 0;
+    }
+
+    fieldset:has(> label > input[type="radio"]) > *:not(legend, label) {
+        grid-column:     1 / -1;
+        min-inline-size: 0;
+        margin:          0;
+    }
+
+    fieldset:has(> label > input[type="radio"]):where([data-axis="block"], :not([data-axis])):not([data-union]) > legend > *,
+    fieldset:has(> label > input[type="radio"]):where([data-axis="block"], :not([data-axis])):not([data-union]) > *:not(legend, label),
+    fieldset:has(> label > input[type="radio"])[data-axis="inline"]:has(> label:first-of-type:nth-last-of-type(n+9)) > legend > *,
+    fieldset:has(> label > input[type="radio"])[data-axis="inline"]:has(> label:first-of-type:nth-last-of-type(n+9)) > *:not(legend, label) {
+        contain: inline-size;
+    }
+
+    fieldset:has(> label > input[type="radio"])[data-axis="inline"] > legend > *,
+    fieldset:has(> label > input[type="radio"])[data-axis="inline"] > *:not(legend, label) {
+        grid-column: 1;
+        grid-row:    1 / -1;
+        align-self:  center;
+    }
+
+    fieldset:has(> label > input[type="radio"]) > label {
+        display:         inline-flex;
+        justify-content: space-between;
+        align-items:     center;
+        gap:             0.5rem;
+        inline-size:     100%;
+    }
+    fieldset:has(> label > input[type="radio"]) > label > input[type="radio"] {
+        flex-shrink: 0;
+    }
+
+    input[type="radio"]:not([data-sign], [data-facet], [data-surround]) {
+        border-radius: 50%;
+        padding:       0;
+    }
+
+    input[type="radio"]:not([data-sign], [data-facet], [data-surround])::after {
+        border-radius: 50%;
+        content:       "";
+        position:      absolute;
+    }
+
+    input[type="radio"]:not([data-sign], [data-facet], [data-surround]):not(:checked)::after {
+        background-color: transparent;
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+        input[type="radio"]:not([data-sign], [data-facet], [data-surround])::after {
+            transition: background-color 0.15s ease;
+        }
+    }
+
+    /* --- size --- */
+
+    input[type="radio"]:not([data-sign], [data-facet], [data-surround]) {
+        border-width: var(--border-width);
+        block-size:   var(--box-height);
+        inline-size:  var(--box-height);
+
+        &::after {
+            block-size:         calc(var(--box-height) - var(--border-width) * 6);
+            inline-size:        calc(var(--box-height) - var(--border-width) * 6);
+            inset-block-start:  calc(var(--border-width) * 2);
+            inset-inline-start: calc(var(--border-width) * 2);
+        }
+    }
+
+    /* === data-union === */
+
+    [data-union]:has(> label > input[type="radio"]) > label {
+        display:     inline flow-root;
+        inline-size: auto;
+        position:    relative;
+    }
+
+    [data-union] > label > input[type="radio"] {
+        block-size:     100%;
+        inline-size:    100%;
+        inset:          0;
+        margin:         0;
+        opacity:        0;
+        pointer-events: none;
+        position:       absolute;
+    }
+
+    /* === tablist === */
+
+    input[type="radio"][role="tab"] {
+        opacity:        0;
+        pointer-events: none;
+        position:       absolute;
+    }
+
+    [role="tabpanel"] {
+        display: none;
+    }
+
+    :has(> input[type="radio"][role="tab"]:checked) {
+        font-weight: bold;
+    }
+}
+/*
+ * SPDX-FileCopyrightText: 2026 Andyou <andyou@animagram.jp>
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/*  Usage:
+
+    <input type="range" min="0" max="100" step="10" value="20">
+*/
+@layer css.slider {
+
+    /* === track === */
+
+    input[type="range"] {
+        background-color: var(--color-paper);
+        display:          inline-block;
+        inline-size:      100%;
+        max-inline-size:  100%;
+        touch-action:     manipulation;
+        vertical-align:   middle;
+    }
+
+    label > input[type="range"] {
+        flex-grow:   1;
+        inline-size: auto;
+    }
+
+    input[type="range"]:not(:is(
+        :disabled,
+        [aria-disabled="true"]
+    )) {
+        cursor: pointer;
+    }
+
+    /* --- track: webkit, blink --- */
+
+    input[type="range"]::-webkit-slider-runnable-track {
+        background-color: var(--color-ink-mix);
+    }
+
+    /* --- track: gecko --- */
+
+    input[type="range"]::-moz-range-track {
+        background-color: var(--color-ink-mix);
+    }
+
+    /* === thumb === */
+
+    /* --- thumb: webkit, blink --- */
+
+    input[type="range"]::-webkit-slider-thumb {
+        appearance:       none;
+        background-color: var(--color-paper);
+        border-color:     var(--color-ink);
+        border-radius:    50%;
+        border-style:     solid;
+        box-sizing:       border-box;
+    }
+
+    input[type="range"]:not(:is(
+        :disabled,
+        [aria-disabled="true"]
+    ))::-webkit-slider-thumb {
+        cursor: pointer;
+    }
+
+    /* --- thumb: gecko --- */
+
+    input[type="range"]::-moz-range-thumb {
+        appearance:       none;
+        background-color: var(--color-paper);
+        border-color:     var(--color-ink);
+        border-radius:    50%;
+        border-style:     solid;
+        box-sizing:       border-box;
+    }
+
+    input[type="range"]:not(:is(
+        :disabled,
+        [aria-disabled="true"]
+    ))::-moz-range-thumb {
+        cursor: pointer;
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+        input[type="range"]::-webkit-slider-thumb {
+            transition: background-color 0.15s ease, scale 0.15s ease;
+        }
+        input[type="range"]::-moz-range-thumb {
+            transition: background-color 0.15s ease, scale 0.15s ease;
+        }
+    }
+
+    /* --- size --- */
+
+    input[type="range"] {
+        block-size:    var(--box-height);
+        border-radius: var(--border-radius);
+    }
+    input[type="range"]::-webkit-slider-runnable-track {
+        block-size:    var(--line-height);
+        border-radius: var(--border-radius);
+    }
+    input[type="range"]::-moz-range-track {
+        block-size:    var(--line-height);
+        border-radius: var(--border-radius);
+    }
+    input[type="range"]::-webkit-slider-thumb {
+        block-size:   var(--box-height);
+        border-width: var(--border-width);
+        inline-size:  var(--box-height);
+        margin-top:   calc((var(--line-height) - var(--box-height)) / 2);
+    }
+    input[type="range"]::-moz-range-thumb {
+        block-size:   var(--box-height);
+        border-width: var(--border-width);
+        inline-size:  var(--box-height);
+    }
+
+    /* === :hover, :active, :focus-visible === */
+
+    input[type="range"]:not(:is(
+        :disabled,
+        [aria-disabled="true"]
+    )):where(
+        :active,
+        :focus-visible
+    )::-webkit-slider-thumb {
+        background-color: var(--color-emphasis-ink);
+        border-color:     var(--color-emphasis-ink);
+    }
+    input[type="range"]:not(:is(
+        :disabled,
+        [aria-disabled="true"]
+    )):where(
+        :active,
+        :focus-visible
+    )::-moz-range-thumb {
+        background-color: var(--color-emphasis-ink);
+        border-color:     var(--color-emphasis-ink);
+    }
+
+    @media (hover: hover) {
+        input[type="range"]:not(:is(
+            :disabled,
+            [aria-disabled="true"]
+        )):where(:hover)::-webkit-slider-thumb {
+            background-color: var(--color-emphasis-ink);
+            border-color:     var(--color-emphasis-ink);
+        }
+        input[type="range"]:not(:is(
+            :disabled,
+            [aria-disabled="true"]
+        )):where(:hover)::-moz-range-thumb {
+            background-color: var(--color-emphasis-ink);
+            border-color:     var(--color-emphasis-ink);
+        }
+    }
+
+    input[type="range"]:not(:is(
+        :disabled,
+        [aria-disabled="true"]
+    )):active::-webkit-slider-thumb {
+        background-color: var(--color-emphasis-ink-mix);
+        border-color:     var(--color-emphasis-ink-mix);
+        scale:            1.15;
+    }
+    input[type="range"]:not(:is(
+        :disabled,
+        [aria-disabled="true"]
+    )):active::-moz-range-thumb {
+        background-color: var(--color-emphasis-ink-mix);
+        border-color:     var(--color-emphasis-ink-mix);
+        scale:            1.15;
+    }
+
+    /* === :user-invalid, [aria-invalid="true"] === */
+
+    input[type="range"]:where(
+        :user-invalid,
+        [aria-invalid="true"]
+    )::-webkit-slider-runnable-track {
+        background-color: var(--color-error);
+    }
+    input[type="range"]:where(
+        :user-invalid,
+        [aria-invalid="true"]
+    )::-moz-range-track {
+        background-color: var(--color-error);
+    }
+    input[type="range"]:where(
+        :user-invalid,
+        [aria-invalid="true"]
+    )::-webkit-slider-thumb {
+        border-color: var(--color-error);
+    }
+    input[type="range"]:where(
+        :user-invalid,
+        [aria-invalid="true"]
+    )::-moz-range-thumb {
+        border-color: var(--color-error);
+    }
+
+    /* === :disabled, [aria-disabled="true"] === */
+
+    input[type="range"]:where(
+        :disabled,
+        [aria-disabled="true"]
+    )::-webkit-slider-thumb {
+        background-color: var(--color-paper);
+        border-color:     var(--color-ink-mix);
+        cursor:           not-allowed;
+    }
+    input[type="range"]:where(
+        :disabled,
+        [aria-disabled="true"]
+    )::-moz-range-thumb {
+        background-color: var(--color-paper);
+        border-color:     var(--color-ink-mix);
+        cursor:           not-allowed;
+    }
+
+    /* === forced-colors === */
+
+    @media (forced-colors: active) {
+        input[type="range"] {
+            background-color: Canvas;
+        }
+        input[type="range"]::-webkit-slider-runnable-track {
+            background-color: CanvasText;
+        }
+        input[type="range"]::-moz-range-track {
+            background-color: CanvasText;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            background-color: Canvas;
+            border-color:     CanvasText;
+        }
+        input[type="range"]::-moz-range-thumb {
+            background-color: Canvas;
+            border-color:     CanvasText;
+        }
+        input[type="range"]:not(:is(
+            :disabled,
+            [aria-disabled="true"]
+        )):where(
+            :active,
+            :focus-visible
+        )::-webkit-slider-thumb {
+            background-color: Highlight;
+            border-color:     CanvasText;
+        }
+        input[type="range"]:not(:is(
+            :disabled,
+            [aria-disabled="true"]
+        )):where(
+            :active,
+            :focus-visible
+        )::-moz-range-thumb {
+            background-color: Highlight;
+            border-color:     CanvasText;
+        }
+        @media (hover: hover) {
+            input[type="range"]:not(:is(
+                :disabled,
+                [aria-disabled="true"]
+            )):where(:hover)::-webkit-slider-thumb {
+                background-color: Highlight;
+                border-color:     CanvasText;
+            }
+            input[type="range"]:not(:is(
+                :disabled,
+                [aria-disabled="true"]
+            )):where(:hover)::-moz-range-thumb {
+                background-color: Highlight;
+                border-color:     CanvasText;
+            }
+        }
+        input[type="range"]:where(
+            :user-invalid,
+            [aria-invalid="true"]
+        )::-webkit-slider-runnable-track {
+            background-color: Mark;
+        }
+        input[type="range"]:where(
+            :user-invalid,
+            [aria-invalid="true"]
+        )::-moz-range-track {
+            background-color: Mark;
+        }
+        input[type="range"]:where(
+            :user-invalid,
+            [aria-invalid="true"]
+        )::-webkit-slider-thumb {
+            border-color: Mark;
+        }
+        input[type="range"]:where(
+            :user-invalid,
+            [aria-invalid="true"]
+        )::-moz-range-thumb {
+            border-color: Mark;
+        }
+        input[type="range"]:where(
+            :disabled,
+            [aria-disabled="true"]
+        )::-webkit-slider-runnable-track {
+            background-color: GrayText;
+        }
+        input[type="range"]:where(
+            :disabled,
+            [aria-disabled="true"]
+        )::-moz-range-track {
+            background-color: GrayText;
+        }
+        input[type="range"]:where(
+            :disabled,
+            [aria-disabled="true"]
+        )::-webkit-slider-thumb {
+            border-color: GrayText;
+        }
+        input[type="range"]:where(
+            :disabled,
+            [aria-disabled="true"]
+        )::-moz-range-thumb {
+            border-color: GrayText;
+        }
+    }
+}
+/*
+ * SPDX-FileCopyrightText: 2026 Andyou <andyou@animagram.jp>
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/*  Usage:
+
+    <label>
+        <input type="search"></label>
+
+    <search>
+        <span></span>
+        <label>
+            <input type="search"></label>
+        <button type="button"></button></search>
+
+    <form role="search">
+        <span></span>
+        <label>
+            <input type="search"></label>
+        <button type="submit"></button></form>
+
+    <search>
+        <span></span>
+        <label>
+            <select data-facet="chevron">
+                <option></option>
+                <option></option></select></label>
+        <label>
+            <input type="search"></label>
+        <button type="button"></button></search>
+
+    <form role="search">
+        <span></span>
+        <label>
+            <select data-facet="chevron">
+                <option></option>
+                <option></option></select></label>
+        <label>
+            <input type="search"></label>
+        <button type="submit"></button></form>
+*/
+@layer css.search {
+    label:has(> input[type="search"]) {
+        position: relative;
+    }
+
+    label:has(> input[type="search"])::before,
+    label:has(> input[type="search"])::after {
+        color:          var(--color-ink-mix);
+        content:        "";
+        pointer-events: none;
+        position:       absolute;
+        z-index:        2;
+    }
+
+    label:has(> input[type="search"])::before {
+        border-radius: 50%;
+        border-style:  solid;
+    }
+
+    label:has(> input[type="search"])::after {
+        background-color: currentColor;
+        transform-origin: top center;
+    }
+
+    @media (forced-colors: active) {
+        label:has(> input[type="search"])::before,
+        label:has(> input[type="search"])::after {
+            color: FieldText;
+        }
+    }
+
+    /* --- size --- */
+
+    label:has(> input[type="search"][data-size="xs"])::before {
+        block-size:         calc(var(--xs-box-height) / 4);
+        border-width:       var(--xs-border-width);
+        inline-size:        calc(var(--xs-box-height) / 4);
+        inset-block-start:  calc(var(--xs-box-height) * 3 / 8);
+        inset-inline-start: calc(var(--xs-box-height) / 4);
+    }
+    label:has(> input[type="search"][data-size="xs"])::after {
+        block-size:         calc(var(--xs-box-height) / 6);
+        inline-size:        var(--xs-border-width);
+        inset-block-start:  calc(var(--xs-box-height) * 5 / 12);
+        inset-inline-start: calc(var(--xs-box-height) * 0.375 + var(--xs-box-height) / 8 * 0.707 - var(--xs-border-width) / 2);
+        transform:          translateY(calc(var(--xs-box-height) / 8 * 0.707 + var(--xs-box-height) / 12)) rotate(-45deg);
+    }
+    label:has(> input[type="search"][data-size="sm"])::before {
+        block-size:         calc(var(--sm-box-height) / 4);
+        border-width:       var(--sm-border-width);
+        inline-size:        calc(var(--sm-box-height) / 4);
+        inset-block-start:  calc(var(--sm-box-height) * 3 / 8);
+        inset-inline-start: calc(var(--sm-box-height) / 4);
+    }
+    label:has(> input[type="search"][data-size="sm"])::after {
+        block-size:         calc(var(--sm-box-height) / 6);
+        inline-size:        var(--sm-border-width);
+        inset-block-start:  calc(var(--sm-box-height) * 5 / 12);
+        inset-inline-start: calc(var(--sm-box-height) * 0.375 + var(--sm-box-height) / 8 * 0.707 - var(--sm-border-width) / 2);
+        transform:          translateY(calc(var(--sm-box-height) / 8 * 0.707 + var(--sm-box-height) / 12)) rotate(-45deg);
+    }
+    label:has(> input[type="search"]:where(
+        [data-size="md"],
+        :not([data-size])
+    ))::before {
+        block-size:         calc(var(--md-box-height) / 4);
+        border-width:       var(--md-border-width);
+        inline-size:        calc(var(--md-box-height) / 4);
+        inset-block-start:  calc(var(--md-box-height) * 3 / 8);
+        inset-inline-start: calc(var(--md-box-height) / 4);
+    }
+    label:has(> input[type="search"]:where(
+        [data-size="md"],
+        :not([data-size])
+    ))::after {
+        block-size:         calc(var(--md-box-height) / 6);
+        inline-size:        var(--md-border-width);
+        inset-block-start:  calc(var(--md-box-height) * 5 / 12);
+        inset-inline-start: calc(var(--md-box-height) * 0.375 + var(--md-box-height) / 8 * 0.707 - var(--md-border-width) / 2);
+        transform:          translateY(calc(var(--md-box-height) / 8 * 0.707 + var(--md-box-height) / 12)) rotate(-45deg);
+    }
+    label:has(> input[type="search"][data-size="lg"])::before {
+        block-size:         calc(var(--lg-box-height) / 4);
+        border-width:       var(--lg-border-width);
+        inline-size:        calc(var(--lg-box-height) / 4);
+        inset-block-start:  calc(var(--lg-box-height) * 3 / 8);
+        inset-inline-start: calc(var(--lg-box-height) / 4);
+    }
+    label:has(> input[type="search"][data-size="lg"])::after {
+        block-size:         calc(var(--lg-box-height) / 6);
+        inline-size:        var(--lg-border-width);
+        inset-block-start:  calc(var(--lg-box-height) * 5 / 12);
+        inset-inline-start: calc(var(--lg-box-height) * 0.375 + var(--lg-box-height) / 8 * 0.707 - var(--lg-border-width) / 2);
+        transform:          translateY(calc(var(--lg-box-height) / 8 * 0.707 + var(--lg-box-height) / 12)) rotate(-45deg);
+    }
+    label:has(> input[type="search"][data-size="xl"])::before {
+        block-size:         calc(var(--xl-box-height) / 4);
+        border-width:       var(--xl-border-width);
+        inline-size:        calc(var(--xl-box-height) / 4);
+        inset-block-start:  calc(var(--xl-box-height) * 3 / 8);
+        inset-inline-start: calc(var(--xl-box-height) / 4);
+    }
+    label:has(> input[type="search"][data-size="xl"])::after {
+        block-size:         calc(var(--xl-box-height) / 6);
+        inline-size:        var(--xl-border-width);
+        inset-block-start:  calc(var(--xl-box-height) * 5 / 12);
+        inset-inline-start: calc(var(--xl-box-height) * 0.375 + var(--xl-box-height) / 8 * 0.707 - var(--xl-border-width) / 2);
+        transform:          translateY(calc(var(--xl-box-height) / 8 * 0.707 + var(--xl-box-height) / 12)) rotate(-45deg);
+    }
+    label:has(> input[type="search"][data-size="2xl"])::before {
+        block-size:         calc(var(--2xl-box-height) / 4);
+        border-width:       var(--2xl-border-width);
+        inline-size:        calc(var(--2xl-box-height) / 4);
+        inset-block-start:  calc(var(--2xl-box-height) * 3 / 8);
+        inset-inline-start: calc(var(--2xl-box-height) / 4);
+    }
+    label:has(> input[type="search"][data-size="2xl"])::after {
+        block-size:         calc(var(--2xl-box-height) / 6);
+        inline-size:        var(--2xl-border-width);
+        inset-block-start:  calc(var(--2xl-box-height) * 5 / 12);
+        inset-inline-start: calc(var(--2xl-box-height) * 0.375 + var(--2xl-box-height) / 8 * 0.707 - var(--2xl-border-width) / 2);
+        transform:          translateY(calc(var(--2xl-box-height) / 8 * 0.707 + var(--2xl-box-height) / 12)) rotate(-45deg);
+    }
+
+    label > input[type="search"] {
+        padding-inline-start: calc(var(--box-height) * 0.75);
+    }
+}
+/*
+ * SPDX-FileCopyrightText: 2026 Andyou <andyou@animagram.jp>
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/*  Usage:
+
+    <label>
+        <button type="button" data-sign="minus"></button>
+        <input type="text" inputmode="numeric" role="spinbutton">
+        <button type="button" data-sign="plus"></button></label>
+
+    <label>
+        <input type="text" inputmode="numeric" role="spinbutton">
+        <span data-step="block">
+            <button type="button" data-sign="plus"></button>
+            <button type="button" data-sign="minus"></button></span></label>
+*/
+@layer css.step {
+
+    /* === color, layout === */
+
+    label:has(> input[role="spinbutton"]) > button {
+        padding-inline: 0;
+    }
+
+    /* === size === */
+
+    label:has(> input[inputmode="numeric"]) > button {
+        inline-size: var(--box-height);
+    }
+
+    /* === input === */
+
+    label:has(> input[inputmode="numeric"]) > input[inputmode="numeric"] {
+        /*  a spinbutton is read and corrected digit by digit, so the field does
+            not grow with its content the way a text input does. */
+        field-sizing:    fixed;
+        min-inline-size: 0;
+    }
+
+    [data-step="block"] {
+        display:            inline grid;
+        grid-template-rows: 1fr 1fr;
+        vertical-align:     top;
+    }
+
+    label > input[inputmode="numeric"]:has(+ span[data-step="block"]) {
+        vertical-align: top;
+    }
+
+    span[data-step="block"] > button:first-child {
+        grid-row: 1;
+    }
+    span[data-step="block"] > button:last-child {
+        grid-row: 2;
+    }
+
+    /*  half a box height each, and the min-height button.css sets per size step
+        has to give way for the pair to add up to one box. */
+
+    span[data-step="block"] > button {
+        min-block-size: 0;
+        padding-block:  0;
+    }
+
+    span[data-step="block"] > button {
+        block-size: calc(var(--box-height) / 2);
+    }
+
+    /*  only the end edge is shared here: the start edge is the outside of the
+        group and has to keep its line. */
+
+    label > input[inputmode="numeric"]:has(+ span[data-step="block"]) {
+        border-inline-end-width:   0;
+        border-inline-start-width: var(--md-border-width);
+    }
+    label > input[inputmode="numeric"]:has(+ span[data-step="block"]) {
+        border-inline-start-width: var(--border-width);
+    }
+
+    /*  corners: the input owns the start edge, the buttons the end edge. the
+        inline form squares off the input entirely, so the start corners are
+        given back here: they are the outside of the group. */
+
+    label > input[inputmode="numeric"]:has(+ span[data-step="block"]) {
+        border-end-start-radius:   var(--border-radius);
+        border-start-start-radius: var(--border-radius);
+    }
+
+    label > input[inputmode="numeric"]:has(+ span[data-step="block"]) {
+        border-end-end-radius:   0;
+        border-start-end-radius: 0;
+    }
+    span[data-step="block"] > button:first-child {
+        border-end-end-radius:     0;
+        border-end-start-radius:   0;
+        border-start-start-radius: 0;
+    }
+    span[data-step="block"] > button:last-child {
+        border-end-start-radius:   0;
+        border-start-end-radius:   0;
+        border-start-start-radius: 0;
+    }
+
+    span[data-step="block"] > button:first-child {
+        border-start-end-radius: var(--border-radius);
+    }
+
+    span[data-step="block"] > button:last-child {
+        border-end-end-radius: var(--border-radius);
+    }
+
+    /* === sort button === */
+
+    /*
+        <th>
+            <span data-step="block">
+                <label>
+                    <input type="radio" name="sort-table" checked></label>
+                <label>
+                    <input type="radio" name="sort-table"></label></span></th>
+    */
+
+    th:has(> [data-step="block"] input[type="radio"]) {
+        white-space: nowrap;
+    }
+
+    /*  the pair is a box height tall against a content box that is only a
+        line-height tall, so the overhang is given back to the block padding
+        it sits in rather than to the row, which would grow. */
+
+    [data-step="block"]:has(> label > input[type="radio"]) {
+        margin-block-end:    calc(((var(--md-line-height) - var(--md-box-height)) / 2) + var(--md-border-width));
+        margin-block-start:  calc((var(--md-line-height) - var(--md-box-height)) / 2);
+        margin-inline-start: calc(var(--md-border-radius) / 2);
+        vertical-align:      top;
+    }
+
+    [data-step="block"] > label:first-child:has(> input[type="radio"]) {
+        grid-row: 1;
+    }
+    [data-step="block"] > label:last-child:has(> input[type="radio"]) {
+        grid-row: 2;
+    }
+
+    [data-step="block"] > label:has(> input[type="radio"]) {
+        cursor: pointer;
+    }
+
+    /*  the radio itself is not drawn: the triangle stands for it. the input
+        keeps its box so it still takes focus and the hit area stays whole.
+
+        this is a label > input[type="radio"] like any other, so css.radio
+        styles it as a circle: only what the triangle contradicts is undone
+        here, and the radius has to go with the border or the focus ring is
+        drawn as an ellipse around a triangle. */
+
+    [data-step="block"] > label > input[type="radio"] {
+        border:        0;
+        border-radius: 0;
+        color:         var(--color-ink-mix);
+        display:       block;
+        inline-size:   var(--md-box-height);
+        block-size:    calc((var(--md-box-height) - var(--md-border-width)) / 2);
+    }
+
+    /*  css.radio rounds this pseudo-element into the inner circle of a radio;
+        the triangle needs its corners back. */
+
+    [data-step="block"] > label > input[type="radio"]::after {
+        background-color: transparent;
+        block-size:       0;
+        border-inline:    calc(var(--md-box-height) / 4) solid transparent;
+        border-radius:    0;
+        content:          "";
+        inline-size:      0;
+        inset:            0;
+        margin:           auto;
+        position:         absolute;
+    }
+
+    /*  first is ascending, second is descending: the order on the page is the
+        order of the values, so the shape follows the position rather than a
+        value attribute. */
+
+    [data-step="block"] > label:first-child > input[type="radio"]::after {
+        border-block-end: calc(var(--md-box-height) / 4) solid currentColor;
+    }
+    [data-step="block"] > label:last-child > input[type="radio"]::after {
+        border-block-start: calc(var(--md-box-height) / 4) solid currentColor;
+    }
+
+    /*  === size ===
+
+        the cell sets the height here, so the pair follows table[data-size]
+        rather than a data-size of its own. */
+
+    table:where([data-size]) [data-step="block"]:has(> label > input[type="radio"]) {
+        margin-block-end:    calc(((var(--line-height) - var(--box-height)) / 2) + var(--border-width));
+        margin-block-start:  calc((var(--line-height) - var(--box-height)) / 2);
+        margin-inline-start: calc(var(--border-radius) / 2);
+    }
+    table:where([data-size]) [data-step="block"] > label > input[type="radio"] {
+        inline-size: var(--box-height);
+        block-size:  calc((var(--box-height) - var(--border-width)) / 2);
+    }
+    table:where([data-size]) [data-step="block"] > label > input[type="radio"]::after {
+        border-inline: calc(var(--box-height) / 4) solid transparent;
+    }
+    table:where([data-size]) [data-step="block"] > label:first-child > input[type="radio"]::after {
+        border-block-end: calc(var(--box-height) / 4) solid currentColor;
+    }
+    table:where([data-size]) [data-step="block"] > label:last-child > input[type="radio"]::after {
+        border-block-start: calc(var(--box-height) / 4) solid currentColor;
+    }
+
+    /* the direction in force is the one drawn in ink. */
+
+    [data-step="block"] > label > input[type="radio"]:checked {
+        color: var(--color-ink);
+    }
+
+    /*  an outline, not a box-shadow, which is not painted under forced-colors.
+        the ring is the width of a border here: each half is only half a box
+        height tall, so the ring used elsewhere would swallow it. */
+
+    [data-step="block"] > label > input[type="radio"]:focus-visible {
+        outline-color:  var(--color-focus);
+        outline-offset: 0;
+        outline-style:  solid;
+        outline-width:  var(--md-border-width);
+        z-index:        1;
+    }
+
+    @media (forced-colors: active) {
+        [data-step="block"] > label > input[type="radio"] {
+            color: ButtonText;
+        }
+        [data-step="block"] > label > input[type="radio"]:checked {
+            color: Highlight;
+        }
+        [data-step="block"] > label > input[type="radio"]:focus-visible {
+            outline-color: Highlight;
+        }
+    }
+
+}
+
+/*
+ * SPDX-FileCopyrightText: 2026 Andyou <andyou@animagram.jp>
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/*  Usage:
+
+    === popover ===
+
+    <button type="button" id="popover_button-1" popovertarget="popover-1">
+    <* id="popover-1" popover="auto">
+
+    #popover_button-1 {anchor-name: --popover_button-1;}
+    #popover-1        {position-anchor: --popover_button-1;}
+
+    === dialog ===
+
+    <button type="button" onclick="dialog-1.showModal()"></button>
+    <dialog id="dialog-1">
+        <button type="button" formmethod="dialog"></button></dialog>
+
+    === menu / listbox ===
+
+    <button type="button" id="popover_button-2" popovertarget="popover-2">
+    <* id="popover-2" popover="auto" role="menu/listbox">
+        <span role="presentation"></span>
+        <a role="menuitem/option"></a>
+        <a role="menuitem/option" aria-disabled="true"></a>
+        <label>
+            <input type="checkbox" role="menuitemcheckbox/option" data-sign="check">
+            <span></span></label>
+        <label>
+            <input type="radio" role="menuitemradio/option" data-sign="check">
+            <span></span></label>
+        <button role="menuitem/option"></button>
+        <label>
+            <span></span>
+            <input type="text">
+            <button role="menuitem/option"></button></label></*>
+
+    #popover_button-2 {anchor-name: --popover_button-2;}
+    #popover-2        {position-anchor: --popover_button-2;}
+
+    --- combobox (listbox + typeable input) ---
+
+    <label>
+        <span></span>
+        <input type="text" id="combobox">
+        <button type="button" popovertarget="listbox-2"></button></label>
+    <* id="listbox-2" popover="auto" role="listbox">...</*>
+
+    #combobox  {anchor-name: --combobox;}
+    #listbox-2 {position-anchor: --combobox;}
+
+    === tooltip ===
+
+    <button type="button" id="tooltip_trigger-1" popovertarget="tooltip-1">
+    <* id="tooltip-1" popover="auto | manual"></*>
+
+    #tooltip_trigger-1 {anchor-name: --tooltip_trigger-1;}
+    #tooltip-1         {position-anchor: --tooltip_trigger-1;}
+*/
+@layer css.popup {
+
+    [popover] {
+        margin:                 0.25rem 0;
+        position-area:          block-end span-inline-start;
+        position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline;
+    }
+
+    [popovertarget]:not(
+        :disabled,
+        [aria-disabled="true"]
+    ) {
+        color: var(--color-ink);
+    }
+
+    :where([role="menu"], [role="listbox"]) {
+        background-color: var(--color-paper);
+        border-color:     var(--color-ink-mix);
+        border-style:     solid;
+        border-width:     var(--md-border-width);
+        border-radius:    var(--md-border-radius);
+        color:            var(--color-ink);
+        max-height:       calc(var(--md-border-width) * 0.2 + var(--md-box-height) * 6.5);
+        overflow-y:       auto;
+        padding-inline:   0.25rem;
+        width:            max-content;
+    }
+    @media (forced-colors: active) {
+        :where([role="menu"], [role="listbox"]) {
+            background-color: Canvas;
+            border-color:     ButtonBorder;
+            color:            CanvasText;
+        }
+    }
+
+    :where([role="menu"], [role="listbox"]) > * {
+        display:     block;
+        white-space: nowrap;
+        width:       100%;
+    }
+
+    :where([role="menu"], [role="listbox"]) > [role]:where(a, button),
+    :where([role="menu"], [role="listbox"]) > label:has(> input[role]) {
+        cursor: pointer;
+    }
+
+    :where([role="menu"], [role="listbox"]) > label > input[role]::before {
+        border-color: currentColor;
+    }
+
+    :where([role="menu"], [role="listbox"]) > label > input[role] {
+        block-size:  var(--md-line-height);
+        cursor:      pointer;
+        inline-size: var(--md-line-height);
+    }
+
+    dialog {
+        background-color: var(--color-paper);
+        border-color:     var(--color-ink-mix);
+        border-style:     solid;
+        border-width:     var(--md-border-width);
+        border-radius:    var(--md-border-radius);
+        color:            var(--color-ink);
+    }
+
+    :where(dialog, [popover][data-surround="transparent"])::backdrop { /* per kiso.css:514 */
+        background-color: oklch(0% 0 0deg / 30%);
+    }
+
+    @media (forced-colors: active) {
+        dialog {
+            background-color: Canvas;
+            border-color:     ButtonBorder;
+            color:            CanvasText;
+        }
+    }
+}
+/*
+ * SPDX-FileCopyrightText: 2026 Andyou <andyou@animagram.jp>
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/*  Usage:
+
+    <section data-type="toast" aria-live="polite" aria-atomic="true">
+        <output>
+            <span></span>
+            <p></p></output>
+        <button data-sign="x">
+            <span></span>
+            <p></p></button></section>
+
+    The number of [data-type="toast"]'s children means the maximum number of toasts that can be displayed simultaneously.
+    Also see reference/init.js.
+*/
+@layer css.toast {
+
+    /* === layout === */
+
+    [data-type="toast"] {
+        bottom:           1.5rem;
+        display:          flex;
+        flex-direction:   column;
+        gap:              0.75rem;
+        inset-inline-end: 1.5rem;
+        max-inline-size:  calc(100vw - 3rem);
+        position:         fixed;
+        z-index:          100;
+    }
+
+    [data-type="toast"] > * {
+        max-inline-size: 22rem;
+        min-inline-size: 14rem;
+        opacity:         0;
+        pointer-events:  none;
+        translate:       1.5rem 0;
+    }
+
+    [data-type="toast"] > * > p {
+        display: inline;
+    }
+
+    /*  a clickable slot carries its sign itself rather than holding a button:
+        the end padding is widened to a box height and the sign, centred in the
+        box by css.data_sign, is pulled into it. */
+
+    [data-type="toast"] > [data-sign] {
+        cursor:     pointer;
+        text-align: start;
+    }
+
+    [data-type="toast"] > [data-sign]::before,
+    [data-type="toast"] > [data-sign]::after {
+        inset-inline-start: auto;
+    }
+
+    /* --- size --- */
+
+    [data-type="toast"] > [data-sign] {
+        padding-inline-end: var(--box-height);
+    }
+    [data-type="toast"] > [data-sign]::before,
+    [data-type="toast"] > [data-sign]::after {
+        inset-inline-end: calc((var(--box-height) - var(--line-height)) / 2);
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+        [data-type="toast"] > * {
+            transition: opacity 0.15s ease, translate 0.15s ease;
+        }
+    }
+
+    [data-type="toast"] > .show {
+        opacity:        1;
+        pointer-events: auto;
+        translate:      0 0;
+    }
+
+    [data-type="toast"] > .hide {
+        opacity:        0;
+        pointer-events: none;
+        translate:      1.5rem 0;
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+        [data-type="toast"] > .hide {
+            transition-duration: 0.15s;
+        }
+    }
+
+    /* === forced-colors === */
+
+    @media (forced-colors: active) {
+        [data-type="toast"] > * {
+            background-color: Canvas;
+            border-color:     ButtonBorder;
+            color:            CanvasText;
+        }
+    }
+}
+/*
+ * SPDX-FileCopyrightText: 2026 Andyou <andyou@animagram.jp>
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/*  Usage:
+
+    <* role="alert | status"></*>
+
+    <label></label>
+    <p role="alert"><strong>Error:</strong></p>
+    <input type="text" aria-invalid="true">
+
+    <label>
+        <p role="alert"><strong>Error:</strong></p>
+        <input type="text" aria-invalid="true"></label>
+
+    <section role="alert">
+        <h2>There is a problem</h2>
+        <p>optional description</p>
+        <ul>
+            <li><a>Enter your name</a></li>
+            <li><a>Date of birth must be a real date</a></li></ul></section>
+
+    <section role="status">
+        <h2>Success</h2>
+        <p>optional description</p></section>
+ */
+@layer css.status {
+
+    /* === color, layout === */
+
+    :where(:is([role="alert"], [role="status"]):not([data-surround], [data-style], [data-type="toast"] > *)) {
+        border-style:     solid;
+        border-radius:    0;
+        margin-block-end: var(--border-width);
+    }
+
+    :where([role="alert"]:not([data-surround], [data-style], [data-type="toast"] > *)) {
+        border-color: var(--color-error);
+    }
+    :where([role="alert"]:not([data-surround], [data-style], [data-type="toast"] > *)):where([data-inline-align="start"])::before,
+    :where([role="alert"]:not([data-surround], [data-style], [data-type="toast"] > *)):not([data-inline-align="start"])::after {
+        background-color: var(--color-error);
+    }
+
+    :where([role="status"]:not([data-surround], [data-style], [data-type="toast"] > *)) {
+        border-color: var(--color-success);
+    }
+    :where([role="status"]:not([data-surround], [data-style], [data-type="toast"] > *)):where([data-inline-align="start"])::before,
+    :where([role="status"]:not([data-surround], [data-style], [data-type="toast"] > *)):not([data-inline-align="start"])::after {
+        background-color: var(--color-success);
+    }
+
+    :where(:is([role="alert"], [role="status"]):not([data-surround], [data-style], [data-type="toast"] > *)) > ul {
+        list-style: none;
+    }
+
+    :where(:is([role="alert"], [role="status"]):not([data-surround], [data-style], [data-type="toast"] > *)) > ul > li > a {
+        color:       var(--color-ink);
+        font-weight: bold;
+    }
+
+    /* --- focus --- */
+
+    /* --- visited, hover, active --- */
+
+    :where(:is([role="alert"], [role="status"]):not([data-surround], [data-style], [data-type="toast"] > *)) > ul > li > a:where(:visited, :active) {
+        color: var(--color-ink);
+    }
+
+    @media (hover: hover) {
+        :where(:is([role="alert"], [role="status"]):not([data-surround], [data-style], [data-type="toast"] > *)) > ul > li > a:where(:hover) {
+            color: var(--color-ink);
+        }
+    }
+
+    /* === forced-colors === */
+
+    @media (forced-colors: active) {
+        :where(:is([role="alert"], [role="status"]):not([data-surround], [data-style], [data-type="toast"] > *)) > ul > li > a {
+            color: LinkText;
+        }
+    }
+}
