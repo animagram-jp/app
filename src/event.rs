@@ -183,7 +183,6 @@ pub trait Handler: Sized {
         rem_in_px: f64,
         now_in_ms: u64,
         timezone_offset_minutes: i32,
-        data_url: String,
         color_scheme: ColorScheme,
     ) -> impl Future<Output = Self>;
     fn initial_draw(&mut self) -> (Vec<Event>, Vec<Command>);
@@ -333,12 +332,28 @@ pub mod store {
         result::Result::{self, Err, Ok},
     };
 
+    use arbitrary_int::u2;
+
     use crate::{
         Error,
         event::{Event, Opened},
         file_store::{FileStore, FileStoreError, Mount, StoreId},
         host::Command,
     };
+
+    crate::enumerate! {
+        pub Persistence(u2) {
+            Unsaved,
+            Stored,
+            Synced,
+        }
+    }
+
+    impl Persistence {
+        pub fn saved(self) -> bool {
+            !matches!(self, Self::Unsaved)
+        }
+    }
 
     pub async fn open<S: Mount>(id: StoreId) -> Result<S, FileStoreError> {
         S::open(id, true).await.and_then(S::new)

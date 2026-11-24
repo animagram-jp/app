@@ -9,7 +9,7 @@
     <meta name="sw-url" content="../sw.js">
     <title>Calendar</title>
     <link rel="icon" type="image/png" sizes="512x512" href="../image/animagram.png?v={version}">
-    <link rel="stylesheet" href="../css/import.css?v={version}">
+    <link rel="stylesheet" href="../css/animagram_css.css?v={version}">
     <link rel="stylesheet" href="../css/style.css?v={version}">
     <link rel="stylesheet" href="./calendar.css?v={version}">
     <script type="module" src="../init.js?v={version}"></script></head>
@@ -18,7 +18,7 @@
     <header id="header">
         <span data-sign="ring-arrow">
             <strong id="header_span_strong"></strong></span>
-        <fieldset id="header_fieldset" aria-label="表示期間" data-group="inline">
+        <fieldset id="header_fieldset" aria-label="表示期間" data-union="inline">
             <label id="header_fieldset_label-1">
                 <span id="header_fieldset_label-1_span"></span>
                 <input id="header_fieldset_label-1_input" type="radio" name="view"></label>
@@ -31,15 +31,15 @@
             <label id="header_fieldset_label-4">
                 <span id="header_fieldset_label-4_span"></span>
                 <input id="header_fieldset_label-4_input" type="radio" name="view"></label></fieldset>
-        <div id="header_div-1" role="group" aria-label="移動" data-group="inline">
+        <div id="header_div-1" role="group" aria-label="移動" data-union="inline">
             <button id="header_div-1_button-1" type="button" aria-label="previous page" data-surround="fill">&lt;&lt;</button>
             <button id="header_div-1_button-2" type="button" aria-label="previous" data-surround="fill">&lt;</button>
             <button id="header_div-1_button-3" type="button" data-surround="fill"></button>
             <button id="header_div-1_button-4" type="button" aria-label="next" data-surround="fill">&gt;</button>
             <button id="header_div-1_button-5" type="button" aria-label="next page" data-surround="fill">&gt;&gt;</button></div>
-        <input id="header_input" type="range" min="1" max="3" step="0.25" value="1.75" aria-label="縦倍率" data-size="sm">
+        <input id="header_input-1" type="range" min="1" max="3" step="0.25" value="1.75" aria-label="縦倍率" data-size="sm">
         <button id="header_button-1" type="button" aria-label="再読み込み" data-surround="outline" data-facet="reload"></button>
-        <button id="header_button-2" type="button" disabled data-surround="outline"></button>
+        <input id="header_input-2" type="checkbox" aria-label="save" data-facet="sync">
         <button id="header_button-3" type="button" popovertarget="header_div-2" aria-haspopup="listbox" aria-expanded="false" aria-controls="header_div-2" aria-label="Appearance" class="icon-palette" data-surround="outline"></button>
         <div id="header_div-2" popover="auto" role="listbox" aria-labelledby="header_button-3">
             <label>
@@ -71,7 +71,8 @@
             <button id="header_div-3_button-2" role="option" value="2"></button></div>
         <label id="header_label">
             <span id="header_label_span"></span>
-            <input id="header_label_input" type="checkbox"></label></header>
+            <input id="header_label_input" type="checkbox"></label>
+        <input id="header_input-3" type="file" accept=".json,application/json" aria-label="import" data-surround="outline"></header>
 
     <main id="main">
         <ol id="main_ol" aria-hidden="true" style="grid-template-rows: var(--head-height) repeat(44, 1.75rem)">
@@ -3016,55 +3017,64 @@
             <ol id="main_section_ol-5">
                 <li id="main_section_ol-5_li" hidden data-surround="outline"></li></ol></section></main>
     <dialog id="dialog">
-        <input id="dialog_input-1" name="email" type="email" autocomplete="username" required maxlength="254" placeholder="email" aria-label="email" form="dialog_form" data-size="sm" hidden disabled>
-        <input id="dialog_input-2" name="password" type="password" autocomplete="current-password" required minlength="8" maxlength="128" placeholder="password" aria-label="password" form="dialog_form" data-size="sm" hidden disabled>
-        <label id="dialog_label" hidden>
-            <span id="dialog_label_span"></span>
-            <input id="dialog_label_input" name="create" type="checkbox" form="dialog_form" disabled></label>
-        <form id="dialog_form" method="dialog">
-            <header id="dialog_form_header">
-                <h3 id="dialog_form_header_h3"></h3></header>
-            <dl id="dialog_form_dl">
-                <dt id="dialog_form_dl_dt-1">タイトル</dt>
-                <dd id="dialog_form_dl_dd-1">
-                    <input id="dialog_form_dl_dd-1_input" name="1" type="text" required maxlength="100" aria-label="タイトル" data-size="sm"></dd>
-                <dt id="dialog_form_dl_dt-2">カテゴリ</dt>
-                <dd id="dialog_form_dl_dd-2">
-                    <select id="dialog_form_dl_dd-2_select" name="2" aria-label="カテゴリ" data-size="sm">
-                        <option id="dialog_form_dl_dd-2_select_option-1" value="1" hidden></option>
-                        <option id="dialog_form_dl_dd-2_select_option-2" value="2" hidden></option>
-                        <option id="dialog_form_dl_dd-2_select_option-3" value="3" hidden></option>
-                        <option id="dialog_form_dl_dd-2_select_option-4" value="4" hidden></option></select></dd>
-                <dt id="dialog_form_dl_dt-3">状態</dt>
-                <dd id="dialog_form_dl_dd-3">
-                    <select id="dialog_form_dl_dd-3_select" name="3" aria-label="状態" data-size="sm">
-                        <option id="dialog_form_dl_dd-3_select_option-1" value="1" hidden></option>
-                        <option id="dialog_form_dl_dd-3_select_option-2" value="2" hidden></option>
-                        <option id="dialog_form_dl_dd-3_select_option-3" value="3" hidden></option>
-                        <option id="dialog_form_dl_dd-3_select_option-4" value="4" hidden></option></select></dd>
-                <dt id="dialog_form_dl_dt-4">日付</dt>
-                <dd id="dialog_form_dl_dd-4">
-                    <input id="dialog_form_dl_dd-4_input" name="4" type="date" aria-label="日付" data-size="sm"></dd>
-                <dt id="dialog_form_dl_dt-5">資源</dt>
-                <dd id="dialog_form_dl_dd-5">
-                    <select id="dialog_form_dl_dd-5_select" name="5" aria-label="資源" data-size="sm">
-                        <option id="dialog_form_dl_dd-5_select_option-1" value="1" hidden></option>
-                        <option id="dialog_form_dl_dd-5_select_option-2" value="2" hidden></option>
-                        <option id="dialog_form_dl_dd-5_select_option-3" value="3" hidden></option>
-                        <option id="dialog_form_dl_dd-5_select_option-4" value="4" hidden></option></select></dd>
-                <dt id="dialog_form_dl_dt-6">開始</dt>
-                <dd id="dialog_form_dl_dd-6">
-                    <input id="dialog_form_dl_dd-6_input" name="6" type="time" step="900" aria-label="開始" data-size="sm"></dd>
-                <dt id="dialog_form_dl_dt-7">終了</dt>
-                <dd id="dialog_form_dl_dd-7">
-                    <input id="dialog_form_dl_dd-7_input" name="7" type="time" step="900" aria-label="終了" data-size="sm"></dd>
-                <dt id="dialog_form_dl_dt-8">メモ</dt>
-                <dd id="dialog_form_dl_dd-8">
-                    <textarea id="dialog_form_dl_dd-8_textarea" name="8" maxlength="1000" aria-label="メモ" data-size="sm"></textarea></dd></dl>
-            <output id="dialog_form_output"></output>
-            <button id="dialog_form_button-1" type="submit" data-surround="outline" data-size="sm"></button>
-            <button id="dialog_form_button-2" type="button" hidden data-surround="outline" data-size="sm">削除</button></form></dialog>
+        <label id="dialog_label-1" hidden>
+            <span id="dialog_label-1_span"></span>
+            <input id="dialog_label-1_input" name="email" type="email" autocomplete="username" required maxlength="254" form="form" disabled></label>
+        <label id="dialog_label-2" hidden>
+            <span id="dialog_label-2_span"></span>
+            <input id="dialog_label-2_input-1" name="password" type="password" autocomplete="current-password" required minlength="8" maxlength="128" form="form" disabled>
+            <input id="dialog_label-2_input-2" type="checkbox" aria-controls="dialog_label-2_input-1" aria-label="show password" data-facet="eye"></label>
+        <label id="dialog_label-3" hidden>
+            <span id="dialog_label-3_span"></span>
+            <input id="dialog_label-3_input" name="create" type="checkbox" form="form" disabled></label>
+        <header id="dialog_header">
+            <h3 id="dialog_header_h3"></h3></header>
+        <dl id="dialog_dl" hidden>
+            <dt id="dialog_dl_dt-1">タイトル</dt>
+            <dd id="dialog_dl_dd-1">
+                <input id="dialog_dl_dd-1_input" name="1" type="text" required maxlength="100" form="form" disabled aria-label="タイトル"></dd>
+            <dt id="dialog_dl_dt-2">カテゴリ</dt>
+            <dd id="dialog_dl_dd-2">
+                <select id="dialog_dl_dd-2_select" name="2" form="form" disabled aria-label="カテゴリ">
+                    <option id="dialog_dl_dd-2_select_option-1" value="1" hidden></option>
+                    <option id="dialog_dl_dd-2_select_option-2" value="2" hidden></option>
+                    <option id="dialog_dl_dd-2_select_option-3" value="3" hidden></option>
+                    <option id="dialog_dl_dd-2_select_option-4" value="4" hidden></option></select></dd>
+            <dt id="dialog_dl_dt-3">状態</dt>
+            <dd id="dialog_dl_dd-3">
+                <select id="dialog_dl_dd-3_select" name="3" form="form" disabled aria-label="状態">
+                    <option id="dialog_dl_dd-3_select_option-1" value="1" hidden></option>
+                    <option id="dialog_dl_dd-3_select_option-2" value="2" hidden></option>
+                    <option id="dialog_dl_dd-3_select_option-3" value="3" hidden></option>
+                    <option id="dialog_dl_dd-3_select_option-4" value="4" hidden></option></select></dd>
+            <dt id="dialog_dl_dt-4">日付</dt>
+            <dd id="dialog_dl_dd-4">
+                <input id="dialog_dl_dd-4_input-1" name="4-1" type="text" inputmode="numeric" maxlength="4" pattern="[0-9]{4}" size="4" form="form" disabled aria-label="year" aria-labelledby="dialog_dl_dt-4 dialog_dl_dd-4_input-1">
+                <input id="dialog_dl_dd-4_input-2" name="4-2" type="text" inputmode="numeric" maxlength="2" pattern="0?[1-9]|1[0-2]" size="2" form="form" disabled aria-label="month" aria-labelledby="dialog_dl_dt-4 dialog_dl_dd-4_input-2">
+                <input id="dialog_dl_dd-4_input-3" name="4-3" type="text" inputmode="numeric" maxlength="2" pattern="0?[1-9]|[12][0-9]|3[01]" size="2" form="form" disabled aria-label="day" aria-labelledby="dialog_dl_dt-4 dialog_dl_dd-4_input-3"></dd>
+            <dt id="dialog_dl_dt-5">資源</dt>
+            <dd id="dialog_dl_dd-5">
+                <select id="dialog_dl_dd-5_select" name="5" form="form" disabled aria-label="資源">
+                    <option id="dialog_dl_dd-5_select_option-1" value="1" hidden></option>
+                    <option id="dialog_dl_dd-5_select_option-2" value="2" hidden></option>
+                    <option id="dialog_dl_dd-5_select_option-3" value="3" hidden></option>
+                    <option id="dialog_dl_dd-5_select_option-4" value="4" hidden></option></select></dd>
+            <dt id="dialog_dl_dt-6">開始</dt>
+            <dd id="dialog_dl_dd-6">
+                <input id="dialog_dl_dd-6_input-1" name="6-1" type="text" inputmode="numeric" maxlength="2" pattern="[01]?[0-9]|2[0-4]" size="2" form="form" disabled aria-label="hour" aria-labelledby="dialog_dl_dt-6 dialog_dl_dd-6_input-1">
+                <input id="dialog_dl_dd-6_input-2" name="6-2" type="text" inputmode="numeric" maxlength="2" pattern="0?0|15|30|45" size="2" form="form" disabled aria-label="minute" aria-labelledby="dialog_dl_dt-6 dialog_dl_dd-6_input-2"></dd>
+            <dt id="dialog_dl_dt-7">終了</dt>
+            <dd id="dialog_dl_dd-7">
+                <input id="dialog_dl_dd-7_input-1" name="7-1" type="text" inputmode="numeric" maxlength="2" pattern="[01]?[0-9]|2[0-4]" size="2" form="form" disabled aria-label="hour" aria-labelledby="dialog_dl_dt-7 dialog_dl_dd-7_input-1">
+                <input id="dialog_dl_dd-7_input-2" name="7-2" type="text" inputmode="numeric" maxlength="2" pattern="0?0|15|30|45" size="2" form="form" disabled aria-label="minute" aria-labelledby="dialog_dl_dt-7 dialog_dl_dd-7_input-2"></dd>
+            <dt id="dialog_dl_dt-8">メモ</dt>
+            <dd id="dialog_dl_dd-8">
+                <textarea id="dialog_dl_dd-8_textarea" name="8" maxlength="1000" form="form" disabled aria-label="メモ"></textarea></dd></dl>
+        <output id="dialog_output" role="alert"></output>
+        <button id="dialog_button-1" type="submit" form="form" data-surround="fill"></button>
+        <button id="dialog_button-2" type="button" hidden disabled data-surround="outline">削除</button></dialog>
 
+    <form id="form" method="dialog"></form>
     <section id="toast" data-type="toast" aria-live="polite" aria-atomic="true">
         <button id="toast_button-1" type="button" hidden data-sign="x">
             <span id="toast_button-1_span"></span>

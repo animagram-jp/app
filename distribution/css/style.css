@@ -19,10 +19,14 @@
 :root {
     --font-family-sans-serif: "IBM Plex Sans", "Noto Sans JP", "BIZ UDPGothic", "Hiragino Sans", sans-serif;
     --font-family-monospace: "Fira Code", "BIZ UDGothic", monospace;
+}
 
-    --rgb-theme-purple: 91 47 145;
-    --color-emphasis-ink:   light-dark(rgb(var(--rgb-theme-purple)), oklch(from rgb(var(--rgb-theme-purple)) 0.787 0.120 h));
-    --color-emphasis-paper: light-dark(oklch(from rgb(var(--rgb-theme-purple)) 0.672 0.154 h), oklch(from rgb(var(--rgb-theme-purple)) 0.557 0.154 h));
+@media (forced-colors: none) {
+    :root {
+        --rgb-animagram: 91 47 145;
+
+        --color-emphasis-ink: light-dark(rgb(var(--rgb-animagram)), oklch(from rgb(var(--rgb-animagram)) 0.780 0.113 h));
+    }
 }
 
 body > header {
@@ -219,12 +223,34 @@ input[name="hue"]::-moz-range-track {
     background-image: var(--hue-track);
 }
 
-dialog > :is(input, label:has(> input[name="create"])) {
+dialog:modal {
+    display:        flex;
+    flex-direction: column;
+}
+
+dialog > :is(label, dl) {
+    inline-size:     24rem;
+    max-inline-size: 100%;
+}
+
+dialog > label:has(> input[name="create"]) {
     display: block;
 }
 
-dialog > input {
-    inline-size: 100%;
+dialog > label:has(> input:is([name="email"], [name="password"])) {
+    align-items:    stretch;
+    display:        flex;
+    flex-direction: column;
+    row-gap:        var(--border-radius);
+
+    & > span {
+        align-self: stretch;
+    }
+
+    & > input[type="checkbox"][aria-controls] {
+        inset-block-end:   0;
+        inset-block-start: auto;
+    }
 }
 
 textarea {

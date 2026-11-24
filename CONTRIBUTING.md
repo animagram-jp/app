@@ -13,7 +13,7 @@ If "ORG_CONTRIBUTING.md" does not exist in the repository root of your working e
 curl -fsSL -H "Accept: application/vnd.github.raw+json" "https://api.github.com/repos/animagram-jp/.github/contents/.github/CONTRIBUTING.md?ref=main" -o "ORG_CONTRIBUTING.md"
 ```
 
-- ホスト機器には、1 byte = 1 octet = 8 bits、little endianのレジスターを現状想定している。
+- 現在、ホスト機器には1 byte = 1 octet = 8 bits、little endianのレジスターを想定している。
 - メモリ上で値が0...0を指すとき、それはNone(存在しない)ということを指さなければならない。ゼロ(0)がNone(存在しない)に矛盾しないならば、これは両立する。
 - メモリ上の方向は、レジスターが読み出す時に動く方向(アドレス・桁の重み・添字が増える方向)を正とする。関数スコープ内で完結するデータを除き、定義は宣言順を正方向に揃える。bit fieldは宣言順にbit 0から上位へ置く。
 - データは[u8]として定義し、比較は幅を固定したbit rangeをuN(Nは8の倍数に限らない)のscalarとして解釈して行う。タプル・配列・derive(Ord)の辞書順(先頭が最上位)で比較しない。
@@ -58,7 +58,7 @@ curl -fsSL -H "Accept: application/vnd.github.raw+json" "https://api.github.com/
 - Format: `cargo fmt`
 - Checker: `cargo clippy --all-targets --all-features`
 - Checker (wasm): `RUSTFLAGS="-Ctarget-feature=+atomics,+bulk-memory" cargo clippy --lib --all-features --target wasm32-unknown-unknown -Zbuild-std=std,panic_abort`
-- Copy from animagram-jp/css: `cp -f ../css/css/*.css ./distribution/css/library/`
+- Download from animagram-jp/css: `curl -fsSL -o ./distribution/css/animagram_css.css https://github.com/animagram-jp/css/releases/download/0.1.10/animagram_css.css`
 
 ## Test
 

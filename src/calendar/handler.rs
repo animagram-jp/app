@@ -26,12 +26,12 @@ use crate::{
     event::{
         self, Event, Handler as _, Keyring, Opened, Response,
         gesture::{Gesture, Pointer},
-        store,
+        store::{self, Persistence},
     },
     file_store::{FileStore, Mount, StoreId},
     host::{
-        Attribute, CanvasEvent, Command, EventType, FnName, Keyword, Method, StyleProperty,
-        StyleValue, Unit, dom::Id, parse_url_search_params,
+        Attribute, CanvasEvent, Command, EventType, FnName, Keyword, StyleProperty, StyleValue,
+        Unit, dom::Id, parse_url_search_params,
     },
     object::{self, Record},
     parse, stringify,
@@ -55,8 +55,8 @@ const COLUMN_MIN_IN_REM: f64 = 5.0;
 const AXIS_IN_REM: f64 = 4.0;
 const HEAD_IN_REM: f64 = 5.0;
 const STEP_COUNT: u32 = 5;
-const LOAD_REQUEST: u32 = 1;
-const LOAD_PATH: &str = "data/calendar.json";
+const IMPORT_REQUEST: u32 = 1;
+const UNREADABLE: &str = "データを読み込めませんでした";
 const STATUS_OK: u16 = 200;
 
 struct RowInRem(f64);
@@ -147,7 +147,7 @@ pub struct Handler<S: FileStore> {
     create:               Option<CreateDrag>,
     row_in_rem:           f64,
     drag:                 Option<Drag>,
-    dirty:                bool,
+    persistence:          Persistence,
     store:                Option<S>,
     attached:             bool,
     lost:                 Vec<(u32, Option<Vec<u8>>)>,
@@ -174,15 +174,7 @@ impl<S: FileStore> Handler<S> {
     }
 
     fn load_commands(&self) -> Vec<Command> {
-        if self.loaded() {
-            return self.loaded_commands();
-        }
-        vec![Command::Fetch {
-            request: LOAD_REQUEST,
-            method:  Method::Get,
-            path:    String::from(LOAD_PATH),
-            body:    Vec::new(),
-        }]
+        if self.loaded() { self.loaded_commands() } else { vec![] }
     }
 
     pub(crate) fn appointments(&self) -> Vec<Record<Appointment>> {
@@ -220,7 +212,7 @@ impl<S: FileStore> Handler<S> {
             create: None,
             row_in_rem: ROW_IN_REM,
             drag: None,
-            dirty: false,
+            persistence: Persistence::Stored,
             store: None,
             attached: false,
             lost: Vec::new(),
@@ -508,9 +500,16 @@ impl<S: FileStore> Handler<S> {
             ),
             (
                 EditField::Start,
-                display(add(place.day, start), self.language, HOUR_MINUTE, Format::Iso),
+                add(place.day, start).map_or_else(String::new, |stamp| {
+                    display(stamp, self.language, HOUR_MINUTE, Format::Iso)
+                }),
             ),
-            (EditField::End, display(add(place.day, end), self.language, HOUR_MINUTE, Format::Iso)),
+            (
+                EditField::End,
+                add(place.day, end).map_or_else(String::new, |stamp| {
+                    display(stamp, self.language, HOUR_MINUTE, Format::Iso)
+                }),
+            ),
             (EditField::Note, draft.note.clone()),
         ];
         let mut commands = vec![
@@ -521,21 +520,24 @@ impl<S: FileStore> Handler<S> {
                 value: Submit.display(Dialog::Edit, self.language).into(),
             },
         ];
-        commands.extend(values.into_iter().map(|(field, value)| Command::SetValue {
-            id: Target::EditField(field).to_dom(),
-            value,
-        }));
+        commands
+            .extend(values.into_iter().flat_map(|(field, value)| value_commands(field, &value)));
         commands.push(hidden(Target::EditList.to_dom(), false));
         commands.extend(
-            EditField::list().iter().map(|&field| {
-                toggle(Target::EditField(field).to_dom(), Attribute::Disabled, false)
-            }),
+            EditField::list()
+                .iter()
+                .flat_map(|&field| field.controls())
+                .map(|target| toggle(target.to_dom(), Attribute::Disabled, false)),
         );
         commands.push(hidden(Target::Delete.to_dom(), matches!(editing, Editing::New(_))));
         commands.push(toggle(Target::Delete.to_dom(), Attribute::Disabled, false));
         for &field in Field::list() {
             commands.push(hidden(Target::Credential(field).to_dom(), true));
-            commands.push(toggle(Target::Credential(field).to_dom(), Attribute::Disabled, true));
+            commands.push(toggle(
+                Target::CredentialInput(field).to_dom(),
+                Attribute::Disabled,
+                true,
+            ));
         }
         commands.push(hidden(Target::Create.to_dom(), true));
         commands.push(toggle(Target::CreateInput.to_dom(), Attribute::Disabled, true));
@@ -642,7 +644,7 @@ impl<S: FileStore> Handler<S> {
             .map(|cell| {
                 let resource = resources.get(cell.resource as usize)?;
                 Some(Place {
-                    day:      add(self.base, Length::new(TimeUnit::Day, u64::from(cell.day))),
+                    day:      add(self.base, Length::new(TimeUnit::Day, u64::from(cell.day)))?,
                     resource: resource.uid,
                 })
             })
@@ -690,10 +692,13 @@ impl<S: FileStore> Handler<S> {
             let start = self.clock.clamp_start(Length::ZERO, NEW_UNITS);
             let end =
                 self.clock.time(self.clock.unit(start) + NEW_UNITS).unwrap_or(self.clock.end());
-            let place = Place {
-                day:      add(self.first_day(), Length::new(TimeUnit::Day, u64::from(day))),
-                resource: resource.uid,
+            let Some(day) = self
+                .first_day()
+                .and_then(|first| add(first, Length::new(TimeUnit::Day, u64::from(day))))
+            else {
+                return vec![];
             };
+            let place = Place { day, resource: resource.uid };
             return self.new_form(vec![place], start, end);
         }
         let [Ok(column), Ok(row)] =
@@ -716,10 +721,10 @@ impl<S: FileStore> Handler<S> {
         };
         let start = grid.clock.clamp_start(time, NEW_UNITS);
         let end = grid.clock.time(grid.clock.unit(start) + NEW_UNITS).unwrap_or(grid.clock.end());
-        let place = Place {
-            day:      add(self.base, Length::new(TimeUnit::Day, u64::from(cell.day))),
-            resource: resource.uid,
+        let Some(day) = add(self.base, Length::new(TimeUnit::Day, u64::from(cell.day))) else {
+            return vec![];
         };
+        let place = Place { day, resource: resource.uid };
         self.new_form(vec![place], start, end)
     }
 
@@ -768,13 +773,18 @@ impl<S: FileStore> Handler<S> {
         commands.extend(
             EditField::list()
                 .iter()
-                .map(|&field| toggle(Target::EditField(field).to_dom(), Attribute::Disabled, true)),
+                .flat_map(|&field| field.controls())
+                .map(|target| toggle(target.to_dom(), Attribute::Disabled, true)),
         );
         commands.push(hidden(Target::Delete.to_dom(), true));
         commands.push(toggle(Target::Delete.to_dom(), Attribute::Disabled, true));
         for &field in Field::list() {
             commands.push(hidden(Target::Credential(field).to_dom(), false));
-            commands.push(toggle(Target::Credential(field).to_dom(), Attribute::Disabled, false));
+            commands.push(toggle(
+                Target::CredentialInput(field).to_dom(),
+                Attribute::Disabled,
+                false,
+            ));
         }
         commands.push(hidden(Target::Create.to_dom(), false));
         commands.push(toggle(Target::CreateInput.to_dom(), Attribute::Disabled, false));
@@ -789,7 +799,7 @@ impl<S: FileStore> Handler<S> {
             Dialog::Unlock => {
                 let mut commands = vec![
                     Command::SetValue {
-                        id:    Target::Credential(Field::Password).to_dom(),
+                        id:    Target::CredentialInput(Field::Password).to_dom(),
                         value: String::new(),
                     },
                     toggle(Target::CreateInput.to_dom(), Attribute::Checked, false),
@@ -922,7 +932,7 @@ impl<S: FileStore> Handler<S> {
                 .map(|flat| {
                     let (day, resource) = grid.locate(flat);
                     let resource = resources.get(resource as usize)?.uid;
-                    Some(Place { day: shift(base, TimeUnit::Day, i64::from(day)), resource })
+                    Some(Place { day: shift(base, TimeUnit::Day, i64::from(day))?, resource })
                 })
                 .collect::<Option<Vec<Place>>>()
         });
@@ -978,7 +988,7 @@ impl<S: FileStore> Handler<S> {
     }
 
     fn move_in_month(&self, drag: &Drag) -> Option<Record<Appointment>> {
-        let first = self.first_day();
+        let first = self.first_day()?;
         let (target, _) = self.unit_at(drag.pointer).and_then(Month::locate)?;
         let mut entry = self.appointment(drag.key)?;
         let pressed = entry.places.get(drag.cell)?;
@@ -989,11 +999,13 @@ impl<S: FileStore> Handler<S> {
         let moved: Vec<Place> = entry
             .places
             .iter()
-            .map(|place| Place {
-                day:      shift(place.day, TimeUnit::Day, delta),
-                resource: place.resource,
+            .map(|place| {
+                Some(Place {
+                    day:      shift(place.day, TimeUnit::Day, delta)?,
+                    resource: place.resource,
+                })
             })
-            .collect();
+            .collect::<Option<_>>()?;
         entry.places = moved;
         Some(entry)
     }
@@ -1022,7 +1034,7 @@ impl<S: FileStore> Handler<S> {
             .map(|place| {
                 let (day, resource) = axis.locate(flat(place)? + delta);
                 let resource = resources.get(resource as usize)?.uid;
-                Some(Place { day: shift(base, TimeUnit::Day, i64::from(day)), resource })
+                Some(Place { day: shift(base, TimeUnit::Day, i64::from(day))?, resource })
             })
             .collect::<Option<_>>()?;
         let current = (entry.start, entry.end);
@@ -1061,7 +1073,7 @@ impl<S: FileStore> Handler<S> {
                 self.base = if n == STEP_TODAY {
                     self.today
                 } else {
-                    shift(self.base, TimeUnit::Day, self.step_days(n))
+                    shift(self.base, TimeUnit::Day, self.step_days(n)).unwrap_or(self.base)
                 };
                 (vec![], self.date_commands())
             }
@@ -1082,7 +1094,6 @@ impl<S: FileStore> Handler<S> {
                 (vec![], commands)
             }
             Target::Delete => (vec![], self.delete_commands()),
-            Target::Save => self.save_commands(),
             Target::Reload => self.discard_commands(),
             _ => (vec![], vec![]),
         }
@@ -1206,7 +1217,9 @@ impl<S: FileStore> Handler<S> {
     }
 
     fn month_cards(&self, appointments: &[Record<Appointment>]) -> Vec<Card> {
-        let first = self.first_day();
+        let Some(first) = self.first_day() else {
+            return Vec::new();
+        };
         let mut days: BTreeMap<u32, Vec<(u32, usize)>> = BTreeMap::new();
         for entry in appointments {
             let key = entry.head.id;
@@ -1241,12 +1254,14 @@ impl<S: FileStore> Handler<S> {
         if !self.month() {
             return Vec::new();
         }
-        let first = self.first_day();
+        let Some(first) = self.first_day() else {
+            return Vec::new();
+        };
         (0..Month::days())
             .filter_map(|day| {
                 let bx = Month::bbox(day, None)?;
                 Some(Band {
-                    kind: BandKind::Date(add(first, Length::new(TimeUnit::Day, u64::from(day)))),
+                    kind: BandKind::Date(add(first, Length::new(TimeUnit::Day, u64::from(day)))?),
                     bx,
                 })
             })
@@ -1387,8 +1402,18 @@ impl<S: FileStore> Handler<S> {
                     Target::CardPart(n, CardPart::Time).to_dom(),
                     format!(
                         "{}–{}",
-                        display(add(self.base, start), self.language, HOUR_MINUTE, Format::Iso),
-                        display(add(self.base, end), self.language, HOUR_MINUTE, Format::Iso)
+                        add(self.base, start).map_or_else(String::new, |stamp| display(
+                            stamp,
+                            self.language,
+                            HOUR_MINUTE,
+                            Format::Iso
+                        )),
+                        add(self.base, end).map_or_else(String::new, |stamp| display(
+                            stamp,
+                            self.language,
+                            HOUR_MINUTE,
+                            Format::Iso
+                        ))
                     ),
                 ),
                 (Target::CardPart(n, CardPart::Title).to_dom(), entry.title.clone()),
@@ -1406,29 +1431,25 @@ impl<S: FileStore> Handler<S> {
         commands
     }
 
-    fn mark_dirty(&mut self) -> Option<Command> {
-        if self.dirty {
-            return None;
-        }
-        self.dirty = true;
-        Some(Command::RemoveAttribute {
-            id:        Target::Save.to_dom(),
-            attribute: Attribute::Disabled,
-        })
+    fn mark(&mut self, persistence: Persistence) -> Command {
+        self.persistence = persistence;
+        toggle(Target::Save.to_dom(), Attribute::Checked, persistence.saved())
     }
 
-    fn import_commands(
-        &mut self,
-        body: &[u8],
-    ) -> Result<(Vec<Event>, Vec<Command>), CalendarError> {
+    fn mark_dirty(&mut self) -> Option<Command> {
+        self.persistence.saved().then(|| self.mark(Persistence::Unsaved))
+    }
+
+    fn import_commands(&mut self, body: &[u8]) -> Result<Vec<Command>, CalendarError> {
         let Some(store) = self.store.as_mut() else {
-            return Ok((vec![], vec![]));
+            return Ok(vec![]);
         };
+        let replaced: Vec<u32> = store.range(0, u32::MAX).map(|(id, _)| id).collect();
         calendar::import(store, body)?;
-        Ok(match store.save() {
-            Ok(()) => (vec![], vec![]),
-            Err(error) => store::failed(STORE, error),
-        })
+        for id in replaced {
+            store.delete(id);
+        }
+        Ok(vec![self.mark(Persistence::Unsaved)])
     }
 
     fn persist(&mut self, mut entry: Record<Appointment>) {
@@ -1443,17 +1464,11 @@ impl<S: FileStore> Handler<S> {
             return (vec![], vec![]);
         };
         if let Err(error) = store.save() {
-            return store::failed(STORE, error);
+            let (events, mut commands) = store::failed(STORE, error);
+            commands.push(self.mark(Persistence::Unsaved));
+            return (events, commands);
         }
-        self.dirty = false;
-        (
-            vec![],
-            vec![Command::SetAttribute {
-                id:        Target::Save.to_dom(),
-                attribute: Attribute::Disabled,
-                value:     String::new(),
-            }],
-        )
+        (vec![], vec![self.mark(Persistence::Stored)])
     }
 
     pub fn discard_commands(&mut self) -> (Vec<Event>, Vec<Command>) {
@@ -1471,19 +1486,12 @@ impl<S: FileStore> Handler<S> {
             commands.extend(self.view_commands());
         }
         commands.extend(self.card_commands());
-        if self.dirty {
-            self.dirty = false;
-            commands.push(Command::SetAttribute {
-                id:        Target::Save.to_dom(),
-                attribute: Attribute::Disabled,
-                value:     String::new(),
-            });
-        }
+        commands.push(self.mark(Persistence::Stored));
         (vec![], commands)
     }
 
     pub fn dirty(&self) -> bool {
-        self.dirty
+        !self.persistence.saved()
     }
 
     fn header_commands(&self) -> Vec<Command> {
@@ -1495,8 +1503,9 @@ impl<S: FileStore> Handler<S> {
             })
             .collect();
         commands.extend(
-            [Target::Step(STEP_TODAY), Target::Save, Target::UnlockName, Target::CreateName]
+            [Target::Step(STEP_TODAY), Target::UnlockName, Target::CreateName]
                 .into_iter()
+                .chain(Field::list().iter().copied().map(Target::CredentialName))
                 .filter_map(|target| {
                     Some(Command::SetText {
                         id:    target.to_dom(),
@@ -1508,19 +1517,23 @@ impl<S: FileStore> Handler<S> {
     }
 
     fn date_commands(&self) -> Vec<Command> {
-        let first = self.first_day();
+        let Some(first) = self.first_day() else {
+            return Vec::new();
+        };
         let days = self.axis.days();
         let mut commands: Vec<Command> = (1..=days)
-            .map(|n| {
-                let day = add(first, Length::new(TimeUnit::Day, u64::from(n - 1)));
-                Command::SetText {
-                    id:    Target::DayTitle(n).to_dom(),
-                    value: if self.month() {
-                        String::from(youbi(day).display(self.language))
-                    } else {
-                        display(day, self.language, MONTH_DAY, Format::WithYoubi)
+            .map(|n| Command::SetText {
+                id:    Target::DayTitle(n).to_dom(),
+                value: add(first, Length::new(TimeUnit::Day, u64::from(n - 1))).map_or_else(
+                    String::new,
+                    |day| {
+                        if self.month() {
+                            String::from(youbi(day).display(self.language))
+                        } else {
+                            display(day, self.language, MONTH_DAY, Format::WithYoubi)
+                        }
                     },
-                }
+                ),
             })
             .collect();
         let value =
@@ -1558,11 +1571,11 @@ impl<S: FileStore> Handler<S> {
         self.axis == Axis::Month
     }
 
-    fn first_day(&self) -> Stamp {
+    fn first_day(&self) -> Option<Stamp> {
         if self.month() {
             sub(self.base, Length::new(TimeUnit::Day, youbi(self.base) as u64 - 1))
         } else {
-            self.base
+            Some(self.base)
         }
     }
 
@@ -1619,23 +1632,26 @@ impl<S: FileStore> Handler<S> {
     }
 
     fn axis_commands(&self) -> Vec<Command> {
-        let first = self.first_day();
+        let Some(first) = self.first_day() else {
+            return Vec::new();
+        };
         let mut commands = Vec::new();
         for row in 0..self.clock.count() {
             let value = if self.month() {
                 match Month::locate([0, row as i32]) {
-                    Some((day, None)) => display(
-                        add(first, Length::new(TimeUnit::Day, u64::from(day))),
-                        self.language,
-                        MONTH_DAY,
-                        Format::WithoutYoubi,
-                    ),
+                    Some((day, None)) => add(first, Length::new(TimeUnit::Day, u64::from(day)))
+                        .map_or_else(String::new, |day| {
+                            display(day, self.language, MONTH_DAY, Format::WithoutYoubi)
+                        }),
                     _ => String::new(),
                 }
             } else {
-                self.clock.time(f64::from(row)).map_or_else(String::new, |time| {
-                    display(add(first, time), self.language, HOUR_MINUTE, Format::Iso)
-                })
+                self.clock
+                    .time(f64::from(row))
+                    .and_then(|time| add(first, time))
+                    .map_or_else(String::new, |stamp| {
+                        display(stamp, self.language, HOUR_MINUTE, Format::Iso)
+                    })
             };
             for side in 1..=2 {
                 commands.push(Command::SetText {
@@ -1715,13 +1731,13 @@ impl<S: Mount> event::Handler for Handler<S> {
         rem_in_px: f64,
         now_in_ms: u64,
         timezone_offset_minutes: i32,
-        _data_url: String,
         color_scheme: ColorScheme,
     ) -> Self {
         let utc = from_unix_timestamp_in_ms(now_in_ms as i64, Zone::ZERO);
         let offset =
             Length::new(TimeUnit::Minute, u64::from(timezone_offset_minutes.unsigned_abs()));
-        let local = if timezone_offset_minutes < 0 { sub(utc, offset) } else { add(utc, offset) };
+        let local = if timezone_offset_minutes < 0 { sub(utc, offset) } else { add(utc, offset) }
+            .unwrap_or(utc);
         let mut today = local;
         today.set(time::Hour::ZERO);
         today.set(time::Minute::ZERO);
@@ -1748,6 +1764,7 @@ impl<S: Mount> event::Handler for Handler<S> {
     fn initial_draw(&mut self) -> (Vec<Event>, Vec<Command>) {
         let mut commands = self.view_commands();
         commands.extend(self.header_commands());
+        commands.push(toggle(Target::Save.to_dom(), Attribute::Checked, self.persistence.saved()));
         commands.extend(appearance_commands(self.color_scheme));
         commands.extend(language_commands(self.language));
         commands.extend(Language::list().iter().flat_map(|&l| option_commands(l)));
@@ -1763,21 +1780,21 @@ impl<S: Mount> event::Handler for Handler<S> {
     }
 
     fn process_fetched(&mut self, response: &Response) -> (Vec<Event>, Vec<Command>) {
-        if response.request != LOAD_REQUEST {
+        if response.request != IMPORT_REQUEST {
             return (vec![], vec![]);
         }
         if response.status != STATUS_OK {
-            return (vec![], vec![]);
+            return (vec![], self.toast(UNREADABLE));
         }
-        let (events, mut commands) = match self.import_commands(&response.body) {
-            Ok(result) => result,
+        let mut commands = match self.import_commands(&response.body) {
+            Ok(commands) => commands,
             Err(error) => return (vec![], self.toast(notice(&error))),
         };
         self.resources = self.count_resources();
         self.fit_rectgrid();
         commands.extend(self.view_commands());
         commands.extend(self.option_commands());
-        (events, commands)
+        (vec![], commands)
     }
 
     fn process_canvas(
@@ -1794,6 +1811,14 @@ impl<S: Mount> event::Handler for Handler<S> {
             EventType::Input if target == Some(Target::Zoom) => (vec![], self.zoom(&event.value)),
             EventType::Change => match target {
                 Some(Target::Axis(axis)) => (vec![], self.change_axis(axis)),
+                Some(Target::Save) => self.save_commands(),
+                Some(Target::Import) => (
+                    vec![],
+                    vec![Command::ReadFile {
+                        id:      Target::Import.to_dom(),
+                        request: IMPORT_REQUEST,
+                    }],
+                ),
                 Some(Target::Unlock) => (vec![], self.toggle_lock()),
                 Some(Target::AppearanceOption(c)) => {
                     self.color_scheme = c;
@@ -1803,7 +1828,7 @@ impl<S: Mount> event::Handler for Handler<S> {
             },
             EventType::PointerDown => (vec![], self.press(event, target)),
             EventType::Close if target == Some(Target::Modal) => (vec![], self.close_dialog()),
-            EventType::Submit if target == Some(Target::EditForm) => match self.dialog {
+            EventType::Submit if target == Some(Target::Form) => match self.dialog {
                 Dialog::Unlock => (vec![], self.submit_unlock(&event.value)),
                 _ => (vec![], self.submit(&event.value)),
             },
@@ -1913,7 +1938,8 @@ fn shift_cells(
             let index =
                 usize::try_from(position as i32 + resource_delta).map_err(|_| "範囲外です")?;
             let moved = resources.get(index).ok_or("範囲外です")?.uid;
-            Ok(Place { day: shift(place.day, TimeUnit::Day, day_delta), resource: moved })
+            let day = shift(place.day, TimeUnit::Day, day_delta).ok_or("範囲外です")?;
+            Ok(Place { day, resource: moved })
         })
         .collect()
 }
@@ -1926,13 +1952,21 @@ fn decode_form(
     categories: &[Record<Tag>],
 ) -> Result<Record<Appointment>, &'static str> {
     let pairs = parse_url_search_params(value);
-    let field = |field: EditField| {
-        let name = format!("{}", field.number());
+    let read = |name: String| {
         pairs
             .iter()
             .find(|(key, _)| *key == name)
-            .map(|(_, value)| value.as_str())
+            .map(|(_, value)| value.clone())
             .ok_or("入力を読み取れません")
+    };
+    let field = |field: EditField| match field.separator() {
+        None => read(format!("{}", field.number())),
+        Some(separator) => field
+            .parts()
+            .iter()
+            .map(|part| read(part.name(field)))
+            .collect::<Result<Vec<_>, _>>()
+            .map(|texts| texts.join(&String::from(separator))),
     };
     let [title, category, status, date, resource, start, end, note] = [
         EditField::Title,
@@ -1947,19 +1981,35 @@ fn decode_form(
     .map(field);
     let (title, category, status, date) = (title?, category?, status?, date?);
     let (resource, start, end, note) = (resource?, start?, end?, note?);
-    let day = parse_date(date).map_err(|_| "日付が不正です")?;
-    let start = parse_time(start).map_err(|_| "開始時刻が不正です")?;
-    let end = parse_time(end).map_err(|_| "終了時刻が不正です")?;
+    let day = parse_date(&date).map_err(|_| "日付が不正です")?;
+    let start = parse_time(&start).map_err(|_| "開始時刻が不正です")?;
+    let end = parse_time(&end).map_err(|_| "終了時刻が不正です")?;
     if start >= end || start < clock.start() || end > clock.end() {
         return Err("時間帯が不正です");
     }
-    let resource = option_position(resources, resource).ok_or("資源が不正です")?;
-    let status = option_position(statuses, status).ok_or("状態が不正です")?;
-    let category = option_position(categories, category).ok_or("カテゴリが不正です")?;
+    let resource = option_position(resources, &resource).ok_or("資源が不正です")?;
+    let status = option_position(statuses, &status).ok_or("状態が不正です")?;
+    let category = option_position(categories, &category).ok_or("カテゴリが不正です")?;
     let place = Place { day, resource: resources[resource].uid };
     let category = categories[category].code.clone();
     let status = statuses[status].code.clone();
-    Ok(Record::new(0, Appointment::new(&[place], start, end, title, &category, &status, note)))
+    Ok(Record::new(0, Appointment::new(&[place], start, end, &title, &category, &status, &note)))
+}
+
+fn value_commands(field: EditField, value: &str) -> Vec<Command> {
+    let texts: Vec<&str> = match field.separator() {
+        None => Vec::from([value]),
+        Some(separator) => value.split(separator).collect(),
+    };
+    field
+        .controls()
+        .into_iter()
+        .zip(texts)
+        .map(|(target, text)| Command::SetValue {
+            id:    target.to_dom(),
+            value: String::from(text),
+        })
+        .collect()
 }
 
 fn option_value<T>(items: &[T], selected: impl Fn(&T) -> bool) -> String {
@@ -2039,9 +2089,7 @@ impl<S: FileStore> Handler<S> {
 
 fn notice(error: &CalendarError) -> &'static str {
     match error {
-        CalendarError::Json(_) | CalendarError::Missing(_) | CalendarError::Shape(_) => {
-            "データを読み込めませんでした"
-        }
+        CalendarError::Json(_) | CalendarError::Missing(_) | CalendarError::Shape(_) => UNREADABLE,
         CalendarError::Value { .. } => "データに不正な値があります",
         CalendarError::Kind(_) | CalendarError::Object(_) => "保存データが壊れています",
     }
@@ -2070,7 +2118,7 @@ mod tests {
     const GRAB_Y: f64 = 40.0;
 
     fn after(day: Stamp, n: i64) -> Stamp {
-        shift(day, TimeUnit::Day, n)
+        shift(day, TimeUnit::Day, n).unwrap()
     }
 
     fn today() -> Stamp {
@@ -2097,7 +2145,6 @@ mod tests {
                 REM,
                 now,
                 offset,
-                String::new(),
                 ColorScheme::Light,
             ));
             let (year, month, day) = expected;
@@ -2324,12 +2371,10 @@ mod tests {
         assert_eq!(text(&commands, Target::AxisName(Axis::Month)), "1ヶ月");
         assert_eq!(text(&commands, Target::AxisName(Axis::Day(Day::Day))), "1日");
         assert_eq!(text(&commands, Target::Step(3)), "本日");
-        assert_eq!(text(&commands, Target::Save), "保存");
         let commands = press(&mut handler, Target::LanguageOption(Language::En(En::Gb)).to_dom());
         assert_eq!(text(&commands, Target::AxisName(Axis::Month)), "1 month");
         assert_eq!(text(&commands, Target::AxisName(Axis::Day(Day::Week))), "1 week");
         assert_eq!(text(&commands, Target::Step(3)), "Today");
-        assert_eq!(text(&commands, Target::Save), "Save");
     }
 
     #[test]
@@ -2366,32 +2411,53 @@ mod tests {
     }
 
     fn sample_response(request: u32, status: u16) -> Response {
-        let body = fs::read(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/distribution/calendar/data/calendar.json"
-        ))
-        .unwrap();
+        let body =
+            fs::read(concat!(env!("CARGO_MANIFEST_DIR"), "/reference/calendar.json")).unwrap();
         Response { request, status, body }
     }
 
     #[test]
-    fn initial_draw_requests_the_calendar_once() {
+    fn nothing_is_fetched_and_a_chosen_file_is_read() {
         let mut handler = Handler::<MemoryStore>::new(VIEWPORT, today(), REM);
         let (_, commands) = handler.initial_draw();
-        let fetches: Vec<_> = commands
-            .iter()
-            .filter_map(|command| match command {
-                Command::Fetch { request, method, path, body } => {
-                    Some((*request, *method, path.clone(), body.len()))
-                }
-                _ => None,
-            })
-            .collect();
-        assert_eq!(fetches, [(1, Method::Get, String::from("data/calendar.json"), 0)]);
+        assert!(!commands.iter().any(|command| matches!(command, Command::Fetch { .. })));
+        assert_eq!(sync_checked(&commands), Some(true));
+        let event = CanvasEvent {
+            event_type: EventType::Change,
+            ..click(Target::Import.to_dom(), 10.0, 10.0)
+        };
+        let commands = handler.process_canvas(&event, &pointer()).1;
+        assert!(matches!(
+            commands.as_slice(),
+            [Command::ReadFile { id, request: IMPORT_REQUEST }] if *id == Target::Import.to_dom()
+        ));
+    }
+
+    fn sync_checked(commands: &[Command]) -> Option<bool> {
+        sync_checks(commands).last().copied()
     }
 
     #[test]
-    fn fetched_calendar_is_kept_and_names_the_resources() {
+    fn an_imported_calendar_replaces_the_store_unsaved_until_synced() {
+        let (mut handler, disk) = with_store();
+        let (_, commands) = handler.process_fetched(&sample_response(1, 200));
+        assert_eq!(sync_checked(&commands), Some(false));
+        assert!(handler.dirty());
+        assert!(MemoryStore::new(disk.clone()).unwrap().range(0, u32::MAX).next().is_none());
+        handler.process_fetched(&sample_response(1, 200));
+        assert_eq!(appointments(&handler).len(), 380);
+        let (events, commands) = save_pressed(&mut handler);
+        assert!(events.is_empty());
+        assert_eq!(sync_checked(&commands), Some(true));
+        assert!(!handler.dirty());
+        assert_eq!(
+            object::list::<Appointment>(&MemoryStore::new(disk).unwrap()).unwrap().len(),
+            380
+        );
+    }
+
+    #[test]
+    fn an_imported_calendar_names_the_resources() {
         let (mut handler, _) = with_store();
         assert!(!handler.loaded());
         let (_, commands) = handler.process_fetched(&sample_response(1, 200));
@@ -2404,15 +2470,18 @@ mod tests {
     #[test]
     fn view_change_keeps_loaded_resource_names() {
         let (mut handler, _) = with_store();
-        handler.process_fetched(&sample_response(1, 200));
+        import_saved(&mut handler);
         let commands = choose(&mut handler, Axis::Day(Day::Day));
         assert_eq!(text_of(&commands, &Target::ResourceName(2).to_dom()).unwrap(), "Studio 2");
     }
 
     #[test]
-    fn fetched_failure_keeps_nothing() {
+    fn an_unreadable_file_keeps_nothing() {
         let (mut handler, _) = with_store();
-        assert!(handler.process_fetched(&sample_response(1, 404)).1.is_empty());
+        let (_, commands) = handler.process_fetched(&sample_response(1, 404));
+        assert!(matches!(commands.as_slice(),
+            [Command::SetText { value, .. }, Command::JsFn { name: FnName::ShowToast, .. }]
+                if value == UNREADABLE));
         let broken = Response { request: 1, status: 200, body: b"{".to_vec() };
         let (_, commands) = handler.process_fetched(&broken);
         assert!(matches!(
@@ -3080,7 +3149,7 @@ mod tests {
     }
 
     fn minutes(time: Length) -> u32 {
-        time.total(TimeUnit::Minute) as u32
+        u32::try_from(time.total(TimeUnit::Minute).unwrap()).unwrap()
     }
 
     fn times<S: Mount>(handler: &Handler<S>) -> (u32, u32) {
@@ -3359,16 +3428,16 @@ mod tests {
         )));
     }
 
-    fn save_disabled(commands: &[Command]) -> Vec<bool> {
+    fn sync_checks(commands: &[Command]) -> Vec<bool> {
         commands
             .iter()
             .filter_map(|command| match command {
-                Command::SetAttribute { id, attribute: Attribute::Disabled, .. }
+                Command::SetAttribute { id, attribute: Attribute::Checked, .. }
                     if *id == Target::Save.to_dom() =>
                 {
                     Some(true)
                 }
-                Command::RemoveAttribute { id, attribute: Attribute::Disabled }
+                Command::RemoveAttribute { id, attribute: Attribute::Checked }
                     if *id == Target::Save.to_dom() =>
                 {
                     Some(false)
@@ -3379,28 +3448,28 @@ mod tests {
     }
 
     #[test]
-    fn edits_enable_the_save_button_once() {
+    fn edits_uncheck_the_sync_checkbox_once() {
         let mut handler = lone(102);
         assert!(!handler.dirty());
         press_local(&mut handler, 1, 120.0, 221.0);
         drag_by(&mut handler, 0.0, 2.0 * ROW_PX);
         let commands = end(&mut handler);
         assert!(handler.dirty());
-        assert_eq!(save_disabled(&commands), [false]);
+        assert_eq!(sync_checks(&commands), [false]);
         press_local(&mut handler, 1, 120.0, 168.0);
         drag_by(&mut handler, COLUMN_MIN_PX, 0.0);
         let commands = end(&mut handler);
-        assert!(save_disabled(&commands).is_empty());
+        assert!(sync_checks(&commands).is_empty());
     }
 
     #[test]
-    fn a_drop_that_changes_nothing_keeps_the_save_button_disabled() {
+    fn a_drop_that_changes_nothing_keeps_the_sync_checkbox_checked() {
         let mut handler = lone(102);
         press_local(&mut handler, 1, 120.0, 168.0);
         drag_by(&mut handler, 10.0, 3.0);
         let commands = end(&mut handler);
         assert!(!handler.dirty());
-        assert!(save_disabled(&commands).is_empty());
+        assert!(sync_checks(&commands).is_empty());
         press_local(&mut handler, 1, 120.0, 221.0);
         drag_by(&mut handler, 0.0, 5.0);
         end(&mut handler);
@@ -3470,13 +3539,13 @@ mod tests {
     }
 
     #[test]
-    fn a_first_run_fetches_seeds_and_saves_the_records() {
+    fn a_first_run_fetches_nothing_and_an_import_is_kept_once_synced() {
         let (mut handler, disk) = with_store();
         assert!(!handler.loaded());
         let (_, commands) = handler.initial_draw();
-        assert!(commands.iter().any(|command| matches!(command, Command::Fetch { .. })));
+        assert!(!commands.iter().any(|command| matches!(command, Command::Fetch { .. })));
         assert_eq!(disk.count_committed(), 0);
-        handler.process_fetched(&sample_response(1, 200));
+        import_saved(&mut handler);
         assert_eq!(disk.count_committed(), 392);
         assert_eq!(pending(&handler), 0);
         assert!(!handler.dirty());
@@ -3485,7 +3554,7 @@ mod tests {
     #[test]
     fn a_later_run_loads_from_the_store_without_fetching() {
         let (mut first, disk) = with_store();
-        first.process_fetched(&sample_response(1, 200));
+        import_saved(&mut first);
         let mut second = Handler::<MemoryStore>::new(VIEWPORT, today(), REM);
         second.attach(MemoryStore::new(disk).unwrap());
         assert_eq!(appointments(&second).len(), 380);
@@ -3498,7 +3567,7 @@ mod tests {
     #[test]
     fn an_edit_is_pending_until_save_and_survives_a_reload_only_after_it() {
         let (mut handler, disk) = with_store();
-        handler.process_fetched(&sample_response(1, 200));
+        import_saved(&mut handler);
         let (index, before) = drag_first_card_by(&mut handler, 2.0 * ROW_PX);
         let after = appointment_of(&handler, index).start;
         assert_eq!(minutes(after), minutes(before) + 30);
@@ -3506,7 +3575,7 @@ mod tests {
         assert_eq!(pending(&handler), 1);
         assert_eq!(committed(&disk, index).start, before);
 
-        press(&mut handler, Target::Save.to_dom());
+        save_pressed(&mut handler);
         assert!(!handler.dirty());
         assert_eq!(pending(&handler), 0);
         assert_eq!(committed(&disk, index).start, after);
@@ -3519,7 +3588,7 @@ mod tests {
     #[test]
     fn an_unsaved_edit_is_gone_after_a_reload() {
         let (mut handler, disk) = with_store();
-        handler.process_fetched(&sample_response(1, 200));
+        import_saved(&mut handler);
         let (index, before) = drag_first_card_by(&mut handler, 2.0 * ROW_PX);
         let mut reloaded = Handler::<MemoryStore>::new(VIEWPORT, today(), REM);
         reloaded.attach(MemoryStore::new(disk).unwrap());
@@ -3529,13 +3598,13 @@ mod tests {
     #[test]
     fn discard_restores_the_saved_state_and_redraws() {
         let (mut handler, _) = with_store();
-        handler.process_fetched(&sample_response(1, 200));
+        import_saved(&mut handler);
         let (index, before) = drag_first_card_by(&mut handler, 2.0 * ROW_PX);
         let commands = handler.discard_commands().1;
         assert_eq!(appointment_of(&handler, index).start, before);
         assert!(!handler.dirty());
         assert_eq!(pending(&handler), 0);
-        assert_eq!(save_disabled(&commands), [true]);
+        assert_eq!(sync_checks(&commands), [true]);
         assert!(shown_count(&commands) > 0);
     }
 
@@ -3546,28 +3615,28 @@ mod tests {
         })
     }
 
+    fn field_value(commands: &[Command], field: EditField) -> String {
+        let texts: Vec<String> = field
+            .controls()
+            .into_iter()
+            .map(|target| value_of(commands, &target.to_dom()).unwrap())
+            .collect();
+        texts.join(&field.separator().map(String::from).unwrap_or_default())
+    }
+
     #[test]
     fn clicking_a_card_without_moving_opens_the_edit_form() {
         let (mut handler, base) = drag_fixture();
         grab(&mut handler, 1);
         let (_, commands) = handler.process_gesture(&Gesture::Tap, &pointer(), None);
         let first = appointments(&handler)[0].clone();
+        assert_eq!(field_value(&commands, EditField::Title), first.title.clone());
         assert_eq!(
-            value_of(&commands, &Target::EditField(EditField::Title).to_dom()).unwrap(),
-            first.title.clone()
-        );
-        assert_eq!(
-            value_of(&commands, &Target::EditField(EditField::Date).to_dom()).unwrap(),
+            field_value(&commands, EditField::Date),
             display(base, Language::Ja, YEAR_DAY, Format::Iso)
         );
-        assert_eq!(
-            value_of(&commands, &Target::EditField(EditField::Resource).to_dom()).unwrap(),
-            "1"
-        );
-        assert_eq!(
-            value_of(&commands, &Target::EditField(EditField::Start).to_dom()).unwrap(),
-            "10:00"
-        );
+        assert_eq!(field_value(&commands, EditField::Resource), "1");
+        assert_eq!(field_value(&commands, EditField::Start), "10:00");
         assert!(
             matches!(commands.last(), Some(Command::ShowModal { id }) if *id == Target::Modal.to_dom())
         );
@@ -3585,14 +3654,29 @@ mod tests {
     }
 
     fn form_query(title: &str, date: &str, resource: u32, start: &str, end: &str) -> String {
-        format!("1={title}&2=1&3=1&4={date}&5={resource}&6={start}&7={end}&8=n")
+        let parted = |field: EditField, value: &str| {
+            let separator = field.separator().unwrap();
+            let pairs: Vec<String> = field
+                .parts()
+                .iter()
+                .zip(value.split(separator))
+                .map(|(part, text)| format!("{}={text}", part.name(field)))
+                .collect();
+            pairs.join("&")
+        };
+        let (date, start, end) = (
+            parted(EditField::Date, date),
+            parted(EditField::Start, start),
+            parted(EditField::End, end),
+        );
+        format!("1={title}&2=1&3=1&{date}&5={resource}&{start}&{end}&8=n")
     }
 
     fn submit<S: Mount>(handler: &mut Handler<S>, query: &str) -> Vec<Command> {
         let event = CanvasEvent {
             event_type: EventType::Submit,
             value: String::from(query),
-            ..click(Target::EditForm.to_dom(), 0.0, 0.0)
+            ..click(Target::Form.to_dom(), 0.0, 0.0)
         };
         handler.process_canvas(&event, &pointer()).1
     }
@@ -3601,23 +3685,14 @@ mod tests {
     fn tapping_an_empty_cell_opens_a_new_form_at_that_slot() {
         let (mut handler, base) = drag_fixture();
         let commands = tap_empty(&mut handler, 2.0, 4.0);
-        assert_eq!(value_of(&commands, &Target::EditField(EditField::Title).to_dom()).unwrap(), "");
+        assert_eq!(field_value(&commands, EditField::Title), "");
         assert_eq!(
-            value_of(&commands, &Target::EditField(EditField::Date).to_dom()).unwrap(),
+            field_value(&commands, EditField::Date),
             display(base, Language::Ja, YEAR_DAY, Format::Iso)
         );
-        assert_eq!(
-            value_of(&commands, &Target::EditField(EditField::Resource).to_dom()).unwrap(),
-            "3"
-        );
-        assert_eq!(
-            value_of(&commands, &Target::EditField(EditField::Start).to_dom()).unwrap(),
-            "10:00"
-        );
-        assert_eq!(
-            value_of(&commands, &Target::EditField(EditField::End).to_dom()).unwrap(),
-            "11:00"
-        );
+        assert_eq!(field_value(&commands, EditField::Resource), "3");
+        assert_eq!(field_value(&commands, EditField::Start), "10:00");
+        assert_eq!(field_value(&commands, EditField::End), "11:00");
         assert!(
             matches!(commands.last(), Some(Command::ShowModal { id }) if *id == Target::Modal.to_dom())
         );
@@ -3648,20 +3723,11 @@ mod tests {
     fn dragging_over_empty_cells_opens_a_form_for_the_range() {
         let (mut handler, base) = drag_fixture();
         let commands = drag_create(&mut handler, (2.0, 8.0), (2.0, 11.0));
+        assert_eq!(field_value(&commands, EditField::Start), "11:00");
+        assert_eq!(field_value(&commands, EditField::End), "12:00");
+        assert_eq!(field_value(&commands, EditField::Resource), "3");
         assert_eq!(
-            value_of(&commands, &Target::EditField(EditField::Start).to_dom()).unwrap(),
-            "11:00"
-        );
-        assert_eq!(
-            value_of(&commands, &Target::EditField(EditField::End).to_dom()).unwrap(),
-            "12:00"
-        );
-        assert_eq!(
-            value_of(&commands, &Target::EditField(EditField::Resource).to_dom()).unwrap(),
-            "3"
-        );
-        assert_eq!(
-            value_of(&commands, &Target::EditField(EditField::Date).to_dom()).unwrap(),
+            field_value(&commands, EditField::Date),
             display(base, Language::Ja, YEAR_DAY, Format::Iso)
         );
         assert!(commands.iter().any(|c| matches!(c,
@@ -3697,10 +3763,7 @@ mod tests {
     fn a_small_drag_in_one_slot_behaves_like_a_tap() {
         let (mut handler, _) = drag_fixture();
         let commands = drag_create(&mut handler, (2.0, 8.0), (2.0, 8.0));
-        assert_eq!(
-            value_of(&commands, &Target::EditField(EditField::End).to_dom()).unwrap(),
-            "12:00"
-        );
+        assert_eq!(field_value(&commands, EditField::End), "12:00");
     }
 
     #[test]
@@ -3762,14 +3825,8 @@ mod tests {
         );
         drag_to(&mut handler, ox + 10.0, oy + 7.0 * slot + 3.0);
         let commands = end(&mut handler);
-        assert_eq!(
-            value_of(&commands, &Target::EditField(EditField::Start).to_dom()).unwrap(),
-            "10:15"
-        );
-        assert_eq!(
-            value_of(&commands, &Target::EditField(EditField::End).to_dom()).unwrap(),
-            "11:00"
-        );
+        assert_eq!(field_value(&commands, EditField::Start), "10:15");
+        assert_eq!(field_value(&commands, EditField::End), "11:00");
     }
 
     #[test]
@@ -3788,14 +3845,14 @@ mod tests {
     fn submitting_a_new_form_adds_a_persisted_appointment() {
         let (mut handler, _) = with_store();
         handler.now_in_ms = 1_790_942_400_000;
-        handler.process_fetched(&sample_response(1, 200));
+        import_saved(&mut handler);
         let before = appointments(&handler).len();
         tap_empty(&mut handler, 0.0, 0.0);
         let date = display(today(), Language::Ja, YEAR_DAY, Format::Iso);
         let (open, close) = (at(600), at(660));
         let (start, end) = (
-            display(add(today(), open), Language::Ja, HOUR_MINUTE, Format::Iso),
-            display(add(today(), close), Language::Ja, HOUR_MINUTE, Format::Iso),
+            display(add(today(), open).unwrap(), Language::Ja, HOUR_MINUTE, Format::Iso),
+            display(add(today(), close).unwrap(), Language::Ja, HOUR_MINUTE, Format::Iso),
         );
         let query = form_query("Neo", &date, 1, &start, &end);
         let commands = submit(&mut handler, &query);
@@ -3885,19 +3942,34 @@ mod tests {
 
     #[test]
     fn the_dialog_follows_its_opener_and_each_form_reads_only_its_own_fields() {
-        let credentials: Vec<Id> =
-            Field::list().iter().map(|&field| Target::Credential(field).to_dom()).collect();
-        let edits: Vec<Id> =
-            EditField::list().iter().map(|&field| Target::EditField(field).to_dom()).collect();
+        let credentials: Vec<(Id, Id)> = Field::list()
+            .iter()
+            .map(|&field| {
+                (Target::Credential(field).to_dom(), Target::CredentialInput(field).to_dom())
+            })
+            .collect();
+        let edits: Vec<Id> = EditField::list()
+            .iter()
+            .flat_map(|&field| field.controls())
+            .map(|target| target.to_dom())
+            .collect();
         let unlock_query = "email=a%40example.jp&password=passphrase&1=x&8=n";
         for seed in 0..10 {
             let mut rng = Rng::new(seed);
             let (mut handler, _) = drag_fixture();
             let mut dom: Vec<(Id, Attribute, bool)> = Vec::new();
-            for id in &credentials {
-                dom.push((id.clone(), Attribute::Hidden, true));
+            for (label, input) in &credentials {
+                dom.push((label.clone(), Attribute::Hidden, true));
+                dom.push((input.clone(), Attribute::Disabled, true));
+            }
+            for id in &edits {
                 dom.push((id.clone(), Attribute::Disabled, true));
             }
+            dom.push((Target::Create.to_dom(), Attribute::Hidden, true));
+            dom.push((Target::CreateInput.to_dom(), Attribute::Disabled, true));
+            dom.push((Target::EditList.to_dom(), Attribute::Hidden, true));
+            dom.push((Target::Delete.to_dom(), Attribute::Hidden, true));
+            dom.push((Target::Delete.to_dom(), Attribute::Disabled, true));
             let lookup = |dom: &[(Id, Attribute, bool)], id: &Id, attribute: Attribute| {
                 dom.iter().rev().find(|(i, a, _)| i == id && *a == attribute).is_some_and(|e| e.2)
             };
@@ -4007,9 +4079,9 @@ mod tests {
                 }
                 let unlock = model == 2;
                 assert_eq!(submit_text, if unlock { "ログイン" } else { "保存" }, "{seed} {step}");
-                for id in &credentials {
-                    assert_eq!(lookup(&dom, id, Attribute::Hidden), !unlock, "{seed} {step}");
-                    assert_eq!(lookup(&dom, id, Attribute::Disabled), !unlock, "{seed} {step}");
+                for (label, input) in &credentials {
+                    assert_eq!(lookup(&dom, label, Attribute::Hidden), !unlock, "{seed} {step}");
+                    assert_eq!(lookup(&dom, input, Attribute::Disabled), !unlock, "{seed} {step}");
                 }
                 for id in &edits {
                     assert_eq!(lookup(&dom, id, Attribute::Disabled), unlock, "{seed} {step}");
@@ -4031,42 +4103,48 @@ mod tests {
     #[test]
     fn reload_button_discards_pending_edits() {
         let (mut handler, _) = with_store();
-        handler.process_fetched(&sample_response(1, 200));
+        import_saved(&mut handler);
         let (index, before) = drag_first_card_by(&mut handler, 2.0 * ROW_PX);
         let commands = press(&mut handler, Target::Reload.to_dom());
         assert_eq!(appointment_of(&handler, index).start, before);
         assert_eq!(pending(&handler), 0);
-        assert_eq!(save_disabled(&commands), [true]);
+        assert_eq!(sync_checks(&commands), [true]);
     }
 
     #[test]
     fn a_failed_save_reports_the_error_and_stays_dirty() {
         let mut handler = with_faulty_store();
-        handler.process_fetched(&sample_response(1, 200));
+        import_saved(&mut handler);
         drag_first_card_by(&mut handler, 2.0 * ROW_PX);
         handler.store.as_ref().unwrap().fail_writes_to.set(Some("log"));
-        let commands = press(&mut handler, Target::Save.to_dom());
+        let commands = save_pressed(&mut handler).1;
         assert!(matches!(
             commands.as_slice(),
-            [Command::Error { error: Error::FileStore(FileStoreError::InvalidState(_)) }]
+            [
+                Command::Error { error: Error::FileStore(FileStoreError::InvalidState(_)) },
+                Command::RemoveAttribute { attribute: Attribute::Checked, .. },
+            ]
         ));
         assert!(handler.dirty());
         handler.store.as_ref().unwrap().fail_writes_to.set(None);
-        press(&mut handler, Target::Save.to_dom());
+        assert_eq!(sync_checks(&save_pressed(&mut handler).1), [true]);
         assert!(!handler.dirty());
     }
 
     #[test]
     fn closing_the_handler_releases_the_store() {
         let (mut handler, _) = with_store();
-        handler.process_fetched(&sample_response(1, 200));
+        import_saved(&mut handler);
         drag_first_card_by(&mut handler, 2.0 * ROW_PX);
         assert!(handler.close().is_empty());
         let (events, commands) = save_pressed(&mut handler);
         assert!(matches!(events.as_slice(), [Event::StoreLost(_)]));
         assert!(matches!(
             commands.as_slice(),
-            [Command::Error { error: Error::FileStore(FileStoreError::InvalidState(_)) }]
+            [
+                Command::Error { error: Error::FileStore(FileStoreError::InvalidState(_)) },
+                Command::RemoveAttribute { attribute: Attribute::Checked, .. },
+            ]
         ));
     }
 
@@ -4096,7 +4174,7 @@ mod tests {
     }
 
     #[test]
-    fn a_locked_store_at_startup_is_opened_again_and_then_loaded() {
+    fn a_locked_store_at_startup_is_opened_again_without_fetching() {
         let mut handler = Handler::<MemoryStore>::new(VIEWPORT, today(), REM);
         handler
             .startup
@@ -4110,17 +4188,26 @@ mod tests {
         let (events, commands) = handler.process_opened(opened);
         assert!(events.is_empty());
         assert!(handler.attached);
-        assert!(commands.iter().any(|command| matches!(command, Command::Fetch { .. })));
+        assert!(!commands.iter().any(|command| matches!(command, Command::Fetch { .. })));
+    }
+
+    fn import_saved<S: Mount>(handler: &mut Handler<S>) {
+        handler.process_fetched(&sample_response(1, 200));
+        save_pressed(handler);
     }
 
     fn save_pressed<S: Mount>(handler: &mut Handler<S>) -> (Vec<Event>, Vec<Command>) {
-        handler.process_canvas(&click(Target::Save.to_dom(), 10.0, 10.0), &pointer())
+        let event = CanvasEvent {
+            event_type: EventType::Change,
+            ..click(Target::Save.to_dom(), 10.0, 10.0)
+        };
+        handler.process_canvas(&event, &pointer())
     }
 
     #[test]
     fn a_lost_store_is_replaced_and_the_pending_edit_survives() {
         let (mut handler, disk) = with_store();
-        handler.process_fetched(&sample_response(1, 200));
+        import_saved(&mut handler);
         let (index, _) = drag_first_card_by(&mut handler, 2.0 * ROW_PX);
         let after = appointment_of(&handler, index).start;
 
@@ -4155,7 +4242,7 @@ mod tests {
     #[test]
     fn a_corrupt_store_is_reported_and_nothing_is_fetched_over_it() {
         let (mut seeding, disk) = with_store();
-        seeding.process_fetched(&sample_response(1, 200));
+        import_saved(&mut seeding);
         let mut corrupting = MemoryStore::new(disk.clone()).unwrap();
         corrupting.set(appointments(&seeding)[0].head.id, b"{".to_vec());
         corrupting.save().unwrap();
@@ -4173,7 +4260,7 @@ mod tests {
     #[test]
     fn save_and_discard_without_a_store_do_nothing() {
         let mut handler = Handler::<MemoryStore>::new(VIEWPORT, today(), REM);
-        assert!(press(&mut handler, Target::Save.to_dom()).is_empty());
+        assert!(save_pressed(&mut handler).1.is_empty());
         assert!(handler.discard_commands().1.is_empty());
     }
 
@@ -4336,7 +4423,7 @@ mod tests {
         let (x, y) = month_point(10, Some(2));
         handler.process_canvas(&pointer_down(Target::Surface.to_dom(), x, y), &pointer());
         let commands = handler.process_gesture(&Gesture::Tap, &pointer(), None).1;
-        let value = |field| value_of(&commands, &Target::EditField(field).to_dom()).unwrap();
+        let value = |field| field_value(&commands, field);
         assert_eq!(value(EditField::Date), "2026-10-08");
         assert_eq!(value(EditField::Resource), "1");
         assert_eq!(value(EditField::Start), "09:00");
@@ -4384,10 +4471,7 @@ mod tests {
         let y = oy + (bx.base()[1].get() + 0.5) * 3.0 * REM;
         handler.process_canvas(&pointer_down(Target::Surface.to_dom(), x, y), &pointer());
         let commands = handler.process_gesture(&Gesture::Tap, &pointer(), None).1;
-        assert_eq!(
-            value_of(&commands, &Target::EditField(EditField::Date).to_dom()).unwrap(),
-            "2026-10-08"
-        );
+        assert_eq!(field_value(&commands, EditField::Date), "2026-10-08");
     }
 
     #[test]
@@ -4468,7 +4552,7 @@ mod tests {
         for seed in 0..30 {
             let mut rng = Rng::new(seed);
             let (mut handler, disk) = with_store();
-            handler.process_fetched(&sample_response(1, 200));
+            import_saved(&mut handler);
             handler.card_commands();
             let mut saved = committed_appointments(&disk);
             for step in 0..60 {
@@ -4528,7 +4612,7 @@ mod tests {
                         submit(&mut handler, &query);
                     }
                     8 => {
-                        press(&mut handler, Target::Save.to_dom());
+                        save_pressed(&mut handler);
                         assert!(!handler.dirty(), "{context}: still dirty after save");
                         saved = appointments(&handler);
                         assert!(
@@ -4616,7 +4700,7 @@ mod tests {
     #[test]
     fn the_delete_button_belongs_to_the_form_of_an_existing_appointment() {
         let (mut handler, _) = with_store();
-        handler.process_fetched(&sample_response(1, 200));
+        import_saved(&mut handler);
         let (_, commands) = open_first_card(&mut handler);
         assert_eq!(delete_hidden(&commands), Some(false));
         handler.process_canvas(
@@ -4634,14 +4718,14 @@ mod tests {
     }
 
     #[test]
-    fn a_deletion_waits_in_memory_for_the_save_button_like_an_edit() {
+    fn a_deletion_waits_in_memory_for_the_sync_checkbox_like_an_edit() {
         let (mut handler, disk) = with_store();
-        handler.process_fetched(&sample_response(1, 200));
+        import_saved(&mut handler);
         let before = appointments(&handler).len();
         let (key, _) = open_first_card(&mut handler);
         let commands = press(&mut handler, Target::Delete.to_dom());
         assert!(commands.iter().any(|c| matches!(c, Command::Close { .. })));
-        assert_eq!(save_disabled(&commands), [false]);
+        assert_eq!(sync_checks(&commands), [false]);
         assert!(matches!(handler.dialog, Dialog::None));
         assert!(handler.dirty());
         assert_eq!(appointments(&handler).len(), before - 1);
@@ -4651,7 +4735,7 @@ mod tests {
             object::get::<Appointment>(&MemoryStore::new(disk.clone()).unwrap(), key).is_some()
         );
 
-        press(&mut handler, Target::Save.to_dom());
+        save_pressed(&mut handler);
         assert!(!handler.dirty());
         assert_eq!(pending(&handler), 0);
         assert!(
@@ -4665,7 +4749,7 @@ mod tests {
     #[test]
     fn reload_brings_a_deleted_appointment_back() {
         let (mut handler, disk) = with_store();
-        handler.process_fetched(&sample_response(1, 200));
+        import_saved(&mut handler);
         let before = appointments(&handler).len();
         let (key, _) = open_first_card(&mut handler);
         press(&mut handler, Target::Delete.to_dom());
@@ -4673,7 +4757,7 @@ mod tests {
         assert!(handler.appointment(key).is_some());
         assert_eq!(appointments(&handler).len(), before);
         assert!(!handler.dirty());
-        assert_eq!(save_disabled(&commands), [true]);
+        assert_eq!(sync_checks(&commands), [true]);
         assert!(object::get::<Appointment>(&MemoryStore::new(disk).unwrap(), key).is_some());
     }
 

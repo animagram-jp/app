@@ -73,6 +73,7 @@ strip           = "debuginfo"
 [lints.rust]
 unsafe_op_in_unsafe_fn = "forbid"
 unused_must_use        = "deny"
+unexpected_cfgs        = { level = "warn", check-cfg = ["cfg(kani)"] }
 
 [lints.clippy]
 all                             = { level = "deny", priority = -1 }

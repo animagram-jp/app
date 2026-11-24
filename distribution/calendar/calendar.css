@@ -4,6 +4,12 @@
     font-size: var(--sm-font-size);
 }
 
+#header_button-3 { anchor-name: --header_button-3; }
+#header_div-2 { position-anchor: --header_button-3; }
+
+#header_button-4 { anchor-name: --header_button-4; }
+#header_div-3 { position-anchor: --header_button-4; }
+
 #main {
     --head-title:    2rem;
     --head-resource: 3rem;
@@ -94,18 +100,12 @@
     font-weight: 600;
 }
 
-#header_input {
+#header_input-1 {
     inline-size: 8rem;
 }
 
-#dialog form {
-    display:        flex;
-    flex-direction: column;
-}
-
-#dialog dl {
-    display:               grid;
-    grid-template-columns: auto 1fr;
+#dialog_output:empty {
+    display: none;
 }
 
 [data-sign="ring-arrow"] {

@@ -23,7 +23,7 @@ use crate::{
     file_store::FileStore,
     object::{self, Body, ObjectError, Record},
     parse,
-    time::{Day, Format, Length, Month, Stamp, Unit, Year, add, days_in_month, display},
+    time::{Day, Format, Length, Month, Stamp, Unit, YEARS, Year, add, days_in_month, display},
 };
 
 pub const YEAR_DAY: (Unit, Unit) = (Unit::Year, Unit::Day);
@@ -184,8 +184,11 @@ impl Output for Appointment {
     fn encode(&self, output: &mut Vec<u8>) {
         self.uid.encode(output);
         self.places.encode(output);
-        (self.start.total(Unit::Minute) as u16).encode(output);
-        (self.end.total(Unit::Minute) as u16).encode(output);
+        let minutes = |length: Length| {
+            length.total(Unit::Minute).and_then(|m| u16::try_from(m).ok()).unwrap_or(u16::MAX)
+        };
+        minutes(self.start).encode(output);
+        minutes(self.end).encode(output);
         self.title.encode(output);
         self.category.encode(output);
         self.status.encode(output);
@@ -301,8 +304,12 @@ pub fn export(store: &impl FileStore) -> Result<Vec<u8>, CalendarError> {
             json!({
                 "uid": format!("{}", a.uid),
                 "places": places,
-                "start": display(add(anchor, a.start), Language::Ja, HOUR_MINUTE, Format::Iso),
-                "end": display(add(anchor, a.end), Language::Ja, HOUR_MINUTE, Format::Iso),
+                "start": add(anchor, a.start).map_or_else(String::new, |stamp| {
+                    display(stamp, Language::Ja, HOUR_MINUTE, Format::Iso)
+                }),
+                "end": add(anchor, a.end).map_or_else(String::new, |stamp| {
+                    display(stamp, Language::Ja, HOUR_MINUTE, Format::Iso)
+                }),
                 "title": a.title,
                 "category": a.category,
                 "status": a.status,
@@ -376,6 +383,8 @@ pub fn parse_time(text: &str) -> Result<Length, CalendarError> {
 /// assert!(parse_date("2026/10/02").is_err());
 /// assert!(parse_date("2026-02-29").is_err());
 /// assert!(parse_date("2028-02-29").is_ok());
+/// assert!(parse_date("8191-12-31").is_ok());
+/// assert!(parse_date("8192-01-01").is_err());
 /// ```
 pub fn parse_date(text: &str) -> Result<Stamp, CalendarError> {
     let mut parts = text.split('-');
@@ -387,7 +396,10 @@ pub fn parse_date(text: &str) -> Result<Stamp, CalendarError> {
     let year: i64 = year.parse().map_err(|_| format_error("day", text))?;
     let month: i64 = month.parse().map_err(|_| format_error("day", text))?;
     let day: i64 = day.parse().map_err(|_| format_error("day", text))?;
-    if !(1..=12).contains(&month) || !(1..=days_in_month(year, month)).contains(&day) {
+    if !YEARS.contains(&year)
+        || !(1..=12).contains(&month)
+        || !(1..=days_in_month(year, month)).contains(&day)
+    {
         return Err(format_error("day", text));
     }
     let mut stamp = Stamp::ZERO;
@@ -418,8 +430,7 @@ mod tests {
     }
 
     fn sample() -> Vec<u8> {
-        fs::read(concat!(env!("CARGO_MANIFEST_DIR"), "/distribution/calendar/data/calendar.json"))
-            .unwrap()
+        fs::read(concat!(env!("CARGO_MANIFEST_DIR"), "/reference/calendar.json")).unwrap()
     }
 
     fn imported() -> MemoryStore {

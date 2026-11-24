@@ -1,26 +1,30 @@
+const CHANNEL = {
+    accent_yellow: [250, 245, 0],
+    white: [255, 255, 255],
+    black: [0, 0, 0],
+};
+
+const CONTRAST_ENHANCED = 7;
+const CONTRAST_MINIMUM = 4.5;
+const CONTRAST_GRAPHICAL = 3;
+
 const FAMILY = {
     light: {
-        "light": { ink: [0, 0, 0], paper: [255, 255, 255] },
-        "light-more-contrast": { ink: [0, 0, 0], paper: [255, 255, 255] },
-        "light-less-contrast": { ink: [43, 43, 43], paper: [243, 243, 243] },
+        "light": { paper: CHANNEL.white, text_contrast: CONTRAST_MINIMUM, highlight_paper: CHANNEL.accent_yellow },
+        "light-more-contrast": { paper: CHANNEL.white, text_contrast: CONTRAST_ENHANCED, highlight_paper: CHANNEL.accent_yellow },
+        "light-less-contrast": { paper: [243, 243, 243], text_contrast: CONTRAST_MINIMUM, highlight_paper: CHANNEL.accent_yellow },
     },
     dark: {
-        "dark": { ink: [255, 255, 255], paper: [0, 0, 0] },
-        "dark-more-contrast": { ink: [255, 255, 255], paper: [0, 0, 0] },
-        "dark-less-contrast": { ink: [243, 243, 243], paper: [43, 43, 43] },
+        "dark": { paper: CHANNEL.black, text_contrast: CONTRAST_MINIMUM, highlight_paper: mix_rgb(CHANNEL.accent_yellow, CHANNEL.black, 40.8) },
+        "dark-more-contrast": { paper: CHANNEL.black, text_contrast: CONTRAST_ENHANCED, highlight_paper: mix_rgb(CHANNEL.accent_yellow, CHANNEL.black, 37.3) },
+        "dark-less-contrast": { paper: [43, 43, 43], text_contrast: CONTRAST_MINIMUM, highlight_paper: mix_rgb(CHANNEL.accent_yellow, CHANNEL.black, 40.8) },
     },
 };
 
 const SOURCE_LIGHTNESS = 0.65;
-const CONTRAST_ENHANCED = 7;
-const CONTRAST_MINIMUM = 4.5;
-const CONTRAST_GRAPHICAL = 3;
-const EMPHASIS_DISTINCTNESS = 2;
 const GRID_RESOLUTION = 1000;
 const GRID_CHROMA_MAXIMUM = 0.4;
 const GAMUT_TOLERANCE = 1e-7;
-const SCORE_TOLERANCE = 0.02;
-const CHROMA_WEIGHT = 1000;
 const SOURCE_CHROMA_STEP = 0.002;
 
 function calculate_relative_luminance(rgb) {
@@ -34,6 +38,11 @@ function calculate_relative_luminance(rgb) {
 function calculate_contrast(luminance, other_luminance) {
     const [lighter, darker] = luminance >= other_luminance ? [luminance, other_luminance] : [other_luminance, luminance];
     return (lighter + 0.05) / (darker + 0.05);
+}
+
+function mix_rgb(rgb, other_rgb, percent) {
+    const weight = percent / 100;
+    return [0, 1, 2].map((index) => Math.round(rgb[index] * weight + other_rgb[index] * (1 - weight)));
 }
 
 function convert_to_oklch(rgb) {
@@ -137,68 +146,36 @@ function find_nearest_candidate(grid, accepts) {
     return nearest < 0 ? null : read_candidate(grid, nearest);
 }
 
-function find_best_candidate(grid, accepts, score) {
-    let top = -Infinity;
-    for (let index = 0; index < grid.length; index += 1) {
-        if (accepts(grid.luminance[index])) top = Math.max(top, score(grid.luminance[index]));
-    }
-    let best = -1;
-    let best_distance = Infinity;
-    for (let index = 0; index < grid.length; index += 1) {
-        if (!accepts(grid.luminance[index]) || score(grid.luminance[index]) < top - SCORE_TOLERANCE) continue;
-        const distance = Math.abs(grid.chroma[index] - grid.chroma[0]) * CHROMA_WEIGHT + Math.abs(grid.lightness[index] - grid.lightness[0]);
-        if (distance < best_distance) {
-            best_distance = distance;
-            best = index;
-        }
-    }
-    return best < 0 ? null : read_candidate(grid, best);
+function solve_emphasis(scheme_set, grid) {
+    const scheme_list = Object.values(scheme_set).map((scheme) => ({
+        text_contrast: scheme.text_contrast,
+        paper: calculate_relative_luminance(scheme.paper),
+        highlight_paper: calculate_relative_luminance(scheme.highlight_paper),
+    }));
+    return find_nearest_candidate(grid, (luminance) => scheme_list.every((scheme) => calculate_contrast(luminance, scheme.paper) >= scheme.text_contrast
+        && calculate_contrast(luminance, scheme.highlight_paper) >= CONTRAST_GRAPHICAL));
 }
 
-function solve_emphasis(scheme_set, dark, grid) {
-    const scheme_list = Object.values(scheme_set);
-    const strictest_paper = scheme_list.map((scheme) => scheme.paper).reduce((first, second) => (dark === (calculate_relative_luminance(first) > calculate_relative_luminance(second)) ? first : second));
-    const strictest_ink = scheme_list.map((scheme) => scheme.ink).reduce((first, second) => (dark === (calculate_relative_luminance(first) < calculate_relative_luminance(second)) ? first : second));
-    const paper_luminance = calculate_relative_luminance(strictest_paper);
-    const ink_luminance = calculate_relative_luminance(strictest_ink);
-
-    const ink = find_nearest_candidate(grid, (luminance) => calculate_contrast(luminance, paper_luminance) >= CONTRAST_ENHANCED);
-    const paper = ink && (
-        find_nearest_candidate(grid, (luminance) => calculate_contrast(luminance, paper_luminance) >= CONTRAST_GRAPHICAL
-            && calculate_contrast(luminance, ink_luminance) >= CONTRAST_MINIMUM
-            && calculate_contrast(luminance, ink.luminance) >= EMPHASIS_DISTINCTNESS)
-        ?? find_best_candidate(
-            grid,
-            (luminance) => calculate_contrast(luminance, ink_luminance) >= CONTRAST_MINIMUM
-                && calculate_contrast(luminance, ink.luminance) >= EMPHASIS_DISTINCTNESS,
-            (luminance) => calculate_contrast(luminance, paper_luminance),
-        )
-    );
-    return { ink, paper };
-}
-
-function format_color(candidate) {
+function format_color(candidate, source) {
     return candidate.exact
-        ? `rgb(${candidate.rgb.join(" ")})`
-        : `oklch(${candidate.lightness.toFixed(3)} ${candidate.chroma.toFixed(3)} ${candidate.hue.toFixed(1)})`;
+        ? source
+        : `oklch(from ${source} ${candidate.lightness.toFixed(3)} ${candidate.chroma.toFixed(3)} h)`;
 }
 
 export function solve(hue) {
-    const grid = build_grid(find_vivid_rgb(SOURCE_LIGHTNESS, hue));
-    const light = solve_emphasis(FAMILY.light, false, grid);
-    const dark = solve_emphasis(FAMILY.dark, true, grid);
-    if (!light.ink || !light.paper || !dark.ink || !dark.paper) return null;
-    return {
-        ink: `light-dark(${format_color(light.ink)}, ${format_color(dark.ink)})`,
-        paper: `light-dark(${format_color(light.paper)}, ${format_color(dark.paper)})`,
-    };
+    const source_rgb = find_vivid_rgb(SOURCE_LIGHTNESS, hue);
+    const grid = build_grid(source_rgb);
+    const source = `rgb(${source_rgb.join(" ")})`;
+    const light = solve_emphasis(FAMILY.light, grid);
+    const dark = solve_emphasis(FAMILY.dark, grid);
+    if (!light || !dark) return null;
+    return `light-dark(${format_color(light, source)}, ${format_color(dark, source)})`;
 }
 
 export function apply(root, hue) {
     const result = solve(hue);
     if (!result) return;
-    root.style.setProperty("--color-emphasis-ink", result.ink);
-    root.style.setProperty("--color-emphasis-paper", result.paper);
+    root.style.setProperty("--color-emphasis-ink", result);
 }
 
 export function start() {

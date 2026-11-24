@@ -8,6 +8,9 @@ body > * {
 #header_button-1 { anchor-name: --header_button-1; }
 #header_div-1 { position-anchor: --header_button-1; }
 
+#header_button-3 { anchor-name: --header_button-3; }
+#header_div-2 { position-anchor: --header_button-3; }
+
 #header_button-4 { anchor-name: --header_button-4; }
 #header_div-3 { position-anchor: --header_button-4; }
 

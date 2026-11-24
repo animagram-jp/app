@@ -2368,9 +2368,9 @@ impl Profile {
             Self::Name => dom.extend([input(ids[0]), input(ids[1])]),
             Self::Occupation => dom.extend([input(ids[0]), input(ids[2])]),
             Self::Age => dom.extend([
-                input(ids[0]),
-                entry(PART, Tag::Dd, ids[0], &[(Tag::Button, Some(1))]),
-                entry(PART, Tag::Dd, ids[0], &[(Tag::Button, Some(2))]),
+                entry(PART, Tag::Dd, ids[0], &[(Tag::Label, None), (Tag::Input, None)]),
+                entry(PART, Tag::Dd, ids[0], &[(Tag::Label, None), (Tag::Button, Some(1))]),
+                entry(PART, Tag::Dd, ids[0], &[(Tag::Label, None), (Tag::Button, Some(2))]),
             ]),
             _ => dom.push(input(ids[0])),
         }

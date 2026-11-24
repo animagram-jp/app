@@ -17,12 +17,16 @@ use crate::{
             Management, Memo, Occupation, OccupationSkillPoints, Possession, Profile,
             SecondaryAttribute, Section, Skill, WealthField,
         },
-        page::{self, Page, TOAST_SLOTS},
+        page::{self, INVESTIGATOR_OPTIONS, Page, TOAST_SLOTS},
     },
     credential::{self, Field},
-    event::{self, Event, Handler as _, Keyring, Opened, Response, gesture::Pointer, store},
+    event::{
+        self, Event, Handler as _, Keyring, Opened, Response,
+        gesture::Pointer,
+        store::{self, Persistence},
+    },
     file_store::{FileStore, Mount, StoreId},
-    host::{Attribute, CanvasEvent, Command, EventType, FnName, Method, dom::Id},
+    host::{Attribute, CanvasEvent, Command, EventType, FnName, dom::Id},
     object::{self, Record},
 };
 
@@ -36,11 +40,10 @@ pub enum Dialog {
 
 pub struct Log;
 const CHARACTER_STORE: StoreId = StoreId { name: "investigators", version: "0.1" };
-const LOAD_REQUEST: u32 = 1;
+const IMPORT_REQUEST: u32 = 1;
 const STATUS_OK: u16 = 200;
 
 pub struct Handler<S: FileStore> {
-    data_url:      String,
     color_scheme:  ColorScheme,
     dialog:        Dialog,
     keyring:       Keyring,
@@ -49,6 +52,7 @@ pub struct Handler<S: FileStore> {
     investigator:  Record<Investigator>,
     pub now_in_ms: u64,
     investigators: Option<S>,
+    persistence:   Persistence,
     lost:          Vec<(u32, Option<Vec<u8>>)>,
     startup:       Vec<Error>,
     logs:          Vec<Log>,
@@ -56,35 +60,98 @@ pub struct Handler<S: FileStore> {
 
 impl<S: FileStore> Handler<S> {
     pub fn save(&mut self) -> (Vec<Event>, Vec<Command>) {
-        let Some(investigators) = self.investigators.as_mut() else {
-            return (vec![], vec![]);
+        let result = match self.investigators.as_mut() {
+            Some(investigators) => investigators.save(),
+            None => Ok(()),
         };
-        match investigators.save() {
-            Ok(()) => (vec![], vec![]),
-            Err(error) => store::failed(CHARACTER_STORE, error),
+        match result {
+            Ok(()) => {
+                let mut commands = self.mark(Persistence::Stored);
+                commands.extend(self.option_commands());
+                (vec![], commands)
+            }
+            Err(error) => {
+                let (events, mut commands) = store::failed(CHARACTER_STORE, error);
+                commands.extend(self.mark(Persistence::Unsaved));
+                (events, commands)
+            }
         }
     }
 
-    fn persist(&mut self) -> (Vec<Event>, Vec<Command>) {
-        let Some(store) = self.investigators.as_mut() else {
-            return (vec![], vec![]);
+    fn mark(&mut self, persistence: Persistence) -> Vec<Command> {
+        self.persistence = persistence;
+        vec![toggle(Page::Save.to_dom(), Attribute::Checked, persistence.saved())]
+    }
+
+    fn saved_investigators(&self) -> Vec<Record<Investigator>> {
+        self.investigators.as_ref().and_then(|store| object::list(store).ok()).unwrap_or_default()
+    }
+
+    fn option_commands(&self) -> Vec<Command> {
+        let saved = self.saved_investigators();
+        (1..=INVESTIGATOR_OPTIONS)
+            .flat_map(|n| {
+                let id = Page::InvestigatorOption(n).to_dom();
+                let found = saved.get(n as usize - 1);
+                [
+                    text(id.clone(), found.map(|record| record.name.clone()).unwrap_or_default()),
+                    toggle(id, Attribute::Hidden, found.is_none()),
+                ]
+            })
+            .collect()
+    }
+
+    fn choose(&mut self, n: u32) -> Vec<Command> {
+        let Some(record) = self.saved_investigators().into_iter().nth(n as usize - 1) else {
+            return vec![];
         };
-        self.investigator.head.id = store.issue_id();
-        self.investigator.head.touch(self.now_in_ms);
-        object::set(store, &self.investigator);
-        self.save()
+        self.investigator = record;
+        sheet_commands(&self.investigator, self.language)
+    }
+
+    fn import(&mut self, body: &[u8]) -> Vec<Command> {
+        let imported = match import::import(body, self.now_in_ms) {
+            Ok(imported) => imported,
+            Err(error) => {
+                let notice = match error {
+                    ImportError::Json(_) | ImportError::Root => Notice::Unreadable,
+                };
+                return self.toast(String::from(notice.display(self.language)));
+            }
+        };
+        self.investigator = imported.investigator;
+        if let Some(store) = self.investigators.as_mut() {
+            self.investigator.head.id = store.issue_id();
+            object::set(store, &self.investigator);
+        }
+        let mut commands = sheet_commands(&self.investigator, self.language);
+        commands.extend(self.mark(Persistence::Unsaved));
+        if !imported.skipped.is_empty() {
+            let message = format!(
+                "{}: {}",
+                Notice::Skipped.display(self.language),
+                imported.skipped.join(", ")
+            );
+            commands.extend(self.toast(message));
+        }
+        commands
     }
 
     fn unlock_commands(&mut self) -> Vec<Command> {
         let mut commands = vec![
-            text(Page::DialogHeading.to_dom(), page::Label::Login.display(self.language)),
+            text(Page::DialogHeading.to_dom(), ""),
+            text(Page::DialogSubmit.to_dom(), page::Label::Login.display(self.language)),
             toggle(Page::DialogOptions.to_dom(), Attribute::Hidden, true),
             toggle(Page::DialogNumber.to_dom(), Attribute::Hidden, true),
             toggle(Page::DialogNumberInput.to_dom(), Attribute::Disabled, true),
         ];
         for &field in Field::list() {
             commands.push(toggle(Page::Credential(field).to_dom(), Attribute::Hidden, false));
-            commands.push(toggle(Page::Credential(field).to_dom(), Attribute::Disabled, false));
+            commands.push(toggle(
+                Page::CredentialInput(field).to_dom(),
+                Attribute::Disabled,
+                false,
+            ));
         }
         commands.push(toggle(Page::Create.to_dom(), Attribute::Hidden, false));
         commands.push(toggle(Page::CreateInput.to_dom(), Attribute::Disabled, false));
@@ -97,7 +164,7 @@ impl<S: FileStore> Handler<S> {
         match mem::replace(&mut self.dialog, Dialog::None) {
             Dialog::Unlock => {
                 let mut commands = vec![
-                    value(Page::Credential(Field::Password).to_dom(), ""),
+                    value(Page::CredentialInput(Field::Password).to_dom(), ""),
                     toggle(Page::CreateInput.to_dom(), Attribute::Checked, false),
                 ];
                 if !self.keyring.is_unlocked() {
@@ -142,11 +209,9 @@ impl<S: Mount> event::Handler for Handler<S> {
         _rem_in_px: f64,
         now_in_ms: u64,
         _timezone_offset_minutes: i32,
-        data_url: String,
         color_scheme: ColorScheme,
     ) -> Self {
         let mut handler = Self {
-            data_url,
             color_scheme,
             dialog: Dialog::None,
             keyring: Keyring::LOCKED,
@@ -155,6 +220,7 @@ impl<S: Mount> event::Handler for Handler<S> {
             investigator: Record::new(0, Investigator::ZERO),
             now_in_ms,
             investigators: None,
+            persistence: Persistence::Stored,
             lost: Vec::new(),
             startup: Vec::new(),
             logs: Vec::new(),
@@ -192,14 +258,8 @@ impl<S: Mount> event::Handler for Handler<S> {
         commands.extend(Language::list().iter().flat_map(|&l| option_commands(l)));
         commands.extend(label_commands(self.language));
         commands.extend(appearance_commands(self.color_scheme));
-        if !self.data_url.is_empty() {
-            commands.push(Command::Fetch {
-                request: LOAD_REQUEST,
-                method:  Method::Get,
-                path:    self.data_url.clone(),
-                body:    Vec::new(),
-            });
-        }
+        commands.extend(self.option_commands());
+        commands.extend(self.mark(self.persistence));
         commands.push(Command::RemoveAttribute {
             id:        Page::Body.to_dom(),
             attribute: Attribute::Hidden,
@@ -208,32 +268,13 @@ impl<S: Mount> event::Handler for Handler<S> {
     }
 
     fn process_fetched(&mut self, response: &Response) -> (Vec<Event>, Vec<Command>) {
-        if response.request != LOAD_REQUEST {
+        if response.request != IMPORT_REQUEST {
             return (vec![], vec![]);
         }
         if response.status != STATUS_OK {
-            return (vec![], vec![]);
+            return (vec![], self.toast(String::from(Notice::Unreadable.display(self.language))));
         }
-        let imported = match import::import(&response.body, self.now_in_ms) {
-            Ok(imported) => imported,
-            Err(error) => {
-                let notice = match error {
-                    ImportError::Json(_) | ImportError::Root => Notice::Unreadable,
-                };
-                return (vec![], self.toast(String::from(notice.display(self.language))));
-            }
-        };
-        self.investigator = imported.investigator;
-        let mut commands = sheet_commands(&self.investigator, self.language);
-        if !imported.skipped.is_empty() {
-            let message = format!(
-                "{}: {}",
-                Notice::Skipped.display(self.language),
-                imported.skipped.join(", ")
-            );
-            commands.extend(self.toast(message));
-        }
-        (vec![], commands)
+        (vec![], self.import(&response.body))
     }
 
     fn process_canvas(
@@ -250,7 +291,12 @@ impl<S: Mount> event::Handler for Handler<S> {
                 commands.extend(sheet_commands(&self.investigator, l));
                 (vec![], commands)
             }
-            (EventType::Click, Some(Page::Save)) => self.persist(),
+            (EventType::Click, Some(Page::InvestigatorOption(n))) => (vec![], self.choose(n)),
+            (EventType::Change, Some(Page::Save)) => self.save(),
+            (EventType::Change, Some(Page::Import)) => (
+                vec![],
+                vec![Command::ReadFile { id: Page::Import.to_dom(), request: IMPORT_REQUEST }],
+            ),
             (EventType::Click, Some(Page::Toast(n))) => (
                 vec![],
                 vec![Command::JsFn { id: Page::Toast(n).to_dom(), name: FnName::HideToast }],
@@ -261,7 +307,7 @@ impl<S: Mount> event::Handler for Handler<S> {
                 (vec![], appearance_commands(c))
             }
             (EventType::Close, Some(Page::Dialog)) => (vec![], self.close_dialog()),
-            (EventType::Submit, Some(Page::DialogForm)) => (vec![], self.submit(&event.value)),
+            (EventType::Submit, Some(Page::Form)) => (vec![], self.submit(&event.value)),
             _ => (vec![], vec![]),
         }
     }
@@ -541,7 +587,7 @@ mod tests {
     async fn process_event_emits_one_frame_per_command() {
         assert_eq!(EventType::from(CLICK), EventType::Click);
         initialize();
-        App::init(false, 0.0, 0.0, 16.0, 0, 0, String::new(), String::new()).await;
+        App::init(false, 0.0, 0.0, 16.0, 0, 0, String::new()).await;
         while ARENA.read_ring(COMMAND_RING).is_some() {
             ARENA.advance_ring(COMMAND_RING);
         }
@@ -623,15 +669,8 @@ mod handler_tests {
 
     #[test]
     fn the_initial_draw_tags_the_language_and_reveals_the_body() {
-        let mut handler = block_on(Handler::<MemoryStore>::ready(
-            0.0,
-            0.0,
-            16.0,
-            0,
-            0,
-            String::new(),
-            ColorScheme::Light,
-        ));
+        let mut handler =
+            block_on(Handler::<MemoryStore>::ready(0.0, 0.0, 16.0, 0, 0, ColorScheme::Light));
         let (events, commands) = handler.initial_draw();
         assert!(events.is_empty());
         let (texts, reveal) = commands.split_at(commands.len() - 1);
@@ -647,6 +686,7 @@ mod handler_tests {
             command,
             Command::SetText { value, .. } if value == Section::Skill.display(Language::Ja)
         )));
+        let (appearance, store) = appearance.split_at(2);
         assert_eq!(
             appearance.iter().map(written).collect::<Vec<_>>(),
             [
@@ -658,6 +698,14 @@ mod handler_tests {
                 (Page::Html.to_dom(), Some(Attribute::DataColorScheme), String::from("light")),
             ]
         );
+        let empty: Vec<_> = (1..=INVESTIGATOR_OPTIONS)
+            .flat_map(|n| {
+                let id = Page::InvestigatorOption(n).to_dom();
+                [(id.clone(), None, String::new()), (id, Some(Attribute::Hidden), String::new())]
+            })
+            .chain([(Page::Save.to_dom(), Some(Attribute::Checked), String::new())])
+            .collect();
+        assert_eq!(store.iter().map(written).collect::<Vec<_>>(), empty);
         assert_eq!(
             reveal.iter().map(hidden_change).collect::<Vec<_>>(),
             [(false, Page::Body.to_dom())]
@@ -666,15 +714,8 @@ mod handler_tests {
 
     #[test]
     fn choosing_a_language_tags_the_document() {
-        let mut handler = block_on(Handler::<MemoryStore>::ready(
-            0.0,
-            0.0,
-            16.0,
-            0,
-            0,
-            String::new(),
-            ColorScheme::Light,
-        ));
+        let mut handler =
+            block_on(Handler::<MemoryStore>::ready(0.0, 0.0, 16.0, 0, 0, ColorScheme::Light));
         let english = Language::En(En::Gb);
         let commands = click(&mut handler, Page::LanguageOption(english).to_dom());
         assert_eq!(
@@ -695,69 +736,69 @@ mod handler_tests {
 
     #[test]
     fn other_targets_and_events_change_nothing() {
-        let mut handler = block_on(Handler::<MemoryStore>::ready(
-            0.0,
-            0.0,
-            16.0,
-            0,
-            0,
-            String::new(),
-            ColorScheme::Light,
-        ));
+        let mut handler =
+            block_on(Handler::<MemoryStore>::ready(0.0, 0.0, 16.0, 0, 0, ColorScheme::Light));
         assert!(click(&mut handler, Page::Sheet.to_dom()).is_empty());
         assert!(click(&mut handler, Page::Dice.to_dom()).is_empty());
     }
     const SAMPLE: &str = r#"{ "ID": 5, "Profile": { "Name": "鏖" }, "Wealth": {} }"#;
 
     fn response(status: u16) -> Response {
-        Response { request: LOAD_REQUEST, status, body: SAMPLE.as_bytes().to_vec() }
+        Response { request: IMPORT_REQUEST, status, body: SAMPLE.as_bytes().to_vec() }
     }
 
-    #[test]
-    fn a_data_url_is_fetched_on_the_initial_draw() {
-        let url = String::from("investigator/jin.json");
-        let mut handler = block_on(Handler::<MemoryStore>::ready(
-            0.0,
-            0.0,
-            16.0,
-            0,
-            0,
-            url.clone(),
-            ColorScheme::Light,
-        ));
-        let (_, commands) = handler.initial_draw();
-        let fetches: Vec<_> = commands
+    fn ready() -> Handler<MemoryStore> {
+        block_on(Handler::<MemoryStore>::ready(0.0, 0.0, 16.0, 0, 0, ColorScheme::Light))
+    }
+
+    fn change(handler: &mut Handler<MemoryStore>, page: Page) -> (Vec<Event>, Vec<Command>) {
+        let event = CanvasEvent { event_type: EventType::Change, ..canvas(page.to_dom()) };
+        handler.process_canvas(&event, &Pointer::NONE)
+    }
+
+    fn checked(commands: &[Command]) -> Option<bool> {
+        commands.iter().rev().find_map(|command| match command {
+            Command::SetAttribute { id, attribute: Attribute::Checked, .. }
+                if *id == Page::Save.to_dom() =>
+            {
+                Some(true)
+            }
+            Command::RemoveAttribute { id, attribute: Attribute::Checked }
+                if *id == Page::Save.to_dom() =>
+            {
+                Some(false)
+            }
+            _ => None,
+        })
+    }
+
+    fn options(commands: &[Command]) -> Vec<(u32, String)> {
+        commands
             .iter()
             .filter_map(|command| match command {
-                Command::Fetch { request, path, .. } => Some((*request, path.clone())),
+                Command::SetText { id, value } => (1..=INVESTIGATOR_OPTIONS)
+                    .find(|&n| *id == Page::InvestigatorOption(n).to_dom())
+                    .map(|n| (n, value.clone())),
                 _ => None,
             })
-            .collect();
-        assert_eq!(fetches, [(LOAD_REQUEST, url)]);
-        let mut handler = block_on(Handler::<MemoryStore>::ready(
-            0.0,
-            0.0,
-            16.0,
-            0,
-            0,
-            String::new(),
-            ColorScheme::Light,
-        ));
-        let (_, commands) = handler.initial_draw();
-        assert!(!commands.iter().any(|command| matches!(command, Command::Fetch { .. })));
+            .collect()
     }
 
     #[test]
-    fn a_fetched_sheet_is_drawn_and_saved_on_demand() {
-        let mut handler = block_on(Handler::<MemoryStore>::ready(
-            0.0,
-            0.0,
-            16.0,
-            0,
-            0,
-            String::new(),
-            ColorScheme::Light,
+    fn choosing_a_file_requests_its_contents_and_nothing_is_fetched_on_the_initial_draw() {
+        let mut handler = ready();
+        let (_, commands) = handler.initial_draw();
+        assert!(!commands.iter().any(|command| matches!(command, Command::Fetch { .. })));
+        assert_eq!(checked(&commands), Some(true));
+        assert!(matches!(
+            change(&mut handler, Page::Import).1.as_slice(),
+            [Command::ReadFile { id, request: IMPORT_REQUEST }] if *id == Page::Import.to_dom()
         ));
+    }
+
+    #[test]
+    fn an_imported_sheet_stays_unsaved_until_the_sync_checkbox_saves_it() {
+        let mut handler = ready();
         let (events, commands) = handler.process_fetched(&response(STATUS_OK));
         assert!(events.is_empty());
         let [
@@ -775,7 +816,9 @@ mod handler_tests {
         assert_eq!(*slot, Page::Toast(1).to_dom());
         assert_eq!(message, "取り込めなかった項目: Wealth");
         assert_eq!(handler.investigator.name, "鏖");
-        assert!(handler.investigators.as_ref().unwrap().get(1).is_none());
+        assert_eq!(checked(&commands), Some(false));
+        assert!(options(&commands).is_empty());
+        assert_eq!(handler.investigators.as_ref().unwrap().pending().len(), 1);
         let written: Vec<_> = commands
             .iter()
             .filter_map(|command| match command {
@@ -785,63 +828,68 @@ mod handler_tests {
             .collect();
         let name_input = Profile::Name.dom()[1].clone();
         assert!(written.contains(&(name_input, String::from("鏖"))));
-        assert_eq!(handler.investigators.as_ref().unwrap().get(1), None);
 
-        assert!(click(&mut handler, Page::Save.to_dom()).is_empty());
-        let stored = handler.investigators.as_ref().unwrap().get(1).unwrap();
+        let (events, commands) = change(&mut handler, Page::Save);
+        assert!(events.is_empty());
+        assert_eq!(checked(&commands), Some(true));
         assert_eq!(
-            parse::<Record<Investigator>>(stored).map(|s| s.name.clone()),
+            options(&commands),
+            [(1, String::from("鏖")), (2, String::new()), (3, String::new()), (4, String::new())]
+        );
+        let store = handler.investigators.as_ref().unwrap();
+        assert_eq!(store.pending().len(), 0);
+        assert_eq!(
+            parse::<Record<Investigator>>(store.get(1).unwrap()).map(|s| s.name.clone()),
             Some(String::from("鏖"))
         );
     }
 
     #[test]
-    fn a_failed_fetch_and_other_requests_are_ignored() {
-        let mut handler = block_on(Handler::<MemoryStore>::ready(
-            0.0,
-            0.0,
-            16.0,
-            0,
-            0,
-            String::new(),
-            ColorScheme::Light,
-        ));
-        assert!(handler.process_fetched(&response(404)).1.is_empty());
+    fn a_saved_investigator_is_listed_on_startup_and_drawn_when_chosen() {
+        let mut handler = ready();
+        handler.process_fetched(&response(STATUS_OK));
+        change(&mut handler, Page::Save);
+        handler.investigator = Record::new(0, Investigator::ZERO);
+        let (_, commands) = handler.initial_draw();
+        assert_eq!(options(&commands)[0], (1, String::from("鏖")));
+        let commands = click(&mut handler, Page::InvestigatorOption(1).to_dom());
+        assert!(matches!(commands.first(),
+            Some(Command::SetText { id, value }) if *id == Page::Investigator.to_dom() && value == "鏖"));
+        assert_eq!(handler.investigator.name, "鏖");
+        assert!(click(&mut handler, Page::InvestigatorOption(2).to_dom()).is_empty());
+    }
+
+    #[test]
+    fn an_unreadable_file_is_reported_and_other_requests_are_ignored() {
+        let mut handler = ready();
+        let commands = handler.process_fetched(&response(0)).1;
+        assert!(commands.iter().any(|command| matches!(command,
+            Command::SetText { value, .. } if value == "データを読み込めませんでした")));
+        assert_eq!(handler.investigators.as_ref().unwrap().pending().len(), 0);
         let other = Response { request: 9, status: STATUS_OK, body: Vec::new() };
         assert!(handler.process_fetched(&other).1.is_empty());
     }
 
     #[test]
     fn closing_the_handler_releases_the_store() {
-        let mut handler = block_on(Handler::<MemoryStore>::ready(
-            0.0,
-            0.0,
-            16.0,
-            0,
-            0,
-            String::new(),
-            ColorScheme::Light,
-        ));
-        assert!(handler.save().1.is_empty());
+        let mut handler =
+            block_on(Handler::<MemoryStore>::ready(0.0, 0.0, 16.0, 0, 0, ColorScheme::Light));
+        assert!(handler.save().0.is_empty());
         assert!(handler.close().is_empty());
         let (events, commands) = handler.save();
         assert!(matches!(events.as_slice(), [Event::StoreLost(_)]));
         assert!(matches!(
             commands.as_slice(),
-            [Command::Error { error: Error::FileStore(FileStoreError::InvalidState(_)) }]
+            [
+                Command::Error { error: Error::FileStore(FileStoreError::InvalidState(_)) },
+                Command::RemoveAttribute { attribute: Attribute::Checked, .. },
+            ]
         ));
     }
     #[test]
     fn a_lost_store_is_replaced_and_the_pending_change_survives() {
-        let mut handler = block_on(Handler::<MemoryStore>::ready(
-            0.0,
-            0.0,
-            16.0,
-            0,
-            0,
-            String::new(),
-            ColorScheme::Light,
-        ));
+        let mut handler =
+            block_on(Handler::<MemoryStore>::ready(0.0, 0.0, 16.0, 0, 0, ColorScheme::Light));
         handler.investigators.as_mut().unwrap().set(1, b"kept".to_vec());
         let disk = block_on(MemoryStore::open(CHARACTER_STORE, true)).unwrap();
 
@@ -851,7 +899,9 @@ mod handler_tests {
         handler.process_lost();
         handler.process_opened(Ok(disk.clone()));
         assert_eq!(handler.investigators.as_ref().unwrap().get(1), Some(&b"kept"[..]));
-        assert!(handler.save().1.is_empty());
+        let (events, commands) = handler.save();
+        assert!(events.is_empty());
+        assert_eq!(checked(&commands), Some(true));
         assert_eq!(MemoryStore::new(disk).unwrap().get(1), Some(&b"kept"[..]));
     }
 
@@ -909,20 +959,18 @@ mod handler_tests {
             [(200, accepted.clone(), true), (200, vec![1, 2, 3], false), (401, vec![], false)];
         for seed in 0..8 {
             let mut rng = Rng::new(seed);
-            let mut handler = block_on(Handler::<MemoryStore>::ready(
-                0.0,
-                0.0,
-                16.0,
-                0,
-                0,
-                String::new(),
-                ColorScheme::Light,
-            ));
+            let mut handler =
+                block_on(Handler::<MemoryStore>::ready(0.0, 0.0, 16.0, 0, 0, ColorScheme::Light));
             let mut dom: Vec<(dom::Id, Attribute, bool)> = Vec::new();
             for &field in Field::list() {
                 dom.push((Page::Credential(field).to_dom(), Attribute::Hidden, true));
-                dom.push((Page::Credential(field).to_dom(), Attribute::Disabled, true));
+                dom.push((Page::CredentialInput(field).to_dom(), Attribute::Disabled, true));
             }
+            dom.push((Page::Create.to_dom(), Attribute::Hidden, true));
+            dom.push((Page::CreateInput.to_dom(), Attribute::Disabled, true));
+            dom.push((Page::DialogOptions.to_dom(), Attribute::Hidden, true));
+            dom.push((Page::DialogNumber.to_dom(), Attribute::Hidden, true));
+            dom.push((Page::DialogNumberInput.to_dom(), Attribute::Disabled, true));
             let lookup = |dom: &[(dom::Id, Attribute, bool)], page: Page, attribute: Attribute| {
                 let id = page.to_dom();
                 dom.iter().rev().find(|(i, a, _)| *i == id && *a == attribute).is_some_and(|e| e.2)
@@ -969,8 +1017,7 @@ mod handler_tests {
                     }
                     2 | 3 => {
                         let (query, valid, create) = queries[rng.below(queries.len())];
-                        let commands =
-                            send(&mut handler, EventType::Submit, Page::DialogForm, query);
+                        let commands = send(&mut handler, EventType::Submit, Page::Form, query);
                         match (open, valid) {
                             (true, true) => {
                                 assert!(
@@ -1075,9 +1122,10 @@ mod handler_tests {
                     continue;
                 }
                 for &field in Field::list() {
-                    let page = Page::Credential(field);
-                    assert!(!lookup(&dom, page, Attribute::Hidden), "{seed} {step}");
-                    assert!(!lookup(&dom, page, Attribute::Disabled), "{seed} {step}");
+                    let label = Page::Credential(field);
+                    let input = Page::CredentialInput(field);
+                    assert!(!lookup(&dom, label, Attribute::Hidden), "{seed} {step}");
+                    assert!(!lookup(&dom, input, Attribute::Disabled), "{seed} {step}");
                 }
                 assert!(!lookup(&dom, Page::Create, Attribute::Hidden), "{seed} {step}");
                 assert!(!lookup(&dom, Page::CreateInput, Attribute::Disabled), "{seed} {step}");
