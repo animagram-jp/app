@@ -253,6 +253,12 @@ dialog > label:has(> input:is([name="email"], [name="password"])) {
     }
 }
 
+dialog > dl > dd:has(> :is(input, select, textarea):only-child) {
+    align-items:    stretch;
+    display:        flex;
+    flex-direction: column;
+}
+
 textarea {
     resize: none;
 }

@@ -2436,14 +2436,14 @@ mod tests {
         assert!(handler.dirty());
         assert!(MemoryStore::new(disk.clone()).unwrap().range(0, u32::MAX).next().is_none());
         handler.process_fetched(&sample_response(1, 200));
-        assert_eq!(appointments(&handler).len(), 380);
+        assert_eq!(appointments(&handler).len(), 1116);
         let (events, commands) = save_pressed(&mut handler);
         assert!(events.is_empty());
         assert_eq!(sync_checked(&commands), Some(true));
         assert!(!handler.dirty());
         assert_eq!(
             object::list::<Appointment>(&MemoryStore::new(disk).unwrap()).unwrap().len(),
-            380
+            1116
         );
     }
 
@@ -2452,7 +2452,7 @@ mod tests {
         let (mut handler, _) = with_store();
         assert!(!handler.loaded());
         let (_, commands) = handler.process_fetched(&sample_response(1, 200));
-        assert_eq!(appointments(&handler).len(), 380);
+        assert_eq!(appointments(&handler).len(), 1116);
         assert_eq!(text_of(&commands, &Target::ResourceName(1).to_dom()).unwrap(), "Studio 1");
         assert_eq!(text_of(&commands, &Target::ResourceName(6).to_dom()).unwrap(), "Studio 2");
         assert_eq!(text_of(&commands, &Target::ResourceName(28).to_dom()).unwrap(), "Studio 4");
@@ -3537,7 +3537,7 @@ mod tests {
         assert!(!commands.iter().any(|command| matches!(command, Command::Fetch { .. })));
         assert_eq!(disk.count_committed(), 0);
         import_saved(&mut handler);
-        assert_eq!(disk.count_committed(), 392);
+        assert_eq!(disk.count_committed(), 1128);
         assert_eq!(pending(&handler), 0);
         assert!(!handler.dirty());
     }
@@ -3548,7 +3548,7 @@ mod tests {
         import_saved(&mut first);
         let mut second = Handler::<MemoryStore>::new(VIEWPORT, today(), REM);
         second.attach(MemoryStore::new(disk).unwrap());
-        assert_eq!(appointments(&second).len(), 380);
+        assert_eq!(appointments(&second).len(), 1116);
         let (_, commands) = second.initial_draw();
         assert!(!commands.iter().any(|command| matches!(command, Command::Fetch { .. })));
         assert_eq!(text_of(&commands, &Target::ResourceName(1).to_dom()).unwrap(), "Studio 1");
