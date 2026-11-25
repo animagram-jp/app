@@ -562,7 +562,10 @@ impl Page {
             _ => return None,
         })
     }
+}
 
+#[cfg(test)]
+impl Page {
     pub fn every() -> Vec<Self> {
         let mut pages = Vec::from([
             Self::Html,
