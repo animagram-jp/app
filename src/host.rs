@@ -34,6 +34,7 @@ pub const OPERATION_FETCH: u8 = 14;
 pub const OPERATION_RELOAD: u8 = 15;
 pub const OPERATION_READ_FILE: u8 = 16;
 
+#[derive(Debug, PartialEq)]
 pub enum Command {
     SetText { id: dom::Id, value: String },
     SetValue { id: dom::Id, value: String },

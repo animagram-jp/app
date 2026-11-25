@@ -351,7 +351,7 @@ pub fn emit(frame: &[u8]) -> bool {
 
 // === error ===
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum ArenaError {
     CommandOverflow,
 }
@@ -374,7 +374,7 @@ impl WireError for ArenaError {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct PanicError {
     pub location: String,
     pub message:  String,

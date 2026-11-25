@@ -51,7 +51,7 @@ impl CookiePath {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum SessionError {
     Random(getrandom::Error),
     Frame(FrameError),

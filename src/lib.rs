@@ -146,7 +146,7 @@ pub trait WireError {
 
 macro_rules! wire_error {
     ($name:ident { $($(#[$meta:meta])* $variant:ident($inner:ty) = $identifier:expr),+ $(,)? }) => {
-        #[derive(Debug)]
+        #[derive(Debug, PartialEq)]
         pub enum $name {
             $($(#[$meta])* $variant($inner)),+
         }

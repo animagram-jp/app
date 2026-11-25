@@ -1,16 +1,28 @@
-use alloc::vec::Vec;
+use alloc::{string::String, vec, vec::Vec};
 use core::{
+    clone::Clone,
     cmp::PartialEq,
+    convert::Into,
+    fmt::Debug,
+    iter::Iterator,
+    marker::Copy,
     ops::{Deref, DerefMut},
     option::Option::{self, None, Some},
     primitive::{i64, u8, u16, u32, u64, u128},
     result::Result::{self},
 };
 
+use arbitrary_int::u2;
+
 use crate::{
     Input, Output,
     bit::{Bits, Zero},
+    event::store::Persistence,
     file_store::FileStore,
+    host::{
+        Attribute, Command, FnName,
+        dom::{Id, Tag},
+    },
     parse,
     time::{Stamp, Zone, from_unix_timestamp_in_ms},
 };
@@ -150,4 +162,202 @@ pub fn list<B: Body>(store: &impl FileStore) -> Result<Vec<Record<B>>, ObjectErr
 
 pub fn exists(store: &impl FileStore) -> bool {
     store.range(0, u32::MAX).next().is_some()
+}
+
+// --- toast ---
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum ToastPart {
+    Slot(u32),
+    Text(u32),
+}
+
+pub struct Toast {
+    last: u2,
+}
+
+impl Zero for Toast {
+    const ZERO: Self = Self { last: u2::new(0) };
+}
+
+impl Toast {
+    pub const SLOTS: u32 = 2;
+
+    pub fn parts() -> impl Iterator<Item = ToastPart> {
+        (1..=Self::SLOTS).flat_map(|n| [ToastPart::Slot(n), ToastPart::Text(n)])
+    }
+
+    pub fn to_dom(part: ToastPart) -> Id {
+        match part {
+            ToastPart::Slot(n) => Id::new(&[(Tag::Toast, None), (Tag::Button, Some(n))]),
+            ToastPart::Text(n) => {
+                Id::new(&[(Tag::Toast, None), (Tag::Button, Some(n)), (Tag::P, None)])
+            }
+        }
+    }
+
+    pub fn from_dom(id: &Id) -> Option<ToastPart> {
+        let path: Vec<(Tag, Option<u32>)> = id.0.iter().map(|s| (s.tag, s.n)).collect();
+        let part = match path.as_slice() {
+            [(Tag::Toast, None), (Tag::Button, Some(n))] => ToastPart::Slot(*n),
+            [(Tag::Toast, None), (Tag::Button, Some(n)), (Tag::P, None)] => ToastPart::Text(*n),
+            _ => return None,
+        };
+        let (ToastPart::Slot(n) | ToastPart::Text(n)) = part;
+        (1..=Self::SLOTS).contains(&n).then_some(part)
+    }
+
+    pub fn show(&mut self, message: impl Into<String>) -> Vec<Command> {
+        let slot = u32::from(self.last.value()) % Self::SLOTS + 1;
+        self.last = u2::new(slot as u8);
+        vec![
+            Command::SetText { id: Self::to_dom(ToastPart::Text(slot)), value: message.into() },
+            Command::JsFn { id: Self::to_dom(ToastPart::Slot(slot)), name: FnName::ShowToast },
+        ]
+    }
+
+    pub fn hide(slot: u32) -> Command {
+        Command::JsFn { id: Self::to_dom(ToastPart::Slot(slot)), name: FnName::HideToast }
+    }
+}
+
+// --- preservation ---
+
+pub struct Preservation<const N: u32> {
+    persistence: Persistence,
+}
+
+impl<const N: u32> Preservation<N> {
+    pub const fn new(persistence: Persistence) -> Self {
+        Self { persistence }
+    }
+
+    pub fn to_dom() -> Id {
+        Id::new(&[(Tag::Header, None), (Tag::Input, Some(N))])
+    }
+
+    pub fn persistence(&self) -> Persistence {
+        self.persistence
+    }
+
+    pub fn saved(&self) -> bool {
+        self.persistence.saved()
+    }
+
+    pub fn mark(&mut self, persistence: Persistence) -> Command {
+        self.persistence = persistence;
+        self.draw()
+    }
+
+    pub fn draw(&self) -> Command {
+        let id = Self::to_dom();
+        if self.saved() {
+            Command::SetAttribute { id, attribute: Attribute::Checked, value: String::new() }
+        } else {
+            Command::RemoveAttribute { id, attribute: Attribute::Checked }
+        }
+    }
+}
+
+#[cfg(test)]
+mod toast_tests {
+    use alloc::format;
+
+    use super::*;
+    use crate::host::dom::Segment;
+
+    #[test]
+    fn every_toast_part_survives_the_dom_round_trip_under_a_distinct_id() {
+        let parts: Vec<ToastPart> = Toast::parts().collect();
+        assert_eq!(parts.len(), 2 * Toast::SLOTS as usize);
+        for (index, &part) in parts.iter().enumerate() {
+            let id = Toast::to_dom(part);
+            assert_eq!(Toast::from_dom(&id), Some(part), "{part:?}");
+            for &other in &parts[index + 1..] {
+                assert_ne!(id, Toast::to_dom(other), "{part:?} {other:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn ids_outside_the_slots_belong_to_no_toast() {
+        for n in [0, Toast::SLOTS + 1, u32::MAX - 1] {
+            assert_eq!(Toast::from_dom(&Toast::to_dom(ToastPart::Slot(n))), None, "{n}");
+            assert_eq!(Toast::from_dom(&Toast::to_dom(ToastPart::Text(n))), None, "{n}");
+        }
+        let mut deeper = Toast::to_dom(ToastPart::Text(1));
+        deeper.0.push(Segment { tag: Tag::Span, n: None });
+        assert_eq!(Toast::from_dom(&deeper), None);
+        assert_eq!(Toast::from_dom(&Id::new(&[(Tag::Toast, None)])), None);
+    }
+
+    #[test]
+    fn each_message_takes_the_slot_after_the_last_one() {
+        let mut toast = Toast::ZERO;
+        for index in 0..(4 * Toast::SLOTS) {
+            let slot = index % Toast::SLOTS + 1;
+            let message = format!("message {index}");
+            assert_eq!(
+                toast.show(message.clone()),
+                [
+                    Command::SetText {
+                        id:    Toast::to_dom(ToastPart::Text(slot)),
+                        value: message,
+                    },
+                    Command::JsFn {
+                        id:   Toast::to_dom(ToastPart::Slot(slot)),
+                        name: FnName::ShowToast,
+                    },
+                ],
+                "{index}"
+            );
+            assert_eq!(
+                Toast::hide(slot),
+                Command::JsFn {
+                    id:   Toast::to_dom(ToastPart::Slot(slot)),
+                    name: FnName::HideToast,
+                }
+            );
+        }
+    }
+}
+
+#[cfg(test)]
+mod preservation_tests {
+    use super::*;
+
+    #[test]
+    fn the_checkbox_sits_at_the_header_input_given_by_its_type() {
+        assert_eq!(
+            Preservation::<1>::to_dom(),
+            Id::new(&[(Tag::Header, None), (Tag::Input, Some(1))])
+        );
+        assert_eq!(
+            Preservation::<2>::to_dom(),
+            Id::new(&[(Tag::Header, None), (Tag::Input, Some(2))])
+        );
+    }
+
+    #[test]
+    fn every_mark_checks_the_box_exactly_when_the_new_persistence_is_saved() {
+        for &from in Persistence::LIST {
+            for &to in Persistence::LIST {
+                let mut preservation = Preservation::<2>::new(from);
+                let command = preservation.mark(to);
+                let id = Preservation::<2>::to_dom();
+                let expected = if to.saved() {
+                    Command::SetAttribute {
+                        id,
+                        attribute: Attribute::Checked,
+                        value: String::new(),
+                    }
+                } else {
+                    Command::RemoveAttribute { id, attribute: Attribute::Checked }
+                };
+                assert_eq!(command, expected, "{from:?} -> {to:?}");
+                assert_eq!(preservation.persistence(), to, "{from:?} -> {to:?}");
+                assert_eq!(preservation.draw(), expected, "{from:?} -> {to:?}");
+            }
+        }
+    }
 }

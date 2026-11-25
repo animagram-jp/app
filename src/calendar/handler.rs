@@ -7,7 +7,6 @@ use core::{
     result::Result::Ok,
 };
 
-use arbitrary_int::u2;
 use rectgrid::{
     BBox, IncrementFunction, Px, RectGrid, Unit as GridUnit, corner_test, drag_resize,
     drag_translate,
@@ -20,7 +19,7 @@ use crate::{
         self, Appointment, CalendarError, HOUR_MINUTE, MONTH_DAY, Parent, Place, Tag, YEAR_DAY,
         grid::{AXES, Axis, CLOCK, Cell, Clock, Day, Grid, Month, lane_box, lanes, span},
         parse_date, parse_time,
-        target::{CardPart, Dialog, EditField, STEP_TODAY, Submit, TOAST_SLOTS, Target},
+        target::{CardPart, Dialog, EditField, HeaderInput, StepButton, Submit, Target},
     },
     credential::{self, Field},
     event::{
@@ -30,10 +29,10 @@ use crate::{
     },
     file_store::{FileStore, Mount, StoreId},
     host::{
-        Attribute, CanvasEvent, Command, EventType, FnName, Keyword, StyleProperty, StyleValue,
-        Unit, dom::Id, parse_url_search_params,
+        Attribute, CanvasEvent, Command, EventType, Keyword, StyleProperty, StyleValue, Unit,
+        dom::Id, parse_url_search_params,
     },
-    object::{self, Record},
+    object::{self, Preservation, Record, Toast, ToastPart},
     parse, stringify,
     time::{
         self, Format, Length, Stamp, Unit as TimeUnit, Zone, add, diff, display,
@@ -54,7 +53,6 @@ const ZOOM_MAX: f64 = 3.0;
 const COLUMN_MIN_IN_REM: f64 = 5.0;
 const AXIS_IN_REM: f64 = 4.0;
 const HEAD_IN_REM: f64 = 5.0;
-const STEP_COUNT: u32 = 5;
 const IMPORT_REQUEST: u32 = 1;
 const UNREADABLE: &str = "データを読み込めませんでした";
 const STATUS_OK: u16 = 200;
@@ -147,13 +145,13 @@ pub struct Handler<S: FileStore> {
     create:               Option<CreateDrag>,
     row_in_rem:           f64,
     drag:                 Option<Drag>,
-    persistence:          Persistence,
+    preservation:         Preservation<{ HeaderInput::Preservation as u32 }>,
     store:                Option<S>,
     attached:             bool,
     lost:                 Vec<(u32, Option<Vec<u8>>)>,
     startup:              Vec<Error>,
     damaged:              Option<CalendarError>,
-    last_toast:           u2,
+    toast:                Toast,
     viewport_width_in_px: f64,
     rem_in_px:            f64,
     scroll_x_in_px:       f64,
@@ -212,13 +210,13 @@ impl<S: FileStore> Handler<S> {
             create: None,
             row_in_rem: ROW_IN_REM,
             drag: None,
-            persistence: Persistence::Stored,
+            preservation: Preservation::new(Persistence::Stored),
             store: None,
             attached: false,
             lost: Vec::new(),
             startup: Vec::new(),
             damaged: None,
-            last_toast: u2::new(TOAST_SLOTS as u8),
+            toast: Toast::ZERO,
             viewport_width_in_px,
             rem_in_px,
             scroll_x_in_px: 0.0,
@@ -1069,18 +1067,16 @@ impl<S: FileStore> Handler<S> {
 
     fn click_control(&mut self, target: Target) -> (Vec<Event>, Vec<Command>) {
         match target {
-            Target::Step(n) if (1..=STEP_COUNT).contains(&n) => {
-                self.base = if n == STEP_TODAY {
-                    self.today
-                } else {
-                    shift(self.base, TimeUnit::Day, self.step_days(n)).unwrap_or(self.base)
+            Target::Step(button) => {
+                self.base = match button {
+                    StepButton::Today => self.today,
+                    _ => {
+                        shift(self.base, TimeUnit::Day, self.step_days(button)).unwrap_or(self.base)
+                    }
                 };
                 (vec![], self.date_commands())
             }
-            Target::Toast(n) => (
-                vec![],
-                vec![Command::JsFn { id: Target::Toast(n).to_dom(), name: FnName::HideToast }],
-            ),
+            Target::Toast(ToastPart::Slot(n)) => (vec![], vec![Toast::hide(n)]),
             Target::LanguageOption(l) => {
                 self.language = l;
                 let mut commands = self.date_commands();
@@ -1099,13 +1095,19 @@ impl<S: FileStore> Handler<S> {
         }
     }
 
-    fn step_days(&self, n: u32) -> i64 {
+    fn step_days(&self, button: StepButton) -> i64 {
         let (unit, page) = if self.month() {
             (i64::from(Day::Week.days()), i64::from(Month::days()))
         } else {
             (1, i64::from(self.axis.days()))
         };
-        [-page, -unit, 0, unit, page][n as usize - 1]
+        match button {
+            StepButton::PreviousPage => -page,
+            StepButton::Previous => -unit,
+            StepButton::Next => unit,
+            StepButton::NextPage => page,
+            StepButton::Today | StepButton::Other => 0,
+        }
     }
 
     fn resource_text(&self, resources: &[Record<Tag>], n: u32) -> Command {
@@ -1431,13 +1433,8 @@ impl<S: FileStore> Handler<S> {
         commands
     }
 
-    fn mark(&mut self, persistence: Persistence) -> Command {
-        self.persistence = persistence;
-        toggle(Target::Save.to_dom(), Attribute::Checked, persistence.saved())
-    }
-
     fn mark_dirty(&mut self) -> Option<Command> {
-        self.persistence.saved().then(|| self.mark(Persistence::Unsaved))
+        self.preservation.saved().then(|| self.preservation.mark(Persistence::Unsaved))
     }
 
     fn import_commands(&mut self, body: &[u8]) -> Result<Vec<Command>, CalendarError> {
@@ -1449,7 +1446,7 @@ impl<S: FileStore> Handler<S> {
         for id in replaced {
             store.delete(id);
         }
-        Ok(vec![self.mark(Persistence::Unsaved)])
+        Ok(vec![self.preservation.mark(Persistence::Unsaved)])
     }
 
     fn persist(&mut self, mut entry: Record<Appointment>) {
@@ -1465,10 +1462,10 @@ impl<S: FileStore> Handler<S> {
         };
         if let Err(error) = store.save() {
             let (events, mut commands) = store::failed(STORE, error);
-            commands.push(self.mark(Persistence::Unsaved));
+            commands.push(self.preservation.mark(Persistence::Unsaved));
             return (events, commands);
         }
-        (vec![], vec![self.mark(Persistence::Stored)])
+        (vec![], vec![self.preservation.mark(Persistence::Stored)])
     }
 
     pub fn discard_commands(&mut self) -> (Vec<Event>, Vec<Command>) {
@@ -1486,12 +1483,12 @@ impl<S: FileStore> Handler<S> {
             commands.extend(self.view_commands());
         }
         commands.extend(self.card_commands());
-        commands.push(self.mark(Persistence::Stored));
+        commands.push(self.preservation.mark(Persistence::Stored));
         (vec![], commands)
     }
 
     pub fn dirty(&self) -> bool {
-        !self.persistence.saved()
+        !self.preservation.saved()
     }
 
     fn header_commands(&self) -> Vec<Command> {
@@ -1503,7 +1500,7 @@ impl<S: FileStore> Handler<S> {
             })
             .collect();
         commands.extend(
-            [Target::Step(STEP_TODAY), Target::UnlockName, Target::CreateName]
+            [Target::Step(StepButton::Today), Target::UnlockName, Target::CreateName]
                 .into_iter()
                 .chain(Field::list().iter().copied().map(Target::CredentialName))
                 .filter_map(|target| {
@@ -1764,7 +1761,7 @@ impl<S: Mount> event::Handler for Handler<S> {
     fn initial_draw(&mut self) -> (Vec<Event>, Vec<Command>) {
         let mut commands = self.view_commands();
         commands.extend(self.header_commands());
-        commands.push(toggle(Target::Save.to_dom(), Attribute::Checked, self.persistence.saved()));
+        commands.push(self.preservation.draw());
         commands.extend(appearance_commands(self.color_scheme));
         commands.extend(language_commands(self.language));
         commands.extend(Language::list().iter().flat_map(|&l| option_commands(l)));
@@ -1784,11 +1781,11 @@ impl<S: Mount> event::Handler for Handler<S> {
             return (vec![], vec![]);
         }
         if response.status != STATUS_OK {
-            return (vec![], self.toast(UNREADABLE));
+            return (vec![], self.toast.show(UNREADABLE));
         }
         let mut commands = match self.import_commands(&response.body) {
             Ok(commands) => commands,
-            Err(error) => return (vec![], self.toast(notice(&error))),
+            Err(error) => return (vec![], self.toast.show(notice(&error))),
         };
         self.resources = self.count_resources();
         self.fit_rectgrid();
@@ -1811,7 +1808,7 @@ impl<S: Mount> event::Handler for Handler<S> {
             EventType::Input if target == Some(Target::Zoom) => (vec![], self.zoom(&event.value)),
             EventType::Change => match target {
                 Some(Target::Axis(axis)) => (vec![], self.change_axis(axis)),
-                Some(Target::Save) => self.save_commands(),
+                Some(Target::Preservation) => self.save_commands(),
                 Some(Target::Import) => (
                     vec![],
                     vec![Command::ReadFile {
@@ -2067,21 +2064,9 @@ fn corner_cursor(corner: Corner) -> Option<Keyword> {
 }
 
 impl<S: FileStore> Handler<S> {
-    fn toast(&mut self, message: &str) -> Vec<Command> {
-        let slot = TOAST_SLOTS + 1 - u32::from(self.last_toast.value());
-        self.last_toast = u2::new(slot as u8);
-        vec![
-            Command::SetText {
-                id:    Target::ToastText(slot).to_dom(),
-                value: String::from(message),
-            },
-            Command::JsFn { id: Target::Toast(slot).to_dom(), name: FnName::ShowToast },
-        ]
-    }
-
     fn damaged_commands(&mut self) -> Vec<Command> {
         match self.damaged.take() {
-            Some(error) => self.toast(notice(&error)),
+            Some(error) => self.toast.show(notice(&error)),
             None => vec![],
         }
     }
@@ -2104,7 +2089,7 @@ mod tests {
     use crate::{
         En, Rng, block_on,
         file_store::{FileStoreError, MemoryHandles, MemoryStore, cases::FaultInjector},
-        host::{Flags, KeyName},
+        host::{Flags, FnName, KeyName},
         time::pack,
     };
 
@@ -2370,11 +2355,11 @@ mod tests {
             |commands: &[Command], target: Target| text_of(commands, &target.to_dom()).unwrap();
         assert_eq!(text(&commands, Target::AxisName(Axis::Month)), "1ヶ月");
         assert_eq!(text(&commands, Target::AxisName(Axis::Day(Day::Day))), "1日");
-        assert_eq!(text(&commands, Target::Step(3)), "本日");
+        assert_eq!(text(&commands, Target::Step(StepButton::Today)), "本日");
         let commands = press(&mut handler, Target::LanguageOption(Language::En(En::Gb)).to_dom());
         assert_eq!(text(&commands, Target::AxisName(Axis::Month)), "1 month");
         assert_eq!(text(&commands, Target::AxisName(Axis::Day(Day::Week))), "1 week");
-        assert_eq!(text(&commands, Target::Step(3)), "Today");
+        assert_eq!(text(&commands, Target::Step(StepButton::Today)), "Today");
     }
 
     #[test]
@@ -2392,11 +2377,17 @@ mod tests {
     #[test]
     fn step_buttons_move_the_base_and_today_returns() {
         let mut handler = Handler::<MemoryStore>::new(VIEWPORT, today(), REM);
-        for (button, expected) in [(5, 7), (1, 0), (2, -1), (4, 0), (4, 1)] {
+        for (button, expected) in [
+            (StepButton::NextPage, 7),
+            (StepButton::PreviousPage, 0),
+            (StepButton::Previous, -1),
+            (StepButton::Next, 0),
+            (StepButton::Next, 1),
+        ] {
             press(&mut handler, Target::Step(button).to_dom());
             assert_eq!(diff(today(), handler.base(), TimeUnit::Day), expected);
         }
-        let commands = press(&mut handler, Target::Step(3).to_dom());
+        let commands = press(&mut handler, Target::Step(StepButton::Today).to_dom());
         assert_eq!(handler.base(), today());
         assert_eq!(text_of(&commands, &Target::DayTitle(1).to_dom()).unwrap(), "10/2(金)");
     }
@@ -2405,7 +2396,7 @@ mod tests {
     fn single_day_view_titles_one_date() {
         let mut handler = Handler::<MemoryStore>::new(VIEWPORT, today(), REM);
         choose(&mut handler, Axis::Day(Day::Day));
-        let commands = press(&mut handler, Target::Step(4).to_dom());
+        let commands = press(&mut handler, Target::Step(StepButton::Next).to_dom());
         assert_eq!(text_of(&commands, &Target::Title.to_dom()).unwrap(), "3");
         assert_eq!(texts(&commands).len(), 2);
     }
@@ -2646,7 +2637,7 @@ mod tests {
             })
             .collect();
         assert_eq!(hidden_cards, [2, 3]);
-        let commands = press(&mut handler, Target::Step(4).to_dom());
+        let commands = press(&mut handler, Target::Step(StepButton::Next).to_dom());
         assert_eq!(shown_count(&commands), 1);
         assert_eq!(
             text_of(&commands, &Target::CardPart(1, CardPart::Title).to_dom()).unwrap(),
@@ -3433,12 +3424,12 @@ mod tests {
             .iter()
             .filter_map(|command| match command {
                 Command::SetAttribute { id, attribute: Attribute::Checked, .. }
-                    if *id == Target::Save.to_dom() =>
+                    if *id == Target::Preservation.to_dom() =>
                 {
                     Some(true)
                 }
                 Command::RemoveAttribute { id, attribute: Attribute::Checked }
-                    if *id == Target::Save.to_dom() =>
+                    if *id == Target::Preservation.to_dom() =>
                 {
                     Some(false)
                 }
@@ -4199,7 +4190,7 @@ mod tests {
     fn save_pressed<S: Mount>(handler: &mut Handler<S>) -> (Vec<Event>, Vec<Command>) {
         let event = CanvasEvent {
             event_type: EventType::Change,
-            ..click(Target::Save.to_dom(), 10.0, 10.0)
+            ..click(Target::Preservation.to_dom(), 10.0, 10.0)
         };
         handler.process_canvas(&event, &pointer())
     }
@@ -4481,9 +4472,9 @@ mod tests {
             [(Axis::Day(Day::Day), 1), (Axis::Day(Day::ThreeDays), 3), (Axis::Day(Day::Week), 7)]
         {
             choose(&mut handler, view);
-            press(&mut handler, Target::Step(5).to_dom());
+            press(&mut handler, Target::Step(StepButton::NextPage).to_dom());
             assert_eq!(diff(today(), handler.base(), TimeUnit::Day), page, "{view:?}");
-            press(&mut handler, Target::Step(1).to_dom());
+            press(&mut handler, Target::Step(StepButton::PreviousPage).to_dom());
             assert_eq!(handler.base(), today(), "{view:?}");
         }
     }
@@ -4491,14 +4482,14 @@ mod tests {
     #[test]
     fn month_steps_scroll_a_week_or_a_page() {
         let mut handler = month_fixture(vec![]);
-        let commands = press(&mut handler, Target::Step(4).to_dom());
+        let commands = press(&mut handler, Target::Step(StepButton::Next).to_dom());
         assert_eq!(text_of(&commands, &Target::BandLabel(1).to_dom()).unwrap(), "5");
-        let commands = press(&mut handler, Target::Step(5).to_dom());
+        let commands = press(&mut handler, Target::Step(StepButton::NextPage).to_dom());
         assert_eq!(text_of(&commands, &Target::BandLabel(1).to_dom()).unwrap(), "9");
-        let commands = press(&mut handler, Target::Step(1).to_dom());
+        let commands = press(&mut handler, Target::Step(StepButton::PreviousPage).to_dom());
         assert_eq!(text_of(&commands, &Target::BandLabel(1).to_dom()).unwrap(), "5");
         choose(&mut handler, Axis::Day(Day::Week));
-        let commands = press(&mut handler, Target::Step(5).to_dom());
+        let commands = press(&mut handler, Target::Step(StepButton::NextPage).to_dom());
         assert_eq!(text_of(&commands, &Target::DayTitle(1).to_dom()).unwrap(), "10/16(金)");
     }
 
@@ -4562,7 +4553,10 @@ mod tests {
                         choose(&mut handler, views[rng.below(views.len())]);
                     }
                     1 => {
-                        press(&mut handler, Target::Step(1 + rng.below(5) as u32).to_dom());
+                        press(
+                            &mut handler,
+                            Target::Step(StepButton::LIST[1 + rng.below(5)]).to_dom(),
+                        );
                     }
                     2..5 => {
                         let count = handler.placed.borrow().len();

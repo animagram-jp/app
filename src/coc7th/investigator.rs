@@ -19,7 +19,7 @@ use arbitrary_int::{i10, traits::Integer, u9};
 use crate::{
     Input, Language, Output,
     bit::{self, Zero},
-    coc7th::{Dice, Kind, dice},
+    coc7th::{Dice, Kind, dice, page::MainSection},
     host::dom::{Id, Tag},
     object::Body,
     take,
@@ -2269,7 +2269,6 @@ impl Backstory {
 }
 
 const MANAGEMENT_SECTION: u32 = 1;
-const SHEET_SECTION: u32 = 1;
 pub const WEAPON_ROWS: u32 = 4;
 pub const WEAPON_COLUMNS: u32 = 8;
 pub const ARMOR_ROWS: u32 = 2;
@@ -2280,7 +2279,11 @@ const EQUIPMENT_LIST: u32 = 1;
 const WEALTH_LIST: u32 = 2;
 
 pub fn sheet(part: u32) -> Vec<(Tag, Option<u32>)> {
-    Vec::from([(Tag::Main, None), (Tag::Section, Some(SHEET_SECTION)), (Tag::Section, Some(part))])
+    Vec::from([
+        (Tag::Main, None),
+        (Tag::Section, Some(MainSection::Sheet as u32)),
+        (Tag::Section, Some(part)),
+    ])
 }
 
 pub fn join(mut path: Vec<(Tag, Option<u32>)>, tail: &[(Tag, Option<u32>)]) -> Id {

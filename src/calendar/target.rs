@@ -13,19 +13,80 @@ use crate::{
     ColorScheme, Language,
     credential::Field,
     host::dom::{Id, Tag},
+    object::{Preservation, Toast, ToastPart},
 };
 
-const RELOAD_BUTTON: u32 = 1;
-const ZOOM_INPUT: u32 = 1;
-const SAVE_INPUT: u32 = 2;
-const IMPORT_INPUT: u32 = 3;
-pub const STEP_TODAY: u32 = 3;
-const LANGUAGE_LIST: u32 = 3;
-const APPEARANCE_LIST: u32 = 2;
-const SUBMIT_BUTTON: u32 = 1;
-const DELETE_BUTTON: u32 = 2;
-const CREATE_LABEL: u32 = 3;
-const PASSWORD_INPUT: u32 = 1;
+crate::enumerate! {
+    pub HeaderButton(u8) {
+        Other,
+        Reload,
+    }
+}
+
+crate::enumerate! {
+    pub HeaderInput(u8) {
+        Other,
+        Zoom,
+        Preservation,
+        Import,
+    }
+}
+
+crate::enumerate! {
+    pub HeaderDiv(u8) {
+        Other,
+        Step,
+        Appearance,
+        Language,
+    }
+}
+
+crate::enumerate! {
+    pub StepButton(u8) {
+        Other,
+        PreviousPage,
+        Previous,
+        Today,
+        Next,
+        NextPage,
+    }
+}
+
+crate::enumerate! {
+    pub SurfaceList(u8) {
+        Other,
+        Day,
+        Resource,
+        Band,
+        Card,
+        Preview,
+    }
+}
+
+crate::enumerate! {
+    pub DialogLabel(u8) {
+        Other,
+        Email,
+        Password,
+        Create,
+    }
+}
+
+crate::enumerate! {
+    pub DialogButton(u8) {
+        Other,
+        Submit,
+        Delete,
+    }
+}
+
+crate::enumerate! {
+    pub PasswordInput(u8) {
+        Other,
+        Entry,
+        Reveal,
+    }
+}
 
 crate::enumerate! {
     pub EditField(u8) {
@@ -149,10 +210,10 @@ pub enum Target {
     Title,
     Axis(Axis),
     AxisName(Axis),
-    Step(u32),
+    Step(StepButton),
     Zoom,
     Reload,
-    Save,
+    Preservation,
     Import,
     LanguageOption(Language),
     AppearanceOption(ColorScheme),
@@ -190,17 +251,14 @@ pub enum Target {
     EditMessage,
     Submit(Submit),
     Delete,
-    Toast(u32),
-    ToastText(u32),
+    Toast(ToastPart),
 }
-
-pub const TOAST_SLOTS: u32 = 2;
 
 impl Target {
     pub fn display(self, language: Language) -> Option<&'static str> {
         match (self, language) {
-            (Self::Step(STEP_TODAY), Language::En(_)) => Some("Today"),
-            (Self::Step(STEP_TODAY), Language::Ja) => Some("本日"),
+            (Self::Step(StepButton::Today), Language::En(_)) => Some("Today"),
+            (Self::Step(StepButton::Today), Language::Ja) => Some("本日"),
             (Self::UnlockName, Language::En(_)) => Some("Login"),
             (Self::UnlockName, Language::Ja) => Some("ログイン"),
             (Self::CreateName, Language::En(_)) => Some("Create"),
@@ -214,9 +272,9 @@ impl Target {
         let header = || Vec::from([(Tag::Header, None)]);
         let surface = || Vec::from([(Tag::Main, None), (Tag::Section, None)]);
         let dialog = || Vec::from([(Tag::Dialog, None)]);
-        let list = |n, item| {
+        let list = |list: SurfaceList, item| {
             let mut path = surface();
-            path.extend([(Tag::Ol, Some(n)), (Tag::Li, item)]);
+            path.extend([(Tag::Ol, Some(list as u32)), (Tag::Li, item)]);
             path
         };
         let join = |mut path: Vec<(Tag, Option<u32>)>, tail: &[(Tag, Option<u32>)]| {
@@ -238,18 +296,24 @@ impl Target {
             Self::Title => Vec::from([(Tag::Header, None), (Tag::Span, None), (Tag::Strong, None)]),
             Self::Axis(axis) => axis_tail(axis, Tag::Input),
             Self::AxisName(axis) => axis_tail(axis, Tag::Span),
-            Self::Step(n) => join(header(), &[(Tag::Div, Some(1)), (Tag::Button, Some(n))]),
-            Self::Zoom => join(header(), &[(Tag::Input, Some(ZOOM_INPUT))]),
-            Self::Reload => join(header(), &[(Tag::Button, Some(RELOAD_BUTTON))]),
-            Self::Save => join(header(), &[(Tag::Input, Some(SAVE_INPUT))]),
-            Self::Import => join(header(), &[(Tag::Input, Some(IMPORT_INPUT))]),
-            Self::LanguageOption(l) => {
-                join(header(), &[(Tag::Div, Some(LANGUAGE_LIST)), (Tag::Button, Some(l.number()))])
+            Self::Step(button) => join(
+                header(),
+                &[(Tag::Div, Some(HeaderDiv::Step as u32)), (Tag::Button, Some(button as u32))],
+            ),
+            Self::Zoom => join(header(), &[(Tag::Input, Some(HeaderInput::Zoom as u32))]),
+            Self::Reload => join(header(), &[(Tag::Button, Some(HeaderButton::Reload as u32))]),
+            Self::Preservation => {
+                return Preservation::<{ HeaderInput::Preservation as u32 }>::to_dom();
             }
+            Self::Import => join(header(), &[(Tag::Input, Some(HeaderInput::Import as u32))]),
+            Self::LanguageOption(l) => join(
+                header(),
+                &[(Tag::Div, Some(HeaderDiv::Language as u32)), (Tag::Button, Some(l.number()))],
+            ),
             Self::AppearanceOption(c) => join(
                 header(),
                 &[
-                    (Tag::Div, Some(APPEARANCE_LIST)),
+                    (Tag::Div, Some(HeaderDiv::Appearance as u32)),
                     (Tag::Label, Some(c.number())),
                     (Tag::Input, None),
                 ],
@@ -264,17 +328,19 @@ impl Target {
                 (Tag::Span, Some(side)),
             ]),
             Self::Surface => surface(),
-            Self::DayList => join(surface(), &[(Tag::Ol, Some(1))]),
-            Self::BandList => join(surface(), &[(Tag::Ol, Some(3))]),
-            Self::Day(n) => list(1, Some(n)),
-            Self::DayTitle(n) => join(list(1, Some(n)), &[(Tag::H3, None)]),
-            Self::Resource(n) => list(2, Some(n)),
-            Self::ResourceName(n) => join(list(2, Some(n)), &[(Tag::Strong, None)]),
-            Self::Band(n) => list(3, Some(n)),
-            Self::BandLabel(n) => join(list(3, Some(n)), &[(Tag::Span, None)]),
-            Self::Card(n) => list(4, Some(n)),
+            Self::DayList => join(surface(), &[(Tag::Ol, Some(SurfaceList::Day as u32))]),
+            Self::BandList => join(surface(), &[(Tag::Ol, Some(SurfaceList::Band as u32))]),
+            Self::Day(n) => list(SurfaceList::Day, Some(n)),
+            Self::DayTitle(n) => join(list(SurfaceList::Day, Some(n)), &[(Tag::H3, None)]),
+            Self::Resource(n) => list(SurfaceList::Resource, Some(n)),
+            Self::ResourceName(n) => {
+                join(list(SurfaceList::Resource, Some(n)), &[(Tag::Strong, None)])
+            }
+            Self::Band(n) => list(SurfaceList::Band, Some(n)),
+            Self::BandLabel(n) => join(list(SurfaceList::Band, Some(n)), &[(Tag::Span, None)]),
+            Self::Card(n) => list(SurfaceList::Card, Some(n)),
             Self::CardPart(n, part) => join(
-                list(4, Some(n)),
+                list(SurfaceList::Card, Some(n)),
                 match part {
                     CardPart::Status => &[(Tag::P, Some(1)), (Tag::Span, Some(1))],
                     CardPart::Time => &[(Tag::P, Some(1)), (Tag::Span, Some(2))],
@@ -283,32 +349,26 @@ impl Target {
                     CardPart::Note => &[(Tag::P, Some(3))],
                 },
             ),
-            Self::Preview => list(5, None),
+            Self::Preview => list(SurfaceList::Preview, None),
             Self::Modal => Vec::from([(Tag::Dialog, None)]),
             Self::Credential(field) => {
-                Vec::from([(Tag::Dialog, None), (Tag::Label, Some(field.number()))])
+                join(dialog(), &[(Tag::Label, Some(to_label(field) as u32))])
             }
-            Self::CredentialName(field) => Vec::from([
-                (Tag::Dialog, None),
-                (Tag::Label, Some(field.number())),
-                (Tag::Span, None),
-            ]),
-            Self::CredentialInput(field) => Vec::from([
-                (Tag::Dialog, None),
-                (Tag::Label, Some(field.number())),
-                (Tag::Input, to_input_number(field)),
-            ]),
-            Self::Create => Vec::from([(Tag::Dialog, None), (Tag::Label, Some(CREATE_LABEL))]),
-            Self::CreateName => Vec::from([
-                (Tag::Dialog, None),
-                (Tag::Label, Some(CREATE_LABEL)),
-                (Tag::Span, None),
-            ]),
-            Self::CreateInput => Vec::from([
-                (Tag::Dialog, None),
-                (Tag::Label, Some(CREATE_LABEL)),
-                (Tag::Input, None),
-            ]),
+            Self::CredentialName(field) => {
+                join(dialog(), &[(Tag::Label, Some(to_label(field) as u32)), (Tag::Span, None)])
+            }
+            Self::CredentialInput(field) => join(
+                dialog(),
+                &[(Tag::Label, Some(to_label(field) as u32)), (Tag::Input, to_input_number(field))],
+            ),
+            Self::Create => join(dialog(), &[(Tag::Label, Some(DialogLabel::Create as u32))]),
+            Self::CreateName => {
+                join(dialog(), &[(Tag::Label, Some(DialogLabel::Create as u32)), (Tag::Span, None)])
+            }
+            Self::CreateInput => join(
+                dialog(),
+                &[(Tag::Label, Some(DialogLabel::Create as u32)), (Tag::Input, None)],
+            ),
             Self::Form => Vec::from([(Tag::Form, None)]),
             Self::EditList => join(dialog(), &[(Tag::Dl, None)]),
             Self::EditHeading => join(dialog(), &[(Tag::Header, None), (Tag::H3, None)]),
@@ -338,12 +398,9 @@ impl Target {
             Self::StatusOption(n) => join(option(EditField::Status), &[(Tag::Option, Some(n))]),
             Self::ResourceOption(n) => join(option(EditField::Resource), &[(Tag::Option, Some(n))]),
             Self::EditMessage => join(dialog(), &[(Tag::Output, None)]),
-            Self::Submit(_) => join(dialog(), &[(Tag::Button, Some(SUBMIT_BUTTON))]),
-            Self::Delete => join(dialog(), &[(Tag::Button, Some(DELETE_BUTTON))]),
-            Self::Toast(n) => Vec::from([(Tag::Toast, None), (Tag::Button, Some(n))]),
-            Self::ToastText(n) => {
-                Vec::from([(Tag::Toast, None), (Tag::Button, Some(n)), (Tag::P, None)])
-            }
+            Self::Submit(_) => join(dialog(), &[(Tag::Button, Some(DialogButton::Submit as u32))]),
+            Self::Delete => join(dialog(), &[(Tag::Button, Some(DialogButton::Delete as u32))]),
+            Self::Toast(part) => return Toast::to_dom(part),
         };
         Id::new(&path)
     }
@@ -366,77 +423,100 @@ impl Target {
                 (Tag::Label, Some(n)),
                 (Tag::Span, None),
             ] => Self::AxisName(*AXES.get(n.checked_sub(1)? as usize)?),
-            [(Tag::Header, None), (Tag::Div, Some(1)), (Tag::Button, Some(n))] => Self::Step(*n),
-            [(Tag::Header, None), (Tag::Input, Some(n))] => match *n {
-                ZOOM_INPUT => Self::Zoom,
-                SAVE_INPUT => Self::Save,
-                IMPORT_INPUT => Self::Import,
-                _ => return None,
-            },
+            [(Tag::Header, None), (Tag::Div, Some(n)), (Tag::Button, Some(k))] => {
+                match HeaderDiv::from(u8::try_from(*n).unwrap()) {
+                    HeaderDiv::Step => match StepButton::from(u8::try_from(*k).unwrap()) {
+                        StepButton::Other => return None,
+                        button => Self::Step(button),
+                    },
+                    HeaderDiv::Language => {
+                        Self::LanguageOption(*Language::list().iter().find(|l| l.number() == *k)?)
+                    }
+                    _ => return None,
+                }
+            }
+            [(Tag::Header, None), (Tag::Input, Some(n))] => {
+                match HeaderInput::from(u8::try_from(*n).unwrap()) {
+                    HeaderInput::Zoom => Self::Zoom,
+                    HeaderInput::Preservation => Self::Preservation,
+                    HeaderInput::Import => Self::Import,
+                    HeaderInput::Other => return None,
+                }
+            }
             [(Tag::Header, None), (Tag::Label, None), (Tag::Input, None)] => Self::Unlock,
             [(Tag::Header, None), (Tag::Label, None), (Tag::Span, None)] => Self::UnlockName,
-            [(Tag::Header, None), (Tag::Button, Some(RELOAD_BUTTON))] => Self::Reload,
+            [(Tag::Header, None), (Tag::Button, Some(n))] => {
+                match HeaderButton::from(u8::try_from(*n).unwrap()) {
+                    HeaderButton::Reload => Self::Reload,
+                    HeaderButton::Other => return None,
+                }
+            }
             [(Tag::Main, None), (Tag::Ol, None)] => Self::TimeAxis,
             [(Tag::Main, None), (Tag::Ol, None), (Tag::Li, Some(row)), (Tag::Span, Some(side))] => {
                 Self::AxisLabel(*side, *row)
             }
-            [(Tag::Main, None), (Tag::Section, None), rest @ ..] => match rest {
-                [] => Self::Surface,
-                [(Tag::Ol, Some(1))] => Self::DayList,
-                [(Tag::Ol, Some(3))] => Self::BandList,
-                [(Tag::Ol, Some(1)), (Tag::Li, Some(n))] => Self::Day(*n),
-                [(Tag::Ol, Some(1)), (Tag::Li, Some(n)), (Tag::H3, None)] => Self::DayTitle(*n),
-                [(Tag::Ol, Some(2)), (Tag::Li, Some(n))] => Self::Resource(*n),
-                [(Tag::Ol, Some(2)), (Tag::Li, Some(n)), (Tag::Strong, None)] => {
-                    Self::ResourceName(*n)
-                }
-                [(Tag::Ol, Some(3)), (Tag::Li, Some(n))] => Self::Band(*n),
-                [(Tag::Ol, Some(3)), (Tag::Li, Some(n)), (Tag::Span, None)] => Self::BandLabel(*n),
-                [(Tag::Ol, Some(4)), (Tag::Li, Some(n)), tail @ ..] => match tail {
-                    [(Tag::P, Some(1)), (Tag::Span, Some(1))] => {
-                        Self::CardPart(*n, CardPart::Status)
+            [(Tag::Main, None), (Tag::Section, None)] => Self::Surface,
+            [(Tag::Main, None), (Tag::Section, None), (Tag::Ol, Some(list)), rest @ ..] => {
+                match (SurfaceList::from(u8::try_from(*list).unwrap()), rest) {
+                    (SurfaceList::Day, []) => Self::DayList,
+                    (SurfaceList::Band, []) => Self::BandList,
+                    (SurfaceList::Day, [(Tag::Li, Some(n))]) => Self::Day(*n),
+                    (SurfaceList::Day, [(Tag::Li, Some(n)), (Tag::H3, None)]) => Self::DayTitle(*n),
+                    (SurfaceList::Resource, [(Tag::Li, Some(n))]) => Self::Resource(*n),
+                    (SurfaceList::Resource, [(Tag::Li, Some(n)), (Tag::Strong, None)]) => {
+                        Self::ResourceName(*n)
                     }
-                    [(Tag::P, Some(1)), (Tag::Span, Some(2))] => Self::CardPart(*n, CardPart::Time),
-                    [(Tag::H3, None)] => Self::CardPart(*n, CardPart::Title),
-                    [(Tag::P, Some(2))] => Self::CardPart(*n, CardPart::Category),
-                    [(Tag::P, Some(3))] => Self::CardPart(*n, CardPart::Note),
-                    _ => Self::Card(*n),
-                },
-                [(Tag::Ol, Some(5)), (Tag::Li, None)] => Self::Preview,
-                _ => Self::Surface,
-            },
+                    (SurfaceList::Band, [(Tag::Li, Some(n))]) => Self::Band(*n),
+                    (SurfaceList::Band, [(Tag::Li, Some(n)), (Tag::Span, None)]) => {
+                        Self::BandLabel(*n)
+                    }
+                    (SurfaceList::Card, [(Tag::Li, Some(n)), tail @ ..]) => match tail {
+                        [(Tag::P, Some(1)), (Tag::Span, Some(1))] => {
+                            Self::CardPart(*n, CardPart::Status)
+                        }
+                        [(Tag::P, Some(1)), (Tag::Span, Some(2))] => {
+                            Self::CardPart(*n, CardPart::Time)
+                        }
+                        [(Tag::H3, None)] => Self::CardPart(*n, CardPart::Title),
+                        [(Tag::P, Some(2))] => Self::CardPart(*n, CardPart::Category),
+                        [(Tag::P, Some(3))] => Self::CardPart(*n, CardPart::Note),
+                        _ => Self::Card(*n),
+                    },
+                    (SurfaceList::Preview, [(Tag::Li, None)]) => Self::Preview,
+                    _ => Self::Surface,
+                }
+            }
+            [(Tag::Main, None), (Tag::Section, None), ..] => Self::Surface,
             [(Tag::Form, None)] => Self::Form,
-            [(Tag::Toast, None), (Tag::Button, Some(n))] if (1..=TOAST_SLOTS).contains(n) => {
-                Self::Toast(*n)
-            }
-            [(Tag::Toast, None), (Tag::Button, Some(n)), (Tag::P, None)]
-                if (1..=TOAST_SLOTS).contains(n) =>
-            {
-                Self::ToastText(*n)
-            }
+            [(Tag::Toast, None), ..] => Self::Toast(Toast::from_dom(id)?),
             [(Tag::Dialog, None), rest @ ..] => match rest {
                 [] => Self::Modal,
-                [(Tag::Label, Some(CREATE_LABEL))] => Self::Create,
-                [(Tag::Label, Some(CREATE_LABEL)), (Tag::Span, None)] => Self::CreateName,
-                [(Tag::Label, Some(CREATE_LABEL)), (Tag::Input, None)] => Self::CreateInput,
-                [(Tag::Label, Some(n))] => {
-                    Self::Credential(*Field::list().get(n.checked_sub(1)? as usize)?)
-                }
-                [(Tag::Label, Some(n)), (Tag::Span, None)] => {
-                    Self::CredentialName(*Field::list().get(n.checked_sub(1)? as usize)?)
-                }
-                [(Tag::Label, Some(n)), (Tag::Input, input)] => {
-                    let field = *Field::list().get(n.checked_sub(1)? as usize)?;
-                    if *input != to_input_number(field) {
-                        return None;
+                [(Tag::Label, Some(n)), tail @ ..] => {
+                    match (DialogLabel::from(u8::try_from(*n).unwrap()), tail) {
+                        (DialogLabel::Create, []) => Self::Create,
+                        (DialogLabel::Create, [(Tag::Span, None)]) => Self::CreateName,
+                        (DialogLabel::Create, [(Tag::Input, None)]) => Self::CreateInput,
+                        (label, tail) => {
+                            let field = to_field(label)?;
+                            match tail {
+                                [] => Self::Credential(field),
+                                [(Tag::Span, None)] => Self::CredentialName(field),
+                                [(Tag::Input, input)] if *input == to_input_number(field) => {
+                                    Self::CredentialInput(field)
+                                }
+                                _ => return None,
+                            }
+                        }
                     }
-                    Self::CredentialInput(field)
                 }
                 [(Tag::Dl, None)] => Self::EditList,
                 [(Tag::Header, None), (Tag::H3, None)] => Self::EditHeading,
                 [(Tag::Output, None)] => Self::EditMessage,
-                [(Tag::Button, Some(SUBMIT_BUTTON))] => Self::Submit(Submit),
-                [(Tag::Button, Some(DELETE_BUTTON))] => Self::Delete,
+                [(Tag::Button, Some(n))] => match DialogButton::from(u8::try_from(*n).unwrap()) {
+                    DialogButton::Submit => Self::Submit(Submit),
+                    DialogButton::Delete => Self::Delete,
+                    DialogButton::Other => return None,
+                },
                 [
                     (Tag::Dl, None),
                     (Tag::Dd, Some(n)),
@@ -464,22 +544,37 @@ impl Target {
                 }
                 _ => return None,
             },
-            [(Tag::Header, None), (Tag::Div, Some(LANGUAGE_LIST)), (Tag::Button, Some(n))] => {
-                Self::LanguageOption(*Language::list().iter().find(|l| l.number() == *n)?)
-            }
             [
                 (Tag::Header, None),
-                (Tag::Div, Some(APPEARANCE_LIST)),
+                (Tag::Div, Some(list)),
                 (Tag::Label, Some(n)),
                 (Tag::Input, None),
-            ] => Self::AppearanceOption(*ColorScheme::list().iter().find(|c| c.number() == *n)?),
+            ] if HeaderDiv::from(u8::try_from(*list).unwrap()) == HeaderDiv::Appearance => {
+                Self::AppearanceOption(*ColorScheme::list().iter().find(|c| c.number() == *n)?)
+            }
             _ => return None,
         })
     }
 }
 
 fn to_input_number(field: Field) -> Option<u32> {
-    (field == Field::Password).then_some(PASSWORD_INPUT)
+    (field == Field::Password).then_some(PasswordInput::Entry as u32)
+}
+
+fn to_label(field: Field) -> DialogLabel {
+    match field {
+        Field::Email => DialogLabel::Email,
+        Field::Password => DialogLabel::Password,
+        Field::Other => DialogLabel::Other,
+    }
+}
+
+fn to_field(label: DialogLabel) -> Option<Field> {
+    match label {
+        DialogLabel::Email => Some(Field::Email),
+        DialogLabel::Password => Some(Field::Password),
+        _ => None,
+    }
 }
 
 #[cfg(test)]
@@ -497,7 +592,7 @@ mod tests {
             Target::Title,
             Target::Zoom,
             Target::Reload,
-            Target::Save,
+            Target::Preservation,
             Target::Import,
             Target::Unlock,
             Target::UnlockName,
@@ -535,8 +630,8 @@ mod tests {
         targets.extend((1..=4).flat_map(|n| {
             [Target::CategoryOption(n), Target::StatusOption(n), Target::ResourceOption(n)]
         }));
-        targets.extend((1..=5).map(Target::Step));
-        targets.extend((1..=TOAST_SLOTS).flat_map(|n| [Target::Toast(n), Target::ToastText(n)]));
+        targets.extend(StepButton::LIST[1..].iter().copied().map(Target::Step));
+        targets.extend(Toast::parts().map(Target::Toast));
         targets.push(Target::TimeAxis);
         targets.extend((1..=35).flat_map(|n| [Target::Band(n), Target::BandLabel(n)]));
         for side in 1..=2 {
@@ -572,6 +667,40 @@ mod tests {
             });
         }
         parts.join("_")
+    }
+
+    fn opening_tag<'a>(html: &'a str, id: &Id) -> &'a str {
+        let at = html.find(&format!("id=\"{}\"", html_id(id))).unwrap();
+        let start = html[..at].rfind('<').unwrap();
+        let end = at + html[at..].find('>').unwrap();
+        &html[start..end]
+    }
+
+    #[test]
+    fn every_positioned_target_carries_its_html_attribute() {
+        let html = fs::read_to_string(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/distribution/calendar/index.html"
+        ))
+        .unwrap();
+        for (target, attribute) in [
+            (Target::Zoom, "type=\"range\""),
+            (Target::Preservation, "data-facet=\"sync\""),
+            (Target::Import, "type=\"file\""),
+            (Target::Reload, "data-facet=\"reload\""),
+            (Target::Step(StepButton::PreviousPage), "aria-label=\"previous page\""),
+            (Target::Step(StepButton::Previous), "aria-label=\"previous\""),
+            (Target::Step(StepButton::Next), "aria-label=\"next\""),
+            (Target::Step(StepButton::NextPage), "aria-label=\"next page\""),
+            (Target::Submit(Submit), "type=\"submit\""),
+            (Target::Delete, "type=\"button\""),
+            (Target::CredentialInput(Field::Email), "name=\"email\""),
+            (Target::CredentialInput(Field::Password), "name=\"password\""),
+            (Target::CreateInput, "name=\"create\""),
+        ] {
+            let tag = opening_tag(&html, &target.to_dom());
+            assert!(tag.contains(attribute), "{target:?}: {tag}");
+        }
     }
 
     #[test]
