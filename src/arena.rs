@@ -308,7 +308,7 @@ pub async fn serve_event() {
             }
         }
         let write = ARENA.get_write_count(EVENT_RING);
-        if ARENA.get_read_count(EVENT_RING) == write {
+        if RUNNING.load(Ordering::Relaxed) && ARENA.get_read_count(EVENT_RING) == write {
             let timeout_in_ns = retry.map_or(-1, |(_, _, due_in_ms)| {
                 (due_in_ms.saturating_sub(now_in_ms()) * 1_000_000) as i64
             });
@@ -322,6 +322,10 @@ pub async fn serve_event() {
             }
         }
     }
+    let slot: *mut Option<App> = &raw mut APP;
+    // SAFETY: same as `process_event`. `APP` holds JS handles of this instance, so it is
+    // dropped here, not in the next worker's `App::init`.
+    drop(unsafe { (*slot).take() });
 }
 
 pub fn emit(frame: &[u8]) -> bool {
@@ -529,5 +533,147 @@ mod ring_tests {
     #[should_panic(expected = "command frame too large")]
     fn emit_panics_over_the_frame_limit() {
         emit(&vec![0; COMMAND_RING.frame_max + 1]);
+    }
+}
+
+#[cfg(all(test, target_arch = "wasm32", target_feature = "atomics"))]
+mod worker_tests {
+    use alloc::string::String;
+
+    use js_sys::{Array, Function, Object, Promise, Reflect, global};
+    use wasm_bindgen::{JsCast, JsValue, closure::Closure, memory, module};
+    use wasm_bindgen_futures::JsFuture;
+    use wasm_bindgen_test::wasm_bindgen_test;
+    use web_sys::{
+        Blob, BlobPropertyBag, ErrorEvent, MessageEvent, Url, Worker, WorkerGlobalScope,
+        WorkerOptions, WorkerType,
+    };
+
+    use super::*;
+    use crate::host::EVENT_PAGEHIDE;
+
+    const RESTARTS: u32 = 4;
+    const TIMEOUT_IN_MS: i32 = 20_000;
+
+    const PROBE: &str = "
+const instantiate = WebAssembly.instantiate;
+let exports = null;
+WebAssembly.instantiate = async (...args) => {
+    const result = await instantiate(...args);
+    exports = (result.instance ?? result).exports;
+    return result;
+};
+const post = self.postMessage.bind(self);
+self.postMessage = (message) => post({ ...message, stack_alloc: exports.__stack_alloc.value });
+";
+
+    #[wasm_bindgen]
+    extern "C" {
+        #[wasm_bindgen(thread_local_v2, js_namespace = ["import", "meta"], js_name = url)]
+        static SCRIPT_URL: String;
+    }
+
+    fn set(target: &JsValue, key: &str, value: &JsValue) {
+        Reflect::set(target, &JsValue::from_str(key), value).unwrap();
+    }
+
+    fn spawn() -> Worker {
+        let parts = Array::of2(
+            &JsValue::from_str(PROBE),
+            &JsValue::from_str(include_str!("../distribution/worker.js")),
+        );
+        let property = BlobPropertyBag::new();
+        property.set_type("text/javascript");
+        let blob = Blob::new_with_str_sequence_and_options(&parts, &property).unwrap();
+        let options = WorkerOptions::new();
+        options.set_type(WorkerType::Module);
+        let worker =
+            Worker::new_with_options(&Url::create_object_url_with_blob(&blob).unwrap(), &options)
+                .unwrap();
+
+        let payload = Object::new();
+        set(&payload, "module", &module());
+        set(&payload, "memory", &memory());
+        set(&payload, "pointer_coarse", &JsValue::FALSE);
+        set(&payload, "viewport_width_in_px", &JsValue::from_f64(1024.0));
+        set(&payload, "viewport_height_in_px", &JsValue::from_f64(768.0));
+        set(&payload, "rem_in_px", &JsValue::from_f64(16.0));
+        set(&payload, "now_in_ms", &JsValue::bigint_from_str("0"));
+        set(&payload, "timezone_offset_minutes", &JsValue::from_f64(0.0));
+        set(&payload, "color_scheme", &JsValue::from_str("light"));
+        set(&payload, "app_url", &JsValue::from_str(&SCRIPT_URL.with(String::clone)));
+        let message = Object::new();
+        set(&message, "type", &JsValue::from_str("init"));
+        set(&message, "payload", &payload);
+        worker.post_message(&message).unwrap();
+        worker
+    }
+
+    async fn receive(worker: &Worker, kind: &'static str, restart: u32) -> f64 {
+        let promise = Promise::new(&mut |resolve: Function, reject: Function| {
+            let on_message = Closure::<dyn FnMut(MessageEvent)>::new(move |event: MessageEvent| {
+                let data = event.data();
+                let found = Reflect::get(&data, &JsValue::from_str("type")).unwrap();
+                if found.as_string().as_deref() == Some(kind) {
+                    resolve.call1(&JsValue::NULL, &data).unwrap();
+                }
+            });
+            let on_error = {
+                let reject = reject.clone();
+                Closure::<dyn FnMut(ErrorEvent)>::new(move |event: ErrorEvent| {
+                    event.prevent_default();
+                    reject.call1(&JsValue::NULL, &JsValue::from_str(&event.message())).unwrap();
+                })
+            };
+            worker
+                .add_event_listener_with_callback("message", on_message.as_ref().unchecked_ref())
+                .unwrap();
+            worker
+                .add_event_listener_with_callback("error", on_error.as_ref().unchecked_ref())
+                .unwrap();
+            on_message.forget();
+            on_error.forget();
+            global()
+                .unchecked_into::<WorkerGlobalScope>()
+                .set_timeout_with_callback_and_timeout_and_arguments_0(&reject, TIMEOUT_IN_MS)
+                .unwrap();
+        });
+        let message = JsFuture::from(promise)
+            .await
+            .unwrap_or_else(|error| panic!("restart {restart}: no {kind}: {error:?}"));
+        Reflect::get(&message, &JsValue::from_str("stack_alloc")).unwrap().as_f64().unwrap()
+    }
+
+    fn write_event(frame: &[u8]) {
+        assert!(ARENA.write_ring(EVENT_RING, frame));
+        // SAFETY: the counter pointer is 4-aligned shared memory (see `counter_at`);
+        // `memory.atomic.notify` has no thread restriction.
+        unsafe {
+            let pointer =
+                ARENA.counter_at(EVENT_RING.start, COUNTER_WRITE_OFFSET).as_ptr() as *mut i32;
+            memory_atomic_notify(pointer, 1);
+        }
+    }
+
+    #[wasm_bindgen_test]
+    async fn every_worker_ends_on_pagehide_freeing_its_stack_and_app() {
+        let slot: *mut Option<App> = &raw mut APP;
+        initialize();
+        // SAFETY: same as `process_event`; no worker is running yet.
+        if unsafe { (*slot).is_some() } {
+            write_event(&[EVENT_PAGEHIDE]);
+            process_event();
+        }
+        // SAFETY: same as above.
+        drop(unsafe { (*slot).take() });
+
+        for restart in 0..RESTARTS {
+            let worker = spawn();
+            assert_ne!(receive(&worker, "ready", restart).await, 0.0, "restart {restart}");
+            write_event(&[EVENT_PAGEHIDE]);
+            assert_eq!(receive(&worker, "done", restart).await, 0.0, "restart {restart}");
+            // SAFETY: same as `process_event`; the worker has ended.
+            assert!(unsafe { (*slot).is_none() }, "restart {restart}");
+        }
     }
 }

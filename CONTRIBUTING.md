@@ -199,7 +199,7 @@ appとserverは`lib.rs::{Input::decode, Output::encode}`を共有し、HTTP本�
 | object.rs | [Object.md](./reference/Object.md). `Head::{id, created, modified, stamp, touch}, trait Body::{Kind, KIND}, Record<B>::{head, body}`と、`[kind: u8][Head][B]`を[Wire format](#wire-format)で並べるその`Input` / `Output`。`FileStore`上のレコード操作`get, set, list, exists`と`new_uid`。 |
 |-|-|
 | app.rs | initとprocessの公開apiを持つ、Appインスタンス。eventsとcommandsの2つのキューを持ち、handler::Handler.process_*へevents消費を移譲ループする。保存するアプリに共通の`StoreLost`(ストアの失効)は、ここで`serve_event`への「開き直したい」要求(`reopen`)に変え、`StoreOpened`は`Handler`へ渡す。 |
-| arena.rs | JavaScriptとappが共有するメモリのレイアウトと、event / commandのリングバッファ。`serve_event`(async)が、処理待ちの要求があれば`Store::open`をawaitして、結果を`App::opened`に渡す。ロック競合(`NoModificationAllowed`)は`REOPEN_INTERVAL_IN_MS`間隔で`REOPEN_ATTEMPTS`回まで、イベント待ちのタイムアウトとして開き直す。 |
+| arena.rs | JavaScriptとappが共有するメモリのレイアウトと、event / commandのリングバッファ。`serve_event`(async)が、処理待ちの要求があれば`Store::open`をawaitして、結果を`App::opened`に渡す。ロック競合(`NoModificationAllowed`)は`REOPEN_INTERVAL_IN_MS`間隔で`REOPEN_ATTEMPTS`回まで、イベント待ちのタイムアウトとして開き直す。`PageHide`で抜けると、`APP`をそのworkerで破棄する(`App`はそのインスタンスのJS handleを持つため)。worker.jsは、2本目以降のworker(`__stack_alloc`が0でない)なら`__wbindgen_thread_destroy`でスタックとTLSを解放してから`done`を送る。 |
 | host.rs | ホストとの境界。Command, Eventのフレーム形式(operation番号 / event種別)、DOM語彙(dom::Id、Attribute、StyleProperty など)。 |
 |-|-|
 | event.rs | appが受け取るeventの型(Canvas / Gesture / Window / Fetch / Gesture / Fetched / StoreLost), `Handler` trait, `type Store: FileStore`, `gesture::Pointer`. |
