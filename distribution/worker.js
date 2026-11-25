@@ -4,7 +4,7 @@ self.addEventListener("message", async (e) => {
 
     const { default: init, App, arena_offset, initialize, serve_event } =
         await import(payload.app_url);
-    await init({ module_or_path: payload.module, memory: payload.memory });
+    const wasm = await init({ module_or_path: payload.module, memory: payload.memory });
 
     initialize();
     self.postMessage({ type: "ready", arena_offset: arena_offset() });
@@ -20,6 +20,7 @@ self.addEventListener("message", async (e) => {
     );
     await serve_event();
 
+    if (wasm.__stack_alloc.value !== 0) wasm.__wbindgen_thread_destroy();
     self.postMessage({ type: "done" });
     self.close();
 });

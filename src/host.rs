@@ -34,6 +34,7 @@ pub const OPERATION_FETCH: u8 = 14;
 pub const OPERATION_RELOAD: u8 = 15;
 pub const OPERATION_READ_FILE: u8 = 16;
 
+#[derive(Debug, PartialEq)]
 pub enum Command {
     SetText { id: dom::Id, value: String },
     SetValue { id: dom::Id, value: String },
@@ -275,11 +276,14 @@ pub enum Attribute {
     AriaCurrent = 1,
     Checked,
     DataColorScheme,
+    DataInlineAlign,
     DataSurround,
     Disabled,
     Hidden,
     Href,
     Lang,
+    Max,
+    Src,
     Type,
 }
 
@@ -833,21 +837,26 @@ pub mod dom {
             Article,
             Body,
             Button,
+            Code,
             Dd,
             Dialog,
             Div,
             Dl,
             Dt,
+            Em,
             Fieldset,
             Footer,
             Form,
             H1,
             H2,
             H3,
+            H4,
+            H5,
             Header,
             Hgroup,
             Html,
             Input,
+            Kbd,
             Label,
             Li,
             Main,
@@ -858,6 +867,7 @@ pub mod dom {
             P,
             Section,
             Select,
+            Small,
             Span,
             Strong,
             Table,
@@ -1029,7 +1039,7 @@ mod wire_tests {
     }
 
     fn id_bytes() -> [u8; 11] {
-        [2, 16, 255, 255, 255, 255, 4, 3, 0, 0, 0]
+        [2, 20, 255, 255, 255, 255, 4, 3, 0, 0, 0]
     }
 
     fn header_button_3() -> dom::Id {
@@ -1152,11 +1162,14 @@ mod wire_tests {
                     (Attribute::AriaCurrent as u16, "aria-current"),
                     (Attribute::Checked as u16, "checked"),
                     (Attribute::DataColorScheme as u16, "data-color-scheme"),
+                    (Attribute::DataInlineAlign as u16, "data-inline-align"),
                     (Attribute::DataSurround as u16, "data-surround"),
                     (Attribute::Disabled as u16, "disabled"),
                     (Attribute::Hidden as u16, "hidden"),
                     (Attribute::Href as u16, "href"),
                     (Attribute::Lang as u16, "lang"),
+                    (Attribute::Max as u16, "max"),
+                    (Attribute::Src as u16, "src"),
                     (Attribute::Type as u16, "type"),
                 ],
             ),
@@ -1429,7 +1442,7 @@ mod wire_tests {
                 attribute: Attribute::Hidden,
                 value:     String::from("x"),
             }),
-            with_id(3, &[6, 0, 1, 0, b'x'])
+            with_id(3, &[7, 0, 1, 0, b'x'])
         );
         assert_eq!(
             encode(Command::AddClass { id: id.clone(), value: ClassName::Show }),

@@ -5,8 +5,6 @@ use core::{
     primitive::{f64, i32, u8, u32, u64},
 };
 
-use arbitrary_int::u2;
-
 use crate::{
     ColorScheme, Error, Language,
     bit::Zero,
@@ -17,7 +15,7 @@ use crate::{
             Management, Memo, Occupation, OccupationSkillPoints, Possession, Profile,
             SecondaryAttribute, Section, Skill, WealthField,
         },
-        page::{self, INVESTIGATOR_OPTIONS, Page, TOAST_SLOTS},
+        page::{self, HeaderInput, INVESTIGATOR_OPTIONS, Page},
     },
     credential::{self, Field},
     event::{
@@ -26,8 +24,8 @@ use crate::{
         store::{self, Persistence},
     },
     file_store::{FileStore, Mount, StoreId},
-    host::{Attribute, CanvasEvent, Command, EventType, FnName, dom::Id},
-    object::{self, Record},
+    host::{Attribute, CanvasEvent, Command, EventType, dom::Id},
+    object::{self, Preservation, Record, Toast, ToastPart},
 };
 
 pub enum Dialog {
@@ -48,11 +46,11 @@ pub struct Handler<S: FileStore> {
     dialog:        Dialog,
     keyring:       Keyring,
     language:      Language,
-    last_toast:    u2,
+    toast:         Toast,
     investigator:  Record<Investigator>,
     pub now_in_ms: u64,
     investigators: Option<S>,
-    persistence:   Persistence,
+    preservation:  Preservation<{ HeaderInput::Preservation as u32 }>,
     lost:          Vec<(u32, Option<Vec<u8>>)>,
     startup:       Vec<Error>,
     logs:          Vec<Log>,
@@ -66,21 +64,16 @@ impl<S: FileStore> Handler<S> {
         };
         match result {
             Ok(()) => {
-                let mut commands = self.mark(Persistence::Stored);
+                let mut commands = vec![self.preservation.mark(Persistence::Stored)];
                 commands.extend(self.option_commands());
                 (vec![], commands)
             }
             Err(error) => {
                 let (events, mut commands) = store::failed(CHARACTER_STORE, error);
-                commands.extend(self.mark(Persistence::Unsaved));
+                commands.push(self.preservation.mark(Persistence::Unsaved));
                 (events, commands)
             }
         }
-    }
-
-    fn mark(&mut self, persistence: Persistence) -> Vec<Command> {
-        self.persistence = persistence;
-        vec![toggle(Page::Save.to_dom(), Attribute::Checked, persistence.saved())]
     }
 
     fn saved_investigators(&self) -> Vec<Record<Investigator>> {
@@ -116,7 +109,7 @@ impl<S: FileStore> Handler<S> {
                 let notice = match error {
                     ImportError::Json(_) | ImportError::Root => Notice::Unreadable,
                 };
-                return self.toast(String::from(notice.display(self.language)));
+                return self.toast.show(String::from(notice.display(self.language)));
             }
         };
         self.investigator = imported.investigator;
@@ -125,14 +118,14 @@ impl<S: FileStore> Handler<S> {
             object::set(store, &self.investigator);
         }
         let mut commands = sheet_commands(&self.investigator, self.language);
-        commands.extend(self.mark(Persistence::Unsaved));
+        commands.push(self.preservation.mark(Persistence::Unsaved));
         if !imported.skipped.is_empty() {
             let message = format!(
                 "{}: {}",
                 Notice::Skipped.display(self.language),
                 imported.skipped.join(", ")
             );
-            commands.extend(self.toast(message));
+            commands.extend(self.toast.show(message));
         }
         commands
     }
@@ -216,11 +209,11 @@ impl<S: Mount> event::Handler for Handler<S> {
             dialog: Dialog::None,
             keyring: Keyring::LOCKED,
             language: Language::Ja,
-            last_toast: u2::new(TOAST_SLOTS as u8),
+            toast: Toast::ZERO,
             investigator: Record::new(0, Investigator::ZERO),
             now_in_ms,
             investigators: None,
-            persistence: Persistence::Stored,
+            preservation: Preservation::new(Persistence::Stored),
             lost: Vec::new(),
             startup: Vec::new(),
             logs: Vec::new(),
@@ -259,7 +252,7 @@ impl<S: Mount> event::Handler for Handler<S> {
         commands.extend(label_commands(self.language));
         commands.extend(appearance_commands(self.color_scheme));
         commands.extend(self.option_commands());
-        commands.extend(self.mark(self.persistence));
+        commands.push(self.preservation.draw());
         commands.push(Command::RemoveAttribute {
             id:        Page::Body.to_dom(),
             attribute: Attribute::Hidden,
@@ -272,7 +265,10 @@ impl<S: Mount> event::Handler for Handler<S> {
             return (vec![], vec![]);
         }
         if response.status != STATUS_OK {
-            return (vec![], self.toast(String::from(Notice::Unreadable.display(self.language))));
+            return (
+                vec![],
+                self.toast.show(String::from(Notice::Unreadable.display(self.language))),
+            );
         }
         (vec![], self.import(&response.body))
     }
@@ -292,15 +288,14 @@ impl<S: Mount> event::Handler for Handler<S> {
                 (vec![], commands)
             }
             (EventType::Click, Some(Page::InvestigatorOption(n))) => (vec![], self.choose(n)),
-            (EventType::Change, Some(Page::Save)) => self.save(),
+            (EventType::Change, Some(Page::Preservation)) => self.save(),
             (EventType::Change, Some(Page::Import)) => (
                 vec![],
                 vec![Command::ReadFile { id: Page::Import.to_dom(), request: IMPORT_REQUEST }],
             ),
-            (EventType::Click, Some(Page::Toast(n))) => (
-                vec![],
-                vec![Command::JsFn { id: Page::Toast(n).to_dom(), name: FnName::HideToast }],
-            ),
+            (EventType::Click, Some(Page::Toast(ToastPart::Slot(n)))) => {
+                (vec![], vec![Toast::hide(n)])
+            }
             (EventType::Change, Some(Page::Unlock)) => (vec![], self.toggle_lock()),
             (EventType::Change, Some(Page::AppearanceOption(c))) => {
                 self.color_scheme = c;
@@ -310,17 +305,6 @@ impl<S: Mount> event::Handler for Handler<S> {
             (EventType::Submit, Some(Page::Form)) => (vec![], self.submit(&event.value)),
             _ => (vec![], vec![]),
         }
-    }
-}
-
-impl<S: FileStore> Handler<S> {
-    fn toast(&mut self, message: String) -> Vec<Command> {
-        let slot = TOAST_SLOTS + 1 - u32::from(self.last_toast.value());
-        self.last_toast = u2::new(slot as u8);
-        vec![
-            text(Page::ToastText(slot).to_dom(), message),
-            Command::JsFn { id: Page::Toast(slot).to_dom(), name: FnName::ShowToast },
-        ]
     }
 }
 
@@ -579,6 +563,7 @@ mod tests {
         arena::{ARENA, COMMAND_RING, EVENT_RING, initialize, process_event},
         coc7th::page::Page,
         host::{EVENT_CANVAS, EventType, OPERATION_JS_FN},
+        object::ToastPart,
     };
 
     const CLICK: u8 = 3;
@@ -595,7 +580,7 @@ mod tests {
         let mut frame = Vec::new();
         frame.push(EVENT_CANVAS);
         frame.push(CLICK);
-        Page::Toast(1).to_dom().encode(&mut frame);
+        Page::Toast(ToastPart::Slot(1)).to_dom().encode(&mut frame);
         frame.push(0);
         frame.push(0);
         str::encode("", &mut frame);
@@ -629,7 +614,7 @@ mod handler_tests {
         block_on, credential,
         event::{LOGIN_REQUEST, LOGOUT_REQUEST, REGISTER_REQUEST},
         file_store::{FileStoreError, MemoryStore, Mount},
-        host::{Flags, KeyName, Method, dom},
+        host::{Flags, FnName, KeyName, Method, dom},
         parse, vault,
     };
 
@@ -703,7 +688,7 @@ mod handler_tests {
                 let id = Page::InvestigatorOption(n).to_dom();
                 [(id.clone(), None, String::new()), (id, Some(Attribute::Hidden), String::new())]
             })
-            .chain([(Page::Save.to_dom(), Some(Attribute::Checked), String::new())])
+            .chain([(Page::Preservation.to_dom(), Some(Attribute::Checked), String::new())])
             .collect();
         assert_eq!(store.iter().map(written).collect::<Vec<_>>(), empty);
         assert_eq!(
@@ -759,12 +744,12 @@ mod handler_tests {
     fn checked(commands: &[Command]) -> Option<bool> {
         commands.iter().rev().find_map(|command| match command {
             Command::SetAttribute { id, attribute: Attribute::Checked, .. }
-                if *id == Page::Save.to_dom() =>
+                if *id == Page::Preservation.to_dom() =>
             {
                 Some(true)
             }
             Command::RemoveAttribute { id, attribute: Attribute::Checked }
-                if *id == Page::Save.to_dom() =>
+                if *id == Page::Preservation.to_dom() =>
             {
                 Some(false)
             }
@@ -812,8 +797,8 @@ mod handler_tests {
         };
         assert_eq!(*id, Page::Investigator.to_dom());
         assert_eq!(value, "鏖");
-        assert_eq!(*toast, Page::ToastText(1).to_dom());
-        assert_eq!(*slot, Page::Toast(1).to_dom());
+        assert_eq!(*toast, Toast::to_dom(ToastPart::Text(1)));
+        assert_eq!(*slot, Toast::to_dom(ToastPart::Slot(1)));
         assert_eq!(message, "取り込めなかった項目: Wealth");
         assert_eq!(handler.investigator.name, "鏖");
         assert_eq!(checked(&commands), Some(false));
@@ -829,7 +814,7 @@ mod handler_tests {
         let name_input = Profile::Name.dom()[1].clone();
         assert!(written.contains(&(name_input, String::from("鏖"))));
 
-        let (events, commands) = change(&mut handler, Page::Save);
+        let (events, commands) = change(&mut handler, Page::Preservation);
         assert!(events.is_empty());
         assert_eq!(checked(&commands), Some(true));
         assert_eq!(
@@ -848,7 +833,7 @@ mod handler_tests {
     fn a_saved_investigator_is_listed_on_startup_and_drawn_when_chosen() {
         let mut handler = ready();
         handler.process_fetched(&response(STATUS_OK));
-        change(&mut handler, Page::Save);
+        change(&mut handler, Page::Preservation);
         handler.investigator = Record::new(0, Investigator::ZERO);
         let (_, commands) = handler.initial_draw();
         assert_eq!(options(&commands)[0], (1, String::from("鏖")));

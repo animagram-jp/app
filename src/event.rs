@@ -27,7 +27,7 @@ use crate::{
     vault,
 };
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum EventError {
     Decode,
 }

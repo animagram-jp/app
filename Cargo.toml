@@ -46,6 +46,18 @@ web-sys = { version = "0.3", default-features = false, optional = true, features
 [dev-dependencies]
 wasm-bindgen-test = "0.3"
 
+[target.'cfg(target_arch = "wasm32")'.dev-dependencies]
+web-sys = { version = "0.3", default-features = false, features = [
+    "Blob",
+    "BlobPropertyBag",
+    "ErrorEvent",
+    "MessageEvent",
+    "Url",
+    "Worker",
+    "WorkerOptions",
+    "WorkerType",
+] }
+
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom     = { version = "0.4", default-features = false, features = ["wasm_js"] }
 spinning_top  = { version = "0.3", default-features = false }

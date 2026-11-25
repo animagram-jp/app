@@ -13,24 +13,63 @@ use crate::{
     coc7th::investigator::{Possession, Profile, Section, join, sheet},
     credential::Field,
     host::dom::{Id, Tag},
+    object::{Preservation, Toast, ToastPart},
 };
 
-const INVESTIGATOR_BUTTON: u32 = 1;
-const DICE_BUTTON: u32 = 2;
-const APPEARANCE_BUTTON: u32 = 3;
-const INVESTIGATOR_LIST: u32 = 1;
-const SAVE_INPUT: u32 = 1;
-const IMPORT_INPUT: u32 = 2;
-const APPEARANCE_LIST: u32 = 2;
-const LANGUAGE_LIST: u32 = 3;
-const SHEET_SECTION: u32 = 1;
-const CHAT_LOG_SECTION: u32 = 2;
-const CHAT_BOX_SECTION: u32 = 3;
-const CREATE_LABEL: u32 = 3;
-const NUMBER_LABEL: u32 = 4;
-const PASSWORD_INPUT: u32 = 1;
 pub const INVESTIGATOR_OPTIONS: u32 = 4;
-pub const TOAST_SLOTS: u32 = 2;
+
+crate::enumerate! {
+    pub HeaderButton(u8) {
+        Other,
+        Investigator,
+        Dice,
+        Appearance,
+    }
+}
+
+crate::enumerate! {
+    pub HeaderInput(u8) {
+        Other,
+        Preservation,
+        Import,
+    }
+}
+
+crate::enumerate! {
+    pub HeaderDiv(u8) {
+        Other,
+        Investigator,
+        Appearance,
+        Language,
+    }
+}
+
+crate::enumerate! {
+    pub MainSection(u8) {
+        Other,
+        Sheet,
+        ChatLog,
+        ChatBox,
+    }
+}
+
+crate::enumerate! {
+    pub DialogLabel(u8) {
+        Other,
+        Email,
+        Password,
+        Create,
+        Number,
+    }
+}
+
+crate::enumerate! {
+    pub PasswordInput(u8) {
+        Other,
+        Entry,
+        Reveal,
+    }
+}
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Label {
@@ -119,7 +158,7 @@ impl Label {
             Self::InvestigatorSheet => {
                 vec![Id::new(&[
                     (Tag::Main, None),
-                    (Tag::Section, Some(SHEET_SECTION)),
+                    (Tag::Section, Some(MainSection::Sheet as u32)),
                     (Tag::H2, None),
                 ])]
             }
@@ -127,14 +166,14 @@ impl Label {
             Self::ChatLog => {
                 vec![Id::new(&[
                     (Tag::Main, None),
-                    (Tag::Section, Some(CHAT_LOG_SECTION)),
+                    (Tag::Section, Some(MainSection::ChatLog as u32)),
                     (Tag::H2, None),
                 ])]
             }
             Self::ChatBox => {
                 vec![Id::new(&[
                     (Tag::Main, None),
-                    (Tag::Section, Some(CHAT_BOX_SECTION)),
+                    (Tag::Section, Some(MainSection::ChatBox as u32)),
                     (Tag::H2, None),
                 ])]
             }
@@ -249,7 +288,7 @@ impl Label {
             }
             Self::Create => vec![Id::new(&[
                 (Tag::Dialog, None),
-                (Tag::Label, Some(CREATE_LABEL)),
+                (Tag::Label, Some(DialogLabel::Create as u32)),
                 (Tag::Span, None),
             ])],
         }
@@ -348,7 +387,7 @@ pub enum Page {
     Investigator,
     InvestigatorOption(u32),
     Dice,
-    Save,
+    Preservation,
     Import,
     Appearance,
     AppearanceOption(ColorScheme),
@@ -370,8 +409,7 @@ pub enum Page {
     Create,
     CreateInput,
     Form,
-    Toast(u32),
-    ToastText(u32),
+    Toast(ToastPart),
 }
 
 impl Page {
@@ -394,51 +432,54 @@ impl Page {
         match self {
             Self::Html => Id::new(&[(Tag::Html, None)]),
             Self::Body => Id::new(&[(Tag::Body, None)]),
-            Self::Investigator => header(&[(Tag::Button, Some(INVESTIGATOR_BUTTON))]),
+            Self::Investigator => header(&[(Tag::Button, Some(HeaderButton::Investigator as u32))]),
             Self::InvestigatorOption(n) => {
-                header(&[(Tag::Div, Some(INVESTIGATOR_LIST)), (Tag::Button, Some(n))])
+                header(&[(Tag::Div, Some(HeaderDiv::Investigator as u32)), (Tag::Button, Some(n))])
             }
-            Self::Dice => header(&[(Tag::Button, Some(DICE_BUTTON))]),
-            Self::Save => header(&[(Tag::Input, Some(SAVE_INPUT))]),
-            Self::Import => header(&[(Tag::Input, Some(IMPORT_INPUT))]),
-            Self::Appearance => header(&[(Tag::Button, Some(APPEARANCE_BUTTON))]),
+            Self::Dice => header(&[(Tag::Button, Some(HeaderButton::Dice as u32))]),
+            Self::Preservation => Preservation::<{ HeaderInput::Preservation as u32 }>::to_dom(),
+            Self::Import => header(&[(Tag::Input, Some(HeaderInput::Import as u32))]),
+            Self::Appearance => header(&[(Tag::Button, Some(HeaderButton::Appearance as u32))]),
             Self::AppearanceOption(c) => header(&[
-                (Tag::Div, Some(APPEARANCE_LIST)),
+                (Tag::Div, Some(HeaderDiv::Appearance as u32)),
                 (Tag::Label, Some(c.number())),
                 (Tag::Input, None),
             ]),
-            Self::LanguageOption(l) => {
-                header(&[(Tag::Div, Some(LANGUAGE_LIST)), (Tag::Button, Some(l.number()))])
-            }
+            Self::LanguageOption(l) => header(&[
+                (Tag::Div, Some(HeaderDiv::Language as u32)),
+                (Tag::Button, Some(l.number())),
+            ]),
             Self::Unlock => header(&[(Tag::Label, None), (Tag::Input, None)]),
-            Self::Sheet => main(&[(Tag::Section, Some(SHEET_SECTION))]),
-            Self::ChatLog => main(&[(Tag::Section, Some(CHAT_LOG_SECTION))]),
+            Self::Sheet => main(&[(Tag::Section, Some(MainSection::Sheet as u32))]),
+            Self::ChatLog => main(&[(Tag::Section, Some(MainSection::ChatLog as u32))]),
             Self::ChatInput => {
-                main(&[(Tag::Section, Some(CHAT_BOX_SECTION)), (Tag::Textarea, None)])
+                main(&[(Tag::Section, Some(MainSection::ChatBox as u32)), (Tag::Textarea, None)])
             }
-            Self::ChatSend => main(&[(Tag::Section, Some(CHAT_BOX_SECTION)), (Tag::Button, None)]),
+            Self::ChatSend => {
+                main(&[(Tag::Section, Some(MainSection::ChatBox as u32)), (Tag::Button, None)])
+            }
             Self::Dialog => dialog(&[]),
-            Self::Credential(field) => dialog(&[(Tag::Label, Some(field.number()))]),
+            Self::Credential(field) => dialog(&[(Tag::Label, Some(to_label(field) as u32))]),
             Self::CredentialName(field) => {
-                dialog(&[(Tag::Label, Some(field.number())), (Tag::Span, None)])
+                dialog(&[(Tag::Label, Some(to_label(field) as u32)), (Tag::Span, None)])
             }
-            Self::CredentialInput(field) => {
-                dialog(&[(Tag::Label, Some(field.number())), (Tag::Input, to_input_number(field))])
-            }
+            Self::CredentialInput(field) => dialog(&[
+                (Tag::Label, Some(to_label(field) as u32)),
+                (Tag::Input, to_input_number(field)),
+            ]),
             Self::DialogHeading => dialog(&[(Tag::H3, None)]),
             Self::DialogOptions => dialog(&[(Tag::Div, None)]),
-            Self::DialogNumber => dialog(&[(Tag::Label, Some(NUMBER_LABEL))]),
+            Self::DialogNumber => dialog(&[(Tag::Label, Some(DialogLabel::Number as u32))]),
             Self::DialogNumberInput => {
-                dialog(&[(Tag::Label, Some(NUMBER_LABEL)), (Tag::Input, None)])
+                dialog(&[(Tag::Label, Some(DialogLabel::Number as u32)), (Tag::Input, None)])
             }
             Self::DialogSubmit => dialog(&[(Tag::Button, None)]),
-            Self::Create => dialog(&[(Tag::Label, Some(CREATE_LABEL))]),
-            Self::CreateInput => dialog(&[(Tag::Label, Some(CREATE_LABEL)), (Tag::Input, None)]),
-            Self::Form => Id::new(&[(Tag::Form, None)]),
-            Self::Toast(n) => Id::new(&[(Tag::Toast, None), (Tag::Button, Some(n))]),
-            Self::ToastText(n) => {
-                Id::new(&[(Tag::Toast, None), (Tag::Button, Some(n)), (Tag::P, None)])
+            Self::Create => dialog(&[(Tag::Label, Some(DialogLabel::Create as u32))]),
+            Self::CreateInput => {
+                dialog(&[(Tag::Label, Some(DialogLabel::Create as u32)), (Tag::Input, None)])
             }
+            Self::Form => Id::new(&[(Tag::Form, None)]),
+            Self::Toast(part) => Toast::to_dom(part),
         }
     }
 
@@ -447,76 +488,77 @@ impl Page {
         Some(match path.as_slice() {
             [(Tag::Html, None)] => Self::Html,
             [(Tag::Body, None)] => Self::Body,
-            [(Tag::Header, None), (Tag::Button, Some(n))] => match *n {
-                INVESTIGATOR_BUTTON => Self::Investigator,
-                DICE_BUTTON => Self::Dice,
-                APPEARANCE_BUTTON => Self::Appearance,
-                _ => return None,
-            },
-            [(Tag::Header, None), (Tag::Input, Some(n))] => match *n {
-                SAVE_INPUT => Self::Save,
-                IMPORT_INPUT => Self::Import,
-                _ => return None,
-            },
-            [(Tag::Header, None), (Tag::Label, None), (Tag::Input, None)] => Self::Unlock,
-            [(Tag::Header, None), (Tag::Div, Some(INVESTIGATOR_LIST)), (Tag::Button, Some(n))]
-                if (1..=INVESTIGATOR_OPTIONS).contains(n) =>
-            {
-                Self::InvestigatorOption(*n)
+            [(Tag::Header, None), (Tag::Button, Some(n))] => {
+                match HeaderButton::from(u8::try_from(*n).unwrap()) {
+                    HeaderButton::Investigator => Self::Investigator,
+                    HeaderButton::Dice => Self::Dice,
+                    HeaderButton::Appearance => Self::Appearance,
+                    HeaderButton::Other => return None,
+                }
             }
-            [(Tag::Header, None), (Tag::Div, Some(LANGUAGE_LIST)), (Tag::Button, Some(n))] => {
-                Self::LanguageOption(*Language::list().iter().find(|l| l.number() == *n)?)
+            [(Tag::Header, None), (Tag::Input, Some(n))] => {
+                match HeaderInput::from(u8::try_from(*n).unwrap()) {
+                    HeaderInput::Preservation => Self::Preservation,
+                    HeaderInput::Import => Self::Import,
+                    HeaderInput::Other => return None,
+                }
+            }
+            [(Tag::Header, None), (Tag::Label, None), (Tag::Input, None)] => Self::Unlock,
+            [(Tag::Header, None), (Tag::Div, Some(list)), (Tag::Button, Some(n))] => {
+                match HeaderDiv::from(u8::try_from(*list).unwrap()) {
+                    HeaderDiv::Investigator if (1..=INVESTIGATOR_OPTIONS).contains(n) => {
+                        Self::InvestigatorOption(*n)
+                    }
+                    HeaderDiv::Language => {
+                        Self::LanguageOption(*Language::list().iter().find(|l| l.number() == *n)?)
+                    }
+                    _ => return None,
+                }
             }
             [
                 (Tag::Header, None),
-                (Tag::Div, Some(APPEARANCE_LIST)),
+                (Tag::Div, Some(list)),
                 (Tag::Label, Some(n)),
                 (Tag::Input, None),
-            ] => Self::AppearanceOption(*ColorScheme::list().iter().find(|c| c.number() == *n)?),
-            [(Tag::Main, None), (Tag::Section, Some(SHEET_SECTION)), ..] => Self::Sheet,
-            [(Tag::Main, None), (Tag::Section, Some(CHAT_LOG_SECTION)), ..] => Self::ChatLog,
-            [(Tag::Main, None), (Tag::Section, Some(CHAT_BOX_SECTION)), (Tag::Textarea, None)] => {
-                Self::ChatInput
+            ] if HeaderDiv::from(u8::try_from(*list).unwrap()) == HeaderDiv::Appearance => {
+                Self::AppearanceOption(*ColorScheme::list().iter().find(|c| c.number() == *n)?)
             }
-            [(Tag::Main, None), (Tag::Section, Some(CHAT_BOX_SECTION)), (Tag::Button, None)] => {
-                Self::ChatSend
+            [(Tag::Main, None), (Tag::Section, Some(n)), rest @ ..] => {
+                match (MainSection::from(u8::try_from(*n).unwrap()), rest) {
+                    (MainSection::Sheet, _) => Self::Sheet,
+                    (MainSection::ChatLog, _) => Self::ChatLog,
+                    (MainSection::ChatBox, [(Tag::Textarea, None)]) => Self::ChatInput,
+                    (MainSection::ChatBox, [(Tag::Button, None)]) => Self::ChatSend,
+                    _ => return None,
+                }
             }
             [(Tag::Dialog, None), (Tag::H3, None)] => Self::DialogHeading,
             [(Tag::Dialog, None), (Tag::Div, None)] => Self::DialogOptions,
-            [(Tag::Dialog, None), (Tag::Label, Some(CREATE_LABEL))] => Self::Create,
-            [(Tag::Dialog, None), (Tag::Label, Some(CREATE_LABEL)), (Tag::Input, None)] => {
-                Self::CreateInput
-            }
-            [(Tag::Dialog, None), (Tag::Label, Some(NUMBER_LABEL))] => Self::DialogNumber,
-            [(Tag::Dialog, None), (Tag::Label, Some(NUMBER_LABEL)), (Tag::Input, None)] => {
-                Self::DialogNumberInput
-            }
             [(Tag::Dialog, None), (Tag::Button, None)] => Self::DialogSubmit,
             [(Tag::Dialog, None), (Tag::Label, Some(n)), rest @ ..] => {
-                let Some(&field) =
-                    n.checked_sub(1).and_then(|index| Field::list().get(index as usize))
-                else {
-                    return Some(Self::Dialog);
-                };
-                match rest {
-                    [] => Self::Credential(field),
-                    [(Tag::Span, None)] => Self::CredentialName(field),
-                    [(Tag::Input, input)] if *input == to_input_number(field) => {
-                        Self::CredentialInput(field)
+                match (DialogLabel::from(u8::try_from(*n).unwrap()), rest) {
+                    (DialogLabel::Create, []) => Self::Create,
+                    (DialogLabel::Create, [(Tag::Input, None)]) => Self::CreateInput,
+                    (DialogLabel::Number, []) => Self::DialogNumber,
+                    (DialogLabel::Number, [(Tag::Input, None)]) => Self::DialogNumberInput,
+                    (label, rest) => {
+                        let Some(field) = to_field(label) else {
+                            return Some(Self::Dialog);
+                        };
+                        match rest {
+                            [] => Self::Credential(field),
+                            [(Tag::Span, None)] => Self::CredentialName(field),
+                            [(Tag::Input, input)] if *input == to_input_number(field) => {
+                                Self::CredentialInput(field)
+                            }
+                            _ => Self::Dialog,
+                        }
                     }
-                    _ => Self::Dialog,
                 }
             }
             [(Tag::Dialog, None), ..] => Self::Dialog,
             [(Tag::Form, None)] => Self::Form,
-            [(Tag::Toast, None), (Tag::Button, Some(n))] if (1..=TOAST_SLOTS).contains(n) => {
-                Self::Toast(*n)
-            }
-            [(Tag::Toast, None), (Tag::Button, Some(n)), (Tag::P, None)]
-                if (1..=TOAST_SLOTS).contains(n) =>
-            {
-                Self::ToastText(*n)
-            }
+            [(Tag::Toast, None), ..] => Self::Toast(Toast::from_dom(id)?),
             _ => return None,
         })
     }
@@ -527,7 +569,7 @@ impl Page {
             Self::Body,
             Self::Investigator,
             Self::Dice,
-            Self::Save,
+            Self::Preservation,
             Self::Import,
             Self::Appearance,
             Self::Unlock,
@@ -549,7 +591,7 @@ impl Page {
             [Self::Credential(field), Self::CredentialName(field), Self::CredentialInput(field)]
         }));
         pages.extend((1..=INVESTIGATOR_OPTIONS).map(Self::InvestigatorOption));
-        pages.extend((1..=TOAST_SLOTS).flat_map(|n| [Self::Toast(n), Self::ToastText(n)]));
+        pages.extend(Toast::parts().map(Self::Toast));
         pages.extend(Language::list().iter().map(|&l| Self::LanguageOption(l)));
         pages.extend(ColorScheme::list().iter().map(|&c| Self::AppearanceOption(c)));
         pages
@@ -557,7 +599,23 @@ impl Page {
 }
 
 fn to_input_number(field: Field) -> Option<u32> {
-    (field == Field::Password).then_some(PASSWORD_INPUT)
+    (field == Field::Password).then_some(PasswordInput::Entry as u32)
+}
+
+fn to_label(field: Field) -> DialogLabel {
+    match field {
+        Field::Email => DialogLabel::Email,
+        Field::Password => DialogLabel::Password,
+        Field::Other => DialogLabel::Other,
+    }
+}
+
+fn to_field(label: DialogLabel) -> Option<Field> {
+    match label {
+        DialogLabel::Email => Some(Field::Email),
+        DialogLabel::Password => Some(Field::Password),
+        _ => None,
+    }
 }
 
 #[cfg(test)]
@@ -577,6 +635,38 @@ mod tests {
             });
         }
         parts.join("_")
+    }
+
+    fn opening_tag<'a>(html: &'a str, id: &Id) -> &'a str {
+        let at = html.find(&format!("id=\"{}\"", html_id(id))).unwrap();
+        let start = html[..at].rfind('<').unwrap();
+        let end = at + html[at..].find('>').unwrap();
+        &html[start..end]
+    }
+
+    #[test]
+    fn every_positioned_page_carries_its_html_attribute() {
+        let html = fs::read_to_string(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/distribution/coc7th/index.html"
+        ))
+        .unwrap();
+        for (page, attribute) in [
+            (Page::Investigator, "aria-haspopup=\"listbox\""),
+            (Page::Dice, "aria-label=\"Dice\""),
+            (Page::Appearance, "aria-label=\"Appearance\""),
+            (Page::Preservation, "data-facet=\"sync\""),
+            (Page::Import, "type=\"file\""),
+            (Page::Sheet, "aria-label=\"Character Sheet\""),
+            (Page::ChatLog, "aria-label=\"Chat Log\""),
+            (Page::CredentialInput(Field::Email), "name=\"email\""),
+            (Page::CredentialInput(Field::Password), "name=\"password\""),
+            (Page::CreateInput, "name=\"create\""),
+            (Page::DialogNumberInput, "inputmode=\"numeric\""),
+        ] {
+            let tag = opening_tag(&html, &page.to_dom());
+            assert!(tag.contains(attribute), "{page:?}: {tag}");
+        }
     }
 
     #[test]

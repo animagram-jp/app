@@ -193,7 +193,7 @@ fn build_memory(snapshot: &[u8], log: &[u8]) -> (BTreeMap<u32, Vec<u8>>, usize) 
 /// repeated occurrences suggest a use-after-close bug instead. See README
 /// for the full classification tables and the VFS-port equivalents
 /// (`QuotaExceeded` -> ENOSPC/EDQUOT, etc.).
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum FileStoreError {
     /// `InvalidStateError`: handle already closed, or the modification itself failed.
     InvalidState(String),

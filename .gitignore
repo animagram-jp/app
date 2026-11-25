@@ -4,7 +4,6 @@
 
 .claude/
 node_modules/
-*.fxsnapshot
 
 Cargo.lock
 !/Cargo.lock

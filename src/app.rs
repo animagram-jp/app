@@ -415,7 +415,7 @@ mod tests {
             assert!(!app.handler.loaded());
             app.process(&fetch_frame(1, 200, index == last, chunk));
         }
-        assert_eq!(app.handler.appointments().len(), 380);
+        assert_eq!(app.handler.appointments().len(), 1116);
         assert!(app.responses.is_empty());
     }
 

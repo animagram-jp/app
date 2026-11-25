@@ -517,7 +517,7 @@ mod tests {
         assert_eq!(tags(&store, Parent::Category).len(), 4);
         assert_eq!(list::<Tag>(&store).unwrap().len(), 12);
         let appointments = list::<Appointment>(&store).unwrap();
-        assert_eq!(appointments.len(), 380);
+        assert_eq!(appointments.len(), 1116);
         let ids: Vec<u32> = appointments.iter().map(|a| a.head.id).collect();
         assert!(ids.windows(2).all(|pair| pair[0] < pair[1]));
         let resources = tags(&store, Parent::Resource);
