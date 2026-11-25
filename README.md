@@ -7,16 +7,10 @@
 A general-purpose boilerplate for GUI applications that edit and read structured data.
 The application owns a single event loop and is designed to run on multiple host environments, such as WebAssembly in a browser.
 
+---
+
 構造を持つデータを編集・閲覧する、一般的な用途を想定したアプリケーションシステムのボイラープレート。
 アプリ内にイベントループを持ち、複数のホスト環境(ブラウザのWebAssemblyなど)で動作するよう設計されている。
-
-# Version
-
-| Version | Status | Date | Description |
-|-|-|-|-|
-| 0.1.0   | scheduled | 2026-11-30 | 1st release |
-
-This project adheres to [Semantic Versioning](https://semver.org/).
 
 # Apps
 
