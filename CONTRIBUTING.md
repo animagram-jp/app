@@ -78,7 +78,7 @@ cargo test --features server --lib # server feature (sync, meet, account, sessio
 ```bash
 cargo install wasm-bindgen-cli --version "$(grep -A1 '^name = "wasm-bindgen"$' Cargo.lock | sed -n 's/^version = "\(.*\)"$/\1/p')" --locked
 
-geckodriver --port 8000 & GECKODRIVER_REMOTE=http://127.0.0.1:8000 WASM_BINDGEN_TEST_TIMEOUT=60 cargo test --target wasm32-unknown-unknown --lib --tests
+geckodriver --port 8000 & RUSTFLAGS="-Ctarget-feature=+atomics,+bulk-memory -Clink-arg=--import-memory -Clink-arg=--shared-memory -Clink-arg=--max-memory=134217728 -Clink-arg=--export=__wasm_init_tls -Clink-arg=--export=__tls_size -Clink-arg=--export=__tls_align -Clink-arg=--export=__tls_base" GECKODRIVER_REMOTE=http://127.0.0.1:8000 WASM_BINDGEN_TEST_TIMEOUT=60 cargo test --target wasm32-unknown-unknown -Zbuild-std=std,panic_abort --lib --tests
 
 pkill -f "geckodriver --port 8000"
 ```
@@ -198,11 +198,11 @@ appとserverは`lib.rs::{Input::decode, Output::encode}`を共有し、HTTP本�
 | file_store.rs | [FileStore.md](./reference/FileStore.md). `trait FileStore, trait Mount::open -> Future, struct OpfsStore, FsStore, MemoryStore`. |
 | object.rs | [Object.md](./reference/Object.md). `Head::{id, created, modified, stamp, touch}, trait Body::{Kind, KIND}, Record<B>::{head, body}`と、`[kind: u8][Head][B]`を[Wire format](#wire-format)で並べるその`Input` / `Output`。`FileStore`上のレコード操作`get, set, list, exists`と`new_uid`。 |
 |-|-|
-| app.rs | initとprocessの公開apiを持つ、Appインスタンス。eventsとcommandsの2つのキューを持ち、handler::Handler.process_*へevents消費を移譲ループする。保存するアプリに共通の`StoreLost`(ストアの失効)は、ここで`serve_event`への「開き直したい」要求(`reopen`)に変え、`StoreOpened`は`Handler`へ渡す。 |
+| app.rs | initとprocessの公開apiを持つ、Appインスタンス。eventsとcommandsの2つのキューを持ち、handler::Handler.process_*へevents消費を移譲ループする。保存するアプリに共通の`StoreLost`(ストアの失効)は、ここで`serve_event`への「開き直したい」要求(`reopen`)に変える。 |
 | arena.rs | JavaScriptとappが共有するメモリのレイアウトと、event / commandのリングバッファ。`serve_event`(async)が、処理待ちの要求があれば`Store::open`をawaitして、結果を`App::opened`に渡す。ロック競合(`NoModificationAllowed`)は`REOPEN_INTERVAL_IN_MS`間隔で`REOPEN_ATTEMPTS`回まで、イベント待ちのタイムアウトとして開き直す。`PageHide`で抜けると、`APP`をそのworkerで破棄する(`App`はそのインスタンスのJS handleを持つため)。worker.jsは、2本目以降のworker(`__stack_alloc`が0でない)なら`__wbindgen_thread_destroy`でスタックとTLSを解放してから`done`を送る。 |
 | host.rs | ホストとの境界。Command, Eventのフレーム形式(operation番号 / event種別)、DOM語彙(dom::Id、Attribute、StyleProperty など)。 |
 |-|-|
-| event.rs | appが受け取るeventの型(Canvas / Gesture / Window / Fetch / Gesture / Fetched / StoreLost), `Handler` trait, `type Store: FileStore`, `gesture::Pointer`. |
+| event.rs | appが受け取るeventの型(Canvas / Gesture / Window / FetchChunk / Fetched / StoreLost), `Handler` trait, `type Store: FileStore`, `gesture::Pointer`. |
 | credential.rs | 認証プロトコル。email の正規化、`salt` / `authentication_key` / `wrap_key` の HKDF 導出、`stretch`(Argon2id、feature `vault`)、`verifier` / `verify`(HMAC + 定数時間比較)、`digest`、`hex`。server と共有する。 |
 | vault.rs | `root_key` の生成と `wrap_key` による包み込み、store 名ごとの `store_key`、レコードの AEAD(XChaCha20-Poly1305、`key` を AAD に束ねる)。 |
 |-|-|
@@ -283,7 +283,7 @@ appとserverは`lib.rs::{Input::decode, Output::encode}`を共有し、HTTP本�
 ## ホストAPI依存機能の設計
 
 `async App::init`の呼ぶ`Handler::ready` は Futureを返し、
-`OpfsStore::open("{name}{version}").await` のあと `OpfsStore::new` を呼ぶ。
+`OpfsStore::open(id, create).await` のあと `OpfsStore::new` を呼ぶ。
 
 この形が使えるのは OPFS が同期ハンドルを返すからであり、一般解ではない。
 接続後も継続的にコールバックが来る WebSocket / WebRTC / WebGPU は外部化し、
