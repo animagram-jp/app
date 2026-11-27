@@ -1108,6 +1108,38 @@ pub mod gesture {
             assert_eq!(got, []);
         }
 
+        #[test]
+        fn a_swipe_fires_through_move_events_at_display_rate() {
+            let th = Thresholds::MOUSE;
+            let got = gestures_of(
+                &[
+                    (EventType::PointerDown, 0.0, 0.0, 0.0),
+                    (EventType::PointerMove, 24.0, 0.0, 16.0),
+                    (EventType::PointerMove, 48.0, 0.0, 32.0),
+                    (EventType::PointerMove, 72.0, 0.0, 48.0),
+                    (EventType::PointerMove, 96.0, 0.0, 64.0),
+                    (EventType::PointerMove, 120.0, 0.0, 80.0),
+                    (EventType::PointerUp, 120.0, 0.0, 81.0),
+                ],
+                &th,
+            );
+            assert_eq!(got, [Gesture::SwipeRight]);
+        }
+
+        #[test]
+        fn a_swipe_fires_when_release_repeats_the_last_move_position() {
+            let th = Thresholds::MOUSE;
+            let got = gestures_of(
+                &[
+                    (EventType::PointerDown, 0.0, 0.0, 0.0),
+                    (EventType::PointerMove, 100.0, 0.0, 50.0),
+                    (EventType::PointerUp, 100.0, 0.0, 51.0),
+                ],
+                &th,
+            );
+            assert_eq!(got, [Gesture::SwipeRight]);
+        }
+
         // --- drag ---
 
         #[test]
