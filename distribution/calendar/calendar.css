@@ -1,5 +1,3 @@
-/* === calendar === */
-
 #header :where(fieldset span, button) {
     font-size: var(--sm-font-size);
 }

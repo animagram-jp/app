@@ -1,19 +1,17 @@
 /* === brand common === */
 
 @font-face {
-    font-family: "IBM Plex Sans";
-    src: url("../font/IBMPlexSans-Regular.woff2?v={version}") format("woff2");
-    font-weight: 400;
-    font-style: normal;
     font-display: swap;
+    font-family: "IBM Plex Sans";
+    font-weight: 400;
+    src: url("../font/IBMPlexSans-Regular.woff2?v={version}") format("woff2");
 }
 
 @font-face {
-    font-family: "IBM Plex Sans";
-    src: url("../font/IBMPlexSans-SemiBold.woff2?v={version}") format("woff2");
-    font-weight: 600 700;
-    font-style: normal;
     font-display: swap;
+    font-family: "IBM Plex Sans";
+    font-weight: 600 700;
+    src: url("../font/IBMPlexSans-SemiBold.woff2?v={version}") format("woff2");
 }
 
 :root {
