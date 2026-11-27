@@ -441,6 +441,7 @@ pub mod gesture {
         pub swipe_min_in_px:          f64,
         pub swipe_min_velocity:       f64,
         pub swipe_max_in_ms:          f64,
+        pub swipe_rest_max_in_ms:     f64,
         pub tap_max_in_ms:            f64,
         pub tap_slop_in_px:           f64,
         pub two_pointer_commit_in_px: f64,
@@ -455,6 +456,7 @@ pub mod gesture {
             swipe_min_in_px:          50.0,
             swipe_min_velocity:       0.5,
             swipe_max_in_ms:          250.0,
+            swipe_rest_max_in_ms:     32.0,
             tap_max_in_ms:            250.0,
             tap_slop_in_px:           9.0,
             two_pointer_commit_in_px: 8.0,
@@ -468,6 +470,7 @@ pub mod gesture {
             swipe_min_in_px:          50.0,
             swipe_min_velocity:       0.5,
             swipe_max_in_ms:          300.0,
+            swipe_rest_max_in_ms:     32.0,
             tap_max_in_ms:            300.0,
             tap_slop_in_px:           16.0,
             two_pointer_commit_in_px: 8.0,
@@ -671,6 +674,7 @@ pub mod gesture {
         last_move_x:      f64,
         last_move_y:      f64,
         last_move_time:   f64,
+        move_velocity:    f64,
         is_dragging:      bool,
         long_press_fired: bool,
         cancelled:        bool,
@@ -689,6 +693,7 @@ pub mod gesture {
             last_move_x:      0.0,
             last_move_y:      0.0,
             last_move_time:   0.0,
+            move_velocity:    0.0,
             is_dragging:      false,
             long_press_fired: false,
             cancelled:        false,
@@ -866,6 +871,7 @@ pub mod gesture {
                 last_move_x:      x,
                 last_move_y:      y,
                 last_move_time:   time,
+                move_velocity:    0.0,
                 is_dragging:      false,
                 long_press_fired: false,
                 cancelled:        false,
@@ -881,6 +887,7 @@ pub mod gesture {
             self.current_y = y;
             self.last_move_x = x;
             self.last_move_y = y;
+            self.move_velocity = 0.0;
             self.is_dragging = false;
             self.cancelled = false;
         }
@@ -888,6 +895,11 @@ pub mod gesture {
         fn update(&mut self, event_type: &EventType, x: f64, y: f64, time: f64) {
             match event_type {
                 EventType::PointerMove => {
+                    let move_dt = time - self.last_move_time;
+                    if move_dt > 0.0 {
+                        self.move_velocity =
+                            measure_distance(self.last_move_x, self.last_move_y, x, y) / move_dt;
+                    }
                     self.current_x = x;
                     self.current_y = y;
                     self.last_move_x = x;
@@ -943,12 +955,17 @@ pub mod gesture {
             }
             let distance = self.distance();
 
-            let move_dt = current_time - self.last_move_time;
-            let velocity = if move_dt > 0.0 {
+            let rest_dt = current_time - self.last_move_time;
+            let release_velocity = if rest_dt > 0.0 {
                 measure_distance(self.last_move_x, self.last_move_y, self.current_x, self.current_y)
-                    / move_dt
+                    / rest_dt
             } else {
                 0.0
+            };
+            let velocity = if rest_dt <= thresholds.swipe_rest_max_in_ms {
+                libm::fmax(self.move_velocity, release_velocity)
+            } else {
+                release_velocity
             };
             if velocity > thresholds.swipe_min_velocity
                 && distance > thresholds.swipe_min_in_px
@@ -1006,12 +1023,11 @@ pub mod gesture {
             }
 
             let dt = current_time - self.start_time;
-            if dt > 0.0 && dt < thresholds.swipe_max_in_ms {
-                let velocity = distance / dt;
-                if velocity > thresholds.swipe_min_velocity && distance > thresholds.swipe_min_in_px
-                {
-                    return None;
-                }
+            if dt > 0.0
+                && dt < thresholds.swipe_max_in_ms
+                && distance / dt > thresholds.swipe_min_velocity
+            {
+                return None;
             }
 
             self.is_dragging = true;
@@ -1138,6 +1154,61 @@ pub mod gesture {
                 &th,
             );
             assert_eq!(got, [Gesture::SwipeRight]);
+        }
+
+        fn stroke(
+            dx: f64,
+            dy: f64,
+            interval_in_ms: f64,
+            count: u32,
+            rest_in_ms: f64,
+        ) -> Vec<(EventType, f64, f64, f64)> {
+            let mut events = Vec::from([(EventType::PointerDown, 0.0, 0.0, 0.0)]);
+            for i in 1..=count {
+                let n = f64::from(i);
+                events.push((EventType::PointerMove, dx * n, dy * n, interval_in_ms * n));
+            }
+            let n = f64::from(count);
+            events.push((EventType::PointerUp, dx * n, dy * n, interval_in_ms * n + rest_in_ms));
+            events
+        }
+
+        #[test]
+        fn a_swipe_fires_when_release_rests_up_to_the_rest_window() {
+            let th = Thresholds::MOUSE;
+            let got = gestures_of(&stroke(24.0, 0.0, 16.0, 5, th.swipe_rest_max_in_ms), &th);
+            assert_eq!(got, [Gesture::SwipeRight]);
+        }
+
+        #[test]
+        fn a_swipe_does_not_fire_when_release_rests_past_the_rest_window() {
+            let th = Thresholds::MOUSE;
+            let got = gestures_of(&stroke(24.0, 0.0, 16.0, 5, th.swipe_rest_max_in_ms + 1.0), &th);
+            assert_eq!(got, []);
+        }
+
+        #[test]
+        fn a_touch_swipe_fires_through_move_events_at_high_refresh_rate() {
+            let th = Thresholds::TOUCH;
+            let got = gestures_of(&stroke(0.0, -12.0, 8.0, 16, 1.0), &th);
+            assert_eq!(got, [Gesture::SwipeUp]);
+        }
+
+        #[test]
+        fn a_slow_move_at_display_rate_is_a_drag() {
+            let th = Thresholds::MOUSE;
+            let got = gestures_of(&stroke(-5.0, 0.0, 16.0, 40, 1.0), &th);
+            assert!(matches!(got.first(), Some(Gesture::Drag { .. })));
+            assert_eq!(got.last(), Some(&Gesture::DragEnd));
+            assert!(got.iter().all(|g| matches!(g, Gesture::Drag { .. } | Gesture::DragEnd)));
+        }
+
+        #[test]
+        fn a_fast_move_beyond_the_swipe_duration_becomes_a_drag() {
+            let th = Thresholds::MOUSE;
+            let got = gestures_of(&stroke(24.0, 0.0, 16.0, 20, 1.0), &th);
+            assert_eq!(got.first(), Some(&Gesture::Drag { x: 384.0, y: 0.0 }));
+            assert_eq!(got.last(), Some(&Gesture::DragEnd));
         }
 
         // --- drag ---

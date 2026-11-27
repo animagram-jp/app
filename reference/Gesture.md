@@ -47,7 +47,7 @@ direction(dx, dy) = abs(dx) > abs(dy)
 
 `relocate` 後は `Pointer.start` と `primary` の `TrackedPointer::start` が一致しなくなる（1 本目の `PointerDown` は `start` で両者を同じ座標・時刻に初期化する）。この不一致を厳密比較で検出している間は `Tap` / `LongPress` / `Swipe` を抑止し、`Drag` 系のみ通す。Pan 確定時の中点への `relocate` でも同じ不一致が生じるため、2 本指パン終了時の `Tap` も同時に抑止される。残った指が 2 本指中に動いていなければ不一致は生じず、保持した `start_time` から通常どおり `Tap` / `LongPress` を判定する。`Gesture` は指の本数を持たないため、動かずに触れて離れた 2 本指タップも 1 本指の `Tap` として返る。
 
-`last_move` は直近の `PointerMove` の座標・時刻（無ければ `PointerDown` のそれ）。swipe の速度計算窓に使う。
+`last_move`は直近の`PointerMove`の座標・時刻（無ければ`PointerDown`のそれ）。`move_velocity`は直近の`PointerMove`区間（1つ前の`last_move` → 今の`last_move`）の速度（無ければ0）。どちらもswipeの速度計算に使う。
 
 ## 単指の判定順
 
@@ -62,18 +62,29 @@ direction(dx, dy) = abs(dx) > abs(dy)
    1. `!long_press_fired && !is_dragging && distance < long_press_slop_px && dt > long_press_ms` → `LongPress`（ラッチして以後は発火しない）
    2. `distance <= drag_start_px` → 何もしない
    3. 既に `is_dragging` → `Drag{x,y}` を継続発火
-   4. まだswipeになりうる速度・距離なら確定を保留（`PointerUp`側に譲る）
+   4. `dt < swipe_max_ms`かつ`start`からの平均速度`> swipe_min_velocity`なら、まだswipeになりうるため確定を保留（`PointerUp`側に譲る）
    5. それ以外 → `is_dragging = true` にして `Drag{x,y}` 発火
 
 `LongPress` はタイマー駆動ではないため、指を完全に静止させたまま保持し続けた場合、発火は次の `PointerMove` か `PointerUp` まで遅延する。
 
 ### velocity の計算窓
 
-`detect_release` の swipe 判定では、`distance` / 方向は `start` → `current`、`velocity` は `last_move` → `current` から計算する。
+`detect_release`のswipe判定では、`distance`/方向は`start` → `current`から計算する。`velocity`は、`last_move`から離すまでの時間`rest_dt`によって次のように決める。
 
-`start` からの平均速度だと、序盤に速く動いた後に止めたまま保持して離した場合に swipe と誤判定される。直近区間で計算すれば止まっていた時間ぶん `move_dt` が伸びて速度が自然に下がる。`PointerMove` が無ければ `last_move == start` のため平均計算と一致する。
+```
+release_velocity = velocity(last_move, current)
+velocity = rest_dt <= swipe_rest_max_ms
+             ? max(move_velocity, release_velocity)
+             : release_velocity
+```
 
-Hammer.js `COMPUTE_INTERVAL`（25ms）や use-gesture `BEFORE_LAST_KINEMATICS_DELAY`（32ms。pointerup と直前の pointermove の時間差がこれ以上なら velocity=0 とする）と同じ問題意識だが、本実装は速度計算の 2 点を変えるだけで同じ効果を得ている。`detect_move` 側の保留判定（2.4）は `start` からの平均のまま。
+`start`からの平均速度だと、序盤に速く動いた後に止めたまま保持して離した場合にswipeと誤判定される。`rest_dt`が`swipe_rest_max_ms`を超えたら`release_velocity`だけを使うため、止まっていた時間ぶん速度が下がる。
+
+ブラウザーは`PointerUp`を直前の`PointerMove`とほぼ同じ座標で送るため、`release_velocity`だけでは動き続けたまま離しても速度がほぼ0になる。`rest_dt`が`swipe_rest_max_ms`以内なら、直前の`PointerMove`区間の速度`move_velocity`も使う。`PointerMove`が無ければ`last_move == start`かつ`move_velocity == 0`のため、平均速度と一致する。
+
+`swipe_rest_max_ms`はuse-gesture `BEFORE_LAST_KINEMATICS_DELAY`（32ms。pointerupと直前のpointermoveの時間差がこれ以上ならvelocity=0とする）に揃えた。Hammer.js `COMPUTE_INTERVAL`（25ms）も同じ問題意識による値。
+
+`detect_move`側の保留判定（2.4）は`start`からの平均速度を使い、距離は問わない。表示のフレーム間隔で`PointerMove`が来る環境では、`drag_start_px`を超えた最初の`PointerMove`の時点で`swipe_min_px`に届いていないことが多いため。保留している間は`Drag`を発火しないので、速く動かし始めた`Drag`の開始は最大`swipe_max_ms`遅れる。
 
 ## 2 本指の判定（`TwoPointerState::fold`）
 
@@ -106,6 +117,7 @@ Hammer.js `COMPUTE_INTERVAL`（25ms）や use-gesture `BEFORE_LAST_KINEMATICS_DE
 | `swipe_min_px` | swipe.threshold | 10px | swipeDistance: 50px | 50 / 50 |
 | `swipe_min_velocity` | swipe.velocity | 0.3px/ms | swipeVelocity: 0.5px/ms | 0.5 / 0.5 |
 | `swipe_max_ms` | - | - | swipeDuration: 250ms | 250 / 300 |
+| `swipe_rest_max_ms` | - | COMPUTE_INTERVAL: 25ms | BEFORE_LAST_KINEMATICS_DELAY: 32ms | 32 / 32 |
 | `two_pointer_commit_px` | - | - | - | 8 / 8 |
 | `pinch_dot_max` | - | - | - | 0 / 0 |
 
