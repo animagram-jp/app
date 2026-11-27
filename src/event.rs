@@ -1198,7 +1198,7 @@ pub mod gesture {
         fn a_slow_move_at_display_rate_is_a_drag() {
             let th = Thresholds::MOUSE;
             let got = gestures_of(&stroke(-5.0, 0.0, 16.0, 40, 1.0), &th);
-            assert!(matches!(got.first(), Some(Gesture::Drag { .. })));
+            assert_eq!(got.first(), Some(&Gesture::Drag { x: -15.0, y: 0.0 }));
             assert_eq!(got.last(), Some(&Gesture::DragEnd));
             assert!(got.iter().all(|g| matches!(g, Gesture::Drag { .. } | Gesture::DragEnd)));
         }
@@ -1209,6 +1209,43 @@ pub mod gesture {
             let got = gestures_of(&stroke(24.0, 0.0, 16.0, 20, 1.0), &th);
             assert_eq!(got.first(), Some(&Gesture::Drag { x: 384.0, y: 0.0 }));
             assert_eq!(got.last(), Some(&Gesture::DragEnd));
+        }
+
+        #[test]
+        fn a_swipe_fires_when_the_pointer_speeds_up_at_release() {
+            let th = Thresholds::MOUSE;
+            let got = gestures_of(
+                &[
+                    (EventType::PointerDown, 0.0, 0.0, 0.0),
+                    (EventType::PointerMove, 5.0, 0.0, 40.0),
+                    (EventType::PointerUp, 105.0, 0.0, 60.0),
+                ],
+                &th,
+            );
+            assert_eq!(got, [Gesture::SwipeRight]);
+        }
+
+        #[test]
+        fn a_fast_release_shorter_than_the_swipe_distance_is_not_a_swipe() {
+            let th = Thresholds::MOUSE;
+            let got = gestures_of(
+                &[(EventType::PointerDown, 0.0, 0.0, 0.0), (EventType::PointerUp, 40.0, 0.0, 20.0)],
+                &th,
+            );
+            assert_eq!(got, []);
+        }
+
+        #[test]
+        fn a_release_past_the_swipe_duration_is_not_a_swipe() {
+            let th = Thresholds::MOUSE;
+            let got = gestures_of(
+                &[
+                    (EventType::PointerDown, 0.0, 0.0, 0.0),
+                    (EventType::PointerUp, 400.0, 0.0, th.swipe_max_in_ms),
+                ],
+                &th,
+            );
+            assert_eq!(got, []);
         }
 
         // --- drag ---
@@ -1256,6 +1293,20 @@ pub mod gesture {
                 &[
                     (EventType::PointerDown, 100.0, 100.0, 0.0),
                     (EventType::PointerCancel, 100.0, 100.0, 50.0),
+                ],
+                &th,
+            );
+            assert_eq!(got, []);
+        }
+
+        #[test]
+        fn a_move_of_exactly_the_drag_start_distance_is_not_a_drag() {
+            let th = Thresholds::MOUSE;
+            let got = gestures_of(
+                &[
+                    (EventType::PointerDown, 0.0, 0.0, 0.0),
+                    (EventType::PointerMove, th.drag_start_in_px, 0.0, 400.0),
+                    (EventType::PointerUp, th.drag_start_in_px, 0.0, 500.0),
                 ],
                 &th,
             );
@@ -1327,14 +1378,25 @@ pub mod gesture {
                 &[
                     (EventType::PointerDown, 10.0, 10.0, 0.0),
                     (EventType::PointerMove, 40.0, 10.0, 100.0),
-                    (EventType::PointerMove, 40.0, 10.0, 400.0),
+                    (EventType::PointerMove, 12.0, 10.0, 400.0),
                 ],
                 &th,
             );
-            assert_eq!(
-                got,
-                [Gesture::Drag { x: 40.0, y: 10.0 }, Gesture::Drag { x: 40.0, y: 10.0 }]
+            assert_eq!(got.first(), Some(&Gesture::Drag { x: 40.0, y: 10.0 }));
+            assert!(!got.contains(&Gesture::LongPress));
+        }
+
+        #[test]
+        fn a_long_hold_that_ends_far_away_is_not_a_long_press() {
+            let th = Thresholds::MOUSE;
+            let got = gestures_of(
+                &[
+                    (EventType::PointerDown, 10.0, 10.0, 0.0),
+                    (EventType::PointerUp, 100.0, 10.0, 400.0),
+                ],
+                &th,
             );
+            assert_eq!(got, []);
         }
 
         #[test]
@@ -1344,6 +1406,9 @@ pub mod gesture {
             assert!(touch.long_press_in_ms > mouse.long_press_in_ms);
             assert!(touch.long_press_slop_in_px > mouse.long_press_slop_in_px);
             assert!(touch.drag_start_in_px > mouse.drag_start_in_px);
+            assert!(touch.tap_slop_in_px > mouse.tap_slop_in_px);
+            assert!(touch.tap_max_in_ms > mouse.tap_max_in_ms);
+            assert!(touch.swipe_max_in_ms > mouse.swipe_max_in_ms);
         }
 
         #[test]
@@ -1381,7 +1446,7 @@ pub mod gesture {
             state = state.move_to(1, 140.0, 100.0).move_to(2, 160.0, 100.0);
             assert!(matches!(state.fold(&th), FoldedInput::Pinch { .. }));
 
-            state = state.move_to(1, 140.0, 100.0).move_to(2, 140.0, 100.0);
+            state = state.move_to(1, 160.0, 100.0).move_to(2, 260.0, 100.0);
             assert!(matches!(state.fold(&th), FoldedInput::Pinch { .. }));
         }
 
@@ -1540,8 +1605,8 @@ pub mod gesture {
                 &[
                     (EventType::PointerDown, 1, 100.0, 100.0, 0.0),
                     (EventType::PointerDown, 2, 200.0, 100.0, 0.0),
-                    (EventType::PointerMove, 1, 150.0, 100.0, 50.0),
-                    (EventType::PointerMove, 2, 150.0, 100.0, 60.0),
+                    (EventType::PointerMove, 1, 150.0, 100.0, 400.0),
+                    (EventType::PointerMove, 2, 150.0, 100.0, 460.0),
                 ],
                 &th,
             );
@@ -1705,6 +1770,17 @@ pub mod gesture {
         }
 
         #[test]
+        fn a_pointer_left_over_from_a_pinch_does_not_long_press_on_move() {
+            let th = Thresholds::MOUSE;
+            let events = [
+                PINCH_THEN_PRIMARY_UP.as_slice(),
+                &[(EventType::PointerMove, 2, 161.0, 100.0, 1000.0)],
+            ]
+            .concat();
+            assert_eq!(trace(&events, &th)[5], None);
+        }
+
+        #[test]
         fn a_pointer_left_over_from_a_pinch_does_not_swipe() {
             let th = Thresholds::MOUSE;
             let events = [
@@ -1761,6 +1837,23 @@ pub mod gesture {
                 &th,
             );
             assert_eq!(got[3], Some(Gesture::Tap));
+        }
+
+        #[test]
+        fn a_promoted_pointer_can_long_press_after_the_first_one_did() {
+            let th = Thresholds::MOUSE;
+            let got = trace(
+                &[
+                    (EventType::PointerDown, 1, 100.0, 100.0, 0.0),
+                    (EventType::PointerMove, 1, 101.0, 100.0, 300.0),
+                    (EventType::PointerDown, 2, 200.0, 100.0, 400.0),
+                    (EventType::PointerUp, 1, 101.0, 100.0, 500.0),
+                    (EventType::PointerUp, 2, 200.0, 100.0, 1000.0),
+                ],
+                &th,
+            );
+            assert_eq!(got[1], Some(Gesture::LongPress));
+            assert_eq!(got[4], Some(Gesture::LongPress));
         }
 
         #[test]
