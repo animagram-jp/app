@@ -183,10 +183,6 @@ impl Zero for Toast {
 impl Toast {
     pub const SLOTS: u32 = 2;
 
-    pub fn parts() -> impl Iterator<Item = ToastPart> {
-        (1..=Self::SLOTS).flat_map(|n| [ToastPart::Slot(n), ToastPart::Text(n)])
-    }
-
     pub fn to_dom(part: ToastPart) -> Id {
         match part {
             ToastPart::Slot(n) => Id::new(&[(Tag::Toast, None), (Tag::Button, Some(n))]),
@@ -218,6 +214,13 @@ impl Toast {
 
     pub fn hide(slot: u32) -> Command {
         Command::JsFn { id: Self::to_dom(ToastPart::Slot(slot)), name: FnName::HideToast }
+    }
+}
+
+#[cfg(test)]
+impl Toast {
+    pub fn parts() -> impl Iterator<Item = ToastPart> {
+        (1..=Self::SLOTS).flat_map(|n| [ToastPart::Slot(n), ToastPart::Text(n)])
     }
 }
 
