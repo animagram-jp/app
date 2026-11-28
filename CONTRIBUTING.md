@@ -39,7 +39,7 @@ curl -fsSL -H "Accept: application/vnd.github.raw+json" "https://api.github.com/
 - Format: `cargo fmt`
 - Checker: `cargo clippy --all-targets --all-features`
 - Checker (wasm): `RUSTFLAGS="-Ctarget-feature=+atomics,+bulk-memory" cargo clippy --lib --all-features --target wasm32-unknown-unknown -Zbuild-std=std,panic_abort`
-- Download from animagram-jp/css: `curl -fsSL -o ./distribution/css/animagram_css.css https://github.com/animagram-jp/css/releases/download/0.1.10/animagram_css.css`
+- Download from animagram-jp/css: `curl -fsSL -o ./distribution/css/animagram_css.css https://github.com/animagram-jp/css/releases/download/<tag>/animagram_css.css`
 
 ## Test
 

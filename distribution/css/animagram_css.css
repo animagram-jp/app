@@ -17,12 +17,13 @@
 
     css.input,
     css.button,
-    css.checkbox,
+    css.checkbox, /* dependency: input */
     css.toggle,
     css.radio, /* dependency: input */
     css.slider,
     css.search,
-    css.step, /* dependency: input, radio */
+    css.step, /* dependency: input */
+    css.cycle,
 
     css.popup,
     css.toast,
@@ -64,16 +65,16 @@
 
     /* Fix mobile Safari increase font-size on landscape mode */
     html, :host { /* per tailwind-preflight.css:28-51 */
+        line-break: strict; /* per kiso.css:36 */
+        line-height: var(--md-line-height); /* per tailwind-preflight.css:28-51 */
+        overflow-wrap: anywhere; /* per kiso.css:39 */
+        tab-size: 4; /* per tailwind-preflight.css:28-51 */
+        -webkit-tap-highlight-color: transparent; /* per kiso.css:55 */
+        text-autospace: normal; /* per kiso.css:33 */
         -moz-text-size-adjust: none;
         -webkit-text-size-adjust: none;
         text-size-adjust: none;
-        line-height: var(--md-line-height); /* per tailwind-preflight.css:28-51 */
-        tab-size: 4; /* per tailwind-preflight.css:28-51 */
         text-spacing-trim: trim-start; /* per kiso.css:30 */
-        text-autospace: normal; /* per kiso.css:33 */
-        line-break: strict; /* per kiso.css:36 */
-        overflow-wrap: anywhere; /* per kiso.css:39 */
-        -webkit-tap-highlight-color: transparent; /* per kiso.css:55 */
     }
 
     html:focus-within { /* per modern-reset.css */
@@ -114,8 +115,8 @@
     }
 
     hr { /* per tailwind-preflight.css:53-63 */
-        border-block-start-width: 1px;
         border-block-start-style: solid;
+        border-block-start-width: 1px;
         height: 0;
     }
 
@@ -204,8 +205,8 @@
     /* removes spacing between cells in tables */
     table {
         border-collapse: collapse;
-        text-indent: 0; /* per tailwind-preflight.css:162-172 */
         border-color: inherit; /* per tailwind-preflight.css:162-172 */
+        text-indent: 0; /* per tailwind-preflight.css:162-172 */
     }
 
     /* Safari - solving issue when using user-select:none on the <body> text input doesn't working */
@@ -233,8 +234,8 @@
 
     /* revert the 'white-space' property for textarea elements on Safari */
     textarea {
-        white-space: revert;
         resize: block; /* per kiso.css:381 */
+        white-space: revert;
     }
 
     input:not([type="button"], [type="submit"], [type="reset"]), textarea, [contenteditable] { /* per kiso.css:384-391 */
@@ -242,12 +243,12 @@
     }
 
     ::file-selector-button { /* per tailwind-preflight.css:236-257 */
+        background-color: unset; /* per kiso.css:393-400 */
         color: inherit;
         font: inherit;
         font-feature-settings: inherit;
         font-variation-settings: inherit;
         letter-spacing: inherit;
-        background-color: unset; /* per kiso.css:393-400 */
     }
 
     :where(
@@ -287,8 +288,8 @@
 
     ::-webkit-inner-spin-button,
     ::-webkit-outer-spin-button { /* per tailwind-preflight.css:383-390 */
-        height: auto;
         appearance: none;
+        height: auto;
         margin: 0;
     }
 
@@ -296,10 +297,10 @@
        - fix for the content editable attribute will work properly.
        - webkit-user-select: auto; added for Safari in case of using user-select:none on wrapper element*/
     :where([contenteditable]:not([contenteditable="false"])) {
+        -webkit-line-break: after-white-space;
+        overflow-wrap: break-word;
         -moz-user-modify: read-write;
         -webkit-user-modify: read-write;
-        overflow-wrap: break-word;
-        -webkit-line-break: after-white-space;
         -webkit-user-select: auto;
     }
 
@@ -516,6 +517,12 @@
         --font-family-serif:      ui-serif, serif;
         --font-family-monospace:  ui-monospace, monospace;
 
+        --pt:           calc(1rem / 14);
+        --mm:           calc(72 / 25.4 * var(--pt));
+        --device-pixel: 1px;
+
+        --page-margin-block: 0;
+
         font-family: var(--font-family-sans-serif);
     }
 
@@ -525,9 +532,35 @@
         }
     }
 
+    /* --- :root[data-print] --- */
+
+    :root[data-print] {
+        --xs-border-width:  calc(0.875 * var(--pt));
+        --sm-border-width:  calc(1.75 * var(--pt));
+        --md-border-width:  calc(1.75 * var(--pt));
+        --lg-border-width:  calc(1.75 * var(--pt));
+        --xl-border-width:  calc(1.75 * var(--pt));
+        --2xl-border-width: calc(1.75 * var(--pt));
+    }
+
+    @media screen {
+        :root[data-print] {
+            --xs-border-width:  max(var(--device-pixel), round(nearest, calc(0.875 * var(--pt)), var(--device-pixel)));
+            --sm-border-width:  max(var(--device-pixel), round(nearest, calc(1.75 * var(--pt)), var(--device-pixel)));
+            --md-border-width:  max(var(--device-pixel), round(nearest, calc(1.75 * var(--pt)), var(--device-pixel)));
+            --lg-border-width:  max(var(--device-pixel), round(nearest, calc(1.75 * var(--pt)), var(--device-pixel)));
+            --xl-border-width:  max(var(--device-pixel), round(nearest, calc(1.75 * var(--pt)), var(--device-pixel)));
+            --2xl-border-width: max(var(--device-pixel), round(nearest, calc(1.75 * var(--pt)), var(--device-pixel)));
+        }
+
+        :root[data-print] body {
+            padding-block:    var(--page-margin-block);
+        }
+    }
+
     body {
-        color: var(--color-ink);
         background: var(--color-paper);
+        color: var(--color-ink);
     }
 
     ::selection, mark {
@@ -542,10 +575,10 @@
         [inputmode="numeric"]
     ) {
         font-family: var(--font-family-monospace);
-        font-style: normal;
         font-feature-settings: initial; /* per kiso.css:193 */
-        font-variation-settings: initial; /* per kiso.css:194 */
+        font-style: normal;
         font-variant-ligatures: none; /* per kiso.css:203 */
+        font-variation-settings: initial; /* per kiso.css:194 */
     }
 
     /* --- forced-color --- */
@@ -755,27 +788,27 @@
         :where([role="menu"], [role="listbox"]) > label:has(> input[role]:not(:disabled, [aria-disabled="true"])),
         [popovertarget]:not([data-surround])
     ) {
-        &:where(:active, [aria-pressed="true"]) {
-            outline-color: var(--color-focus);
-            outline-style: solid;
-        }
-
         @media (hover: hover) {
-            &:hover {
+            &:where(:hover) {
                 outline-color: var(--color-focus);
                 outline-style: solid;
             }
         }
 
-        &:is(:user-invalid, [aria-invalid="true"]) {
+        &:where(:user-invalid, [aria-invalid="true"]) {
             outline-color: var(--color-error);
             outline-style: solid;
         }
 
         @media (forced-colors: active) {
-            &:is(:user-invalid, [aria-invalid="true"]) {
+            &:where(:user-invalid, [aria-invalid="true"]) {
                 outline-color: Mark;
             }
+        }
+
+        &:where(:active, [aria-pressed="true"]) {
+            outline-color: var(--color-focus);
+            outline-style: solid;
         }
     }
 
@@ -1144,7 +1177,8 @@
     :where(
         [data-surround="transparent"],
         :where([role="menu"], [role="listbox"]) > *,
-        :where(dl, dl > div) > :where(dt, dd)
+        :where(dl, dl > div) > :where(dt, dd),
+        :is([role="alert"], [role="status"])[data-sign]:not([data-surround], [data-type="toast"] > *)
     ) {
         min-height:     var(--box-height);
         padding-block:  calc((var(--box-height) - var(--line-height)) / 2);
@@ -1175,8 +1209,8 @@
             summary,
             textarea,
             [data-type="toast"] > *,
-            [role="alert"],
-            [role="status"]
+            [role="alert"]:not([data-sign]),
+            [role="status"]:not([data-sign])
         ):not([data-surround])
     ) {
         border-radius:  var(--border-radius);
@@ -1393,8 +1427,8 @@
         [data-sign="plus"],
         [data-sign="x"]
     )[data-inline-align="start"]::after {
-        inset-inline-start: var(--border-radius);
         inset-inline-end:   auto;
+        inset-inline-start: var(--border-radius);
         margin-inline:      0;
     }
 
@@ -1446,8 +1480,8 @@
         [data-sign="plus"],
         [data-sign="x"]
     )[data-inline-align="end"]::after {
-        inset-inline-start: auto;
         inset-inline-end:   var(--border-radius);
+        inset-inline-start: auto;
         margin-inline:      0;
     }
 
@@ -1790,10 +1824,10 @@
     label:has(> select:is([data-facet="chevron"], :not([data-facet])))::after {
         border-radius:        0;
         border-style:         solid;
-        border-top-width:     0;
-        border-left-width:    0;
         border-bottom-width:  var(--border-width);
+        border-left-width:    0;
         border-right-width:   var(--border-width);
+        border-top-width:     0;
         content:              "";
         inset-block:          0;
         margin-block:         auto;
@@ -2743,7 +2777,17 @@
             <tr>
                 <td></td></tr></tfoot></table>
 
-    (a sortable column header is in step.css)
+    <table data-print>
+        <thead>
+            <tr>
+                <th scope="col"></th></tr></thead>
+        <tbody>
+            <tr>
+                <th scope="row"></th>
+                <td></td></tr></tbody>
+        <tfoot>
+            <tr>
+                <td></td></tr></tfoot></table>
 */
 @layer css.table {
     table {
@@ -2757,9 +2801,41 @@
 
     /* --- size --- */
 
-    table :where(td, th) {
+    table:where(:not([data-print])) :where(td, th) {
         padding-block:  calc((var(--box-height) - var(--line-height)) / 2);
         padding-inline: var(--border-radius);
+    }
+    table :where(td, th):has(> :is(
+        input:is(
+            [type="text"],
+            [type="email"],
+            [type="password"],
+            [type="search"],
+            [type="url"],
+            [type="tel"],
+            [type="number"]
+        ),
+        select,
+        textarea
+    )[data-surround="transparent"]) {
+        padding: 0;
+    }
+    table :where(td, th) > :where(
+        input:is(
+            [type="text"],
+            [type="email"],
+            [type="password"],
+            [type="search"],
+            [type="url"],
+            [type="tel"],
+            [type="number"]
+        ),
+        select,
+        textarea
+    )[data-surround="transparent"] {
+        display:     block;
+        inline-size: 100%;
+        min-height:  0;
     }
     table:where([data-size]) caption {
         font-size: var(--font-size);
@@ -2767,72 +2843,191 @@
 
     /* === data-border === */
 
-    table:where(:not([data-border]), [data-border="sectioned"]) thead tr:last-of-type :where(td, th) {
-        border-block-end:  var(--md-border-width) solid var(--color-ink);
-        padding-block-end: calc(((var(--md-box-height) - var(--md-line-height)) / 2) - var(--md-border-width));
+    table:where(:not([data-print])):where(:not([data-border]), [data-border="sectioned"]) thead tr:last-of-type :where(td, th) {
+        border-block-end:  var(--border-width) solid var(--color-ink);
+        padding-block-end: calc(((var(--box-height) - var(--line-height)) / 2) - var(--border-width));
+
+        & > :where(
+            input:is(
+                [type="text"],
+                [type="email"],
+                [type="password"],
+                [type="search"],
+                [type="url"],
+                [type="tel"],
+                [type="number"]
+            ),
+            select,
+            textarea
+        )[data-surround="transparent"] {
+            padding-block-end: calc(((var(--box-height) - var(--line-height)) / 2) - var(--border-width));
+        }
     }
 
-    table:where(:not([data-border]), [data-border="sectioned"]) tbody th[scope="row"] {
-        border-inline-end: var(--md-border-width) solid var(--color-ink);
+    table:where(:not([data-print])):where(:not([data-border]), [data-border="sectioned"]) tbody th[scope="row"] {
+        border-inline-end: var(--border-width) solid var(--color-ink);
     }
 
-    table:where(:not([data-border]), [data-border="sectioned"]) tfoot tr:first-of-type :where(td, th) {
-        border-block-start:  var(--md-border-width) solid var(--color-ink);
-        padding-block-start: calc(((var(--md-box-height) - var(--md-line-height)) / 2) - var(--md-border-width));
+    table:where(:not([data-print])):where(:not([data-border]), [data-border="sectioned"]) tfoot tr:first-of-type :where(td, th) {
+        border-block-start:  var(--border-width) solid var(--color-ink);
+        padding-block-start: calc(((var(--box-height) - var(--line-height)) / 2) - var(--border-width));
+
+        & > :where(
+            input:is(
+                [type="text"],
+                [type="email"],
+                [type="password"],
+                [type="search"],
+                [type="url"],
+                [type="tel"],
+                [type="number"]
+            ),
+            select,
+            textarea
+        )[data-surround="transparent"] {
+            padding-block-start: calc(((var(--box-height) - var(--line-height)) / 2) - var(--border-width));
+        }
     }
 
-    table[data-border="grid"] {
-        border-block-start:  var(--md-border-width) solid var(--color-ink);
-        border-inline-start: var(--md-border-width) solid var(--color-ink);
+    table:where(:not([data-print]))[data-border="grid"] {
+        border-block-start:  var(--border-width) solid var(--color-ink);
+        border-inline-start: var(--border-width) solid var(--color-ink);
     }
-    table[data-border="grid"] :where(td, th) {
-        border-block-end:  var(--md-border-width) solid var(--color-ink-mix);
-        border-inline-end: var(--md-border-width) solid var(--color-ink-mix);
-        padding-block-end: calc(((var(--md-box-height) - var(--md-line-height)) / 2) - var(--md-border-width));
+    table:where(:not([data-print]))[data-border="grid"] :where(td, th) {
+        border-block-end:  var(--border-width) solid var(--color-ink-mix);
+        border-inline-end: var(--border-width) solid var(--color-ink-mix);
+        padding-block-end: calc(((var(--box-height) - var(--line-height)) / 2) - var(--border-width));
+
+        & > :where(
+            input:is(
+                [type="text"],
+                [type="email"],
+                [type="password"],
+                [type="search"],
+                [type="url"],
+                [type="tel"],
+                [type="number"]
+            ),
+            select,
+            textarea
+        )[data-surround="transparent"] {
+            padding-block-end: calc(((var(--box-height) - var(--line-height)) / 2) - var(--border-width));
+        }
     }
-    table[data-border="grid"] tr:last-child :where(td, th) {
+    table:where(:not([data-print]))[data-border="grid"] tr:last-child :where(td, th) {
         border-block-end-color: var(--color-ink);
     }
-    table[data-border="grid"] :where(td, th):last-child {
+    table:where(:not([data-print]))[data-border="grid"] :where(td, th):last-child {
         border-inline-end-color: var(--color-ink);
     }
 
-    table[data-border="booktabs"] {
-        border-block: var(--md-border-width) solid var(--color-ink);
+    table:where(:not([data-print]))[data-border="booktabs"] {
+        border-block: var(--border-width) solid var(--color-ink);
     }
-    table:where([data-border="booktabs"]) thead tr:last-of-type :where(td, th) {
-        border-block-end:  var(--md-border-width) solid var(--color-ink);
-        padding-block-end: calc(((var(--md-box-height) - var(--md-line-height)) / 2) - var(--md-border-width));
+    table:where(:not([data-print])):where([data-border="booktabs"]) thead tr:last-of-type :where(td, th) {
+        border-block-end:  var(--border-width) solid var(--color-ink);
+        padding-block-end: calc(((var(--box-height) - var(--line-height)) / 2) - var(--border-width));
+
+        & > :where(
+            input:is(
+                [type="text"],
+                [type="email"],
+                [type="password"],
+                [type="search"],
+                [type="url"],
+                [type="tel"],
+                [type="number"]
+            ),
+            select,
+            textarea
+        )[data-surround="transparent"] {
+            padding-block-end: calc(((var(--box-height) - var(--line-height)) / 2) - var(--border-width));
+        }
     }
 
-    /* --- size --- */
+    /* === data-print === */
 
-    table:where([data-size]):where(:not([data-border]), [data-border="sectioned"], [data-border="booktabs"]) thead tr:last-of-type :where(td, th) {
-        border-block-end-width: var(--border-width);
-        padding-block-end:      calc(((var(--box-height) - var(--line-height)) / 2) - var(--border-width));
+    table[data-print] {
+        background-image:
+            linear-gradient(var(--color-ink), var(--color-ink)),
+            linear-gradient(var(--color-ink), var(--color-ink)),
+            linear-gradient(var(--color-ink), var(--color-ink)),
+            linear-gradient(var(--color-ink), var(--color-ink));
+        background-position-x: 0, 100%, 0, 0;
+        background-position-y: 0, 0, 0, 100%;
+        background-repeat:     no-repeat;
+        background-size:
+            var(--border-width) 100%,
+            var(--border-width) 100%,
+            100% var(--border-width),
+            100% var(--border-width);
+        border-style:          none;
+        display:               grid;
+        padding:               var(--border-width);
     }
-    table:where([data-size]):where(:not([data-border]), [data-border="sectioned"]) tbody th[scope="row"] {
-        border-inline-end-width: var(--border-width);
+    table[data-print]:where(:not([data-border]), [data-border="sectioned"]) {
+        background-image: none;
+        padding:          0;
     }
-    table:where([data-size]):where(:not([data-border]), [data-border="sectioned"]) tfoot tr:first-of-type :where(td, th) {
-        border-block-start-width: var(--border-width);
-        padding-block-start:      calc(((var(--box-height) - var(--line-height)) / 2) - var(--border-width));
+    table[data-print]:where([data-border="booktabs"]) {
+        background-size:
+            0 100%,
+            0 100%,
+            100% var(--border-width),
+            100% var(--border-width);
+        padding-inline: 0;
     }
-    table:where([data-size])[data-border="grid"] {
-        border-block-start-width:  var(--border-width);
-        border-inline-start-width: var(--border-width);
+
+    table[data-print] :where(thead, tbody, tfoot, tr) {
+        display: contents;
     }
-    table:where([data-size])[data-border="grid"] :where(td, th) {
-        border-block-end-width:  var(--border-width);
-        border-inline-end-width: var(--border-width);
-        padding-block-end:       calc(((var(--box-height) - var(--line-height)) / 2) - var(--border-width));
+    table[data-print] > caption {
+        grid-column-end:   -1;
+        grid-column-start: 1;
     }
-    table:where([data-size])[data-border="booktabs"] {
-        border-block-width: var(--border-width);
+    table[data-print] :where(td, th) {
+        border-style:   none;
+        padding-block:  calc((var(--box-height) - var(--line-height)) / 2);
+        padding-inline: var(--border-radius);
+        position:       relative;
+    }
+
+    table[data-print]:where([data-border="grid"]) :where(td, th):not(table > :last-child > tr:last-child > *)::after,
+    table[data-print]:where(:not([data-border]), [data-border="sectioned"], [data-border="booktabs"]) :where(thead > tr:last-child > :is(td, th))::after,
+    table[data-print]:where(:not([data-border]), [data-border="sectioned"]) :where(tbody:has(+ tfoot) > tr:last-child > :is(td, th))::after {
+        content:            "";
+        inset-block-end:    0;
+        inset-inline-end:   0;
+        inset-inline-start: 0;
+        position:           absolute;
+    }
+    table[data-print]:where([data-border="grid"]) :where(td, th):not(:last-child)::before,
+    table[data-print]:where(:not([data-border]), [data-border="sectioned"]) :where(tbody > tr > th[scope="row"])::before {
+        content:           "";
+        inset-block-end:   0;
+        inset-block-start: 0;
+        inset-inline-end:  0;
+        position:          absolute;
+    }
+
+    table[data-print] :where(td, th)::after {
+        background-color: var(--color-ink);
+        block-size:       var(--border-width);
+    }
+    table[data-print] :where(td, th)::before {
+        background-color: var(--color-ink);
+        inline-size:      var(--border-width);
+    }
+    table[data-print][data-border="grid"] :where(td, th)::after,
+    table[data-print][data-border="grid"] :where(td, th)::before {
+        background-color: var(--color-ink-mix);
     }
 
     /* === data-stripe === */
     table[data-stripe] tbody tr:nth-child(even) {
+        background-color: var(--color-paper-mix);
+    }
+    table[data-print][data-stripe] tbody tr:nth-child(even) > :where(td, th) {
         background-color: var(--color-paper-mix);
     }
 
@@ -2840,7 +3035,29 @@
     table[data-selectable] tbody tr:has(:checked) {
         outline-color: var(--color-emphasis-ink);
         outline-style: solid;
-        outline-width: var(--md-border-width);
+        outline-width: var(--border-width);
+    }
+    table[data-print][data-selectable] tbody tr:has(:checked) > :where(td, th)::after {
+        background-color:   transparent;
+        block-size:         auto;
+        border-block:       var(--border-width) solid var(--color-emphasis-ink);
+        content:            "";
+        inset-block-end:    0;
+        inset-block-start:  calc(var(--border-width) * -1);
+        inset-inline-end:   0;
+        inset-inline-start: 0;
+        position:           absolute;
+    }
+    table[data-print][data-selectable] tbody tr:has(:checked) > :where(td, th):first-child::after {
+        border-inline-start: var(--border-width) solid var(--color-emphasis-ink);
+        inset-inline-start:  calc(var(--border-width) * -1);
+    }
+    table[data-print][data-selectable] tbody tr:has(:checked) > :where(td, th):last-child::after {
+        border-inline-end: var(--border-width) solid var(--color-emphasis-ink);
+        inset-inline-end:  calc(var(--border-width) * -1);
+    }
+    table[data-print][data-selectable] > tbody:last-child > tr:last-child:has(:checked) > :where(td, th)::after {
+        inset-block-end: calc(var(--border-width) * -1);
     }
 
     @media (forced-colors: active) {
@@ -2850,9 +3067,6 @@
         table[data-selectable] tbody tr:has(:checked) {
             outline-color: Highlight;
         }
-    }
-
-    @media (forced-colors: active) {
         :where(table, table :is(td, th)) {
             border-color: CanvasText;
         }
@@ -2876,6 +3090,16 @@
         <span></span>
         <input type="password">
         <input type="checkbox"></label>
+
+    <fieldset data-axis="block | inline">
+        <legend>
+            <span></span></legend>
+        <label>
+            <span></span>
+            <input type="radio | checkbox"></label>
+        <label>
+            <span></span>
+            <input type="radio | checkbox"></label></fieldset>
 
     <textarea placeholder=""></textarea>
     
@@ -2901,9 +3125,12 @@
         select,
         textarea
     ) {
-        field-sizing:     content;
-        max-inline-size:  100%;
-        min-inline-size:  7ch; /* per https://developer.chrome.com/docs/css-ui/css-field-sizing */
+        max-inline-size: 100%;
+    }
+
+    :where(textarea) {
+        field-sizing:    content;
+        min-inline-size: 7ch; /* per https://developer.chrome.com/docs/css-ui/css-field-sizing */
     }
 
     :where(
@@ -2939,11 +3166,6 @@
 
     input[inputmode="numeric"] {
         text-align: right;
-    }
-
-    input[inputmode="numeric"][maxlength] {
-        field-sizing:    fixed;
-        min-inline-size: 0;
     }
 
     /* === password === */
@@ -2987,7 +3209,7 @@
         padding-inline-end: var(--border-radius);
     }
 
-    select:not([data-facet]):not(label > select) {
+    select:not([data-facet]):not(label > select, :is(td, th) > select[data-surround="transparent"]) {
         appearance: auto;
     }
 
@@ -2998,6 +3220,80 @@
     }
     label > select:is([data-facet="chevron"], :not([data-facet]))[data-size="xs"] {
         padding-inline-end: calc(var(--xs-box-height) * 0.75);
+    }
+
+    fieldset:has(> label > input:is([type="radio"], [type="checkbox"]:not([role="switch"], [aria-controls]))) {
+        &:not([data-union]) {
+            border:  none;
+            display: grid;
+            gap:     0.5rem;
+        }
+
+        /* --- data-axis="inline" ---
+            To fit vertical, needs grid-template-rows: repeat(N, ...); */
+
+        &[data-axis="inline"]:has(> label:first-of-type:nth-last-of-type(1)) {
+            grid-template-columns: max-content repeat(1, max-content);
+        }
+        &[data-axis="inline"]:has(> label:first-of-type:nth-last-of-type(2)) {
+            grid-template-columns: max-content repeat(2, max-content);
+        }
+        &[data-axis="inline"]:has(> label:first-of-type:nth-last-of-type(3)) {
+            grid-template-columns: max-content repeat(3, max-content);
+        }
+        &[data-axis="inline"]:has(> label:first-of-type:nth-last-of-type(4)) {
+            grid-template-columns: max-content repeat(4, max-content);
+        }
+        &[data-axis="inline"]:has(> label:first-of-type:nth-last-of-type(5)) {
+            grid-template-columns: max-content repeat(5, max-content);
+        }
+        &[data-axis="inline"]:has(> label:first-of-type:nth-last-of-type(6)) {
+            grid-template-columns: max-content repeat(6, max-content);
+        }
+        &[data-axis="inline"]:has(> label:first-of-type:nth-last-of-type(7)) {
+            grid-template-columns: max-content repeat(7, max-content);
+        }
+        &[data-axis="inline"]:has(> label:first-of-type:nth-last-of-type(8)) {
+            grid-template-columns: max-content repeat(8, max-content);
+        }
+
+        & > legend > * {
+            grid-column:     1 / -1;
+            min-inline-size: 0;
+        }
+
+        & > *:not(legend, label) {
+            grid-column:     1 / -1;
+            margin:          0;
+            min-inline-size: 0;
+        }
+
+        &:where([data-axis="block"], :not([data-axis])):not([data-union]) > legend > *,
+        &:where([data-axis="block"], :not([data-axis])):not([data-union]) > *:not(legend, label),
+        &[data-axis="inline"]:has(> label:first-of-type:nth-last-of-type(n+9)) > legend > *,
+        &[data-axis="inline"]:has(> label:first-of-type:nth-last-of-type(n+9)) > *:not(legend, label) {
+            contain: inline-size;
+        }
+
+        &[data-axis="inline"] > legend > *,
+        &[data-axis="inline"] > *:not(legend, label) {
+            align-self:  center;
+            grid-column: 1;
+            grid-row:    1 / -1;
+        }
+
+        & > label:has(> input:is([type="radio"], [type="checkbox"]:not([role="switch"], [aria-controls]))) {
+            display:         inline-flex;
+            align-items:     center;
+            gap:             0.5rem;
+            justify-content: space-between;
+        }
+        &:not([data-union]) > label:has(> input:is([type="radio"], [type="checkbox"]:not([role="switch"], [aria-controls]))) {
+            inline-size: 100%;
+        }
+        & > label > input:is([type="radio"], [type="checkbox"]:not([role="switch"], [aria-controls])) {
+            flex-shrink: 0;
+        }
     }
 
     /* === required ===
@@ -3322,13 +3618,11 @@
         display: inline flow-root;
     }
     label:has(> input[type="checkbox"][role="switch"])[data-axis="block"] > *:first-child {
-        display:    block;
-        text-align: center;
-    }
-    label:has(> input[type="checkbox"][role="switch"])[data-axis="block"] > *:first-child:not([data-size]) {
-        border-radius:  var(--md-border-radius);
-        border-width:   var(--md-border-width);
-        padding-bottom: calc(((var(--md-box-height) - var(--md-line-height)) / 2) - var(--md-border-width));
+        display:        block;
+        border-radius:  var(--border-radius);
+        border-width:   var(--border-width);
+        padding-bottom: calc(((var(--box-height) - var(--line-height)) / 2) - var(--border-width));
+        text-align:     center;
     }
 
     label > input[type="checkbox"][role="switch"] {
@@ -3362,6 +3656,7 @@
         position:        absolute;
         top:             50%;
         translate:       0 -50%;
+        white-space:     nowrap;
     }
 
     @media (prefers-reduced-motion: no-preference) {
@@ -3413,8 +3708,8 @@
             border-width:       var(--border-width);
             font-size:          inherit;
             block-size:         calc(var(--box-height) - var(--border-width) * 4);
-            inset-inline-start: var(--border-width);
             inline-size:        calc(var(--box-height) - var(--border-width) * 4);
+            inset-inline-start: var(--border-width);
         }
 
         &:checked::after {
@@ -3459,7 +3754,7 @@
         <span></span>
         <input type="radio"></label>
 
-    <fieldset data-axis="block | inline">
+    <fieldset>
         <legend><span></span></legend>
         <label>
             <span></span>
@@ -3496,76 +3791,6 @@
     <* role="tabpanel"></*>
 */
 @layer css.radio {
-    fieldset:has(> label > input[type="radio"]):not([data-union]) {
-        display: grid;
-        border:  none;
-        gap:     0.5rem;
-    }
-
-    /* --- data-axis="inline" ---
-        To fit vertical, needs grid-template-rows: repeat(N, ...); */
-        
-    fieldset:has(> label > input[type="radio"])[data-axis="inline"]:has(> label:first-of-type:nth-last-of-type(1)) {
-        grid-template-columns: max-content repeat(1, max-content);
-    }
-    fieldset:has(> label > input[type="radio"])[data-axis="inline"]:has(> label:first-of-type:nth-last-of-type(2)) {
-        grid-template-columns: max-content repeat(2, max-content);
-    }
-    fieldset:has(> label > input[type="radio"])[data-axis="inline"]:has(> label:first-of-type:nth-last-of-type(3)) {
-        grid-template-columns: max-content repeat(3, max-content);
-    }
-    fieldset:has(> label > input[type="radio"])[data-axis="inline"]:has(> label:first-of-type:nth-last-of-type(4)) {
-        grid-template-columns: max-content repeat(4, max-content);
-    }
-    fieldset:has(> label > input[type="radio"])[data-axis="inline"]:has(> label:first-of-type:nth-last-of-type(5)) {
-        grid-template-columns: max-content repeat(5, max-content);
-    }
-    fieldset:has(> label > input[type="radio"])[data-axis="inline"]:has(> label:first-of-type:nth-last-of-type(6)) {
-        grid-template-columns: max-content repeat(6, max-content);
-    }
-    fieldset:has(> label > input[type="radio"])[data-axis="inline"]:has(> label:first-of-type:nth-last-of-type(7)) {
-        grid-template-columns: max-content repeat(7, max-content);
-    }
-    fieldset:has(> label > input[type="radio"])[data-axis="inline"]:has(> label:first-of-type:nth-last-of-type(8)) {
-        grid-template-columns: max-content repeat(8, max-content);
-    }
-
-    fieldset:has(> label > input[type="radio"]) > legend > * {
-        grid-column:     1 / -1;
-        min-inline-size: 0;
-    }
-
-    fieldset:has(> label > input[type="radio"]) > *:not(legend, label) {
-        grid-column:     1 / -1;
-        min-inline-size: 0;
-        margin:          0;
-    }
-
-    fieldset:has(> label > input[type="radio"]):where([data-axis="block"], :not([data-axis])):not([data-union]) > legend > *,
-    fieldset:has(> label > input[type="radio"]):where([data-axis="block"], :not([data-axis])):not([data-union]) > *:not(legend, label),
-    fieldset:has(> label > input[type="radio"])[data-axis="inline"]:has(> label:first-of-type:nth-last-of-type(n+9)) > legend > *,
-    fieldset:has(> label > input[type="radio"])[data-axis="inline"]:has(> label:first-of-type:nth-last-of-type(n+9)) > *:not(legend, label) {
-        contain: inline-size;
-    }
-
-    fieldset:has(> label > input[type="radio"])[data-axis="inline"] > legend > *,
-    fieldset:has(> label > input[type="radio"])[data-axis="inline"] > *:not(legend, label) {
-        grid-column: 1;
-        grid-row:    1 / -1;
-        align-self:  center;
-    }
-
-    fieldset:has(> label > input[type="radio"]) > label {
-        display:         inline-flex;
-        justify-content: space-between;
-        align-items:     center;
-        gap:             0.5rem;
-        inline-size:     100%;
-    }
-    fieldset:has(> label > input[type="radio"]) > label > input[type="radio"] {
-        flex-shrink: 0;
-    }
-
     input[type="radio"]:not([data-sign], [data-facet], [data-surround]) {
         border-radius: 50%;
         padding:       0;
@@ -3605,9 +3830,7 @@
     /* === data-union === */
 
     [data-union]:has(> label > input[type="radio"]) > label {
-        display:     inline flow-root;
-        inline-size: auto;
-        position:    relative;
+        position: relative;
     }
 
     [data-union] > label > input[type="radio"] {
@@ -4142,11 +4365,13 @@
 /*  Usage:
 
     <label>
+        <span></span>
         <button type="button" data-sign="minus"></button>
         <input type="text" inputmode="numeric" role="spinbutton">
         <button type="button" data-sign="plus"></button></label>
 
     <label>
+        <span></span>
         <input type="text" inputmode="numeric" role="spinbutton">
         <span data-step="block">
             <button type="button" data-sign="plus"></button>
@@ -4167,13 +4392,6 @@
     }
 
     /* === input === */
-
-    label:has(> input[inputmode="numeric"]) > input[inputmode="numeric"] {
-        /*  a spinbutton is read and corrected digit by digit, so the field does
-            not grow with its content the way a text input does. */
-        field-sizing:    fixed;
-        min-inline-size: 0;
-    }
 
     [data-step="block"] {
         display:            inline grid;
@@ -4209,9 +4427,6 @@
 
     label > input[inputmode="numeric"]:has(+ span[data-step="block"]) {
         border-inline-end-width:   0;
-        border-inline-start-width: var(--md-border-width);
-    }
-    label > input[inputmode="numeric"]:has(+ span[data-step="block"]) {
         border-inline-start-width: var(--border-width);
     }
 
@@ -4246,141 +4461,114 @@
     span[data-step="block"] > button:last-child {
         border-end-end-radius: var(--border-radius);
     }
+}
+/*
+ * SPDX-FileCopyrightText: 2026 Andyou <andyou@animagram.jp>
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
-    /* === sort button === */
+/*  Usage:
 
-    /*
-        <th>
-            <span data-step="block">
-                <label>
-                    <input type="radio" name="sort-table" checked></label>
-                <label>
-                    <input type="radio" name="sort-table"></label></span></th>
-    */
+    <span data-cycle>
+        <input name="" type="radio" aria-label="" data-sign="">
+        <input name="" type="radio" aria-label="" data-sign="">
+        <input name="" type="radio" aria-label="" data-sign=""></span>
 
-    th:has(> [data-step="block"] input[type="radio"]) {
+    <th>
+        <span data-cycle>
+            <input name="" type="radio" value="" aria-label="">
+            <input name="" type="radio" value="" aria-label="">
+            <input name="" type="radio" value="" aria-label=""></span></th>
+*/
+@layer css.cycle {
+
+    [data-cycle] {
+        border-radius:  var(--border-radius);
+        display:        inline grid;
+        vertical-align: middle;
+    }
+
+    [data-cycle] > input[type="radio"] {
+        grid-area:     1 / 1;
+        opacity:       0;
+        outline-style: none;
+        z-index:       0;
+    }
+
+    [data-cycle] > input[type="radio"]:checked,
+    [data-cycle]:not(:has(> input[type="radio"]:checked)) > input[type="radio"]:last-child {
+        opacity: 1;
+    }
+
+    [data-cycle] > input[type="radio"]:checked + input[type="radio"],
+    [data-cycle]:not(:has(> input[type="radio"]:checked:not(:last-child))) > input[type="radio"]:first-child {
+        z-index: 1;
+    }
+
+    [data-cycle]:has(> input[type="radio"]:focus-visible) {
+        outline-color:  var(--color-focus);
+        outline-offset: 0;
+        outline-style:  solid;
+        outline-width:  0.25rem;
+    }
+
+    @media (hover: hover) {
+        [data-cycle]:hover {
+            outline-color:  var(--color-focus);
+            outline-offset: 0;
+            outline-style:  solid;
+            outline-width:  0.25rem;
+        }
+    }
+
+    th:has(> [data-cycle]) {
         white-space: nowrap;
     }
 
-    /*  the pair is a box height tall against a content box that is only a
-        line-height tall, so the overhang is given back to the block padding
-        it sits in rather than to the row, which would grow. */
-
-    [data-step="block"]:has(> label > input[type="radio"]) {
-        margin-block-end:    calc(((var(--md-line-height) - var(--md-box-height)) / 2) + var(--md-border-width));
-        margin-block-start:  calc((var(--md-line-height) - var(--md-box-height)) / 2);
-        margin-inline-start: calc(var(--md-border-radius) / 2);
+    th > [data-cycle] {
+        margin-block:        calc((var(--line-height) - var(--box-height)) / 2);
+        margin-inline-start: calc(var(--border-radius) / 2);
         vertical-align:      top;
     }
 
-    [data-step="block"] > label:first-child:has(> input[type="radio"]) {
-        grid-row: 1;
-    }
-    [data-step="block"] > label:last-child:has(> input[type="radio"]) {
-        grid-row: 2;
-    }
-
-    [data-step="block"] > label:has(> input[type="radio"]) {
-        cursor: pointer;
-    }
-
-    /*  the radio itself is not drawn: the triangle stands for it. the input
-        keeps its box so it still takes focus and the hit area stays whole.
-
-        this is a label > input[type="radio"] like any other, so css.radio
-        styles it as a circle: only what the triangle contradicts is undone
-        here, and the radius has to go with the border or the focus ring is
-        drawn as an ellipse around a triangle. */
-
-    [data-step="block"] > label > input[type="radio"] {
-        border:        0;
-        border-radius: 0;
-        color:         var(--color-ink-mix);
-        display:       block;
-        inline-size:   var(--md-box-height);
-        block-size:    calc((var(--md-box-height) - var(--md-border-width)) / 2);
-    }
-
-    /*  css.radio rounds this pseudo-element into the inner circle of a radio;
-        the triangle needs its corners back. */
-
-    [data-step="block"] > label > input[type="radio"]::after {
+    th > [data-cycle] > input[type="radio"] {
         background-color: transparent;
-        block-size:       0;
-        border-inline:    calc(var(--md-box-height) / 4) solid transparent;
+        block-size:       var(--box-height);
+        border:           0;
+        border-radius:    0;
+        inline-size:      var(--box-height);
+    }
+
+    th > [data-cycle] > input[type="radio"]:last-child {
+        color: var(--color-ink-mix);
+    }
+
+    th > [data-cycle] > input[type="radio"]::after {
+        background-color: currentColor;
+        block-size:       calc(var(--box-height) * sqrt(3) / 4);
         border-radius:    0;
         content:          "";
-        inline-size:      0;
+        inline-size:      calc(var(--box-height) / 2);
         inset:            0;
         margin:           auto;
         position:         absolute;
     }
 
-    /*  first is ascending, second is descending: the order on the page is the
-        order of the values, so the shape follows the position rather than a
-        value attribute. */
-
-    [data-step="block"] > label:first-child > input[type="radio"]::after {
-        border-block-end: calc(var(--md-box-height) / 4) solid currentColor;
+    th > [data-cycle] > input[type="radio"]:first-child::after {
+        clip-path: polygon(0 0, 100% 0, 50% 100%);
     }
-    [data-step="block"] > label:last-child > input[type="radio"]::after {
-        border-block-start: calc(var(--md-box-height) / 4) solid currentColor;
+    th > [data-cycle] > input[type="radio"]:nth-child(2)::after {
+        clip-path: polygon(50% 0, 100% 100%, 0 100%);
     }
-
-    /*  === size ===
-
-        the cell sets the height here, so the pair follows table[data-size]
-        rather than a data-size of its own. */
-
-    table:where([data-size]) [data-step="block"]:has(> label > input[type="radio"]) {
-        margin-block-end:    calc(((var(--line-height) - var(--box-height)) / 2) + var(--border-width));
-        margin-block-start:  calc((var(--line-height) - var(--box-height)) / 2);
-        margin-inline-start: calc(var(--border-radius) / 2);
-    }
-    table:where([data-size]) [data-step="block"] > label > input[type="radio"] {
-        inline-size: var(--box-height);
-        block-size:  calc((var(--box-height) - var(--border-width)) / 2);
-    }
-    table:where([data-size]) [data-step="block"] > label > input[type="radio"]::after {
-        border-inline: calc(var(--box-height) / 4) solid transparent;
-    }
-    table:where([data-size]) [data-step="block"] > label:first-child > input[type="radio"]::after {
-        border-block-end: calc(var(--box-height) / 4) solid currentColor;
-    }
-    table:where([data-size]) [data-step="block"] > label:last-child > input[type="radio"]::after {
-        border-block-start: calc(var(--box-height) / 4) solid currentColor;
-    }
-
-    /* the direction in force is the one drawn in ink. */
-
-    [data-step="block"] > label > input[type="radio"]:checked {
-        color: var(--color-ink);
-    }
-
-    /*  an outline, not a box-shadow, which is not painted under forced-colors.
-        the ring is the width of a border here: each half is only half a box
-        height tall, so the ring used elsewhere would swallow it. */
-
-    [data-step="block"] > label > input[type="radio"]:focus-visible {
-        outline-color:  var(--color-focus);
-        outline-offset: 0;
-        outline-style:  solid;
-        outline-width:  var(--md-border-width);
-        z-index:        1;
+    th > [data-cycle] > input[type="radio"]:last-child::after {
+        clip-path: polygon(evenodd, 0 0, 100% 0, 50% 100%, 0 0, 15% 10%, 50% 80%, 85% 10%, 15% 10%);
     }
 
     @media (forced-colors: active) {
-        [data-step="block"] > label > input[type="radio"] {
-            color: ButtonText;
-        }
-        [data-step="block"] > label > input[type="radio"]:checked {
-            color: Highlight;
-        }
-        [data-step="block"] > label > input[type="radio"]:focus-visible {
-            outline-color: Highlight;
+        th > [data-cycle] > input[type="radio"]::after {
+            background-color: ButtonText;
         }
     }
-
 }
 
 /*
@@ -4463,11 +4651,11 @@
     :where([role="menu"], [role="listbox"]) {
         background-color: var(--color-paper);
         border-color:     var(--color-ink-mix);
+        border-radius:    var(--border-radius);
         border-style:     solid;
-        border-width:     var(--md-border-width);
-        border-radius:    var(--md-border-radius);
+        border-width:     var(--border-width);
         color:            var(--color-ink);
-        max-height:       calc(var(--md-border-width) * 0.2 + var(--md-box-height) * 6.5);
+        max-height:       calc(var(--border-width) * 0.2 + var(--box-height) * 6.5);
         overflow-y:       auto;
         padding-inline:   0.25rem;
         width:            max-content;
@@ -4496,17 +4684,17 @@
     }
 
     :where([role="menu"], [role="listbox"]) > label > input[role] {
-        block-size:  var(--md-line-height);
+        block-size:  var(--line-height);
         cursor:      pointer;
-        inline-size: var(--md-line-height);
+        inline-size: var(--line-height);
     }
 
     dialog {
         background-color: var(--color-paper);
         border-color:     var(--color-ink-mix);
+        border-radius:    var(--border-radius);
         border-style:     solid;
-        border-width:     var(--md-border-width);
-        border-radius:    var(--md-border-radius);
+        border-width:     var(--border-width);
         color:            var(--color-ink);
     }
 
@@ -4657,13 +4845,13 @@
 
     /* === color, layout === */
 
-    :where(:is([role="alert"], [role="status"]):not([data-surround], [data-style], [data-type="toast"] > *)) {
-        border-style:     solid;
+    :where(:is([role="alert"], [role="status"]):not([data-surround], [data-style], [data-type="toast"] > *, [data-sign])) {
         border-radius:    0;
+        border-style:     solid;
         margin-block-end: var(--border-width);
     }
 
-    :where([role="alert"]:not([data-surround], [data-style], [data-type="toast"] > *)) {
+    :where([role="alert"]:not([data-surround], [data-style], [data-type="toast"] > *, [data-sign])) {
         border-color: var(--color-error);
     }
     :where([role="alert"]:not([data-surround], [data-style], [data-type="toast"] > *)):where([data-inline-align="start"])::before,
@@ -4671,7 +4859,7 @@
         background-color: var(--color-error);
     }
 
-    :where([role="status"]:not([data-surround], [data-style], [data-type="toast"] > *)) {
+    :where([role="status"]:not([data-surround], [data-style], [data-type="toast"] > *, [data-sign])) {
         border-color: var(--color-success);
     }
     :where([role="status"]:not([data-surround], [data-style], [data-type="toast"] > *)):where([data-inline-align="start"])::before,
