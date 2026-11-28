@@ -32,8 +32,6 @@ pub enum ObjectError {
     Decode(u32),
 }
 
-// --- record ---
-
 /// ```
 /// # use app::object::Head;
 /// let mut head = Head::new(7);

@@ -3,70 +3,62 @@ lang: ja
 translations: none
 ---
 
-Call of Cthulhu 7th edition playing tool.
+Call of Cthulhu 7th edition(以下、CoC7th)のプレイングツールソフトウェアを設計する。
 
-## References
+1. CoC7thをオンラインで遊ぶ時、1: 背景やキャラクター画像の共有 2: 通話 3 チャットやキャラクターなど、数値とテキストデータの編集・共有閲覧 が必要。このうち1,2は運用コストがかかるので、既存サービスに任せ、先ずは3を網羅する。
+2. 1の理由で、プレイヤー目線ではソフトウェアを1つ追加することになるので、利便性を損なわないことに注力する。
+    1. ブラウザタブの増加を抑えるため、ブラウザの拡張機能として動作出来るようにする
+    2. 既存サービス群からのインポート機能を順次追加する(イクスポートはjsonだけに留め、個別対応しない)。
+4. . 既存サービスがHTMLを変更したら動かなくなるのは脆いので、ユーザーがクリック・タッチでチャットボックスを指定する 
+6. 通信機能について。英語圏では、プライバシーや独立性を重視して、OSSのセルフホストが人気である。日本語圏では、便利さを重視してオンラインプラットフォームが人気である。デフォルトでP2P(webRTC, S)+フォールバック共通サーバー(STUN+TURN)+オプション任意ドメインとすれば、ソフトウェアの提供コストも小さいので、これを目指す。
+
+# References
 
 - [Chaosium: official wiki](https://cthulhuwiki.chaosium.com)
 
-## Requirements
+# Function
 
-1. CoC TRPG 7th Editionをオンラインで遊ぶ時、1: 背景やキャラクター画像の共有 2: 通話 3 チャットやキャラクターなど、数値とテキストデータの編集・共有閲覧 が必要。このうち1,2は運用コストがかかるので、既存サービスに任せ、先ずは3を網羅する。
-2. 1の理由で、プレイヤー目線ではソフトウェアを1つ追加することになるので、利便性を損なわないことに注力する。1 ブラウザタブの増加を抑えるため、ブラウザの拡張機能として動作出来るようにする 2 既存サービスがHTMLを変更したら動かなくなるのは困るので、ユーザーがクリック・タッチでチャットボックスを指定できるようにする 3 既存サービス群からのインポート機能を順次追加する(イクスポートは(既存オンラインサービスが指定している点も踏まえて)jsonだけに留め、一々個別対応しない)。
-3. 通信機能について。en圏では、プライバシーや独立性を重視して、OSSのセルフホストが人気である。ja圏では、便利さを重視してオンラインプラットフォームが人気である。デフォルトでP2P(webRTC, S)+フォールバック共通サーバー(STUN+TURN)+オプション任意ドメインとすれば、開発のコストも小さいし、en圏でキャッチーなので、最終的にこれを目指す。
+## キャラクターシート編集機能
 
-## Function
+- 簡便に入力して保存できることを重視する。
+- 既存のキャラクターシートサービスくらいには良い感じの表示になるようにする。
+- スマートフォンでも表示(・編集)に支障が無いようにUIを精査する。
+- リアルタイム計算, ロール
 
-### 1. 自前html上でのキャラクターシート作成
-
-以降の全ての機能の前提。
-
-- 1. 簡便に入力して保存できることを重視する。
-- 2. 既存のキャラクターシートサービスくらいには良い感じの表示になるようにする。
-- 3. スマートフォンでも表示(・編集)に支障が無いようにUIを精査する。
-
-- Characteristic: input-1(初期値) + input-2(変動値) + input-3(補正値) → span(合計) をリアルタイム更新
-- Skill: 専門分野(td-1_input)が変わったら th のテキストを更新する
-- Skill: 職業pt(input-1) か 興味pt(input-2) か 補正値(input-3) が変わったら合計spanを更新する
-- modal header button: 全Characteristicを一括ロール
-
-### 2. チャットボックスでのコマンド実行・保持
+## チャットボックスでのコマンド実行・保持
 
 予約語(デフォルトは"/")入力をトリガーとして、ダイスロール実行やデータ操作・集計を行う。
 既存のサービスが、表示話者の入力DOMとテキストエリアを分けているので、複雑性が許せば話者のDOMも使う。テキストエリア単独でも、改行を使って簡便に表現は可能。
 
-- ロール
-    - 予約語入力検知: 以下、「ダイスロール (nDn +n)」～「上達チェック」のセレクトボタンUIを重なり表示する。
-      - テキストエリアの上辺を基準に表示物位置を決定する。mobileで高さが足りない場合は見切れないことを優先して上辺からの座標を正の値にする。
-      - セレクタ外(esc)クリック(タッチ): 表示中の重なりUI非表示化、App::State::DisplayとInputを初期化する。テキストエリアの"/"は消去しない。
-      - Roll::Resultはデータとして [ロール種アイテム, 判定対象アイテム, 小計値(単一orリスト), 判定結果アイテム]で構成する。
-      - 出力テキストとして、 Roll::Result::display()-> "[{ロール種ラベル} {判定対象ラベル} = {目標値}(= からここまで、必要なロール種のみ。リストの場合は{}で囲う。)] {「出目」ラベル}:{出目の数値(重複の無い最終結果のみ)} {判定}: {判定結果のラベル}"で統一。
-      - 後で集計するロール種のRoll::Resultのみ、App::State::Stackにスタックする。
-      - 実装上の割り切りとして、入力欄の単位などの後置は排除する。単位は" ()""などでラベルに含めてinput外に前置することで、複雑性を抑える。
-      - 同様に、インタラクティブUIの1->2->3で1つ前に戻る手段は用意しない。単純なのでescクリアで十分。
-      - 必ずすべてのシーンで、appが「初期focus対象」を想定してそこにautofocusを設定しておく。
-      - tabやshift+tabで操作可能なdomだけを適切にfocusできるようにする。
-  - ディスプレイに表示するのは、ルールブック準拠の言葉(label)であることを徹底する。プレイヤーの知らない実装都合の略称を作らない・使わない・表示しない。ラベルは、1つの変数の属性値(UTF-8)であり、言語(ja,en)別・略称等の引数を取って一意に決まる。
-  - UI実装上の割り切りとして、入力欄の単位などの後置は排除する。単位は" ()""などでラベルに含めてinput外に前置することで、複雑性を抑える。
-  - 開いた時点で一番目の選択肢にfocusを当てる。
-  - 上下キー/tab/shift+tabでフォーカスが移動, enter(click, tap)で次へ
+- 予約語入力検知: 以下、「ダイスロール (nDn +n)」～「上達チェック」のセレクトボタンUIをオーバーレイする。
+    - テキストエリアの上辺を基準に表示物位置を決定する。mobileで高さが足りない場合は見切れないことを優先して上辺からの座標を正の値にする。
+    - セレクタ外(esc)クリック(タッチ): 表示中の重なりUI非表示化、App::State::DisplayとInputを初期化する。テキストエリアの"/"は消去しない。
+    - Roll::Resultはデータとして [ロール種アイテム, 判定対象アイテム, 小計値(単一orリスト), 判定結果アイテム]で構成する。
+    - 出力テキストとして、 Roll::Result::display()-> "[{ロール種ラベル} {判定対象ラベル} = {目標値}(= からここまで、必要なロール種のみ。リストの場合は{}で囲う。)] {「出目」ラベル}:{出目の数値(重複の無い最終結果のみ)} {判定}: {判定結果のラベル}"で統一。
+    - 後で集計するロール種のRoll::Resultのみ、App::State::Stackにスタックする。
+    - 実装上の割り切りとして、入力欄の単位などの後置は排除する。単位は" ()""などでラベルに含めてinput外に前置することで、複雑性を抑える。
+    - 同様に、インタラクティブUIの1->2->3で1つ前に戻る手段は用意しない。単純なのでescクリアで十分。
+    - 必ずすべてのシーンで、appが「初期focus対象」を想定してそこにautofocusを設定しておく。
+    - tabやshift+tabで操作可能なdomだけを適切にfocusできるようにする。
+- ディスプレイに表示するのは、ルールブック準拠の語(label)であることを徹底する。プレイヤーの知らない実装都合の略称を作らない・使わない・表示しない。ラベルは、1つの変数の属性値(UTF-8)であり、言語(ja,en)別・略称等の引数を取って一意に定まる。
+- UIレイアウトの安定のため、単位類は後置せず、ラベルとして前置する。
 
-#### 2-1. Dice Roll - ダイスロール (nDn + n)
+### Dice Roll (nDn + n)
 
-- Calculate {count: i8} *Rand(1..{side: u8}) + {count: i8} *Rand(1..{side: u8}) + {modifier: i8}
+Calculate {count: i8} *Rand(1..{side: u8}) + {count: i8} *Rand(1..{side: u8}) + {modifier: i8}.
+直に呼び出された場合は、ログには残さない。
+選択後に表示されるべきインタラクティブUIは、順に
 
-選択後に表示されるべきインタラクティブUIは、出現順に
-1. text[field](Roll::Field::DiceCount), +-ボタン(上下キーも同等に), 初期値1のnumber[1~100]入力欄(focusが当たったら直接入力とする。入力時のkeyboard enterで決定を発火), 「次へ」ボタン(enterも同等に)
-2. text[field](Roll::Field::DiceSide), button[up] button[down], input[number(2(初期値),3,4,5,6,8,12,16,20,50,100)], button[next]
-3. text[field](Roll::Field::「補正」の英単語), input[number(0(初期値), -100~100), button[submit]]
-結果のState::Stack(roll: Roll)保持は不要。
+1. Roll::Field::DiceCount(`input[inputmode="numeric"][role="spinbutton"]`): 初期値1、入力範囲は1~100。(focusは直下の「次へ」ボタンに当てる。
+2. Roll::Field::DiceSide(`input[inputmode="numeric"][role="spinbutton"]`): 初期値2、入力範囲は3,4,5,6,8,12,16,20,50,100。直下に「戻る」と「次へ」ボタンを置き、focusは「次へ」ボタンに当てる。
+3. Roll::Field::Modifier(`input[inputmode="numeric"][role="spinbutton"]`): 初期値0の-100~100)。下部に「戻る」と「決定」ボタン。
 
-Skill Roll — 技能値に対する基本判定
-1. State::Character::Instance()に存在する技能を優先ソートしてセレクタとして表示。 text[field](skills: Instance::Fields(attribute: Schema::Attribute::Skill), button[up] button[down], button[next]
+### Skill Roll
+
+1. characterに存在する技能を優先ソートしてセレクタとして表示。 text[field](skills: Instance::Fields(attribute: Schema::Attribute::Skill), button[up] button[down], button[next]
 - 列指向で表示。1列にまとまる数で無い場合も多いので、画面幅に応じてflexに表示する
-2. text[field](Roll::Field::「補正」の英単語), input[number(0(初期値), -100~100), button[submit]をinline表示
-3. submitしたらApp::Roll::display()をしつつ結果をApp::Roll::stack(State::Stack(roll: SkillRoll))する。
-    SkillRoll,
+2. Roll::Field::Modifier(`input[inputmode="numeric"][role="spinbutton"]`): 初期値0の-100~100), `button[type="submit"]`
+3. App::Roll::display()をしつつ結果をApp::Roll::stack(State::Stack(roll: SkillRoll))する。
 
 Characteristic Roll — 能力値判定 (幸運含む)
 1. select[characteristic] を表示。nextボタンは無し
@@ -104,9 +96,9 @@ Development Check - 上達チェック
 - 各技能の専門分野(自由記入)の発行は最大4つ。 // 要緩和
 - 技能の完全自由欄も最大4つ。 // 要緩和
 
-### キャラクターシート
+# キャラクターシート
 
-#### 表示最大数
+## 表示最大数
 
 キャラクターシート1枚の中で、各フィールドの表示上限数。tsumugiサンプルを基準に。
 
@@ -130,7 +122,7 @@ Development Check - 上達チェック
 | Memo エントリ数 |  | u8 | |
 | Memo 文字数 | |  | |
 
-#### 保存最大数
+## 保存最大数
 
 アプリ全体・ユーザー単位での保存上限数。
 
@@ -142,11 +134,9 @@ Development Check - 上達チェック
 | SkillのDevelopment Check済みフラグ保持数 | 60 | Skill表示最大数と同値 |
 | キャラクターのバックアップ(スナップショット)数 | 5 | セッション毎の成長前後比較用 |
 
----
+# ルール解釈メモ
 
-## ルール解釈メモ
-
-### 先制の一撃 (奇襲)
+## 先制の一撃 (奇襲)
 
 - Striking the First Blow - (Surprise)
 - 日本語訳版 第2刷 p.102
@@ -155,27 +145,25 @@ Development Check - 上達チェック
 - 2. 予期できなかった場合、攻撃の技能ロールがファンブルしない限り成功する。
 - 3. 奇襲は行動順を意志を持った順に修正する意図がある。つまり、同ラウンドに奇襲を受けた側が行動することは構わないと考えられる。
 
-### Armor Reference
+## Armor Reference
 
 - https://basicroleplaying.org/topic/8902-armor-rules-clarification-coc-7th-ed/
 
-### 職業技能ポイント・個人的な興味ポイント
+## 職業技能ポイント・個人的な興味ポイント
 
-キャラクター作成後のポイント(合計)の再計算は行わない。
+キャラクターの成長段階での両ポイントの再計算は行わない。
 直接の公式見解は無いが、関連ルールの方向性・妥当性の観点から判断した。
 
 - 新クトゥルフ神話TRPGルールブック 第2刷 p.31
 - https://cthulhuwiki.chaosium.com/investigators/step-three-occupation-and-skills.html#sample-investigator-occupations
 - https://basicroleplaying.org/topic/9511-age-bonus-penalties/
 
-### Language (Own) 母国語
+## Language (Own) 母国語
 
 - 母国語の言語名を明記できるべき
 - 複数言語対応については、保留
 
----
-
-## 未使用スクリプト
+# Unused
 
 ```rust
 // --- 生活水準 (Standard of Living) ---
@@ -187,7 +175,6 @@ pub enum StandardOfLiving {
     Rich,
     SuperRich,
 }
-
 impl StandardOfLiving {
     pub fn display(self, language: Language) -> &'static str {
         match (self, language) {
@@ -206,8 +193,6 @@ impl StandardOfLiving {
         }
     }
 }
-
-
 // --- 年齢カテゴリ (AgeCategory) ---
 enum AgeCategory {
     Teen,    // 15-19: STR/SIZ合計-5、EDU-5、幸運再ロール（高い方）
@@ -218,7 +203,6 @@ enum AgeCategory {
     Old,     // 70-79: EDU改善4回、STR/CON/DEX合計-40、APP-20、MOV-4
     Ancient, // 80+  : EDU改善4回、STR/CON/DEX合計-80、APP-25、MOV-5
 }
-
 impl AgeCategory {
     pub fn from_age(age: u16) -> Self {
         match age {
@@ -231,7 +215,6 @@ impl AgeCategory {
             _       => Self::Ancient,
         }
     }
-
     // STR/CON/DEX から合計で差し引く点数（Teen は STR/SIZ から差し引く）
     pub fn phys_deduction(&self) -> u8 {
         match self {
@@ -244,7 +227,6 @@ impl AgeCategory {
             Self::Ancient => 80,
         }
     }
-
     // APP からの固定減算値
     pub fn app_deduction(&self) -> u8 {
         match self {
@@ -257,7 +239,6 @@ impl AgeCategory {
             Self::Ancient => 25,
         }
     }
-
     // EDU 改善チェック回数（成功すれば EDU +1D10、上限 99）
     pub fn edu_improvement_checks(&self) -> u8 {
         match self {
@@ -270,12 +251,10 @@ impl AgeCategory {
             Self::Ancient => 4,
         }
     }
-
     // Teen のみ特殊ルール（STR/SIZ差し引き・EDU-5・幸運再ロール）
     pub fn is_teen(&self) -> bool {
         matches!(self, Self::Teen)
     }
-
     pub fn display(&self, language: Language) -> &'static str {
         match (self, language) {
             (Self::Teen,    Language::Ja) => "10代 (15-19)",
@@ -295,7 +274,6 @@ impl AgeCategory {
         }
     }
 }
-
 // --- Roll ---
             (Self::AutoFireRoll,    Language::Ja) => "自動火器の連射判定",
             (Self::AutoFireRoll, Language::En(_)) => "Automatic Fire Roll",
@@ -405,15 +383,11 @@ fn bullet_result(
 }
 ```
 
----
-
-## ボーナスダイス・ペナルティダイスのアルゴリズム分析
+# ボーナスダイス・ペナルティダイスのアルゴリズム分析
 
 ```python
 # python3 -c "from dice import example_judge; example_judge(display=True)"
-
 import random
-
 
 def dice(level: int = 0):
     arg2 = random.randint(0, 9)
@@ -484,5 +458,4 @@ def example_judge(trials: int = 100000, display: bool = False):
         print()
 
     return matrix
-
 ```
