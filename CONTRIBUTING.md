@@ -29,6 +29,10 @@ curl -fsSL -H "Accept: application/vnd.github.raw+json" "https://api.github.com/
 - HTMLの記述順と、レンダリング時のデフォルトの配置・挙動の方向は一致しなければならない。
 - 将来的な集合内の列操作向けSoAレイアウトに必要な並びとストライド設計は、bit.rsの外で行う。
 
+## Import・export境界としてのJSON
+
+Export時は、[JSON-LD 1.1](https://www.w3.org/TR/json-ld11/))の`@context`を使って各フィールドの定義をURIを指定する。特にメタデータは、[DCMI Metadata Terms](https://www.dublincore.org/specifications/dublin-core/dcmi-terms/)の該当があれば、これに従う。e.g., created, modified, ...
+
 # Links
 
 - [Debug link with eruda (dev tools)](https://app.animagram.jp/?eruda)

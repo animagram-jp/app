@@ -459,3 +459,41 @@ def example_judge(trials: int = 100000, display: bool = False):
 
     return matrix
 ```
+
+# Schema (draft)
+
+| Term | Meaning |
+|-|-|
+| identifier | UUID (iCalendar: UID) |
+| title | 資源に与えられた名前	シート名。PC名とは別概念（「クトゥルフ神話TRPG 探索者記録用紙」も title たりうる）。混同注意 |	
+| creator | 資源を作成した主体。PL名 / HO作成者。値は文字列でも Agent オブジェクトでもよい |
+| created | 資源の作成日。紙シートが書かれた日。全体が不明なら YYYY-MM や YYYY でよく、範囲は / 区切り。レコード作成日とは別物 |
+| modified | 資源が変更された日。セッション後の更新。配列にして履歴化も可 |
+| source | 記述対象がそこから派生した関連資源。保管所URL、元PDF、写真スキャン。変換元の記録として最重要 |
+| medium | 資源の物理的な担体。定義域は Physical Resource、値域は Physical Medium（例: 紙、カンヴァス、DVD）	"paper" / "pdf"。 |
+| provenance | 作成以降の所有・管理の変遷のうち、真正性・完全性・解釈に重要なもの。歴代の管理者が加えた変更の記述を含みうる。「2026-08に手入力で電子化」「PL交代でGMが引き継ぎ」。自由文でよい |
+| conformsTo | 記述対象が準拠する確立された標準	6版/7版の判別。ルールブック版・サプリメント |
+| language | 値は BCP 47 の言語タグ、または ISO 639-2/3 の統制語彙。 |
+| isVersionOf / hasVersion | 版・改訂・翻案の関係。内容の実質的変更を伴う	成長・ロスト・時代違いの同一探索者を繋ぐ |
+| isFormatOf / hasFormat | 実質的に同一だが別フォーマットの既存資源。hasFormat の逆プロパティ / 同じシートのPDF/ココフォリア駒/画像。エクスポート先を持つなら有用 |
+| isPartOf / hasPart | 記述対象が物理的または論理的に含まれる関連資源。キャンペーン/卓への所属。isPartOf: "第2回 悪霊の家"。逆に hasPart はシートが下位文書（背景設定、日記）を持つ場合 |
+| description | 資源の説明。シートについての注記。PCの設定ではない点に注意（それは投稿者データ側） |
+| abstract | 資源の要約。description と役割が被る。両方使うなら「abstract=短い要約、description=詳細」で分ける。片方でよい |
+| rights / license / rightsHolder | 権利情報 / ライセンス文書 / 権利保持者	公開・共有するなら。rightsHolder に Chaosium・アークライト、license に自分の設定の扱い |
+| publisher | 資源を公開した主体。保管所に上げた、Webに載せた、などの公開行為があるなら |
+| contributor | 資源に寄与した主体。共同作成・GM補正・成長の記入者 |
+| type | 資源の性質・ジャンル。DCMI Type Vocabulary の統制語（Text など）が推奨で、粒度が粗すぎる。自作の "investigator_sheet" を入れるなら独自キーにすべき。dcterms として使うなら Text 一択で情報量ゼロ |
+| format | ファイル形式・媒体・寸法。MIMEタイプ推奨。medium と使い分ける（format=デジタル形式、medium=物理担体）。両方は要らないことが多い |
+| extent | 大きさ・継続時間。紙シートなら「A4 2枚」。物理原本を記述するなら意味がある |
+| issued | 公式に公開・発行された日。卓で初めて使った日、公開した日 |
+| valid | 資源が有効な日付・期間。キャンペーン中の有効期間、「1923年時点の探索者」の作中時制 |
+| available | 利用可能になった/なる日付。ほぼ issued と重複。
+| spatial | 空間的な適用範囲。舞台となる土地（アーカム、東京）。ただしこれは「資源の内容が扱う場所」なので、シナリオ寄りの情報。PCの出身地は別キーに |
+| temporal | 時間的な適用範囲。作中年代（1920s）。spatial と対で使うと収まりがいい |
+| subject | 資源の主題。タグ。["CoC7", "現代日本", "秘匿HO"]。統制語彙推奨だが自由タグでも運用可 |
+| relation | 関連する資源。上記の関係語すべての親。具体的な関係が言えるならそちらを使う。分類不能な関連だけここ |
+| references / isReferencedBy | 参照する / される	シナリオ、参考にした他PC、元ネタ。ゆるい繋がりを書くのに便利 |
+| replaces / isReplacedBy | 置き換える / 置き換えられる	作り直し・リメイク版。isVersionOf（同一性が続く）との違いは、こちらは別物への交代。ロスト後の新PCは replaces が適切 |
+| requires / isRequiredBy | 機能に必要とする / される	「このシートは追加ルールブックを必要とする」。サプリ依存を書くなら |
+| alternative | 別題・副題 | PCの通り名・偽名を入れたくなるが、それはシートの別題ではなくPCの属性。
+| accessRights | 誰がアクセスできるかを示すセキュリティ状態	秘匿HOの公開範囲に転用できそうに見えるが、DCMIの想定は所蔵機関のアクセス制限。ゲーム内の秘匿は独自キーにすべき（visibility: "gm_only" など） |

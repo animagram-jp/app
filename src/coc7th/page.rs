@@ -31,7 +31,6 @@ crate::enumerate! {
     pub HeaderInput(u8) {
         Other,
         Preservation,
-        Import,
     }
 }
 
@@ -438,7 +437,9 @@ impl Page {
             }
             Self::Dice => header(&[(Tag::Button, Some(HeaderButton::Dice as u32))]),
             Self::Preservation => Preservation::<{ HeaderInput::Preservation as u32 }>::to_dom(),
-            Self::Import => header(&[(Tag::Input, Some(HeaderInput::Import as u32))]),
+            Self::Import => {
+                header(&[(Tag::Div, Some(HeaderDiv::Investigator as u32)), (Tag::Input, None)])
+            }
             Self::Appearance => header(&[(Tag::Button, Some(HeaderButton::Appearance as u32))]),
             Self::AppearanceOption(c) => header(&[
                 (Tag::Div, Some(HeaderDiv::Appearance as u32)),
@@ -499,11 +500,15 @@ impl Page {
             [(Tag::Header, None), (Tag::Input, Some(n))] => {
                 match HeaderInput::from(u8::try_from(*n).unwrap()) {
                     HeaderInput::Preservation => Self::Preservation,
-                    HeaderInput::Import => Self::Import,
                     HeaderInput::Other => return None,
                 }
             }
             [(Tag::Header, None), (Tag::Label, None), (Tag::Input, None)] => Self::Unlock,
+            [(Tag::Header, None), (Tag::Div, Some(list)), (Tag::Input, None)]
+                if HeaderDiv::from(u8::try_from(*list).unwrap()) == HeaderDiv::Investigator =>
+            {
+                Self::Import
+            }
             [(Tag::Header, None), (Tag::Div, Some(list)), (Tag::Button, Some(n))] => {
                 match HeaderDiv::from(u8::try_from(*list).unwrap()) {
                     HeaderDiv::Investigator if (1..=INVESTIGATOR_OPTIONS).contains(n) => {
